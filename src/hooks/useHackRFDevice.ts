@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useUSBDevice } from "./useUSBDevice";
-import { HackRFDevice } from "../models/HackRFDevice";
+import { HackRFOne } from "../models/HackRFOne";
 
 export function useHackRFDevice() {
-  const [device, setDevice] = useState<HackRFDevice>();
+  const [device, setDevice] = useState<HackRFOne>();
   const { device: usbDevice, requestDevice } = useUSBDevice([
     {
       // HackRF devices
@@ -11,22 +11,25 @@ export function useHackRFDevice() {
     },
   ]);
 
+  const cleanup = () => {
+    device?.close().catch(console.error);
+  };
   useEffect(() => {
     if (!usbDevice) {
       return;
     }
     if (!usbDevice.opened) {
-      HackRFDevice.openDevice(usbDevice).then(setDevice);
+      const hackRF = new HackRFOne(usbDevice);
+      hackRF.open().then(() => setDevice(hackRF));
     }
   }, [usbDevice]);
   useEffect(() => {
-    return () => {
-      device?.close().catch(console.error);
-    };
+    return cleanup;
   }, [device]);
 
   return {
     device,
     initialize: requestDevice,
+    cleanup,
   };
 }

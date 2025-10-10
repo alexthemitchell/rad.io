@@ -1,9 +1,9 @@
-import Visualizer from "./pages/Visualizer";
+import VisualizerPage from "./pages/Visualizer";
 
 function App() {
   return (
     <div>
-      <Visualizer />
+      <VisualizerPage />
     </div>
   );
 }
