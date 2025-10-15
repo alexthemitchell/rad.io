@@ -1,6 +1,6 @@
 /**
  * Test Memory Manager
- * 
+ *
  * Provides utilities for managing memory during tests to prevent
  * heap overflow issues when generating and processing large datasets.
  */
@@ -20,7 +20,7 @@ class SampleBufferPool {
   get(size: number): Sample[] {
     const pool = this.pools.get(size) || [];
     const buffer = pool.pop();
-    
+
     if (buffer) {
       // Clear the buffer before reuse
       for (let i = 0; i < buffer.length; i++) {
@@ -39,7 +39,7 @@ class SampleBufferPool {
   release(buffer: Sample[]): void {
     const size = buffer.length;
     const pool = this.pools.get(size) || [];
-    
+
     if (pool.length < this.maxPoolSize) {
       pool.push(buffer);
       this.pools.set(size, pool);
@@ -77,7 +77,7 @@ export function releaseSampleBuffer(buffer: Sample[]): void {
  */
 export function clearMemoryPools(): void {
   bufferPool.clear();
-  
+
   // Force garbage collection if available (when running with --expose-gc)
   if (global.gc) {
     global.gc();
@@ -91,7 +91,7 @@ export function clearMemoryPools(): void {
 export function generateSamplesChunked(
   sampleCount: number,
   generator: (n: number) => Sample,
-  chunkSize: number = 10000
+  chunkSize: number = 10000,
 ): Sample[] {
   const chunks: Sample[][] = [];
   const numChunks = Math.ceil(sampleCount / chunkSize);
@@ -100,7 +100,7 @@ export function generateSamplesChunked(
     const start = chunk * chunkSize;
     const end = Math.min(start + chunkSize, sampleCount);
     const chunkLength = end - start;
-    
+
     const chunkSamples = new Array(chunkLength);
     for (let i = 0; i < chunkLength; i++) {
       chunkSamples[i] = generator(start + i);
@@ -118,7 +118,7 @@ export function generateSamplesChunked(
 export function processSamplesBatched<T>(
   samples: Sample[],
   processor: (batch: Sample[]) => T,
-  batchSize: number = 5000
+  batchSize: number = 5000,
 ): T[] {
   const results: T[] = [];
   const numBatches = Math.ceil(samples.length / batchSize);
@@ -127,9 +127,9 @@ export function processSamplesBatched<T>(
     const start = batch * batchSize;
     const end = Math.min(start + batchSize, samples.length);
     const batchSamples = samples.slice(start, end);
-    
+
     results.push(processor(batchSamples));
-    
+
     // Allow GC between batches
     if (global.gc && batch % 10 === 0) {
       global.gc();
@@ -147,20 +147,20 @@ export class TestMemoryMonitor {
   private peakMemory: number = 0;
 
   start(): void {
-    if (typeof process !== 'undefined' && process.memoryUsage) {
+    if (typeof process !== "undefined" && process.memoryUsage) {
       this.startMemory = process.memoryUsage().heapUsed;
       this.peakMemory = this.startMemory;
     }
   }
 
   checkpoint(label?: string): void {
-    if (typeof process !== 'undefined' && process.memoryUsage) {
+    if (typeof process !== "undefined" && process.memoryUsage) {
       const currentMemory = process.memoryUsage().heapUsed;
       this.peakMemory = Math.max(this.peakMemory, currentMemory);
-      
+
       const delta = currentMemory - this.startMemory;
       const deltaMB = (delta / 1024 / 1024).toFixed(2);
-      
+
       if (label) {
         console.log(`[Memory] ${label}: ${deltaMB} MB delta`);
       }
@@ -168,18 +168,18 @@ export class TestMemoryMonitor {
   }
 
   report(): { deltaBytes: number; deltaMB: number; peakMB: number } {
-    if (typeof process !== 'undefined' && process.memoryUsage) {
+    if (typeof process !== "undefined" && process.memoryUsage) {
       const currentMemory = process.memoryUsage().heapUsed;
       const delta = currentMemory - this.startMemory;
       const peakDelta = this.peakMemory - this.startMemory;
-      
+
       return {
         deltaBytes: delta,
         deltaMB: parseFloat((delta / 1024 / 1024).toFixed(2)),
         peakMB: parseFloat((peakDelta / 1024 / 1024).toFixed(2)),
       };
     }
-    
+
     return { deltaBytes: 0, deltaMB: 0, peakMB: 0 };
   }
 }

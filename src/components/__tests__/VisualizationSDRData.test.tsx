@@ -12,9 +12,9 @@ import Spectrogram from "../Spectrogram";
 import WaveformVisualizer from "../WaveformVisualizer";
 import { calculateSpectrogramRow, calculateWaveform } from "../../utils/dsp";
 import type { Sample } from "../../utils/dsp";
-import { 
-  clearMemoryPools, 
-  generateSamplesChunked 
+import {
+  clearMemoryPools,
+  generateSamplesChunked,
 } from "../../utils/testMemoryManager";
 
 /**
@@ -239,7 +239,9 @@ describe("Visualization Tests with Realistic SDR Data", () => {
   describe("IQ Constellation with SDR Signals", () => {
     it("should render FM signal constellation", () => {
       const samples = generateFMSignal(2000); // Reduced from 5000
-      const { container, unmount } = render(<IQConstellation samples={samples} />);
+      const { container, unmount } = render(
+        <IQConstellation samples={samples} />,
+      );
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
@@ -250,13 +252,15 @@ describe("Visualization Tests with Realistic SDR Data", () => {
         .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
       const avgMag = magnitudes.reduce((a, b) => a + b, 0) / magnitudes.length;
       expect(avgMag).toBeGreaterThan(0.3); // Strong signal
-      
+
       unmount();
     });
 
     it("should render AM signal constellation", () => {
       const samples = generateAMSignal(2000); // Reduced from 5000
-      const { container, unmount } = render(<IQConstellation samples={samples} />);
+      const { container, unmount } = render(
+        <IQConstellation samples={samples} />,
+      );
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
@@ -268,13 +272,15 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const maxMag = Math.max(...magnitudes);
       const minMag = Math.min(...magnitudes);
       expect(maxMag - minMag).toBeGreaterThan(0.2); // Amplitude variation
-      
+
       unmount();
     });
 
     it("should render QPSK constellation with distinct points", () => {
       const samples = generateQPSKSignal(2000); // Reduced from 5000
-      const { container, unmount } = render(<IQConstellation samples={samples} />);
+      const { container, unmount } = render(
+        <IQConstellation samples={samples} />,
+      );
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
@@ -306,12 +312,14 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     it("should handle very large datasets (100k+ samples)", () => {
       // Reduced from 50k to 10k to prevent memory issues
       const samples = generateFMSignal(10000);
-      const { container, unmount } = render(<IQConstellation samples={samples} />);
+      const { container, unmount } = render(
+        <IQConstellation samples={samples} />,
+      );
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
       expect(samples.length).toBe(10000);
-      
+
       // Clean up immediately after test
       unmount();
     });
@@ -340,7 +348,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const fftSize = 1024;
       const spectrogramData: Float32Array[] = [];
 
-      for (let i = 0; i < 5; i++) { // Reduced from 10
+      for (let i = 0; i < 5; i++) {
+        // Reduced from 10
         const rowSamples = samples.slice(i * fftSize, (i + 1) * fftSize);
         const row = calculateSpectrogramRow(rowSamples, fftSize);
         spectrogramData.push(row);
@@ -353,7 +362,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
       expect(spectrogramData.length).toBe(5);
-      
+
       unmount();
     });
 
@@ -362,7 +371,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const fftSize = 1024;
       const spectrogramData: Float32Array[] = [];
 
-      for (let i = 0; i < 5; i++) { // Reduced from 10
+      for (let i = 0; i < 5; i++) {
+        // Reduced from 10
         const rowSamples = samples.slice(i * fftSize, (i + 1) * fftSize);
         const row = calculateSpectrogramRow(rowSamples, fftSize);
         spectrogramData.push(row);
@@ -381,7 +391,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
         const peaks = Array.from(firstRow).filter((val) => val > -20); // dB threshold
         expect(peaks.length).toBeGreaterThan(3); // Multiple tones visible
       }
-      
+
       unmount();
     });
 
@@ -390,15 +400,14 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const fftSize = 1024;
       const spectrogramData: Float32Array[] = [];
 
-      for (let i = 0; i < 5; i++) { // Reduced from 20
+      for (let i = 0; i < 5; i++) {
+        // Reduced from 20
         const rowSamples = samples.slice(i * fftSize, (i + 1) * fftSize);
         const row = calculateSpectrogramRow(rowSamples, fftSize);
         spectrogramData.push(row);
       }
 
-      const { container } = render(
-        <Spectrogram fftData={spectrogramData} />,
-      );
+      const { container } = render(<Spectrogram fftData={spectrogramData} />);
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
@@ -415,13 +424,14 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should handle different FFT sizes", () => {
-      const fftSizes = [256, 512, 1024];  // Reduced from [256, 512, 1024, 2048, 4096]
+      const fftSizes = [256, 512, 1024]; // Reduced from [256, 512, 1024, 2048, 4096]
 
       for (const fftSize of fftSizes) {
-        const samples = generateFMSignal(fftSize * 3);  // Reduced from * 5
+        const samples = generateFMSignal(fftSize * 3); // Reduced from * 5
         const spectrogramData: Float32Array[] = [];
 
-        for (let i = 0; i < 3; i++) { // Reduced from 5
+        for (let i = 0; i < 3; i++) {
+          // Reduced from 5
           const rowSamples = samples.slice(i * fftSize, (i + 1) * fftSize);
           const row = calculateSpectrogramRow(rowSamples, fftSize);
           spectrogramData.push(row);
@@ -434,7 +444,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
         const canvas = container.querySelector("canvas");
         expect(canvas).toBeInTheDocument();
         expect(spectrogramData[0]?.length).toBe(fftSize);
-        
+
         unmount();
       }
     });
@@ -444,7 +454,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const fftSize = 1024;
       const spectrogramData: Float32Array[] = [];
 
-      for (let i = 0; i < 2; i++) { // Reduced from 10
+      for (let i = 0; i < 2; i++) {
+        // Reduced from 10
         const rowSamples = samples.slice(i * fftSize, (i + 1) * fftSize);
         const row = calculateSpectrogramRow(rowSamples, fftSize);
         spectrogramData.push(row);
@@ -467,7 +478,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
           values.length;
         expect(variance).toBeLessThan(100); // Relatively flat
       }
-      
+
       unmount();
     });
   });
@@ -477,7 +488,9 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const samples = generateAMSignal(2000); // Reduced from 10000
       const { amplitude } = calculateWaveform(samples);
 
-      const { container, unmount } = render(<WaveformVisualizer samples={samples} />);
+      const { container, unmount } = render(
+        <WaveformVisualizer samples={samples} />,
+      );
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
@@ -486,7 +499,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const maxAmp = Math.max(...Array.from(amplitude));
       const minAmp = Math.min(...Array.from(amplitude));
       expect(maxAmp - minAmp).toBeGreaterThan(0.2);
-      
+
       unmount();
     });
 
@@ -494,7 +507,9 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const samples = generateFMSignal(2000); // Reduced from 10000
       const { amplitude } = calculateWaveform(samples);
 
-      const { container, unmount } = render(<WaveformVisualizer samples={samples} />);
+      const { container, unmount } = render(
+        <WaveformVisualizer samples={samples} />,
+      );
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
@@ -504,7 +519,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const minAmp = Math.min(...Array.from(amplitude));
       const variation = maxAmp - minAmp;
       expect(variation).toBeLessThan(0.3); // Less variation than AM
-      
+
       unmount();
     });
 
@@ -512,7 +527,9 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const samples = generatePulsedSignal(5000); // Reduced from 20000
       const { amplitude } = calculateWaveform(samples);
 
-      const { container, unmount } = render(<WaveformVisualizer samples={samples} />);
+      const { container, unmount } = render(
+        <WaveformVisualizer samples={samples} />,
+      );
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
@@ -524,18 +541,20 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
       expect(nearZero).toBeGreaterThan(50); // Off periods (adjusted threshold)
       expect(nearMax).toBeGreaterThan(50); // On periods (adjusted threshold)
-      
+
       unmount();
     });
 
     it("should handle long duration signals", () => {
       const samples = generateFMSignal(5000); // Reduced from 50000
 
-      const { container, unmount } = render(<WaveformVisualizer samples={samples} />);
+      const { container, unmount } = render(
+        <WaveformVisualizer samples={samples} />,
+      );
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
-      
+
       unmount();
     });
   });
@@ -630,7 +649,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
         <WaveformVisualizer samples={samples.slice(0, 2000)} />,
       );
       expect(waveContainer.querySelector("canvas")).toBeInTheDocument();
-      
+
       // Cleanup
       unmountIQ();
       unmountSpec();

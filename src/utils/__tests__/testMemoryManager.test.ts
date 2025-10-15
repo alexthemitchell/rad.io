@@ -1,6 +1,6 @@
 /**
  * Tests for Test Memory Manager
- * 
+ *
  * Validates memory management utilities for test environments
  */
 
@@ -43,7 +43,7 @@ describe("Test Memory Manager", () => {
       const buffer = getSampleBuffer(100);
       releaseSampleBuffer(buffer);
       clearMemoryPools();
-      
+
       // After clearing, should get a new buffer
       const newBuffer = getSampleBuffer(100);
       expect(newBuffer).toHaveLength(100);

@@ -31,7 +31,7 @@ class MockSDRDevice implements ISDRDevice {
   private _lnaGain = 16;
   private _ampEnabled = false;
   private receiveInterval?: NodeJS.Timeout;
-  
+
   // Memory management
   private sampleBuffers: DataView[] = [];
   private totalBufferSize = 0;
@@ -184,7 +184,7 @@ class MockSDRDevice implements ISDRDevice {
   getMemoryInfo() {
     const maxSamples = this.maxBufferSize / 2; // 2 bytes per IQ pair
     const currentSamples = this.totalBufferSize / 2;
-    
+
     return {
       totalBufferSize: this.maxBufferSize,
       usedBufferSize: this.totalBufferSize,
@@ -798,17 +798,17 @@ describe("Visualization Data Compatibility", () => {
       await device.open();
 
       const memInfo = device.getMemoryInfo();
-      
+
       expect(memInfo).toHaveProperty("totalBufferSize");
       expect(memInfo).toHaveProperty("usedBufferSize");
       expect(memInfo).toHaveProperty("activeBuffers");
       expect(memInfo).toHaveProperty("maxSamples");
       expect(memInfo).toHaveProperty("currentSamples");
-      
+
       expect(memInfo.totalBufferSize).toBeGreaterThan(0);
       expect(memInfo.usedBufferSize).toBeGreaterThanOrEqual(0);
       expect(memInfo.activeBuffers).toBeGreaterThanOrEqual(0);
-      
+
       await device.close();
     });
 
@@ -818,12 +818,12 @@ describe("Visualization Data Compatibility", () => {
 
       // Clear buffers
       device.clearBuffers();
-      
+
       const memInfo = device.getMemoryInfo();
       expect(memInfo.usedBufferSize).toBe(0);
       expect(memInfo.activeBuffers).toBe(0);
       expect(memInfo.currentSamples).toBe(0);
-      
+
       await device.close();
     });
 
@@ -832,14 +832,16 @@ describe("Visualization Data Compatibility", () => {
       await device.open();
 
       const initialMemInfo = device.getMemoryInfo();
-      
+
       // Memory should start clean
       expect(initialMemInfo.usedBufferSize).toBe(0);
       expect(initialMemInfo.activeBuffers).toBe(0);
-      
+
       // Calculate max samples correctly
-      expect(initialMemInfo.maxSamples).toBe(initialMemInfo.totalBufferSize / 2);
-      
+      expect(initialMemInfo.maxSamples).toBe(
+        initialMemInfo.totalBufferSize / 2,
+      );
+
       await device.close();
     });
   });

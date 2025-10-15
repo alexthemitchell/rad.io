@@ -54,7 +54,7 @@ export type SDRStreamConfig = {
 
 /**
  * Device Memory Information
- * 
+ *
  * Provides information about device memory usage and buffer status
  * to help optimize resource allocation during testing and DSP operations.
  */

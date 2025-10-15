@@ -1,5 +1,13 @@
 # rad.io - SDR Visualizer Project Guide
 
+## Getting Started
+
+**🚀 NEW TO THIS PROJECT?** Read the [Copilot Agent Setup Steps](workflows/copilot-setup-steps.md) first for:
+- Environment setup instructions
+- Essential commands and workflows  
+- Memory management guidelines for testing
+- Common issues and solutions
+
 ## Project Overview
 
 rad.io is a professional browser-based Software Defined Radio (SDR) visualizer built with React + TypeScript. It provides industry-standard visualizations for IQ constellation diagrams, spectrograms, and waveform analysis with zero external visualization dependencies.
@@ -10,6 +18,7 @@ rad.io is a professional browser-based Software Defined Radio (SDR) visualizer b
 - HTML Canvas with WebAudio API for visualizations
 - Jest for comprehensive testing (122+ tests)
 - GitHub Actions for CI/CD quality control
+- **Device Memory API** for efficient buffer management and testing optimization
 
 ## Architecture & Design Patterns
 
@@ -37,13 +46,15 @@ src/
 ├── models/              # Device implementations
 │   ├── SDRDevice.ts            # Universal interface definition
 │   ├── HackRFOne.ts            # HackRF device implementation
+│   ├── HackRFOneAdapter.ts     # ISDRDevice adapter
 │   └── __tests__/              # Device tests
 ├── hooks/               # React hooks for device management
 │   ├── useHackRFDevice.ts      # HackRF-specific hook
 │   └── useUSBDevice.ts         # Generic WebUSB hook
 ├── utils/               # Utility functions
 │   ├── dsp.ts                  # DSP algorithms (FFT, waveform)
-│   └── __tests__/              # DSP tests
+│   ├── testMemoryManager.ts    # Memory management for tests
+│   └── __tests__/              # DSP and memory tests
 ├── pages/               # Top-level page components
 │   └── Visualizer.tsx          # Main application page
 └── styles/              # CSS styling
@@ -88,7 +99,29 @@ interface ISDRDevice {
   
   // Data parsing
   parseSamples(data: DataView): IQSample[];
+  
+  // Memory Management (NEW)
+  getMemoryInfo(): DeviceMemoryInfo;  // Query buffer usage
+  clearBuffers(): void;                // Release memory
 }
+```
+
+**Memory Management API** (see `MEMORY_API.md` for details):
+```typescript
+type DeviceMemoryInfo = {
+  totalBufferSize: number;      // Total buffer capacity in bytes
+  usedBufferSize: number;        // Current memory usage
+  activeBuffers: number;         // Number of active sample buffers
+  maxSamples: number;            // Maximum samples that can be buffered
+  currentSamples: number;        // Current samples in buffers
+};
+```
+
+The memory API enables:
+- Real-time buffer usage monitoring
+- Automatic cleanup when exceeding thresholds (16MB default for HackRF)
+- Test optimization to prevent heap overflow
+- Performance tuning for large dataset processing
 ```
 
 **Supported Devices:**
@@ -220,6 +253,7 @@ Execution time: ~2-4 minutes (parallel jobs)
 3. **Spectrogram (13 tests)**: FFT data, frequency ranges, multi-tone signals
 4. **SDR Device Interface (43 tests)**: Lifecycle, configuration, format conversion, validation
 5. **Realistic SDR Data (26 tests)**: FM/AM/QPSK/noise signals, cross-visualization consistency
+6. **Memory Manager (10 tests)**: Buffer pooling, chunked generation, batch processing, monitoring
 
 **Test Data Generation:**
 ```typescript
@@ -233,7 +267,34 @@ generateQPSKSignal()  // 4-point constellation
 generateMultiToneSignal()
 generatePulsedSignal()
 generateNoiseSignal()
+
+// Memory-optimized generation (NEW)
+generateSamplesChunked(count, generator, chunkSize)  // For large datasets
+processSamplesBatched(samples, processor, batchSize)  // Batch processing
 ```
+
+**Memory Management in Tests:**
+```typescript
+import { clearMemoryPools } from '../../utils/testMemoryManager';
+
+describe("Test Suite", () => {
+  beforeEach(() => {
+    if (global.gc) global.gc();  // Force GC when available
+  });
+  
+  afterEach(() => {
+    clearMemoryPools();  // Clean up buffer pools
+  });
+  
+  it("test", () => {
+    const { unmount } = render(<Component />);
+    // ... assertions ...
+    unmount();  // Always unmount components
+  });
+});
+```
+
+**Important**: Due to memory constraints, avoid generating datasets >10k samples without using chunked generation. See `src/utils/testMemoryManager.ts` for utilities.
 
 ## Code Style & Best Practices
 
