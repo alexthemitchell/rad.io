@@ -27,16 +27,16 @@ export default function IQConstellation({
     if (samples.length === 0) {
       return "No IQ constellation data available";
     }
-    
-    const iValues = samples.map(s => s.I);
-    const qValues = samples.map(s => s.Q);
+
+    const iValues = samples.map((s) => s.I);
+    const qValues = samples.map((s) => s.Q);
     const iMin = Math.min(...iValues);
     const iMax = Math.max(...iValues);
     const qMin = Math.min(...qValues);
     const qMax = Math.max(...qValues);
     const iRange = (iMax - iMin).toFixed(3);
     const qRange = (qMax - qMin).toFixed(3);
-    
+
     return `IQ Constellation diagram showing ${samples.length} signal samples. In-phase (I) component ranges from ${iMin.toFixed(3)} to ${iMax.toFixed(3)} with range ${iRange}. Quadrature (Q) component ranges from ${qMin.toFixed(3)} to ${qMax.toFixed(3)} with range ${qRange}. The pattern represents the modulation scheme and signal quality.`;
   }, [samples]);
 
@@ -207,11 +207,13 @@ export default function IQConstellation({
     };
   }, []);
 
-  return <canvas 
-    ref={canvasRef} 
-    style={{ borderRadius: "8px" }}
-    role="img"
-    aria-label={accessibleDescription}
-    tabIndex={0}
-  />;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ borderRadius: "8px" }}
+      role="img"
+      aria-label={accessibleDescription}
+      tabIndex={0}
+    />
+  );
 }

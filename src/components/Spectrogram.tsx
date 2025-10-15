@@ -25,10 +25,10 @@ export default function Spectrogram({
     if (fftData.length === 0) {
       return "No spectrogram data available";
     }
-    
+
     const numFrames = fftData.length;
     const binCount = freqMax - freqMin;
-    
+
     // Find peak power and its frequency
     let maxPower = -Infinity;
     let maxPowerBin = 0;
@@ -41,7 +41,7 @@ export default function Spectrogram({
         }
       }
     });
-    
+
     return `Spectrogram showing ${numFrames} time frames across ${binCount} frequency bins (${freqMin} to ${freqMax}). Peak power of ${maxPower.toFixed(2)} dB detected at frequency bin ${maxPowerBin}. Colors represent signal strength from low (dark) to high (bright).`;
   }, [fftData, freqMin, freqMax]);
 
@@ -220,11 +220,13 @@ export default function Spectrogram({
     };
   }, []);
 
-  return <canvas 
-    ref={canvasRef} 
-    style={{ borderRadius: "8px" }}
-    role="img"
-    aria-label={accessibleDescription}
-    tabIndex={0}
-  />;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ borderRadius: "8px" }}
+      role="img"
+      aria-label={accessibleDescription}
+      tabIndex={0}
+    />
+  );
 }

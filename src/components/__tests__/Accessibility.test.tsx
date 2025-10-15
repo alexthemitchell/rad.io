@@ -7,10 +7,9 @@ import SignalTypeSelector from "../SignalTypeSelector";
 import PresetStations from "../PresetStations";
 import Card from "../Card";
 import { Sample } from "../../utils/dsp";
-import type { SignalType } from "../SignalTypeSelector";
 
 // Mock canvas context for visualization components
-const mockCanvasContext = () => {
+const mockCanvasContext = (): void => {
   HTMLCanvasElement.prototype.getContext = jest.fn(() => ({
     fillRect: jest.fn(),
     clearRect: jest.fn(),
@@ -51,7 +50,7 @@ describe("Accessibility Features", () => {
     it("IQConstellation should have ARIA role and label", () => {
       const { container } = render(<IQConstellation samples={sampleData} />);
       const canvas = container.querySelector("canvas");
-      
+
       expect(canvas).toHaveAttribute("role", "img");
       expect(canvas).toHaveAttribute("aria-label");
       expect(canvas?.getAttribute("aria-label")).toContain("IQ Constellation");
@@ -61,7 +60,7 @@ describe("Accessibility Features", () => {
       const { container } = render(<IQConstellation samples={sampleData} />);
       const canvas = container.querySelector("canvas");
       const ariaLabel = canvas?.getAttribute("aria-label");
-      
+
       expect(ariaLabel).toContain("3 signal samples");
       expect(ariaLabel).toContain("In-phase (I) component");
       expect(ariaLabel).toContain("Quadrature (Q) component");
@@ -70,7 +69,7 @@ describe("Accessibility Features", () => {
     it("IQConstellation should be keyboard focusable", () => {
       const { container } = render(<IQConstellation samples={sampleData} />);
       const canvas = container.querySelector("canvas");
-      
+
       expect(canvas).toHaveAttribute("tabIndex", "0");
     });
 
@@ -81,7 +80,7 @@ describe("Accessibility Features", () => {
       ];
       const { container } = render(<Spectrogram fftData={fftData} />);
       const canvas = container.querySelector("canvas");
-      
+
       expect(canvas).toHaveAttribute("role", "img");
       expect(canvas).toHaveAttribute("aria-label");
       expect(canvas?.getAttribute("aria-label")).toContain("Spectrogram");
@@ -95,7 +94,7 @@ describe("Accessibility Features", () => {
       const { container } = render(<Spectrogram fftData={fftData} />);
       const canvas = container.querySelector("canvas");
       const ariaLabel = canvas?.getAttribute("aria-label");
-      
+
       expect(ariaLabel).toContain("2 time frames");
       expect(ariaLabel).toContain("frequency bins");
     });
@@ -103,33 +102,45 @@ describe("Accessibility Features", () => {
     it("WaveformVisualizer should have ARIA role and label", () => {
       const { container } = render(<WaveformVisualizer samples={sampleData} />);
       const canvas = container.querySelector("canvas");
-      
+
       expect(canvas).toHaveAttribute("role", "img");
       expect(canvas).toHaveAttribute("aria-label");
-      expect(canvas?.getAttribute("aria-label")).toContain("Amplitude waveform");
+      expect(canvas?.getAttribute("aria-label")).toContain(
+        "Amplitude waveform",
+      );
     });
 
     it("WaveformVisualizer should describe amplitude range", () => {
       const { container } = render(<WaveformVisualizer samples={sampleData} />);
       const canvas = container.querySelector("canvas");
       const ariaLabel = canvas?.getAttribute("aria-label");
-      
+
       expect(ariaLabel).toContain("amplitude ranges");
       expect(ariaLabel).toContain("average");
     });
 
     it("Empty visualizations should provide appropriate message", () => {
-      const { container: iqContainer } = render(<IQConstellation samples={[]} />);
+      const { container: iqContainer } = render(
+        <IQConstellation samples={[]} />,
+      );
       const iqCanvas = iqContainer.querySelector("canvas");
-      expect(iqCanvas?.getAttribute("aria-label")).toContain("No IQ constellation data");
+      expect(iqCanvas?.getAttribute("aria-label")).toContain(
+        "No IQ constellation data",
+      );
 
-      const { container: waveContainer } = render(<WaveformVisualizer samples={[]} />);
+      const { container: waveContainer } = render(
+        <WaveformVisualizer samples={[]} />,
+      );
       const waveCanvas = waveContainer.querySelector("canvas");
-      expect(waveCanvas?.getAttribute("aria-label")).toContain("No waveform data");
+      expect(waveCanvas?.getAttribute("aria-label")).toContain(
+        "No waveform data",
+      );
 
       const { container: specContainer } = render(<Spectrogram fftData={[]} />);
       const specCanvas = specContainer.querySelector("canvas");
-      expect(specCanvas?.getAttribute("aria-label")).toContain("No spectrogram data");
+      expect(specCanvas?.getAttribute("aria-label")).toContain(
+        "No spectrogram data",
+      );
     });
   });
 
@@ -141,18 +152,18 @@ describe("Accessibility Features", () => {
           frequency={100.3e6}
           signalType="FM"
           setFrequency={mockSetFrequency}
-        />
+        />,
       );
 
       const input = screen.getByLabelText(/Center frequency/i);
-      
+
       // Arrow Up should increase frequency
       fireEvent.keyDown(input, { key: "ArrowUp" });
       // Use toBeCloseTo for floating point comparison
       expect(mockSetFrequency).toHaveBeenCalledWith(expect.closeTo(100.4e6, 0));
-      
+
       mockSetFrequency.mockClear();
-      
+
       // Arrow Down should decrease frequency
       fireEvent.keyDown(input, { key: "ArrowDown" });
       expect(mockSetFrequency).toHaveBeenCalledWith(expect.closeTo(100.2e6, 0));
@@ -165,17 +176,17 @@ describe("Accessibility Features", () => {
           frequency={100.3e6}
           signalType="FM"
           setFrequency={mockSetFrequency}
-        />
+        />,
       );
 
       const input = screen.getByLabelText(/Center frequency/i);
-      
+
       // Page Up should increase by 1 MHz
       fireEvent.keyDown(input, { key: "PageUp" });
       expect(mockSetFrequency).toHaveBeenCalledWith(expect.closeTo(101.3e6, 0));
-      
+
       mockSetFrequency.mockClear();
-      
+
       // Page Down should decrease by 1 MHz
       fireEvent.keyDown(input, { key: "PageDown" });
       expect(mockSetFrequency).toHaveBeenCalledWith(expect.closeTo(99.3e6, 0));
@@ -188,11 +199,11 @@ describe("Accessibility Features", () => {
           frequency={107.9e6}
           signalType="FM"
           setFrequency={mockSetFrequency}
-        />
+        />,
       );
 
       const input = screen.getByLabelText(/Center frequency/i);
-      
+
       // Arrow Up at max should stay at max
       fireEvent.keyDown(input, { key: "ArrowUp" });
       expect(mockSetFrequency).toHaveBeenCalledWith(107.9e6);
@@ -205,12 +216,12 @@ describe("Accessibility Features", () => {
           frequency={100.3e6}
           signalType="FM"
           setFrequency={mockSetFrequency}
-        />
+        />,
       );
 
       const input = screen.getByLabelText(/Center frequency/i);
       const ariaLabel = input.getAttribute("aria-label");
-      
+
       expect(ariaLabel).toContain("Center frequency");
       expect(ariaLabel).toContain("MHz");
       expect(ariaLabel).toContain("100.3");
@@ -225,12 +236,12 @@ describe("Accessibility Features", () => {
         <SignalTypeSelector
           signalType="FM"
           onSignalTypeChange={mockOnChange}
-        />
+        />,
       );
 
       const fmButton = screen.getByRole("button", { name: /FM Radio/i });
       const amButton = screen.getByRole("button", { name: /AM Radio/i });
-      
+
       expect(fmButton).toHaveAttribute("aria-pressed", "true");
       expect(amButton).toHaveAttribute("aria-pressed", "false");
     });
@@ -241,11 +252,13 @@ describe("Accessibility Features", () => {
         <SignalTypeSelector
           signalType="FM"
           onSignalTypeChange={mockOnChange}
-        />
+        />,
       );
 
       const fmButton = screen.getByRole("button", { name: /FM Radio/i });
-      expect(fmButton.getAttribute("aria-label")).toContain("currently selected");
+      expect(fmButton.getAttribute("aria-label")).toContain(
+        "currently selected",
+      );
     });
 
     it("PresetStations buttons should have aria-pressed for active station", () => {
@@ -255,12 +268,12 @@ describe("Accessibility Features", () => {
           signalType="FM"
           currentFrequency={88.5e6}
           onStationSelect={mockOnSelect}
-        />
+        />,
       );
 
       const buttons = screen.getAllByRole("button");
-      const nprButton = buttons.find(btn => btn.textContent?.includes("NPR"));
-      
+      const nprButton = buttons.find((btn) => btn.textContent?.includes("NPR"));
+
       expect(nprButton).toHaveAttribute("aria-pressed", "true");
     });
 
@@ -271,11 +284,11 @@ describe("Accessibility Features", () => {
           signalType="FM"
           currentFrequency={100.3e6}
           onStationSelect={mockOnSelect}
-        />
+        />,
       );
 
       const buttons = screen.getAllByRole("button");
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         const ariaLabel = button.getAttribute("aria-label");
         expect(ariaLabel).toBeTruthy();
         expect(ariaLabel).toContain("MHz");
@@ -288,13 +301,13 @@ describe("Accessibility Features", () => {
       const { container } = render(
         <Card title="Test Title" subtitle="Test subtitle">
           <div>Content</div>
-        </Card>
+        </Card>,
       );
 
       const section = container.querySelector("section");
       expect(section).toBeInTheDocument();
       expect(section).toHaveAttribute("aria-labelledby");
-      
+
       const titleId = section?.getAttribute("aria-labelledby");
       const heading = container.querySelector(`#${titleId}`);
       expect(heading).toHaveTextContent("Test Title");
@@ -305,7 +318,7 @@ describe("Accessibility Features", () => {
       const { container } = render(
         <Card title="Test Title" subtitle="Test subtitle">
           <div>Content</div>
-        </Card>
+        </Card>,
       );
 
       const subtitle = container.querySelector("p.card-subtitle");
@@ -318,7 +331,7 @@ describe("Accessibility Features", () => {
     it("All interactive elements should be keyboard focusable", () => {
       const mockSetFrequency = jest.fn().mockResolvedValue(undefined);
       const mockOnChange = jest.fn();
-      
+
       const { container } = render(
         <div>
           <SignalTypeSelector
@@ -330,24 +343,26 @@ describe("Accessibility Features", () => {
             signalType="FM"
             setFrequency={mockSetFrequency}
           />
-        </div>
+        </div>,
       );
 
       const buttons = container.querySelectorAll("button");
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         expect(button.tabIndex).toBeGreaterThanOrEqual(0);
       });
 
       const inputs = container.querySelectorAll("input");
-      inputs.forEach(input => {
+      inputs.forEach((input) => {
         expect(input.tabIndex).toBeGreaterThanOrEqual(-1);
       });
     });
 
     it("Canvas visualizations should be keyboard focusable", () => {
-      const { container } = render(<IQConstellation samples={[{ I: 0, Q: 0 }]} />);
+      const { container } = render(
+        <IQConstellation samples={[{ I: 0, Q: 0 }]} />,
+      );
       const canvas = container.querySelector("canvas");
-      
+
       expect(canvas?.tabIndex).toBe(0);
     });
   });
@@ -360,7 +375,7 @@ describe("Accessibility Features", () => {
           frequency={100.3e6}
           signalType="FM"
           setFrequency={mockSetFrequency}
-        />
+        />,
       );
 
       const hint = screen.getByText(/Use arrow keys for/i);

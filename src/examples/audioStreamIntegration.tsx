@@ -24,7 +24,7 @@ import {
 /**
  * Example component showing audio stream integration
  */
-export function AudioStreamExample() {
+export function AudioStreamExample(): React.JSX.Element {
   const { device } = useHackRFDevice();
   const [isPlaying, setIsPlaying] = useState(false);
   const [signalType, setSignalType] = useState<SignalType>("FM");
@@ -44,7 +44,7 @@ export function AudioStreamExample() {
     // Create processor with SDR sample rate (20 MHz for HackRF)
     processorRef.current = new AudioStreamProcessor(20000000);
 
-    return () => {
+    return (): void => {
       processorRef.current?.cleanup();
       audioContextRef.current?.close();
     };
@@ -156,8 +156,9 @@ export function AudioStreamExample() {
 
       {/* Signal Type Selection */}
       <div>
-        <label>Signal Type:</label>
+        <label htmlFor="signal-type-select">Signal Type:</label>
         <select
+          id="signal-type-select"
           value={signalType}
           onChange={(e) => setSignalType(e.target.value as SignalType)}
           disabled={isPlaying}
@@ -170,8 +171,9 @@ export function AudioStreamExample() {
 
       {/* Volume Control */}
       <div>
-        <label>Volume:</label>
+        <label htmlFor="volume-control">Volume:</label>
         <input
+          id="volume-control"
           type="range"
           min="0"
           max="1"
@@ -214,7 +216,10 @@ export function useAudioStream(
   device: ReturnType<typeof useHackRFDevice>["device"],
   signalType: SignalType,
   enabled: boolean,
-) {
+): {
+  setVolume: (volume: number) => void;
+  cleanup: () => Promise<void>;
+} {
   const [processor] = useState(() => new AudioStreamProcessor(20000000));
   const [audioContext] = useState(() => new AudioContext());
   const [gainNode] = useState(() => {
@@ -235,7 +240,7 @@ export function useAudioStream(
           ? DemodulationType.AM
           : DemodulationType.NONE;
 
-    const processAudio = async (dataView: DataView) => {
+    const processAudio = async (dataView: DataView): Promise<void> => {
       // Parse IQ samples from DataView (Int8 format for HackRF)
       const iqSamples: IQSample[] = [];
       for (let i = 0; i < dataView.byteLength; i += 2) {
@@ -259,17 +264,17 @@ export function useAudioStream(
 
     device.receive(processAudio).catch(console.error);
 
-    return () => {
+    return (): void => {
       device.stopRx().catch(console.error);
       processor.reset();
     };
   }, [device, signalType, enabled, processor, audioContext, gainNode]);
 
   return {
-    setVolume: (volume: number) => {
+    setVolume: (volume: number): void => {
       gainNode.gain.value = volume;
     },
-    cleanup: async () => {
+    cleanup: async (): Promise<void> => {
       await processor.cleanup();
       await audioContext.close();
     },
