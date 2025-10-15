@@ -60,6 +60,7 @@ npm run format         # Format code with Prettier
 npm run format:check   # Check code formatting
 npm run type-check     # Run TypeScript type checking
 npm run validate       # Run all quality checks + build
+npm run self-assess    # Run comprehensive self-assessment
 
 # Testing
 npm test               # Run all tests
@@ -91,6 +92,8 @@ npm run clean          # Remove build artifacts and dependencies
    npm run type-check
    npm test
    npm run build
+   # Optional: Run self-assessment for comprehensive check
+   npm run self-assess
    ```
 
 4. **Commit with descriptive messages**
@@ -270,9 +273,36 @@ Before submitting a PR:
 - [ ] Formatting is correct (`npm run format:check`)
 - [ ] Type checking passes (`npm run type-check`)
 - [ ] Build succeeds (`npm run build`)
+- [ ] Self-assessment passed (`npm run self-assess`) - optional but recommended
 - [ ] Documentation updated if needed
 - [ ] Commit messages follow convention
 - [ ] No unnecessary console statements
+
+### Using the Self-Assessment Agent
+
+The repository includes an automated self-assessment agent that can help verify your changes meet quality standards:
+
+```bash
+# Run comprehensive self-assessment
+npm run self-assess
+
+# View the generated report
+cat .serena/memories/assessment-$(date +%Y-%m-%d).md
+
+# View all assessment history
+cat .serena/memories/index.md
+```
+
+The self-assessment agent will:
+- Check code quality (lint, format, type-check)
+- Validate build
+- Run tests (with memory-aware handling)
+- Provide categorized suggestions for improvement
+- Generate a detailed markdown report
+
+Reports are saved to `.serena/memories/` and are not committed to version control.
+
+See `.github/agents/README.md` for detailed documentation on the self-assessment system.
 
 ## Adding New SDR Devices
 

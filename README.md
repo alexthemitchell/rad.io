@@ -150,6 +150,7 @@ npm run format         # Format code with Prettier
 npm run format:check   # Check code formatting
 npm run type-check     # TypeScript validation
 npm run validate       # Run all quality checks + build
+npm run self-assess    # Run comprehensive self-assessment
 
 # Testing
 npm test               # Run all tests
@@ -193,6 +194,34 @@ All pull requests must pass:
 - ✅ TypeScript type checking
 - ✅ Jest test suite (100% pass rate)
 - ✅ Webpack build
+
+### Self-Assessment Agent
+
+The repository includes an automated self-assessment agent that performs comprehensive quality checks:
+
+```bash
+# Run self-assessment
+npm run self-assess
+
+# View assessment reports
+cat .serena/memories/index.md
+```
+
+**Features:**
+- Code quality verification (lint, format, type-check)
+- Build validation
+- Test execution with coverage analysis
+- Categorized improvement suggestions (critical, high, medium, low)
+- Detailed markdown reports saved to `.serena/memories/`
+- Automatic tracking and indexing of assessments
+
+**When to use:**
+- After completing a task or feature
+- Before creating a pull request
+- To verify quality standards are met
+- To get constructive feedback on changes
+
+See `.github/agents/README.md` for detailed documentation.
 
 ## Architecture
 
