@@ -1,12 +1,17 @@
+import { ReactNode } from "react";
+
 type CardProps = {
   title: string;
   subtitle?: string;
+  children?: ReactNode;
 };
-function Card({ title, subtitle }: CardProps) {
+
+function Card({ title, subtitle, children }: CardProps) {
   return (
-    <div>
-      <div>{title}</div>
-      <div>{subtitle}</div>
+    <div className="card">
+      <div className="card-title">{title}</div>
+      {subtitle && <div className="card-subtitle">{subtitle}</div>}
+      {children}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 export interface DeviceInfo {
-	device: USBDevice;
-	usbBoardId: number;
-	serialNumber?: string;
+  device: USBDevice;
+  usbBoardId: number;
+  serialNumber?: string;
 }

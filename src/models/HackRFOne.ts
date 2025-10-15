@@ -160,7 +160,7 @@ export class HackRFOne {
         index,
       };
       let attempts = 3;
-      let lastError: any;
+      let lastError: Error | unknown;
       while (attempts > 0) {
         if (this.closing || !this.usbDevice.opened) {
           throw new Error(
@@ -174,8 +174,9 @@ export class HackRFOne {
           await this.delay(50);
           console.debug("Completed controlTransferOut");
           return result;
-        } catch (err: any) {
-          if (err.name === "InvalidStateError") {
+        } catch (err: unknown) {
+          const error = err as Error & { name?: string };
+          if (error.name === "InvalidStateError") {
             console.warn(
               `controlTransferOut attempt failed with InvalidStateError, ${
                 attempts - 1
@@ -278,8 +279,9 @@ export class HackRFOne {
             console.debug("Received data", result.data);
           }
         }
-      } catch (err: any) {
-        if (err.name === "AbortError") {
+      } catch (err: unknown) {
+        const error = err as Error & { name?: string };
+        if (error.name === "AbortError") {
           console.debug("transferIn aborted as expected during shutdown.");
           break;
         } else {
