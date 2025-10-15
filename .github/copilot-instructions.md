@@ -122,7 +122,6 @@ The memory API enables:
 - Automatic cleanup when exceeding thresholds (16MB default for HackRF)
 - Test optimization to prevent heap overflow
 - Performance tuning for large dataset processing
-```
 
 **Supported Devices:**
 - HackRF One (0x1d50:0x6089) - Native implementation
