@@ -18,6 +18,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "type-check": "tsc --noEmit",
     "validate": "npm run lint && npm run format:check && npm run type-check && npm run build",
+    "self-assess": "node .github/agents/self-assessment.js",
     "clean": "rm -rf dist node_modules"
   },
   "author": "Alex Mitchell <alex@alexmitchelltech.com>",

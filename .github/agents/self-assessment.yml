@@ -1,0 +1,142 @@
+name: Self-Assessment Agent
+description: Performs comprehensive self-assessment of changes, checking code quality, test coverage, and providing constructive feedback
+
+# This agent runs after task completion to verify quality and suggest improvements
+trigger:
+  on_completion: true
+  manual: true
+
+# Agent capabilities
+capabilities:
+  - code_review
+  - quality_analysis
+  - test_verification
+  - documentation_review
+
+# Assessment criteria
+checks:
+  code_quality:
+    - name: ESLint Compliance
+      command: npm run lint
+      required: true
+      description: Validates code follows project linting standards
+    
+    - name: Prettier Formatting
+      command: npm run format:check
+      required: true
+      description: Ensures consistent code formatting
+    
+    - name: TypeScript Type Check
+      command: npm run type-check
+      required: true
+      description: Verifies type safety and correctness
+  
+  build:
+    - name: Webpack Build
+      command: npm run build
+      required: true
+      description: Ensures code builds successfully
+  
+  tests:
+    - name: Unit Tests
+      command: npm test -- --coverage
+      required: true
+      description: Runs all 122+ tests and generates coverage report
+      analyze_coverage: true
+    
+    - name: Test Quality Analysis
+      description: Reviews test completeness and quality
+      checks:
+        - test_coverage_threshold: 80
+        - new_code_covered: true
+        - test_patterns_followed: true
+
+  code_analysis:
+    - name: Code Complexity
+      description: Analyzes code complexity and maintainability
+      metrics:
+        - cyclomatic_complexity
+        - maintainability_index
+        - code_duplication
+    
+    - name: Best Practices
+      description: Checks adherence to project patterns
+      checks:
+        - typescript_strict_mode
+        - react_hooks_rules
+        - proper_error_handling
+        - memory_management_patterns
+
+# Report generation
+output:
+  report_format: markdown
+  save_to: .serena/memories/assessment-{timestamp}.md
+  
+  sections:
+    - summary
+    - quality_checks
+    - test_results
+    - code_analysis
+    - suggestions
+    - next_steps
+  
+  include:
+    - pass_fail_status
+    - detailed_findings
+    - improvement_suggestions
+    - code_snippets
+    - metrics
+
+# Improvement suggestions
+suggestions:
+  categories:
+    - code_quality
+    - performance
+    - maintainability
+    - testing
+    - documentation
+  
+  priority_levels:
+    - critical: Must be addressed before merge
+    - high: Should be addressed soon
+    - medium: Consider for improvement
+    - low: Nice to have
+  
+  actions:
+    - implement_now: Apply suggestion immediately
+    - defer_to_user: Flag for user review
+    - document_only: Record in memory
+
+# Memory management
+memory:
+  directory: .serena/memories
+  retention:
+    assessments: 30_days
+    findings: 90_days
+  
+  index:
+    file: .serena/memories/index.md
+    auto_update: true
+
+# Integration with existing workflows
+workflow_integration:
+  pre_commit: false
+  pre_push: false
+  post_completion: true
+  on_demand: true
+
+# Agent behavior
+behavior:
+  auto_fix:
+    formatting: true
+    linting: false  # Suggest only, don't auto-fix
+    imports: false
+  
+  feedback_style: constructive
+  verbosity: detailed
+  
+  thresholds:
+    test_coverage: 80
+    lint_errors: 0
+    type_errors: 0
+    build_warnings: 5
