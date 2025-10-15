@@ -84,6 +84,14 @@ function Visualizer() {
             className="btn btn-primary"
             onClick={startListening}
             disabled={!device || listening}
+            title={
+              !device
+                ? "Click to connect your SDR device via WebUSB. Ensure device is plugged in and browser supports WebUSB."
+                : listening
+                  ? "Device is currently receiving. Click 'Stop Reception' first."
+                  : "Start receiving IQ samples from the SDR device. Visualizations will update with live data."
+            }
+            aria-label={device ? "Start receiving radio signals" : "Connect SDR device via WebUSB"}
           >
             {device ? "Start Reception" : "Connect Device"}
           </button>
@@ -91,6 +99,12 @@ function Visualizer() {
             className="btn btn-secondary"
             onClick={stopListening}
             disabled={!listening}
+            title={
+              listening
+                ? "Stop receiving IQ samples and pause visualizations. Device remains connected."
+                : "Reception is not active. Click 'Start Reception' first."
+            }
+            aria-label="Stop receiving radio signals"
           >
             Stop Reception
           </button>
@@ -98,12 +112,27 @@ function Visualizer() {
             className="btn btn-danger"
             onClick={cleanup}
             disabled={listening}
+            title={
+              listening
+                ? "Stop reception before disconnecting the device."
+                : "Disconnect and release the SDR device. You'll need to reconnect to use it again."
+            }
+            aria-label="Disconnect SDR device"
           >
             Disconnect
           </button>
         </div>
         <div className="action-bar-right">
-          <div className="status-indicator">
+          <div
+            className="status-indicator"
+            title={
+              device
+                ? listening
+                  ? "Device is connected and actively receiving IQ samples"
+                  : "Device is connected but not receiving. Click 'Start Reception' to begin."
+                : "No device connected. Click 'Connect Device' to get started."
+            }
+          >
             <span className={`status-dot ${device ? "active" : "inactive"}`} />
             {device
               ? listening

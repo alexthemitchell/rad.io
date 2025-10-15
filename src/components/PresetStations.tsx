@@ -45,18 +45,24 @@ export default function PresetStations({
       <div className="preset-stations">
         {stations.map((station) => {
           const isActive = Math.abs(currentFrequency - station.frequency) < 1e4;
+          const displayFreq =
+            signalType === "FM"
+              ? `${(station.frequency / 1e6).toFixed(1)} MHz`
+              : `${(station.frequency / 1e3).toFixed(0)} kHz`;
+          
+          const tooltip = `${station.name} - ${displayFreq}. Click to tune to this preset station.${isActive ? " (Currently tuned)" : ""}`;
+          
           return (
             <button
               key={station.name}
               className={`preset-btn ${isActive ? "active" : ""}`}
               onClick={() => onStationSelect(station.frequency)}
+              title={tooltip}
+              aria-label={tooltip}
+              aria-pressed={isActive}
             >
               <div className="preset-name">{station.name}</div>
-              <div className="preset-freq">
-                {signalType === "FM"
-                  ? `${(station.frequency / 1e6).toFixed(1)} MHz`
-                  : `${(station.frequency / 1e3).toFixed(0)} kHz`}
-              </div>
+              <div className="preset-freq">{displayFreq}</div>
             </button>
           );
         })}
