@@ -70,7 +70,10 @@ interface SpeechRecognition extends EventTarget {
   // Event listener methods
   addEventListener<K extends keyof SpeechRecognitionEventMap>(
     type: K,
-    listener: (this: SpeechRecognition, ev: SpeechRecognitionEventMap[K]) => any,
+    listener: (
+      this: SpeechRecognition,
+      ev: SpeechRecognitionEventMap[K],
+    ) => any,
     options?: boolean | AddEventListenerOptions,
   ): void;
   addEventListener(
@@ -80,7 +83,10 @@ interface SpeechRecognition extends EventTarget {
   ): void;
   removeEventListener<K extends keyof SpeechRecognitionEventMap>(
     type: K,
-    listener: (this: SpeechRecognition, ev: SpeechRecognitionEventMap[K]) => any,
+    listener: (
+      this: SpeechRecognition,
+      ev: SpeechRecognitionEventMap[K],
+    ) => any,
     options?: boolean | EventListenerOptions,
   ): void;
   removeEventListener(

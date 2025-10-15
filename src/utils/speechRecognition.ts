@@ -153,7 +153,7 @@ export class SpeechRecognitionProcessor {
         typeof (global as any).webkitSpeechRecognition !== "undefined"
       );
     }
-    
+
     if (typeof window !== "undefined") {
       // Check window scope (for browser)
       return (
@@ -161,7 +161,7 @@ export class SpeechRecognitionProcessor {
         typeof window.webkitSpeechRecognition !== "undefined"
       );
     }
-    
+
     return false;
   }
 
@@ -185,16 +185,19 @@ export class SpeechRecognitionProcessor {
 
     // Create speech recognition instance
     const SpeechRecognitionConstructor =
-      (typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition)) ||
-      (typeof global !== "undefined" && ((global as any).SpeechRecognition || (global as any).webkitSpeechRecognition));
-    
+      (typeof window !== "undefined" &&
+        (window.SpeechRecognition || window.webkitSpeechRecognition)) ||
+      (typeof global !== "undefined" &&
+        ((global as any).SpeechRecognition ||
+          (global as any).webkitSpeechRecognition));
+
     if (!SpeechRecognitionConstructor) {
       throw new SpeechRecognitionError(
         SpeechRecognitionErrorType.NOT_ALLOWED,
         "Web Speech API is not available",
       );
     }
-    
+
     this.recognition = new SpeechRecognitionConstructor() as any;
 
     // Configure recognition
@@ -275,7 +278,9 @@ export class SpeechRecognitionProcessor {
    * Set up event handlers for speech recognition
    */
   private setupEventHandlers(): void {
-    if (!this.recognition) {return;}
+    if (!this.recognition) {
+      return;
+    }
 
     const recognition = this.recognition as any;
 
@@ -303,15 +308,21 @@ export class SpeechRecognitionProcessor {
     };
 
     recognition.onresult = (event: any) => {
-      if (!this.onTranscript) {return;}
+      if (!this.onTranscript) {
+        return;
+      }
 
       // Process results
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-        if (!result) {continue;}
+        if (!result) {
+          continue;
+        }
 
         const alternative = result[0];
-        if (!alternative) {continue;}
+        if (!alternative) {
+          continue;
+        }
 
         const transcript: SpeechRecognitionTranscript = {
           text: alternative.transcript,

@@ -17,6 +17,15 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Amplitude Waveform**: Time-domain envelope with reference lines
 - **Power Spectral Density**: Viridis colormap spectrogram
 
+### 🎤 Speech Recognition (NEW)
+- **Real-time Transcription**: Browser-native Web Speech API integration
+- **AI-Ready Audio Pipeline**: Demodulated audio stream to speech-to-text
+- **Multi-language Support**: Support for 100+ languages via cloud services
+- **Live Closed Captioning**: Convert radio broadcasts to text
+- See [SPEECH_RECOGNITION.md](./SPEECH_RECOGNITION.md) for complete documentation
+
+⚠️ **Note**: Web Speech API requires internet connection (uses cloud-based recognition services)
+
 ### 🔌 Universal Device Support
 - **HackRF One**: Native implementation
 - **RTL-SDR**: Format conversion utilities

@@ -64,7 +64,9 @@ class MockSpeechRecognition {
 
   // Test helpers
   simulateResult(text: string, isFinal = true, confidence = 0.95): void {
-    if (!this.onresult) {return;}
+    if (!this.onresult) {
+      return;
+    }
 
     const mockResult: any = {
       isFinal,
@@ -105,7 +107,9 @@ class MockSpeechRecognition {
   }
 
   simulateError(error: string, message = ""): void {
-    if (!this.onerror) {return;}
+    if (!this.onerror) {
+      return;
+    }
 
     this.onerror({
       error,
@@ -491,9 +495,7 @@ describe("SpeechRecognitionProcessor", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
 
       expect(errors.length).toBe(1);
-      expect(errors[0]?.errorType).toBe(
-        SpeechRecognitionErrorType.NOT_ALLOWED,
-      );
+      expect(errors[0]?.errorType).toBe(SpeechRecognitionErrorType.NOT_ALLOWED);
 
       await processor.cleanup();
     });
