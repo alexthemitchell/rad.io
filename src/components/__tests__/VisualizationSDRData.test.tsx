@@ -292,6 +292,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
         uniqueRegions.add(quadrant);
       }
       expect(uniqueRegions.size).toBeGreaterThan(1); // Multiple quadrants
+
+      unmount();
     });
 
     it("should render noise-only signal", () => {
