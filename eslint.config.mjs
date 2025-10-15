@@ -63,7 +63,7 @@ export default defineConfig([
     },
   },
   {
-    ignores: ["dist/**", "node_modules/**", "**/*.css"],
+    ignores: ["dist/**", "node_modules/**", "**/*.css", "**/*.md"],
   },
   {
     files: ["**/*.json"],
