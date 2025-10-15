@@ -53,7 +53,7 @@ export function calculateFFT(
   // Validate inputs
   if (fftSize & (fftSize - 1)) {
     // Not a power of 2
-    return;
+    throw new Error("fftSize must be a power of 2");
   }
 
   const n = fftSize;
