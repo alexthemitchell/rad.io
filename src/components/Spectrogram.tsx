@@ -49,17 +49,17 @@ export default function Spectrogram({
     // Industry-standard viridis colormap (perceptually uniform)
     // Based on matplotlib viridis - scientifically validated
     const viridisColors = [
-      [68, 1, 84],       // Dark purple (low)
+      [68, 1, 84], // Dark purple (low)
       [72, 35, 116],
-      [64, 67, 135],     // Purple-blue
+      [64, 67, 135], // Purple-blue
       [52, 94, 141],
-      [41, 120, 142],    // Blue
+      [41, 120, 142], // Blue
       [32, 144, 140],
-      [34, 167, 132],    // Cyan-green
+      [34, 167, 132], // Cyan-green
       [68, 190, 112],
-      [121, 209, 81],    // Green
+      [121, 209, 81], // Green
       [189, 222, 38],
-      [253, 231, 37],    // Yellow (high)
+      [253, 231, 37], // Yellow (high)
     ];
 
     const getViridisColor = (normalized: number): string => {
@@ -70,7 +70,8 @@ export default function Spectrogram({
       const frac = idx - lower;
 
       const c1 = viridisColors[lower] || viridisColors[0]!;
-      const c2 = viridisColors[upper] || viridisColors[viridisColors.length - 1]!;
+      const c2 =
+        viridisColors[upper] || viridisColors[viridisColors.length - 1]!;
 
       const r = Math.round(c1[0]! + (c2[0]! - c1[0]!) * frac);
       const g = Math.round(c1[1]! + (c2[1]! - c1[1]!) * frac);
@@ -158,7 +159,8 @@ export default function Spectrogram({
 
     // Draw axis labels
     ctx.fillStyle = "#e0e6ed";
-    ctx.font = "bold 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.font =
+      "bold 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -220,7 +222,12 @@ export default function Spectrogram({
     const legendY = margin.top;
 
     // Draw gradient for legend
-    const gradient = ctx.createLinearGradient(0, legendY + legendHeight, 0, legendY);
+    const gradient = ctx.createLinearGradient(
+      0,
+      legendY + legendHeight,
+      0,
+      legendY,
+    );
     for (let i = 0; i <= 10; i++) {
       gradient.addColorStop(i / 10, getViridisColor(i / 10));
     }
@@ -241,7 +248,8 @@ export default function Spectrogram({
     const legendTicks = 5;
     for (let i = 0; i <= legendTicks; i++) {
       const y = legendY + legendHeight - (i / legendTicks) * legendHeight;
-      const dbValue = effectiveMin + (i / legendTicks) * (effectiveMax - effectiveMin);
+      const dbValue =
+        effectiveMin + (i / legendTicks) * (effectiveMax - effectiveMin);
 
       ctx.textBaseline = "middle";
       ctx.fillText(`${dbValue.toFixed(0)} dB`, legendX + legendWidth + 5, y);
@@ -256,7 +264,8 @@ export default function Spectrogram({
     }
 
     // Legend title
-    ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.font =
+      "bold 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     ctx.fillStyle = "#e0e6ed";
     ctx.textAlign = "center";
     ctx.save();
@@ -265,7 +274,8 @@ export default function Spectrogram({
     ctx.restore();
 
     // Add main title
-    ctx.font = "bold 17px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.font =
+      "bold 17px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     ctx.fillStyle = "#e0e6ed";
     ctx.textAlign = "center";
     ctx.fillText("Power Spectral Density", width / 2, 30);
@@ -277,7 +287,7 @@ export default function Spectrogram({
     ctx.fillText(
       `${numFrames} frames | FFT: ${fftSize} bins`,
       width - margin.right - legendWidth - 30,
-      30
+      30,
     );
   }, [fftData, width, height, freqMin, freqMax]);
 

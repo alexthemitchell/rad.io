@@ -7,10 +7,7 @@ export type Sample = {
  * Calculate FFT using Web Audio API's AnalyserNode
  * This provides native, optimized FFT calculations without external dependencies
  */
-export function calculateFFT(
-  samples: Sample[],
-  fftSize: number,
-): Float32Array {
+export function calculateFFT(samples: Sample[], fftSize: number): Float32Array {
   // Create offline audio context for FFT processing
   const sampleRate = 48000; // Standard sample rate
   const audioContext = new OfflineAudioContext(2, fftSize, sampleRate);
@@ -45,13 +42,13 @@ export function calculateFFT(
   return new Promise<Float32Array>((resolve) => {
     audioContext.startRendering().then(() => {
       analyser.getFloatFrequencyData(frequencyData);
-      
+
       // Shift FFT to center zero frequency
       const shifted = new Float32Array(frequencyData.length);
       const half = Math.floor(frequencyData.length / 2);
       shifted.set(frequencyData.slice(half), 0);
       shifted.set(frequencyData.slice(0, half), half);
-      
+
       resolve(shifted);
     });
   }) as unknown as Float32Array;
@@ -66,38 +63,38 @@ export function calculateFFTSync(
   fftSize: number,
 ): Float32Array {
   const output = new Float32Array(fftSize);
-  
+
   // Perform DFT (Discrete Fourier Transform)
   for (let k = 0; k < fftSize; k++) {
     let realSum = 0;
     let imagSum = 0;
-    
+
     for (let n = 0; n < Math.min(samples.length, fftSize); n++) {
       const sample = samples[n];
       if (!sample) continue;
-      
+
       const angle = (-2 * Math.PI * k * n) / fftSize;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
-      
+
       // Complex multiplication: (I + jQ) * (cos + j*sin)
       realSum += sample.I * cos - sample.Q * sin;
       imagSum += sample.I * sin + sample.Q * cos;
     }
-    
+
     // Calculate magnitude
     const magnitude = Math.sqrt(realSum * realSum + imagSum * imagSum);
-    
+
     // Convert to dB: 20 * log10(magnitude)
     output[k] = magnitude > 0 ? 20 * Math.log10(magnitude) : -100;
   }
-  
+
   // Shift FFT to center zero frequency
   const shifted = new Float32Array(fftSize);
   const half = Math.floor(fftSize / 2);
   shifted.set(output.slice(half), 0);
   shifted.set(output.slice(0, half), half);
-  
+
   return shifted;
 }
 
@@ -135,9 +132,7 @@ export function calculateSpectrogram(
 /**
  * Convert raw IQ samples to Sample objects
  */
-export function convertToSamples(
-  rawSamples: [number, number][],
-): Sample[] {
+export function convertToSamples(rawSamples: [number, number][]): Sample[] {
   return rawSamples.map(([i, q]) => {
     if (i === undefined || q === undefined) {
       throw new Error("invalid sample");
@@ -149,23 +144,23 @@ export function convertToSamples(
 /**
  * Calculate waveform data for time-domain visualization
  */
-export function calculateWaveform(
-  samples: Sample[],
-): { amplitude: Float32Array; phase: Float32Array } {
+export function calculateWaveform(samples: Sample[]): {
+  amplitude: Float32Array;
+  phase: Float32Array;
+} {
   const amplitude = new Float32Array(samples.length);
   const phase = new Float32Array(samples.length);
-  
+
   for (let i = 0; i < samples.length; i++) {
     const sample = samples[i];
     if (!sample) continue;
-    
+
     // Calculate amplitude (magnitude of complex number)
     amplitude[i] = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);
-    
+
     // Calculate phase
     phase[i] = Math.atan2(sample.Q, sample.I);
   }
-  
+
   return { amplitude, phase };
 }
-

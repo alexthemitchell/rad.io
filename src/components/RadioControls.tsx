@@ -23,8 +23,7 @@ export default function RadioControls({
     }
   };
 
-  const displayValue =
-    signalType === "FM" ? frequency / 1e6 : frequency / 1e3;
+  const displayValue = signalType === "FM" ? frequency / 1e6 : frequency / 1e3;
   const min = signalType === "FM" ? 88.1 : 530;
   const max = signalType === "FM" ? 107.9 : 1700;
   const step = signalType === "FM" ? 0.1 : 10;

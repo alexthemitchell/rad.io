@@ -1,6 +1,6 @@
 /**
  * Comprehensive SDR Device Interface Tests
- * 
+ *
  * Tests ensure that arbitrary WebUSB devices can fulfill the requirements
  * of our SDR interface and accurately feed data to visualizations.
  */
@@ -49,7 +49,10 @@ class MockSDRDevice implements ISDRDevice {
     maxVGAGain: 62,
     supportsAmpControl: true,
     supportsAntennaControl: true,
-    supportedBandwidths: [1.75e6, 2.5e6, 3.5e6, 5e6, 5.5e6, 6e6, 7e6, 8e6, 9e6, 10e6, 12e6, 14e6, 15e6, 20e6, 24e6, 28e6],
+    supportedBandwidths: [
+      1.75e6, 2.5e6, 3.5e6, 5e6, 5.5e6, 6e6, 7e6, 8e6, 9e6, 10e6, 12e6, 14e6,
+      15e6, 20e6, 24e6, 28e6,
+    ],
   };
 
   async getDeviceInfo(): Promise<SDRDeviceInfo> {
@@ -140,11 +143,11 @@ class MockSDRDevice implements ISDRDevice {
 
       const samplesPerChunk = 16384; // Reduced for testing (typical is 262144)
       const samples = this.generateRealisticSamples(samplesPerChunk);
-      
+
       // Convert to Int8 format (typical for HackRF)
       const buffer = new ArrayBuffer(samplesPerChunk * 2);
       const view = new DataView(buffer);
-      
+
       for (let i = 0; i < samplesPerChunk; i++) {
         const sample = samples[i];
         if (sample) {
@@ -186,9 +189,10 @@ class MockSDRDevice implements ISDRDevice {
     for (let n = 0; n < count; n++) {
       // FM carrier
       const phase = (2 * Math.PI * signalFreq * n) / this._sampleRate;
-      
+
       // Add some frequency modulation
-      const modulation = 0.05 * Math.sin((2 * Math.PI * 15e3 * n) / this._sampleRate);
+      const modulation =
+        0.05 * Math.sin((2 * Math.PI * 15e3 * n) / this._sampleRate);
       const modulatedPhase = phase + modulation;
 
       // IQ components
@@ -219,12 +223,12 @@ describe("SDRDevice Interface", () => {
   describe("Device Lifecycle", () => {
     it("should open and close device successfully", async () => {
       const device = new MockSDRDevice();
-      
+
       expect(device.isOpen()).toBe(false);
-      
+
       await device.open();
       expect(device.isOpen()).toBe(true);
-      
+
       await device.close();
       expect(device.isOpen()).toBe(false);
     });
@@ -232,16 +236,16 @@ describe("SDRDevice Interface", () => {
     it("should prevent double open", async () => {
       const device = new MockSDRDevice();
       await device.open();
-      
+
       await expect(device.open()).rejects.toThrow("already open");
-      
+
       await device.close();
     });
 
     it("should return device info", async () => {
       const device = new MockSDRDevice();
       const info = await device.getDeviceInfo();
-      
+
       expect(info).toBeDefined();
       expect(info.vendorId).toBe(0x1d50);
       expect(info.serialNumber).toBeDefined();
@@ -251,7 +255,7 @@ describe("SDRDevice Interface", () => {
     it("should return device capabilities", () => {
       const device = new MockSDRDevice();
       const caps = device.getCapabilities();
-      
+
       expect(caps).toBeDefined();
       expect(caps.minFrequency).toBeGreaterThan(0);
       expect(caps.maxFrequency).toBeGreaterThan(caps.minFrequency);
@@ -281,20 +285,20 @@ describe("SDRDevice Interface", () => {
     it("should reject frequency below minimum", async () => {
       const caps = device.getCapabilities();
       await expect(
-        device.setFrequency(caps.minFrequency - 1000)
+        device.setFrequency(caps.minFrequency - 1000),
       ).rejects.toThrow("out of range");
     });
 
     it("should reject frequency above maximum", async () => {
       const caps = device.getCapabilities();
       await expect(
-        device.setFrequency(caps.maxFrequency + 1000)
+        device.setFrequency(caps.maxFrequency + 1000),
       ).rejects.toThrow("out of range");
     });
 
     it("should accept valid FM frequencies", async () => {
       const fmFrequencies = [88.1e6, 95.5e6, 100.3e6, 107.9e6];
-      
+
       for (const freq of fmFrequencies) {
         await device.setFrequency(freq);
         const setFreq = await device.getFrequency();
@@ -304,7 +308,7 @@ describe("SDRDevice Interface", () => {
 
     it("should accept valid AM frequencies", async () => {
       const amFrequencies = [530e3, 710e3, 1010e3, 1700e3];
-      
+
       for (const freq of amFrequencies) {
         await device.setFrequency(freq);
         const setFreq = await device.getFrequency();
@@ -333,7 +337,7 @@ describe("SDRDevice Interface", () => {
 
     it("should accept all supported sample rates", async () => {
       const caps = device.getCapabilities();
-      
+
       for (const rate of caps.supportedSampleRates) {
         await device.setSampleRate(rate);
         const setRate = await device.getSampleRate();
@@ -342,9 +346,9 @@ describe("SDRDevice Interface", () => {
     });
 
     it("should reject unsupported sample rate", async () => {
-      await expect(
-        device.setSampleRate(999e6)
-      ).rejects.toThrow("not supported");
+      await expect(device.setSampleRate(999e6)).rejects.toThrow(
+        "not supported",
+      );
     });
   });
 
@@ -373,13 +377,13 @@ describe("SDRDevice Interface", () => {
     it("should reject LNA gain above maximum", async () => {
       const caps = device.getCapabilities();
       await expect(
-        device.setLNAGain((caps.maxLNAGain ?? 40) + 10)
+        device.setLNAGain((caps.maxLNAGain ?? 40) + 10),
       ).rejects.toThrow("out of range");
     });
 
     it("should accept valid LNA gain steps", async () => {
       const validGains = [0, 8, 16, 24, 32, 40];
-      
+
       for (const gain of validGains) {
         await device.setLNAGain(gain);
       }
@@ -426,41 +430,41 @@ describe("SDRDevice Interface", () => {
 
     it("should start receiving samples", async () => {
       const samples: DataView[] = [];
-      
+
       await device.receive((data) => {
         samples.push(data);
       });
 
       expect(device.isReceiving()).toBe(true);
-      
+
       // Wait for some samples
-      await new Promise(resolve => setTimeout(resolve, 250));
-      
+      await new Promise((resolve) => setTimeout(resolve, 250));
+
       await device.stopRx();
-      
+
       expect(samples.length).toBeGreaterThan(0);
     });
 
     it("should stop receiving samples", async () => {
       await device.receive(() => {});
       expect(device.isReceiving()).toBe(true);
-      
+
       await device.stopRx();
       expect(device.isReceiving()).toBe(false);
     });
 
     it("should provide properly formatted IQ samples", async () => {
       let receivedData: DataView | null = null;
-      
+
       await device.receive((data) => {
         if (!receivedData) receivedData = data;
       });
 
       // Wait for samples
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
       await device.stopRx();
-      
+
       expect(receivedData).not.toBeNull();
       expect(receivedData!.byteLength).toBeGreaterThan(0);
       expect(receivedData!.byteLength % 2).toBe(0); // Should be pairs of I/Q
@@ -468,19 +472,19 @@ describe("SDRDevice Interface", () => {
 
     it("should generate realistic signal characteristics", async () => {
       let receivedData: DataView | null = null;
-      
+
       await device.receive((data) => {
         if (!receivedData) receivedData = data;
       });
 
-      await new Promise(resolve => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 150));
       await device.stopRx();
-      
+
       const samples = device.parseSamples(receivedData!);
-      
+
       // Check sample properties
       expect(samples.length).toBeGreaterThan(1000);
-      
+
       // All samples should be in valid range
       for (const sample of samples.slice(0, 100)) {
         expect(sample.I).toBeGreaterThanOrEqual(-1);
@@ -492,9 +496,11 @@ describe("SDRDevice Interface", () => {
 
     it("should prevent concurrent receive operations", async () => {
       await device.receive(() => {});
-      
-      await expect(device.receive(() => {})).rejects.toThrow("Already receiving");
-      
+
+      await expect(device.receive(() => {})).rejects.toThrow(
+        "Already receiving",
+      );
+
       await device.stopRx();
     });
   });
@@ -503,17 +509,17 @@ describe("SDRDevice Interface", () => {
     it("should convert Int8 samples to IQ", () => {
       const buffer = new ArrayBuffer(10);
       const view = new DataView(buffer);
-      
+
       // Set some sample values
-      view.setInt8(0, 64);   // I = 0.5
-      view.setInt8(1, -64);  // Q = -0.5
-      view.setInt8(2, 127);  // I = ~1.0
+      view.setInt8(0, 64); // I = 0.5
+      view.setInt8(1, -64); // Q = -0.5
+      view.setInt8(2, 127); // I = ~1.0
       view.setInt8(3, -128); // Q = -1.0
-      view.setInt8(4, 0);    // I = 0.0
-      view.setInt8(5, 0);    // Q = 0.0
-      
+      view.setInt8(4, 0); // I = 0.0
+      view.setInt8(5, 0); // Q = 0.0
+
       const samples = convertInt8ToIQ(view);
-      
+
       expect(samples).toHaveLength(5);
       expect(samples[0]?.I).toBeCloseTo(0.5, 1);
       expect(samples[0]?.Q).toBeCloseTo(-0.5, 1);
@@ -526,17 +532,17 @@ describe("SDRDevice Interface", () => {
     it("should convert Uint8 samples to IQ", () => {
       const buffer = new ArrayBuffer(6);
       const view = new DataView(buffer);
-      
+
       // RTL-SDR format: 127.5 is zero
-      view.setUint8(0, 191);  // I = 0.5
-      view.setUint8(1, 64);   // Q = -0.5
-      view.setUint8(2, 255);  // I = 1.0
-      view.setUint8(3, 0);    // Q = -1.0
-      view.setUint8(4, 127);  // I ~ 0.0
-      view.setUint8(5, 128);  // Q ~ 0.0
-      
+      view.setUint8(0, 191); // I = 0.5
+      view.setUint8(1, 64); // Q = -0.5
+      view.setUint8(2, 255); // I = 1.0
+      view.setUint8(3, 0); // Q = -1.0
+      view.setUint8(4, 127); // I ~ 0.0
+      view.setUint8(5, 128); // Q ~ 0.0
+
       const samples = convertUint8ToIQ(view);
-      
+
       expect(samples).toHaveLength(3);
       expect(samples[0]?.I).toBeCloseTo(0.5, 1);
       expect(samples[0]?.Q).toBeCloseTo(-0.5, 1);
@@ -545,17 +551,17 @@ describe("SDRDevice Interface", () => {
     it("should convert Int16 samples to IQ", () => {
       const buffer = new ArrayBuffer(12);
       const view = new DataView(buffer);
-      
+
       // 16-bit signed format
-      view.setInt16(0, 16384, true);   // I = 0.5
-      view.setInt16(2, -16384, true);  // Q = -0.5
-      view.setInt16(4, 32767, true);   // I = ~1.0
-      view.setInt16(6, -32768, true);  // Q = -1.0
-      view.setInt16(8, 0, true);       // I = 0.0
-      view.setInt16(10, 0, true);      // Q = 0.0
-      
+      view.setInt16(0, 16384, true); // I = 0.5
+      view.setInt16(2, -16384, true); // Q = -0.5
+      view.setInt16(4, 32767, true); // I = ~1.0
+      view.setInt16(6, -32768, true); // Q = -1.0
+      view.setInt16(8, 0, true); // I = 0.0
+      view.setInt16(10, 0, true); // Q = 0.0
+
       const samples = convertInt16ToIQ(view);
-      
+
       expect(samples).toHaveLength(3);
       expect(samples[0]?.I).toBeCloseTo(0.5, 1);
       expect(samples[0]?.Q).toBeCloseTo(-0.5, 1);
@@ -639,17 +645,17 @@ describe("Visualization Data Compatibility", () => {
 
   it("should provide samples suitable for IQ Constellation", async () => {
     let samples: IQSample[] = [];
-    
+
     await device.receive((data) => {
       samples = device.parseSamples(data);
     });
 
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     await device.stopRx();
-    
+
     // IQ Constellation needs samples with I and Q components
     expect(samples.length).toBeGreaterThan(0);
-    
+
     const firstBatch = samples.slice(0, 1000);
     for (const sample of firstBatch) {
       expect(sample).toHaveProperty("I");
@@ -661,17 +667,17 @@ describe("Visualization Data Compatibility", () => {
 
   it("should provide samples suitable for FFT/Spectrogram", async () => {
     let samples: IQSample[] = [];
-    
+
     await device.receive((data) => {
       samples = device.parseSamples(data);
     });
 
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     await device.stopRx();
-    
+
     // FFT typically needs 1024 or 2048 samples
     expect(samples.length).toBeGreaterThanOrEqual(1024);
-    
+
     // Samples should be continuous
     const batch = samples.slice(0, 1024);
     expect(batch.length).toBe(1024);
@@ -679,21 +685,21 @@ describe("Visualization Data Compatibility", () => {
 
   it("should provide samples suitable for Waveform visualization", async () => {
     let samples: IQSample[] = [];
-    
+
     await device.receive((data) => {
       samples = device.parseSamples(data);
     });
 
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     await device.stopRx();
-    
+
     // Calculate amplitude envelope
-    const amplitudes = samples.slice(0, 2000).map(s => 
-      Math.sqrt(s.I * s.I + s.Q * s.Q)
-    );
-    
+    const amplitudes = samples
+      .slice(0, 2000)
+      .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
+
     expect(amplitudes.length).toBe(2000);
-    
+
     // Amplitudes should vary (signal present)
     const maxAmp = Math.max(...amplitudes);
     const minAmp = Math.min(...amplitudes);
@@ -702,63 +708,63 @@ describe("Visualization Data Compatibility", () => {
 
   it("should generate samples with signal characteristics", async () => {
     let samples: IQSample[] = [];
-    
+
     // Set realistic FM parameters
     await device.setFrequency(100.3e6);
     await device.setSampleRate(10e6);
     await device.setLNAGain(16);
-    
+
     await device.receive((data) => {
       samples = device.parseSamples(data);
     });
 
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     await device.stopRx();
-    
+
     const batch = samples.slice(0, 1024);
-    
+
     // Calculate RMS (root mean square) - should be > 0 for signal
     const rms = Math.sqrt(
-      batch.reduce((sum, s) => sum + s.I * s.I + s.Q * s.Q, 0) / batch.length
+      batch.reduce((sum, s) => sum + s.I * s.I + s.Q * s.Q, 0) / batch.length,
     );
-    
+
     expect(rms).toBeGreaterThan(0.1); // Significant signal present
   });
 
   it("should reflect gain changes in signal amplitude", async () => {
     await device.setFrequency(100e6);
     await device.setSampleRate(10e6);
-    
+
     // Low gain
     await device.setLNAGain(0);
     let lowGainSamples: IQSample[] = [];
     await device.receive((data) => {
       lowGainSamples = device.parseSamples(data);
     });
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     await device.stopRx();
-    
+
     const lowRMS = Math.sqrt(
-      lowGainSamples.slice(0, 1024).reduce((sum, s) => 
-        sum + s.I * s.I + s.Q * s.Q, 0
-      ) / 1024
+      lowGainSamples
+        .slice(0, 1024)
+        .reduce((sum, s) => sum + s.I * s.I + s.Q * s.Q, 0) / 1024,
     );
-    
+
     // High gain
     await device.setLNAGain(32);
     let highGainSamples: IQSample[] = [];
     await device.receive((data) => {
       highGainSamples = device.parseSamples(data);
     });
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 150));
     await device.stopRx();
-    
+
     const highRMS = Math.sqrt(
-      highGainSamples.slice(0, 1024).reduce((sum, s) => 
-        sum + s.I * s.I + s.Q * s.Q, 0
-      ) / 1024
+      highGainSamples
+        .slice(0, 1024)
+        .reduce((sum, s) => sum + s.I * s.I + s.Q * s.Q, 0) / 1024,
     );
-    
+
     // Higher gain should produce higher amplitude
     expect(highRMS).toBeGreaterThan(lowRMS);
   });

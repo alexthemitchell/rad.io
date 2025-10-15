@@ -1,6 +1,6 @@
 /**
  * HackRF One SDR Device Adapter
- * 
+ *
  * This adapter wraps the existing HackRFOne implementation to conform
  * to the universal ISDRDevice interface, providing plug-and-play
  * compatibility with the visualization and control components.
@@ -43,9 +43,7 @@ export class HackRFOneAdapter implements ISDRDevice {
     return {
       minFrequency: 1e6, // 1 MHz
       maxFrequency: 6e9, // 6 GHz
-      supportedSampleRates: [
-        1e6, 2e6, 4e6, 8e6, 10e6, 12.5e6, 16e6, 20e6,
-      ], // Common rates
+      supportedSampleRates: [1e6, 2e6, 4e6, 8e6, 10e6, 12.5e6, 16e6, 20e6], // Common rates
       maxLNAGain: 40, // 0-40 dB in 8 dB steps
       maxVGAGain: 62, // 0-62 dB in 2 dB steps
       supportsAmpControl: true,
@@ -65,6 +63,7 @@ export class HackRFOneAdapter implements ISDRDevice {
   isOpen(): boolean {
     // Access the private usbDevice through type assertion
     // This is safe because we control the HackRFOne implementation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (this.device as any).usbDevice?.opened ?? false;
   }
 
@@ -91,10 +90,10 @@ export class HackRFOneAdapter implements ISDRDevice {
     const validGains = [0, 8, 16, 24, 32, 40];
     if (!validGains.includes(gainDb)) {
       const nearest = validGains.reduce((prev, curr) =>
-        Math.abs(curr - gainDb) < Math.abs(prev - gainDb) ? curr : prev
+        Math.abs(curr - gainDb) < Math.abs(prev - gainDb) ? curr : prev,
       );
       console.warn(
-        `HackRF LNA gain must be in 8 dB steps. Rounding ${gainDb} to ${nearest}`
+        `HackRF LNA gain must be in 8 dB steps. Rounding ${gainDb} to ${nearest}`,
       );
       gainDb = nearest;
     }
@@ -107,7 +106,7 @@ export class HackRFOneAdapter implements ISDRDevice {
 
   async receive(
     callback: IQSampleCallback,
-    config?: Partial<SDRStreamConfig>
+    config?: Partial<SDRStreamConfig>,
   ): Promise<void> {
     // Apply configuration if provided
     if (config) {

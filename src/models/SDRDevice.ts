@@ -1,9 +1,9 @@
 /**
  * Universal SDR Device Interface
- * 
+ *
  * This interface defines a standardized API for Software-Defined Radio devices
  * that can be implemented by any SDR hardware (HackRF, RTLSDR, Airspy, etc.)
- * 
+ *
  * The interface ensures compatibility with our visualization components and
  * provides a consistent API for device control and data streaming.
  */
@@ -54,7 +54,7 @@ export type SDRStreamConfig = {
 
 /**
  * Universal SDR Device Interface
- * 
+ *
  * All SDR devices should implement this interface to ensure
  * compatibility with the visualization and control components.
  */
@@ -160,7 +160,7 @@ export interface ISDRDevice {
 
 /**
  * WebUSB SDR Device Configuration
- * 
+ *
  * Defines the USB filters and configuration needed to identify
  * and connect to SDR devices via WebUSB.
  */

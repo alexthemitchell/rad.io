@@ -9,8 +9,6 @@ export type PollCallback = (x: Int8Array) => undefined | void | false;
 export type PollReceiveCallback = PollCallback;
 export type PollTransmitCallback = PollCallback;
 
-
-
 export async function poll(
   setup: () => void | PromiseLike<void>,
   handle: USBDevice,
@@ -43,7 +41,10 @@ export async function poll(
     let reason: unknown;
     const wrapResolve = () => ((settled = true), !isOut && tryCancel());
     const wrapReject = (x: unknown) => (
-      (settled = true), (rejected = true), (reason = x), tryCancel()
+      (settled = true),
+      (rejected = true),
+      (reason = x),
+      tryCancel()
     );
     const safeCall = (fn: () => void) => {
       if (settled) return;
@@ -54,8 +55,13 @@ export async function poll(
       }
     };
     const doSettle = () => {
-      if (settled && pendingTransfers.size === 0)
-        rejected ? reject(reason) : resolve();
+      if (settled && pendingTransfers.size === 0) {
+        if (rejected) {
+          reject(reason);
+        } else {
+          resolve();
+        }
+      }
     };
 
     // allocate / fill buffers
@@ -93,13 +99,17 @@ export async function poll(
               },
               0,
             );
-        //const transfer = endpoint.transfer(0, transferCallback).submit(buffer)
-        pendingTransfers.add(transfer);
-        transfer.catch((error: unknown) => {
+        // TODO: const transfer = endpoint.transfer(0, transferCallback).submit(buffer)
+        void pendingTransfers.add(transfer);
+        void transfer.catch((error: unknown) => {
           if (!rejected && error) wrapReject(error);
           // potentially heavy callback... move to the next tick
           // to prevent starving the loop (setImmediate preserves order)
-          settled ? inNextTick() : setImmediate(inNextTick);
+          if (settled) {
+            inNextTick();
+          } else {
+            setImmediate(inNextTick);
+          }
           function inNextTick() {
             pendingTransfers.delete(transfer);
             safeCall(() => {

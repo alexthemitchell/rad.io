@@ -91,7 +91,11 @@ function Visualizer() {
                   ? "Device is currently receiving. Click 'Stop Reception' first."
                   : "Start receiving IQ samples from the SDR device. Visualizations will update with live data."
             }
-            aria-label={device ? "Start receiving radio signals" : "Connect SDR device via WebUSB"}
+            aria-label={
+              device
+                ? "Start receiving radio signals"
+                : "Connect SDR device via WebUSB"
+            }
           >
             {device ? "Start Reception" : "Connect Device"}
           </button>
@@ -134,11 +138,7 @@ function Visualizer() {
             }
           >
             <span className={`status-dot ${device ? "active" : "inactive"}`} />
-            {device
-              ? listening
-                ? "Receiving"
-                : "Connected"
-              : "Not Connected"}
+            {device ? (listening ? "Receiving" : "Connected") : "Not Connected"}
           </div>
         </div>
       </div>

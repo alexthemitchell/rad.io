@@ -7,9 +7,9 @@
     "start": "webpack serve",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "NODE_OPTIONS='--max-old-space-size=4096' jest",
+    "test:watch": "NODE_OPTIONS='--max-old-space-size=4096' jest --watch",
+    "test:coverage": "NODE_OPTIONS='--max-old-space-size=4096' jest --coverage",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "type-check": "tsc --noEmit"

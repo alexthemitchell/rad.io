@@ -1,6 +1,6 @@
 /**
  * Exhaustive Visualization Tests with Realistic SDR Data
- * 
+ *
  * Tests all visualization components with the type of data expected from real SDR devices.
  * Validates that visualizations can handle various signal types, modulation schemes,
  * and edge cases encountered in practical SDR applications.
@@ -10,11 +10,7 @@ import { render } from "@testing-library/react";
 import IQConstellation from "../IQConstellation";
 import Spectrogram from "../Spectrogram";
 import WaveformVisualizer from "../WaveformVisualizer";
-import {
-  convertToSamples,
-  calculateSpectrogramRow,
-  calculateWaveform,
-} from "../../utils/dsp";
+import { calculateSpectrogramRow, calculateWaveform } from "../../utils/dsp";
 import type { Sample } from "../../utils/dsp";
 
 /**
@@ -85,10 +81,10 @@ function generateQPSKSignal(sampleCount: number): Sample[] {
 
   // QPSK constellation points
   const constellationPoints = [
-    { I: 0.707, Q: 0.707 },   // 45°
-    { I: -0.707, Q: 0.707 },  // 135°
+    { I: 0.707, Q: 0.707 }, // 45°
+    { I: -0.707, Q: 0.707 }, // 135°
     { I: -0.707, Q: -0.707 }, // 225°
-    { I: 0.707, Q: -0.707 },  // 315°
+    { I: 0.707, Q: -0.707 }, // 315°
   ];
 
   for (let n = 0; n < sampleCount; n++) {
@@ -166,7 +162,7 @@ function generatePulsedSignal(sampleCount: number): Sample[] {
   const pulseInterval = 5000; // samples
 
   for (let n = 0; n < sampleCount; n++) {
-    const inPulse = (n % pulseInterval) < pulseWidth;
+    const inPulse = n % pulseInterval < pulseWidth;
     const amplitude = inPulse ? 0.7 : 0.0;
     const phase = (2 * Math.PI * pulseFreq * n) / sampleRate;
 
@@ -189,9 +185,9 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       expect(canvas).toBeInTheDocument();
 
       // FM should show circular pattern
-      const magnitudes = samples.slice(0, 100).map((s) =>
-        Math.sqrt(s.I * s.I + s.Q * s.Q)
-      );
+      const magnitudes = samples
+        .slice(0, 100)
+        .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
       const avgMag = magnitudes.reduce((a, b) => a + b, 0) / magnitudes.length;
       expect(avgMag).toBeGreaterThan(0.3); // Strong signal
     });
@@ -204,9 +200,9 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       expect(canvas).toBeInTheDocument();
 
       // AM should show varying magnitude
-      const magnitudes = samples.slice(0, 100).map((s) =>
-        Math.sqrt(s.I * s.I + s.Q * s.Q)
-      );
+      const magnitudes = samples
+        .slice(0, 100)
+        .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
       const maxMag = Math.max(...magnitudes);
       const minMag = Math.min(...magnitudes);
       expect(maxMag - minMag).toBeGreaterThan(0.2); // Amplitude variation
@@ -236,9 +232,9 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       expect(canvas).toBeInTheDocument();
 
       // Noise should have low magnitude
-      const magnitudes = samples.slice(0, 100).map((s) =>
-        Math.sqrt(s.I * s.I + s.Q * s.Q)
-      );
+      const magnitudes = samples
+        .slice(0, 100)
+        .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
       const avgMag = magnitudes.reduce((a, b) => a + b, 0) / magnitudes.length;
       expect(avgMag).toBeLessThan(0.1); // Weak signal
     });
@@ -283,7 +279,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       }
 
       const { container } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />
+        <Spectrogram data={spectrogramData} fftSize={fftSize} />,
       );
 
       const canvas = container.querySelector("canvas");
@@ -303,7 +299,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       }
 
       const { container } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />
+        <Spectrogram data={spectrogramData} fftSize={fftSize} />,
       );
 
       const canvas = container.querySelector("canvas");
@@ -329,7 +325,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       }
 
       const { container } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />
+        <Spectrogram data={spectrogramData} fftSize={fftSize} />,
       );
 
       const canvas = container.querySelector("canvas");
@@ -360,7 +356,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
         }
 
         const { container } = render(
-          <Spectrogram data={spectrogramData} fftSize={fftSize} />
+          <Spectrogram data={spectrogramData} fftSize={fftSize} />,
         );
 
         const canvas = container.querySelector("canvas");
@@ -381,7 +377,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       }
 
       const { container } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />
+        <Spectrogram data={spectrogramData} fftSize={fftSize} />,
       );
 
       const canvas = container.querySelector("canvas");
@@ -426,8 +422,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       expect(canvas).toBeInTheDocument();
 
       // FM should have relatively constant amplitude
-      const maxAmp = Math.max(...amplitude);
-      const minAmp = Math.min(...amplitude);
+      const maxAmp = Math.max(...Array.from(amplitude));
+      const minAmp = Math.min(...Array.from(amplitude));
       const variation = maxAmp - minAmp;
       expect(variation).toBeLessThan(0.3); // Less variation than AM
     });
@@ -442,7 +438,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       expect(canvas).toBeInTheDocument();
 
       // Should show on/off periods
-      const maxAmp = Math.max(...amplitude);
+      const maxAmp = Math.max(...Array.from(amplitude));
       const nearZero = amplitude.filter((a: number) => a < 0.1).length;
       const nearMax = amplitude.filter((a: number) => a > maxAmp * 0.5).length;
 
@@ -469,18 +465,23 @@ describe("Visualization Tests with Realistic SDR Data", () => {
         .slice(0, 1000)
         .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
       const iqAvgPower =
-        iqMagnitudes.reduce((a: number, b: number) => a + b, 0) / iqMagnitudes.length;
+        iqMagnitudes.reduce((a: number, b: number) => a + b, 0) /
+        iqMagnitudes.length;
 
       // Spectrogram - calculate FFT power
       const fftSize = 1024;
-      const fftRow = calculateSpectrogramRow(samples.slice(0, fftSize), fftSize);
+      const fftRow = calculateSpectrogramRow(
+        samples.slice(0, fftSize),
+        fftSize,
+      );
       const fftArray: number[] = Array.from(fftRow);
       const fftMaxPower = Math.max(...fftArray);
 
       // Waveform - calculate RMS
       const { amplitude } = calculateWaveform(samples.slice(0, 1000));
       const rms = Math.sqrt(
-        amplitude.reduce((sum: number, a: number) => sum + a * a, 0) / amplitude.length
+        amplitude.reduce((sum: number, a: number) => sum + a * a, 0) /
+          amplitude.length,
       );
 
       // All should indicate strong signal
@@ -501,7 +502,10 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const expectedBin = Math.round(carrierOffset / freqResolution);
 
       // Get FFT
-      const fftRow = calculateSpectrogramRow(samples.slice(0, fftSize), fftSize);
+      const fftRow = calculateSpectrogramRow(
+        samples.slice(0, fftSize),
+        fftSize,
+      );
 
       // Find peak bin (accounting for frequency shift)
       const fftArray: number[] = Array.from(fftRow);
@@ -517,9 +521,9 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     it("should handle typical FM station at 100.3 MHz", () => {
       // Simulate tuning to FM station
       const samples = generateFMSignal(50000, 0); // Centered
-      
+
       const { container: iqContainer } = render(
-        <IQConstellation samples={samples.slice(0, 5000)} />
+        <IQConstellation samples={samples.slice(0, 5000)} />,
       );
       expect(iqContainer.querySelector("canvas")).toBeInTheDocument();
 
@@ -528,18 +532,18 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       for (let i = 0; i < 20; i++) {
         const row = calculateSpectrogramRow(
           samples.slice(i * fftSize, (i + 1) * fftSize),
-          fftSize
+          fftSize,
         );
         spectrogramData.push(row);
       }
 
       const { container: specContainer } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />
+        <Spectrogram fftData={spectrogramData} />,
       );
       expect(specContainer.querySelector("canvas")).toBeInTheDocument();
 
       const { container: waveContainer } = render(
-        <WaveformVisualizer samples={samples.slice(0, 10000)} />
+        <WaveformVisualizer samples={samples.slice(0, 10000)} />,
       );
       expect(waveContainer.querySelector("canvas")).toBeInTheDocument();
     });
@@ -574,14 +578,12 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       for (let i = 0; i < Math.floor(sweepData.length / fftSize); i++) {
         const row = calculateSpectrogramRow(
           sweepData.slice(i * fftSize, (i + 1) * fftSize),
-          fftSize
+          fftSize,
         );
         spectrogramData.push(row);
       }
 
-      const { container } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />
-      );
+      const { container } = render(<Spectrogram fftData={spectrogramData} />);
       expect(container.querySelector("canvas")).toBeInTheDocument();
     });
   });

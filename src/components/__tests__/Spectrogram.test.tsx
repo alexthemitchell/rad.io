@@ -106,11 +106,7 @@ describe("Spectrogram", () => {
   it("should handle custom frequency range", () => {
     const fftData = createFFTData(30, 2048);
     const { container } = render(
-      <Spectrogram
-        fftData={fftData}
-        freqMin={500}
-        freqMax={1500}
-      />,
+      <Spectrogram fftData={fftData} freqMin={500} freqMax={1500} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -186,11 +182,7 @@ describe("Spectrogram", () => {
   it("should handle narrow frequency range", () => {
     const fftData = createFFTData(30, 2048);
     const { container } = render(
-      <Spectrogram
-        fftData={fftData}
-        freqMin={1000}
-        freqMax={1010}
-      />,
+      <Spectrogram fftData={fftData} freqMin={1000} freqMax={1010} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -200,11 +192,7 @@ describe("Spectrogram", () => {
   it("should handle wide frequency range", () => {
     const fftData = createFFTData(30, 2048);
     const { container } = render(
-      <Spectrogram
-        fftData={fftData}
-        freqMin={0}
-        freqMax={2048}
-      />,
+      <Spectrogram fftData={fftData} freqMin={0} freqMax={2048} />,
     );
 
     const canvas = container.querySelector("canvas");

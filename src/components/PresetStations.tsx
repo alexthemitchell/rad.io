@@ -49,9 +49,9 @@ export default function PresetStations({
             signalType === "FM"
               ? `${(station.frequency / 1e6).toFixed(1)} MHz`
               : `${(station.frequency / 1e3).toFixed(0)} kHz`;
-          
+
           const tooltip = `${station.name} - ${displayFreq}. Click to tune to this preset station.${isActive ? " (Currently tuned)" : ""}`;
-          
+
           return (
             <button
               key={station.name}

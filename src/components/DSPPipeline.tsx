@@ -39,7 +39,10 @@ export default function DSPPipeline() {
       </div>
       <div className="dsp-pipeline">
         {DSP_STAGES.map((stage, index) => (
-          <div key={stage.title} style={{ display: "flex", alignItems: "center" }}>
+          <div
+            key={stage.title}
+            style={{ display: "flex", alignItems: "center" }}
+          >
             <div className="dsp-stage">
               <div className="dsp-stage-title">{stage.title}</div>
               <div className="dsp-stage-desc">{stage.description}</div>

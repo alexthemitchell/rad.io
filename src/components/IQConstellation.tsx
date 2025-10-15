@@ -148,7 +148,8 @@ export default function IQConstellation({
 
     // Draw axis labels with better typography
     ctx.fillStyle = "#e0e6ed";
-    ctx.font = "bold 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.font =
+      "bold 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -173,7 +174,7 @@ export default function IQConstellation({
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
       ctx.fillText(i.toFixed(2), x, centerY + 6);
-      
+
       // Draw tick mark
       ctx.strokeStyle = "#4a90e2";
       ctx.beginPath();
@@ -189,7 +190,7 @@ export default function IQConstellation({
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
       ctx.fillText(q.toFixed(2), centerX - 8, y);
-      
+
       // Draw tick mark
       ctx.strokeStyle = "#4a90e2";
       ctx.beginPath();
@@ -201,14 +202,14 @@ export default function IQConstellation({
     // Calculate density for heat map effect (industry standard)
     const densityMap = new Map<string, number>();
     const gridSize = 0.003; // Finer grid for better density resolution
-    
+
     samples.forEach((sample) => {
       const gridI = Math.round(sample.I / gridSize) * gridSize;
       const gridQ = Math.round(sample.Q / gridSize) * gridSize;
       const key = `${gridI.toFixed(4)},${gridQ.toFixed(4)}`;
       densityMap.set(key, (densityMap.get(key) || 0) + 1);
     });
-    
+
     const maxDensity = Math.max(...Array.from(densityMap.values()), 1);
 
     // Sort samples by density (draw low density first, high density last)
@@ -229,42 +230,44 @@ export default function IQConstellation({
 
       // Enhanced color scheme based on density
       // Low density: dark blue, Medium: cyan/blue, High: bright cyan/white
-      const getColorForDensity = (d: number): [number, number, number, number] => {
+      const getColorForDensity = (
+        d: number,
+      ): [number, number, number, number] => {
         if (d > 0.8) {
           // Very high density - bright white/cyan core
           const t = (d - 0.8) / 0.2;
           return [
-            100 + 155 * t,  // R: cyan to white
-            200 + 55 * t,   // G: cyan to white
-            255,            // B: full
-            0.9
+            100 + 155 * t, // R: cyan to white
+            200 + 55 * t, // G: cyan to white
+            255, // B: full
+            0.9,
           ];
         } else if (d > 0.5) {
           // High density - bright cyan
           const t = (d - 0.5) / 0.3;
           return [
-            50 + 50 * t,    // R
-            180 + 20 * t,   // G
-            255,            // B
-            0.75 + 0.15 * t
+            50 + 50 * t, // R
+            180 + 20 * t, // G
+            255, // B
+            0.75 + 0.15 * t,
           ];
         } else if (d > 0.2) {
           // Medium density - blue/cyan
           const t = (d - 0.2) / 0.3;
           return [
-            40 + 10 * t,    // R
-            130 + 50 * t,   // G
-            220 + 35 * t,   // B
-            0.6 + 0.15 * t
+            40 + 10 * t, // R
+            130 + 50 * t, // G
+            220 + 35 * t, // B
+            0.6 + 0.15 * t,
           ];
         } else {
           // Low density - dark blue
           const t = d / 0.2;
           return [
-            30 + 10 * t,    // R
-            80 + 50 * t,    // G
-            180 + 40 * t,   // B
-            0.4 + 0.2 * t
+            30 + 10 * t, // R
+            80 + 50 * t, // G
+            180 + 40 * t, // B
+            0.4 + 0.2 * t,
           ];
         }
       };
@@ -285,13 +288,13 @@ export default function IQConstellation({
       ctx.beginPath();
       ctx.arc(x, y, glowSize, 0, 2 * Math.PI);
       ctx.fill();
-      
+
       // Core point
       ctx.fillStyle = `rgba(${r + 50}, ${g + 30}, ${b}, ${Math.min(alpha + 0.2, 1)})`;
       ctx.beginPath();
       ctx.arc(x, y, pointSize, 0, 2 * Math.PI);
       ctx.fill();
-      
+
       // Bright center for very high density
       if (density > 0.7) {
         ctx.fillStyle = `rgba(255, 255, 255, ${density * 0.6})`;
@@ -302,16 +305,18 @@ export default function IQConstellation({
     });
 
     // Calculate and display signal statistics
-    const magnitudes = samples.map(s => Math.sqrt(s.I * s.I + s.Q * s.Q));
-    const avgMagnitude = magnitudes.reduce((a, b) => a + b, 0) / magnitudes.length;
+    const magnitudes = samples.map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
+    const avgMagnitude =
+      magnitudes.reduce((a, b) => a + b, 0) / magnitudes.length;
     const maxMagnitude = Math.max(...magnitudes);
 
     // Add title and metadata
-    ctx.font = "bold 17px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.font =
+      "bold 17px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     ctx.fillStyle = "#e0e6ed";
     ctx.textAlign = "center";
     ctx.fillText("IQ Constellation Diagram", width / 2, 28);
-    
+
     // Add statistics
     ctx.font = "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     ctx.fillStyle = "#a0aab5";
@@ -319,31 +324,36 @@ export default function IQConstellation({
     ctx.fillText(
       `${samples.length} samples | Avg: ${avgMagnitude.toFixed(4)} | Max: ${maxMagnitude.toFixed(4)}`,
       width - 20,
-      28
+      28,
     );
 
     // Add density legend
     ctx.textAlign = "left";
     ctx.fillText("Density:", 20, height - 20);
-    
+
     const legendX = 80;
     const legendY = height - 28;
     const legendWidth = 100;
     const legendHeight = 8;
-    
+
     // Draw gradient legend
-    const legendGradient = ctx.createLinearGradient(legendX, 0, legendX + legendWidth, 0);
+    const legendGradient = ctx.createLinearGradient(
+      legendX,
+      0,
+      legendX + legendWidth,
+      0,
+    );
     legendGradient.addColorStop(0, "rgb(30, 80, 180)");
     legendGradient.addColorStop(0.5, "rgb(50, 180, 255)");
     legendGradient.addColorStop(1, "rgb(200, 240, 255)");
-    
+
     ctx.fillStyle = legendGradient;
     ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
-    
+
     ctx.strokeStyle = "rgba(100, 130, 170, 0.5)";
     ctx.lineWidth = 1;
     ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
-    
+
     ctx.fillStyle = "#a0aab5";
     ctx.font = "10px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
     ctx.textAlign = "left";

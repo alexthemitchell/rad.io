@@ -38,7 +38,7 @@ export default function WaveformVisualizer({
     const chartHeight = height - margin.top - margin.bottom;
 
     // Calculate waveform data
-    const { amplitude, phase } = calculateWaveform(samples);
+    const { amplitude } = calculateWaveform(samples);
 
     // Calculate statistics for adaptive scaling
     const maxAmplitude = Math.max(...Array.from(amplitude));
@@ -100,7 +100,9 @@ export default function WaveformVisualizer({
 
     // X-axis
     const zeroY =
-      margin.top + chartHeight - ((0 - displayMin) / displayRange) * chartHeight;
+      margin.top +
+      chartHeight -
+      ((0 - displayMin) / displayRange) * chartHeight;
     ctx.beginPath();
     ctx.moveTo(margin.left, zeroY);
     ctx.lineTo(margin.left + chartWidth, zeroY);
@@ -122,7 +124,9 @@ export default function WaveformVisualizer({
       const x = margin.left + (i / amplitude.length) * chartWidth;
       const amp = amplitude[i]!;
       const y =
-        margin.top + chartHeight - ((amp - displayMin) / displayRange) * chartHeight;
+        margin.top +
+        chartHeight -
+        ((amp - displayMin) / displayRange) * chartHeight;
 
       if (i === 0) {
         ctx.lineTo(x, y);
@@ -139,7 +143,7 @@ export default function WaveformVisualizer({
       0,
       margin.top,
       0,
-      margin.top + chartHeight
+      margin.top + chartHeight,
     );
     fillGradient.addColorStop(0, "rgba(100, 220, 255, 0.25)");
     fillGradient.addColorStop(0.5, "rgba(70, 180, 255, 0.15)");
@@ -154,7 +158,9 @@ export default function WaveformVisualizer({
       const x = margin.left + (i / amplitude.length) * chartWidth;
       const amp = amplitude[i]!;
       const y =
-        margin.top + chartHeight - ((amp - displayMin) / displayRange) * chartHeight;
+        margin.top +
+        chartHeight -
+        ((amp - displayMin) / displayRange) * chartHeight;
 
       if (i === 0) {
         ctx.moveTo(x, y);
@@ -290,7 +296,7 @@ export default function WaveformVisualizer({
     ctx.fillText(
       `Max: ${maxAmplitude.toFixed(4)} | Min: ${minAmplitude.toFixed(4)} | Avg: ${avgAmplitude.toFixed(4)}`,
       width - 20,
-      28
+      28,
     );
 
     // Add legend for reference lines

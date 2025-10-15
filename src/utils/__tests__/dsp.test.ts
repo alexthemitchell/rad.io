@@ -146,7 +146,7 @@ describe("DSP Utilities", () => {
 
       // After frequency shifting, the peak should be at shifted position
       const expectedShiftedBin = (targetBin + fftSize / 2) % fftSize;
-      
+
       // Peak should be within 1 bin of expected (due to spectral leakage)
       expect(Math.abs(maxIndex - expectedShiftedBin)).toBeLessThanOrEqual(1);
     });
@@ -385,11 +385,13 @@ describe("DSP Utilities", () => {
       const fftSize = 64;
       const samples = generateSineWave(0.1, 1.0, fftSize);
 
-      // Calculate time domain energy
-      const timeEnergy = samples.reduce(
-        (sum, s) => sum + s.I * s.I + s.Q * s.Q,
-        0,
-      );
+      // Calculate time domain energy (for Parseval's theorem validation)
+      // Note: Parseval's theorem states that energy in time domain equals energy in frequency domain
+      // This variable is kept for future validation tests
+      // const timeEnergy = samples.reduce(
+      //   (sum, s) => sum + s.I * s.I + s.Q * s.Q,
+      //   0,
+      // );
 
       const fftResult = calculateSpectrogramRow(samples, fftSize);
 
@@ -518,10 +520,13 @@ describe("DSP Utilities", () => {
       const testSizes = [8, 16, 32, 64];
 
       testSizes.forEach((fftSize) => {
-        const samples: Sample[] = Array.from({ length: fftSize * 2 }, (_, i) => ({
-          I: Math.cos((2 * Math.PI * i) / fftSize),
-          Q: Math.sin((2 * Math.PI * i) / fftSize),
-        }));
+        const samples: Sample[] = Array.from(
+          { length: fftSize * 2 },
+          (_, i) => ({
+            I: Math.cos((2 * Math.PI * i) / fftSize),
+            Q: Math.sin((2 * Math.PI * i) / fftSize),
+          }),
+        );
 
         const result = calculateSpectrogram(samples, fftSize);
 

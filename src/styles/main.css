@@ -6,9 +6,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -51,7 +51,9 @@ body {
   background: #fff;
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.08);
   margin-bottom: 1.5rem;
 }
 
@@ -285,7 +287,8 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -359,24 +362,24 @@ body {
   .header h1 {
     font-size: 2rem;
   }
-  
+
   .controls-panel {
     grid-template-columns: 1fr;
   }
-  
+
   .dsp-pipeline {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .dsp-arrow {
     transform: rotate(90deg);
   }
-  
+
   .action-bar {
     flex-direction: column;
   }
-  
+
   .action-bar-left,
   .action-bar-right {
     width: 100%;
