@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { ReactElement } from "react";
 
 type SpectrogramProps = {
   fftData: Float32Array[];
@@ -14,9 +15,10 @@ export default function Spectrogram({
   height = 800,
   freqMin = 1000,
   freqMax = 1100,
-}: SpectrogramProps) {
+}: SpectrogramProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
+  const transferredRef = useRef<boolean>(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -25,8 +27,7 @@ export default function Spectrogram({
     }
 
     const supportsOffscreen =
-      typeof (window as any).OffscreenCanvas === "function" &&
-      typeof Worker !== "undefined";
+      typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
     if (supportsOffscreen) {
       if (!workerRef.current) {
         try {
@@ -37,7 +38,7 @@ export default function Spectrogram({
           workerRef.current = worker;
           const w = workerRef.current;
           if (w) {
-            w.onmessage = (ev) => {
+            w.onmessage = (ev): void => {
               const d = ev.data as unknown as {
                 type?: string;
                 viz?: string;
@@ -50,34 +51,57 @@ export default function Spectrogram({
               }
             };
           }
-        } catch (e) {
+        } catch {
           workerRef.current = null;
         }
       }
 
-      const offscreen = (canvas as any).transferControlToOffscreen?.();
-      if (offscreen && workerRef.current) {
-        workerRef.current.postMessage(
-          {
-            type: "init",
-            canvas: offscreen,
-            vizType: "spectrogram",
-            width,
-            height,
-            freqMin,
-            freqMax,
-          },
-          [offscreen],
-        );
-        workerRef.current.postMessage({
-          type: "render",
-          data: { fftData, freqMin, freqMax },
-        });
-        return;
+      if (workerRef.current) {
+        if (!transferredRef.current) {
+          const canTransfer =
+            typeof (
+              canvas as HTMLCanvasElement & {
+                transferControlToOffscreen?: () => OffscreenCanvas;
+              }
+            ).transferControlToOffscreen === "function";
+          if (canTransfer) {
+            const offscreen = (
+              canvas as HTMLCanvasElement & {
+                transferControlToOffscreen: () => OffscreenCanvas;
+              }
+            ).transferControlToOffscreen();
+            transferredRef.current = true;
+            workerRef.current.postMessage(
+              {
+                type: "init",
+                canvas: offscreen,
+                vizType: "spectrogram",
+                width,
+                height,
+                freqMin,
+                freqMax,
+              },
+              [offscreen],
+            );
+          }
+        } else {
+          workerRef.current.postMessage({ type: "resize", width, height });
+        }
+
+        if (transferredRef.current) {
+          workerRef.current.postMessage({
+            type: "render",
+            data: { fftData, freqMin, freqMax },
+          });
+          return;
+        }
       }
     }
 
     // Fallback: original rendering on main thread
+    if (transferredRef.current) {
+      return;
+    }
     const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!ctx) {
       return;
@@ -101,7 +125,7 @@ export default function Spectrogram({
 
     // Calculate dimensions
     const numFrames = fftData.length;
-    const fftSize = fftData[0]?.length || 1024;
+    // const fftSize = fftData[0]?.length || 1024; // not used directly in fallback rendering
     const frameWidth = Math.max(1, chartWidth / numFrames);
     const binHeight = chartHeight / (freqMax - freqMin);
 
@@ -150,6 +174,26 @@ export default function Spectrogram({
       }
     });
   }, [fftData, width, height, freqMin, freqMax]);
+
+  // Cleanup worker on unmount
+  useEffect((): (() => void) => {
+    return () => {
+      if (workerRef.current) {
+        try {
+          workerRef.current.postMessage({ type: "dispose" });
+        } catch (e) {
+          console.warn("dispose postMessage failed", e);
+        }
+        try {
+          workerRef.current.terminate();
+        } catch (e) {
+          console.warn("worker terminate failed", e);
+        }
+        workerRef.current = null;
+      }
+      transferredRef.current = false;
+    };
+  }, []);
 
   return <canvas ref={canvasRef} style={{ borderRadius: "8px" }} />;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { ReactElement } from "react";
 import { calculateWaveform, Sample } from "../utils/dsp";
 
 type WaveformVisualizerProps = {
@@ -11,9 +12,10 @@ export default function WaveformVisualizer({
   samples,
   width = 750,
   height = 300,
-}: WaveformVisualizerProps) {
+}: WaveformVisualizerProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
+  const transferredRef = useRef<boolean>(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -21,8 +23,7 @@ export default function WaveformVisualizer({
       return;
     }
     const supportsOffscreen =
-      typeof (window as any).OffscreenCanvas === "function" &&
-      typeof Worker !== "undefined";
+      typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
     const shouldUseWorker = supportsOffscreen;
 
     if (shouldUseWorker) {
@@ -33,7 +34,7 @@ export default function WaveformVisualizer({
             `new Worker(new URL("../workers/visualization.worker.ts", import.meta.url))`,
           );
           workerRef.current = worker;
-        } catch (e) {
+        } catch {
           try {
             const workerCode = `self.onmessage = function(){};`;
             const blob = new Blob([workerCode], {
@@ -48,7 +49,7 @@ export default function WaveformVisualizer({
           }
         }
         if (workerRef.current) {
-          workerRef.current.onmessage = (ev) => {
+          workerRef.current.onmessage = (ev): void => {
             const d = ev.data as unknown as {
               type?: string;
               viz?: string;
@@ -63,24 +64,47 @@ export default function WaveformVisualizer({
         }
       }
 
-      const offscreen = (canvas as any).transferControlToOffscreen?.();
-      if (offscreen && workerRef.current) {
-        workerRef.current.postMessage(
-          {
-            type: "init",
-            canvas: offscreen,
-            vizType: "waveform",
-            width,
-            height,
-          },
-          [offscreen],
-        );
-        workerRef.current.postMessage({ type: "render", data: { samples } });
-        return;
+      if (workerRef.current) {
+        if (!transferredRef.current) {
+          const canTransfer =
+            typeof (
+              canvas as HTMLCanvasElement & {
+                transferControlToOffscreen?: () => OffscreenCanvas;
+              }
+            ).transferControlToOffscreen === "function";
+          if (canTransfer) {
+            const offscreen = (
+              canvas as HTMLCanvasElement & {
+                transferControlToOffscreen: () => OffscreenCanvas;
+              }
+            ).transferControlToOffscreen();
+            transferredRef.current = true;
+            workerRef.current.postMessage(
+              {
+                type: "init",
+                canvas: offscreen,
+                vizType: "waveform",
+                width,
+                height,
+              },
+              [offscreen],
+            );
+          }
+        } else {
+          workerRef.current.postMessage({ type: "resize", width, height });
+        }
+
+        if (transferredRef.current) {
+          workerRef.current.postMessage({ type: "render", data: { samples } });
+          return;
+        }
       }
     }
 
     // Fallback: render on main thread (existing implementation)
+    if (transferredRef.current) {
+      return;
+    }
     const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!ctx) {
       return;
@@ -109,8 +133,8 @@ export default function WaveformVisualizer({
     const maxAmplitude = Math.max(...Array.from(amplitude));
     const minAmplitude = Math.min(...Array.from(amplitude));
     const amplitudeRange = maxAmplitude - minAmplitude || 1;
-    const avgAmplitude =
-      Array.from(amplitude).reduce((a, b) => a + b, 0) / amplitude.length;
+    // const avgAmplitude =
+    //   Array.from(amplitude).reduce((a, b) => a + b, 0) / amplitude.length;
 
     // Add padding to range
     const padding = amplitudeRange * 0.1;
@@ -139,6 +163,26 @@ export default function WaveformVisualizer({
     }
     ctx.stroke();
   }, [samples, width, height]);
+
+  // Cleanup worker on unmount
+  useEffect((): (() => void) => {
+    return () => {
+      if (workerRef.current) {
+        try {
+          workerRef.current.postMessage({ type: "dispose" });
+        } catch (e) {
+          console.warn("dispose postMessage failed", e);
+        }
+        try {
+          workerRef.current.terminate();
+        } catch (e) {
+          console.warn("worker terminate failed", e);
+        }
+        workerRef.current = null;
+      }
+      transferredRef.current = false;
+    };
+  }, []);
 
   return <canvas ref={canvasRef} style={{ borderRadius: "8px" }} />;
 }

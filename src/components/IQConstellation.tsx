@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { ReactElement } from "react";
 
 type Sample = {
   I: number;
@@ -15,36 +16,34 @@ export default function IQConstellation({
   samples,
   width = 750,
   height = 400,
-}: IQConstellationProps) {
+}: IQConstellationProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
+  // Track whether this canvas element has been transferred to OffscreenCanvas
+  const transferredRef = useRef<boolean>(false);
 
-  useEffect(() => {
+  useEffect((): void => {
     const canvas = canvasRef.current;
     if (!canvas || samples.length === 0) {
       return;
     }
-    // OffscreenCanvas + worker path
-    const supportsOffscreen =
-      typeof (window as any).OffscreenCanvas === "function" &&
-      typeof Worker !== "undefined";
-    const shouldUseWorker = supportsOffscreen;
 
-    if (shouldUseWorker) {
-      // create worker if needed
+    const supportsOffscreen =
+      typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
+
+    if (supportsOffscreen) {
+      // Create worker if needed
       if (!workerRef.current) {
-        // Try to create worker via module URL; fall back to blob if import.meta isn't allowed.
         try {
-          // dynamic URL for worker via eval to avoid Jest import.meta parse
+          // dynamic URL for worker via eval to avoid Jest import.meta parse issues
           const worker = (0, eval)(
             `new Worker(new URL("../workers/visualization.worker.ts", import.meta.url))`,
           );
-          workerRef.current = worker;
-        } catch (e) {
-          // Fallback: fetch the worker source and create a blob URL
+          workerRef.current = worker as unknown as Worker;
+        } catch {
+          // Fallback: minimal no-op worker via blob
           try {
-            // NOTE: In bundlers this may not be necessary; keep as safe fallback.
-            const workerCode = `self.onmessage = function(){ /* no-op fallback worker */ };`;
+            const workerCode = `self.onmessage = function(){};`;
             const blob = new Blob([workerCode], {
               type: "application/javascript",
             });
@@ -60,7 +59,7 @@ export default function IQConstellation({
           }
         }
         if (workerRef.current) {
-          workerRef.current.onmessage = (ev) => {
+          workerRef.current.onmessage = (ev): void => {
             const d = ev.data as unknown as {
               type?: string;
               viz?: string;
@@ -75,25 +74,51 @@ export default function IQConstellation({
         }
       }
 
-      const offscreen = (canvas as any).transferControlToOffscreen?.();
-      if (offscreen && workerRef.current) {
-        workerRef.current.postMessage(
-          {
-            type: "init",
-            canvas: offscreen,
-            vizType: "constellation",
-            width,
-            height,
-          },
-          [offscreen],
-        );
-        workerRef.current.postMessage({ type: "render", data: { samples } });
-        return;
+      if (workerRef.current) {
+        // Only transfer once; never call getContext on a transferred canvas
+        if (!transferredRef.current) {
+          const canTransfer =
+            typeof (
+              canvas as HTMLCanvasElement & {
+                transferControlToOffscreen?: () => OffscreenCanvas;
+              }
+            ).transferControlToOffscreen === "function";
+          if (canTransfer) {
+            const offscreen = (
+              canvas as HTMLCanvasElement & {
+                transferControlToOffscreen: () => OffscreenCanvas;
+              }
+            ).transferControlToOffscreen();
+            transferredRef.current = true;
+            workerRef.current.postMessage(
+              {
+                type: "init",
+                canvas: offscreen,
+                vizType: "constellation",
+                width,
+                height,
+              },
+              [offscreen],
+            );
+          }
+        } else {
+          // Notify worker about size changes
+          workerRef.current.postMessage({ type: "resize", width, height });
+        }
+
+        if (transferredRef.current) {
+          workerRef.current.postMessage({ type: "render", data: { samples } });
+          return; // Important: don't attempt main-thread rendering after transfer
+        }
       }
-      // if transfer fails, fall through to main-thread render
+      // If worker couldn't be created or transfer failed, fall through to main-thread render
     }
 
     // Fallback: render on main thread
+    // Never attempt to getContext if the canvas was transferred
+    if (transferredRef.current) {
+      return;
+    }
     const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
     if (!ctx) {
       return;
@@ -111,7 +136,7 @@ export default function IQConstellation({
     ctx.fillStyle = "#0a0e1a";
     ctx.fillRect(0, 0, width, height);
     // draw simple points for fallback (keeps UI responsive)
-    const margin = { top: 60, bottom: 70, left: 80, right: 60 };
+    const margin = { top: 60, bottom: 70, left: 80, right: 60 } as const;
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
     const iValues = samples.map((s) => s.I);
@@ -122,10 +147,10 @@ export default function IQConstellation({
     const qMax = Math.max(...qValues, 0.1);
     const iPadding = (iMax - iMin) * 0.1;
     const qPadding = (qMax - qMin) * 0.1;
-    const scaleI = (i: number) =>
+    const scaleI = (i: number): number =>
       margin.left +
       ((i - (iMin - iPadding)) / (iMax - iMin + 2 * iPadding)) * chartWidth;
-    const scaleQ = (q: number) =>
+    const scaleQ = (q: number): number =>
       margin.top +
       chartHeight -
       ((q - (qMin - qPadding)) / (qMax - qMin + 2 * qPadding)) * chartHeight;
@@ -143,6 +168,26 @@ export default function IQConstellation({
       ctx.fill();
     }
   }, [samples, width, height]);
+
+  // Cleanup worker on unmount
+  useEffect((): (() => void) => {
+    return () => {
+      if (workerRef.current) {
+        try {
+          workerRef.current.postMessage({ type: "dispose" });
+        } catch (e) {
+          console.warn("dispose postMessage failed", e);
+        }
+        try {
+          workerRef.current.terminate();
+        } catch (e) {
+          console.warn("worker terminate failed", e);
+        }
+        workerRef.current = null;
+      }
+      transferredRef.current = false;
+    };
+  }, []);
 
   return <canvas ref={canvasRef} style={{ borderRadius: "8px" }} />;
 }
