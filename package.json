@@ -1,18 +1,24 @@
 {
   "name": "rad.io",
   "version": "0.0.0",
-  "description": "SDR Radio Recording Daemon",
+  "description": "Professional browser-based SDR visualizer with industry-standard signal analysis and universal device support",
   "scripts": {
     "build": "webpack",
+    "build:prod": "webpack --mode production",
     "start": "webpack serve",
+    "dev": "webpack serve",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "test": "NODE_OPTIONS='--expose-gc --max-old-space-size=8192' jest --maxWorkers=1",
+    "test:unit": "NODE_OPTIONS='--expose-gc --max-old-space-size=8192' jest --maxWorkers=1 --testPathPattern='(dsp|testMemoryManager|SDRDevice).test'",
+    "test:components": "NODE_OPTIONS='--expose-gc --max-old-space-size=8192' jest --maxWorkers=1 --testPathPattern='components'",
     "test:watch": "NODE_OPTIONS='--expose-gc --max-old-space-size=8192' jest --watch --maxWorkers=1",
     "test:coverage": "NODE_OPTIONS='--expose-gc --max-old-space-size=8192' jest --coverage --maxWorkers=1",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "validate": "npm run lint && npm run format:check && npm run type-check && npm run build",
+    "clean": "rm -rf dist node_modules"
   },
   "author": "Alex Mitchell <alex@alexmitchelltech.com>",
   "license": "UNLICENSED",
