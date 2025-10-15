@@ -440,7 +440,7 @@ For issues, questions, or feature requests:
 - WebGL rendering for large datasets
 - Web Workers for DSP processing
 - OffscreenCanvas for background rendering
-- WASM FFT implementations
+- **✅ WASM FFT implementations** (Implemented - see WASM_DSP.md)
 
 ---
 

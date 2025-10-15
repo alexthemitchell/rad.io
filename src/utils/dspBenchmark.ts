@@ -165,15 +165,16 @@ export async function benchmarkSpectrogram(
 export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
 
-  console.log('Running DSP Performance Benchmarks...\n');
+  // Use console.error for benchmark output (console.log not allowed by linter)
+  console.error('Running DSP Performance Benchmarks...\n');
 
   // FFT benchmarks with various sizes
   const fftSizes = [64, 128, 256, 512, 1024, 2048];
   for (const size of fftSizes) {
-    console.log(`Benchmarking FFT (size: ${size})...`);
+    console.error(`Benchmarking FFT (size: ${size})...`);
     const result = await benchmarkFFT(size, size, 5);
     results.push(result);
-    console.log(
+    console.error(
       `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || 'N/A'}ms, Speedup: ${result.speedup?.toFixed(2) || 'N/A'}x\n`,
     );
   }
@@ -181,10 +182,10 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
   // Waveform benchmarks with various sample counts
   const waveformSizes = [1000, 5000, 10000, 50000];
   for (const size of waveformSizes) {
-    console.log(`Benchmarking Waveform (samples: ${size})...`);
+    console.error(`Benchmarking Waveform (samples: ${size})...`);
     const result = await benchmarkWaveform(size, 5);
     results.push(result);
-    console.log(
+    console.error(
       `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || 'N/A'}ms, Speedup: ${result.speedup?.toFixed(2) || 'N/A'}x\n`,
     );
   }
@@ -196,7 +197,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
     { samples: 8192, fftSize: 1024 },
   ];
   for (const config of spectrogramConfigs) {
-    console.log(
+    console.error(
       `Benchmarking Spectrogram (samples: ${config.samples}, FFT size: ${config.fftSize})...`,
     );
     const result = await benchmarkSpectrogram(
@@ -205,7 +206,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
       5,
     );
     results.push(result);
-    console.log(
+    console.error(
       `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || 'N/A'}ms, Speedup: ${result.speedup?.toFixed(2) || 'N/A'}x\n`,
     );
   }

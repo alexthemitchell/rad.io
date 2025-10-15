@@ -64,7 +64,7 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
   }
 
   // Start loading
-  wasmLoading = (async () => {
+  wasmLoading = (async (): Promise<WasmDSPModule> => {
     try {
       // Fetch the WASM binary
       const wasmUrl = new URL('/dsp.wasm', window.location.origin);
@@ -89,14 +89,15 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
       wasmModule = wasmInstance.instance.exports as unknown as WasmDSPModule;
       wasmSupported = true;
       
-      return wasmModule;
+      return wasmModule as WasmDSPModule;
     } catch (error) {
       console.warn('Failed to load WASM module, falling back to JavaScript:', error);
       wasmSupported = false;
       wasmLoading = null;
-      return null;
+      // This should never be reached since we cast the promise type
+      throw error;
     }
-  })() as Promise<WasmDSPModule>;
+  })();
 
   return wasmLoading.catch(() => null);
 }
