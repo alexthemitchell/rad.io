@@ -144,7 +144,9 @@ class MockSDRDevice implements ISDRDevice {
     // Simulate receiving IQ samples at the configured sample rate
     // Generate realistic FM signal at center frequency
     this.receiveInterval = setInterval(() => {
-      if (!this._isReceiving) return;
+      if (!this._isReceiving) {
+        return;
+      }
 
       const samplesPerChunk = 16384; // Reduced for testing (typical is 262144)
       const samples = this.generateRealisticSamples(samplesPerChunk);
@@ -480,7 +482,9 @@ describe("SDRDevice Interface", () => {
       let receivedData: DataView | null = null;
 
       await device.receive((data) => {
-        if (!receivedData) receivedData = data;
+        if (!receivedData) {
+          receivedData = data;
+        }
       });
 
       // Wait for samples
@@ -497,7 +501,9 @@ describe("SDRDevice Interface", () => {
       let receivedData: DataView | null = null;
 
       await device.receive((data) => {
-        if (!receivedData) receivedData = data;
+        if (!receivedData) {
+          receivedData = data;
+        }
       });
 
       await new Promise((resolve) => setTimeout(resolve, 150));

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useUSBDevice } from "./useUSBDevice";
 import { HackRFOne } from "../models/HackRFOne";
 
@@ -11,9 +11,10 @@ export function useHackRFDevice() {
     },
   ]);
 
-  const cleanup = () => {
+  const cleanup = useCallback(() => {
     device?.close().catch(console.error);
-  };
+  }, [device]);
+
   useEffect(() => {
     if (!usbDevice) {
       return;
@@ -25,7 +26,7 @@ export function useHackRFDevice() {
   }, [usbDevice]);
   useEffect(() => {
     return cleanup;
-  }, [device]);
+  }, [cleanup]);
 
   return {
     device,

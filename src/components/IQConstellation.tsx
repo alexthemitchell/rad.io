@@ -20,10 +20,14 @@ export default function IQConstellation({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || samples.length === 0) return;
+    if (!canvas || samples.length === 0) {
+      return;
+    }
 
     const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     // Set up high DPI canvas for crisp rendering
     const dpr = window.devicePixelRatio || 1;
@@ -170,7 +174,9 @@ export default function IQConstellation({
     // I-axis ticks
     for (let i = iMin; i <= iMax; i += 0.04) {
       const x = scaleI(i);
-      if (Math.abs(i) < 0.01) continue;
+      if (Math.abs(i) < 0.01) {
+        continue;
+      }
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
       ctx.fillText(i.toFixed(2), x, centerY + 6);
@@ -186,7 +192,9 @@ export default function IQConstellation({
     // Q-axis ticks
     for (let q = qMin; q <= qMax; q += 0.04) {
       const y = scaleQ(q);
-      if (Math.abs(q) < 0.01) continue;
+      if (Math.abs(q) < 0.01) {
+        continue;
+      }
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
       ctx.fillText(q.toFixed(2), centerX - 8, y);

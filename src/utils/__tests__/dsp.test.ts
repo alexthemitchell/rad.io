@@ -329,8 +329,12 @@ describe("DSP Utilities", () => {
         let phaseDiff = phase[i]! - phase[i - 1]!;
 
         // Handle phase wrapping
-        if (phaseDiff > Math.PI) phaseDiff -= 2 * Math.PI;
-        if (phaseDiff < -Math.PI) phaseDiff += 2 * Math.PI;
+        if (phaseDiff > Math.PI) {
+          phaseDiff -= 2 * Math.PI;
+        }
+        if (phaseDiff < -Math.PI) {
+          phaseDiff += 2 * Math.PI;
+        }
 
         // Phase should change consistently
         expect(Math.abs(phaseDiff)).toBeLessThan(1.0);

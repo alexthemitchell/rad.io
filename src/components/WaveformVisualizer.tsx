@@ -16,10 +16,14 @@ export default function WaveformVisualizer({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || samples.length === 0) return;
+    if (!canvas || samples.length === 0) {
+      return;
+    }
 
     const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     // Set up high DPI canvas
     const dpr = window.devicePixelRatio || 1;

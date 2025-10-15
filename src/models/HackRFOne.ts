@@ -85,12 +85,7 @@ export class HackRFOne {
 
   async open() {
     await this.usbDevice.open();
-    console.debug("Opened USB Device");
-
     await this.usbDevice.claimInterface(this.interfaceNumber);
-    console.debug("Claimed Interface", {
-      interfaceNumber: this.interfaceNumber,
-    });
   }
 
   async close() {
@@ -98,11 +93,7 @@ export class HackRFOne {
     this.streaming = false;
     this.closing = true;
     await this.usbDevice.releaseInterface(this.interfaceNumber);
-    console.debug("Released Interface", {
-      interfaceNumber: this.interfaceNumber,
-    });
     await this.usbDevice.close();
-    console.debug("Closed USB Device");
   }
 
   private async controlTransferIn({
@@ -123,9 +114,7 @@ export class HackRFOne {
       value,
       index,
     };
-    console.debug("Starting controlTransferIn", options, length);
     const result = await this.usbDevice.controlTransferIn(options, length);
-    console.debug("Completed controlTransferIn");
     return result;
   }
 
@@ -173,11 +162,9 @@ export class HackRFOne {
           );
         }
         try {
-          console.debug("Starting controlTransferOut", options, data);
           const result = await this.usbDevice.controlTransferOut(options, data);
           // Allow device state to settle
           await this.delay(50);
-          console.debug("Completed controlTransferOut");
           return result;
         } catch (err: unknown) {
           const error = err as Error & { name?: string };
@@ -212,7 +199,6 @@ export class HackRFOne {
     const hzPart = frequency % 1e6;
     const data = new Uint32Array([mhzPart, hzPart]);
     await this.controlTransferOut({ command: RequestCommand.SET_FREQ, data });
-    console.debug("Set Frequency", { frequency });
   }
 
   async setAmpEnable(enabled: boolean) {
@@ -221,7 +207,6 @@ export class HackRFOne {
       command: RequestCommand.AMP_ENABLE,
       value,
     });
-    console.debug("Set Amp Enabled", { enabled, value });
   }
 
   /**
@@ -238,17 +223,9 @@ export class HackRFOne {
     if (!data) {
       throw new Error("No data returned from controlTransferIn");
     }
-    console.log("Got Data", {
-      length: data.byteLength,
-      offset: data.byteOffset,
-    });
-    if (data.byteLength != 1 || !data.getUint8(data.byteOffset)) {
+    if (data.byteLength !== 1 || !data.getUint8(data.byteOffset)) {
       throw new Error("Invalid Param");
     }
-
-    console.log(data);
-    const result = data.getUint8(0);
-    console.log("Result from setting gain", { result });
   }
 
   private async setTransceiverMode(value: TransceiverMode) {
@@ -256,7 +233,6 @@ export class HackRFOne {
       command: RequestCommand.SET_TRANSCEIVER_MODE,
       value,
     });
-    console.debug("Set transceiver mode", { value });
   }
 
   // New method to set the sample rate (in Hz)
@@ -266,14 +242,12 @@ export class HackRFOne {
       command: RequestCommand.SAMPLE_RATE_SET,
       data,
     });
-    console.debug("Set Sample Rate", { sampleRate });
   }
 
   // New method to start reception with an optional data callback
   async receive(callback?: (data: DataView) => void) {
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
     this.streaming = true;
-    console.debug("Started RX stream");
     while (this.streaming) {
       try {
         const result = await this.usbDevice.transferIn(1, 4096);
@@ -283,14 +257,12 @@ export class HackRFOne {
 
           if (callback) {
             callback(result.data);
-          } else {
-            console.debug("Received data", result.data);
           }
         }
       } catch (err: unknown) {
         const error = err as Error & { name?: string };
         if (error.name === "AbortError") {
-          console.debug("transferIn aborted as expected during shutdown.");
+          // transferIn aborted as expected during shutdown
           break;
         } else {
           console.error("Unexpected error during transferIn:", err);
@@ -298,19 +270,16 @@ export class HackRFOne {
         }
       }
     }
-    console.debug("Exiting RX stream loop.");
     await this.setTransceiverMode(TransceiverMode.OFF);
     await this.controlTransferOut({
       command: RequestCommand.UI_ENABLE,
       value: 1,
     });
-    console.debug("Set device to OFF and UI enabled");
   }
 
   // New method to stop reception
   async stopRx() {
     this.streaming = false;
-    console.debug("Stopped RX stream");
   }
 
   /**
@@ -337,10 +306,6 @@ export class HackRFOne {
         this.totalBufferSize -= buffer.byteLength;
       }
     }
-    console.debug("Cleared old buffers", {
-      remainingBuffers: this.sampleBuffers.length,
-      totalSize: this.totalBufferSize,
-    });
   }
 
   /**
@@ -364,6 +329,5 @@ export class HackRFOne {
   clearBuffers(): void {
     this.sampleBuffers = [];
     this.totalBufferSize = 0;
-    console.debug("Cleared all buffers");
   }
 }

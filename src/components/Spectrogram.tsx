@@ -19,10 +19,14 @@ export default function Spectrogram({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || fftData.length === 0) return;
+    if (!canvas || fftData.length === 0) {
+      return;
+    }
 
     const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     // Set up high DPI canvas for crisp rendering
     const dpr = window.devicePixelRatio || 1;
@@ -105,7 +109,9 @@ export default function Spectrogram({
 
       for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
         const value = row[bin]!;
-        if (!isFinite(value)) continue;
+        if (!isFinite(value)) {
+          continue;
+        }
 
         // Normalize with dynamic range compression
         const normalized =
@@ -198,7 +204,9 @@ export default function Spectrogram({
     // X-axis (time) ticks - show frame numbers
     const timeStep = Math.ceil(numFrames / 6);
     for (let frame = 0; frame <= numFrames; frame += timeStep) {
-      if (frame >= numFrames) frame = numFrames - 1;
+      if (frame >= numFrames) {
+        frame = numFrames - 1;
+      }
       const x = margin.left + frame * frameWidth;
       const timeSec = (frame / numFrames) * 30; // Assuming 30 second total
 

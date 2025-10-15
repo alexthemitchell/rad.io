@@ -71,7 +71,9 @@ export function calculateFFTSync(
 
     for (let n = 0; n < Math.min(samples.length, fftSize); n++) {
       const sample = samples[n];
-      if (!sample) continue;
+      if (!sample) {
+        continue;
+      }
 
       const angle = (-2 * Math.PI * k * n) / fftSize;
       const cos = Math.cos(angle);
@@ -153,7 +155,9 @@ export function calculateWaveform(samples: Sample[]): {
 
   for (let i = 0; i < samples.length; i++) {
     const sample = samples[i];
-    if (!sample) continue;
+    if (!sample) {
+      continue;
+    }
 
     // Calculate amplitude (magnitude of complex number)
     amplitude[i] = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);

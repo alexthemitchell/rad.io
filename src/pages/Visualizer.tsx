@@ -54,8 +54,8 @@ function Visualizer() {
       } else {
         setListening(true);
         device
-          .receive((data) => {
-            console.debug("IQ Sample received:", data.byteLength, "bytes");
+          .receive(() => {
+            // IQ Sample received
           })
           .catch(console.error);
       }
