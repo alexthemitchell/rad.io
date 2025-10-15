@@ -1,4 +1,4 @@
-export type SignalType = "FM" | "AM";
+export type SignalType = "FM" | "AM" | "P25";
 
 type SignalTypeSelectorProps = {
   signalType: SignalType;
@@ -30,6 +30,15 @@ export default function SignalTypeSelector({
           aria-pressed={signalType === "AM"}
         >
           AM
+        </button>
+        <button
+          className={`signal-type-btn ${signalType === "P25" ? "active" : ""}`}
+          onClick={() => onSignalTypeChange("P25")}
+          title="P25 Phase 2 Trunked Radio (700-800 MHz, 150-174 MHz) - TDMA digital trunked radio system for public safety communications. Monitor talkgroups and control channels."
+          aria-label={`P25 Trunked Radio mode${signalType === "P25" ? " (currently selected)" : ""}`}
+          aria-pressed={signalType === "P25"}
+        >
+          P25
         </button>
       </div>
     </div>
