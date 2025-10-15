@@ -5,7 +5,6 @@ import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import json from "@eslint/json";
 import markdown from "@eslint/markdown";
-import css from "@eslint/css";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
@@ -37,21 +36,21 @@ export default defineConfig([
       
       // React Hooks rules
       "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/exhaustive-deps": "error",
       
       // TypeScript rules
       "@typescript-eslint/no-unused-vars": ["warn", { 
         argsIgnorePattern: "^_",
         varsIgnorePattern: "^_",
       }],
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/explicit-function-return-type": "off",
-      "@typescript-eslint/explicit-module-boundary-types": "off",
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/explicit-function-return-type": "error",
+      "@typescript-eslint/explicit-module-boundary-types": "error",
       
       // General code quality rules
-      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "no-console": ["error", { allow: ["warn", "error"] }],
       "no-debugger": "warn",
-      "prefer-const": "warn",
+      "prefer-const": "error",
       "no-var": "error",
       "eqeqeq": ["error", "always"],
       "curly": ["error", "all"],
@@ -63,7 +62,7 @@ export default defineConfig([
     },
   },
   {
-    ignores: ["dist/**", "node_modules/**", "**/*.css", "**/*.md"],
+    ignores: ["dist/**", "node_modules/**", "**/*.md"],
   },
   {
     files: ["**/*.json"],
