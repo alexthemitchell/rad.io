@@ -725,3 +725,133 @@ a:focus-visible,
   height: 1px;
   overflow: hidden;
 }
+
+/* File Import/Export Styles */
+.file-import-export {
+  margin-top: 20px;
+}
+
+.drop-zone {
+  border: 2px dashed #a0aab5;
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.drop-zone:hover {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.drop-zone.dragging {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.2);
+  transform: scale(1.02);
+}
+
+.drop-zone.processing {
+  border-color: #5aa3e8;
+  background: rgba(90, 163, 232, 0.1);
+  cursor: wait;
+}
+
+.drop-zone:focus {
+  outline: 3px solid #667eea;
+  outline-offset: 2px;
+}
+
+.drop-zone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.drop-zone-icon {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.drop-zone-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e6ed;
+  margin: 0;
+}
+
+.drop-zone-hint {
+  font-size: 14px;
+  color: #a0aab5;
+  margin: 0;
+}
+
+.export-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #e0e6ed;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.export-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.export-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.export-btn:focus {
+  outline: 3px solid #667eea;
+  outline-offset: 2px;
+}
+
+.file-status-message {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.file-status-message.success {
+  background: rgba(76, 175, 80, 0.2);
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  color: #81c784;
+}
+
+.file-status-message.error {
+  background: rgba(244, 67, 54, 0.2);
+  border: 1px solid rgba(244, 67, 54, 0.5);
+  color: #e57373;
+}
+
+.file-status-message.info {
+  background: rgba(90, 163, 232, 0.2);
+  border: 1px solid rgba(90, 163, 232, 0.5);
+  color: #5aa3e8;
+}

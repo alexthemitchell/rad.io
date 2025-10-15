@@ -14,6 +14,15 @@ import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
+import FileImportExport, {
+  FileImportResult,
+} from "../components/FileImportExport";
+import {
+  downloadFile,
+  exportPresets,
+  createPresetCollection,
+  PresetStation,
+} from "../utils/fileFormats";
 import "../styles/main.css";
 
 function Visualizer(): React.JSX.Element {
@@ -24,6 +33,13 @@ function Visualizer(): React.JSX.Element {
 
   // Live region for screen reader announcements
   const [liveRegionMessage, setLiveRegionMessage] = useState("");
+
+  // File import/export state
+  const [fileStatusMessage, setFileStatusMessage] = useState<{
+    type: "success" | "error" | "info";
+    message: string;
+  } | null>(null);
+  const [customPresets, setCustomPresets] = useState<PresetStation[]>([]);
 
   // P25 Trunked Radio State
   const [controlChannel, setControlChannel] = useState(770.95625e6);
@@ -205,6 +221,68 @@ function Visualizer(): React.JSX.Element {
     }
   };
 
+  // File import handler
+  const handleFileImport = (result: FileImportResult): void => {
+    if (result.type === "presets") {
+      setCustomPresets(result.data.stations);
+      setFileStatusMessage({
+        type: "success",
+        message: `Imported ${result.data.stations.length} stations from "${result.data.name}"`,
+      });
+      setLiveRegionMessage(
+        `Successfully imported ${result.data.stations.length} radio stations`,
+      );
+    } else if (result.type === "iq-recording") {
+      setFileStatusMessage({
+        type: "info",
+        message: `Loaded IQ recording with ${result.data.samples.length} samples at ${(result.data.metadata.centerFrequency / 1e6).toFixed(2)} MHz`,
+      });
+      setLiveRegionMessage(
+        `Loaded IQ recording with ${result.data.samples.length} samples`,
+      );
+      // Note: In a real implementation, you would pass these samples to the visualizations
+    }
+
+    // Clear message after 5 seconds
+    setTimeout(() => setFileStatusMessage(null), 5000);
+  };
+
+  // File import error handler
+  const handleFileError = (error: string): void => {
+    setFileStatusMessage({ type: "error", message: error });
+    setLiveRegionMessage(`File import error: ${error}`);
+    setTimeout(() => setFileStatusMessage(null), 5000);
+  };
+
+  // Export custom presets
+  const handleExportPresets = (): void => {
+    if (customPresets.length === 0) {
+      setFileStatusMessage({
+        type: "error",
+        message: "No custom presets to export",
+      });
+      setTimeout(() => setFileStatusMessage(null), 5000);
+      return;
+    }
+
+    const collection = createPresetCollection(
+      "My Radio Stations",
+      customPresets,
+      "Custom preset collection from rad.io",
+    );
+
+    const json = exportPresets(collection);
+    const filename = `radio-presets-${new Date().toISOString().split("T")[0]}.json`;
+    downloadFile(json, filename, "application/json");
+
+    setFileStatusMessage({
+      type: "success",
+      message: `Exported ${customPresets.length} presets to ${filename}`,
+    });
+    setLiveRegionMessage(`Exported ${customPresets.length} presets`);
+    setTimeout(() => setFileStatusMessage(null), 5000);
+  };
+
   return (
     <div className="container">
       {/* Skip link for keyboard navigation */}
@@ -378,6 +456,41 @@ function Visualizer(): React.JSX.Element {
         )}
 
         <DSPPipeline />
+
+        <Card
+          title="File Import/Export"
+          subtitle="Import and export IQ recordings and radio presets"
+        >
+          <FileImportExport
+            onImport={handleFileImport}
+            onError={handleFileError}
+          />
+
+          <div className="export-controls">
+            <button
+              className="export-btn"
+              onClick={handleExportPresets}
+              disabled={customPresets.length === 0}
+              title={
+                customPresets.length === 0
+                  ? "No custom presets to export. Import a preset file first."
+                  : `Export ${customPresets.length} custom presets to a JSON file`
+              }
+            >
+              <span aria-hidden="true">💾</span>
+              Export Presets ({customPresets.length})
+            </button>
+          </div>
+
+          {fileStatusMessage && (
+            <div
+              className={`file-status-message ${fileStatusMessage.type}`}
+              role="alert"
+            >
+              {fileStatusMessage.message}
+            </div>
+          )}
+        </Card>
 
         <div
           className="visualizations"
