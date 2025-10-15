@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "description": "Professional browser-based SDR visualizer with industry-standard signal analysis and universal device support",
   "scripts": {
-    "build": "webpack",
-    "build:prod": "webpack --mode production",
-    "start": "webpack serve",
+    "build": "npm run asbuild:release && webpack",
+    "build:prod": "npm run asbuild:release && webpack --mode production",
+    "start": "npm run asbuild:release && webpack serve",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "test": "jest --coverage",
@@ -14,12 +14,16 @@
     "format:check": "prettier --check",
     "type-check": "tsc --noEmit",
     "validate": "npm run lint && npm run format:check && npm run type-check && npm run build",
-    "clean": "rm -rf dist node_modules"
+    "clean": "rm -rf dist node_modules build",
+    "asbuild:debug": "asc assembly/index.ts --target debug",
+    "asbuild:release": "asc assembly/index.ts --target release",
+    "asbuild": "npm run asbuild:debug && npm run asbuild:release"
   },
   "author": "Alex Mitchell <alex@alexmitchelltech.com>",
   "license": "UNLICENSED",
   "private": true,
   "devDependencies": {
+    "@assemblyscript/loader": "^0.28.8",
     "@eslint/css": "^0.8.1",
     "@eslint/js": "^9.27.0",
     "@eslint/json": "^0.13.2",
@@ -30,6 +34,8 @@
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "@types/w3c-web-usb": "^1.0.10",
+    "assemblyscript": "^0.28.8",
+    "copy-webpack-plugin": "^13.0.1",
     "css-loader": "^7.1.2",
     "eslint": "^9.27.0",
     "eslint-plugin-react": "^7.37.5",
@@ -49,5 +55,11 @@
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./build/release.js",
+      "types": "./build/release.d.ts"
+    }
   }
 }

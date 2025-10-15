@@ -1,3 +1,10 @@
+import {
+  calculateFFTWasm,
+  calculateWaveformWasm,
+  calculateSpectrogramWasm,
+  isWasmAvailable,
+} from './dspWasm';
+
 export type Sample = {
   I: number;
   Q: number;
@@ -57,11 +64,21 @@ export function calculateFFT(samples: Sample[], fftSize: number): Float32Array {
 /**
  * Calculate FFT synchronously using manual DFT
  * Optimized for visualization with proper frequency shifting
+ * Now with WASM acceleration when available
  */
 export function calculateFFTSync(
   samples: Sample[],
   fftSize: number,
 ): Float32Array {
+  // Try WASM first if available
+  if (isWasmAvailable()) {
+    const wasmResult = calculateFFTWasm(samples, fftSize);
+    if (wasmResult) {
+      return wasmResult;
+    }
+  }
+
+  // Fallback to JavaScript DFT implementation
   const output = new Float32Array(fftSize);
 
   // Perform DFT (Discrete Fourier Transform)
@@ -112,11 +129,21 @@ export function calculateSpectrogramRow(
 
 /**
  * Calculate full spectrogram from sample data
+ * Now with WASM acceleration when available
  */
 export function calculateSpectrogram(
   samples: Sample[],
   fftSize: number,
 ): Float32Array[] {
+  // Try WASM first if available
+  if (isWasmAvailable()) {
+    const wasmResult = calculateSpectrogramWasm(samples, fftSize);
+    if (wasmResult) {
+      return wasmResult;
+    }
+  }
+
+  // Fallback to JavaScript implementation
   const rowCount = Math.floor(samples.length / fftSize);
   const spectrogramData: Float32Array[] = [];
 
@@ -145,11 +172,21 @@ export function convertToSamples(rawSamples: [number, number][]): Sample[] {
 
 /**
  * Calculate waveform data for time-domain visualization
+ * Now with WASM acceleration when available
  */
 export function calculateWaveform(samples: Sample[]): {
   amplitude: Float32Array;
   phase: Float32Array;
 } {
+  // Try WASM first if available
+  if (isWasmAvailable()) {
+    const wasmResult = calculateWaveformWasm(samples);
+    if (wasmResult) {
+      return wasmResult;
+    }
+  }
+
+  // Fallback to JavaScript implementation
   const amplitude = new Float32Array(samples.length);
   const phase = new Float32Array(samples.length);
 
