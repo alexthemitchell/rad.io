@@ -25,6 +25,7 @@ HTMLCanvasElement.prototype.getContext = function() {
     rect: jest.fn(),
     scale: jest.fn(),
     translate: jest.fn(),
+    rotate: jest.fn(),
     save: jest.fn(),
     restore: jest.fn(),
     measureText: jest.fn(() => ({ width: 0 })),

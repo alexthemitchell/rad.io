@@ -17,7 +17,7 @@ import type { Sample } from "../../utils/dsp";
  * Generate realistic FM broadcast signal
  * Simulates what HackRF/RTLSDR would capture from a strong FM station
  */
-function generateFMSignal(sampleCount: number, carrierOffset = 0): Sample[] {
+function generateFMSignal(sampleCount = 512, carrierOffset = 0): Sample[] {
   const samples: Sample[] = [];
   const sampleRate = 10e6; // 10 MSPS
   const carrierFreq = carrierOffset; // Offset from center
@@ -48,7 +48,7 @@ function generateFMSignal(sampleCount: number, carrierOffset = 0): Sample[] {
  * Generate AM broadcast signal
  * Simulates traditional AM radio signal
  */
-function generateAMSignal(sampleCount: number, carrierOffset = 0): Sample[] {
+function generateAMSignal(sampleCount = 512, carrierOffset = 0): Sample[] {
   const samples: Sample[] = [];
   const sampleRate = 10e6;
   const carrierFreq = carrierOffset;
@@ -73,7 +73,7 @@ function generateAMSignal(sampleCount: number, carrierOffset = 0): Sample[] {
  * Generate digital modulation (QPSK)
  * Simulates digital communications signal
  */
-function generateQPSKSignal(sampleCount: number): Sample[] {
+function generateQPSKSignal(sampleCount = 512): Sample[] {
   const samples: Sample[] = [];
   const symbolRate = 1e3; // 1 kHz symbol rate
   const sampleRate = 10e6;
@@ -104,7 +104,7 @@ function generateQPSKSignal(sampleCount: number): Sample[] {
  * Generate noise-only signal
  * Simulates empty frequency or very weak signal
  */
-function generateNoiseSignal(sampleCount: number): Sample[] {
+function generateNoiseSignal(sampleCount = 512): Sample[] {
   const samples: Sample[] = [];
   for (let n = 0; n < sampleCount; n++) {
     samples.push({
@@ -119,7 +119,7 @@ function generateNoiseSignal(sampleCount: number): Sample[] {
  * Generate multi-tone signal
  * Simulates frequency with multiple signals present
  */
-function generateMultiToneSignal(sampleCount: number): Sample[] {
+function generateMultiToneSignal(sampleCount = 512): Sample[] {
   const samples: Sample[] = [];
   const sampleRate = 10e6;
 
@@ -154,7 +154,7 @@ function generateMultiToneSignal(sampleCount: number): Sample[] {
  * Generate pulsed signal
  * Simulates radar or burst transmissions
  */
-function generatePulsedSignal(sampleCount: number): Sample[] {
+function generatePulsedSignal(sampleCount = 512): Sample[] {
   const samples: Sample[] = [];
   const sampleRate = 10e6;
   const pulseFreq = 100e3;
@@ -279,7 +279,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       }
 
       const { container } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />,
+        <Spectrogram fftData={spectrogramData} />,
       );
 
       const canvas = container.querySelector("canvas");
@@ -299,7 +299,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       }
 
       const { container } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />,
+        <Spectrogram fftData={spectrogramData} />,
       );
 
       const canvas = container.querySelector("canvas");
@@ -325,7 +325,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       }
 
       const { container } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />,
+        <Spectrogram fftData={spectrogramData} />,
       );
 
       const canvas = container.querySelector("canvas");
@@ -356,7 +356,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
         }
 
         const { container } = render(
-          <Spectrogram data={spectrogramData} fftSize={fftSize} />,
+          <Spectrogram fftData={spectrogramData} />,
         );
 
         const canvas = container.querySelector("canvas");
@@ -377,7 +377,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       }
 
       const { container } = render(
-        <Spectrogram data={spectrogramData} fftSize={fftSize} />,
+        <Spectrogram fftData={spectrogramData} />,
       );
 
       const canvas = container.querySelector("canvas");
@@ -407,8 +407,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       expect(canvas).toBeInTheDocument();
 
       // AM envelope should vary
-      const maxAmp = Math.max(...amplitude);
-      const minAmp = Math.min(...amplitude);
+      const maxAmp = Math.max(...Array.from(amplitude));
+      const minAmp = Math.min(...Array.from(amplitude));
       expect(maxAmp - minAmp).toBeGreaterThan(0.2);
     });
 
