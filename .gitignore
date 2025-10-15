@@ -36,3 +36,7 @@ coverage/
 # Logs
 logs/
 *.log
+
+# Self-assessment reports (keep structure, ignore generated reports)
+.serena/memories/assessment-*.md
+.serena/memories/index.md
