@@ -162,7 +162,7 @@ export class TestMemoryMonitor {
       const deltaMB = (delta / 1024 / 1024).toFixed(2);
 
       if (label) {
-        console.log(`[Memory] ${label}: ${deltaMB} MB delta`);
+        console.warn(`[Memory] ${label}: ${deltaMB} MB delta`);
       }
     }
   }

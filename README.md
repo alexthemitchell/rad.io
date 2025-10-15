@@ -141,6 +141,7 @@ src/
 ```bash
 # Development
 npm start              # HTTPS dev server with HMR
+npm run dev            # Alias for npm start
 
 # Quality Control
 npm run lint           # ESLint validation
@@ -148,14 +149,21 @@ npm run lint:fix       # Auto-fix linting issues
 npm run format         # Format code with Prettier
 npm run format:check   # Check code formatting
 npm run type-check     # TypeScript validation
+npm run validate       # Run all quality checks + build
 
 # Testing
 npm test               # Run all tests
+npm run test:unit      # Run unit tests (DSP, memory, device)
+npm run test:components # Run component tests
 npm run test:watch     # Watch mode
 npm run test:coverage  # Coverage report
 
 # Build
-npm run build          # Production build
+npm run build          # Development build
+npm run build:prod     # Production build
+
+# Cleanup
+npm run clean          # Remove build artifacts and dependencies
 ```
 
 ### Running Tests
@@ -164,12 +172,17 @@ npm run build          # Production build
 # Run all 122+ tests
 npm test
 
+# Run specific test suites
+npm run test:unit        # Unit tests only (faster)
+npm run test:components  # Component tests only
+
 # Test suites:
 # - DSP Utilities (29 tests)
 # - IQ Constellation (11 tests)
 # - Spectrogram (13 tests)
 # - SDR Device Interface (43 tests)
 # - Realistic SDR Data (26 tests)
+# - Memory Management (10 tests)
 ```
 
 ### Code Quality Standards

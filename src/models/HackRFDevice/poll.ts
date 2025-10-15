@@ -24,7 +24,9 @@ export async function poll(
     >();
     let cancelled = false;
     const tryCancel = () => {
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
       /*
 			  TODO: cancel pending
 			  pendingTransfers.forEach((x) => {
@@ -47,7 +49,9 @@ export async function poll(
       tryCancel()
     );
     const safeCall = (fn: () => void) => {
-      if (settled) return;
+      if (settled) {
+        return;
+      }
       try {
         fn();
       } catch (e) {
@@ -74,7 +78,9 @@ export async function poll(
         buffer.byteLength,
       );
       if (isOut) {
-        if (callback(array) === false) break;
+        if (callback(array) === false) {
+          break;
+        }
       }
 
       const submitTransfer = () => {
@@ -102,7 +108,9 @@ export async function poll(
         // TODO: const transfer = endpoint.transfer(0, transferCallback).submit(buffer)
         void pendingTransfers.add(transfer);
         void transfer.catch((error: unknown) => {
-          if (!rejected && error) wrapReject(error);
+          if (!rejected && error) {
+            wrapReject(error);
+          }
           // potentially heavy callback... move to the next tick
           // to prevent starving the loop (setImmediate preserves order)
           if (settled) {
@@ -113,8 +121,11 @@ export async function poll(
           function inNextTick() {
             pendingTransfers.delete(transfer);
             safeCall(() => {
-              if (callback(isOut ? array : array.subarray(0, length)) === false)
+              if (
+                callback(isOut ? array : array.subarray(0, length)) === false
+              ) {
                 wrapResolve();
+              }
             });
             safeCall(submitTransfer);
             doSettle();

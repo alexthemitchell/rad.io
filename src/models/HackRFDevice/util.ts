@@ -56,7 +56,9 @@ export function computeBasebandFilterBwRoundDownLt(bandwidthHz: number) {
   checkU32(bandwidthHz);
   let idx: number;
   for (idx = 0; idx < max2837_ft.length; idx++) {
-    if (max2837_ft[idx]! >= bandwidthHz) break;
+    if (max2837_ft[idx]! >= bandwidthHz) {
+      break;
+    }
   }
   // Round down (if no equal to first entry)
   idx = Math.max(idx - 1, 0);
@@ -72,10 +74,14 @@ export function computeBasebandFilterBw(bandwidthHz: number) {
   checkU32(bandwidthHz);
   let idx: number;
   for (idx = 0; idx < max2837_ft.length; idx++) {
-    if (max2837_ft[idx]! >= bandwidthHz) break;
+    if (max2837_ft[idx]! >= bandwidthHz) {
+      break;
+    }
   }
   // Round down (if no equal to first entry) and if > bandwidthHz
-  if (max2837_ft[idx]! >= bandwidthHz) idx = Math.max(idx - 1, 0);
+  if (max2837_ft[idx]! >= bandwidthHz) {
+    idx = Math.max(idx - 1, 0);
+  }
   return max2837_ft[idx];
 }
 
@@ -91,7 +97,9 @@ export class HackrfError extends Error {
 }
 
 export function checkU32(x: number) {
-  if (x >>> 0 === x) return x;
+  if (x >>> 0 === x) {
+    return x;
+  }
   throw new HackrfError(ErrorCode.INVALID_PARAM);
 }
 
@@ -99,7 +107,9 @@ export function checkU32(x: number) {
 // number is a valid int32. bits must be <= 31
 export const bitChecker = (bits: number) => (x: number) => {
   const mask = (1 << bits) - 1;
-  if ((x & mask) === x) return x;
+  if ((x & mask) === x) {
+    return x;
+  }
   throw new HackrfError(ErrorCode.INVALID_PARAM);
 };
 export const checkU8 = bitChecker(8);
@@ -110,14 +120,18 @@ export const checkMax2837Value = bitChecker(10);
 export const checkSi5351cReg = bitChecker(8);
 export const checkSi5351cValue = bitChecker(8);
 export function checkRffc5071Reg(x: number) {
-  if (checkU32(x) < 31) return x;
+  if (checkU32(x) < 31) {
+    return x;
+  }
   throw new HackrfError(ErrorCode.INVALID_PARAM);
 }
 export const checkRffc5071Value = bitChecker(16);
 export const checkSpiflashAddress = bitChecker(20);
 
 export const rangeChecker = (min: number, max: number) => (x: number) => {
-  if (x >= min && x <= max) return x;
+  if (x >= min && x <= max) {
+    return x;
+  }
   throw new HackrfError(ErrorCode.INVALID_PARAM);
 };
 export const checkBasebandFilterBw = rangeChecker(
@@ -129,7 +143,9 @@ export const checkFreq = rangeChecker(FREQ_HZ_MIN, FREQ_HZ_MAX);
 export const checkIFreq = rangeChecker(IF_HZ_MIN, IF_HZ_MAX);
 
 export function checkInLength(view: DataView, minLength: number) {
-  if (view.byteLength >= minLength) return view;
+  if (view.byteLength >= minLength) {
+    return view;
+  }
   throw new HackrfError(ErrorCode.LIBUSB);
 }
 
@@ -152,7 +168,9 @@ function chooseDivider(n: number) {
   const roundError = (x: bigint) => Math.abs(Number(x - round(x)));
 
   for (let divider = 1; divider <= 31; divider++) {
-    if (roundError(BigInt(divider) * frac) < 2 ** (e + 4)) return divider;
+    if (roundError(BigInt(divider) * frac) < 2 ** (e + 4)) {
+      return divider;
+    }
   }
   return 1;
 }
