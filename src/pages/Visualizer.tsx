@@ -127,6 +127,7 @@ function Visualizer() {
   // Simulate P25 activity (in real implementation, this would decode actual P25 data)
   useEffect(() => {
     if (listening && signalType === "P25") {
+      const timeoutIds: NodeJS.Timeout[] = [];
       const interval = setInterval(() => {
         // Simulate random talkgroup activity
         const enabledTalkgroups = talkgroups.filter((tg) => tg.enabled);
@@ -144,7 +145,7 @@ function Visualizer() {
             setIsEncrypted(Math.random() > 0.7);
 
             // Clear after a few seconds
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
               setCurrentTalkgroup(null);
               setCurrentTalkgroupName(null);
               setSignalPhase(null);
@@ -152,11 +153,15 @@ function Visualizer() {
               setSignalStrength(0);
               setIsEncrypted(false);
             }, 3000);
+            timeoutIds.push(timeoutId);
           }
         }
       }, 5000);
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        timeoutIds.forEach((id) => clearTimeout(id));
+      };
     }
   }, [listening, signalType, talkgroups]);
 

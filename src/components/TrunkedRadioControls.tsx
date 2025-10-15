@@ -24,7 +24,15 @@ export default function TrunkedRadioControls({
   const handleControlChannelChange = ({
     target: { value },
   }: ChangeEvent<HTMLInputElement>) => {
+    if (value === "") {
+      // Skip update if input is empty
+      return;
+    }
     const numValue = Number(value);
+    if (Number.isNaN(numValue)) {
+      // Skip update if input is not a valid number
+      return;
+    }
     onControlChannelChange(numValue * 1e6);
   };
 
@@ -60,7 +68,7 @@ export default function TrunkedRadioControls({
           name="controlChannel"
           className="control-input"
           min={150}
-          max={800}
+          max={900}
           step={0.0125}
           value={displayFreq.toFixed(4)}
           onChange={handleControlChannelChange}

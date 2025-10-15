@@ -32,13 +32,13 @@ export default function TalkgroupStatus({
   };
 
   const getSignalStrengthClass = (strength: number): string => {
-    if (strength >= 60) {
+    if (strength >= 80) {
       return "excellent";
     }
-    if (strength >= 40) {
+    if (strength >= 60) {
       return "good";
     }
-    if (strength >= 20) {
+    if (strength >= 40) {
       return "fair";
     }
     return "weak";
