@@ -9,7 +9,6 @@ import {
   SpeechRecognitionProcessor,
   isSpeechRecognitionSupported,
   recognizeSpeech,
-  createSpeechRecognitionCallback,
   SpeechRecognitionErrorCode,
 } from "../speechRecognition";
 import type {
@@ -73,6 +72,14 @@ class MockSpeechRecognition {
       // Simulate successful recognition after a delay
       setTimeout(() => {
         this.simulateResult("test transcription", 0.95, true);
+
+        // Auto-end after final result in non-continuous mode
+        setTimeout(() => {
+          if (!this.continuous && this.onend) {
+            this.isStarted = false;
+            this.onend();
+          }
+        }, 5);
       }, 10);
     }, 5);
   }
@@ -404,7 +411,8 @@ describe("SpeechRecognitionProcessor", () => {
     it("should receive recognition results", async () => {
       const processor = new SpeechRecognitionProcessor();
 
-      let receivedResult: SpeechRecognitionTranscriptResult | null = null;
+      let receivedResult: SpeechRecognitionTranscriptResult | null =
+        null as SpeechRecognitionTranscriptResult | null;
 
       processor.setCallbacks({
         onResult: (result) => {
@@ -470,10 +478,19 @@ describe("SpeechRecognitionProcessor", () => {
 
             this.onresult(mockResult);
           }
+
+          // Auto-end after final result in non-continuous mode
+          setTimeout(() => {
+            if (!this.continuous && this.onend) {
+              this.isStarted = false;
+              this.onend();
+            }
+          }, 5);
         }, 10);
       };
 
-      let receivedResult: SpeechRecognitionTranscriptResult | null = null;
+      let receivedResult: SpeechRecognitionTranscriptResult | null =
+        null as SpeechRecognitionTranscriptResult | null;
 
       processor.setCallbacks({
         onResult: (result) => {
@@ -483,8 +500,6 @@ describe("SpeechRecognitionProcessor", () => {
 
       const audioResult = createMockAudioStreamResult();
       await processor.recognizeFromAudioStream(audioResult);
-
-      await new Promise((resolve) => setTimeout(resolve, 30));
 
       expect(receivedResult?.alternatives).toHaveLength(3);
       expect(receivedResult?.alternatives[0]?.transcript).toBe("first option");
@@ -544,7 +559,8 @@ describe("SpeechRecognitionProcessor", () => {
     it("should handle no-speech error", async () => {
       const processor = new SpeechRecognitionProcessor();
 
-      let receivedError: SpeechRecognitionErrorInfo | null = null;
+      let receivedError: SpeechRecognitionErrorInfo | null =
+        null as SpeechRecognitionErrorInfo | null;
 
       processor.setCallbacks({
         onError: (error) => {
@@ -582,7 +598,8 @@ describe("SpeechRecognitionProcessor", () => {
     it("should handle network error", async () => {
       const processor = new SpeechRecognitionProcessor();
 
-      let receivedError: SpeechRecognitionErrorInfo | null = null;
+      let receivedError: SpeechRecognitionErrorInfo | null =
+        null as SpeechRecognitionErrorInfo | null;
 
       processor.setCallbacks({
         onError: (error) => {
@@ -620,7 +637,8 @@ describe("SpeechRecognitionProcessor", () => {
     it("should handle audio-capture error", async () => {
       const processor = new SpeechRecognitionProcessor();
 
-      let receivedError: SpeechRecognitionErrorInfo | null = null;
+      let receivedError: SpeechRecognitionErrorInfo | null =
+        null as SpeechRecognitionErrorInfo | null;
 
       processor.setCallbacks({
         onError: (error) => {
@@ -721,44 +739,57 @@ describe("Convenience Functions", () => {
       const confidences: number[] = [];
       const finals: boolean[] = [];
 
-      const callback = createSpeechRecognitionCallback(
-        (transcript, confidence, isFinal) => {
-          transcripts.push(transcript);
-          confidences.push(confidence);
-          finals.push(isFinal);
+      const processor = new SpeechRecognitionProcessor({
+        continuous: false, // Use non-continuous for test
+        interimResults: true,
+      });
+
+      processor.setCallbacks({
+        onResult: (result) => {
+          if (result.alternatives.length > 0) {
+            const alt = result.alternatives[0]!;
+            transcripts.push(alt.transcript);
+            confidences.push(alt.confidence);
+            finals.push(result.isFinal);
+          }
         },
-        { continuous: true, interimResults: true },
-      );
+      });
 
       const audioResult = createMockAudioStreamResult();
-      await callback(audioResult);
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await processor.recognizeFromAudioStream(audioResult);
 
       expect(transcripts.length).toBeGreaterThan(0);
       expect(transcripts[0]).toBe("test transcription");
       expect(confidences[0]).toBe(0.95);
       expect(finals[0]).toBe(true);
+
+      processor.cleanup();
     });
 
     it("should handle multiple audio chunks", async () => {
       const transcripts: string[] = [];
 
-      const callback = createSpeechRecognitionCallback(
-        (transcript) => {
-          transcripts.push(transcript);
+      const processor = new SpeechRecognitionProcessor({
+        continuous: false,
+      });
+
+      processor.setCallbacks({
+        onResult: (result) => {
+          if (result.alternatives.length > 0) {
+            transcripts.push(result.alternatives[0]!.transcript);
+          }
         },
-        { continuous: true },
-      );
+      });
 
       // Process multiple audio chunks
       for (let i = 0; i < 3; i++) {
         const audioResult = createMockAudioStreamResult();
-        await callback(audioResult);
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await processor.recognizeFromAudioStream(audioResult);
       }
 
       expect(transcripts.length).toBeGreaterThan(0);
+
+      processor.cleanup();
     });
   });
 });

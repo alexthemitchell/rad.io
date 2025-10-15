@@ -17,6 +17,12 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Amplitude Waveform**: Time-domain envelope with reference lines
 - **Power Spectral Density**: Viridis colormap spectrogram
 
+### 🎤 Speech Recognition
+- **Browser-Native Transcription**: Web Speech API integration for real-time speech-to-text
+- **AI-Ready Audio Stream**: Clean demodulated audio optimized for recognition
+- **Multiple Language Support**: Transcribe communications in various languages
+- **Robust Error Handling**: Gracefully handles noisy/distorted radio audio
+
 ### 🔌 Universal Device Support
 - **HackRF One**: Native implementation
 - **RTL-SDR**: Format conversion utilities
@@ -111,6 +117,23 @@ npm run build
 - Vertical axis = Frequency
 - Bright bands = Strong signals
 
+### Speech Recognition
+
+**Basic Transcription**
+1. Tune to a voice transmission (FM/AM)
+2. Ensure good signal strength
+3. Speech recognition automatically transcribes audio
+4. View transcripts in real-time
+
+**Supported Use Cases:**
+- Public safety radio monitoring
+- Aviation communications
+- Amateur radio logging
+- Emergency broadcast transcription
+- Multi-language monitoring
+
+**Note**: Web Speech API requires Chrome/Edge browsers and may request microphone permission.
+
 ### Digital Signal Processing Pipeline
 
 The DSP pipeline visualization shows the complete signal flow:
@@ -131,7 +154,7 @@ src/
 ├── components/     # UI components and visualizations
 ├── models/         # SDR device implementations  
 ├── hooks/          # React hooks for device management
-├── utils/          # DSP algorithms and utilities
+├── utils/          # DSP algorithms, audio stream, speech recognition
 ├── pages/          # Top-level page components
 └── styles/         # CSS styling
 ```
@@ -170,7 +193,7 @@ npm run clean          # Remove build artifacts and dependencies
 ### Running Tests
 
 ```bash
-# Run all 122+ tests
+# Run all tests
 npm test
 
 # Run specific test suites
@@ -184,6 +207,8 @@ npm run test:components  # Component tests only
 # - SDR Device Interface (43 tests)
 # - Realistic SDR Data (26 tests)
 # - Memory Management (10 tests)
+# - Audio Stream Extraction (15 tests)
+# - Speech Recognition (35 tests)
 ```
 
 ### Code Quality Standards
@@ -428,7 +453,8 @@ For issues, questions, or feature requests:
 ## Roadmap
 
 ### Planned Features
-- Real-time audio demodulation
+- Real-time audio demodulation ✅ (Completed)
+- Speech recognition ✅ (Completed)
 - Waterfall display mode
 - Recording and playback
 - Additional device support (SDRPlay, BladeRF)
