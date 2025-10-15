@@ -124,7 +124,10 @@ class MockSpeechRecognition {
             0: { transcript, confidence },
             length: 1,
             isFinal,
-            item: () => ({ transcript, confidence }),
+            item: (): SpeechRecognitionAlternative => ({
+              transcript,
+              confidence,
+            }),
           },
         ],
         resultIndex: 0,
@@ -165,15 +168,19 @@ class MockAudioContext {
     return buffer;
   }
 
-  createBufferSource() {
+  createBufferSource(): {
+    buffer: AudioBuffer | null;
+    connect: () => void;
+    start: () => void;
+  } {
     return {
       buffer: null,
-      connect: () => {},
-      start: () => {},
+      connect: (): void => {},
+      start: (): void => {},
     };
   }
 
-  createMediaStreamDestination() {
+  createMediaStreamDestination(): { stream: MediaStream } {
     return {
       stream: new MediaStream(),
     };
@@ -388,7 +395,7 @@ describe("SpeechRecognitionProcessor", () => {
       let errorCalled = false;
 
       processor.setCallbacks({
-        onError: (error) => {
+        onError: (error): void => {
           if (error.error === SpeechRecognitionErrorCode.ABORTED) {
             errorCalled = true;
           }
@@ -446,7 +453,7 @@ describe("SpeechRecognitionProcessor", () => {
         "recognition"
       ] as unknown as MockSpeechRecognition;
       const _originalStart = recognition.start.bind(recognition);
-      recognition.start = function () {
+      recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
           if (this.onstart) {
@@ -463,13 +470,15 @@ describe("SpeechRecognitionProcessor", () => {
                   2: { transcript: "third option", confidence: 0.75 },
                   length: 3,
                   isFinal: true,
-                  item: (index: number) => {
+                  item: (
+                    index: number,
+                  ): { transcript: string; confidence: number } => {
                     const alts = [
                       { transcript: "first option", confidence: 0.95 },
                       { transcript: "second option", confidence: 0.85 },
                       { transcript: "third option", confidence: 0.75 },
                     ];
-                    return alts[index];
+                    return alts[index]!;
                   },
                 },
               ],
@@ -517,7 +526,7 @@ describe("SpeechRecognitionProcessor", () => {
       const results: SpeechRecognitionTranscriptResult[] = [];
 
       processor.setCallbacks({
-        onResult: (result) => {
+        onResult: (result): void => {
           results.push(result);
         },
       });
@@ -527,7 +536,7 @@ describe("SpeechRecognitionProcessor", () => {
         "recognition"
       ] as unknown as MockSpeechRecognition;
       const _originalStart = recognition.start.bind(recognition);
-      recognition.start = function () {
+      recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
           if (this.onstart) {
@@ -563,7 +572,7 @@ describe("SpeechRecognitionProcessor", () => {
         null as SpeechRecognitionErrorInfo | null;
 
       processor.setCallbacks({
-        onError: (error) => {
+        onError: (error): void => {
           receivedError = error;
         },
       });
@@ -573,7 +582,7 @@ describe("SpeechRecognitionProcessor", () => {
         "recognition"
       ] as unknown as MockSpeechRecognition;
       const _originalStart = recognition.start.bind(recognition);
-      recognition.start = function () {
+      recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
           if (this.onstart) {
@@ -602,7 +611,7 @@ describe("SpeechRecognitionProcessor", () => {
         null as SpeechRecognitionErrorInfo | null;
 
       processor.setCallbacks({
-        onError: (error) => {
+        onError: (error): void => {
           receivedError = error;
         },
       });
@@ -612,7 +621,7 @@ describe("SpeechRecognitionProcessor", () => {
         "recognition"
       ] as unknown as MockSpeechRecognition;
       const _originalStart = recognition.start.bind(recognition);
-      recognition.start = function () {
+      recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
           if (this.onstart) {
@@ -641,7 +650,7 @@ describe("SpeechRecognitionProcessor", () => {
         null as SpeechRecognitionErrorInfo | null;
 
       processor.setCallbacks({
-        onError: (error) => {
+        onError: (error): void => {
           receivedError = error;
         },
       });
@@ -651,7 +660,7 @@ describe("SpeechRecognitionProcessor", () => {
         "recognition"
       ] as unknown as MockSpeechRecognition;
       const _originalStart = recognition.start.bind(recognition);
-      recognition.start = function () {
+      recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
           if (this.onstart) {
@@ -715,7 +724,7 @@ describe("Convenience Functions", () => {
           webkitSpeechRecognition: typeof MockSpeechRecognition;
         }
       ).webkitSpeechRecognition = class extends MockSpeechRecognition {
-        start() {
+        start(): void {
           super.start();
           setTimeout(() => {
             this.simulateError("network");

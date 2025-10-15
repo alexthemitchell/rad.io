@@ -315,7 +315,7 @@ export class SpeechRecognitionProcessor {
     }
 
     // Result handler
-    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+    this.recognition.onresult = (event: SpeechRecognitionEvent): void => {
       const results: SpeechRecognitionTranscriptResult[] = [];
 
       // Process all results from the event
@@ -356,7 +356,7 @@ export class SpeechRecognitionProcessor {
     };
 
     // Start handler
-    this.recognition.onstart = () => {
+    this.recognition.onstart = (): void => {
       this.isRecognizing = true;
       if (this.callbacks.onStart) {
         this.callbacks.onStart();
@@ -364,7 +364,7 @@ export class SpeechRecognitionProcessor {
     };
 
     // End handler
-    this.recognition.onend = () => {
+    this.recognition.onend = (): void => {
       this.isRecognizing = false;
       if (this.callbacks.onEnd) {
         this.callbacks.onEnd();
@@ -372,7 +372,7 @@ export class SpeechRecognitionProcessor {
     };
 
     // Error handler
-    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    this.recognition.onerror = (event: SpeechRecognitionErrorEvent): void => {
       const error: SpeechRecognitionErrorInfo = {
         error: event.error as SpeechRecognitionErrorCode,
         message: this.getErrorMessage(event.error),
@@ -467,7 +467,7 @@ export class SpeechRecognitionProcessor {
       const originalOnEnd = this.callbacks.onEnd;
       const originalOnError = this.callbacks.onError;
 
-      this.callbacks.onEnd = () => {
+      this.callbacks.onEnd = (): void => {
         // Restore original callback
         this.callbacks.onEnd = originalOnEnd;
         if (originalOnEnd) {
@@ -476,7 +476,7 @@ export class SpeechRecognitionProcessor {
         resolve();
       };
 
-      this.callbacks.onError = (error) => {
+      this.callbacks.onError = (error): void => {
         // Restore original callback
         this.callbacks.onError = originalOnError;
         if (originalOnError) {

@@ -8,14 +8,14 @@ import {
   calculateWaveform,
   calculateSpectrogram,
   Sample,
-} from './dsp';
+} from "./dsp";
 import {
   loadWasmModule,
   isWasmAvailable,
   calculateFFTWasm,
   calculateWaveformWasm,
   calculateSpectrogramWasm,
-} from './dspWasm';
+} from "./dspWasm";
 
 export interface BenchmarkResult {
   operation: string;
@@ -80,7 +80,7 @@ export async function benchmarkFFT(
   const speedup = wasmDuration !== null ? jsDuration / wasmDuration : null;
 
   return {
-    operation: 'FFT',
+    operation: "FFT",
     jsDuration,
     wasmDuration,
     speedup,
@@ -115,7 +115,7 @@ export async function benchmarkWaveform(
   const speedup = wasmDuration !== null ? jsDuration / wasmDuration : null;
 
   return {
-    operation: 'Waveform',
+    operation: "Waveform",
     jsDuration,
     wasmDuration,
     speedup,
@@ -150,7 +150,7 @@ export async function benchmarkSpectrogram(
   const speedup = wasmDuration !== null ? jsDuration / wasmDuration : null;
 
   return {
-    operation: 'Spectrogram',
+    operation: "Spectrogram",
     jsDuration,
     wasmDuration,
     speedup,
@@ -166,7 +166,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
 
   // Use console.error for benchmark output (console.log not allowed by linter)
-  console.error('Running DSP Performance Benchmarks...\n');
+  console.error("Running DSP Performance Benchmarks...\n");
 
   // FFT benchmarks with various sizes
   const fftSizes = [64, 128, 256, 512, 1024, 2048];
@@ -175,7 +175,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
     const result = await benchmarkFFT(size, size, 5);
     results.push(result);
     console.error(
-      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || 'N/A'}ms, Speedup: ${result.speedup?.toFixed(2) || 'N/A'}x\n`,
+      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) || "N/A"}x\n`,
     );
   }
 
@@ -186,7 +186,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
     const result = await benchmarkWaveform(size, 5);
     results.push(result);
     console.error(
-      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || 'N/A'}ms, Speedup: ${result.speedup?.toFixed(2) || 'N/A'}x\n`,
+      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) || "N/A"}x\n`,
     );
   }
 
@@ -207,7 +207,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
     );
     results.push(result);
     console.error(
-      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || 'N/A'}ms, Speedup: ${result.speedup?.toFixed(2) || 'N/A'}x\n`,
+      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) || "N/A"}x\n`,
     );
   }
 
@@ -218,31 +218,33 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
  * Format benchmark results as a markdown table
  */
 export function formatBenchmarkResults(results: BenchmarkResult[]): string {
-  let output = '# DSP Performance Benchmark Results\n\n';
-  output += '| Operation | Samples | FFT Size | JS (ms) | WASM (ms) | Speedup |\n';
-  output += '|-----------|---------|----------|---------|-----------|----------|\n';
+  let output = "# DSP Performance Benchmark Results\n\n";
+  output +=
+    "| Operation | Samples | FFT Size | JS (ms) | WASM (ms) | Speedup |\n";
+  output +=
+    "|-----------|---------|----------|---------|-----------|----------|\n";
 
   for (const result of results) {
-    const fftSizeStr = result.fftSize ? result.fftSize.toString() : '-';
-    const wasmDurationStr = result.wasmDuration !== null
-      ? result.wasmDuration.toFixed(2)
-      : 'N/A';
-    const speedupStr = result.speedup !== null
-      ? `${result.speedup.toFixed(2)}x`
-      : 'N/A';
+    const fftSizeStr = result.fftSize ? result.fftSize.toString() : "-";
+    const wasmDurationStr =
+      result.wasmDuration !== null ? result.wasmDuration.toFixed(2) : "N/A";
+    const speedupStr =
+      result.speedup !== null ? `${result.speedup.toFixed(2)}x` : "N/A";
 
     output += `| ${result.operation} | ${result.samples} | ${fftSizeStr} | ${result.jsDuration.toFixed(2)} | ${wasmDurationStr} | ${speedupStr} |\n`;
   }
 
-  output += '\n## Summary\n\n';
-  
-  const wasmResults = results.filter(r => r.speedup !== null);
+  output += "\n## Summary\n\n";
+
+  const wasmResults = results.filter((r) => r.speedup !== null);
   if (wasmResults.length > 0) {
-    const avgSpeedup = wasmResults.reduce((sum, r) => sum + (r.speedup ?? 0), 0) / wasmResults.length;
+    const avgSpeedup =
+      wasmResults.reduce((sum, r) => sum + (r.speedup ?? 0), 0) /
+      wasmResults.length;
     output += `- **Average Speedup**: ${avgSpeedup.toFixed(2)}x\n`;
     output += `- **WASM Available**: Yes\n`;
   } else {
-    output += '- **WASM Available**: No (running in fallback mode)\n';
+    output += "- **WASM Available**: No (running in fallback mode)\n";
   }
 
   return output;

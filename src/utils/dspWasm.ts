@@ -4,7 +4,7 @@
  * with automatic fallback to JavaScript implementation
  */
 
-import type { Sample } from './dsp';
+import type { Sample } from "./dsp";
 
 // WASM module interface
 interface WasmDSPModule {
@@ -12,21 +12,21 @@ interface WasmDSPModule {
     iSamples: Float32Array,
     qSamples: Float32Array,
     fftSize: number,
-    output: Float32Array
+    output: Float32Array,
   ): void;
   calculateWaveform(
     iSamples: Float32Array,
     qSamples: Float32Array,
     amplitude: Float32Array,
     phase: Float32Array,
-    count: number
+    count: number,
   ): void;
   calculateSpectrogram(
     iSamples: Float32Array,
     qSamples: Float32Array,
     fftSize: number,
     output: Float32Array,
-    rowCount: number
+    rowCount: number,
   ): void;
 }
 
@@ -39,7 +39,10 @@ let wasmSupported = false;
  * Check if WebAssembly is supported in this environment
  */
 export function isWasmSupported(): boolean {
-  return typeof WebAssembly !== 'undefined' && typeof WebAssembly.instantiate === 'function';
+  return (
+    typeof WebAssembly !== "undefined" &&
+    typeof WebAssembly.instantiate === "function"
+  );
 }
 
 /**
@@ -67,31 +70,34 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
   wasmLoading = (async (): Promise<WasmDSPModule> => {
     try {
       // Fetch the WASM binary
-      const wasmUrl = new URL('/dsp.wasm', window.location.origin);
+      const wasmUrl = new URL("/dsp.wasm", window.location.origin);
       const wasmResponse = await fetch(wasmUrl.href);
-      
+
       if (!wasmResponse.ok) {
-        throw new Error('Failed to fetch WASM module');
+        throw new Error("Failed to fetch WASM module");
       }
-      
+
       const wasmBinary = await wasmResponse.arrayBuffer();
-      
+
       // Instantiate WASM module directly
       const wasmInstance = await WebAssembly.instantiate(wasmBinary, {
         env: {
           abort: () => {
-            throw new Error('WASM module aborted');
+            throw new Error("WASM module aborted");
           },
           seed: () => Date.now(),
         },
       });
-      
+
       wasmModule = wasmInstance.instance.exports as unknown as WasmDSPModule;
       wasmSupported = true;
-      
+
       return wasmModule as WasmDSPModule;
     } catch (error) {
-      console.warn('Failed to load WASM module, falling back to JavaScript:', error);
+      console.warn(
+        "Failed to load WASM module, falling back to JavaScript:",
+        error,
+      );
       wasmSupported = false;
       wasmLoading = null;
       // This should never be reached since we cast the promise type
@@ -115,7 +121,7 @@ export function isWasmAvailable(): boolean {
  */
 export function calculateFFTWasm(
   samples: Sample[],
-  fftSize: number
+  fftSize: number,
 ): Float32Array | null {
   if (!isWasmAvailable() || !wasmModule) {
     return null;
@@ -125,7 +131,7 @@ export function calculateFFTWasm(
     // Separate I and Q components
     const iSamples = new Float32Array(fftSize);
     const qSamples = new Float32Array(fftSize);
-    
+
     const count = Math.min(samples.length, fftSize);
     for (let i = 0; i < count; i++) {
       const sample = samples[i];
@@ -143,7 +149,7 @@ export function calculateFFTWasm(
 
     return output;
   } catch (error) {
-    console.warn('WASM FFT calculation failed, falling back to JS:', error);
+    console.warn("WASM FFT calculation failed, falling back to JS:", error);
     return null;
   }
 }
@@ -152,7 +158,7 @@ export function calculateFFTWasm(
  * Calculate waveform using WASM if available
  */
 export function calculateWaveformWasm(
-  samples: Sample[]
+  samples: Sample[],
 ): { amplitude: Float32Array; phase: Float32Array } | null {
   if (!isWasmAvailable() || !wasmModule) {
     return null;
@@ -160,11 +166,11 @@ export function calculateWaveformWasm(
 
   try {
     const count = samples.length;
-    
+
     // Separate I and Q components
     const iSamples = new Float32Array(count);
     const qSamples = new Float32Array(count);
-    
+
     for (let i = 0; i < count; i++) {
       const sample = samples[i];
       if (sample) {
@@ -182,7 +188,10 @@ export function calculateWaveformWasm(
 
     return { amplitude, phase };
   } catch (error) {
-    console.warn('WASM waveform calculation failed, falling back to JS:', error);
+    console.warn(
+      "WASM waveform calculation failed, falling back to JS:",
+      error,
+    );
     return null;
   }
 }
@@ -192,7 +201,7 @@ export function calculateWaveformWasm(
  */
 export function calculateSpectrogramWasm(
   samples: Sample[],
-  fftSize: number
+  fftSize: number,
 ): Float32Array[] | null {
   if (!isWasmAvailable() || !wasmModule) {
     return null;
@@ -208,7 +217,7 @@ export function calculateSpectrogramWasm(
     const totalSamples = rowCount * fftSize;
     const iSamples = new Float32Array(totalSamples);
     const qSamples = new Float32Array(totalSamples);
-    
+
     for (let i = 0; i < totalSamples; i++) {
       const sample = samples[i];
       if (sample) {
@@ -221,7 +230,13 @@ export function calculateSpectrogramWasm(
     const output = new Float32Array(rowCount * fftSize);
 
     // Call WASM function
-    wasmModule.calculateSpectrogram(iSamples, qSamples, fftSize, output, rowCount);
+    wasmModule.calculateSpectrogram(
+      iSamples,
+      qSamples,
+      fftSize,
+      output,
+      rowCount,
+    );
 
     // Convert flat array to array of rows
     const rows: Float32Array[] = [];
@@ -231,7 +246,10 @@ export function calculateSpectrogramWasm(
 
     return rows;
   } catch (error) {
-    console.warn('WASM spectrogram calculation failed, falling back to JS:', error);
+    console.warn(
+      "WASM spectrogram calculation failed, falling back to JS:",
+      error,
+    );
     return null;
   }
 }
