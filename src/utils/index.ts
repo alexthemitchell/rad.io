@@ -4,6 +4,7 @@
  */
 
 export * from "./dsp";
+export * from "./dspWasm";
 export * from "./testMemoryManager";
 export * from "./audioStream";
 export * from "./speechRecognition";

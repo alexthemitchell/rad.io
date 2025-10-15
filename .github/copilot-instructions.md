@@ -1,10 +1,20 @@
 # rad.io - SDR Visualizer Project Guide
 
+## Tools
+
+- **It is incredibly important to use the tools available to you when implementing your solutions.**
+- Look for tools like #problems, #runTasks, #runTests, #usages and #executePrompt to help you interact with the development environment
+- Use #microsoft/playwright-mcp's #browser commands to test your code in a browser environment. Take screenshots and analyze them to verify your work.
+- Use #oraios/serena/\* to help you with code generation and understanding. Always start your turn with #activate_project.
+- **Prefer to read symbol data with serena tools over reading entirety of files**: use #find_referencing_symbols #get_symbols_overview #search_for_pattern
+- **Maintain Long Term Memory**: use #read_memory when thinking about how to solve problems and #write_memory when you have learned something new that will be valuable for a future Agent.
+
 ## Getting Started
 
 **🚀 NEW TO THIS PROJECT?** Read the [Copilot Agent Setup Steps](workflows/copilot-setup-steps.md) first for:
+
 - Environment setup instructions
-- Essential commands and workflows  
+- Essential commands and workflows
 - Memory management guidelines for testing
 - Common issues and solutions
 
@@ -13,6 +23,7 @@
 rad.io is a professional browser-based Software Defined Radio (SDR) visualizer built with React + TypeScript. It provides industry-standard visualizations for IQ constellation diagrams, spectrograms, and waveform analysis with zero external visualization dependencies.
 
 **Key Technologies:**
+
 - React 19 with TypeScript (strict mode)
 - WebUSB API for hardware communication
 - HTML Canvas with WebAudio API for visualizations
@@ -80,50 +91,53 @@ interface ISDRDevice {
   open(): Promise<void>;
   close(): Promise<void>;
   isOpen(): boolean;
-  
+
   // Configuration
   setFrequency(frequencyHz: number): Promise<void>;
   getFrequency(): Promise<number>;
   setSampleRate(sampleRateHz: number): Promise<void>;
   setLNAGain(gainDb: number): Promise<void>;
   setAmpEnable(enabled: boolean): Promise<void>;
-  
+
   // Streaming
   receive(callback?: IQSampleCallback): Promise<void>;
   stopRx(): Promise<void>;
   isReceiving(): boolean;
-  
+
   // Metadata
   getDeviceInfo(): Promise<SDRDeviceInfo>;
   getCapabilities(): SDRCapabilities;
-  
+
   // Data parsing
   parseSamples(data: DataView): IQSample[];
-  
+
   // Memory Management (NEW)
-  getMemoryInfo(): DeviceMemoryInfo;  // Query buffer usage
-  clearBuffers(): void;                // Release memory
+  getMemoryInfo(): DeviceMemoryInfo; // Query buffer usage
+  clearBuffers(): void; // Release memory
 }
 ```
 
 **Memory Management API** (see `MEMORY_API.md` for details):
+
 ```typescript
 type DeviceMemoryInfo = {
-  totalBufferSize: number;      // Total buffer capacity in bytes
-  usedBufferSize: number;        // Current memory usage
-  activeBuffers: number;         // Number of active sample buffers
-  maxSamples: number;            // Maximum samples that can be buffered
-  currentSamples: number;        // Current samples in buffers
+  totalBufferSize: number; // Total buffer capacity in bytes
+  usedBufferSize: number; // Current memory usage
+  activeBuffers: number; // Number of active sample buffers
+  maxSamples: number; // Maximum samples that can be buffered
+  currentSamples: number; // Current samples in buffers
 };
 ```
 
 The memory API enables:
+
 - Real-time buffer usage monitoring
 - Automatic cleanup when exceeding thresholds (16MB default for HackRF)
 - Test optimization to prevent heap overflow
 - Performance tuning for large dataset processing
 
 **Supported Devices:**
+
 - HackRF One (0x1d50:0x6089) - Native implementation
 - RTL-SDR (0x0bda:0x2838, 0x0bda:0x2832) - Format converters available
 - Airspy (0x1d50:0x60a1) - Database entry included
@@ -134,19 +148,25 @@ The memory API enables:
 
 ```typescript
 // 1. Request device access
-const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x1d50 }] });
+const device = await navigator.usb.requestDevice({
+  filters: [{ vendorId: 0x1d50 }],
+});
 
 // 2. Open and claim interface
 await device.open();
 await device.claimInterface(interfaceNumber);
 
 // 3. Control transfers (vendor commands)
-await device.controlTransferOut({
-  requestType: 'vendor',
-  recipient: 'device',
-  request: command,
-  value, index
-}, data);
+await device.controlTransferOut(
+  {
+    requestType: "vendor",
+    recipient: "device",
+    request: command,
+    value,
+    index,
+  },
+  data,
+);
 
 // 4. Bulk transfers (IQ data streaming)
 const result = await device.transferIn(endpoint, bufferSize);
@@ -157,6 +177,7 @@ await device.close();
 ```
 
 **Critical Gotchas:**
+
 - Always check `device.opened` before transfers
 - Use mutex/locking for concurrent control transfers
 - Handle `InvalidStateError` with retries
@@ -166,6 +187,7 @@ await device.close();
 ### Visualization Components
 
 **Design Principles Applied:**
+
 1. **Perceptually Uniform Colormaps**: Viridis (11-point interpolation) for spectrograms
 2. **Density-Based Rendering**: Z-ordering (low→high) for IQ constellations
 3. **GPU Acceleration**: `desynchronized: true` canvas context hint
@@ -173,11 +195,12 @@ await device.close();
 5. **Professional Typography**: System font stack (SF Pro, Segoe UI)
 
 **Canvas Optimization Techniques:**
+
 ```typescript
 const canvas = canvasRef.current;
-const ctx = canvas.getContext('2d', { 
-  alpha: false,           // Opaque for performance
-  desynchronized: true    // GPU acceleration hint
+const ctx = canvas.getContext("2d", {
+  alpha: false, // Opaque for performance
+  desynchronized: true, // GPU acceleration hint
 });
 
 // High DPI scaling
@@ -195,12 +218,14 @@ ctx.translate(0.5, 0.5);
 ### DSP Processing (`src/utils/dsp.ts`)
 
 **WebAudio API Integration:**
+
 - Manual DFT implementation for synchronous FFT
 - Proper frequency shifting (zero at center)
 - dB scaling: `20 * log10(magnitude)`
 - Parseval's theorem validation in tests
 
 **Signal Processing Chain:**
+
 1. Raw IQ samples (Int8/Uint8/Int16) → Float32
 2. Interleaved I/Q → Complex pairs
 3. DFT → Frequency domain
@@ -234,6 +259,7 @@ npm run test:coverage  # Coverage report
 ### CI/CD Quality Gates
 
 **All PRs to `main` must pass:**
+
 1. ✅ Lint Code (ESLint)
 2. ✅ Run Tests (Jest - 122 tests)
 3. ✅ Check Formatting (Prettier)
@@ -255,24 +281,26 @@ Execution time: ~2-4 minutes (parallel jobs)
 6. **Memory Manager (10 tests)**: Buffer pooling, chunked generation, batch processing, monitoring
 
 **Test Data Generation:**
+
 ```typescript
 // Sine wave for FFT accuracy testing
-generateSineWave(frequency, amplitude, sampleCount, phase)
+generateSineWave(frequency, amplitude, sampleCount, phase);
 
 // Realistic modulation schemes
-generateFMSignal()    // 75kHz deviation
-generateAMSignal()    // 80% modulation index
-generateQPSKSignal()  // 4-point constellation
-generateMultiToneSignal()
-generatePulsedSignal()
-generateNoiseSignal()
+generateFMSignal(); // 75kHz deviation
+generateAMSignal(); // 80% modulation index
+generateQPSKSignal(); // 4-point constellation
+generateMultiToneSignal();
+generatePulsedSignal();
+generateNoiseSignal();
 
 // Memory-optimized generation (NEW)
-generateSamplesChunked(count, generator, chunkSize)  // For large datasets
-processSamplesBatched(samples, processor, batchSize)  // Batch processing
+generateSamplesChunked(count, generator, chunkSize); // For large datasets
+processSamplesBatched(samples, processor, batchSize); // Batch processing
 ```
 
 **Memory Management in Tests:**
+
 ```typescript
 import { clearMemoryPools } from '../../utils/testMemoryManager';
 
@@ -280,11 +308,11 @@ describe("Test Suite", () => {
   beforeEach(() => {
     if (global.gc) global.gc();  // Force GC when available
   });
-  
+
   afterEach(() => {
     clearMemoryPools();  // Clean up buffer pools
   });
-  
+
   it("test", () => {
     const { unmount } = render(<Component />);
     // ... assertions ...
@@ -300,22 +328,24 @@ describe("Test Suite", () => {
 ### TypeScript Patterns
 
 **Strict Mode Compliance:**
+
 - `strict: true` in tsconfig.json
 - Explicit types for all exports
 - No `any` types without justification
 - Proper error handling with typed errors
 
 **Component Patterns:**
+
 ```typescript
 // Functional components with hooks
 function ComponentName({ prop1, prop2 }: ComponentProps) {
   const [state, setState] = useState<StateType>(initialValue);
-  
+
   useEffect(() => {
     // Side effects with cleanup
     return () => cleanup();
   }, [dependencies]);
-  
+
   return <div>...</div>;
 }
 
@@ -330,12 +360,14 @@ type ComponentProps = {
 ### CSS Styling Conventions
 
 **Utility-First Approach:**
+
 - Reusable classes: `.btn`, `.card`, `.status-indicator`
 - Responsive with CSS Grid and Flexbox
 - Mobile breakpoints at 768px
 - CSS variables for theme colors
 
 **Component Styling:**
+
 - Scoped styles via BEM-like naming
 - Professional color palette: `#e0e6ed` (primary), `#a0aab5` (secondary), `#5aa3e8` (accent)
 - Consistent spacing: 60-80px margins
@@ -358,17 +390,17 @@ type ComponentProps = {
 export class RTLSDRDevice implements ISDRDevice {
   private usbDevice: USBDevice;
   private currentFrequency: number = 100e6;
-  
+
   async open() {
     await this.usbDevice.open();
     await this.usbDevice.claimInterface(0);
   }
-  
+
   parseSamples(data: DataView): IQSample[] {
     // RTL-SDR uses Uint8 format
     return convertUint8ToIQ(data);
   }
-  
+
   // ... implement remaining interface methods
 }
 ```
@@ -378,7 +410,8 @@ export class RTLSDRDevice implements ISDRDevice {
 ### WebUSB Connection Issues
 
 **Problem**: "Device not found" or connection fails
-**Solution**: 
+**Solution**:
+
 - Ensure HTTPS context (required for WebUSB)
 - Check vendor/product ID matches device
 - Verify USB permissions on OS level
@@ -388,6 +421,7 @@ export class RTLSDRDevice implements ISDRDevice {
 
 **Problem**: `InvalidStateError` during transfers
 **Solution**:
+
 - Implement retry logic with delays
 - Use mutex/locking for concurrent operations
 - Check `device.opened` before all transfers
@@ -397,6 +431,7 @@ export class RTLSDRDevice implements ISDRDevice {
 
 **Problem**: Slow or choppy visualizations
 **Solution**:
+
 - Enable `desynchronized: true` for GPU hints
 - Use `alpha: false` for opaque rendering
 - Implement adaptive downsampling
@@ -406,6 +441,7 @@ export class RTLSDRDevice implements ISDRDevice {
 
 **Problem**: Tests failing after changes
 **Solution**:
+
 - Run `npm test` to identify specific failures
 - Check FFT accuracy tolerances (±1 bin is acceptable)
 - Verify sample generation functions
@@ -429,6 +465,7 @@ export class RTLSDRDevice implements ISDRDevice {
 ## Future Enhancements
 
 **Planned Features:**
+
 - Real-time audio demodulation (FM/AM)
 - Waterfall display mode
 - Recording and playback
@@ -437,6 +474,7 @@ export class RTLSDRDevice implements ISDRDevice {
 - Signal strength meter
 
 **Performance Optimizations:**
+
 - WebGL rendering for large datasets
 - Web Workers for DSP processing
 - OffscreenCanvas for background rendering
@@ -445,12 +483,14 @@ export class RTLSDRDevice implements ISDRDevice {
 ## Support & Contributing
 
 **Getting Help:**
+
 1. Review this documentation
 2. Check existing tests for usage examples
 3. Examine component source code and JSDoc
 4. Review GitHub Issues for similar problems
 
 **Quality Standards:**
+
 - All code must pass lint, format, type-check, and tests
 - Add tests for new features
 - Follow existing code patterns
@@ -458,6 +498,7 @@ export class RTLSDRDevice implements ISDRDevice {
 - Include JSDoc comments for public APIs
 
 **Submitting Changes:**
+
 1. Create feature branch from `main`
 2. Make minimal, focused changes
 3. Add/update tests

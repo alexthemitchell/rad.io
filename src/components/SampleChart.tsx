@@ -3,7 +3,7 @@ import IQConstellation from "./IQConstellation";
 import { testSamples } from "../hooks/__test__/testSamples";
 import { convertToSamples } from "../utils/dsp";
 
-function SampleChart() {
+function SampleChart(): React.JSX.Element {
   const samples = useMemo(
     () => convertToSamples(testSamples.slice(1024) as [number, number][]),
     [],

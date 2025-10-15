@@ -51,11 +51,17 @@ type P25SystemPresetsProps = {
 export default function P25SystemPresets({
   currentControlChannel,
   onSystemSelect,
-}: P25SystemPresetsProps) {
+}: P25SystemPresetsProps): React.JSX.Element {
   return (
     <div className="control-group">
-      <label className="control-label">Preset P25 Systems</label>
-      <div className="preset-stations">
+      <div className="control-label" id="p25-systems-label">
+        Preset P25 Systems
+      </div>
+      <div
+        className="preset-stations"
+        role="group"
+        aria-labelledby="p25-systems-label"
+      >
         {P25_SYSTEMS.map((system) => {
           const isActive =
             Math.abs(currentControlChannel - system.controlChannel) < 1e3;

@@ -111,6 +111,7 @@
     "node_modules",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "**/__tests__/**"
+    "**/__tests__/**",
+    "assembly"
   ]
 }

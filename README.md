@@ -30,9 +30,16 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Custom SDRs**: Implement `ISDRDevice` interface
 
 ### ✅ Quality Assurance
-- **122+ Unit Tests**: Comprehensive coverage with realistic signal data
+- **171+ Unit Tests**: Comprehensive coverage including accessibility tests
 - **CI/CD Pipeline**: Automated lint, test, format, build, type-check
 - **Zero External Dependencies**: Native WebAudio API and Canvas rendering
+
+### ♿ Accessibility
+- **WCAG 2.1 Level AA**: Comprehensive screen reader support
+- **Keyboard Navigation**: Full keyboard control with arrow keys and shortcuts
+- **ARIA Labels**: Descriptive text alternatives for all visualizations
+- **Focus Management**: Clear visual indicators and logical tab order
+- See [ACCESSIBILITY.md](./ACCESSIBILITY.md) for complete documentation
 
 ## Quick Start
 
@@ -466,7 +473,7 @@ For issues, questions, or feature requests:
 - WebGL rendering for large datasets
 - Web Workers for DSP processing
 - OffscreenCanvas for background rendering
-- WASM FFT implementations
+- **✅ WASM FFT implementations** (Implemented - see WASM_DSP.md)
 
 ---
 
