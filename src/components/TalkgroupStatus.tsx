@@ -14,7 +14,7 @@ export default function TalkgroupStatus({
   tdmaSlot,
   signalStrength,
   isEncrypted,
-}: TalkgroupStatusProps) {
+}: TalkgroupStatusProps): React.JSX.Element {
   const getSignalStrengthLabel = (strength: number): string => {
     if (strength >= 80) {
       return "Excellent";

@@ -11,6 +11,7 @@ import {
   SDRCapabilities,
   SDRDeviceInfo,
   IQSample,
+  DeviceMemoryInfo,
   convertInt8ToIQ,
   convertUint8ToIQ,
   convertInt16ToIQ,
@@ -183,7 +184,7 @@ class MockSDRDevice implements ISDRDevice {
     return convertInt8ToIQ(data);
   }
 
-  getMemoryInfo() {
+  getMemoryInfo(): DeviceMemoryInfo {
     const maxSamples = this.maxBufferSize / 2; // 2 bytes per IQ pair
     const currentSamples = this.totalBufferSize / 2;
 

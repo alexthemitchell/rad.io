@@ -1,6 +1,6 @@
 import VisualizerPage from "./pages/Visualizer";
 
-function App() {
+function App(): React.JSX.Element {
   return (
     <div>
       <VisualizerPage />

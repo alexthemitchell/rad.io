@@ -11,10 +11,10 @@ export default function RadioControls({
   frequency,
   signalType,
   setFrequency,
-}: RadioControlsProps) {
+}: RadioControlsProps): React.JSX.Element {
   const handleChangeFrequency = ({
     target: { value },
-  }: ChangeEvent<HTMLInputElement>) => {
+  }: ChangeEvent<HTMLInputElement>): void => {
     const numValue = Number(value);
     if (signalType === "FM") {
       setFrequency(numValue * 1e6).catch(console.error);
@@ -24,12 +24,13 @@ export default function RadioControls({
   };
 
   // Keyboard navigation for frequency tuning
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     const step = signalType === "FM" ? 0.1 : 10;
-    const currentValue = signalType === "FM" ? frequency / 1e6 : frequency / 1e3;
-    
+    const currentValue =
+      signalType === "FM" ? frequency / 1e6 : frequency / 1e3;
+
     let newValue = currentValue;
-    
+
     if (e.key === "ArrowUp") {
       e.preventDefault();
       newValue = currentValue + step;
@@ -38,19 +39,19 @@ export default function RadioControls({
       newValue = currentValue - step;
     } else if (e.key === "PageUp") {
       e.preventDefault();
-      newValue = currentValue + (step * 10);
+      newValue = currentValue + step * 10;
     } else if (e.key === "PageDown") {
       e.preventDefault();
-      newValue = currentValue - (step * 10);
+      newValue = currentValue - step * 10;
     } else {
       return; // Let other keys work normally
     }
-    
+
     // Apply min/max bounds
     const min = signalType === "FM" ? 88.1 : 530;
     const max = signalType === "FM" ? 107.9 : 1700;
     newValue = Math.max(min, Math.min(max, newValue));
-    
+
     if (signalType === "FM") {
       setFrequency(newValue * 1e6).catch(console.error);
     } else {
@@ -90,7 +91,8 @@ export default function RadioControls({
         aria-describedby="frequency-hint"
       />
       <span id="frequency-hint" className="visually-hidden">
-        Use arrow keys for {step} {unit} increments, Page Up/Down for {step * 10} {unit} increments
+        Use arrow keys for {step} {unit} increments, Page Up/Down for{" "}
+        {step * 10} {unit} increments
       </span>
     </div>
   );

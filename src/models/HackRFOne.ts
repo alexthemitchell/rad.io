@@ -83,12 +83,12 @@ export class HackRFOne {
     this.interfaceNumber = iface.interfaceNumber;
   }
 
-  async open() {
+  async open(): Promise<void> {
     await this.usbDevice.open();
     await this.usbDevice.claimInterface(this.interfaceNumber);
   }
 
-  async close() {
+  async close(): Promise<void> {
     // Signal shutdown: stop streaming and prevent new transfers
     this.streaming = false;
     this.closing = true;
@@ -101,7 +101,7 @@ export class HackRFOne {
     value = 0,
     index = 0,
     length,
-  }: ControlTransferInProps) {
+  }: ControlTransferInProps): Promise<USBInTransferResult> {
     if (this.closing || !this.usbDevice.opened) {
       throw new Error(
         "Device is closing or closed. Aborting controlTransferIn.",
@@ -138,7 +138,7 @@ export class HackRFOne {
     value = 0,
     data,
     index = 0,
-  }: ControlTransferOutProps) {
+  }: ControlTransferOutProps): Promise<USBOutTransferResult> {
     const release = await this.acquireLock();
     try {
       if (this.closing || !this.usbDevice.opened) {
@@ -192,7 +192,7 @@ export class HackRFOne {
    *
    * @param frequency Center Frequency, in Hertz
    */
-  async setFrequency(frequency: number) {
+  async setFrequency(frequency: number): Promise<void> {
     // TODO: Verify frequency is valid
     // Convert frequency(64bit) to Mhz(32bit) + Hz(32bit)
     const mhzPart = frequency / 1e6;
@@ -201,7 +201,7 @@ export class HackRFOne {
     await this.controlTransferOut({ command: RequestCommand.SET_FREQ, data });
   }
 
-  async setAmpEnable(enabled: boolean) {
+  async setAmpEnable(enabled: boolean): Promise<void> {
     const value = Number(enabled);
     await this.controlTransferOut({
       command: RequestCommand.AMP_ENABLE,
@@ -213,7 +213,7 @@ export class HackRFOne {
    * Set RX LNA (IF) gain, 0-40dB in 8dB steps
    * @param gain RX IF gain value in dB
    */
-  async setLNAGain(gain: number) {
+  async setLNAGain(gain: number): Promise<void> {
     const { data } = await this.controlTransferIn({
       command: RequestCommand.SET_LNA_GAIN,
       index: gain,
@@ -228,7 +228,7 @@ export class HackRFOne {
     }
   }
 
-  private async setTransceiverMode(value: TransceiverMode) {
+  private async setTransceiverMode(value: TransceiverMode): Promise<void> {
     await this.controlTransferOut({
       command: RequestCommand.SET_TRANSCEIVER_MODE,
       value,
@@ -236,7 +236,7 @@ export class HackRFOne {
   }
 
   // New method to set the sample rate (in Hz)
-  async setSampleRate(sampleRate: number) {
+  async setSampleRate(sampleRate: number): Promise<void> {
     const data = new Uint32Array([sampleRate]);
     await this.controlTransferOut({
       command: RequestCommand.SAMPLE_RATE_SET,
@@ -245,7 +245,7 @@ export class HackRFOne {
   }
 
   // New method to start reception with an optional data callback
-  async receive(callback?: (data: DataView) => void) {
+  async receive(callback?: (data: DataView) => void): Promise<void> {
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
     this.streaming = true;
     while (this.streaming) {
@@ -278,7 +278,7 @@ export class HackRFOne {
   }
 
   // New method to stop reception
-  async stopRx() {
+  async stopRx(): Promise<void> {
     this.streaming = false;
   }
 
