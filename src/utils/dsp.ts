@@ -3,7 +3,7 @@ import {
   calculateWaveformWasm,
   calculateSpectrogramWasm,
   isWasmAvailable,
-} from './dspWasm';
+} from "./dspWasm";
 
 export type Sample = {
   I: number;
