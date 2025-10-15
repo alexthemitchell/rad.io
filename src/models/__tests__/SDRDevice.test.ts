@@ -32,6 +32,11 @@ class MockSDRDevice implements ISDRDevice {
   private _ampEnabled = false;
   private receiveInterval?: NodeJS.Timeout;
 
+  // Memory management
+  private sampleBuffers: DataView[] = [];
+  private totalBufferSize = 0;
+  private readonly maxBufferSize = 8 * 1024 * 1024; // 8 MB for testing
+
   private deviceInfo: SDRDeviceInfo = {
     type: SDRDeviceType.GENERIC,
     vendorId: 0x1d50,
@@ -174,6 +179,24 @@ class MockSDRDevice implements ISDRDevice {
 
   parseSamples(data: DataView): IQSample[] {
     return convertInt8ToIQ(data);
+  }
+
+  getMemoryInfo() {
+    const maxSamples = this.maxBufferSize / 2; // 2 bytes per IQ pair
+    const currentSamples = this.totalBufferSize / 2;
+
+    return {
+      totalBufferSize: this.maxBufferSize,
+      usedBufferSize: this.totalBufferSize,
+      activeBuffers: this.sampleBuffers.length,
+      maxSamples,
+      currentSamples,
+    };
+  }
+
+  clearBuffers(): void {
+    this.sampleBuffers = [];
+    this.totalBufferSize = 0;
   }
 
   /**
@@ -767,5 +790,59 @@ describe("Visualization Data Compatibility", () => {
 
     // Higher gain should produce higher amplitude
     expect(highRMS).toBeGreaterThan(lowRMS);
+  });
+
+  describe("Device Memory Management", () => {
+    it("should provide memory information", async () => {
+      const device = new MockSDRDevice();
+      await device.open();
+
+      const memInfo = device.getMemoryInfo();
+
+      expect(memInfo).toHaveProperty("totalBufferSize");
+      expect(memInfo).toHaveProperty("usedBufferSize");
+      expect(memInfo).toHaveProperty("activeBuffers");
+      expect(memInfo).toHaveProperty("maxSamples");
+      expect(memInfo).toHaveProperty("currentSamples");
+
+      expect(memInfo.totalBufferSize).toBeGreaterThan(0);
+      expect(memInfo.usedBufferSize).toBeGreaterThanOrEqual(0);
+      expect(memInfo.activeBuffers).toBeGreaterThanOrEqual(0);
+
+      await device.close();
+    });
+
+    it("should clear buffers", async () => {
+      const device = new MockSDRDevice();
+      await device.open();
+
+      // Clear buffers
+      device.clearBuffers();
+
+      const memInfo = device.getMemoryInfo();
+      expect(memInfo.usedBufferSize).toBe(0);
+      expect(memInfo.activeBuffers).toBe(0);
+      expect(memInfo.currentSamples).toBe(0);
+
+      await device.close();
+    });
+
+    it("should track memory usage correctly", async () => {
+      const device = new MockSDRDevice();
+      await device.open();
+
+      const initialMemInfo = device.getMemoryInfo();
+
+      // Memory should start clean
+      expect(initialMemInfo.usedBufferSize).toBe(0);
+      expect(initialMemInfo.activeBuffers).toBe(0);
+
+      // Calculate max samples correctly
+      expect(initialMemInfo.maxSamples).toBe(
+        initialMemInfo.totalBufferSize / 2,
+      );
+
+      await device.close();
+    });
   });
 });

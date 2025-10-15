@@ -15,6 +15,7 @@ import {
   SDRCapabilities,
   SDRDeviceType,
   SDRStreamConfig,
+  DeviceMemoryInfo,
   convertInt8ToIQ,
 } from "./SDRDevice";
 
@@ -148,6 +149,25 @@ export class HackRFOneAdapter implements ISDRDevice {
   parseSamples(data: DataView): IQSample[] {
     // HackRF uses Int8 format for IQ samples
     return convertInt8ToIQ(data);
+  }
+
+  getMemoryInfo(): DeviceMemoryInfo {
+    const deviceMemInfo = this.device.getMemoryInfo();
+    // Calculate samples (2 bytes per IQ pair for Int8 format)
+    const maxSamples = deviceMemInfo.totalBufferSize / 2;
+    const currentSamples = deviceMemInfo.usedBufferSize / 2;
+
+    return {
+      totalBufferSize: deviceMemInfo.totalBufferSize,
+      usedBufferSize: deviceMemInfo.usedBufferSize,
+      activeBuffers: deviceMemInfo.activeBuffers,
+      maxSamples,
+      currentSamples,
+    };
+  }
+
+  clearBuffers(): void {
+    this.device.clearBuffers();
   }
 
   // Expose the underlying HackRFOne instance for advanced use
