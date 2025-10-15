@@ -61,9 +61,9 @@ function Visualizer() {
   const [currentTalkgroupName, setCurrentTalkgroupName] = useState<
     string | null
   >(null);
-  const [signalPhase, setSignalPhase] = useState<
-    "Phase 1" | "Phase 2" | null
-  >(null);
+  const [signalPhase, setSignalPhase] = useState<"Phase 1" | "Phase 2" | null>(
+    null,
+  );
   const [tdmaSlot, setTdmaSlot] = useState<number | null>(null);
   const [signalStrength, setSignalStrength] = useState(0);
   const [isEncrypted, setIsEncrypted] = useState(false);
@@ -104,7 +104,7 @@ function Visualizer() {
 
   const handleTalkgroupToggle = (id: string) => {
     setTalkgroups((prev) =>
-      prev.map((tg) => (tg.id === id ? { ...tg, enabled: !tg.enabled } : tg))
+      prev.map((tg) => (tg.id === id ? { ...tg, enabled: !tg.enabled } : tg)),
     );
   };
 
