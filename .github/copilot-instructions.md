@@ -5,7 +5,7 @@
 - **It is incredibly important to use the tools available to you when implementing your solutions.**
 - Look for tools like #problems, #runTasks, #runTests, #usages and #executePrompt to help you interact with the development environment
 - Use #microsoft/playwright-mcp's #browser commands to test your code in a browser environment. Take screenshots and analyze them to verify your work.
-- Use #oraios/serena to help you with code generation and understanding.
+- Use #oraios/serena/\* to help you with code generation and understanding. Always start your turn with #activate_project.
 - **Prefer to read symbol data with serena tools over reading entirety of files**: use #find_referencing_symbols #get_symbols_overview #search_for_pattern
 - **Maintain Long Term Memory**: use #read_memory when thinking about how to solve problems and #write_memory when you have learned something new that will be valuable for a future Agent.
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
 import { calculateWaveform, Sample } from "../utils/dsp";
 
@@ -16,6 +16,26 @@ export default function WaveformVisualizer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
+
+  // Generate accessible text description of the waveform data
+  const accessibleDescription = useMemo((): string => {
+    if (samples.length === 0) {
+      return "No waveform data available";
+    }
+
+    const waveformData = calculateWaveform(samples);
+    const amplitude = waveformData.amplitude;
+    if (amplitude.length === 0) {
+      return "Waveform calculation failed";
+    }
+
+    const maxAmplitude = Math.max(...Array.from(amplitude));
+    const minAmplitude = Math.min(...Array.from(amplitude));
+    const avgAmplitude =
+      Array.from(amplitude).reduce((a, b) => a + b, 0) / amplitude.length;
+
+    return `Amplitude waveform showing ${samples.length} time-domain samples. Signal amplitude ranges from ${minAmplitude.toFixed(3)} to ${maxAmplitude.toFixed(3)} with average ${avgAmplitude.toFixed(3)}. The waveform represents signal strength variation over time.`;
+  }, [samples]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -184,5 +204,13 @@ export default function WaveformVisualizer({
     };
   }, []);
 
-  return <canvas ref={canvasRef} style={{ borderRadius: "8px" }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ borderRadius: "8px" }}
+      role="img"
+      aria-label={accessibleDescription}
+      tabIndex={0}
+    />
+  );
 }

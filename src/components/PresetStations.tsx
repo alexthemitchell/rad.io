@@ -36,13 +36,19 @@ export default function PresetStations({
   signalType,
   currentFrequency,
   onStationSelect,
-}: PresetStationsProps) {
+}: PresetStationsProps): React.JSX.Element {
   const stations = signalType === "FM" ? FM_STATIONS : AM_STATIONS;
 
   return (
     <div className="control-group">
-      <label className="control-label">Preset Stations</label>
-      <div className="preset-stations">
+      <div className="control-label" id="preset-stations-label">
+        Preset Stations
+      </div>
+      <div
+        className="preset-stations"
+        role="group"
+        aria-labelledby="preset-stations-label"
+      >
         {stations.map((station) => {
           const isActive = Math.abs(currentFrequency - station.frequency) < 1e4;
           const displayFreq =

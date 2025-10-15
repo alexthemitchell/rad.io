@@ -15,7 +15,7 @@ export async function poll(
   endpoint: USBEndpoint,
   callback: PollCallback,
   { transferCount = 4, transferBufferSize = 262144 }: StreamOptions = {},
-) {
+): Promise<void> {
   new Promise<void>((resolve, reject) => {
     const isOut = endpoint.direction === "out";
 
@@ -23,7 +23,7 @@ export async function poll(
       Promise<USBOutTransferResult> | Promise<USBInTransferResult>
     >();
     let cancelled = false;
-    const tryCancel = () => {
+    const tryCancel = (): void => {
       if (cancelled) {
         return;
       }
@@ -41,14 +41,19 @@ export async function poll(
     let settled = false;
     let rejected = false;
     let reason: unknown;
-    const wrapResolve = () => ((settled = true), !isOut && tryCancel());
-    const wrapReject = (x: unknown) => (
+    const wrapResolve = (): void => {
+      settled = true;
+      if (!isOut) {
+        tryCancel();
+      }
+    };
+    const wrapReject = (x: unknown): void => (
       (settled = true),
       (rejected = true),
       (reason = x),
       tryCancel()
     );
-    const safeCall = (fn: () => void) => {
+    const safeCall = (fn: () => void): void => {
       if (settled) {
         return;
       }
@@ -58,7 +63,7 @@ export async function poll(
         wrapReject(e);
       }
     };
-    const doSettle = () => {
+    const doSettle = (): void => {
       if (settled && pendingTransfers.size === 0) {
         if (rejected) {
           reject(reason);
@@ -83,7 +88,7 @@ export async function poll(
         }
       }
 
-      const submitTransfer = () => {
+      const submitTransfer = (): void => {
         const transfer = isOut
           ? handle.controlTransferOut(
               {
@@ -118,7 +123,7 @@ export async function poll(
           } else {
             setImmediate(inNextTick);
           }
-          function inNextTick() {
+          function inNextTick(): void {
             pendingTransfers.delete(transfer);
             safeCall(() => {
               if (
