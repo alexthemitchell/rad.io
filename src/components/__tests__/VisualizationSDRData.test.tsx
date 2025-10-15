@@ -13,7 +13,7 @@ import { render } from "@testing-library/react";
 import IQConstellation from "../IQConstellation";
 import Spectrogram from "../Spectrogram";
 import WaveformVisualizer from "../WaveformVisualizer";
-import { calculateSpectrogramRow, calculateWaveform } from "../../utils/dsp";
+import { calculateWaveform } from "../../utils/dsp";
 import type { Sample } from "../../utils/dsp";
 import { clearMemoryPools } from "../../utils/testMemoryManager";
 import {
@@ -21,9 +21,21 @@ import {
   generateAMSignal,
   generateQPSKSignal,
   generateNoiseSignal,
-  generateMultiToneSignal,
-  generatePulsedSignal,
 } from "../../utils/audioTestSignals";
+
+// Helper to create mock FFT data without expensive O(n²) DFT computation
+function createMockFFTData(rows: number, bins: number): Float32Array[] {
+  const data: Float32Array[] = [];
+  for (let i = 0; i < rows; i++) {
+    const row = new Float32Array(bins);
+    for (let j = 0; j < bins; j++) {
+      row[j] = -60 + Math.random() * 40; // Realistic noise floor
+    }
+    row[Math.floor(bins / 2)] = -10; // Peak at center
+    data.push(row);
+  }
+  return data;
+}
 
 describe("Visualization Tests with Realistic SDR Data", () => {
   // Clean up memory after each test to prevent heap overflow
@@ -146,7 +158,42 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
   });
 
-  describe("Spectrogram with SDR Signals", () => {
+  describe("Spectrogram with Mock FFT Data", () => {
+    // Note: Using mock FFT data to avoid expensive O(n²) DFT computations.
+    // DSP accuracy is tested in dsp.test.ts. These tests focus on rendering.
+    
+    it("should render spectrogram visualization", () => {
+      const spectrogramData = createMockFFTData(5, 256);
+
+      const { container, unmount } = render(
+        <Spectrogram fftData={spectrogramData} />,
+      );
+
+      const canvas = container.querySelector("canvas");
+      expect(canvas).toBeInTheDocument();
+      expect(spectrogramData.length).toBe(5);
+
+      unmount();
+    });
+
+    it("should handle different FFT sizes", () => {
+      const fftSizes = [128, 256, 512];
+
+      for (const fftSize of fftSizes) {
+        const spectrogramData = createMockFFTData(3, fftSize);
+
+        const { container, unmount } = render(
+          <Spectrogram fftData={spectrogramData} />,
+        );
+
+        const canvas = container.querySelector("canvas");
+        expect(canvas).toBeInTheDocument();
+        expect(spectrogramData[0]?.length).toBe(fftSize);
+
+        unmount();
+      }
+    });
+  });
     it("should show FM signal in frequency domain", () => {
       const samples = generateFMSignal(512, 100e3); // Reduced for efficiency
       const fftSize = 256;
