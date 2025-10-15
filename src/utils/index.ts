@@ -4,4 +4,5 @@
  */
 
 export * from "./dsp";
+export * from "./dspWasm";
 export * from "./testMemoryManager";
