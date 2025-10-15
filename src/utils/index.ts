@@ -5,3 +5,5 @@
 
 export * from "./dsp";
 export * from "./testMemoryManager";
+export * from "./audioStream";
+export * from "./speechRecognition";
