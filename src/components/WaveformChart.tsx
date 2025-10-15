@@ -3,7 +3,7 @@ import WaveformVisualizer from "./WaveformVisualizer";
 import { testSamples } from "../hooks/__test__/testSamples";
 import { convertToSamples } from "../utils/dsp";
 
-function WaveformChart() {
+function WaveformChart(): React.JSX.Element {
   const samples = useMemo(
     () => convertToSamples(testSamples.slice(0, 2048) as [number, number][]),
     [],
