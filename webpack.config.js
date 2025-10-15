@@ -24,7 +24,7 @@ module.exports = {
     filename: "main.js",
     path: path.resolve(__dirname, "dist"),
   },
-  devServer: {
+    devServer: {
     static: "./dist",
     hot: true,
     server: "https",
