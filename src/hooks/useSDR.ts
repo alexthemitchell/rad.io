@@ -2,6 +2,6 @@
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface SDRDevice {}
 
-export default function useSDR() {
+export default function useSDR(): Record<string, never> {
   return {};
 }

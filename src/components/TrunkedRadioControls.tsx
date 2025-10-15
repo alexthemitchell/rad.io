@@ -20,10 +20,10 @@ export default function TrunkedRadioControls({
   onNacChange,
   onSystemIdChange,
   onWacnChange,
-}: TrunkedRadioControlsProps) {
+}: TrunkedRadioControlsProps): React.JSX.Element {
   const handleControlChannelChange = ({
     target: { value },
-  }: ChangeEvent<HTMLInputElement>) => {
+  }: ChangeEvent<HTMLInputElement>): void => {
     if (value === "") {
       // Skip update if input is empty
       return;
@@ -38,19 +38,19 @@ export default function TrunkedRadioControls({
 
   const handleNacChange = ({
     target: { value },
-  }: ChangeEvent<HTMLInputElement>) => {
+  }: ChangeEvent<HTMLInputElement>): void => {
     onNacChange(value);
   };
 
   const handleSystemIdChange = ({
     target: { value },
-  }: ChangeEvent<HTMLInputElement>) => {
+  }: ChangeEvent<HTMLInputElement>): void => {
     onSystemIdChange(value);
   };
 
   const handleWacnChange = ({
     target: { value },
-  }: ChangeEvent<HTMLInputElement>) => {
+  }: ChangeEvent<HTMLInputElement>): void => {
     onWacnChange(value);
   };
 

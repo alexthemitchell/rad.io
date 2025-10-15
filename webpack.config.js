@@ -1,4 +1,5 @@
 const path = require("path");
+const CopyPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   entry: "./src/index.tsx",
@@ -24,7 +25,15 @@ module.exports = {
     filename: "main.js",
     path: path.resolve(__dirname, "dist"),
   },
-    devServer: {
+  plugins: [
+    new CopyPlugin({
+      patterns: [
+        { from: "build/release.wasm", to: "dsp.wasm" },
+        { from: "build/release.js", to: "dsp.js" },
+      ],
+    }),
+  ],
+  devServer: {
     static: "./dist",
     hot: true,
     server: "https",
