@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
 
 type SpectrogramProps = {
@@ -19,6 +19,31 @@ export default function Spectrogram({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
+
+  // Generate accessible text description of the spectrogram data
+  const accessibleDescription = useMemo((): string => {
+    if (fftData.length === 0) {
+      return "No spectrogram data available";
+    }
+    
+    const numFrames = fftData.length;
+    const binCount = freqMax - freqMin;
+    
+    // Find peak power and its frequency
+    let maxPower = -Infinity;
+    let maxPowerBin = 0;
+    fftData.forEach((row) => {
+      for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
+        const value = row[bin]!;
+        if (isFinite(value) && value > maxPower) {
+          maxPower = value;
+          maxPowerBin = bin;
+        }
+      }
+    });
+    
+    return `Spectrogram showing ${numFrames} time frames across ${binCount} frequency bins (${freqMin} to ${freqMax}). Peak power of ${maxPower.toFixed(2)} dB detected at frequency bin ${maxPowerBin}. Colors represent signal strength from low (dark) to high (bright).`;
+  }, [fftData, freqMin, freqMax]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -195,5 +220,11 @@ export default function Spectrogram({
     };
   }, []);
 
-  return <canvas ref={canvasRef} style={{ borderRadius: "8px" }} />;
+  return <canvas 
+    ref={canvasRef} 
+    style={{ borderRadius: "8px" }}
+    role="img"
+    aria-label={accessibleDescription}
+    tabIndex={0}
+  />;
 }
