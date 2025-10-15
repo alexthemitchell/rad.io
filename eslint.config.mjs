@@ -25,6 +25,9 @@ export default defineConfig([
     },
   },
   {
+    ignores: ["**/*.css"],
+  },
+  {
     files: ["**/*.json"],
     plugins: { json },
     language: "json/json",
@@ -41,11 +44,5 @@ export default defineConfig([
     plugins: { markdown },
     language: "markdown/gfm",
     extends: ["markdown/recommended"],
-  },
-  {
-    files: ["**/*.css"],
-    plugins: { css },
-    language: "css/css",
-    extends: ["css/recommended"],
   },
 ]);
