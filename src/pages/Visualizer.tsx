@@ -9,6 +9,7 @@ import DSPPipeline from "../components/DSPPipeline";
 import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
+import WaveformChart from "../components/WaveformChart";
 import "../styles/main.css";
 
 function Visualizer() {
@@ -140,6 +141,13 @@ function Visualizer() {
           subtitle="Visual representation of the I (in-phase) and Q (quadrature) components"
         >
           <SampleChart />
+        </Card>
+
+        <Card
+          title="Amplitude Waveform"
+          subtitle="Time-domain signal amplitude envelope"
+        >
+          <WaveformChart />
         </Card>
 
         <Card

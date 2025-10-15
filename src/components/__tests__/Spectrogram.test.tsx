@@ -18,6 +18,7 @@ describe("Spectrogram", () => {
     HTMLCanvasElement.prototype.getContext = jest.fn(() => {
       const mockContext = {
         fillRect: jest.fn(),
+        strokeRect: jest.fn(),
         clearRect: jest.fn(),
         getImageData: jest.fn(),
         putImageData: jest.fn(),
