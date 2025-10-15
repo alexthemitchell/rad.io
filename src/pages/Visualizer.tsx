@@ -282,9 +282,9 @@ function Visualizer() {
               nac={nac}
               systemId={systemId}
               wacn={wacn}
-              onControlChannelChange={(freq) => {
-                setControlChannel(freq);
-                handleSetFrequency(freq).catch(console.error);
+              onControlChannelChange={setControlChannel}
+              onControlChannelBlur={() => {
+                handleSetFrequency(controlChannel).catch(console.error);
               }}
               onNacChange={setNac}
               onSystemIdChange={setSystemId}
