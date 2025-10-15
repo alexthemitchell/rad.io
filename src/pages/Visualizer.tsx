@@ -5,6 +5,10 @@ import SignalTypeSelector, {
 } from "../components/SignalTypeSelector";
 import PresetStations from "../components/PresetStations";
 import RadioControls from "../components/RadioControls";
+import TrunkedRadioControls from "../components/TrunkedRadioControls";
+import TalkgroupScanner, { Talkgroup } from "../components/TalkgroupScanner";
+import TalkgroupStatus from "../components/TalkgroupStatus";
+import P25SystemPresets from "../components/P25SystemPresets";
 import DSPPipeline from "../components/DSPPipeline";
 import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
@@ -17,6 +21,52 @@ function Visualizer() {
   const [listening, setListening] = useState(false);
   const [signalType, setSignalType] = useState<SignalType>("FM");
   const [frequency, setFrequency] = useState(100.3e6);
+
+  // P25 Trunked Radio State
+  const [controlChannel, setControlChannel] = useState(770.95625e6);
+  const [nac, setNac] = useState("$293");
+  const [systemId, setSystemId] = useState("$001");
+  const [wacn, setWacn] = useState("$BEE00");
+  const [talkgroups, setTalkgroups] = useState<Talkgroup[]>([
+    {
+      id: "101",
+      name: "Fire Dispatch",
+      category: "Fire",
+      priority: 9,
+      enabled: true,
+    },
+    {
+      id: "201",
+      name: "Police Dispatch",
+      category: "Police",
+      priority: 9,
+      enabled: true,
+    },
+    {
+      id: "301",
+      name: "EMS Main",
+      category: "EMS",
+      priority: 8,
+      enabled: true,
+    },
+    {
+      id: "102",
+      name: "Fire Tactical",
+      category: "Fire",
+      priority: 7,
+      enabled: false,
+    },
+  ]);
+  const [currentTalkgroup, setCurrentTalkgroup] = useState<string | null>(null);
+  const [currentTalkgroupName, setCurrentTalkgroupName] = useState<
+    string | null
+  >(null);
+  const [signalPhase, setSignalPhase] = useState<
+    "Phase 1" | "Phase 2" | null
+  >(null);
+  const [tdmaSlot, setTdmaSlot] = useState<number | null>(null);
+  const [signalStrength, setSignalStrength] = useState(0);
+  const [isEncrypted, setIsEncrypted] = useState(false);
 
   const handleSetFrequency = async (newFrequency: number) => {
     setFrequency(newFrequency);
@@ -32,7 +82,34 @@ function Visualizer() {
       handleSetFrequency(100.3e6).catch(console.error);
     } else if (type === "AM" && frequency > 1.7e6) {
       handleSetFrequency(1010e3).catch(console.error);
+    } else if (type === "P25") {
+      handleSetFrequency(controlChannel).catch(console.error);
     }
+  };
+
+  const handleP25SystemSelect = (system: {
+    controlChannel: number;
+    nac: string;
+    systemId: string;
+    wacn: string;
+  }) => {
+    setControlChannel(system.controlChannel);
+    setNac(system.nac);
+    setSystemId(system.systemId);
+    setWacn(system.wacn);
+    if (signalType === "P25") {
+      handleSetFrequency(system.controlChannel).catch(console.error);
+    }
+  };
+
+  const handleTalkgroupToggle = (id: string) => {
+    setTalkgroups((prev) =>
+      prev.map((tg) => (tg.id === id ? { ...tg, enabled: !tg.enabled } : tg))
+    );
+  };
+
+  const handleAddTalkgroup = (newTalkgroup: Omit<Talkgroup, "enabled">) => {
+    setTalkgroups((prev) => [...prev, { ...newTalkgroup, enabled: true }]);
   };
 
   useEffect(() => {
@@ -46,6 +123,42 @@ function Visualizer() {
     };
     configureDevice().catch(console.error);
   }, [device, frequency]);
+
+  // Simulate P25 activity (in real implementation, this would decode actual P25 data)
+  useEffect(() => {
+    if (listening && signalType === "P25") {
+      const interval = setInterval(() => {
+        // Simulate random talkgroup activity
+        const enabledTalkgroups = talkgroups.filter((tg) => tg.enabled);
+        if (enabledTalkgroups.length > 0 && Math.random() > 0.5) {
+          const randomTg =
+            enabledTalkgroups[
+              Math.floor(Math.random() * enabledTalkgroups.length)
+            ];
+          if (randomTg) {
+            setCurrentTalkgroup(randomTg.id);
+            setCurrentTalkgroupName(randomTg.name);
+            setSignalPhase(Math.random() > 0.5 ? "Phase 2" : "Phase 1");
+            setTdmaSlot(Math.random() > 0.5 ? 1 : 2);
+            setSignalStrength(Math.floor(Math.random() * 40 + 60));
+            setIsEncrypted(Math.random() > 0.7);
+
+            // Clear after a few seconds
+            setTimeout(() => {
+              setCurrentTalkgroup(null);
+              setCurrentTalkgroupName(null);
+              setSignalPhase(null);
+              setTdmaSlot(null);
+              setSignalStrength(0);
+              setIsEncrypted(false);
+            }, 3000);
+          }
+        }
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [listening, signalType, talkgroups]);
 
   const startListening = async () => {
     try {
@@ -149,18 +262,71 @@ function Visualizer() {
             signalType={signalType}
             onSignalTypeChange={handleSignalTypeChange}
           />
-          <RadioControls
-            frequency={frequency}
-            signalType={signalType}
-            setFrequency={handleSetFrequency}
-          />
+          {signalType !== "P25" ? (
+            <RadioControls
+              frequency={frequency}
+              signalType={signalType}
+              setFrequency={handleSetFrequency}
+            />
+          ) : null}
         </div>
-        <PresetStations
-          signalType={signalType}
-          currentFrequency={frequency}
-          onStationSelect={handleSetFrequency}
-        />
+        {signalType === "P25" ? (
+          <>
+            <TrunkedRadioControls
+              controlChannel={controlChannel}
+              nac={nac}
+              systemId={systemId}
+              wacn={wacn}
+              onControlChannelChange={(freq) => {
+                setControlChannel(freq);
+                handleSetFrequency(freq).catch(console.error);
+              }}
+              onNacChange={setNac}
+              onSystemIdChange={setSystemId}
+              onWacnChange={setWacn}
+            />
+            <P25SystemPresets
+              currentControlChannel={controlChannel}
+              onSystemSelect={handleP25SystemSelect}
+            />
+          </>
+        ) : (
+          <PresetStations
+            signalType={signalType}
+            currentFrequency={frequency}
+            onStationSelect={handleSetFrequency}
+          />
+        )}
       </Card>
+
+      {signalType === "P25" && (
+        <>
+          <Card
+            title="Talkgroup Status"
+            subtitle="Current P25 trunked radio activity"
+          >
+            <TalkgroupStatus
+              currentTalkgroup={currentTalkgroup}
+              currentTalkgroupName={currentTalkgroupName}
+              signalPhase={signalPhase}
+              tdmaSlot={tdmaSlot}
+              signalStrength={signalStrength}
+              isEncrypted={isEncrypted}
+            />
+          </Card>
+
+          <Card
+            title="Talkgroup Scanner"
+            subtitle="Configure and monitor P25 talkgroups"
+          >
+            <TalkgroupScanner
+              talkgroups={talkgroups}
+              onTalkgroupToggle={handleTalkgroupToggle}
+              onAddTalkgroup={handleAddTalkgroup}
+            />
+          </Card>
+        </>
+      )}
 
       <DSPPipeline />
 
