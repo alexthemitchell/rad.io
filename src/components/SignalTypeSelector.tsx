@@ -11,8 +11,8 @@ export default function SignalTypeSelector({
 }: SignalTypeSelectorProps) {
   return (
     <div className="control-group">
-      <label className="control-label">Signal Type</label>
-      <div className="signal-type-selector">
+      <div className="control-label" id="signal-type-label">Signal Type</div>
+      <div className="signal-type-selector" role="group" aria-labelledby="signal-type-label">
         <button
           className={`signal-type-btn ${signalType === "FM" ? "active" : ""}`}
           onClick={() => onSignalTypeChange("FM")}
