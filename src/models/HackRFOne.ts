@@ -65,6 +65,11 @@ export class HackRFOne {
   // Add a simple mutex to prevent concurrent USB state changes
   private transferMutex: Promise<void> = Promise.resolve();
 
+  // Memory management for buffers
+  private sampleBuffers: DataView[] = [];
+  private totalBufferSize: number = 0;
+  private readonly maxBufferSize: number = 16 * 1024 * 1024; // 16 MB max
+
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice;
     const { configuration } = this.usbDevice;
@@ -273,6 +278,9 @@ export class HackRFOne {
       try {
         const result = await this.usbDevice.transferIn(1, 4096);
         if (result.data) {
+          // Track buffer for memory management
+          this.trackBuffer(result.data);
+
           if (callback) {
             callback(result.data);
           } else {
@@ -303,5 +311,59 @@ export class HackRFOne {
   async stopRx() {
     this.streaming = false;
     console.debug("Stopped RX stream");
+  }
+
+  /**
+   * Track incoming buffer for memory management
+   */
+  private trackBuffer(data: DataView): void {
+    this.sampleBuffers.push(data);
+    this.totalBufferSize += data.byteLength;
+
+    // Auto-cleanup if buffer size exceeds limit
+    if (this.totalBufferSize > this.maxBufferSize) {
+      this.clearOldBuffers();
+    }
+  }
+
+  /**
+   * Clear old buffers to prevent memory overflow
+   */
+  private clearOldBuffers(): void {
+    const targetSize = this.maxBufferSize / 2;
+    while (this.totalBufferSize > targetSize && this.sampleBuffers.length > 0) {
+      const buffer = this.sampleBuffers.shift();
+      if (buffer) {
+        this.totalBufferSize -= buffer.byteLength;
+      }
+    }
+    console.debug("Cleared old buffers", {
+      remainingBuffers: this.sampleBuffers.length,
+      totalSize: this.totalBufferSize,
+    });
+  }
+
+  /**
+   * Get current memory usage information
+   */
+  getMemoryInfo(): {
+    totalBufferSize: number;
+    usedBufferSize: number;
+    activeBuffers: number;
+  } {
+    return {
+      totalBufferSize: this.maxBufferSize,
+      usedBufferSize: this.totalBufferSize,
+      activeBuffers: this.sampleBuffers.length,
+    };
+  }
+
+  /**
+   * Clear all internal buffers and release memory
+   */
+  clearBuffers(): void {
+    this.sampleBuffers = [];
+    this.totalBufferSize = 0;
+    console.debug("Cleared all buffers");
   }
 }

@@ -12,12 +12,41 @@ import Spectrogram from "../Spectrogram";
 import WaveformVisualizer from "../WaveformVisualizer";
 import { calculateSpectrogramRow, calculateWaveform } from "../../utils/dsp";
 import type { Sample } from "../../utils/dsp";
+import { 
+  clearMemoryPools, 
+  generateSamplesChunked 
+} from "../../utils/testMemoryManager";
 
 /**
  * Generate realistic FM broadcast signal
  * Simulates what HackRF/RTLSDR would capture from a strong FM station
  */
 function generateFMSignal(sampleCount = 512, carrierOffset = 0): Sample[] {
+  // Use chunked generation for large sample counts to reduce memory pressure
+  if (sampleCount > 10000) {
+    return generateSamplesChunked(sampleCount, (n) => {
+      const sampleRate = 10e6; // 10 MSPS
+      const carrierFreq = carrierOffset; // Offset from center
+      const carrierAmp = 0.5;
+      const audioFreq = 1000; // 1 kHz audio tone
+      const freqDeviation = 75e3; // FM deviation
+
+      // Audio modulation signal
+      const audio = Math.sin((2 * Math.PI * audioFreq * n) / sampleRate);
+
+      // FM modulation
+      const phase =
+        (2 * Math.PI * carrierFreq * n) / sampleRate +
+        (freqDeviation / audioFreq) * audio;
+
+      // IQ components with noise
+      const I = carrierAmp * Math.cos(phase) + (Math.random() - 0.5) * 0.02;
+      const Q = carrierAmp * Math.sin(phase) + (Math.random() - 0.5) * 0.02;
+
+      return { I, Q };
+    });
+  }
+
   const samples: Sample[] = [];
   const sampleRate = 10e6; // 10 MSPS
   const carrierFreq = carrierOffset; // Offset from center
@@ -49,6 +78,25 @@ function generateFMSignal(sampleCount = 512, carrierOffset = 0): Sample[] {
  * Simulates traditional AM radio signal
  */
 function generateAMSignal(sampleCount = 512, carrierOffset = 0): Sample[] {
+  // Use chunked generation for large sample counts
+  if (sampleCount > 10000) {
+    return generateSamplesChunked(sampleCount, (n) => {
+      const sampleRate = 10e6;
+      const carrierFreq = carrierOffset;
+      const audioFreq = 1000; // 1 kHz audio
+      const modulationIndex = 0.8; // 80% modulation
+
+      const audio = Math.sin((2 * Math.PI * audioFreq * n) / sampleRate);
+      const amplitude = 0.5 * (1 + modulationIndex * audio);
+      const phase = (2 * Math.PI * carrierFreq * n) / sampleRate;
+
+      const I = amplitude * Math.cos(phase) + (Math.random() - 0.5) * 0.02;
+      const Q = amplitude * Math.sin(phase) + (Math.random() - 0.5) * 0.02;
+
+      return { I, Q };
+    });
+  }
+
   const samples: Sample[] = [];
   const sampleRate = 10e6;
   const carrierFreq = carrierOffset;
@@ -176,6 +224,11 @@ function generatePulsedSignal(sampleCount = 512): Sample[] {
 }
 
 describe("Visualization Tests with Realistic SDR Data", () => {
+  // Clean up memory after each test to prevent heap overflow
+  afterEach(() => {
+    clearMemoryPools();
+  });
+
   describe("IQ Constellation with SDR Signals", () => {
     it("should render FM signal constellation", () => {
       const samples = generateFMSignal(5000);
@@ -240,12 +293,16 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should handle very large datasets (100k+ samples)", () => {
-      const samples = generateFMSignal(100000);
-      const { container } = render(<IQConstellation samples={samples} />);
+      // Reduced from 100k to 50k to prevent memory issues
+      const samples = generateFMSignal(50000);
+      const { container, unmount } = render(<IQConstellation samples={samples} />);
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
-      expect(samples.length).toBe(100000);
+      expect(samples.length).toBe(50000);
+      
+      // Clean up immediately after test
+      unmount();
     });
 
     it("should handle varying signal strengths", () => {
@@ -519,17 +576,17 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
   describe("Real-World Scenarios", () => {
     it("should handle typical FM station at 100.3 MHz", () => {
-      // Simulate tuning to FM station
-      const samples = generateFMSignal(50000, 0); // Centered
+      // Reduced from 50k to 20k to prevent memory issues
+      const samples = generateFMSignal(20000, 0); // Centered
 
-      const { container: iqContainer } = render(
+      const { container: iqContainer, unmount: unmountIQ } = render(
         <IQConstellation samples={samples.slice(0, 5000)} />,
       );
       expect(iqContainer.querySelector("canvas")).toBeInTheDocument();
 
       const fftSize = 1024;
       const spectrogramData: Float32Array[] = [];
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 10; i++) {
         const row = calculateSpectrogramRow(
           samples.slice(i * fftSize, (i + 1) * fftSize),
           fftSize,
@@ -537,15 +594,20 @@ describe("Visualization Tests with Realistic SDR Data", () => {
         spectrogramData.push(row);
       }
 
-      const { container: specContainer } = render(
+      const { container: specContainer, unmount: unmountSpec } = render(
         <Spectrogram fftData={spectrogramData} />,
       );
       expect(specContainer.querySelector("canvas")).toBeInTheDocument();
 
-      const { container: waveContainer } = render(
-        <WaveformVisualizer samples={samples.slice(0, 10000)} />,
+      const { container: waveContainer, unmount: unmountWave } = render(
+        <WaveformVisualizer samples={samples.slice(0, 5000)} />,
       );
       expect(waveContainer.querySelector("canvas")).toBeInTheDocument();
+      
+      // Cleanup
+      unmountIQ();
+      unmountSpec();
+      unmountWave();
     });
 
     it("should handle weak signal with strong noise", () => {

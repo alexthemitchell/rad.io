@@ -53,6 +53,25 @@ export type SDRStreamConfig = {
 };
 
 /**
+ * Device Memory Information
+ * 
+ * Provides information about device memory usage and buffer status
+ * to help optimize resource allocation during testing and DSP operations.
+ */
+export type DeviceMemoryInfo = {
+  /** Total allocated buffer size in bytes */
+  totalBufferSize: number;
+  /** Currently used buffer size in bytes */
+  usedBufferSize: number;
+  /** Number of active sample buffers */
+  activeBuffers: number;
+  /** Maximum number of samples that can be buffered */
+  maxSamples: number;
+  /** Current number of samples in buffers */
+  currentSamples: number;
+};
+
+/**
  * Universal SDR Device Interface
  *
  * All SDR devices should implement this interface to ensure
@@ -156,6 +175,18 @@ export interface ISDRDevice {
    * @returns Array of IQ samples
    */
   parseSamples(data: DataView): IQSample[];
+
+  /**
+   * Get device memory information
+   * @returns Memory usage statistics for the device
+   */
+  getMemoryInfo(): DeviceMemoryInfo;
+
+  /**
+   * Clear internal buffers and release memory
+   * Useful for testing and memory optimization
+   */
+  clearBuffers(): void;
 }
 
 /**
