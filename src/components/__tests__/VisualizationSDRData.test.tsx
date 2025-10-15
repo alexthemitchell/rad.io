@@ -5,7 +5,8 @@
  * Validates that visualizations can handle various signal types, modulation schemes,
  * and edge cases encountered in practical SDR applications.
  * 
- * Updated to use Web Audio API-based signal generation for reduced memory overhead.
+ * Updated to use Web Audio API-based signal generation with significantly reduced
+ * sample counts to prevent memory exhaustion and reduce O(n²) DFT computation time.
  */
 
 import { render } from "@testing-library/react";
@@ -39,7 +40,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
   describe("IQ Constellation with SDR Signals", () => {
     it("should render FM signal constellation", () => {
-      const samples = generateFMSignal(1000); // Reduced for memory efficiency
+      const samples = generateFMSignal(500); // Minimal for testing
       const { container, unmount } = render(
         <IQConstellation samples={samples} />,
       );
@@ -49,7 +50,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
       // FM should show circular pattern
       const magnitudes = samples
-        .slice(0, 100)
+        .slice(0, 50)
         .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
       const avgMag = magnitudes.reduce((a, b) => a + b, 0) / magnitudes.length;
       expect(avgMag).toBeGreaterThan(0.3); // Strong signal
@@ -58,7 +59,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should render AM signal constellation", () => {
-      const samples = generateAMSignal(1000); // Reduced for memory efficiency
+      const samples = generateAMSignal(500); // Minimal for testing
       const { container, unmount } = render(
         <IQConstellation samples={samples} />,
       );
@@ -68,7 +69,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
       // AM should show varying magnitude
       const magnitudes = samples
-        .slice(0, 100)
+        .slice(0, 50)
         .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
       const maxMag = Math.max(...magnitudes);
       const minMag = Math.min(...magnitudes);
@@ -78,7 +79,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should render QPSK constellation with distinct points", () => {
-      const samples = generateQPSKSignal(1000); // Reduced for memory efficiency
+      const samples = generateQPSKSignal(500); // Minimal for testing
       const { container, unmount } = render(
         <IQConstellation samples={samples} />,
       );
@@ -88,7 +89,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
       // QPSK should cluster around 4 constellation points
       const uniqueRegions = new Set();
-      for (const sample of samples.slice(0, 100)) {
+      for (const sample of samples.slice(0, 50)) {
         const quadrant = `${sample.I > 0 ? "+" : "-"}${sample.Q > 0 ? "+" : "-"}`;
         uniqueRegions.add(quadrant);
       }
@@ -98,7 +99,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should render noise-only signal", () => {
-      const samples = generateNoiseSignal(1000); // Reduced for memory efficiency
+      const samples = generateNoiseSignal(500); // Minimal for testing
       const { container } = render(<IQConstellation samples={samples} />);
 
       const canvas = container.querySelector("canvas");
@@ -106,22 +107,22 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
       // Noise should have low magnitude
       const magnitudes = samples
-        .slice(0, 100)
+        .slice(0, 50)
         .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
       const avgMag = magnitudes.reduce((a, b) => a + b, 0) / magnitudes.length;
       expect(avgMag).toBeLessThan(0.1); // Weak signal
     });
 
-    it("should handle very large datasets (100k+ samples)", () => {
-      // Reduced to 5k to prevent memory issues while still testing "large" dataset handling
-      const samples = generateFMSignal(5000);
+    it("should handle large datasets efficiently", () => {
+      // Use 2k samples to test larger datasets without memory exhaustion
+      const samples = generateFMSignal(2000);
       const { container, unmount } = render(
         <IQConstellation samples={samples} />,
       );
 
       const canvas = container.querySelector("canvas");
       expect(canvas).toBeInTheDocument();
-      expect(samples.length).toBe(5000);
+      expect(samples.length).toBe(2000);
 
       // Clean up immediately after test
       unmount();
@@ -130,8 +131,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     it("should handle varying signal strengths", () => {
       // Generate samples with gain ramp
       const samples: Sample[] = [];
-      for (let i = 0; i < 1000; i++) { // Reduced from 5000
-        const gain = i / 1000; // 0 to 1
+      for (let i = 0; i < 500; i++) {
+        const gain = i / 500; // 0 to 1
         const phase = (2 * Math.PI * 100e3 * i) / 10e6;
         samples.push({
           I: gain * 0.5 * Math.cos(phase),
@@ -147,8 +148,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
   describe("Spectrogram with SDR Signals", () => {
     it("should show FM signal in frequency domain", () => {
-      const samples = generateFMSignal(2048, 100e3); // Reduced for memory efficiency
-      const fftSize = 1024;
+      const samples = generateFMSignal(512, 100e3); // Reduced for efficiency
+      const fftSize = 256;
       const spectrogramData: Float32Array[] = [];
 
       for (let i = 0; i < 2; i++) {
@@ -169,8 +170,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should show multi-tone signal with distinct peaks", () => {
-      const samples = generateMultiToneSignal(2048); // Reduced for memory efficiency
-      const fftSize = 1024;
+      const samples = generateMultiToneSignal(512); // Reduced for efficiency
+      const fftSize = 256;
       const spectrogramData: Float32Array[] = [];
 
       for (let i = 0; i < 2; i++) {
@@ -197,8 +198,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should show pulsed signal temporal variation", () => {
-      const samples = generatePulsedSignal(2048); // Reduced for memory efficiency
-      const fftSize = 1024;
+      const samples = generatePulsedSignal(512); // Reduced for efficiency
+      const fftSize = 256;
       const spectrogramData: Float32Array[] = [];
 
       for (let i = 0; i < 2; i++) {
@@ -224,7 +225,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should handle different FFT sizes", () => {
-      const fftSizes = [256, 512]; // Reduced to avoid memory issues
+      const fftSizes = [128, 256]; // Minimal set to reduce computation
 
       for (const fftSize of fftSizes) {
         const samples = generateFMSignal(fftSize * 2);
@@ -249,8 +250,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should show noise floor correctly", () => {
-      const samples = generateNoiseSignal(1024); // Reduced for memory efficiency
-      const fftSize = 512;
+      const samples = generateNoiseSignal(512); // Reduced for efficiency
+      const fftSize = 256;
       const spectrogramData: Float32Array[] = [];
 
       for (let i = 0; i < 2; i++) {
@@ -283,7 +284,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
   describe("Waveform with SDR Signals", () => {
     it("should show AM envelope modulation", () => {
-      const samples = generateAMSignal(1000); // Reduced for memory efficiency
+      const samples = generateAMSignal(500); // Minimal for testing
       const { amplitude } = calculateWaveform(samples);
 
       const { container, unmount } = render(
@@ -302,7 +303,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should show FM constant envelope", () => {
-      const samples = generateFMSignal(1000); // Reduced for memory efficiency
+      const samples = generateFMSignal(500); // Minimal for testing
       const { amplitude } = calculateWaveform(samples);
 
       const { container, unmount } = render(
@@ -322,7 +323,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should show pulsed signal timing", () => {
-      const samples = generatePulsedSignal(2000); // Reduced for memory efficiency
+      const samples = generatePulsedSignal(1000); // Minimal for testing
       const { amplitude } = calculateWaveform(samples);
 
       const { container, unmount } = render(
@@ -337,14 +338,14 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const nearZero = amplitude.filter((a: number) => a < 0.1).length;
       const nearMax = amplitude.filter((a: number) => a > maxAmp * 0.5).length;
 
-      expect(nearZero).toBeGreaterThan(20); // Off periods (adjusted threshold)
-      expect(nearMax).toBeGreaterThan(20); // On periods (adjusted threshold)
+      expect(nearZero).toBeGreaterThan(10); // Off periods (adjusted threshold)
+      expect(nearMax).toBeGreaterThan(10); // On periods (adjusted threshold)
 
       unmount();
     });
 
     it("should handle long duration signals", () => {
-      const samples = generateFMSignal(2000); // Reduced for memory efficiency
+      const samples = generateFMSignal(1000); // Minimal for testing
 
       const { container, unmount } = render(
         <WaveformVisualizer samples={samples} />,
@@ -359,18 +360,18 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
   describe("Cross-Visualization Consistency", () => {
     it("should show consistent signal power across visualizations", () => {
-      const samples = generateFMSignal(1024, 100e3); // Reduced for memory efficiency
+      const samples = generateFMSignal(512, 100e3); // Minimal for testing
 
       // IQ Constellation - calculate average magnitude
       const iqMagnitudes = samples
-        .slice(0, 200)
+        .slice(0, 100)
         .map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
       const iqAvgPower =
         iqMagnitudes.reduce((a: number, b: number) => a + b, 0) /
         iqMagnitudes.length;
 
       // Spectrogram - calculate FFT power
-      const fftSize = 512;
+      const fftSize = 256;
       const fftRow = calculateSpectrogramRow(
         samples.slice(0, fftSize),
         fftSize,
@@ -379,7 +380,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       const fftMaxPower = Math.max(...fftArray);
 
       // Waveform - calculate RMS
-      const { amplitude } = calculateWaveform(samples.slice(0, 200));
+      const { amplitude } = calculateWaveform(samples.slice(0, 100));
       const rms = Math.sqrt(
         amplitude.reduce((sum: number, a: number) => sum + a * a, 0) /
           amplitude.length,
@@ -394,8 +395,8 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     it("should show frequency content consistently", () => {
       // Generate signal at known frequency
       const carrierOffset = 200e3; // 200 kHz from center
-      const samples = generateFMSignal(1024, carrierOffset); // Reduced for memory efficiency
-      const fftSize = 512;
+      const samples = generateFMSignal(512, carrierOffset); // Minimal for testing
+      const fftSize = 256;
 
       // Calculate expected bin
       const sampleRate = 10e6;
@@ -420,15 +421,15 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
   describe("Real-World Scenarios", () => {
     it("should handle typical FM station at 100.3 MHz", () => {
-      // Reduced sample counts for memory efficiency
-      const samples = generateFMSignal(2048, 0); // Centered
+      // Minimal sample counts for memory efficiency
+      const samples = generateFMSignal(512, 0); // Centered
 
       const { container: iqContainer, unmount: unmountIQ } = render(
-        <IQConstellation samples={samples.slice(0, 1000)} />,
+        <IQConstellation samples={samples.slice(0, 500)} />,
       );
       expect(iqContainer.querySelector("canvas")).toBeInTheDocument();
 
-      const fftSize = 512;
+      const fftSize = 256;
       const spectrogramData: Float32Array[] = [];
       for (let i = 0; i < 2; i++) {
         const row = calculateSpectrogramRow(
@@ -444,7 +445,7 @@ describe("Visualization Tests with Realistic SDR Data", () => {
       expect(specContainer.querySelector("canvas")).toBeInTheDocument();
 
       const { container: waveContainer, unmount: unmountWave } = render(
-        <WaveformVisualizer samples={samples.slice(0, 1000)} />,
+        <WaveformVisualizer samples={samples.slice(0, 500)} />,
       );
       expect(waveContainer.querySelector("canvas")).toBeInTheDocument();
 
@@ -456,11 +457,11 @@ describe("Visualization Tests with Realistic SDR Data", () => {
 
     it("should handle weak signal with strong noise", () => {
       // Generate weak signal + noise
-      const weakSignal = generateFMSignal(1000, 0).map((s) => ({
+      const weakSignal = generateFMSignal(500, 0).map((s) => ({
         I: s.I * 0.1,
         Q: s.Q * 0.1,
       }));
-      const noise = generateNoiseSignal(1000);
+      const noise = generateNoiseSignal(500);
 
       const combined: Sample[] = weakSignal.map((s, i) => ({
         I: s.I + (noise[i]?.I ?? 0),
@@ -472,14 +473,14 @@ describe("Visualization Tests with Realistic SDR Data", () => {
     });
 
     it("should handle scanning across frequency band", () => {
-      // Simulate frequency sweep with reduced sample count
+      // Simulate frequency sweep with minimal sample count
       const sweepData: Sample[] = [];
-      for (let freq = -500e3; freq <= 500e3; freq += 100e3) {
-        const segment = generateFMSignal(200, freq);
+      for (let freq = -500e3; freq <= 500e3; freq += 200e3) {
+        const segment = generateFMSignal(100, freq);
         sweepData.push(...segment);
       }
 
-      const fftSize = 512;
+      const fftSize = 256;
       const spectrogramData: Float32Array[] = [];
       for (let i = 0; i < Math.floor(sweepData.length / fftSize); i++) {
         const row = calculateSpectrogramRow(

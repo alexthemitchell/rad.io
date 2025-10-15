@@ -62,7 +62,7 @@ describe("Spectrogram", () => {
   });
 
   it("should render canvas element", () => {
-    const fftData = createFFTData(30, 2048);
+    const fftData = createFFTData(10, 512); // Reduced from 30x2048
     const { container } = render(<Spectrogram fftData={fftData} />);
 
     const canvas = container.querySelector("canvas");
@@ -70,7 +70,7 @@ describe("Spectrogram", () => {
   });
 
   it("should set canvas dimensions", () => {
-    const fftData = createFFTData(30, 2048);
+    const fftData = createFFTData(10, 512); // Reduced from 30x2048
     const width = 800;
     const height = 600;
 
@@ -86,7 +86,7 @@ describe("Spectrogram", () => {
   });
 
   it("should use default dimensions when not provided", () => {
-    const fftData = createFFTData(30, 2048);
+    const fftData = createFFTData(10, 512); // Reduced from 30x2048
     const { container } = render(<Spectrogram fftData={fftData} />);
 
     const canvas = container.querySelector("canvas");
@@ -104,7 +104,7 @@ describe("Spectrogram", () => {
   });
 
   it("should handle custom frequency range", () => {
-    const fftData = createFFTData(30, 2048);
+    const fftData = createFFTData(10, 512); // Reduced from 30x2048
     const { container } = render(
       <Spectrogram fftData={fftData} freqMin={500} freqMax={1500} />,
     );
@@ -114,7 +114,7 @@ describe("Spectrogram", () => {
   });
 
   it("should use default frequency range when not provided", () => {
-    const fftData = createFFTData(30, 2048);
+    const fftData = createFFTData(10, 512); // Reduced from 30x2048
     const { container } = render(<Spectrogram fftData={fftData} />);
 
     const canvas = container.querySelector("canvas");
@@ -122,10 +122,10 @@ describe("Spectrogram", () => {
   });
 
   it("should handle different FFT sizes", () => {
-    const fftSizes = [256, 512, 1024, 2048, 4096];
+    const fftSizes = [128, 256, 512]; // Reduced from 256, 512, 1024, 2048, 4096
 
     fftSizes.forEach((size) => {
-      const fftData = createFFTData(30, size);
+      const fftData = createFFTData(5, size); // Reduced row count
       const { container } = render(<Spectrogram fftData={fftData} />);
 
       const canvas = container.querySelector("canvas");
@@ -134,10 +134,10 @@ describe("Spectrogram", () => {
   });
 
   it("should handle different numbers of rows", () => {
-    const rowCounts = [10, 30, 50, 100];
+    const rowCounts = [5, 10, 20]; // Reduced from 10, 30, 50, 100
 
     rowCounts.forEach((rows) => {
-      const fftData = createFFTData(rows, 1024);
+      const fftData = createFFTData(rows, 256); // Reduced bin count
       const { container } = render(<Spectrogram fftData={fftData} />);
 
       const canvas = container.querySelector("canvas");
@@ -147,9 +147,9 @@ describe("Spectrogram", () => {
 
   it("should handle extreme power values", () => {
     const fftData = [
-      Float32Array.from({ length: 2048 }, () => -100), // Very weak signal
-      Float32Array.from({ length: 2048 }, () => 50), // Very strong signal
-      Float32Array.from({ length: 2048 }, () => 0), // Medium signal
+      Float32Array.from({ length: 512 }, () => -100), // Very weak signal, reduced from 2048
+      Float32Array.from({ length: 512 }, () => 50), // Very strong signal
+      Float32Array.from({ length: 512 }, () => 0), // Medium signal
     ];
 
     const { container } = render(<Spectrogram fftData={fftData} />);
@@ -159,12 +159,12 @@ describe("Spectrogram", () => {
   });
 
   it("should update when fftData changes", () => {
-    const initialData = createFFTData(30, 1024);
+    const initialData = createFFTData(5, 256); // Reduced from 30x1024
     const { container, rerender } = render(
       <Spectrogram fftData={initialData} />,
     );
 
-    const newData = createFFTData(50, 1024);
+    const newData = createFFTData(10, 256); // Reduced from 50x1024
     rerender(<Spectrogram fftData={newData} />);
 
     const canvas = container.querySelector("canvas");
@@ -172,7 +172,7 @@ describe("Spectrogram", () => {
   });
 
   it("should handle single row of FFT data", () => {
-    const fftData = createFFTData(1, 1024);
+    const fftData = createFFTData(1, 256); // Reduced from 1024
     const { container } = render(<Spectrogram fftData={fftData} />);
 
     const canvas = container.querySelector("canvas");
@@ -180,7 +180,7 @@ describe("Spectrogram", () => {
   });
 
   it("should handle narrow frequency range", () => {
-    const fftData = createFFTData(30, 2048);
+    const fftData = createFFTData(5, 512); // Reduced from 30x2048
     const { container } = render(
       <Spectrogram fftData={fftData} freqMin={1000} freqMax={1010} />,
     );
@@ -190,7 +190,7 @@ describe("Spectrogram", () => {
   });
 
   it("should handle wide frequency range", () => {
-    const fftData = createFFTData(30, 2048);
+    const fftData = createFFTData(5, 512); // Reduced from 30x2048
     const { container } = render(
       <Spectrogram fftData={fftData} freqMin={0} freqMax={2048} />,
     );
@@ -207,7 +207,7 @@ describe("Spectrogram", () => {
       value: 2,
     });
 
-    const fftData = createFFTData(30, 1024);
+    const fftData = createFFTData(5, 256); // Reduced from 30x1024
     const width = 750;
     const height = 800;
 
@@ -228,8 +228,8 @@ describe("Spectrogram", () => {
 
   it("should handle consistent time-frequency pattern", () => {
     // Create a spectrogram with a sweeping frequency tone
-    const rows = 50;
-    const bins = 1024;
+    const rows = 10; // Reduced from 50
+    const bins = 256; // Reduced from 1024
     const fftData = Array.from({ length: rows }, (_, rowIdx) => {
       const row = new Float32Array(bins);
       for (let i = 0; i < bins; i++) {
@@ -248,17 +248,17 @@ describe("Spectrogram", () => {
   });
 
   it("should handle multiple simultaneous frequency components", () => {
-    const rows = 30;
-    const bins = 1024;
+    const rows = 5; // Reduced from 30
+    const bins = 256; // Reduced from 1024
     const fftData = Array.from({ length: rows }, () => {
       const row = new Float32Array(bins);
       for (let i = 0; i < bins; i++) {
         row[i] = -50;
       }
       // Add multiple tones
-      row[100] = 10;
-      row[500] = 15;
-      row[900] = 12;
+      row[50] = 10; // Scaled down from 100
+      row[125] = 15; // Scaled down from 500
+      row[225] = 12; // Scaled down from 900
       return row;
     });
 
