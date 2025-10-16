@@ -36,7 +36,7 @@ export class CancellablePromise<T> extends Promise<T> {
    * with a special error, but it's also possible that the
    * promise resolves or rejects with another error.
    */
-  cancel() {
+  cancel(): void {
     this._cancel();
   }
 }
@@ -52,7 +52,9 @@ export const max2837_ft = [
  *
  * Return final bw round down and less than expected bw.
  */
-export function computeBasebandFilterBwRoundDownLt(bandwidthHz: number) {
+export function computeBasebandFilterBwRoundDownLt(
+  bandwidthHz: number,
+): number | undefined {
   checkU32(bandwidthHz);
   let idx: number;
   for (idx = 0; idx < max2837_ft.length; idx++) {
@@ -70,7 +72,9 @@ export function computeBasebandFilterBwRoundDownLt(bandwidthHz: number) {
  *
  * Return final bw
  */
-export function computeBasebandFilterBw(bandwidthHz: number) {
+export function computeBasebandFilterBw(
+  bandwidthHz: number,
+): number | undefined {
   checkU32(bandwidthHz);
   let idx: number;
   for (idx = 0; idx < max2837_ft.length; idx++) {
@@ -96,7 +100,7 @@ export class HackrfError extends Error {
   }
 }
 
-export function checkU32(x: number) {
+export function checkU32(x: number): number {
   if (x >>> 0 === x) {
     return x;
   }
@@ -105,13 +109,15 @@ export function checkU32(x: number) {
 
 // We do it with & because this also makes sure the passed
 // number is a valid int32. bits must be <= 31
-export const bitChecker = (bits: number) => (x: number) => {
-  const mask = (1 << bits) - 1;
-  if ((x & mask) === x) {
-    return x;
-  }
-  throw new HackrfError(ErrorCode.INVALID_PARAM);
-};
+export const bitChecker =
+  (bits: number) =>
+  (x: number): number => {
+    const mask = (1 << bits) - 1;
+    if ((x & mask) === x) {
+      return x;
+    }
+    throw new HackrfError(ErrorCode.INVALID_PARAM);
+  };
 export const checkU8 = bitChecker(8);
 export const checkU16 = bitChecker(16);
 
@@ -119,7 +125,7 @@ export const checkMax2837Reg = bitChecker(5);
 export const checkMax2837Value = bitChecker(10);
 export const checkSi5351cReg = bitChecker(8);
 export const checkSi5351cValue = bitChecker(8);
-export function checkRffc5071Reg(x: number) {
+export function checkRffc5071Reg(x: number): number {
   if (checkU32(x) < 31) {
     return x;
   }
@@ -128,12 +134,14 @@ export function checkRffc5071Reg(x: number) {
 export const checkRffc5071Value = bitChecker(16);
 export const checkSpiflashAddress = bitChecker(20);
 
-export const rangeChecker = (min: number, max: number) => (x: number) => {
-  if (x >= min && x <= max) {
-    return x;
-  }
-  throw new HackrfError(ErrorCode.INVALID_PARAM);
-};
+export const rangeChecker =
+  (min: number, max: number) =>
+  (x: number): number => {
+    if (x >= min && x <= max) {
+      return x;
+    }
+    throw new HackrfError(ErrorCode.INVALID_PARAM);
+  };
 export const checkBasebandFilterBw = rangeChecker(
   BASEBAND_FILTER_BW_MIN,
   BASEBAND_FILTER_BW_MAX,
@@ -142,7 +150,7 @@ export const checkLoFreq = rangeChecker(LO_FREQ_HZ_MIN, LO_FREQ_HZ_MAX);
 export const checkFreq = rangeChecker(FREQ_HZ_MIN, FREQ_HZ_MAX);
 export const checkIFreq = rangeChecker(IF_HZ_MIN, IF_HZ_MAX);
 
-export function checkInLength(view: DataView, minLength: number) {
+export function checkInLength(view: DataView, minLength: number): DataView {
   if (view.byteLength >= minLength) {
     return view;
   }
@@ -151,12 +159,12 @@ export function checkInLength(view: DataView, minLength: number) {
 
 // SAMPLE RATE CALCULATION
 
-const f64toU = (x: number) => {
+const f64toU = (x: number): bigint | undefined => {
   const f64a = Float64Array.of(x);
   return new BigUint64Array(f64a.buffer, f64a.byteOffset)[0];
 };
 
-function chooseDivider(n: number) {
+function chooseDivider(n: number): number {
   const n1 = BigInt(1),
     mask = (n1 << BigInt(52)) - n1;
 
@@ -164,8 +172,8 @@ function chooseDivider(n: number) {
   const fracN = 1 + n - Math.floor(n);
   const frac = f64toU(fracN)! & mask;
 
-  const round = (x: bigint) => (x + (n1 << BigInt(51))) & ~mask;
-  const roundError = (x: bigint) => Math.abs(Number(x - round(x)));
+  const round = (x: bigint): bigint => (x + (n1 << BigInt(51))) & ~mask;
+  const roundError = (x: bigint): number => Math.abs(Number(x - round(x)));
 
   for (let divider = 1; divider <= 31; divider++) {
     if (roundError(BigInt(divider) * frac) < 2 ** (e + 4)) {
