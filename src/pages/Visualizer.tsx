@@ -327,7 +327,7 @@ function Visualizer(): React.JSX.Element {
 
   // Cleanup timeout on unmount
   useEffect(() => {
-    return () => {
+    return (): void => {
       if (fileStatusTimeoutRef.current) {
         clearTimeout(fileStatusTimeoutRef.current);
       }
