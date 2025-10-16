@@ -14,6 +14,7 @@ import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
+import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import "../styles/main.css";
 
@@ -379,6 +380,13 @@ function Visualizer(): React.JSX.Element {
         )}
 
         <DSPPipeline />
+
+        <Card
+          title="Signal Strength Meter"
+          subtitle="Real-time signal level monitoring for antenna alignment and quality assessment"
+        >
+          <SignalStrengthMeterChart />
+        </Card>
 
         <PerformanceMetrics />
 
