@@ -236,3 +236,33 @@ export function calculateWaveform(samples: Sample[]): {
     throw error;
   }
 }
+
+/**
+ * Calculate signal strength from IQ samples
+ * Returns signal strength in dBm (relative to maximum possible signal)
+ * Range is typically -100 dBm (very weak) to 0 dBm (maximum)
+ */
+export function calculateSignalStrength(samples: Sample[]): number {
+  if (samples.length === 0) {
+    return -100; // Minimum signal strength
+  }
+
+  // Calculate RMS (Root Mean Square) power
+  let sumSquares = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const sample = samples[i];
+    if (!sample) {
+      continue;
+    }
+    // Power is magnitude squared: I^2 + Q^2
+    sumSquares += sample.I * sample.I + sample.Q * sample.Q;
+  }
+
+  const rms = Math.sqrt(sumSquares / samples.length);
+
+  // Convert to dBm (assuming normalized range where max amplitude is 1.0)
+  // dBm = 20 * log10(rms)
+  // Clamp to reasonable range: -100 to 0 dBm
+  const dBm = rms > 0 ? 20 * Math.log10(rms) : -100;
+  return Math.max(-100, Math.min(0, dBm));
+}
