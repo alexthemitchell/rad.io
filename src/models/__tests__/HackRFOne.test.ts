@@ -12,7 +12,10 @@ function createMockUSBDevice(): {
   >;
 } {
   const controlTransferOut = jest
-    .fn<Promise<USBOutTransferResult>, [USBControlTransferParameters, BufferSource?]>()
+    .fn<
+      Promise<USBOutTransferResult>,
+      [USBControlTransferParameters, BufferSource?]
+    >()
     .mockResolvedValue({} as USBOutTransferResult);
 
   const mockDevice = {
@@ -25,8 +28,8 @@ function createMockUSBDevice(): {
     controlTransferOut,
     controlTransferIn: jest.fn(),
     transferIn: jest.fn(),
-  configurations: [],
-  configuration: undefined,
+    configurations: [],
+    configuration: undefined,
     open: jest.fn(),
     close: jest.fn(),
     reset: jest.fn(),
@@ -42,22 +45,12 @@ function createMockUSBDevice(): {
 }
 
 describe("HackRFOne control formatting", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
   it("formats frequency command per HackRF protocol", async () => {
     const { device, controlTransferOut } = createMockUSBDevice();
     const hackRF = new HackRFOne(device);
     const frequency = 123_456_789; // Hz
 
-    const promise = hackRF.setFrequency(frequency);
-    jest.runOnlyPendingTimers();
-    await promise;
+    await hackRF.setFrequency(frequency);
 
     expect(controlTransferOut).toHaveBeenCalledTimes(1);
     const [options, data] = controlTransferOut.mock.calls[0] ?? [];
@@ -78,9 +71,7 @@ describe("HackRFOne control formatting", () => {
     const hackRF = new HackRFOne(device);
     const sampleRate = 12_500_000; // Hz
 
-    const promise = hackRF.setSampleRate(sampleRate);
-    jest.runOnlyPendingTimers();
-    await promise;
+    await hackRF.setSampleRate(sampleRate);
 
     expect(controlTransferOut).toHaveBeenCalledTimes(1);
     const [, data] = controlTransferOut.mock.calls[0] ?? [];
@@ -96,9 +87,7 @@ describe("HackRFOne control formatting", () => {
     const hackRF = new HackRFOne(device);
     const bandwidth = 20_000_000; // Hz
 
-    const promise = hackRF.setBandwidth(bandwidth);
-    jest.runOnlyPendingTimers();
-    await promise;
+    await hackRF.setBandwidth(bandwidth);
 
     expect(controlTransferOut).toHaveBeenCalledTimes(1);
     const [options, data] = controlTransferOut.mock.calls[0] ?? [];

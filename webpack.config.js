@@ -28,7 +28,9 @@ module.exports = {
   plugins: [
     new CopyPlugin({
       patterns: [
+        { from: "build/release.wasm", to: "release.wasm" },
         { from: "build/release.wasm", to: "dsp.wasm" },
+        { from: "build/release.js", to: "release.js" },
         { from: "build/release.js", to: "dsp.js" },
       ],
     }),

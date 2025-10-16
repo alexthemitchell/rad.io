@@ -11,9 +11,10 @@ function assertFiniteNonNegative(value: number, label: string): void {
   }
 }
 
-function splitFrequencyComponents(
-  frequencyHz: number,
-): { mhz: number; hz: number } {
+function splitFrequencyComponents(frequencyHz: number): {
+  mhz: number;
+  hz: number;
+} {
   assertFiniteNonNegative(frequencyHz, "Frequency");
   const rounded = Math.round(frequencyHz);
   const mhz = Math.floor(rounded / MHZ_IN_HZ);
@@ -38,9 +39,10 @@ function createUint32LEBuffer(values: number[]): ArrayBuffer {
   return buffer;
 }
 
-function computeSampleRateParams(
-  sampleRate: number,
-): { freqHz: number; divider: number } {
+function computeSampleRateParams(sampleRate: number): {
+  freqHz: number;
+  divider: number;
+} {
   if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
     throw new Error("Sample rate must be a positive finite number");
   }
@@ -60,7 +62,11 @@ function computeSampleRateParams(
 
   for (let divider = 1; divider <= MAX_SAMPLE_RATE_DIVIDER; divider++) {
     const candidate = Math.round(target * divider);
-    if (!Number.isFinite(candidate) || candidate <= 0 || candidate > UINT32_MAX) {
+    if (
+      !Number.isFinite(candidate) ||
+      candidate <= 0 ||
+      candidate > UINT32_MAX
+    ) {
       continue;
     }
     const achieved = candidate / divider;

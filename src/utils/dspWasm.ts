@@ -30,6 +30,14 @@ interface WasmDSPModule {
   ): void;
 }
 
+function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
+  return (
+    typeof mod.calculateFFT === "function" &&
+    typeof mod.calculateWaveform === "function" &&
+    typeof mod.calculateSpectrogram === "function"
+  );
+}
+
 // Module state
 let wasmModule: WasmDSPModule | null = null;
 let wasmLoading: Promise<WasmDSPModule | null> | null = null;
@@ -37,10 +45,9 @@ let wasmSupported = false;
 
 const dynamicImportModule: (specifier: string) => Promise<unknown> =
   typeof Function === "function"
-    ? (new Function(
-        "specifier",
-        "return import(specifier);",
-      ) as (specifier: string) => Promise<unknown>)
+    ? (new Function("specifier", "return import(specifier);") as (
+        specifier: string,
+      ) => Promise<unknown>)
     : async (): Promise<unknown> => {
         throw new Error("Dynamic import is not supported in this environment");
       };
@@ -80,35 +87,42 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
     return null;
   }
 
-  const moduleUrl = new URL("/dsp.js", window.location.href).toString();
+  const candidateUrls = [
+    new URL("release.js", window.location.href).toString(),
+    new URL("/release.js", window.location.origin).toString(),
+    new URL("dsp.js", window.location.href).toString(),
+    new URL("/dsp.js", window.location.origin).toString(),
+  ];
 
   const loadPromise = (async (): Promise<WasmDSPModule | null> => {
-    try {
-  const mod = (await dynamicImportModule(moduleUrl)) as Partial<WasmDSPModule>;
-      if (
-        typeof mod.calculateFFT !== "function" ||
-        typeof mod.calculateWaveform !== "function" ||
-        typeof mod.calculateSpectrogram !== "function"
-      ) {
-        throw new Error("Invalid WASM module exports");
-      }
+    let lastError: unknown;
 
-      wasmModule = {
-        calculateFFT: mod.calculateFFT,
-        calculateWaveform: mod.calculateWaveform,
-        calculateSpectrogram: mod.calculateSpectrogram,
-      } as WasmDSPModule;
-      wasmSupported = true;
-      return wasmModule;
-    } catch (error) {
-      console.warn(
-        "Failed to load WASM module, falling back to JavaScript:",
-        error,
-      );
-      wasmModule = null;
-      wasmSupported = false;
-      return null;
+    for (const url of candidateUrls) {
+      try {
+        const mod = (await dynamicImportModule(url)) as Partial<WasmDSPModule>;
+        if (!isValidModule(mod)) {
+          throw new Error("Invalid WASM module exports");
+        }
+
+        wasmModule = {
+          calculateFFT: mod.calculateFFT,
+          calculateWaveform: mod.calculateWaveform,
+          calculateSpectrogram: mod.calculateSpectrogram,
+        };
+        wasmSupported = true;
+        return wasmModule;
+      } catch (error) {
+        lastError = error;
+      }
     }
+
+    console.warn(
+      "Failed to load WASM module, falling back to JavaScript:",
+      lastError,
+    );
+    wasmModule = null;
+    wasmSupported = false;
+    return null;
   })();
 
   wasmLoading = loadPromise.then((module) => {
@@ -116,12 +130,7 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
     return module;
   });
 
-  try {
-    return await wasmLoading;
-  } catch {
-    wasmLoading = null;
-    return null;
-  }
+  return wasmLoading;
 }
 
 /**
