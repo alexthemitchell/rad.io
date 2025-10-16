@@ -13,6 +13,7 @@ import DSPPipeline from "../components/DSPPipeline";
 import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
+import WaterfallChart from "../components/WaterfallChart";
 import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import PerformanceMetrics from "../components/PerformanceMetrics";
@@ -407,6 +408,13 @@ function Visualizer(): React.JSX.Element {
             subtitle="Time-domain signal amplitude envelope"
           >
             <WaveformChart />
+          </Card>
+
+          <Card
+            title="Waterfall Display"
+            subtitle="Real-time frequency spectrum over time with scrolling visualization"
+          >
+            <WaterfallChart />
           </Card>
 
           <Card

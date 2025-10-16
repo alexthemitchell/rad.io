@@ -13,6 +13,8 @@ export { default as SampleChart } from "./SampleChart";
 export { default as SignalStrengthMeter } from "./SignalStrengthMeter";
 export { default as SignalTypeSelector } from "./SignalTypeSelector";
 export { default as Spectrogram } from "./Spectrogram";
+export { default as WaterfallChart } from "./WaterfallChart";
+export { default as WaterfallDisplay } from "./WaterfallDisplay";
 export { default as WaveformChart } from "./WaveformChart";
 export { default as WaveformVisualizer } from "./WaveformVisualizer";
 export { default as TrunkedRadioControls } from "./TrunkedRadioControls";
