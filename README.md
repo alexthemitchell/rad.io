@@ -474,6 +474,20 @@ For issues, questions, or feature requests:
 - Web Workers for DSP processing
 - OffscreenCanvas for background rendering
 - **✅ WASM FFT implementations** (Implemented - see WASM_DSP.md)
+- **✅ Performance API Integration** (Implemented - see PERFORMANCE_MONITORING.md)
+
+### Performance Monitoring
+
+The application includes comprehensive Performance API integration for tracking DSP and rendering performance:
+
+- **Real-time Metrics**: Live performance statistics displayed in the UI
+- **DSP Instrumentation**: All FFT, waveform, and spectrogram operations are tracked
+- **Rendering Metrics**: Canvas rendering performance monitoring
+- **Long Task Detection**: Automatic warnings for operations >50ms
+- **CI/CD Integration**: Export performance data for regression testing
+- **Statistics**: Count, avg, min, max, p50, p95, p99 for all operations
+
+See [PERFORMANCE_MONITORING.md](./PERFORMANCE_MONITORING.md) for complete documentation and usage guide.
 
 ---
 
