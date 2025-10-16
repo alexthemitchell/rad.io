@@ -24,7 +24,7 @@ export default function SignalStrengthMeter({
   }, [samples]);
 
   // Convert dBm (-100 to 0) to percentage (0 to 100)
-  const percentage = Math.max(0, Math.min(100, ((signalStrength + 100) / 100) * 100));
+  const percentage = Math.max(0, Math.min(100, signalStrength + 100));
 
   const getSignalQuality = (dBm: number): string => {
     if (dBm >= -30) {
