@@ -14,6 +14,7 @@ import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
+import PerformanceMetrics from "../components/PerformanceMetrics";
 import "../styles/main.css";
 
 function Visualizer(): React.JSX.Element {
@@ -378,6 +379,8 @@ function Visualizer(): React.JSX.Element {
         )}
 
         <DSPPipeline />
+
+        <PerformanceMetrics />
 
         <div
           className="visualizations"
