@@ -22,9 +22,6 @@
  * @module speechSynthesisE2E
  */
 
-/* eslint-disable no-console */
-// Console logging is intentional for test reporting and metrics display
-
 import {
   SpeechRecognitionProcessor,
   isSpeechRecognitionSupported,
@@ -790,15 +787,19 @@ describe("End-to-End Speech Synthesis → Recognition Tests", () => {
       const minAccuracy = Math.min(...accuracies);
       const maxAccuracy = Math.max(...accuracies);
 
-      // Report metrics
-      console.log("\n=== E2E Test Accuracy Metrics ===");
-      console.log(`Average Accuracy: ${(avgAccuracy * 100).toFixed(2)}%`);
-      console.log(`Minimum Accuracy: ${(minAccuracy * 100).toFixed(2)}%`);
-      console.log(`Maximum Accuracy: ${(maxAccuracy * 100).toFixed(2)}%`);
-      console.log(`Test Cases: ${testCases.length}`);
-      console.log("================================\n");
+      // Store metrics for test reporting
+      const metrics = {
+        averageAccuracy: avgAccuracy,
+        minimumAccuracy: minAccuracy,
+        maximumAccuracy: maxAccuracy,
+        testCases: testCases.length,
+      };
 
+      // Validate metrics meet quality thresholds
       expect(avgAccuracy).toBeGreaterThan(0.9);
+      expect(minAccuracy).toBeGreaterThan(0.8);
+      expect(maxAccuracy).toBeGreaterThanOrEqual(0.9);
+      expect(metrics.testCases).toBe(4);
     }, 15000); // Increased timeout for multiple sequential tests
   });
 
@@ -857,33 +858,36 @@ describe("System Integration", () => {
     const originalText = "This is a complete end-to-end test";
 
     // Step 1: Synthesize
-    console.log("\n=== Pipeline Demo ===");
-    console.log("1. Synthesizing:", originalText);
     await synthesizeSpeech(originalText);
 
     // Step 2: Create audio stream
-    console.log("2. Creating audio stream");
     const audioResult = createMockAudioStreamResult(originalText);
     expect(audioResult.audioData.length).toBeGreaterThan(0);
 
     // Step 3: Recognize
-    console.log("3. Recognizing speech");
     const result = await performE2ETest(originalText);
 
     // Step 4: Validate
-    console.log("4. Validating results");
     const transcribedText = result?.alternatives[0]?.transcript ?? "";
     const confidence = result?.alternatives[0]?.confidence ?? 0;
     const accuracy = calculateAccuracy(originalText, transcribedText);
 
-    console.log("   Original:", originalText);
-    console.log("   Transcribed:", transcribedText);
-    console.log("   Confidence:", (confidence * 100).toFixed(2) + "%");
-    console.log("   Accuracy:", (accuracy * 100).toFixed(2) + "%");
-    console.log("====================\n");
-
+    // Validate pipeline results
+    expect(transcribedText).toBe(originalText);
     expect(accuracy).toBeGreaterThan(0.9);
     expect(confidence).toBeGreaterThan(0.9);
+
+    // Store pipeline metrics for potential reporting
+    const pipelineMetrics = {
+      original: originalText,
+      transcribed: transcribedText,
+      confidence: confidence,
+      accuracy: accuracy,
+    };
+
+    // Validate the pipeline produced expected results
+    expect(pipelineMetrics.confidence).toBeCloseTo(0.95, 2);
+    expect(pipelineMetrics.accuracy).toBe(1.0);
   });
 
   it("should report edge cases and failure modes", async () => {
@@ -893,7 +897,12 @@ describe("System Integration", () => {
       { text: "Test " + "word ".repeat(50), description: "Very long text" },
     ];
 
-    console.log("\n=== Edge Case Testing ===");
+    const edgeCaseResults: Array<{
+      description: string;
+      passed: boolean;
+      accuracy: number;
+      error?: string;
+    }> = [];
 
     for (const testCase of edgeCases) {
       try {
@@ -902,16 +911,26 @@ describe("System Integration", () => {
           testCase.text,
           result?.alternatives[0]?.transcript ?? "",
         );
-        console.log(
-          `${testCase.description}: ${accuracy > 0.8 ? "✓ PASS" : "✗ FAIL"} (${(accuracy * 100).toFixed(2)}%)`,
-        );
+        edgeCaseResults.push({
+          description: testCase.description,
+          passed: accuracy > 0.8,
+          accuracy: accuracy,
+        });
       } catch (error) {
-        console.log(
-          `${testCase.description}: ✗ ERROR - ${error instanceof Error ? error.message : String(error)}`,
-        );
+        edgeCaseResults.push({
+          description: testCase.description,
+          passed: false,
+          accuracy: 0,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
-    console.log("========================\n");
+    // Validate that most edge cases pass
+    const passedCount = edgeCaseResults.filter((r) => r.passed).length;
+    expect(passedCount).toBeGreaterThanOrEqual(1);
+    
+    // Ensure we have results for all edge cases
+    expect(edgeCaseResults).toHaveLength(3);
   }, 15000); // Increased timeout for multiple sequential tests
 });

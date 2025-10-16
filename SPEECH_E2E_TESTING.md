@@ -162,40 +162,34 @@ Complete pipeline demonstration and edge case reporting:
 - **Average Accuracy**: 100% (in test environment with mocked APIs)
 - **Code Coverage**: Significant coverage of speechRecognition.ts and audioStream.ts
 
-### Accuracy Metrics
+### Structured Test Reporting
 
-```
-=== E2E Test Accuracy Metrics ===
-Average Accuracy: 100.00%
-Minimum Accuracy: 100.00%
-Maximum Accuracy: 100.00%
-Test Cases: 4
-================================
-```
+The test suite uses Jest's built-in assertion mechanisms instead of console logging for test metrics. This ensures:
 
-### Edge Case Results
+- Proper integration with CI/CD environments
+- Clean test output that doesn't interfere with Jest's reporters
+- Metrics are validated as part of test assertions
+- Results can be captured by custom Jest reporters if needed
 
-```
-=== Edge Case Testing ===
-Empty text: ✗ FAIL (0.00%)      # Expected - no content to transcribe
-Single character: ✓ PASS (100.00%)
-Very long text: ✓ PASS (100.00%)
-========================
-```
+Key metrics are validated through assertions:
+- **Accuracy Thresholds**: Average >90%, Minimum >80%
+- **Confidence Scores**: >90% for successful recognition
+- **Edge Case Coverage**: Multiple edge cases tested with structured results
 
-### Pipeline Demonstration
+### Test Validation Examples
 
-```
-=== Pipeline Demo ===
-1. Synthesizing: This is a complete end-to-end test
-2. Creating audio stream
-3. Recognizing speech
-4. Validating results
-   Original: This is a complete end-to-end test
-   Transcribed: This is a complete end-to-end test
-   Confidence: 95.00%
-   Accuracy: 100.00%
-====================
+```typescript
+// Metrics are validated through assertions
+expect(avgAccuracy).toBeGreaterThan(0.9);
+expect(minAccuracy).toBeGreaterThan(0.8);
+expect(confidence).toBeCloseTo(0.95, 2);
+
+// Edge cases produce structured results
+const edgeCaseResults = [
+  { description: "Empty text", passed: false, accuracy: 0.0 },
+  { description: "Single character", passed: true, accuracy: 1.0 },
+  { description: "Very long text", passed: true, accuracy: 1.0 }
+];
 ```
 
 ## Running the Tests
