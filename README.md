@@ -10,6 +10,7 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **AM/FM Band Selection**: Toggle between FM (88.1-107.9 MHz) and AM (530-1700 kHz)
 - **Preset Stations**: One-click tuning to popular stations
 - **Manual Frequency Control**: Precise frequency adjustment
+- **Frequency Scanner**: Automated signal scanning and detection across user-defined ranges
 - **Device Configuration**: LNA gain, amplifier control, sample rate
 
 ### 📊 Professional Visualizations
@@ -32,7 +33,7 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Custom SDRs**: Implement `ISDRDevice` interface
 
 ### ✅ Quality Assurance
-- **171+ Unit Tests**: Comprehensive coverage including accessibility tests
+- **287+ Unit Tests**: Comprehensive coverage including accessibility tests
 - **CI/CD Pipeline**: Automated lint, test, format, build, type-check
 - **Zero External Dependencies**: Native WebAudio API and Canvas rendering
 
@@ -102,6 +103,28 @@ npm run build
 2. Click "Start Reception" button
 3. Visualizations update with live data
 4. Click "Stop Reception" to pause
+
+### Using the Frequency Scanner
+
+The Frequency Scanner automates the process of searching for active signals across a range of frequencies.
+
+**To start a scan:**
+1. Connect your SDR device and start reception
+2. Configure scan parameters:
+   - **Start/End Frequency**: Define the range to scan
+   - **Step Size**: How much to increment frequency (smaller = more thorough, slower)
+   - **Dwell Time**: Milliseconds to spend at each frequency (50-1000ms)
+   - **Threshold**: Minimum signal strength in dBm to log a detection
+3. Click "Start Scan" to begin
+4. View detected signals in the Active Signals table
+
+**During scanning:**
+- Monitor real-time progress via the progress bar
+- Pause to examine a particular frequency
+- Resume to continue from where you paused
+- Stop to end the scan
+
+See [FREQUENCY_SCANNER.md](./FREQUENCY_SCANNER.md) for detailed documentation.
 
 ### Understanding the Visualizations
 

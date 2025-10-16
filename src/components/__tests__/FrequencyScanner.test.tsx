@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import FrequencyScanner from "../FrequencyScanner";
-import { FrequencyScannerState, ScanConfig } from "../../hooks/useFrequencyScanner";
+import { FrequencyScannerState } from "../../hooks/useFrequencyScanner";
 
 describe("FrequencyScanner", () => {
   const mockState: FrequencyScannerState = {
