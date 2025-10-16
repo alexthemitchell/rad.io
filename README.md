@@ -16,6 +16,8 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **IQ Constellation Diagram**: Density-based heat mapping with Z-ordering
 - **Amplitude Waveform**: Time-domain envelope with reference lines
 - **Power Spectral Density**: Viridis colormap spectrogram
+- **Interactive Controls**: Pan, zoom, and multi-touch gestures for all visualizations
+- **Keyboard Navigation**: Accessible controls for precision signal analysis
 
 ### 🎤 Speech Recognition
 - **Browser-Native Transcription**: Web Speech API integration for real-time speech-to-text
@@ -123,6 +125,27 @@ npm run build
 - Horizontal axis = Time
 - Vertical axis = Frequency
 - Bright bands = Strong signals
+
+### Interactive Visualization Controls
+
+All visualizations support advanced pointer and wheel events for intuitive exploration:
+
+**Mouse & Pointer:**
+- **Pan**: Click and drag to move the view
+- **Zoom**: Use mouse wheel to zoom in/out
+- **Reset**: Click "Reset View" button when transformed
+
+**Touch & Multi-Touch:**
+- **Pan**: Single finger drag
+- **Pinch-to-Zoom**: Two finger pinch gesture
+- **Tap**: Focus on specific signal features
+
+**Keyboard Navigation** (for accessibility):
+- **Arrow Keys**: Pan in any direction (←, →, ↑, ↓)
+- **+/-**: Zoom in and out
+- **0**: Reset to default view
+
+See [Interactive Controls Documentation](./INTERACTIVE_CONTROLS.md) for detailed usage and configuration.
 
 ### Speech Recognition
 
