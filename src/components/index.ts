@@ -3,6 +3,7 @@
  * Provides centralized exports for all UI components
  */
 
+export { default as BandwidthSelector } from "./BandwidthSelector";
 export { default as Card } from "./Card";
 export { default as DSPPipeline } from "./DSPPipeline";
 export { default as FFTChart } from "./FFTChart";

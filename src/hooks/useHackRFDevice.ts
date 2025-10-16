@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useUSBDevice } from "./useUSBDevice";
-import { HackRFOne } from "../models/HackRFOne";
+import { HackRFOneAdapter } from "../models/HackRFOneAdapter";
+import { ISDRDevice } from "../models/SDRDevice";
 
 /**
  * React hook for managing HackRF One device lifecycle
@@ -9,7 +10,7 @@ import { HackRFOne } from "../models/HackRFOne";
  * for HackRF One SDR devices via WebUSB API.
  *
  * @returns Object containing:
- *   - device: HackRFOne instance or undefined
+ *   - device: ISDRDevice instance or undefined
  *   - initialize: Function to request device access from user
  *   - cleanup: Function to properly close and cleanup device
  *
@@ -28,11 +29,11 @@ import { HackRFOne } from "../models/HackRFOne";
  * ```
  */
 export function useHackRFDevice(): {
-  device: HackRFOne | undefined;
+  device: ISDRDevice | undefined;
   initialize: () => Promise<void>;
   cleanup: () => void;
 } {
-  const [device, setDevice] = useState<HackRFOne>();
+  const [device, setDevice] = useState<ISDRDevice>();
   const { device: usbDevice, requestDevice } = useUSBDevice([
     {
       // HackRF devices
@@ -49,7 +50,7 @@ export function useHackRFDevice(): {
       return;
     }
     if (!usbDevice.opened) {
-      const hackRF = new HackRFOne(usbDevice);
+      const hackRF = new HackRFOneAdapter(usbDevice);
       hackRF.open().then(() => setDevice(hackRF));
     }
   }, [usbDevice]);
