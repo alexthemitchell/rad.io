@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
+import { performanceMonitor } from "../utils/performanceMonitor";
 
 type SpectrogramProps = {
   fftData: Float32Array[];
@@ -50,6 +51,9 @@ export default function Spectrogram({
     if (!canvas || fftData.length === 0) {
       return;
     }
+
+    const markStart = "render-spectrogram-start";
+    performanceMonitor.mark(markStart);
 
     const supportsOffscreen =
       typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
@@ -198,6 +202,8 @@ export default function Spectrogram({
         ctx.fillRect(x, y - binHeight, frameWidth + 0.5, binHeight + 0.5);
       }
     });
+
+    performanceMonitor.measure("render-spectrogram", markStart);
   }, [fftData, width, height, freqMin, freqMax]);
 
   // Cleanup worker on unmount
