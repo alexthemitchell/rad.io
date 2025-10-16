@@ -85,6 +85,7 @@ describe("File Format Utilities", () => {
     it("should reject IQ recording with invalid metadata", () => {
       const invalidJSON = JSON.stringify({
         version: "1.0",
+        timestamp: "2025-10-15T20:00:00.000Z",
         metadata: { centerFrequency: "invalid" },
         samples: sampleIQData,
       });
@@ -97,6 +98,7 @@ describe("File Format Utilities", () => {
     it("should reject IQ recording with invalid samples", () => {
       const invalidJSON = JSON.stringify({
         version: "1.0",
+        timestamp: "2025-10-15T20:00:00.000Z",
         metadata: { centerFrequency: 100e6, sampleRate: 20e6 },
         samples: [{ I: "invalid", Q: 0.5 }],
       });

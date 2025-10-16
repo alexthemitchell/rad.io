@@ -116,7 +116,9 @@ export default function FileImportExport({
       }
 
       // Couldn't parse as either format
-      onError("File format not recognized. Expected IQ recording or preset collection.");
+      onError(
+        "File format not recognized. Expected IQ recording or preset collection.",
+      );
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to import file");
     } finally {
@@ -164,9 +166,7 @@ export default function FileImportExport({
           <div className="drop-zone-content">
             <span className="drop-zone-icon">📁</span>
             <p className="drop-zone-text">
-              {isDragging
-                ? "Drop file here"
-                : "Click or drag & drop to import"}
+              {isDragging ? "Drop file here" : "Click or drag & drop to import"}
             </p>
             <p className="drop-zone-hint">
               Supports IQ recordings and preset collections (JSON, max{" "}

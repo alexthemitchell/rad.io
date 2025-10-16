@@ -67,13 +67,9 @@ export function importIQRecording(jsonString: string): IQRecording {
   }
 
   // Validate timestamp
-  if (
-    typeof data.timestamp !== "string" ||
-    Date.parse(data.timestamp) === NaN ||
-    isNaN(Date.parse(data.timestamp))
-  ) {
+  if (typeof data.timestamp !== "string" || isNaN(Date.parse(data.timestamp))) {
     throw new Error(
-      "Invalid or missing timestamp in IQ recording. Expected a valid ISO date string."
+      "Invalid or missing timestamp in IQ recording. Expected a valid ISO date string.",
     );
   }
   // Validate metadata

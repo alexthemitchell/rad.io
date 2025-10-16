@@ -34,9 +34,11 @@ export function useRecordings(): {
   pauseRecording: () => void;
   resumeRecording: () => void;
   addSamples: (samples: IQSample[]) => void;
-  exportRecording: (
-    filename?: string,
-  ) => { sampleCount: number; duration: number; fileSize: number };
+  exportRecording: (filename?: string) => {
+    sampleCount: number;
+    duration: number;
+    fileSize: number;
+  };
   clearRecording: () => void;
   getRecordingInfo: () => {
     state: RecordingState;
@@ -105,11 +107,14 @@ export function useRecordings(): {
   /**
    * Add samples to the current recording
    */
-  const addSamples = useCallback((samples: IQSample[]) => {
-    if (recordingState === "recording") {
-      samplesBuffer.current.push(...samples);
-    }
-  }, [recordingState]);
+  const addSamples = useCallback(
+    (samples: IQSample[]) => {
+      if (recordingState === "recording") {
+        samplesBuffer.current.push(...samples);
+      }
+    },
+    [recordingState],
+  );
 
   /**
    * Export the current recording to a file

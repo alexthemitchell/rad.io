@@ -40,7 +40,9 @@ describe("FileImportExport Component", () => {
       type: "application/json",
     });
 
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     expect(input).toBeInTheDocument();
 
     Object.defineProperty(input, "files", {
@@ -82,7 +84,9 @@ describe("FileImportExport Component", () => {
       type: "application/json",
     });
 
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     expect(input).toBeInTheDocument();
 
     Object.defineProperty(input, "files", {
@@ -118,7 +122,9 @@ describe("FileImportExport Component", () => {
       type: "application/json",
     });
 
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     expect(input).toBeInTheDocument();
 
     Object.defineProperty(input, "files", {
@@ -142,7 +148,9 @@ describe("FileImportExport Component", () => {
       type: "application/json",
     });
 
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     expect(input).toBeInTheDocument();
 
     Object.defineProperty(input, "files", {
@@ -169,7 +177,9 @@ describe("FileImportExport Component", () => {
       type: "application/json",
     });
 
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     expect(input).toBeInTheDocument();
 
     Object.defineProperty(input, "files", {
@@ -210,7 +220,9 @@ describe("FileImportExport Component", () => {
       type: "application/json",
     });
 
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const input = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     expect(input).toBeInTheDocument();
 
     Object.defineProperty(input, "files", {
