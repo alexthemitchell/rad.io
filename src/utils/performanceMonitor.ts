@@ -343,12 +343,16 @@ export const performanceMonitor = new PerformanceMonitor();
 /**
  * Decorator for measuring function performance
  */
+// Module-level counter for unique mark names
+let performanceMarkCounter = 0;
+
 export function measurePerformance<T extends (...args: unknown[]) => unknown>(
   name: string,
   fn: T,
 ): T {
   return ((...args: unknown[]) => {
-    const startMark = `${name}-start-${Date.now()}`;
+    const counter = performanceMarkCounter++;
+    const startMark = `${name}-start-${performance.now()}-${counter}`;
     performanceMonitor.mark(startMark);
 
     try {
