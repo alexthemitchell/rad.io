@@ -66,6 +66,16 @@ export function importIQRecording(jsonString: string): IQRecording {
     throw new Error("Invalid IQ recording format");
   }
 
+  // Validate timestamp
+  if (
+    typeof data.timestamp !== "string" ||
+    Date.parse(data.timestamp) === NaN ||
+    isNaN(Date.parse(data.timestamp))
+  ) {
+    throw new Error(
+      "Invalid or missing timestamp in IQ recording. Expected a valid ISO date string."
+    );
+  }
   // Validate metadata
   if (
     typeof data.metadata.centerFrequency !== "number" ||
