@@ -4,6 +4,7 @@ import {
   calculateSpectrogramWasm,
   isWasmAvailable,
 } from "./dspWasm";
+import { performanceMonitor } from "./performanceMonitor";
 
 export type Sample = {
   I: number;
@@ -70,51 +71,61 @@ export function calculateFFTSync(
   samples: Sample[],
   fftSize: number,
 ): Float32Array {
-  // Try WASM first if available
-  if (isWasmAvailable()) {
-    const wasmResult = calculateFFTWasm(samples, fftSize);
-    if (wasmResult) {
-      return wasmResult;
+  const markStart = `fft-${fftSize}-start`;
+  performanceMonitor.mark(markStart);
+
+  try {
+    // Try WASM first if available
+    if (isWasmAvailable()) {
+      const wasmResult = calculateFFTWasm(samples, fftSize);
+      if (wasmResult) {
+        performanceMonitor.measure("fft-wasm", markStart);
+        return wasmResult;
+      }
     }
-  }
 
-  // Fallback to JavaScript DFT implementation
-  const output = new Float32Array(fftSize);
+    // Fallback to JavaScript DFT implementation
+    const output = new Float32Array(fftSize);
 
-  // Perform DFT (Discrete Fourier Transform)
-  for (let k = 0; k < fftSize; k++) {
-    let realSum = 0;
-    let imagSum = 0;
+    // Perform DFT (Discrete Fourier Transform)
+    for (let k = 0; k < fftSize; k++) {
+      let realSum = 0;
+      let imagSum = 0;
 
-    for (let n = 0; n < Math.min(samples.length, fftSize); n++) {
-      const sample = samples[n];
-      if (!sample) {
-        continue;
+      for (let n = 0; n < Math.min(samples.length, fftSize); n++) {
+        const sample = samples[n];
+        if (!sample) {
+          continue;
+        }
+
+        const angle = (-2 * Math.PI * k * n) / fftSize;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+
+        // Complex multiplication: (I + jQ) * (cos + j*sin)
+        realSum += sample.I * cos - sample.Q * sin;
+        imagSum += sample.I * sin + sample.Q * cos;
       }
 
-      const angle = (-2 * Math.PI * k * n) / fftSize;
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
+      // Calculate magnitude
+      const magnitude = Math.sqrt(realSum * realSum + imagSum * imagSum);
 
-      // Complex multiplication: (I + jQ) * (cos + j*sin)
-      realSum += sample.I * cos - sample.Q * sin;
-      imagSum += sample.I * sin + sample.Q * cos;
+      // Convert to dB: 20 * log10(magnitude)
+      output[k] = magnitude > 0 ? 20 * Math.log10(magnitude) : -100;
     }
 
-    // Calculate magnitude
-    const magnitude = Math.sqrt(realSum * realSum + imagSum * imagSum);
+    // Shift FFT to center zero frequency
+    const shifted = new Float32Array(fftSize);
+    const half = Math.floor(fftSize / 2);
+    shifted.set(output.slice(half), 0);
+    shifted.set(output.slice(0, half), half);
 
-    // Convert to dB: 20 * log10(magnitude)
-    output[k] = magnitude > 0 ? 20 * Math.log10(magnitude) : -100;
+    performanceMonitor.measure("fft-js", markStart);
+    return shifted;
+  } catch (error) {
+    performanceMonitor.measure("fft-error", markStart);
+    throw error;
   }
-
-  // Shift FFT to center zero frequency
-  const shifted = new Float32Array(fftSize);
-  const half = Math.floor(fftSize / 2);
-  shifted.set(output.slice(half), 0);
-  shifted.set(output.slice(0, half), half);
-
-  return shifted;
 }
 
 /**
@@ -135,27 +146,37 @@ export function calculateSpectrogram(
   samples: Sample[],
   fftSize: number,
 ): Float32Array[] {
-  // Try WASM first if available
-  if (isWasmAvailable()) {
-    const wasmResult = calculateSpectrogramWasm(samples, fftSize);
-    if (wasmResult) {
-      return wasmResult;
+  const markStart = "spectrogram-start";
+  performanceMonitor.mark(markStart);
+
+  try {
+    // Try WASM first if available
+    if (isWasmAvailable()) {
+      const wasmResult = calculateSpectrogramWasm(samples, fftSize);
+      if (wasmResult) {
+        performanceMonitor.measure("spectrogram-wasm", markStart);
+        return wasmResult;
+      }
     }
+
+    // Fallback to JavaScript implementation
+    const rowCount = Math.floor(samples.length / fftSize);
+    const spectrogramData: Float32Array[] = [];
+
+    for (let i = 0; i < rowCount; i++) {
+      const startIndex = i * fftSize;
+      const endIndex = startIndex + fftSize;
+      const rowSamples = samples.slice(startIndex, endIndex);
+      const row = calculateSpectrogramRow(rowSamples, fftSize);
+      spectrogramData.push(row);
+    }
+
+    performanceMonitor.measure("spectrogram-js", markStart);
+    return spectrogramData;
+  } catch (error) {
+    performanceMonitor.measure("spectrogram-error", markStart);
+    throw error;
   }
-
-  // Fallback to JavaScript implementation
-  const rowCount = Math.floor(samples.length / fftSize);
-  const spectrogramData: Float32Array[] = [];
-
-  for (let i = 0; i < rowCount; i++) {
-    const startIndex = i * fftSize;
-    const endIndex = startIndex + fftSize;
-    const rowSamples = samples.slice(startIndex, endIndex);
-    const row = calculateSpectrogramRow(rowSamples, fftSize);
-    spectrogramData.push(row);
-  }
-
-  return spectrogramData;
 }
 
 /**
@@ -178,30 +199,40 @@ export function calculateWaveform(samples: Sample[]): {
   amplitude: Float32Array;
   phase: Float32Array;
 } {
-  // Try WASM first if available
-  if (isWasmAvailable()) {
-    const wasmResult = calculateWaveformWasm(samples);
-    if (wasmResult) {
-      return wasmResult;
-    }
-  }
+  const markStart = "waveform-start";
+  performanceMonitor.mark(markStart);
 
-  // Fallback to JavaScript implementation
-  const amplitude = new Float32Array(samples.length);
-  const phase = new Float32Array(samples.length);
-
-  for (let i = 0; i < samples.length; i++) {
-    const sample = samples[i];
-    if (!sample) {
-      continue;
+  try {
+    // Try WASM first if available
+    if (isWasmAvailable()) {
+      const wasmResult = calculateWaveformWasm(samples);
+      if (wasmResult) {
+        performanceMonitor.measure("waveform-wasm", markStart);
+        return wasmResult;
+      }
     }
 
-    // Calculate amplitude (magnitude of complex number)
-    amplitude[i] = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);
+    // Fallback to JavaScript implementation
+    const amplitude = new Float32Array(samples.length);
+    const phase = new Float32Array(samples.length);
 
-    // Calculate phase
-    phase[i] = Math.atan2(sample.Q, sample.I);
+    for (let i = 0; i < samples.length; i++) {
+      const sample = samples[i];
+      if (!sample) {
+        continue;
+      }
+
+      // Calculate amplitude (magnitude of complex number)
+      amplitude[i] = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);
+
+      // Calculate phase
+      phase[i] = Math.atan2(sample.Q, sample.I);
+    }
+
+    performanceMonitor.measure("waveform-js", markStart);
+    return { amplitude, phase };
+  } catch (error) {
+    performanceMonitor.measure("waveform-error", markStart);
+    throw error;
   }
-
-  return { amplitude, phase };
 }

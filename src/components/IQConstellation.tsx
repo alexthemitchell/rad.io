@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
+import { performanceMonitor } from "../utils/performanceMonitor";
 
 type Sample = {
   I: number;
@@ -45,6 +46,9 @@ export default function IQConstellation({
     if (!canvas || samples.length === 0) {
       return;
     }
+
+    const markStart = "render-iq-constellation-start";
+    performanceMonitor.mark(markStart);
 
     const supportsOffscreen =
       typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
@@ -185,6 +189,8 @@ export default function IQConstellation({
       ctx.arc(x, y, 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    performanceMonitor.measure("render-iq-constellation", markStart);
   }, [samples, width, height]);
 
   // Cleanup worker on unmount

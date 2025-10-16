@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import SignalTypeSelector, {
   SignalType,
@@ -14,6 +14,7 @@ import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
+import PerformanceMetrics from "../components/PerformanceMetrics";
 import FileImportExport, {
   FileImportResult,
 } from "../components/FileImportExport";
@@ -40,6 +41,9 @@ function Visualizer(): React.JSX.Element {
     message: string;
   } | null>(null);
   const [customPresets, setCustomPresets] = useState<PresetStation[]>([]);
+  
+  // Ref to store timeout IDs for cleanup
+  const fileStatusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // P25 Trunked Radio State
   const [controlChannel, setControlChannel] = useState(770.95625e6);
@@ -243,15 +247,33 @@ function Visualizer(): React.JSX.Element {
       // Note: In a real implementation, you would pass these samples to the visualizations
     }
 
-    // Clear message after 5 seconds
-    setTimeout(() => setFileStatusMessage(null), 5000);
+    // Clear any existing timeout
+    if (fileStatusTimeoutRef.current) {
+      clearTimeout(fileStatusTimeoutRef.current);
+    }
+    
+    // Set new timeout and store the ID
+    fileStatusTimeoutRef.current = setTimeout(() => {
+      setFileStatusMessage(null);
+      fileStatusTimeoutRef.current = null;
+    }, 5000);
   };
 
   // File import error handler
   const handleFileError = (error: string): void => {
     setFileStatusMessage({ type: "error", message: error });
     setLiveRegionMessage(`File import error: ${error}`);
-    setTimeout(() => setFileStatusMessage(null), 5000);
+    
+    // Clear any existing timeout
+    if (fileStatusTimeoutRef.current) {
+      clearTimeout(fileStatusTimeoutRef.current);
+    }
+    
+    // Set new timeout and store the ID
+    fileStatusTimeoutRef.current = setTimeout(() => {
+      setFileStatusMessage(null);
+      fileStatusTimeoutRef.current = null;
+    }, 5000);
   };
 
   // Export custom presets
@@ -261,7 +283,17 @@ function Visualizer(): React.JSX.Element {
         type: "error",
         message: "No custom presets to export",
       });
-      setTimeout(() => setFileStatusMessage(null), 5000);
+      
+      // Clear any existing timeout
+      if (fileStatusTimeoutRef.current) {
+        clearTimeout(fileStatusTimeoutRef.current);
+      }
+      
+      // Set new timeout and store the ID
+      fileStatusTimeoutRef.current = setTimeout(() => {
+        setFileStatusMessage(null);
+        fileStatusTimeoutRef.current = null;
+      }, 5000);
       return;
     }
 
@@ -280,8 +312,27 @@ function Visualizer(): React.JSX.Element {
       message: `Exported ${customPresets.length} presets to ${filename}`,
     });
     setLiveRegionMessage(`Exported ${customPresets.length} presets`);
-    setTimeout(() => setFileStatusMessage(null), 5000);
+    
+    // Clear any existing timeout
+    if (fileStatusTimeoutRef.current) {
+      clearTimeout(fileStatusTimeoutRef.current);
+    }
+    
+    // Set new timeout and store the ID
+    fileStatusTimeoutRef.current = setTimeout(() => {
+      setFileStatusMessage(null);
+      fileStatusTimeoutRef.current = null;
+    }, 5000);
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (fileStatusTimeoutRef.current) {
+        clearTimeout(fileStatusTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="container">
@@ -491,6 +542,8 @@ function Visualizer(): React.JSX.Element {
             </div>
           )}
         </Card>
+
+        <PerformanceMetrics />
 
         <div
           className="visualizations"
