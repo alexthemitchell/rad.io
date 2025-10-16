@@ -3,6 +3,7 @@ import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import SignalTypeSelector, {
   SignalType,
 } from "../components/SignalTypeSelector";
+import BandwidthSelector from "../components/BandwidthSelector";
 import PresetStations from "../components/PresetStations";
 import RadioControls from "../components/RadioControls";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
@@ -23,6 +24,7 @@ function Visualizer(): React.JSX.Element {
   const [listening, setListening] = useState(false);
   const [signalType, setSignalType] = useState<SignalType>("FM");
   const [frequency, setFrequency] = useState(100.3e6);
+  const [bandwidth, setBandwidth] = useState(20e6); // Default 20 MHz bandwidth
 
   // Live region for screen reader announcements
   const [liveRegionMessage, setLiveRegionMessage] = useState("");
@@ -86,6 +88,16 @@ function Visualizer(): React.JSX.Element {
     }
   };
 
+  const handleSetBandwidth = async (newBandwidth: number): Promise<void> => {
+    setBandwidth(newBandwidth);
+    if (device && device.setBandwidth) {
+      await device.setBandwidth(newBandwidth);
+      setLiveRegionMessage(
+        `Bandwidth filter set to ${newBandwidth / 1e6} MHz`,
+      );
+    }
+  };
+
   const handleSignalTypeChange = (type: SignalType): void => {
     setSignalType(type);
     setLiveRegionMessage(`Signal type changed to ${type}`);
@@ -133,10 +145,13 @@ function Visualizer(): React.JSX.Element {
     // Configure device when it becomes available
     const configureDevice = async (): Promise<void> => {
       await device.setFrequency(frequency);
+      if (device.setBandwidth) {
+        await device.setBandwidth(bandwidth);
+      }
       await device.setAmpEnable(false);
     };
     configureDevice().catch(console.error);
-  }, [device, frequency]);
+  }, [device, frequency, bandwidth]);
 
   // Simulate P25 activity (in real implementation, this would decode actual P25 data)
   useEffect(() => {
@@ -314,11 +329,22 @@ function Visualizer(): React.JSX.Element {
               onSignalTypeChange={handleSignalTypeChange}
             />
             {signalType !== "P25" ? (
-              <RadioControls
-                frequency={frequency}
-                signalType={signalType}
-                setFrequency={handleSetFrequency}
-              />
+              <>
+                <RadioControls
+                  frequency={frequency}
+                  signalType={signalType}
+                  setFrequency={handleSetFrequency}
+                />
+                {device && device.getCapabilities().supportedBandwidths ? (
+                  <BandwidthSelector
+                    bandwidth={bandwidth}
+                    setBandwidth={handleSetBandwidth}
+                    supportedBandwidths={
+                      device.getCapabilities().supportedBandwidths
+                    }
+                  />
+                ) : null}
+              </>
             ) : null}
           </div>
           {signalType === "P25" ? (

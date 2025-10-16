@@ -244,6 +244,18 @@ export class HackRFOne {
     });
   }
 
+  /**
+   * Set baseband filter bandwidth
+   * @param bandwidthHz Bandwidth in Hz (1.75 MHz to 28 MHz)
+   */
+  async setBandwidth(bandwidthHz: number): Promise<void> {
+    const data = new Uint32Array([bandwidthHz]);
+    await this.controlTransferOut({
+      command: RequestCommand.BASEBAND_FILTER_BANDWIDTH_SET,
+      data,
+    });
+  }
+
   // New method to start reception with an optional data callback
   async receive(callback?: (data: DataView) => void): Promise<void> {
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
