@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
 import { performanceMonitor } from "../utils/performanceMonitor";
+import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 
 type Sample = {
   I: number;
@@ -22,6 +23,9 @@ export default function IQConstellation({
   const workerRef = useRef<Worker | null>(null);
   // Track whether this canvas element has been transferred to OffscreenCanvas
   const transferredRef = useRef<boolean>(false);
+
+  // Add interaction handlers for pan, zoom, and gestures
+  const { transform, handlers, resetTransform } = useVisualizationInteraction();
 
   // Generate accessible text description of the constellation data
   const accessibleDescription = useMemo((): string => {
@@ -129,7 +133,10 @@ export default function IQConstellation({
         }
 
         if (transferredRef.current) {
-          workerRef.current.postMessage({ type: "render", data: { samples } });
+          workerRef.current.postMessage({
+            type: "render",
+            data: { samples, transform },
+          });
           return; // Important: don't attempt main-thread rendering after transfer
         }
       }
@@ -153,6 +160,11 @@ export default function IQConstellation({
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     ctx.scale(dpr, dpr);
+
+    // Apply user interaction transform (pan and zoom)
+    ctx.save();
+    ctx.translate(transform.offsetX, transform.offsetY);
+    ctx.scale(transform.scale, transform.scale);
 
     // --- original rendering logic (kept minimal here) ---
     ctx.fillStyle = "#0a0e1a";
@@ -190,8 +202,11 @@ export default function IQConstellation({
       ctx.fill();
     }
 
+    // Restore context state after transform
+    ctx.restore();
+
     performanceMonitor.measure("render-iq-constellation", markStart);
-  }, [samples, width, height]);
+  }, [samples, width, height, transform]);
 
   // Cleanup worker on unmount
   useEffect((): (() => void) => {
@@ -214,12 +229,42 @@ export default function IQConstellation({
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ borderRadius: "8px" }}
-      role="img"
-      aria-label={accessibleDescription}
-      tabIndex={0}
-    />
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <canvas
+        ref={canvasRef}
+        style={{
+          borderRadius: "8px",
+          touchAction: "none", // Prevent default touch behaviors
+          cursor: "grab",
+        }}
+        role="img"
+        aria-label={accessibleDescription}
+        tabIndex={0}
+        {...handlers}
+      />
+      {(transform.scale !== 1 || transform.offsetX !== 0 || transform.offsetY !== 0) && (
+        <button
+          onClick={resetTransform}
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            padding: "6px 12px",
+            background: "rgba(90, 163, 232, 0.9)",
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "bold",
+            zIndex: 10,
+          }}
+          title="Reset view (or press 0)"
+          aria-label="Reset visualization view"
+        >
+          Reset View
+        </button>
+      )}
+    </div>
   );
 }

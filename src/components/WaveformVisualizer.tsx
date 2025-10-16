@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
 import { calculateWaveform, Sample } from "../utils/dsp";
+import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 
 type WaveformVisualizerProps = {
   samples: Sample[];
@@ -16,6 +17,9 @@ export default function WaveformVisualizer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
+
+  // Add interaction handlers for pan, zoom, and gestures
+  const { transform, handlers, resetTransform } = useVisualizationInteraction();
 
   // Generate accessible text description of the waveform data
   const accessibleDescription = useMemo((): string => {
@@ -115,7 +119,10 @@ export default function WaveformVisualizer({
         }
 
         if (transferredRef.current) {
-          workerRef.current.postMessage({ type: "render", data: { samples } });
+          workerRef.current.postMessage({
+            type: "render",
+            data: { samples, transform },
+          });
           return;
         }
       }
@@ -137,6 +144,11 @@ export default function WaveformVisualizer({
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     ctx.scale(dpr, dpr);
+
+    // Apply user interaction transform (pan and zoom)
+    ctx.save();
+    ctx.translate(transform.offsetX, transform.offsetY);
+    ctx.scale(transform.scale, transform.scale);
 
     // Professional dark background
     ctx.fillStyle = "#0a0e1a";
@@ -182,7 +194,10 @@ export default function WaveformVisualizer({
       }
     }
     ctx.stroke();
-  }, [samples, width, height]);
+
+    // Restore context state after transform
+    ctx.restore();
+  }, [samples, width, height, transform]);
 
   // Cleanup worker on unmount
   useEffect((): (() => void) => {
@@ -205,12 +220,42 @@ export default function WaveformVisualizer({
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ borderRadius: "8px" }}
-      role="img"
-      aria-label={accessibleDescription}
-      tabIndex={0}
-    />
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <canvas
+        ref={canvasRef}
+        style={{
+          borderRadius: "8px",
+          touchAction: "none", // Prevent default touch behaviors
+          cursor: "grab",
+        }}
+        role="img"
+        aria-label={accessibleDescription}
+        tabIndex={0}
+        {...handlers}
+      />
+      {(transform.scale !== 1 || transform.offsetX !== 0 || transform.offsetY !== 0) && (
+        <button
+          onClick={resetTransform}
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            padding: "6px 12px",
+            background: "rgba(90, 163, 232, 0.9)",
+            color: "#fff",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "bold",
+            zIndex: 10,
+          }}
+          title="Reset view (or press 0)"
+          aria-label="Reset visualization view"
+        >
+          Reset View
+        </button>
+      )}
+    </div>
   );
 }
