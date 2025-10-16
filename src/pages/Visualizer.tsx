@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import SignalTypeSelector, {
   SignalType,
 } from "../components/SignalTypeSelector";
@@ -9,6 +10,7 @@ import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import TalkgroupScanner, { Talkgroup } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import P25SystemPresets from "../components/P25SystemPresets";
+import FrequencyScanner from "../components/FrequencyScanner";
 import DSPPipeline from "../components/DSPPipeline";
 import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
@@ -85,6 +87,12 @@ function Visualizer(): React.JSX.Element {
       setLiveRegionMessage(`Frequency changed to ${displayFreq}`);
     }
   };
+
+  // Initialize frequency scanner after handleSetFrequency is defined
+  const frequencyScanner = useFrequencyScanner(
+    device ?? null,
+    handleSetFrequency,
+  );
 
   const handleSignalTypeChange = (type: SignalType): void => {
     setSignalType(type);
@@ -348,6 +356,22 @@ function Visualizer(): React.JSX.Element {
               onStationSelect={handleSetFrequency}
             />
           )}
+        </Card>
+
+        <Card
+          title="Frequency Scanner"
+          subtitle="Automated signal scanning and detection"
+        >
+          <FrequencyScanner
+            state={frequencyScanner.state}
+            onStartScan={frequencyScanner.startScan}
+            onPauseScan={frequencyScanner.pauseScan}
+            onResumeScan={frequencyScanner.resumeScan}
+            onStopScan={frequencyScanner.stopScan}
+            onClearSignals={frequencyScanner.clearSignals}
+            disabled={!device || !listening}
+            signalType={signalType}
+          />
         </Card>
 
         {signalType === "P25" && (

@@ -840,3 +840,131 @@ a:focus-visible,
   text-align: center;
 }
 
+/* Frequency Scanner */
+.frequency-scanner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.scanner-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.control-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.scanner-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.scan-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+.scan-status {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+.active-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.signals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.signals-header h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.btn-small {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.no-signals {
+  text-align: center;
+  color: #718096;
+  font-style: italic;
+  padding: 1rem;
+}
+
+.signals-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.signals-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.signals-table th {
+  background: #f7fafc;
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #4a5568;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+}
+
+.signals-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+  color: #2d3748;
+}
+
+.signals-table tbody tr:hover {
+  background: #f7fafc;
+}
+
+.signals-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
