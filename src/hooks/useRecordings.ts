@@ -133,7 +133,7 @@ export function useRecordings(): {
       return {
         sampleCount: samplesBuffer.current.length,
         duration: recordingDuration,
-        fileSize: json.length,
+        fileSize: new Blob([json]).size,
       };
     },
     [recordingDuration],
