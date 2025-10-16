@@ -113,8 +113,10 @@ class PerformanceMonitor {
     try {
       // If no end mark, measure from start mark to now
       if (!endMark) {
-        performance.mark(`${name}-end`);
-        endMark = `${name}-end`;
+        const uniqueSuffix = Date.now();
+        const endMarkName = `${name}-end-${uniqueSuffix}`;
+        performance.mark(endMarkName);
+        endMark = endMarkName;
       }
 
       performance.measure(name, startMark, endMark);
