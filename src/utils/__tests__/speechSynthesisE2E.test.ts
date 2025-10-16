@@ -330,30 +330,34 @@ class MockAudioContext {
 // Global Setup
 // ============================================================================
 
+// TypeScript declaration merging for global mock properties
+declare global {
+  // Add mock properties to NodeJS.Global
+  // (or Window if running in browser-like environment)
+  // For NodeJS, use NodeJS.Global; for browser, use Window
+  // Here, we use NodeJS.Global for test environment
+  // If your test runner uses a different global type, adjust accordingly
+  // These types are intentionally loose for test mocks
+  // You may want to refine them for stricter type safety
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace NodeJS {
+    interface Global {
+      speechSynthesis: MockSpeechSynthesis;
+      SpeechSynthesisUtterance: typeof MockSpeechSynthesisUtterance;
+      webkitSpeechRecognition: typeof MockSpeechRecognition;
+      AudioContext: typeof MockAudioContext;
+    }
+  }
+}
+
 const mockSpeechSynthesis = new MockSpeechSynthesis();
 
 beforeAll(() => {
   // Setup global mocks
-  global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
-
-  // Mock SpeechSynthesis - use unknown intermediate type for test mocks
-  // These are intentional test mocks that don't perfectly match the browser API types
-  (
-    global as unknown as { speechSynthesis: MockSpeechSynthesis }
-  ).speechSynthesis = mockSpeechSynthesis;
-  (
-    global as unknown as {
-      SpeechSynthesisUtterance: typeof MockSpeechSynthesisUtterance;
-    }
-  ).SpeechSynthesisUtterance = MockSpeechSynthesisUtterance;
-
-  // Mock SpeechRecognition
-  (
-    global as typeof global & {
-      webkitSpeechRecognition: typeof MockSpeechRecognition;
-    }
-  ).webkitSpeechRecognition =
-    MockSpeechRecognition as unknown as typeof MockSpeechRecognition;
+  global.AudioContext = MockAudioContext;
+  global.speechSynthesis = mockSpeechSynthesis;
+  global.SpeechSynthesisUtterance = MockSpeechSynthesisUtterance;
+  global.webkitSpeechRecognition = MockSpeechRecognition;
 });
 
 afterAll(() => {
