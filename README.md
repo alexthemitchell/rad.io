@@ -32,7 +32,8 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Custom SDRs**: Implement `ISDRDevice` interface
 
 ### ✅ Quality Assurance
-- **171+ Unit Tests**: Comprehensive coverage including accessibility tests
+- **288+ Unit Tests**: Comprehensive coverage including accessibility tests
+- **40 E2E Tests**: Speech Synthesis → Recognition validation (see [SPEECH_E2E_TESTING.md](./SPEECH_E2E_TESTING.md))
 - **CI/CD Pipeline**: Automated lint, test, format, build, type-check
 - **Zero External Dependencies**: Native WebAudio API and Canvas rendering
 
