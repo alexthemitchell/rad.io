@@ -99,10 +99,7 @@ describe("PlaybackManager", () => {
     });
 
     it("should start playback and invoke callback", () => {
-      let callbackInvoked = false;
-
       manager.startPlayback((samples) => {
-        callbackInvoked = true;
         expect(samples.length).toBeGreaterThan(0);
       });
 

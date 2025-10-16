@@ -42,9 +42,9 @@ function PlaybackControls({
   const [speed, setSpeed] = useState(1.0);
 
   // Update position while playing
-  useEffect(() => {
+  useEffect((): (() => void) => {
     if (playbackState !== PlaybackState.PLAYING || !playbackManager) {
-      return;
+      return () => {};
     }
 
     const interval = setInterval(() => {
@@ -55,9 +55,9 @@ function PlaybackControls({
   }, [playbackState, playbackManager]);
 
   // Update state when playback manager state changes
-  useEffect(() => {
+  useEffect((): (() => void) => {
     if (!playbackManager) {
-      return;
+      return () => {};
     }
 
     const checkState = (): void => {

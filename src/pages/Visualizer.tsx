@@ -38,7 +38,7 @@ function Visualizer(): React.JSX.Element {
   const [isPlaybackMode, setIsPlaybackMode] = useState(false);
 
   // Initialize managers
-  useEffect(() => {
+  useEffect((): (() => void) => {
     recordingManagerRef.current = new RecordingManager();
     playbackManagerRef.current = new PlaybackManager();
 

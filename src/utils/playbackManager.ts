@@ -8,7 +8,7 @@
  */
 
 import type { IQSample } from "../models/SDRDevice";
-import type { Recording } from "./recordingManager";
+import type { Recording, RecordingMetadata } from "./recordingManager";
 
 /**
  * Playback state
@@ -172,7 +172,7 @@ export class PlaybackManager {
   /**
    * Get recording metadata
    */
-  getMetadata() {
+  getMetadata(): RecordingMetadata | null {
     return this.recording?.metadata || null;
   }
 

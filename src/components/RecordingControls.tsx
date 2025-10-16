@@ -42,9 +42,9 @@ function RecordingControls({
   const [sampleCount, setSampleCount] = useState(0);
 
   // Update duration every second while recording
-  useEffect(() => {
+  useEffect((): (() => void) => {
     if (recordingState !== RecordingState.RECORDING || !recordingManager) {
-      return;
+      return () => {};
     }
 
     const interval = setInterval(() => {
