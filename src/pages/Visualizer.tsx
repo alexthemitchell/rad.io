@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import SignalTypeSelector, {
   SignalType,
@@ -17,6 +17,11 @@ import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import PerformanceMetrics from "../components/PerformanceMetrics";
+import RecordingControls from "../components/RecordingControls";
+import PlaybackControls from "../components/PlaybackControls";
+import { RecordingManager } from "../utils/recordingManager";
+import { PlaybackManager } from "../utils/playbackManager";
+import type { IQSample } from "../models/SDRDevice";
 import "../styles/main.css";
 
 function Visualizer(): React.JSX.Element {
@@ -25,6 +30,23 @@ function Visualizer(): React.JSX.Element {
   const [signalType, setSignalType] = useState<SignalType>("FM");
   const [frequency, setFrequency] = useState(100.3e6);
   const [bandwidth, setBandwidth] = useState(20e6); // Default 20 MHz bandwidth
+
+  // Recording and Playback state
+  const recordingManagerRef = useRef<RecordingManager | null>(null);
+  const playbackManagerRef = useRef<PlaybackManager | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isPlaybackMode, setIsPlaybackMode] = useState(false);
+
+  // Initialize managers
+  useEffect(() => {
+    recordingManagerRef.current = new RecordingManager();
+    playbackManagerRef.current = new PlaybackManager();
+
+    return () => {
+      recordingManagerRef.current?.reset();
+      playbackManagerRef.current?.clearRecording();
+    };
+  }, []);
 
   // Live region for screen reader announcements
   const [liveRegionMessage, setLiveRegionMessage] = useState("");
@@ -194,18 +216,43 @@ function Visualizer(): React.JSX.Element {
     }
   }, [listening, signalType, talkgroups]);
 
+  // Handle IQ samples from device or playback
+  const handleIQSamples = useCallback((data: DataView): void => {
+    if (!device && !isPlaybackMode) {
+      return;
+    }
+
+    // Parse samples
+    const samples: IQSample[] = isPlaybackMode
+      ? [] // Playback manager handles samples differently
+      : device?.parseSamples(data) || [];
+
+    // Add to recording if recording is active
+    if (isRecording && recordingManagerRef.current && samples.length > 0) {
+      recordingManagerRef.current.addSamples(samples);
+    }
+  }, [device, isPlaybackMode, isRecording]);
+
   const startListening = async (): Promise<void> => {
     try {
-      if (!device) {
+      if (isPlaybackMode && playbackManagerRef.current) {
+        // Start playback
+        playbackManagerRef.current.startPlayback((samples) => {
+          // Samples are already parsed IQSamples from playback
+          if (isRecording && recordingManagerRef.current) {
+            recordingManagerRef.current.addSamples(samples);
+          }
+        });
+        setListening(true);
+        setLiveRegionMessage("Started playback");
+      } else if (!device) {
         setLiveRegionMessage("Connecting to SDR device...");
         await initialize();
       } else {
         setListening(true);
         setLiveRegionMessage("Started receiving radio signals");
         device
-          .receive((): void => {
-            // IQ Sample received
-          })
+          .receive(handleIQSamples)
           .catch(console.error);
       }
     } catch (err) {
@@ -215,12 +262,31 @@ function Visualizer(): React.JSX.Element {
   };
 
   const stopListening = async (): Promise<void> => {
-    if (device) {
+    if (isPlaybackMode && playbackManagerRef.current) {
+      playbackManagerRef.current.stopPlayback();
+      setListening(false);
+      setLiveRegionMessage("Stopped playback");
+    } else if (device) {
       await device.stopRx();
       setListening(false);
       setLiveRegionMessage("Stopped receiving radio signals");
     }
   };
+
+  // Handle playback mode changes
+  const handlePlaybackModeChange = useCallback((enabled: boolean): void => {
+    setIsPlaybackMode(enabled);
+    if (enabled) {
+      // Stop live reception when entering playback mode
+      if (listening && device) {
+        device.stopRx().catch(console.error);
+        setListening(false);
+      }
+      setLiveRegionMessage("Playback mode enabled");
+    } else {
+      setLiveRegionMessage("Playback mode disabled");
+    }
+  }, [listening, device]);
 
   return (
     <div className="container">
@@ -374,6 +440,25 @@ function Visualizer(): React.JSX.Element {
               onStationSelect={handleSetFrequency}
             />
           )}
+        </Card>
+
+        <Card
+          title="Recording & Playback"
+          subtitle="Record IQ samples or play back recorded files"
+        >
+          <RecordingControls
+            recordingManager={recordingManagerRef.current}
+            frequency={frequency}
+            sampleRate={device?.getSampleRate ? 20e6 : 20e6}
+            isReceiving={listening && !isPlaybackMode}
+            onRecordingStateChange={setIsRecording}
+          />
+          <div style={{ margin: "1.5rem 0", borderTop: "1px solid #e2e8f0" }} />
+          <PlaybackControls
+            playbackManager={playbackManagerRef.current}
+            isPlaybackMode={isPlaybackMode}
+            onPlaybackModeChange={handlePlaybackModeChange}
+          />
         </Card>
 
         {signalType === "P25" && (
