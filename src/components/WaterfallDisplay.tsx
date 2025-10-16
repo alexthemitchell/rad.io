@@ -223,15 +223,7 @@ export default function WaterfallDisplay({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [
-    width,
-    height,
-    freqMin,
-    freqMax,
-    scrollSpeed,
-    transform,
-    isAnimating,
-  ]);
+  }, [width, height, freqMin, freqMax, scrollSpeed, transform, isAnimating]);
 
   // Toggle animation on/off
   const toggleAnimation = (): void => {
