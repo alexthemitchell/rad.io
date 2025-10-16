@@ -113,7 +113,7 @@ export default function PerformanceMetrics(): React.JSX.Element {
 
       {longTaskCount > 0 && (
         <div className="long-tasks-warning">
-          ⚠️ {longTaskCount} long tasks detected (>50ms)
+          ⚠️ {longTaskCount} long tasks detected (&gt;50ms)
         </div>
       )}
     </div>
