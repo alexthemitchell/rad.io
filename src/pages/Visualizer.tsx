@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import SignalTypeSelector, {
   SignalType,
@@ -17,14 +17,176 @@ import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import PerformanceMetrics from "../components/PerformanceMetrics";
+import { convertToSamples, Sample } from "../utils/dsp";
+import { testSamples } from "../hooks/__test__/testSamples";
+import { performanceMonitor } from "../utils/performanceMonitor";
+import { ISDRDevice } from "../models/SDRDevice";
 import "../styles/main.css";
+
+const MAX_BUFFER_SAMPLES = 32768;
+const UPDATE_INTERVAL_MS = 100;
+const DEMO_CHUNK_SIZE = 2048;
+const DEMO_INTERVAL_MS = 75;
 
 function Visualizer(): React.JSX.Element {
   const { device, initialize, cleanup } = useHackRFDevice();
   const [listening, setListening] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [signalType, setSignalType] = useState<SignalType>("FM");
   const [frequency, setFrequency] = useState(100.3e6);
   const [bandwidth, setBandwidth] = useState(20e6); // Default 20 MHz bandwidth
+  const [samples, setSamples] = useState<Sample[]>([]);
+  const [latestSamples, setLatestSamples] = useState<Sample[]>([]);
+
+  const sampleBufferRef = useRef<Sample[]>([]);
+  const latestChunkRef = useRef<Sample[]>([]);
+  const rafIdRef = useRef<number | null>(null);
+  const lastUpdateRef = useRef<number>(0);
+  const simulationTimerRef = useRef<number | null>(null);
+  const demoSamplesRef = useRef<Sample[] | null>(null);
+  const receivePromiseRef = useRef<Promise<void> | null>(null);
+  const shouldStartOnConnectRef = useRef(false);
+
+  const cancelScheduledUpdate = useCallback((): void => {
+    if (
+      typeof cancelAnimationFrame === "function" &&
+      rafIdRef.current !== null
+    ) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+  }, []);
+
+  const clearVisualizationState = useCallback((): void => {
+    sampleBufferRef.current = [];
+    latestChunkRef.current = [];
+    lastUpdateRef.current = 0;
+    cancelScheduledUpdate();
+    setSamples([]);
+    setLatestSamples([]);
+  }, [cancelScheduledUpdate]);
+
+  const scheduleVisualizationUpdate = useCallback((): void => {
+    if (typeof requestAnimationFrame !== "function") {
+      setSamples([...sampleBufferRef.current]);
+      setLatestSamples([...latestChunkRef.current]);
+      return;
+    }
+
+    if (rafIdRef.current !== null) {
+      return;
+    }
+
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      setSamples([...sampleBufferRef.current]);
+      setLatestSamples([...latestChunkRef.current]);
+    });
+  }, []);
+
+  const handleSampleChunk = useCallback(
+    (chunk: Sample[]): void => {
+      if (!chunk || chunk.length === 0) {
+        return;
+      }
+
+      const markName = `pipeline-chunk-start-${
+        typeof performance !== "undefined" ? performance.now() : Date.now()
+      }`;
+      performanceMonitor.mark(markName);
+
+      const combined = sampleBufferRef.current.length
+        ? sampleBufferRef.current.concat(chunk)
+        : chunk.slice();
+      const trimmed =
+        combined.length > MAX_BUFFER_SAMPLES
+          ? combined.slice(combined.length - MAX_BUFFER_SAMPLES)
+          : combined;
+      sampleBufferRef.current = trimmed;
+      latestChunkRef.current = chunk.slice();
+
+      performanceMonitor.measure("pipeline-processing", markName);
+
+      const now =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+      if (now - lastUpdateRef.current >= UPDATE_INTERVAL_MS) {
+        lastUpdateRef.current = now;
+        scheduleVisualizationUpdate();
+      }
+    },
+    [scheduleVisualizationUpdate],
+  );
+
+  const stopDemoStream = useCallback((): void => {
+    if (simulationTimerRef.current !== null) {
+      clearInterval(simulationTimerRef.current);
+      simulationTimerRef.current = null;
+    }
+  }, []);
+
+  const startDemoStream = useCallback((): void => {
+    if (simulationTimerRef.current !== null) {
+      return;
+    }
+
+    if (!demoSamplesRef.current) {
+      demoSamplesRef.current = convertToSamples(
+        testSamples as [number, number][],
+      );
+    }
+
+    const demoData = demoSamplesRef.current;
+    if (!demoData || demoData.length === 0) {
+      return;
+    }
+
+    let offset = 0;
+    simulationTimerRef.current = window.setInterval(() => {
+      const end = offset + DEMO_CHUNK_SIZE;
+      const chunk =
+        end <= demoData.length
+          ? demoData.slice(offset, end)
+          : demoData
+              .slice(offset)
+              .concat(demoData.slice(0, end % demoData.length));
+      handleSampleChunk(chunk);
+      offset = (offset + DEMO_CHUNK_SIZE) % demoData.length;
+    }, DEMO_INTERVAL_MS);
+  }, [handleSampleChunk]);
+
+  const beginDeviceStreaming = useCallback(
+    async (activeDevice: ISDRDevice): Promise<void> => {
+      clearVisualizationState();
+      stopDemoStream();
+      setListening(true);
+      setLiveRegionMessage("Started receiving radio signals");
+
+      const receivePromise = activeDevice
+        .receive((data) => {
+          const parsed = activeDevice.parseSamples(data) as Sample[];
+          handleSampleChunk(parsed);
+        })
+        .catch((err) => {
+          console.error(err);
+          setLiveRegionMessage("Failed to receive radio signals");
+          throw err;
+        })
+        .finally(() => {
+          setListening(false);
+        });
+
+      receivePromiseRef.current = receivePromise;
+
+      try {
+        await receivePromise;
+      } catch {
+        // Error already handled in catch above
+      } finally {
+        receivePromiseRef.current = null;
+      }
+    },
+    [clearVisualizationState, handleSampleChunk, stopDemoStream],
+  );
 
   // Live region for screen reader announcements
   const [liveRegionMessage, setLiveRegionMessage] = useState("");
@@ -92,9 +254,7 @@ function Visualizer(): React.JSX.Element {
     setBandwidth(newBandwidth);
     if (device && device.setBandwidth) {
       await device.setBandwidth(newBandwidth);
-      setLiveRegionMessage(
-        `Bandwidth filter set to ${newBandwidth / 1e6} MHz`,
-      );
+      setLiveRegionMessage(`Bandwidth filter set to ${newBandwidth / 1e6} MHz`);
     }
   };
 
@@ -138,7 +298,7 @@ function Visualizer(): React.JSX.Element {
     setTalkgroups((prev) => [...prev, { ...newTalkgroup, enabled: true }]);
   };
 
-  useEffect(() => {
+  useEffect((): void => {
     if (!device) {
       return;
     }
@@ -152,6 +312,21 @@ function Visualizer(): React.JSX.Element {
     };
     configureDevice().catch(console.error);
   }, [device, frequency, bandwidth]);
+
+  useEffect((): (() => void) => {
+    return () => {
+      stopDemoStream();
+      cancelScheduledUpdate();
+    };
+  }, [cancelScheduledUpdate, stopDemoStream]);
+
+  useEffect((): void => {
+    if (!device || !shouldStartOnConnectRef.current) {
+      return;
+    }
+    shouldStartOnConnectRef.current = false;
+    void beginDeviceStreaming(device);
+  }, [device, beginDeviceStreaming]);
 
   // Simulate P25 activity (in real implementation, this would decode actual P25 data)
   useEffect(() => {
@@ -194,33 +369,72 @@ function Visualizer(): React.JSX.Element {
     }
   }, [listening, signalType, talkgroups]);
 
-  const startListening = async (): Promise<void> => {
-    try {
-      if (!device) {
-        setLiveRegionMessage("Connecting to SDR device...");
-        await initialize();
-      } else {
-        setListening(true);
-        setLiveRegionMessage("Started receiving radio signals");
-        device
-          .receive((): void => {
-            // IQ Sample received
-          })
-          .catch(console.error);
-      }
-    } catch (err) {
-      console.error(err);
-      setLiveRegionMessage("Failed to connect to device");
+  const startListening = useCallback(async (): Promise<void> => {
+    if (listening) {
+      return;
     }
-  };
 
-  const stopListening = async (): Promise<void> => {
-    if (device) {
-      await device.stopRx();
-      setListening(false);
-      setLiveRegionMessage("Stopped receiving radio signals");
+    if (!device) {
+      if (isInitializing) {
+        return;
+      }
+      shouldStartOnConnectRef.current = true;
+      setIsInitializing(true);
+      setLiveRegionMessage("Connecting to SDR device...");
+      try {
+        await initialize();
+        setLiveRegionMessage("SDR device connected");
+      } catch (err) {
+        console.error(err);
+        shouldStartOnConnectRef.current = false;
+        setLiveRegionMessage(
+          "Failed to connect to device. Starting demo mode with sample data.",
+        );
+        clearVisualizationState();
+        setListening(true);
+        startDemoStream();
+      } finally {
+        setIsInitializing(false);
+      }
+      return;
     }
-  };
+
+    shouldStartOnConnectRef.current = false;
+    void beginDeviceStreaming(device);
+  }, [
+    beginDeviceStreaming,
+    clearVisualizationState,
+    device,
+    initialize,
+    isInitializing,
+    listening,
+    startDemoStream,
+  ]);
+
+  const stopListening = useCallback(async (): Promise<void> => {
+    stopDemoStream();
+
+    if (device && device.isReceiving()) {
+      try {
+        await device.stopRx();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    if (receivePromiseRef.current) {
+      try {
+        await receivePromiseRef.current;
+      } catch {
+        // Errors already handled in beginDeviceStreaming
+      }
+      receivePromiseRef.current = null;
+    }
+
+    cancelScheduledUpdate();
+    setListening(false);
+    setLiveRegionMessage("Stopped receiving radio signals");
+  }, [cancelScheduledUpdate, device, stopDemoStream]);
 
   return (
     <div className="container">
@@ -254,13 +468,15 @@ function Visualizer(): React.JSX.Element {
             <button
               className="btn btn-primary"
               onClick={startListening}
-              disabled={!device || listening}
+              disabled={listening || isInitializing}
               title={
-                !device
-                  ? "Click to connect your SDR device via WebUSB. Ensure device is plugged in and browser supports WebUSB."
-                  : listening
-                    ? "Device is currently receiving. Click 'Stop Reception' first."
-                    : "Start receiving IQ samples from the SDR device. Visualizations will update with live data."
+                listening
+                  ? "Device is currently receiving. Click 'Stop Reception' first."
+                  : isInitializing
+                    ? "Connecting to your SDR device. Please grant WebUSB access if prompted."
+                    : device
+                      ? "Start receiving IQ samples from the SDR device. Visualizations will update with live data."
+                      : "Click to connect your SDR device via WebUSB. Ensure device is plugged in and browser supports WebUSB."
               }
               aria-label={
                 device
@@ -268,7 +484,11 @@ function Visualizer(): React.JSX.Element {
                   : "Connect SDR device via WebUSB"
               }
             >
-              {device ? "Start Reception" : "Connect Device"}
+              {device
+                ? "Start Reception"
+                : isInitializing
+                  ? "Connecting..."
+                  : "Connect Device"}
             </button>
             <button
               className="btn btn-secondary"
@@ -411,7 +631,7 @@ function Visualizer(): React.JSX.Element {
           title="Signal Strength Meter"
           subtitle="Real-time signal level monitoring for antenna alignment and quality assessment"
         >
-          <SignalStrengthMeterChart />
+          <SignalStrengthMeterChart samples={latestSamples} />
         </Card>
 
         <PerformanceMetrics />
@@ -425,21 +645,21 @@ function Visualizer(): React.JSX.Element {
             title="IQ Constellation Diagram"
             subtitle="Visual representation of the I (in-phase) and Q (quadrature) components"
           >
-            <SampleChart />
+            <SampleChart samples={samples} />
           </Card>
 
           <Card
             title="Amplitude Waveform"
             subtitle="Time-domain signal amplitude envelope"
           >
-            <WaveformChart />
+            <WaveformChart samples={samples} />
           </Card>
 
           <Card
             title="Spectrogram"
             subtitle="Frequency spectrum over time showing signal strength"
           >
-            <FFTChart />
+            <FFTChart samples={samples} />
           </Card>
         </div>
       </main>

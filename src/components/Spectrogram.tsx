@@ -56,6 +56,9 @@ export default function Spectrogram({
       return;
     }
 
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
     const markStart = "render-spectrogram-start";
     performanceMonitor.mark(markStart);
 
@@ -252,7 +255,9 @@ export default function Spectrogram({
         tabIndex={0}
         {...handlers}
       />
-      {(transform.scale !== 1 || transform.offsetX !== 0 || transform.offsetY !== 0) && (
+      {(transform.scale !== 1 ||
+        transform.offsetX !== 0 ||
+        transform.offsetY !== 0) && (
         <button
           onClick={resetTransform}
           style={{

@@ -46,6 +46,8 @@ export default function WaveformVisualizer({
     if (!canvas || samples.length === 0) {
       return;
     }
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
     const supportsOffscreen =
       typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
     const shouldUseWorker = supportsOffscreen;
@@ -233,7 +235,9 @@ export default function WaveformVisualizer({
         tabIndex={0}
         {...handlers}
       />
-      {(transform.scale !== 1 || transform.offsetX !== 0 || transform.offsetY !== 0) && (
+      {(transform.scale !== 1 ||
+        transform.offsetX !== 0 ||
+        transform.offsetY !== 0) && (
         <button
           onClick={resetTransform}
           style={{

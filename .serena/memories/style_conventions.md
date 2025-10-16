@@ -1,0 +1,3 @@
+- Codebase uses strict TypeScript: explicit types, no implicit any, React functional components with hooks, and interfaces such as ISDRDevice for device abstraction.
+- Performance-oriented canvas rendering: alpha false, desynchronized true, devicePixelRatio scaling; prefer typed arrays for DSP pipelines.
+- Tests emphasize memory management utilities (clearMemoryPools, chunked sample generation) and proper component cleanup; comments only added when necessary to clarify complex logic.

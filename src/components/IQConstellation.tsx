@@ -51,6 +51,9 @@ export default function IQConstellation({
       return;
     }
 
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
     const markStart = "render-iq-constellation-start";
     performanceMonitor.mark(markStart);
 
@@ -242,7 +245,9 @@ export default function IQConstellation({
         tabIndex={0}
         {...handlers}
       />
-      {(transform.scale !== 1 || transform.offsetX !== 0 || transform.offsetY !== 0) && (
+      {(transform.scale !== 1 ||
+        transform.offsetX !== 0 ||
+        transform.offsetY !== 0) && (
         <button
           onClick={resetTransform}
           style={{

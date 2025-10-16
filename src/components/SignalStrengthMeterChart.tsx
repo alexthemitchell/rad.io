@@ -1,19 +1,32 @@
 import { useMemo } from "react";
 import SignalStrengthMeter from "./SignalStrengthMeter";
 import { testSamples } from "../hooks/__test__/testSamples";
-import { convertToSamples } from "../utils/dsp";
+import { convertToSamples, Sample } from "../utils/dsp";
+
+type SignalStrengthMeterChartProps = {
+  samples?: Sample[];
+};
 
 /**
  * Chart wrapper for SignalStrengthMeter
- * Uses test samples for visualization
+ * Uses live samples when available, falls back to test data otherwise
  */
-function SignalStrengthMeterChart(): React.JSX.Element {
-  const samples = useMemo(
+function SignalStrengthMeterChart({
+  samples,
+}: SignalStrengthMeterChartProps): React.JSX.Element {
+  const fallbackSamples = useMemo(
     () => convertToSamples(testSamples.slice(0, 1024) as [number, number][]),
     [],
   );
 
-  return <SignalStrengthMeter samples={samples} />;
+  const displaySamples = useMemo(() => {
+    if (samples && samples.length > 0) {
+      return samples;
+    }
+    return fallbackSamples;
+  }, [samples, fallbackSamples]);
+
+  return <SignalStrengthMeter samples={displaySamples} />;
 }
 
 export default SignalStrengthMeterChart;
