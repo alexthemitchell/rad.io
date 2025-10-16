@@ -211,8 +211,8 @@ export default function WaterfallDisplay({
       if (isAnimating && historyRef.current.length > 0) {
         scrollOffsetRef.current += scrollSpeed;
         renderWaterfall();
+        animationFrameRef.current = requestAnimationFrame(animate);
       }
-      animationFrameRef.current = requestAnimationFrame(animate);
     };
 
     // Start animation
