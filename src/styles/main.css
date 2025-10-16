@@ -634,6 +634,36 @@ body {
   white-space: nowrap;
 }
 
+/* Signal Strength Meter Component */
+.signal-strength-meter {
+  padding: 1rem;
+  background: #f7fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.signal-strength-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.signal-strength-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4a5568;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.signal-strength-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  font-family: "Courier New", monospace;
+}
+
 /* P25 System Presets */
 .p25-preset-btn {
   min-height: 70px;
