@@ -176,28 +176,24 @@ class MockSpeechRecognition {
   maxAlternatives = 1;
 
   onresult:
-    | ((
-        event: {
-          resultIndex: number;
-          results: {
+    | ((event: {
+        resultIndex: number;
+        results: {
+          length: number;
+          [index: number]: {
             length: number;
+            isFinal: boolean;
             [index: number]: {
-              length: number;
-              isFinal: boolean;
-              [index: number]: {
-                transcript: string;
-                confidence: number;
-              };
+              transcript: string;
+              confidence: number;
             };
           };
-        },
-      ) => void)
+        };
+      }) => void)
     | null = null;
   onstart: (() => void) | null = null;
   onend: (() => void) | null = null;
-  onerror:
-    | ((event: { error: string; message?: string }) => void)
-    | null = null;
+  onerror: ((event: { error: string; message?: string }) => void) | null = null;
 
   public isStarted = false;
 
@@ -213,7 +209,8 @@ class MockSpeechRecognition {
 
       // Simulate recognition with the expected transcript
       setTimeout(() => {
-        const transcript = MockSpeechRecognition.expectedTranscript || "test transcription";
+        const transcript =
+          MockSpeechRecognition.expectedTranscript || "test transcription";
         this.simulateResult(transcript, 0.95, true);
 
         // Auto-end after final result in non-continuous mode
@@ -342,12 +339,13 @@ beforeAll(() => {
   // Setup global mocks
   global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
 
-  // Mock SpeechSynthesis - use type assertion to bypass type checking for test mocks
+  // Mock SpeechSynthesis - use unknown intermediate type for test mocks
   // These are intentional test mocks that don't perfectly match the browser API types
-  (global as { speechSynthesis: MockSpeechSynthesis }).speechSynthesis =
-    mockSpeechSynthesis;
   (
-    global as {
+    global as unknown as { speechSynthesis: MockSpeechSynthesis }
+  ).speechSynthesis = mockSpeechSynthesis;
+  (
+    global as unknown as {
       SpeechSynthesisUtterance: typeof MockSpeechSynthesisUtterance;
     }
   ).SpeechSynthesisUtterance = MockSpeechSynthesisUtterance;
@@ -363,12 +361,12 @@ beforeAll(() => {
 
 afterAll(() => {
   delete (
-    global as {
+    global as unknown as {
       speechSynthesis?: MockSpeechSynthesis;
     }
   ).speechSynthesis;
   delete (
-    global as {
+    global as unknown as {
       SpeechSynthesisUtterance?: typeof MockSpeechSynthesisUtterance;
     }
   ).SpeechSynthesisUtterance;
@@ -405,7 +403,9 @@ async function synthesizeSpeech(
 
     utterance.onerror = (event): void => {
       reject(
-        new Error(`Speech synthesis error: ${(event as SpeechSynthesisErrorEvent).error}`),
+        new Error(
+          `Speech synthesis error: ${(event as SpeechSynthesisErrorEvent).error}`,
+        ),
       );
     };
 
