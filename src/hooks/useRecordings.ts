@@ -62,7 +62,7 @@ export function useRecordings(): {
     setRecordingState("recording");
     setRecordingDuration(0);
 
-    // Update duration every second
+    // Update duration every 100ms
     durationIntervalRef.current = setInterval(() => {
       setRecordingDuration((Date.now() - startTimeRef.current) / 1000);
     }, 100);
