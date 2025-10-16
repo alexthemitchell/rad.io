@@ -228,7 +228,7 @@ function Visualizer(): React.JSX.Element {
       : device?.parseSamples(data) || [];
 
     // Add to recording if recording is active
-    if (isRecording && recordingManagerRef.current && samples.length > 0) {
+    if (!isPlaybackMode && isRecording && recordingManagerRef.current && samples.length > 0) {
       recordingManagerRef.current.addSamples(samples);
     }
   }, [device, isPlaybackMode, isRecording]);
