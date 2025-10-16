@@ -27,7 +27,11 @@ import { HackRFOne } from "../models/HackRFOne";
  * }
  * ```
  */
-export function useHackRFDevice() {
+export function useHackRFDevice(): {
+  device: HackRFOne | undefined;
+  initialize: () => Promise<void>;
+  cleanup: () => void;
+} {
   const [device, setDevice] = useState<HackRFOne>();
   const { device: usbDevice, requestDevice } = useUSBDevice([
     {
@@ -36,7 +40,7 @@ export function useHackRFDevice() {
     },
   ]);
 
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback((): void => {
     device?.close().catch(console.error);
   }, [device]);
 

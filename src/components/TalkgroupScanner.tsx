@@ -18,12 +18,12 @@ export default function TalkgroupScanner({
   talkgroups,
   onTalkgroupToggle,
   onAddTalkgroup,
-}: TalkgroupScannerProps) {
+}: TalkgroupScannerProps): React.JSX.Element {
   const [newTgId, setNewTgId] = useState("");
   const [newTgName, setNewTgName] = useState("");
   const [newTgCategory, setNewTgCategory] = useState("General");
 
-  const handleAddTalkgroup = () => {
+  const handleAddTalkgroup = (): void => {
     if (newTgId && newTgName) {
       onAddTalkgroup({
         id: newTgId,

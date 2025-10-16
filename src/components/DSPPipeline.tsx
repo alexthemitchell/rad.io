@@ -30,7 +30,7 @@ const DSP_STAGES: DSPStage[] = [
   },
 ];
 
-export default function DSPPipeline() {
+export default function DSPPipeline(): React.JSX.Element {
   return (
     <div className="card">
       <div className="card-title">Digital Signal Processing Pipeline</div>

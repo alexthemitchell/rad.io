@@ -14,13 +14,17 @@ import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
+import PerformanceMetrics from "../components/PerformanceMetrics";
 import "../styles/main.css";
 
-function Visualizer() {
+function Visualizer(): React.JSX.Element {
   const { device, initialize, cleanup } = useHackRFDevice();
   const [listening, setListening] = useState(false);
   const [signalType, setSignalType] = useState<SignalType>("FM");
   const [frequency, setFrequency] = useState(100.3e6);
+
+  // Live region for screen reader announcements
+  const [liveRegionMessage, setLiveRegionMessage] = useState("");
 
   // P25 Trunked Radio State
   const [controlChannel, setControlChannel] = useState(770.95625e6);
@@ -68,15 +72,22 @@ function Visualizer() {
   const [signalStrength, setSignalStrength] = useState(0);
   const [isEncrypted, setIsEncrypted] = useState(false);
 
-  const handleSetFrequency = async (newFrequency: number) => {
+  const handleSetFrequency = async (newFrequency: number): Promise<void> => {
     setFrequency(newFrequency);
     if (device) {
       await device.setFrequency(newFrequency);
+      // Announce frequency change to screen readers
+      const displayFreq =
+        signalType === "FM"
+          ? `${(newFrequency / 1e6).toFixed(1)} MHz`
+          : `${(newFrequency / 1e3).toFixed(0)} kHz`;
+      setLiveRegionMessage(`Frequency changed to ${displayFreq}`);
     }
   };
 
-  const handleSignalTypeChange = (type: SignalType) => {
+  const handleSignalTypeChange = (type: SignalType): void => {
     setSignalType(type);
+    setLiveRegionMessage(`Signal type changed to ${type}`);
     // Set default frequency for each type
     if (type === "FM" && frequency < 88.1e6) {
       handleSetFrequency(100.3e6).catch(console.error);
@@ -92,7 +103,7 @@ function Visualizer() {
     nac: string;
     systemId: string;
     wacn: string;
-  }) => {
+  }): void => {
     setControlChannel(system.controlChannel);
     setNac(system.nac);
     setSystemId(system.systemId);
@@ -102,13 +113,15 @@ function Visualizer() {
     }
   };
 
-  const handleTalkgroupToggle = (id: string) => {
+  const handleTalkgroupToggle = (id: string): void => {
     setTalkgroups((prev) =>
       prev.map((tg) => (tg.id === id ? { ...tg, enabled: !tg.enabled } : tg)),
     );
   };
 
-  const handleAddTalkgroup = (newTalkgroup: Omit<Talkgroup, "enabled">) => {
+  const handleAddTalkgroup = (
+    newTalkgroup: Omit<Talkgroup, "enabled">,
+  ): void => {
     setTalkgroups((prev) => [...prev, { ...newTalkgroup, enabled: true }]);
   };
 
@@ -117,7 +130,7 @@ function Visualizer() {
       return;
     }
     // Configure device when it becomes available
-    const configureDevice = async () => {
+    const configureDevice = async (): Promise<void> => {
       await device.setFrequency(frequency);
       await device.setAmpEnable(false);
     };
@@ -158,205 +171,244 @@ function Visualizer() {
         }
       }, 5000);
 
-      return () => {
+      return (): void => {
         clearInterval(interval);
         timeoutIds.forEach((id) => clearTimeout(id));
       };
     }
   }, [listening, signalType, talkgroups]);
 
-  const startListening = async () => {
+  const startListening = async (): Promise<void> => {
     try {
       if (!device) {
+        setLiveRegionMessage("Connecting to SDR device...");
         await initialize();
       } else {
         setListening(true);
+        setLiveRegionMessage("Started receiving radio signals");
         device
-          .receive(() => {
+          .receive((): void => {
             // IQ Sample received
           })
           .catch(console.error);
       }
     } catch (err) {
       console.error(err);
+      setLiveRegionMessage("Failed to connect to device");
     }
   };
 
-  const stopListening = async () => {
+  const stopListening = async (): Promise<void> => {
     if (device) {
       await device.stopRx();
       setListening(false);
+      setLiveRegionMessage("Stopped receiving radio signals");
     }
   };
 
   return (
     <div className="container">
-      <header className="header">
+      {/* Skip link for keyboard navigation */}
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
+
+      {/* Live region for screen reader announcements */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="visually-hidden"
+      >
+        {liveRegionMessage}
+      </div>
+
+      <header className="header" role="banner">
         <h1>rad.io</h1>
         <p>Software-Defined Radio Visualizer</p>
       </header>
 
-      <div className="action-bar">
-        <div className="action-bar-left">
-          <button
-            className="btn btn-primary"
-            onClick={startListening}
-            disabled={!device || listening}
-            title={
-              !device
-                ? "Click to connect your SDR device via WebUSB. Ensure device is plugged in and browser supports WebUSB."
-                : listening
-                  ? "Device is currently receiving. Click 'Stop Reception' first."
-                  : "Start receiving IQ samples from the SDR device. Visualizations will update with live data."
-            }
-            aria-label={
-              device
-                ? "Start receiving radio signals"
-                : "Connect SDR device via WebUSB"
-            }
-          >
-            {device ? "Start Reception" : "Connect Device"}
-          </button>
-          <button
-            className="btn btn-secondary"
-            onClick={stopListening}
-            disabled={!listening}
-            title={
-              listening
-                ? "Stop receiving IQ samples and pause visualizations. Device remains connected."
-                : "Reception is not active. Click 'Start Reception' first."
-            }
-            aria-label="Stop receiving radio signals"
-          >
-            Stop Reception
-          </button>
-          <button
-            className="btn btn-danger"
-            onClick={cleanup}
-            disabled={listening}
-            title={
-              listening
-                ? "Stop reception before disconnecting the device."
-                : "Disconnect and release the SDR device. You'll need to reconnect to use it again."
-            }
-            aria-label="Disconnect SDR device"
-          >
-            Disconnect
-          </button>
-        </div>
-        <div className="action-bar-right">
-          <div
-            className="status-indicator"
-            title={
-              device
+      <main id="main-content" role="main">
+        <div
+          className="action-bar"
+          role="toolbar"
+          aria-label="Device control actions"
+        >
+          <div className="action-bar-left">
+            <button
+              className="btn btn-primary"
+              onClick={startListening}
+              disabled={!device || listening}
+              title={
+                !device
+                  ? "Click to connect your SDR device via WebUSB. Ensure device is plugged in and browser supports WebUSB."
+                  : listening
+                    ? "Device is currently receiving. Click 'Stop Reception' first."
+                    : "Start receiving IQ samples from the SDR device. Visualizations will update with live data."
+              }
+              aria-label={
+                device
+                  ? "Start receiving radio signals"
+                  : "Connect SDR device via WebUSB"
+              }
+            >
+              {device ? "Start Reception" : "Connect Device"}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={stopListening}
+              disabled={!listening}
+              title={
+                listening
+                  ? "Stop receiving IQ samples and pause visualizations. Device remains connected."
+                  : "Reception is not active. Click 'Start Reception' first."
+              }
+              aria-label="Stop receiving radio signals"
+            >
+              Stop Reception
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={cleanup}
+              disabled={listening}
+              title={
+                listening
+                  ? "Stop reception before disconnecting the device."
+                  : "Disconnect and release the SDR device. You'll need to reconnect to use it again."
+              }
+              aria-label="Disconnect SDR device"
+            >
+              Disconnect
+            </button>
+          </div>
+          <div className="action-bar-right">
+            <div
+              className="status-indicator"
+              role="status"
+              aria-live="polite"
+              title={
+                device
+                  ? listening
+                    ? "Device is connected and actively receiving IQ samples"
+                    : "Device is connected but not receiving. Click 'Start Reception' to begin."
+                  : "No device connected. Click 'Connect Device' to get started."
+              }
+            >
+              <span
+                className={`status-dot ${device ? "active" : "inactive"}`}
+              />
+              {device
                 ? listening
-                  ? "Device is connected and actively receiving IQ samples"
-                  : "Device is connected but not receiving. Click 'Start Reception' to begin."
-                : "No device connected. Click 'Connect Device' to get started."
-            }
-          >
-            <span className={`status-dot ${device ? "active" : "inactive"}`} />
-            {device ? (listening ? "Receiving" : "Connected") : "Not Connected"}
+                  ? "Receiving"
+                  : "Connected"
+                : "Not Connected"}
+            </div>
           </div>
         </div>
-      </div>
 
-      <Card title="Radio Controls" subtitle="Configure your SDR receiver">
-        <div className="controls-panel">
-          <SignalTypeSelector
-            signalType={signalType}
-            onSignalTypeChange={handleSignalTypeChange}
-          />
-          {signalType !== "P25" ? (
-            <RadioControls
-              frequency={frequency}
+        <Card title="Radio Controls" subtitle="Configure your SDR receiver">
+          <div className="controls-panel">
+            <SignalTypeSelector
               signalType={signalType}
-              setFrequency={handleSetFrequency}
+              onSignalTypeChange={handleSignalTypeChange}
             />
-          ) : null}
-        </div>
-        {signalType === "P25" ? (
+            {signalType !== "P25" ? (
+              <RadioControls
+                frequency={frequency}
+                signalType={signalType}
+                setFrequency={handleSetFrequency}
+              />
+            ) : null}
+          </div>
+          {signalType === "P25" ? (
+            <>
+              <TrunkedRadioControls
+                controlChannel={controlChannel}
+                nac={nac}
+                systemId={systemId}
+                wacn={wacn}
+                onControlChannelChange={(freq) => {
+                  setControlChannel(freq);
+                  handleSetFrequency(freq).catch(console.error);
+                }}
+                onNacChange={setNac}
+                onSystemIdChange={setSystemId}
+                onWacnChange={setWacn}
+              />
+              <P25SystemPresets
+                currentControlChannel={controlChannel}
+                onSystemSelect={handleP25SystemSelect}
+              />
+            </>
+          ) : (
+            <PresetStations
+              signalType={signalType}
+              currentFrequency={frequency}
+              onStationSelect={handleSetFrequency}
+            />
+          )}
+        </Card>
+
+        {signalType === "P25" && (
           <>
-            <TrunkedRadioControls
-              controlChannel={controlChannel}
-              nac={nac}
-              systemId={systemId}
-              wacn={wacn}
-              onControlChannelChange={(freq) => {
-                setControlChannel(freq);
-                handleSetFrequency(freq).catch(console.error);
-              }}
-              onNacChange={setNac}
-              onSystemIdChange={setSystemId}
-              onWacnChange={setWacn}
-            />
-            <P25SystemPresets
-              currentControlChannel={controlChannel}
-              onSystemSelect={handleP25SystemSelect}
-            />
+            <Card
+              title="Talkgroup Status"
+              subtitle="Current P25 trunked radio activity"
+            >
+              <TalkgroupStatus
+                currentTalkgroup={currentTalkgroup}
+                currentTalkgroupName={currentTalkgroupName}
+                signalPhase={signalPhase}
+                tdmaSlot={tdmaSlot}
+                signalStrength={signalStrength}
+                isEncrypted={isEncrypted}
+              />
+            </Card>
+
+            <Card
+              title="Talkgroup Scanner"
+              subtitle="Configure and monitor P25 talkgroups"
+            >
+              <TalkgroupScanner
+                talkgroups={talkgroups}
+                onTalkgroupToggle={handleTalkgroupToggle}
+                onAddTalkgroup={handleAddTalkgroup}
+              />
+            </Card>
           </>
-        ) : (
-          <PresetStations
-            signalType={signalType}
-            currentFrequency={frequency}
-            onStationSelect={handleSetFrequency}
-          />
         )}
-      </Card>
 
-      {signalType === "P25" && (
-        <>
+        <DSPPipeline />
+
+        <PerformanceMetrics />
+
+        <div
+          className="visualizations"
+          role="region"
+          aria-label="Signal visualizations"
+        >
           <Card
-            title="Talkgroup Status"
-            subtitle="Current P25 trunked radio activity"
+            title="IQ Constellation Diagram"
+            subtitle="Visual representation of the I (in-phase) and Q (quadrature) components"
           >
-            <TalkgroupStatus
-              currentTalkgroup={currentTalkgroup}
-              currentTalkgroupName={currentTalkgroupName}
-              signalPhase={signalPhase}
-              tdmaSlot={tdmaSlot}
-              signalStrength={signalStrength}
-              isEncrypted={isEncrypted}
-            />
+            <SampleChart />
           </Card>
 
           <Card
-            title="Talkgroup Scanner"
-            subtitle="Configure and monitor P25 talkgroups"
+            title="Amplitude Waveform"
+            subtitle="Time-domain signal amplitude envelope"
           >
-            <TalkgroupScanner
-              talkgroups={talkgroups}
-              onTalkgroupToggle={handleTalkgroupToggle}
-              onAddTalkgroup={handleAddTalkgroup}
-            />
+            <WaveformChart />
           </Card>
-        </>
-      )}
 
-      <DSPPipeline />
-
-      <div className="visualizations">
-        <Card
-          title="IQ Constellation Diagram"
-          subtitle="Visual representation of the I (in-phase) and Q (quadrature) components"
-        >
-          <SampleChart />
-        </Card>
-
-        <Card
-          title="Amplitude Waveform"
-          subtitle="Time-domain signal amplitude envelope"
-        >
-          <WaveformChart />
-        </Card>
-
-        <Card
-          title="Spectrogram"
-          subtitle="Frequency spectrum over time showing signal strength"
-        >
-          <FFTChart />
-        </Card>
-      </div>
+          <Card
+            title="Spectrogram"
+            subtitle="Frequency spectrum over time showing signal strength"
+          >
+            <FFTChart />
+          </Card>
+        </div>
+      </main>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { convertToSamples, calculateSpectrogram } from "../utils/dsp";
 
 const fftSize = 1024;
 
-function FFTChart() {
+function FFTChart(): React.JSX.Element {
   const spectrogramData = useMemo(() => {
     const samples = convertToSamples(testSamples as [number, number][]);
     return calculateSpectrogram(samples, fftSize);

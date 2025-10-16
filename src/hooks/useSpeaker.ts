@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from "react";
 
-export default function useSpeaker() {
+export default function useSpeaker(): {
+  streamAudio: (buffer: AudioBuffer) => void;
+} {
   const audioContext = useMemo(() => new AudioContext(), []);
   const bufferSource = useMemo(
     () => audioContext.createBufferSource(),
@@ -10,7 +12,7 @@ export default function useSpeaker() {
     bufferSource.connect(audioContext.destination);
     bufferSource.start();
   }, [audioContext, bufferSource]);
-  const streamAudio = (buffer: AudioBuffer) => {
+  const streamAudio = (buffer: AudioBuffer): void => {
     const node = new AudioBufferSourceNode(audioContext, {
       buffer,
     });
