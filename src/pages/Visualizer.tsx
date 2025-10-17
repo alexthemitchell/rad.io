@@ -11,7 +11,7 @@ import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import TalkgroupScanner, { Talkgroup } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import P25SystemPresets from "../components/P25SystemPresets";
-import DSPPipeline from "../components/DSPPipeline";
+import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
@@ -802,7 +802,10 @@ function Visualizer(): React.JSX.Element {
           </>
         )}
 
-        <DSPPipeline />
+        <InteractiveDSPPipeline
+          device={device as ISDRDevice | undefined}
+          samples={samples}
+        />
 
         <Card
           title="Signal Strength Meter"

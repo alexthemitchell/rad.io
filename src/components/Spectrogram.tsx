@@ -28,7 +28,7 @@ export default function Spectrogram({
   // Generate accessible text description of the spectrogram data
   const accessibleDescription = useMemo((): string => {
     if (fftData.length === 0) {
-      return "No spectrogram data available";
+      return "No spectrogram data";
     }
 
     const numFrames = fftData.length;
@@ -68,9 +68,15 @@ export default function Spectrogram({
       if (!workerRef.current) {
         try {
           // Use webpack's worker-loader syntax for production builds
-          const worker = new Worker(
-            new URL("../workers/visualization.worker.ts", import.meta.url),
-          );
+          // Avoid import.meta.url for Jest/commonjs compatibility
+          const workerUrl =
+            typeof window !== "undefined" && typeof URL !== "undefined"
+              ? new URL(
+                  "../workers/visualization.worker.ts",
+                  window.location.href,
+                )
+              : ("../workers/visualization.worker.ts" as unknown as URL);
+          const worker = new Worker(workerUrl);
           workerRef.current = worker;
           const w = workerRef.current;
           if (w) {

@@ -30,7 +30,7 @@ export default function IQConstellation({
   // Generate accessible text description of the constellation data
   const accessibleDescription = useMemo((): string => {
     if (samples.length === 0) {
-      return "No IQ constellation data available";
+      return "No IQ constellation data";
     }
 
     const iValues = samples.map((s) => s.I);
@@ -66,9 +66,16 @@ export default function IQConstellation({
         try {
           // Use webpack's worker-loader syntax for production builds
           // For tests, this will be mocked
-          const worker = new Worker(
-            new URL("../workers/visualization.worker.ts", import.meta.url),
-          );
+          // Avoid import.meta.url to keep TS compatible with Jest/commonjs
+          // Use a relative URL based on window location; bundlers can rewrite in prod
+          const workerUrl =
+            typeof window !== "undefined" && typeof URL !== "undefined"
+              ? new URL(
+                  "../workers/visualization.worker.ts",
+                  window.location.href,
+                )
+              : ("../workers/visualization.worker.ts" as unknown as URL);
+          const worker = new Worker(workerUrl);
           workerRef.current = worker as unknown as Worker;
         } catch (e1) {
           console.error("[IQConstellation] Worker creation failed:", e1);
