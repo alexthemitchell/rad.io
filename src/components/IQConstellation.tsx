@@ -64,28 +64,15 @@ export default function IQConstellation({
       // Create worker if needed
       if (!workerRef.current) {
         try {
-          // dynamic URL for worker via eval to avoid Jest import.meta parse issues
-          const worker = (0, eval)(
-            `new Worker(new URL("../workers/visualization.worker.ts", import.meta.url))`,
+          // Use webpack's worker-loader syntax for production builds
+          // For tests, this will be mocked
+          const worker = new Worker(
+            new URL("../workers/visualization.worker.ts", import.meta.url)
           );
           workerRef.current = worker as unknown as Worker;
-        } catch {
-          // Fallback: minimal no-op worker via blob
-          try {
-            const workerCode = `self.onmessage = function(){};`;
-            const blob = new Blob([workerCode], {
-              type: "application/javascript",
-            });
-            const url = URL.createObjectURL(blob);
-            const worker = new Worker(url);
-            workerRef.current = worker;
-          } catch (e2) {
-            console.error(
-              "Could not create visualization worker (fallback)",
-              e2,
-            );
-            workerRef.current = null;
-          }
+        } catch (e1) {
+          console.error('[IQConstellation] Worker creation failed:', e1);
+          workerRef.current = null;
         }
         if (workerRef.current) {
           workerRef.current.onmessage = (ev): void => {
@@ -113,6 +100,11 @@ export default function IQConstellation({
               }
             ).transferControlToOffscreen === "function";
           if (canTransfer) {
+            // Set canvas dimensions BEFORE transferring to OffscreenCanvas
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            
             const offscreen = (
               canvas as HTMLCanvasElement & {
                 transferControlToOffscreen: () => OffscreenCanvas;
@@ -126,13 +118,15 @@ export default function IQConstellation({
                 vizType: "constellation",
                 width,
                 height,
+                dpr,
               },
               [offscreen],
             );
           }
         } else {
           // Notify worker about size changes
-          workerRef.current.postMessage({ type: "resize", width, height });
+          const dpr = window.devicePixelRatio || 1;
+          workerRef.current.postMessage({ type: "resize", width, height, dpr });
         }
 
         if (transferredRef.current) {
