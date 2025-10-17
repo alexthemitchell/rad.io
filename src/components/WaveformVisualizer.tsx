@@ -18,6 +18,13 @@ export default function WaveformVisualizer({
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
 
+  // WebGL state
+  const glStateRef = useRef<{
+    gl: import("../utils/webgl").GL | null;
+    program: WebGLProgram | null;
+    vbo: WebGLBuffer | null;
+  }>({ gl: null, program: null, vbo: null });
+
   // Add interaction handlers for pan, zoom, and gestures
   const { transform, handlers, resetTransform } = useVisualizationInteraction();
 
@@ -41,172 +48,279 @@ export default function WaveformVisualizer({
     return `Amplitude waveform showing ${samples.length} time-domain samples. Signal amplitude ranges from ${minAmplitude.toFixed(3)} to ${maxAmplitude.toFixed(3)} with average ${avgAmplitude.toFixed(3)}. The waveform represents signal strength variation over time.`;
   }, [samples]);
 
-  useEffect(() => {
+  useEffect((): void => {
     const canvas = canvasRef.current;
     if (!canvas || samples.length === 0) {
       return;
     }
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    const supportsOffscreen =
-      typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
-    const shouldUseWorker = supportsOffscreen;
 
-    if (shouldUseWorker) {
-      if (!workerRef.current) {
-        try {
-          // Use webpack's worker-loader syntax for production builds
-          // Avoid import.meta.url for Jest/commonjs compatibility
-          const workerUrl =
-            typeof window !== "undefined" && typeof URL !== "undefined"
-              ? new URL(
-                  "../workers/visualization.worker.ts",
-                  window.location.href,
-                )
-              : ("../workers/visualization.worker.ts" as unknown as URL);
-          const worker = new Worker(workerUrl);
-          workerRef.current = worker;
-        } catch (e) {
-          console.error("Could not create visualization worker", e);
-          workerRef.current = null;
-        }
-        if (workerRef.current) {
-          workerRef.current.onmessage = (ev): void => {
-            const d = ev.data as unknown as {
-              type?: string;
-              viz?: string;
-              renderTimeMs?: number;
-            };
-            if (d?.type === "metrics") {
-              console.warn(
-                `[viz worker] ${d.viz} render ${d.renderTimeMs?.toFixed(2)}ms`,
-              );
-            }
-          };
-        }
-      }
-
-      if (workerRef.current) {
-        if (!transferredRef.current) {
-          const canTransfer =
-            typeof (
-              canvas as HTMLCanvasElement & {
-                transferControlToOffscreen?: () => OffscreenCanvas;
-              }
-            ).transferControlToOffscreen === "function";
-          if (canTransfer) {
-            // Set canvas dimensions BEFORE transferring to OffscreenCanvas
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = width * dpr;
-            canvas.height = height * dpr;
-
-            const offscreen = (
-              canvas as HTMLCanvasElement & {
-                transferControlToOffscreen: () => OffscreenCanvas;
-              }
-            ).transferControlToOffscreen();
-            transferredRef.current = true;
-            workerRef.current.postMessage(
-              {
-                type: "init",
-                canvas: offscreen,
-                vizType: "waveform",
-                width,
-                height,
-                dpr,
-              },
-              [offscreen],
-            );
-          }
-        } else {
-          const dpr = window.devicePixelRatio || 1;
-          workerRef.current.postMessage({ type: "resize", width, height, dpr });
-        }
-
-        if (transferredRef.current) {
-          workerRef.current.postMessage({
-            type: "render",
-            data: { samples, transform },
-          });
-          return;
-        }
-      }
-    }
-
-    // Fallback: render on main thread (existing implementation)
-    if (transferredRef.current) {
-      return;
-    }
-    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    if (!ctx) {
-      return;
-    }
-
-    // Set up high DPI canvas
+    // Set canvas dimensions synchronously for immediate availability in tests
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    ctx.scale(dpr, dpr);
 
-    // Apply user interaction transform (pan and zoom)
-    ctx.save();
-    ctx.translate(transform.offsetX, transform.offsetY);
-    ctx.scale(transform.scale, transform.scale);
+    const run = async (): Promise<void> => {
+      // Try WebGL first
+      try {
+        const webgl = await import("../utils/webgl");
+        const pixelW = Math.max(1, Math.floor(width * dpr));
+        const pixelH = Math.max(1, Math.floor(height * dpr));
+        canvas.width = pixelW;
+        canvas.height = pixelH;
 
-    // Professional dark background
-    ctx.fillStyle = "#0a0e1a";
-    ctx.fillRect(0, 0, width, height);
+        let { gl } = glStateRef.current;
+        if (!gl) {
+          const got = webgl.getGL(canvas);
+          gl = got.gl;
+          glStateRef.current.gl = gl;
+        }
 
-    const margin = { top: 60, bottom: 60, left: 70, right: 60 };
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
+        if (gl) {
+          // Calculate waveform data
+          const { amplitude } = calculateWaveform(samples);
+          if (amplitude.length === 0) {
+            return;
+          }
 
-    // Calculate waveform data
-    const { amplitude } = calculateWaveform(samples);
+          // Calculate statistics for adaptive scaling
+          const maxAmplitude = Math.max(...Array.from(amplitude));
+          const minAmplitude = Math.min(...Array.from(amplitude));
+          const amplitudeRange = maxAmplitude - minAmplitude || 1;
+          const padding = amplitudeRange * 0.1;
+          const displayMin = minAmplitude - padding;
+          const displayMax = maxAmplitude + padding;
+          const displayRange = displayMax - displayMin;
 
-    // Calculate statistics for adaptive scaling
-    const maxAmplitude = Math.max(...Array.from(amplitude));
-    const minAmplitude = Math.min(...Array.from(amplitude));
-    const amplitudeRange = maxAmplitude - minAmplitude || 1;
-    // const avgAmplitude =
-    //   Array.from(amplitude).reduce((a, b) => a + b, 0) / amplitude.length;
+          // Build positions in NDC [-1,1] for LINE_STRIP
+          const positions = new Float32Array(amplitude.length * 2);
+          for (let i = 0; i < amplitude.length; i++) {
+            const x = -1 + (2 * i) / (amplitude.length - 1);
+            const amp = amplitude[i]!;
+            const y = -1 + (2 * (amp - displayMin)) / displayRange;
+            positions[i * 2 + 0] = x;
+            positions[i * 2 + 1] = y;
+          }
 
-    // Add padding to range
-    const padding = amplitudeRange * 0.1;
-    const displayMin = minAmplitude - padding;
-    const displayMax = maxAmplitude + padding;
-    const displayRange = displayMax - displayMin;
+          if (!glStateRef.current.program) {
+            const vs = `
+attribute vec2 a_position;
+void main() {
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+            const fs = `
+precision mediump float;
+void main() {
+  gl_FragColor = vec4(0.39, 0.86, 1.0, 0.9); // rgba(100,220,255,0.9)
+}`;
+            const prog = webgl.createProgram(gl, vs, fs);
+            glStateRef.current.program = prog;
+            glStateRef.current.vbo = gl.createBuffer();
+          }
 
-    // Draw a simplified waveform for fallback (keeps responsive)
-    ctx.strokeStyle = "rgba(100,220,255,0.9)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    const maxPoints = Math.max(100, Math.round(chartWidth * 2));
-    const step = Math.max(1, Math.floor(amplitude.length / maxPoints));
-    for (let i = 0; i < amplitude.length; i += step) {
-      const x = margin.left + (i / amplitude.length) * chartWidth;
-      const amp = amplitude[i]!;
-      const y =
-        margin.top +
-        chartHeight -
-        ((amp - displayMin) / displayRange) * chartHeight;
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
+          gl.viewport(0, 0, pixelW, pixelH);
+          gl.disable(gl.DEPTH_TEST);
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+          gl.clearColor(0.04, 0.06, 0.1, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+
+          const prog = glStateRef.current.program!;
+          gl.useProgram(prog);
+          const aPos = gl.getAttribLocation(prog, "a_position");
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, glStateRef.current.vbo);
+          gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
+          gl.enableVertexAttribArray(aPos);
+          gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+          gl.lineWidth(2.0);
+          gl.drawArrays(gl.LINE_STRIP, 0, amplitude.length);
+
+          return;
+        }
+      } catch (err) {
+        console.warn(
+          "[WaveformVisualizer] WebGL path failed, falling back:",
+          err,
+        );
       }
-    }
-    ctx.stroke();
 
-    // Restore context state after transform
-    ctx.restore();
+      const supportsOffscreen =
+        typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
+      const shouldUseWorker = supportsOffscreen;
+
+      if (shouldUseWorker) {
+        if (!workerRef.current) {
+          try {
+            const workerUrl =
+              typeof window !== "undefined" && typeof URL !== "undefined"
+                ? new URL(
+                    "../workers/visualization.worker.ts",
+                    window.location.href,
+                  )
+                : ("../workers/visualization.worker.ts" as unknown as URL);
+            const worker = new Worker(workerUrl);
+            workerRef.current = worker;
+          } catch (e) {
+            console.error("Could not create visualization worker", e);
+            workerRef.current = null;
+          }
+          if (workerRef.current) {
+            workerRef.current.onmessage = (ev): void => {
+              const d = ev.data as unknown as {
+                type?: string;
+                viz?: string;
+                renderTimeMs?: number;
+              };
+              if (d?.type === "metrics") {
+                console.warn(
+                  `[viz worker] ${d.viz} render ${d.renderTimeMs?.toFixed(2)}ms`,
+                );
+              }
+            };
+          }
+        }
+
+        if (workerRef.current) {
+          if (!transferredRef.current) {
+            const canTransfer =
+              typeof (
+                canvas as HTMLCanvasElement & {
+                  transferControlToOffscreen?: () => OffscreenCanvas;
+                }
+              ).transferControlToOffscreen === "function";
+            if (canTransfer) {
+              canvas.width = width * dpr;
+              canvas.height = height * dpr;
+
+              const offscreen = (
+                canvas as HTMLCanvasElement & {
+                  transferControlToOffscreen: () => OffscreenCanvas;
+                }
+              ).transferControlToOffscreen();
+              transferredRef.current = true;
+              workerRef.current.postMessage(
+                {
+                  type: "init",
+                  canvas: offscreen,
+                  vizType: "waveform",
+                  width,
+                  height,
+                  dpr,
+                },
+                [offscreen],
+              );
+            }
+          } else {
+            workerRef.current.postMessage({
+              type: "resize",
+              width,
+              height,
+              dpr,
+            });
+          }
+
+          if (transferredRef.current) {
+            workerRef.current.postMessage({
+              type: "render",
+              data: { samples, transform },
+            });
+            return;
+          }
+        }
+      }
+
+      // Fallback: render on main thread (existing implementation)
+      if (transferredRef.current) {
+        return;
+      }
+      const ctx = canvas.getContext("2d", {
+        alpha: false,
+        desynchronized: true,
+      });
+      if (!ctx) {
+        return;
+      }
+
+      // Set up high DPI canvas
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.scale(dpr, dpr);
+
+      // Apply user interaction transform (pan and zoom)
+      ctx.save();
+      ctx.translate(transform.offsetX, transform.offsetY);
+      ctx.scale(transform.scale, transform.scale);
+
+      // Professional dark background
+      ctx.fillStyle = "#0a0e1a";
+      ctx.fillRect(0, 0, width, height);
+
+      const margin = { top: 60, bottom: 60, left: 70, right: 60 };
+      const chartWidth = width - margin.left - margin.right;
+      const chartHeight = height - margin.top - margin.bottom;
+
+      // Calculate waveform data
+      const { amplitude } = calculateWaveform(samples);
+
+      // Calculate statistics for adaptive scaling
+      const maxAmplitude = Math.max(...Array.from(amplitude));
+      const minAmplitude = Math.min(...Array.from(amplitude));
+      const amplitudeRange = maxAmplitude - minAmplitude || 1;
+
+      // Add padding to range
+      const padding = amplitudeRange * 0.1;
+      const displayMin = minAmplitude - padding;
+      const displayMax = maxAmplitude + padding;
+      const displayRange = displayMax - displayMin;
+
+      // Draw a simplified waveform for fallback (keeps responsive)
+      ctx.strokeStyle = "rgba(100,220,255,0.9)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const maxPoints = Math.max(100, Math.round(chartWidth * 2));
+      const step = Math.max(1, Math.floor(amplitude.length / maxPoints));
+      for (let i = 0; i < amplitude.length; i += step) {
+        const x = margin.left + (i / amplitude.length) * chartWidth;
+        const amp = amplitude[i]!;
+        const y =
+          margin.top +
+          chartHeight -
+          ((amp - displayMin) / displayRange) * chartHeight;
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+
+      // Restore context state after transform
+      ctx.restore();
+    };
+    void run();
   }, [samples, width, height, transform]);
 
-  // Cleanup worker on unmount
+  // Cleanup worker and GL on unmount
   useEffect((): (() => void) => {
+    const st = glStateRef.current;
     return () => {
+      // GL cleanup
+      try {
+        if (st.gl && st.vbo) {
+          st.gl.deleteBuffer(st.vbo);
+        }
+        if (st.gl && st.program) {
+          st.gl.deleteProgram(st.program);
+        }
+      } catch {
+        // ignore cleanup errors
+      }
+
       if (workerRef.current) {
         try {
           workerRef.current.postMessage({ type: "dispose" });
@@ -228,41 +342,11 @@ export default function WaveformVisualizer({
     <div style={{ position: "relative", display: "inline-block" }}>
       <canvas
         ref={canvasRef}
-        style={{
-          borderRadius: "8px",
-          touchAction: "none", // Prevent default touch behaviors
-          cursor: "grab",
-        }}
         role="img"
         aria-label={accessibleDescription}
-        tabIndex={0}
         {...handlers}
+        onDoubleClick={(): void => resetTransform()}
       />
-      {(transform.scale !== 1 ||
-        transform.offsetX !== 0 ||
-        transform.offsetY !== 0) && (
-        <button
-          onClick={resetTransform}
-          style={{
-            position: "absolute",
-            top: "10px",
-            right: "10px",
-            padding: "6px 12px",
-            background: "rgba(90, 163, 232, 0.9)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "12px",
-            fontWeight: "bold",
-            zIndex: 10,
-          }}
-          title="Reset view (or press 0)"
-          aria-label="Reset visualization view"
-        >
-          Reset View
-        </button>
-      )}
     </div>
   );
 }

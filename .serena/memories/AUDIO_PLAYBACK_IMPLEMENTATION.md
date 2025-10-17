@@ -2,7 +2,9 @@
 
 ## Overview
 
-Audio playback has been fully integrated into the rad.io visualizer, allowing users to hear real-time demodulated audio from FM, AM, and P25 signals. The implementation uses the Web Audio API for low-latency playback and supports volume control, mute functionality, and multiple signal types.
+Audio playback is fully integrated into the rad.io visualizer, allowing users to hear real-time demodulated audio from FM, AM, and P25 signals. The implementation uses the Web Audio API for low-latency playback and supports volume control, mute functionality, and multiple signal types.
+
+**CRITICAL**: Audio playback requires proper SDR sample rate configuration. See "Sample Rate Configuration" section below.
 
 ## Architecture
 
@@ -43,11 +45,104 @@ playAudioBuffer()
     └── Start playback
 ```
 
+## Sample Rate Configuration (CRITICAL)
+
+### The 20 MSPS Problem
+
+**ISSUE**: Using 20 MSPS (20,000,000 samples/second) causes audio playback failure:
+- No audible sound despite controls showing "Playing FM audio"
+- Excessive CPU load for real-time browser demodulation
+- Decimation ratio ~417:1 (20,000,000 / 48,000) impractical for JavaScript
+
+### Solution: Browser-Optimized Rate
+
+**Use 2.048 MSPS** (2,048,000 samples/second) for browser applications:
+- Decimation ratio ~42:1 (practical for real-time)
+- CPU-efficient processing
+- Maintains adequate bandwidth for FM broadcasts (±200 kHz)
+- Proper alignment with audio processing pipeline
+
+### Implementation Locations (src/pages/Visualizer.tsx)
+
+**ALL THREE locations must use same rate**:
+
+**1. Audio Processor Initialization** (lines ~70-84):
+```typescript
+useEffect(() => {
+  audioContextRef.current = new AudioContext();
+  gainNodeRef.current = audioContextRef.current.createGain();
+  gainNodeRef.current.connect(audioContextRef.current.destination);
+  gainNodeRef.current.gain.value = audioVolume;
+
+  // CRITICAL: Match device sample rate
+  audioProcessorRef.current = new AudioStreamProcessor(2048000); // NOT 20000000
+
+  return (): void => {
+    audioProcessorRef.current?.cleanup();
+    audioContextRef.current?.close();
+  };
+}, []);
+```
+
+**2. Device Streaming Configuration** (lines ~319-365):
+```typescript
+const beginDeviceStreaming = async (device: ISDRDevice) => {
+  setActiveDevice(device);
+  setListening(true);
+
+  // CRITICAL: Set sample rate BEFORE calling receive()
+  await activeDevice.setSampleRate(2048000); // NOT 20000000
+  console.warn("Sample rate set to 2.048 MSPS");
+
+  // Start receiving data
+  await activeDevice.receive(handleSampleChunk);
+};
+```
+
+**3. Initial Device Configuration** (lines ~480-494):
+```typescript
+useEffect(() => {
+  if (!device) return;
+
+  const configureDevice = async () => {
+    try {
+      await device.setSampleRate(2048000); // NOT 20000000
+      await device.setFrequency(frequency);
+      await device.setBandwidth(bandwidth);
+      await device.setAmpEnable(ampEnabled);
+    } catch (error) {
+      console.error("Device configuration error:", error);
+    }
+  };
+
+  configureDevice();
+}, [device, frequency, bandwidth, ampEnabled]);
+```
+
+### Buffer Size Configuration
+
+**AUDIO_BUFFER_SIZE** must provide adequate latency for stable demodulation:
+
+```typescript
+// Too small (causes instability):
+const AUDIO_BUFFER_SIZE = 8192; // ~4ms at 2.048 MSPS
+
+// Optimal (stable audio):
+const AUDIO_BUFFER_SIZE = 131072; // ~64ms at 2.048 MSPS
+```
+
+**Formula**: `buffer_size = (target_latency_ms / 1000) * sdr_sample_rate`
+
+**Trade-offs**:
+- Larger buffer: More stable audio, higher latency
+- Smaller buffer: Lower latency, more prone to dropouts
+- Sweet spot: 64-128ms for FM broadcast reception
+
 ## Key Features
 
 ### 1. Real-Time Audio Processing
 
-- **Buffer Size**: 8192 samples per chunk for smooth playback
+- **Buffer Size**: 131,072 samples (~64ms) for smooth playback
 - **Sample Rate**: 48kHz output (CD quality)
 - **Channels**: Mono output (1 channel)
 - **Latency**: Low-latency processing with chunked buffers
@@ -73,26 +168,6 @@ playAudioBuffer()
 - **Disabled States**: Clear visual feedback when unavailable
 
 ## Implementation Details
-
-### Audio Initialization
-
-```typescript
-// Initialize audio context and processor (Visualizer.tsx)
-useEffect(() => {
-  const initialVolume = audioVolume;
-  audioContextRef.current = new AudioContext();
-  gainNodeRef.current = audioContextRef.current.createGain();
-  gainNodeRef.current.connect(audioContextRef.current.destination);
-  gainNodeRef.current.gain.value = initialVolume;
-
-  audioProcessorRef.current = new AudioStreamProcessor(20000000);
-
-  return (): void => {
-    audioProcessorRef.current?.cleanup();
-    audioContextRef.current?.close();
-  };
-}, []);
-```
 
 ### Volume Management
 
@@ -175,9 +250,10 @@ const playAudioBuffer = useCallback(
     }
 
     try {
+      // CRITICAL: Create buffer in same AudioContext for playback
       const source = audioContext.createBufferSource();
       source.buffer = result.audioBuffer;
-      source.connect(gainNode);
+      source.connect(gainNode); // NOT directly to destination!
       source.start();
     } catch (error) {
       console.error("Audio playback error:", error);
@@ -229,23 +305,6 @@ export interface AudioControlsProps {
    - Shows "🎵 Playing [TYPE] audio" when active
    - Shows "Audio paused" when inactive
    - Live region for screen reader announcements
-
-### Styling
-
-Custom CSS classes in `src/styles/main.css`:
-
-```css
-.audio-controls
-.audio-controls-row
-.btn-audio
-.btn-mute
-.volume-control
-.volume-slider
-.volume-display
-.audio-status
-.audio-status-active
-.audio-status-inactive
-```
 
 ## Testing
 
@@ -323,7 +382,7 @@ const handleToggleMute = useCallback(() => {
 
 ### Buffer Management
 
-- **Chunk Size**: 8192 samples (optimal for 48kHz playback)
+- **Chunk Size**: 131,072 samples (optimal for 48kHz playback at 2.048 MSPS)
 - **Buffer Clearing**: Audio buffer cleared when playback stops
 - **Memory Cleanup**: AudioContext and processor cleaned up on unmount
 
@@ -338,6 +397,37 @@ const handleToggleMute = useCallback(() => {
 - **GainNode**: Single gain node for all audio sources
 - **Direct Connection**: Source → GainNode → Destination (minimal graph)
 - **Source Lifecycle**: AudioBufferSourceNode automatically garbage collected
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: No audio output despite "Playing FM audio" status
+- **Root Cause**: Sample rate mismatch (20 MSPS used instead of 2.048 MSPS)
+- **Solution**: Ensure all three configuration locations use 2,048,000 Hz
+- **Verification**: Check console for "Sample rate set to 2.048 MSPS"
+
+**Issue**: Audio choppy or distorted
+- **Root Cause**: Buffer size too small or CPU overload
+- **Solution**: Increase AUDIO_BUFFER_SIZE to 131,072 or higher
+- **Verification**: Monitor buffer fill rate in console
+
+**Issue**: Audio controls never enabled
+- **Root Cause**: `listening` state not set to true
+- **Solution**: Verify `setListening(true)` called in `beginDeviceStreaming`
+
+### Debug Logging
+
+```typescript
+// Enable debug logging
+console.log("Audio State:", {
+  isPlaying: isAudioPlaying,
+  volume: audioVolume,
+  muted: isAudioMuted,
+  bufferSize: audioSampleBufferRef.current.length,
+  sdrSampleRate: audioProcessorRef.current?.sdrSampleRate,
+});
+```
 
 ## Integration with Existing Features
 
@@ -356,105 +446,13 @@ const handleToggleMute = useCallback(() => {
 - Volume/mute changes don't affect device configuration
 - Audio state persists across frequency changes
 
-## Future Enhancements
+## Related Documentation
 
-### Potential Improvements
-
-1. **Audio Recording**: Export demodulated audio to WAV/MP3
-2. **Audio Analysis**: Real-time spectrum analyzer for audio output
-3. **Stereo Output**: Stereo separation for stereo FM broadcasts
-4. **Audio Effects**: Equalizer, noise reduction, AGC
-5. **Speech Recognition**: Integration with speech recognition API
-6. **Talkgroup Audio**: Per-talkgroup audio routing for P25
-
-### API Extensions
-
-```typescript
-// Future API additions
-interface AudioControlsProps {
-  // ... existing props ...
-  onRecordStart?: () => void;
-  onRecordStop?: () => void;
-  audioEffects?: AudioEffect[];
-  stereoMode?: boolean;
-}
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: No audio output
-- Check browser supports Web Audio API
-- Verify volume is not at 0 or muted
-- Ensure device is connected and listening
-- Check browser's audio permissions
-
-**Issue**: Distorted audio
-- Reduce volume if clipping
-- Check signal strength (weak signals cause distortion)
-- Verify correct demodulation type for signal
-
-**Issue**: Audio lag/latency
-- Audio buffer size (8192) optimized for balance
-- Browser may introduce additional latency
-- Check system audio buffer settings
-
-### Debug Logging
-
-```typescript
-// Enable debug logging
-console.log("Audio State:", {
-  isPlaying: isAudioPlaying,
-  volume: audioVolume,
-  muted: isAudioMuted,
-  bufferSize: audioSampleBufferRef.current.length,
-});
-```
-
-## References
-
-### Related Files
-
-- `src/pages/Visualizer.tsx` - Main integration
-- `src/components/AudioControls.tsx` - UI component
-- `src/utils/audioStream.ts` - Audio processing
-- `src/utils/AUDIO_STREAM_API.md` - API documentation
-- `src/examples/audioStreamIntegration.tsx` - Example usage
-
-### Dependencies
-
-- Web Audio API (built-in browser API)
-- React hooks (useState, useEffect, useCallback, useRef)
-- AudioStreamProcessor class
-- IQSample type from SDRDevice
-
-## Best Practices
-
-### When to Use Audio Playback
-
-✅ **Good Use Cases:**
-- Listening to FM/AM radio broadcasts
-- Monitoring P25 talkgroups
-- Voice communication signals
-- Audio signal analysis
-
-❌ **Not Recommended For:**
-- Pure data signals (no audio content)
-- Very weak signals (poor SNR)
-- High-speed data modes
-- Encrypted transmissions
-
-### User Experience
-
-- Start with moderate volume (50%)
-- Provide clear visual feedback
-- Don't auto-play audio (let user control)
-- Handle errors gracefully
-- Announce state changes to screen readers
-
----
+- `src/utils/AUDIO_STREAM_API.md` - AudioStreamProcessor API details
+- Memory: `SDR_SAMPLE_RATE_CONFIGURATION` - Sample rate selection guide
+- Memory: `AUDIO_PLAYBACK_DEBUGGING` - Comprehensive debugging guide
+- Memory: `WEBUSB_STREAMING_DEBUG_GUIDE` - Device streaming issues
 
 ## Summary
 
-Audio playback is now fully integrated into rad.io, providing a complete SDR experience with both visualization and audio output. The implementation is efficient, accessible, and extensible for future enhancements.
+Audio playback is fully integrated into rad.io with proper sample rate configuration (2.048 MSPS) and buffering (131K samples). The implementation is efficient, accessible, and provides clear user feedback. Critical for success: synchronize sample rates across all configuration points and use adequate buffer sizes for stable demodulation.

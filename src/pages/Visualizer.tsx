@@ -63,7 +63,8 @@ function Visualizer(): React.JSX.Element {
   const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const audioSampleBufferRef = useRef<Sample[]>([]);
-  const AUDIO_BUFFER_SIZE = 8192; // Process audio in chunks
+  // Accumulate ~64ms of RF at 2.048 MSPS (~131,072 IQ samples) before audio extraction
+  const AUDIO_BUFFER_SIZE = 131072;
 
   // Initialize audio context and processor
   useEffect(() => {
@@ -73,8 +74,8 @@ function Visualizer(): React.JSX.Element {
     gainNodeRef.current.connect(audioContextRef.current.destination);
     gainNodeRef.current.gain.value = initialVolume;
 
-    // Create processor with SDR sample rate (20 MHz for HackRF)
-    audioProcessorRef.current = new AudioStreamProcessor(20000000);
+    // Create processor with SDR sample rate tuned for real-time audio (2.048 MSPS)
+    audioProcessorRef.current = new AudioStreamProcessor(2048000);
 
     return (): void => {
       audioProcessorRef.current?.cleanup();
@@ -116,14 +117,21 @@ function Visualizer(): React.JSX.Element {
       }
 
       try {
-        // Create buffer source
+        // IMPORTANT: Create AudioBuffer in the SAME AudioContext used for playback
+        // Some browsers disallow playing buffers created by a different context
+        const buffer = audioContext.createBuffer(
+          result.channels,
+          result.audioData.length,
+          result.sampleRate,
+        );
+        for (let ch = 0; ch < result.channels; ch++) {
+          const channelData = buffer.getChannelData(ch);
+          channelData.set(result.audioData);
+        }
+
         const source = audioContext.createBufferSource();
-        source.buffer = result.audioBuffer;
-
-        // Connect through gain node for volume control
+        source.buffer = buffer;
         source.connect(gainNode);
-
-        // Start playback
         source.start();
       } catch (error) {
         console.error("Audio playback error:", error);
@@ -318,8 +326,8 @@ function Visualizer(): React.JSX.Element {
       // Ensure device is configured with sample rate before starting
       console.warn("beginDeviceStreaming: Configuring device before streaming");
       try {
-        await activeDevice.setSampleRate(20000000); // 20 MSPS default
-        console.warn("beginDeviceStreaming: Sample rate set to 20 MSPS");
+        await activeDevice.setSampleRate(2048000); // 2.048 MSPS for real-time audio
+        console.warn("beginDeviceStreaming: Sample rate set to 2.048 MSPS");
       } catch (err) {
         console.error("Failed to set sample rate:", err);
         const error = err instanceof Error ? err : new Error(String(err));
@@ -395,7 +403,9 @@ function Visualizer(): React.JSX.Element {
       enabled: false,
     },
   ]);
-  const [currentTalkgroup, _setCurrentTalkgroup] = useState<string | null>(null);
+  const [currentTalkgroup, _setCurrentTalkgroup] = useState<string | null>(
+    null,
+  );
   const [currentTalkgroupName, _setCurrentTalkgroupName] = useState<
     string | null
   >(null);
@@ -474,7 +484,7 @@ function Visualizer(): React.JSX.Element {
     // Configure device when it becomes available
     const configureDevice = async (): Promise<void> => {
       // Set sample rate first (required for HackRF to stream data)
-      await device.setSampleRate(20000000); // 20 MSPS default
+      await device.setSampleRate(2048000); // 2.048 MSPS for real-time audio
       await device.setFrequency(frequency);
       if (device.setBandwidth) {
         await device.setBandwidth(bandwidth);
@@ -497,8 +507,6 @@ function Visualizer(): React.JSX.Element {
     shouldStartOnConnectRef.current = false;
     void beginDeviceStreaming(device);
   }, [device, beginDeviceStreaming]);
-
-
 
   const startListening = useCallback(async (): Promise<void> => {
     if (listening) {
@@ -734,7 +742,7 @@ function Visualizer(): React.JSX.Element {
             volume={audioVolume}
             isMuted={isAudioMuted}
             signalType={signalType}
-            isAvailable={!!device && listening}
+            isAvailable={listening}
             onTogglePlay={handleToggleAudio}
             onVolumeChange={handleVolumeChange}
             onToggleMute={handleToggleMute}

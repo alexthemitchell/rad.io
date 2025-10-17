@@ -81,7 +81,10 @@ export default defineConfig([
       "jsx-a11y/tabindex-no-positive": "error",
 
       // General code quality rules
-      "no-console": ["error", { allow: ["warn", "error"] }],
+      "no-console": [
+        "error",
+        { allow: ["trace", "debug", "info", "warn", "error"] },
+      ],
       "no-debugger": "warn",
       "prefer-const": "error",
       "no-var": "error",

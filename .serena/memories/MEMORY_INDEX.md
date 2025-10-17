@@ -15,9 +15,18 @@ Devices & WebUSB
 - WEBUSB_SDR_INTEGRATION_PLAYBOOK — Canonical device config/order, sample formats, robust streaming.
 - HACKRF_DEVICE_INITIALIZATION_BUG_FIX — Root cause + fix for "Receiving but no data" (set sample rate first).
 - WEBUSB_STREAMING_DEBUG_GUIDE — Deep-dive troubleshooting and streaming loop patterns.
+- WEBUSB_SDR_PRACTICAL_GOTCHAS — Field learnings for reliable streaming.
 
 DSP & performance
 - WASM_DSP — WASM FFT integration, fallback strategy, benchmarks.
+- SDR_SAMPLE_RATE_CONFIGURATION — Browser-feasible rates and alignment rules.
+- SDR_DSP_FOUNDATIONS — IQ/mixing/decimation fundamentals and formulas.
+- FILTERING_DECIMATION_PATTERNS — Efficient multi-stage decimation designs.
+- DSP_STFT_SPECTROGRAM_GUIDE — STFT trade-offs, FFT defaults, display scaling.
+- DEMODULATION_BASICS_FM_AM — FM/AM chain snippets and de-emphasis.
+- IQ_CONSTELLATION_DIAGNOSTICS — Quick health checks via constellation shapes.
+- P25_PRIMER_FOR_VISUALIZER — Phase I processing notes and diagnostics.
+- SPECTRUM_DISPLAY_PRACTICALS — Waterfall performance and UX tips.
 
 Accessibility & UI
 - ACCESSIBILITY / ACCESSIBILITY_SUMMARY — Key accessibility considerations.

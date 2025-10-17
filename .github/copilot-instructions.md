@@ -122,7 +122,7 @@ src/
 1. **Application Entry**: `src/index.tsx` → `src/App.tsx` → `src/pages/Visualizer.tsx`
 2. **Device Discovery**: `useUSBDevice` hook requests WebUSB access
 3. **Device Initialization**: `useHackRFDevice` creates and configures device instance
-4. **Visualization Pipeline**: Raw IQ samples → DSP processing → Canvas rendering
+4. **Visualization Pipeline**: Raw IQ samples → DSP processing → WebGL/Canvas rendering
 
 ## Critical Implementation Details
 
@@ -132,13 +132,56 @@ All SDR devices MUST implement `ISDRDevice` interface
 
 **Supported Devices:**
 
-- HackRF One (0x1d50:0x6089) - Native implementation
-
 ### WebUSB
 
 **Security Context Required**: HTTPS only (WebUSB restriction)
 
 ### Visualization Components
+
+**WebGL Architecture (Primary Rendering Path):**
+
+All visualization components use WebGL for GPU-accelerated rendering with graceful fallback:
+
+1. **WebGL** (primary) - GPU-accelerated via `src/utils/webgl.ts`
+2. **OffscreenCanvas + Worker** (secondary) - Offscreen 2D in web worker
+3. **2D Canvas** (tertiary) - Main thread fallback
+
+**Shared WebGL Utilities (`src/utils/webgl.ts`):**
+
+- Context creation with WebGL2/WebGL1 detection
+- Shader compilation and program linking
+- Texture operations (RGBA, NEAREST filtering)
+- Viridis colormap LUT (256-point perceptually uniform)
+- Fullscreen quad rendering for textured visualizations
+
+**Component Implementations:**
+
+- **IQConstellation**: `gl.POINTS` with density-based alpha blending
+- **WaveformVisualizer**: `gl.LINE_STRIP` with adaptive amplitude scaling
+- **Spectrogram**: Textured quad with viridis-mapped power values
+
+**Critical WebGL Patterns:**
+
+```typescript
+// Synchronous canvas sizing BEFORE async import (test compatibility)
+const dpr = window.devicePixelRatio || 1;
+canvas.width = width * dpr;
+canvas.height = height * dpr;
+
+// Then async import for bundle optimization
+const webgl = await import("../utils/webgl");
+
+// Resource lifecycle: create once, update data, cleanup on unmount
+const glStateRef = useRef({ gl: null, program: null, vbo: null });
+useEffect(() => {
+  const st = glStateRef.current; // Capture before return
+  return () => {
+    if (st.gl && st.program) st.gl.deleteProgram(st.program);
+  };
+}, []); // Empty deps - cleanup once
+```
+
+**See WEBGL_VISUALIZATION_ARCHITECTURE memory for complete details.**
 
 **Design Principles Applied:**
 
@@ -241,10 +284,10 @@ type ComponentProps = {
 ### External References
 
 - **IQ Constellation**: https://www.mathworks.com/help/comm/ref/constellationdiagram.html
-- **Spectrogram Standards**: Signal processing literature
 - **Viridis Colormap**: https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html
 - **WebUSB API**: MDN Web Docs - https://developer.mozilla.org/en-US/docs/Web/API/USB
 - **HackRF One Reference Implementation**: https://github.com/greatscottgadgets/hackrf/blob/master/host/libhackrf/src/hackrf.c
+- **Wireless Lab IIT-M**: https://varun19299.github.io/ID4100-Wireless-Lab-IITM/
 
 ## Support & Contributing
 
