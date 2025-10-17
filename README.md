@@ -2,18 +2,16 @@
 
 A professional browser-based SDR application with industry-standard visualizations, universal device support, and comprehensive testing.
 
-![rad.io Screenshot](https://github.com/user-attachments/assets/f86b68ed-3a56-4090-8b41-aaf0bf22e47d)
-
 ## Features
 
-### 🎛️ Signal Control
+### Signal Control 🎛️
 
 - **AM/FM/P25 Band Selection**: Toggle between FM (88.1-107.9 MHz), AM (530-1700 kHz), and P25 Phase 2 (700-800 MHz, 150-174 MHz)
 - **Preset Stations**: One-click tuning to popular stations
 - **Manual Frequency Control**: Precise frequency adjustment
 - **Device Configuration**: LNA gain, amplifier control, sample rate
 
-### 📊 Professional Visualizations
+### Professional Visualizations 📊
 
 - **IQ Constellation Diagram**: Density-based heat mapping with Z-ordering
 - **Amplitude Waveform**: Time-domain envelope with reference lines
@@ -21,7 +19,7 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Interactive Controls**: Pan, zoom, and multi-touch gestures for all visualizations
 - **Keyboard Navigation**: Accessible controls for precision signal analysis
 
-### 🎤 Speech Recognition & P25 Decoding
+### Speech Recognition & P25 Decoding 🎤
 
 - **Browser-Native Transcription**: Web Speech API integration for real-time speech-to-text
 - **AI-Ready Audio Stream**: Clean demodulated audio optimized for recognition
@@ -30,26 +28,24 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **P25 Phase 2 Decoder**: H-DQPSK demodulation, TDMA slot extraction, frame synchronization
 - **Trunked Radio Support**: Monitor talkgroups, control channels, and encrypted transmissions
 
-### 🔌 Universal Device Support
+### Universal Device Support 🔌
 
 - **HackRF One**: Native implementation
 - **RTL-SDR**: Format conversion utilities
 - **Airspy**: Database support
 - **Custom SDRs**: Implement `ISDRDevice` interface
 
-### ✅ Quality Assurance
+### Quality Assurance ✅
 
-- **171+ Unit Tests**: Comprehensive coverage including accessibility tests
-- **CI/CD Pipeline**: Automated lint, test, format, build, type-check
-- **Zero External Dependencies**: Native WebAudio API and Canvas rendering
+- **Comprehensive Unit Tests**: Coverage across DSP, devices, and components
+- **CI/CD Pipeline**: Automated lint, test (with coverage), format, build, and type-check
+- **Zero External Visualization Dependencies**: Native WebAudio API and Canvas rendering
 
-### ♿ Accessibility
+### Accessibility ♿
 
-- **WCAG 2.1 Level AA**: Comprehensive screen reader support
 - **Keyboard Navigation**: Full keyboard control with arrow keys and shortcuts
 - **ARIA Labels**: Descriptive text alternatives for all visualizations
 - **Focus Management**: Clear visual indicators and logical tab order
-- See [ACCESSIBILITY.md](./ACCESSIBILITY.md) for complete documentation
 
 ## Quick Start
 
@@ -73,7 +69,7 @@ npm install
 npm start
 ```
 
-The application will be available at `https://localhost:8080`
+The development server runs over HTTPS at `https://localhost:8080` by default.
 
 ### Building for Production
 
@@ -162,7 +158,7 @@ All visualizations support advanced pointer and wheel events for intuitive explo
 - **+/-**: Zoom in and out
 - **0**: Reset to default view
 
-See [Interactive Controls Documentation](./INTERACTIVE_CONTROLS.md) for detailed usage and configuration.
+Interactive controls are implemented via `src/hooks/useVisualizationInteraction.ts` and used across visualization components such as `Spectrogram`, `IQConstellation`, and `WaveformVisualizer`.
 
 ### Speech Recognition
 
@@ -219,7 +215,7 @@ See [Interactive Controls Documentation](./INTERACTIVE_CONTROLS.md) for detailed
 - **VHF Band**: 150-174 MHz (rural/legacy systems)
 - **UHF Band**: 450-470 MHz (some regions)
 
-See [P25_DECODER.md](./P25_DECODER.md) for technical details and API documentation.
+See implementation in `src/utils/p25decoder.ts` for technical details and API surface.
 
 ### Digital Signal Processing Pipeline
 
@@ -260,6 +256,11 @@ The DSP pipeline visualization shows the complete signal flow:
 
 **Note**: HTTPS context is required for WebUSB access.
 
+## Windows notes
+
+- PowerShell is the default shell; commands shown use npm scripts so they work the same across platforms.
+- The `clean` script uses `rimraf` for cross‑platform deletion of `dist`, `node_modules`, and `build`.
+
 ## Agent guide: Serena memories
 
 For AI agents contributing to this repository, use Serena memories to keep context lean and high-signal:
@@ -270,3 +271,19 @@ For AI agents contributing to this repository, use Serena memories to keep conte
 - Favor symbol-first exploration over full-file reads. Avoid re-reading the same content with multiple tools.
 
 See `.github/copilot-instructions.md` for detailed agent workflows and available tools.
+
+## Community health
+
+This repository includes community health files to help guide contributors and users:
+
+- Code of Conduct: `CODE_OF_CONDUCT.md`
+- Security Policy: `SECURITY.md`
+- Support: `SUPPORT.md`
+- Governance: `GOVERNANCE.md`
+
+You can also find issue templates and the pull request template under `.github/`.
+
+## Additional accessibility resources
+
+- GitHub’s guidance for accessible profile/README content: https://github.blog/developer-skills/github/5-tips-for-making-your-github-profile-page-accessible/
+  - Key ideas we follow here: descriptive image alt text, meaningful link text (no “click here”), clear heading hierarchy, and emojis that complement the text (not replace it).

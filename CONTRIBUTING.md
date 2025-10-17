@@ -34,11 +34,11 @@ cd rad.io
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (HTTPS)
 npm start
 ```
 
-The development server will be available at `https://localhost:8080`
+The development server runs over HTTPS at `https://localhost:8080` by default.
 
 ## Development Workflow
 
@@ -60,14 +60,10 @@ npm run format         # Format code with Prettier
 npm run format:check   # Check code formatting
 npm run type-check     # Run TypeScript type checking
 npm run validate       # Run all quality checks + build
-npm run self-assess    # Run comprehensive self-assessment
 
 # Testing
-npm test               # Run all tests
-npm run test:unit      # Run unit tests only (DSP, memory, device)
-npm run test:components # Run component tests only
+npm test               # Run all tests with coverage
 npm run test:watch     # Run tests in watch mode
-npm run test:coverage  # Generate coverage report
 
 # Cleanup
 npm run clean          # Remove build artifacts and dependencies
@@ -94,16 +90,20 @@ npm run clean          # Remove build artifacts and dependencies
    npm run type-check
    npm test
    npm run build
-   # Optional: Run self-assessment for comprehensive check
-   npm run self-assess
    ```
+
+> Optional: Run a focused test suite
+>
+> ```bash
+> npm test -- src/utils/__tests__/dsp.test.ts
+> ```
 
 4. **Commit with descriptive messages**
 
-   ```bash
-   git add .
-   git commit -m "feat: add support for new SDR device"
-   ```
+```bash
+git add .
+git commit -m "feat: add support for new SDR device"
+```
 
 5. **Push and create PR**
    ```bash
@@ -217,11 +217,9 @@ it("should handle large datasets efficiently", () => {
 });
 ```
 
-### Test Coverage Goals
+## Test Coverage Goals
 
-- **Unit tests**: >80% coverage for utility functions
-- **Integration tests**: All major user flows
-- **Component tests**: Critical rendering paths
+- Aim for strong coverage across utility functions, device models, and key components.
 
 ## Commit Messages
 
@@ -264,7 +262,7 @@ test(dsp): add edge case tests for waveform calculation
    - Linting (ESLint)
    - Formatting (Prettier)
    - Type checking (TypeScript)
-   - Tests (Jest - 100% pass rate)
+   - Tests (Jest - all tests must pass)
    - Build (Webpack)
 4. **Keep PRs focused** - One feature or fix per PR
 5. **Write clear PR descriptions** - Explain what, why, and how
@@ -286,32 +284,23 @@ Before submitting a PR:
 - [ ] Commit messages follow convention
 - [ ] No unnecessary console statements
 
-### Using the Self-Assessment Agent
+### Additional Notes
 
-The repository includes an automated self-assessment agent that can help verify your changes meet quality standards:
+- When running large or memory-intensive tests, prefer targeted runs and cleanups as shown in examples under `src/components/__tests__/` and `src/utils/__tests__/`.
 
-```bash
-# Run comprehensive self-assessment
-npm run self-assess
+## Writing accessible docs in this repo
 
-# View the generated report
-cat .serena/memories/assessment-$(date +%Y-%m-%d).md
+When updating documentation, follow these quick checks:
 
-# View all assessment history
-cat .serena/memories/index.md
-```
+- Use descriptive image alt text that conveys purpose (e.g., “Screenshot of rad.io SDR visualizer showing IQ constellation…”).
+- Ensure link text is meaningful out of context (avoid “click here”).
+- Maintain a logical heading hierarchy (H1 → H2 → H3; don’t skip levels).
+- Use emojis as visual cues only; don’t rely on them to convey essential information.
+- Keep contrast and readability in mind; prefer plain language.
 
-The self-assessment agent will:
+Additional resource: GitHub’s accessibility tips for profile/readme content
 
-- Check code quality (lint, format, type-check)
-- Validate build
-- Run tests (with memory-aware handling)
-- Provide categorized suggestions for improvement
-- Generate a detailed markdown report
-
-Reports are saved to `.serena/memories/` and are not committed to version control.
-
-See `.github/agents/README.md` for detailed documentation on the self-assessment system.
+- https://github.blog/developer-skills/github/5-tips-for-making-your-github-profile-page-accessible/
 
 ## Adding New SDR Devices
 
