@@ -523,7 +523,6 @@ describe("SDRDevice Interface", () => {
     });
   });
 
-
   describe("Sample Reception", () => {
     let device: MockSDRDevice;
 

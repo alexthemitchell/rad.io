@@ -18,6 +18,11 @@ import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import { convertToSamples, Sample } from "../utils/dsp";
+import {
+  decodeP25Phase2,
+  P25DecodedData,
+  DEFAULT_P25_CONFIG,
+} from "../utils/p25decoder";
 import { testSamples } from "../hooks/__test__/testSamples";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { ISDRDevice } from "../models/SDRDevice";
@@ -37,6 +42,8 @@ function Visualizer(): React.JSX.Element {
   const [bandwidth, setBandwidth] = useState(20e6); // Default 20 MHz bandwidth
   const [samples, setSamples] = useState<Sample[]>([]);
   const [latestSamples, setLatestSamples] = useState<Sample[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [p25Data, setP25Data] = useState<P25DecodedData | null>(null);
 
   const sampleBufferRef = useRef<Sample[]>([]);
   const latestChunkRef = useRef<Sample[]>([]);
@@ -328,46 +335,40 @@ function Visualizer(): React.JSX.Element {
     void beginDeviceStreaming(device);
   }, [device, beginDeviceStreaming]);
 
-  // Simulate P25 activity (in real implementation, this would decode actual P25 data)
+  // Decode P25 Phase 2 data from IQ samples
   useEffect(() => {
-    if (listening && signalType === "P25") {
-      const timeoutIds: NodeJS.Timeout[] = [];
-      const interval = setInterval(() => {
-        // Simulate random talkgroup activity
-        const enabledTalkgroups = talkgroups.filter((tg) => tg.enabled);
-        if (enabledTalkgroups.length > 0 && Math.random() > 0.5) {
-          const randomTg =
-            enabledTalkgroups[
-              Math.floor(Math.random() * enabledTalkgroups.length)
-            ];
-          if (randomTg) {
-            setCurrentTalkgroup(randomTg.id);
-            setCurrentTalkgroupName(randomTg.name);
-            setSignalPhase(Math.random() > 0.5 ? "Phase 2" : "Phase 1");
-            setTdmaSlot(Math.random() > 0.5 ? 1 : 2);
-            setSignalStrength(Math.floor(Math.random() * 40 + 60));
-            setIsEncrypted(Math.random() > 0.7);
+    if (listening && signalType === "P25" && samples.length > 0) {
+      try {
+        // Decode P25 data from current sample buffer
+        const decoded = decodeP25Phase2(samples, DEFAULT_P25_CONFIG);
+        setP25Data(decoded);
 
-            // Clear after a few seconds
-            const timeoutId = setTimeout(() => {
-              setCurrentTalkgroup(null);
-              setCurrentTalkgroupName(null);
-              setSignalPhase(null);
-              setTdmaSlot(null);
-              setSignalStrength(0);
-              setIsEncrypted(false);
-            }, 3000);
-            timeoutIds.push(timeoutId);
+        // Update UI with decoded information
+        if (decoded.frames.length > 0) {
+          const latestFrame = decoded.frames[decoded.frames.length - 1];
+          if (latestFrame) {
+            setSignalPhase("Phase 2");
+            setTdmaSlot(latestFrame.slot);
+            setSignalStrength(latestFrame.signalQuality);
+            setIsEncrypted(decoded.isEncrypted);
+
+            // Update talkgroup if available
+            if (decoded.talkgroupId !== undefined) {
+              setCurrentTalkgroup(decoded.talkgroupId.toString());
+              const tg = talkgroups.find(
+                (t) => t.id === decoded.talkgroupId?.toString(),
+              );
+              if (tg) {
+                setCurrentTalkgroupName(tg.name);
+              }
+            }
           }
         }
-      }, 5000);
-
-      return (): void => {
-        clearInterval(interval);
-        timeoutIds.forEach((id) => clearTimeout(id));
-      };
+      } catch (error) {
+        console.error("P25 decoding error:", error);
+      }
     }
-  }, [listening, signalType, talkgroups]);
+  }, [listening, signalType, samples, talkgroups]);
 
   const startListening = useCallback(async (): Promise<void> => {
     if (listening) {
