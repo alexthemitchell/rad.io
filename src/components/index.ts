@@ -11,6 +11,7 @@ export { default as DSPPipeline } from "./DSPPipeline";
 export { default as InteractiveDSPPipeline } from "./InteractiveDSPPipeline";
 export { default as EmptyState } from "./EmptyState";
 export { default as FFTChart } from "./FFTChart";
+export { default as FrequencyScanner } from "./FrequencyScanner";
 export { default as IQConstellation } from "./IQConstellation";
 export { default as PresetStations } from "./PresetStations";
 export { default as RadioControls } from "./RadioControls";
