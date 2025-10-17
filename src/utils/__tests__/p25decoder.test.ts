@@ -89,8 +89,7 @@ describe("P25 Phase 2 Decoder", () => {
 
       // Generate samples for a +45° phase shift (SYMBOL_10)
       for (let i = 0; i < samplesPerSymbol * 2; i++) {
-        const phase =
-          i < samplesPerSymbol ? 0 : (45 * Math.PI) / 180; // Phase shift at symbol boundary
+        const phase = i < samplesPerSymbol ? 0 : (45 * Math.PI) / 180; // Phase shift at symbol boundary
         samples.push({
           I: Math.cos(phase),
           Q: Math.sin(phase),
@@ -291,7 +290,7 @@ describe("P25 Phase 2 Decoder", () => {
       // We need at least 24 symbols (12 for sync * 2 for TDMA)
       const symbolCount = 30;
       for (let s = 0; s < symbolCount; s++) {
-        const phase = ((s * 45) * Math.PI) / 180; // Rotate through phases
+        const phase = (s * 45 * Math.PI) / 180; // Rotate through phases
         for (let i = 0; i < samplesPerSymbol; i++) {
           samples.push({
             I: Math.cos(phase),
@@ -316,7 +315,7 @@ describe("P25 Phase 2 Decoder", () => {
 
       // Generate samples for testing TDMA extraction
       for (let i = 0; i < 100; i++) {
-        const phase = ((i * 45) * Math.PI) / 180;
+        const phase = (i * 45 * Math.PI) / 180;
         for (let j = 0; j < samplesPerSymbol; j++) {
           samples.push({
             I: Math.cos(phase),
