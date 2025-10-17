@@ -407,34 +407,124 @@ export class HackRFOne {
     });
   }
 
+  /**
+   * Creates a timeout promise that rejects after the specified duration
+   */
+  private createTimeout(ms: number, message: string): Promise<never> {
+    return new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    });
+  }
+
+  /**
+   * Validates device is properly configured before streaming
+   */
+  private validateDeviceHealth(): void {
+    if (!this.usbDevice.opened) {
+      throw new Error("Device is not open");
+    }
+    if (this.closing) {
+      throw new Error("Device is closing");
+    }
+    // Additional health checks can be added here
+  }
+
   // New method to start reception with an optional data callback
   async receive(callback?: (data: DataView) => void): Promise<void> {
+    // Validate device health before streaming
+    this.validateDeviceHealth();
+
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
     this.streaming = true;
+
+    const isDev = process.env.NODE_ENV === "development";
+    if (isDev) {
+      console.warn(
+        `HackRFOne.receive: Starting streaming loop, endpoint=${this.inEndpointNumber}`,
+      );
+    }
+
+    let iterationCount = 0;
+    let consecutiveTimeouts = 0;
+    const TIMEOUT_MS = 5000; // 5 second timeout
+    const MAX_CONSECUTIVE_TIMEOUTS = 3;
+
     while (this.streaming) {
       try {
-        const result = await this.usbDevice.transferIn(
-          this.inEndpointNumber,
-          4096,
-        );
+        iterationCount++;
+        if (isDev && iterationCount <= 5) {
+          console.warn(
+            `HackRFOne.receive: Iteration ${iterationCount}, calling transferIn`,
+          );
+        }
+
+        // Wrap transferIn with timeout protection
+        const result = await Promise.race([
+          this.usbDevice.transferIn(this.inEndpointNumber, 4096),
+          this.createTimeout(
+            TIMEOUT_MS,
+            `transferIn timeout after ${TIMEOUT_MS}ms - device may need reset`,
+          ),
+        ]);
+
+        // Reset timeout counter on successful transfer
+        consecutiveTimeouts = 0;
+
+        if (isDev && iterationCount <= 5) {
+          console.warn(`HackRFOne.receive: transferIn result:`, {
+            status: result.status,
+            byteLength: result.data?.byteLength || 0,
+            hasData: !!result.data,
+          });
+        }
+
         if (result.data) {
           // Track buffer for memory management
           this.trackBuffer(result.data);
 
+          if (isDev && iterationCount <= 3) {
+            console.warn(
+              `HackRFOne.receive: Got ${result.data.byteLength} bytes, callback=${!!callback}`,
+            );
+          }
           if (callback) {
             callback(result.data);
           }
+        } else if (isDev && iterationCount <= 5) {
+          console.warn(
+            `HackRFOne.receive: No data in result, status=${result.status}`,
+          );
         }
       } catch (err: unknown) {
         const error = err as Error & { name?: string };
         if (error.name === "AbortError") {
           // transferIn aborted as expected during shutdown
           break;
+        } else if (error.message?.includes("timeout")) {
+          consecutiveTimeouts++;
+          console.error(
+            `Transfer timeout (${consecutiveTimeouts}/${MAX_CONSECUTIVE_TIMEOUTS}): ${error.message}`,
+          );
+
+          if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
+            throw new Error(
+              "Device not responding after multiple attempts. Please:\n" +
+                "1. Unplug and replug the USB cable\n" +
+                "2. Press the reset button on the HackRF\n" +
+                "3. Try a different USB port\n" +
+                "4. Verify device works with hackrf_info command",
+            );
+          }
+          // Continue loop to retry
         } else {
           console.error("Unexpected error during transferIn:", err);
-          break;
+          throw err;
         }
       }
+    }
+
+    if (isDev) {
+      console.warn("HackRFOne.receive: Streaming loop ended");
     }
     await this.setTransceiverMode(TransceiverMode.OFF);
     await this.controlTransferOut({

@@ -55,14 +55,14 @@ The interaction behavior can be customized via the `useVisualizationInteraction`
 
 ```typescript
 const { transform, handlers, resetTransform } = useVisualizationInteraction({
-  panSensitivity: 1.0,      // Pan speed multiplier (default: 1.0)
-  zoomSensitivity: 1.0,     // Zoom speed multiplier (default: 1.0)
-  minZoom: 0.5,             // Minimum zoom level (default: 0.5)
-  maxZoom: 10.0,            // Maximum zoom level (default: 10.0)
-  enablePan: true,          // Enable panning (default: true)
-  enableZoom: true,         // Enable zooming (default: true)
-  enableMultiTouch: true,   // Enable multi-touch gestures (default: true)
-  enableKeyboard: true,     // Enable keyboard navigation (default: true)
+  panSensitivity: 1.0, // Pan speed multiplier (default: 1.0)
+  zoomSensitivity: 1.0, // Zoom speed multiplier (default: 1.0)
+  minZoom: 0.5, // Minimum zoom level (default: 0.5)
+  maxZoom: 10.0, // Maximum zoom level (default: 10.0)
+  enablePan: true, // Enable panning (default: true)
+  enableZoom: true, // Enable zooming (default: true)
+  enableMultiTouch: true, // Enable multi-touch gestures (default: true)
+  enableKeyboard: true, // Enable keyboard navigation (default: true)
 });
 ```
 
@@ -71,6 +71,7 @@ const { transform, handlers, resetTransform } = useVisualizationInteraction({
 ### Pointer Events API
 
 The implementation uses the modern Pointer Events API for unified handling of:
+
 - Mouse input
 - Touch input (single and multi-touch)
 - Pen/stylus input
@@ -79,6 +80,7 @@ The implementation uses the modern Pointer Events API for unified handling of:
 ### High-Precision Wheel Events
 
 Wheel events provide smooth, high-precision zooming with:
+
 - Delta-based zoom calculation
 - Configurable sensitivity
 - Zoom limits to prevent over-zoom
@@ -96,6 +98,7 @@ ctx.restore();
 ```
 
 This approach ensures:
+
 - GPU-accelerated rendering
 - No re-calculation of visualization data
 - Smooth 60 FPS interaction
@@ -104,6 +107,7 @@ This approach ensures:
 ### Accessibility
 
 The implementation follows WCAG 2.1 guidelines:
+
 - All interactions have keyboard alternatives
 - Focus indicators on canvas elements
 - ARIA labels for screen readers
@@ -112,6 +116,7 @@ The implementation follows WCAG 2.1 guidelines:
 ## Browser Compatibility
 
 Interactive controls work in all browsers that support:
+
 - Pointer Events API (Chrome 55+, Firefox 59+, Safari 13+, Edge 18+)
 - Wheel Events (All modern browsers)
 - Canvas 2D API (Universal support)
@@ -119,6 +124,7 @@ Interactive controls work in all browsers that support:
 ### Fallback Behavior
 
 On older browsers:
+
 - Mouse events fall back to pointer events
 - Touch events work as standard
 - Keyboard navigation always available
@@ -137,16 +143,10 @@ The implementation is optimized for performance:
 ### Basic Usage
 
 ```tsx
-import IQConstellation from './components/IQConstellation';
+import IQConstellation from "./components/IQConstellation";
 
 function App() {
-  return (
-    <IQConstellation 
-      samples={mySignalData}
-      width={800}
-      height={600}
-    />
-  );
+  return <IQConstellation samples={mySignalData} width={800} height={600} />;
 }
 ```
 
@@ -158,7 +158,7 @@ For high-precision work, reduce sensitivity:
 
 ```tsx
 const visualization = useVisualizationInteraction({
-  panSensitivity: 0.5,  // Slower pan for precision
+  panSensitivity: 0.5, // Slower pan for precision
   zoomSensitivity: 0.5, // Slower zoom for precision
 });
 ```
@@ -167,7 +167,7 @@ For quick navigation, increase sensitivity:
 
 ```tsx
 const visualization = useVisualizationInteraction({
-  panSensitivity: 2.0,  // Faster pan
+  panSensitivity: 2.0, // Faster pan
   zoomSensitivity: 2.0, // Faster zoom
 });
 ```
@@ -203,12 +203,13 @@ This is automatically applied by the component.
 Reduce the zoom sensitivity:
 
 ```tsx
-useVisualizationInteraction({ zoomSensitivity: 0.3 })
+useVisualizationInteraction({ zoomSensitivity: 0.3 });
 ```
 
 ### Can't Pan or Zoom
 
 Check that:
+
 1. Canvas has `tabIndex={0}` for keyboard focus
 2. Handlers are properly spread: `{...handlers}`
 3. Settings enable the desired features

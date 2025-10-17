@@ -4,6 +4,7 @@ import SignalTypeSelector, {
   SignalType,
 } from "../components/SignalTypeSelector";
 import BandwidthSelector from "../components/BandwidthSelector";
+import DeviceDiagnostics from "../components/DeviceDiagnostics";
 import PresetStations from "../components/PresetStations";
 import RadioControls from "../components/RadioControls";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
@@ -17,19 +18,16 @@ import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import PerformanceMetrics from "../components/PerformanceMetrics";
-import { convertToSamples, Sample } from "../utils/dsp";
-import { testSamples } from "../hooks/__test__/testSamples";
+import { Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { ISDRDevice } from "../models/SDRDevice";
 import "../styles/main.css";
 
 const MAX_BUFFER_SAMPLES = 32768;
-const UPDATE_INTERVAL_MS = 100;
-const DEMO_CHUNK_SIZE = 2048;
-const DEMO_INTERVAL_MS = 75;
+const UPDATE_INTERVAL_MS = 33; // Target 30 FPS (1000ms / 30fps ≈ 33ms)
 
 function Visualizer(): React.JSX.Element {
-  const { device, initialize, cleanup } = useHackRFDevice();
+  const { device, initialize, cleanup, isCheckingPaired } = useHackRFDevice();
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [signalType, setSignalType] = useState<SignalType>("FM");
@@ -37,13 +35,15 @@ function Visualizer(): React.JSX.Element {
   const [bandwidth, setBandwidth] = useState(20e6); // Default 20 MHz bandwidth
   const [samples, setSamples] = useState<Sample[]>([]);
   const [latestSamples, setLatestSamples] = useState<Sample[]>([]);
+  const [currentFPS, setCurrentFPS] = useState<number>(0);
+  const [deviceError, setDeviceError] = useState<Error | null>(null);
 
   const sampleBufferRef = useRef<Sample[]>([]);
   const latestChunkRef = useRef<Sample[]>([]);
   const rafIdRef = useRef<number | null>(null);
   const lastUpdateRef = useRef<number>(0);
-  const simulationTimerRef = useRef<number | null>(null);
-  const demoSamplesRef = useRef<Sample[] | null>(null);
+  const frameCountRef = useRef<number>(0);
+  const fpsLastUpdateRef = useRef<number>(0);
   const receivePromiseRef = useRef<Promise<void> | null>(null);
   const shouldStartOnConnectRef = useRef(false);
 
@@ -61,9 +61,12 @@ function Visualizer(): React.JSX.Element {
     sampleBufferRef.current = [];
     latestChunkRef.current = [];
     lastUpdateRef.current = 0;
+    frameCountRef.current = 0;
+    fpsLastUpdateRef.current = 0;
     cancelScheduledUpdate();
     setSamples([]);
     setLatestSamples([]);
+    setCurrentFPS(0);
   }, [cancelScheduledUpdate]);
 
   const scheduleVisualizationUpdate = useCallback((): void => {
@@ -81,14 +84,30 @@ function Visualizer(): React.JSX.Element {
       rafIdRef.current = null;
       setSamples([...sampleBufferRef.current]);
       setLatestSamples([...latestChunkRef.current]);
+
+      // Track FPS
+      frameCountRef.current++;
+      const now = performance.now();
+      const elapsed = now - fpsLastUpdateRef.current;
+
+      // Update FPS counter every second
+      if (elapsed >= 1000) {
+        const fps = (frameCountRef.current / elapsed) * 1000;
+        setCurrentFPS(Math.round(fps));
+        frameCountRef.current = 0;
+        fpsLastUpdateRef.current = now;
+      }
     });
   }, []);
 
   const handleSampleChunk = useCallback(
     (chunk: Sample[]): void => {
       if (!chunk || chunk.length === 0) {
+        console.warn("handleSampleChunk: received empty chunk");
         return;
       }
+
+      console.warn(`handleSampleChunk: received ${chunk.length} samples`);
 
       const markName = `pipeline-chunk-start-${
         typeof performance !== "undefined" ? performance.now() : Date.now()
@@ -111,63 +130,42 @@ function Visualizer(): React.JSX.Element {
         typeof performance !== "undefined" ? performance.now() : Date.now();
       if (now - lastUpdateRef.current >= UPDATE_INTERVAL_MS) {
         lastUpdateRef.current = now;
+        console.warn("Scheduling visualization update");
         scheduleVisualizationUpdate();
       }
     },
     [scheduleVisualizationUpdate],
   );
 
-  const stopDemoStream = useCallback((): void => {
-    if (simulationTimerRef.current !== null) {
-      clearInterval(simulationTimerRef.current);
-      simulationTimerRef.current = null;
-    }
-  }, []);
-
-  const startDemoStream = useCallback((): void => {
-    if (simulationTimerRef.current !== null) {
-      return;
-    }
-
-    if (!demoSamplesRef.current) {
-      demoSamplesRef.current = convertToSamples(
-        testSamples as [number, number][],
-      );
-    }
-
-    const demoData = demoSamplesRef.current;
-    if (!demoData || demoData.length === 0) {
-      return;
-    }
-
-    let offset = 0;
-    simulationTimerRef.current = window.setInterval(() => {
-      const end = offset + DEMO_CHUNK_SIZE;
-      const chunk =
-        end <= demoData.length
-          ? demoData.slice(offset, end)
-          : demoData
-              .slice(offset)
-              .concat(demoData.slice(0, end % demoData.length));
-      handleSampleChunk(chunk);
-      offset = (offset + DEMO_CHUNK_SIZE) % demoData.length;
-    }, DEMO_INTERVAL_MS);
-  }, [handleSampleChunk]);
-
   const beginDeviceStreaming = useCallback(
     async (activeDevice: ISDRDevice): Promise<void> => {
       clearVisualizationState();
-      stopDemoStream();
       setListening(true);
+      setDeviceError(null); // Clear previous errors
       setLiveRegionMessage("Started receiving radio signals");
+
+      // Ensure device is configured with sample rate before starting
+      console.warn("beginDeviceStreaming: Configuring device before streaming");
+      try {
+        await activeDevice.setSampleRate(20000000); // 20 MSPS default
+        console.warn("beginDeviceStreaming: Sample rate set to 20 MSPS");
+      } catch (err) {
+        console.error("Failed to set sample rate:", err);
+        const error = err instanceof Error ? err : new Error(String(err));
+        setDeviceError(error);
+      }
 
       const receivePromise = activeDevice
         .receive((data) => {
+          console.warn("Received data, byteLength:", data?.byteLength || 0);
           const parsed = activeDevice.parseSamples(data) as Sample[];
+          console.warn("Parsed samples count:", parsed?.length || 0);
           handleSampleChunk(parsed);
         })
         .catch((err) => {
           console.error(err);
+          const error = err instanceof Error ? err : new Error(String(err));
+          setDeviceError(error);
           setLiveRegionMessage("Failed to receive radio signals");
           throw err;
         })
@@ -185,7 +183,7 @@ function Visualizer(): React.JSX.Element {
         receivePromiseRef.current = null;
       }
     },
-    [clearVisualizationState, handleSampleChunk, stopDemoStream],
+    [clearVisualizationState, handleSampleChunk],
   );
 
   // Live region for screen reader announcements
@@ -304,6 +302,8 @@ function Visualizer(): React.JSX.Element {
     }
     // Configure device when it becomes available
     const configureDevice = async (): Promise<void> => {
+      // Set sample rate first (required for HackRF to stream data)
+      await device.setSampleRate(20000000); // 20 MSPS default
       await device.setFrequency(frequency);
       if (device.setBandwidth) {
         await device.setBandwidth(bandwidth);
@@ -315,10 +315,9 @@ function Visualizer(): React.JSX.Element {
 
   useEffect((): (() => void) => {
     return () => {
-      stopDemoStream();
       cancelScheduledUpdate();
     };
-  }, [cancelScheduledUpdate, stopDemoStream]);
+  }, [cancelScheduledUpdate]);
 
   useEffect((): void => {
     if (!device || !shouldStartOnConnectRef.current) {
@@ -388,11 +387,8 @@ function Visualizer(): React.JSX.Element {
         console.error(err);
         shouldStartOnConnectRef.current = false;
         setLiveRegionMessage(
-          "Failed to connect to device. Starting demo mode with sample data.",
+          "Failed to connect to device. Please check device connection and browser permissions.",
         );
-        clearVisualizationState();
-        setListening(true);
-        startDemoStream();
       } finally {
         setIsInitializing(false);
       }
@@ -401,19 +397,9 @@ function Visualizer(): React.JSX.Element {
 
     shouldStartOnConnectRef.current = false;
     void beginDeviceStreaming(device);
-  }, [
-    beginDeviceStreaming,
-    clearVisualizationState,
-    device,
-    initialize,
-    isInitializing,
-    listening,
-    startDemoStream,
-  ]);
+  }, [beginDeviceStreaming, device, initialize, isInitializing, listening]);
 
   const stopListening = useCallback(async (): Promise<void> => {
-    stopDemoStream();
-
     if (device && device.isReceiving()) {
       try {
         await device.stopRx();
@@ -434,7 +420,7 @@ function Visualizer(): React.JSX.Element {
     cancelScheduledUpdate();
     setListening(false);
     setLiveRegionMessage("Stopped receiving radio signals");
-  }, [cancelScheduledUpdate, device, stopDemoStream]);
+  }, [cancelScheduledUpdate, device]);
 
   return (
     <div className="container">
@@ -455,7 +441,7 @@ function Visualizer(): React.JSX.Element {
 
       <header className="header" role="banner">
         <h1>rad.io</h1>
-        <p>Software-Defined Radio Visualizer</p>
+        <p>Software-Defined Radio Visualizer - Auto-Connect Enabled</p>
       </header>
 
       <main id="main-content" role="main">
@@ -468,15 +454,17 @@ function Visualizer(): React.JSX.Element {
             <button
               className="btn btn-primary"
               onClick={startListening}
-              disabled={listening || isInitializing}
+              disabled={listening || isInitializing || isCheckingPaired}
               title={
                 listening
                   ? "Device is currently receiving. Click 'Stop Reception' first."
                   : isInitializing
                     ? "Connecting to your SDR device. Please grant WebUSB access if prompted."
-                    : device
-                      ? "Start receiving IQ samples from the SDR device. Visualizations will update with live data."
-                      : "Click to connect your SDR device via WebUSB. Ensure device is plugged in and browser supports WebUSB."
+                    : isCheckingPaired
+                      ? "Checking for previously paired devices..."
+                      : device
+                        ? "Start receiving IQ samples from the SDR device. Visualizations will update with live data."
+                        : "Click to connect your SDR device via WebUSB. Ensure device is plugged in and browser supports WebUSB."
               }
               aria-label={
                 device
@@ -486,9 +474,11 @@ function Visualizer(): React.JSX.Element {
             >
               {device
                 ? "Start Reception"
-                : isInitializing
-                  ? "Connecting..."
-                  : "Connect Device"}
+                : isCheckingPaired
+                  ? "Checking for Device..."
+                  : isInitializing
+                    ? "Connecting..."
+                    : "Connect Device"}
             </button>
             <button
               className="btn btn-secondary"
@@ -541,6 +531,13 @@ function Visualizer(): React.JSX.Element {
             </div>
           </div>
         </div>
+
+        <DeviceDiagnostics
+          device={device}
+          isListening={listening}
+          frequency={frequency}
+          error={deviceError}
+        />
 
         <Card title="Radio Controls" subtitle="Configure your SDR receiver">
           <div className="controls-panel">
@@ -634,7 +631,7 @@ function Visualizer(): React.JSX.Element {
           <SignalStrengthMeterChart samples={latestSamples} />
         </Card>
 
-        <PerformanceMetrics />
+        <PerformanceMetrics currentFPS={currentFPS} />
 
         <div
           className="visualizations"
@@ -644,6 +641,8 @@ function Visualizer(): React.JSX.Element {
           <Card
             title="IQ Constellation Diagram"
             subtitle="Visual representation of the I (in-phase) and Q (quadrature) components"
+            collapsible={true}
+            defaultExpanded={true}
           >
             <SampleChart samples={samples} />
           </Card>

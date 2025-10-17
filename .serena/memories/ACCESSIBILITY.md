@@ -31,8 +31,9 @@ rad.io has been designed with accessibility as a core principle. The application
 All three main visualizations (IQ Constellation, Spectrogram, Waveform) provide rich textual descriptions:
 
 #### IQ Constellation Diagram
+
 ```tsx
-<canvas 
+<canvas
   role="img"
   aria-label="IQ Constellation diagram showing 1024 signal samples. 
              In-phase (I) component ranges from -0.500 to 0.500 with range 1.000. 
@@ -43,13 +44,15 @@ All three main visualizations (IQ Constellation, Spectrogram, Waveform) provide 
 ```
 
 The description includes:
+
 - Number of samples being displayed
 - I/Q component ranges and variance
 - Context about what the visualization represents
 
 #### Spectrogram
+
 ```tsx
-<canvas 
+<canvas
   role="img"
   aria-label="Spectrogram showing 50 time frames across 100 frequency bins (1000 to 1100). 
              Peak power of -45.23 dB detected at frequency bin 1050. 
@@ -59,14 +62,16 @@ The description includes:
 ```
 
 The description includes:
+
 - Number of time frames and frequency bins
 - Frequency range being displayed
 - Peak power location and strength
 - Color mapping explanation
 
 #### Amplitude Waveform
+
 ```tsx
-<canvas 
+<canvas
   role="img"
   aria-label="Amplitude waveform showing 2048 time-domain samples. 
              Signal amplitude ranges from 0.000 to 0.850 with average 0.425. 
@@ -76,6 +81,7 @@ The description includes:
 ```
 
 The description includes:
+
 - Number of time-domain samples
 - Amplitude range (min, max, average)
 - Context about the visualization
@@ -85,14 +91,17 @@ The description includes:
 All interactive controls have proper ARIA attributes:
 
 #### Signal Type Selector
+
 - `aria-pressed` indicates which signal type is currently selected
 - `aria-label` provides context including selection state
 
 #### Preset Stations
+
 - `aria-pressed="true"` on the currently tuned station
 - Descriptive labels including frequency and station name
 
 #### Status Indicators
+
 - `role="status"` with `aria-live="polite"` for connection status
 - Updates announced to screen readers without interrupting
 
@@ -102,14 +111,15 @@ All interactive controls have proper ARIA attributes:
 
 The frequency input supports comprehensive keyboard navigation:
 
-| Key | Action | FM Step | AM Step |
-|-----|--------|---------|---------|
-| **Arrow Up** | Increase frequency (fine) | +0.1 MHz | +10 kHz |
-| **Arrow Down** | Decrease frequency (fine) | -0.1 MHz | -10 kHz |
-| **Page Up** | Increase frequency (coarse) | +1.0 MHz | +100 kHz |
-| **Page Down** | Decrease frequency (coarse) | -1.0 MHz | -100 kHz |
+| Key            | Action                      | FM Step  | AM Step  |
+| -------------- | --------------------------- | -------- | -------- |
+| **Arrow Up**   | Increase frequency (fine)   | +0.1 MHz | +10 kHz  |
+| **Arrow Down** | Decrease frequency (fine)   | -0.1 MHz | -10 kHz  |
+| **Page Up**    | Increase frequency (coarse) | +1.0 MHz | +100 kHz |
+| **Page Down**  | Decrease frequency (coarse) | -1.0 MHz | -100 kHz |
 
 Example usage:
+
 ```typescript
 // User presses Arrow Up while focused on frequency input
 // Frequency increases by one step (0.1 MHz for FM)
@@ -124,6 +134,7 @@ handleKeyDown(event: KeyboardEvent) {
 ### Tab Navigation
 
 All interactive elements follow a logical tab order:
+
 1. Skip to main content link
 2. Device control buttons (Connect, Start/Stop, Disconnect)
 3. Signal type selector
@@ -150,9 +161,9 @@ The link is visually hidden until focused, ensuring keyboard users can quickly a
 Dynamic status updates are announced to screen readers using ARIA live regions:
 
 ```tsx
-<div 
-  role="status" 
-  aria-live="polite" 
+<div
+  role="status"
+  aria-live="polite"
   aria-atomic="true"
   className="visually-hidden"
 >
@@ -161,6 +172,7 @@ Dynamic status updates are announced to screen readers using ARIA live regions:
 ```
 
 Announcements include:
+
 - Device connection status: "Connecting to SDR device...", "Started receiving radio signals"
 - Frequency changes: "Frequency changed to 100.3 MHz"
 - Signal type changes: "Signal type changed to FM"
@@ -196,8 +208,8 @@ All form controls have both visible labels and comprehensive `aria-label` attrib
 </label>
 <input
   id="frequency-input"
-  aria-label="Center frequency in MHz. Range: 88.1 to 107.9 MHz. 
-             Current: 100.3 MHz. Use arrow keys for fine tuning, 
+  aria-label="Center frequency in MHz. Range: 88.1 to 107.9 MHz.
+             Current: 100.3 MHz. Use arrow keys for fine tuning,
              Page Up/Down for coarse tuning."
   aria-describedby="frequency-hint"
 />
@@ -231,6 +243,7 @@ canvas:focus-visible {
 ### Focus Order
 
 The focus order follows the visual layout of the page:
+
 1. Header and skip links
 2. Primary device controls (toolbar)
 3. Configuration controls (signal type, frequency)
@@ -245,24 +258,34 @@ The application uses semantic HTML elements for better screen reader navigation:
 
 ```tsx
 <div className="container">
-  <a href="#main-content" className="skip-link">Skip to main content</a>
-  
+  <a href="#main-content" className="skip-link">
+    Skip to main content
+  </a>
+
   <header className="header" role="banner">
     <h1>rad.io</h1>
     <p>Software-Defined Radio Visualizer</p>
   </header>
 
   <main id="main-content" role="main">
-    <div className="action-bar" role="toolbar" aria-label="Device control actions">
+    <div
+      className="action-bar"
+      role="toolbar"
+      aria-label="Device control actions"
+    >
       {/* Control buttons */}
     </div>
-    
+
     <section className="card" aria-labelledby="radio-controls-title">
       <h2 id="radio-controls-title">Radio Controls</h2>
       {/* Controls */}
     </section>
-    
-    <div className="visualizations" role="region" aria-label="Signal visualizations">
+
+    <div
+      className="visualizations"
+      role="region"
+      aria-label="Signal visualizations"
+    >
       {/* Visualization cards */}
     </div>
   </main>
@@ -296,6 +319,7 @@ npm test -- Accessibility.test.tsx
 ```
 
 Tests cover:
+
 - ARIA attributes on all visualizations
 - Keyboard navigation functionality
 - Focus management
@@ -307,12 +331,14 @@ Tests cover:
 #### Screen Reader Testing
 
 Recommended tools:
+
 - **NVDA** (Windows): Free and open source
 - **JAWS** (Windows): Industry standard
 - **VoiceOver** (macOS): Built into Mac
 - **Orca** (Linux): Built into GNOME
 
 Testing checklist:
+
 1. Navigate the page using Tab key
 2. Verify all controls are announced with meaningful labels
 3. Trigger frequency changes and verify announcements
@@ -322,6 +348,7 @@ Testing checklist:
 #### Keyboard Testing
 
 Testing checklist:
+
 1. ✓ Navigate entire interface without mouse
 2. ✓ Verify visible focus indicators on all elements
 3. ✓ Test frequency tuning with arrow keys and Page Up/Down
@@ -348,12 +375,13 @@ export default [
       "jsx-a11y/interactive-supports-focus": "error",
       "jsx-a11y/label-has-associated-control": "error",
       // ... additional rules
-    }
-  }
+    },
+  },
 ];
 ```
 
 Run linting to check accessibility:
+
 ```bash
 npm run lint
 ```
@@ -376,7 +404,7 @@ When adding new components, follow these guidelines:
 ```tsx
 function NewControl() {
   const [value, setValue] = useState(0);
-  
+
   return (
     <div className="control-group">
       <label htmlFor="new-control" className="control-label">
@@ -403,18 +431,22 @@ function NewControl() {
 ## Resources
 
 ### WCAG Guidelines
+
 - [WCAG 2.1 Quick Reference](https://www.w3.org/WAI/WCAG21/quickref/)
 - [WebAIM WCAG Checklist](https://webaim.org/standards/wcag/checklist)
 
 ### ARIA
+
 - [ARIA Authoring Practices Guide](https://www.w3.org/WAI/ARIA/apg/)
 - [Using ARIA](https://www.w3.org/TR/using-aria/)
 
 ### Testing Tools
+
 - [NVDA Screen Reader](https://www.nvaccess.org/)
 - [axe DevTools](https://www.deque.com/axe/devtools/)
 - [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
 
 ### References
+
 - [MDN Accessibility Guide](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
 - [A11Y Project Checklist](https://www.a11yproject.com/checklist/)

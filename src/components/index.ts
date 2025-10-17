@@ -5,7 +5,9 @@
 
 export { default as BandwidthSelector } from "./BandwidthSelector";
 export { default as Card } from "./Card";
+export { default as DeviceDiagnostics } from "./DeviceDiagnostics";
 export { default as DSPPipeline } from "./DSPPipeline";
+export { default as EmptyState } from "./EmptyState";
 export { default as FFTChart } from "./FFTChart";
 export { default as IQConstellation } from "./IQConstellation";
 export { default as PresetStations } from "./PresetStations";

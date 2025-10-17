@@ -7,19 +7,24 @@ import { ISDRDevice } from "../models/SDRDevice";
  * React hook for managing HackRF One device lifecycle
  *
  * Provides automatic device initialization, cleanup, and state management
- * for HackRF One SDR devices via WebUSB API.
+ * for HackRF One SDR devices via WebUSB API. Automatically connects to
+ * previously paired devices without requiring user approval.
  *
  * @returns Object containing:
  *   - device: ISDRDevice instance or undefined
- *   - initialize: Function to request device access from user
+ *   - initialize: Function to request device access from user (for first-time pairing)
  *   - cleanup: Function to properly close and cleanup device
+ *   - isCheckingPaired: Boolean indicating if checking for paired devices
  *
  * @example
  * ```tsx
- * const { device, initialize } = useHackRFDevice();
+ * const { device, initialize, isCheckingPaired } = useHackRFDevice();
  *
- * // Request device access
- * await initialize();
+ * // Device will automatically connect if previously paired
+ * // Otherwise, call initialize() to show device picker
+ * if (!device && !isCheckingPaired) {
+ *   await initialize();
+ * }
  *
  * // Use device for operations
  * if (device) {
@@ -32,9 +37,14 @@ export function useHackRFDevice(): {
   device: ISDRDevice | undefined;
   initialize: () => Promise<void>;
   cleanup: () => void;
+  isCheckingPaired: boolean;
 } {
   const [device, setDevice] = useState<ISDRDevice>();
-  const { device: usbDevice, requestDevice } = useUSBDevice([
+  const {
+    device: usbDevice,
+    requestDevice,
+    isCheckingPaired,
+  } = useUSBDevice([
     {
       // HackRF devices
       vendorId: 0x1d50,
@@ -62,5 +72,6 @@ export function useHackRFDevice(): {
     device,
     initialize: requestDevice,
     cleanup,
+    isCheckingPaired,
   };
 }

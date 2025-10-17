@@ -76,6 +76,7 @@ npm run clean          # Remove build artifacts and dependencies
 ### Recommended Development Flow
 
 1. **Create a feature branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -86,6 +87,7 @@ npm run clean          # Remove build artifacts and dependencies
    - Run `npm run validate` frequently
 
 3. **Ensure quality before committing**
+
    ```bash
    npm run lint:fix
    npm run format
@@ -97,6 +99,7 @@ npm run clean          # Remove build artifacts and dependencies
    ```
 
 4. **Commit with descriptive messages**
+
    ```bash
    git add .
    git commit -m "feat: add support for new SDR device"
@@ -126,13 +129,14 @@ npm run clean          # Remove build artifacts and dependencies
 ### Code Organization
 
 - **Barrel exports** - Use `index.ts` files for cleaner imports
+
   ```typescript
   // Good
-  import { IQConstellation, Spectrogram } from '../components';
-  
+  import { IQConstellation, Spectrogram } from "../components";
+
   // Avoid
-  import { IQConstellation } from '../components/IQConstellation';
-  import { Spectrogram } from '../components/Spectrogram';
+  import { IQConstellation } from "../components/IQConstellation";
+  import { Spectrogram } from "../components/Spectrogram";
   ```
 
 - **File naming conventions**
@@ -157,6 +161,7 @@ Key rules enforced:
 ### Test Organization
 
 Tests are organized by feature:
+
 - `src/utils/__tests__/` - Unit tests for DSP and utility functions
 - `src/models/__tests__/` - Unit tests for device models
 - `src/components/__tests__/` - Component tests
@@ -164,7 +169,7 @@ Tests are organized by feature:
 ### Writing Tests
 
 ```typescript
-describe('Feature Name', () => {
+describe("Feature Name", () => {
   beforeEach(() => {
     // Setup before each test
     if (global.gc) {
@@ -177,13 +182,13 @@ describe('Feature Name', () => {
     clearMemoryPools();
   });
 
-  it('should do something specific', () => {
+  it("should do something specific", () => {
     // Arrange
     const input = createTestData();
-    
+
     // Act
     const result = functionUnderTest(input);
-    
+
     // Assert
     expect(result).toBe(expected);
   });
@@ -195,15 +200,18 @@ describe('Feature Name', () => {
 For tests generating large datasets:
 
 ```typescript
-import { clearMemoryPools, generateSamplesChunked } from '../../utils/testMemoryManager';
+import {
+  clearMemoryPools,
+  generateSamplesChunked,
+} from "../../utils/testMemoryManager";
 
-it('should handle large datasets efficiently', () => {
+it("should handle large datasets efficiently", () => {
   // Generate large datasets in chunks
   const samples = generateSamplesChunked(1000000, generator, 10000);
-  
+
   // Process in batches
   const result = processSamplesBatched(samples, processor, 5000);
-  
+
   // Always cleanup
   clearMemoryPools();
 });
@@ -294,6 +302,7 @@ cat .serena/memories/index.md
 ```
 
 The self-assessment agent will:
+
 - Check code quality (lint, format, type-check)
 - Validate build
 - Run tests (with memory-aware handling)
@@ -309,6 +318,7 @@ See `.github/agents/README.md` for detailed documentation on the self-assessment
 To add support for a new SDR device:
 
 1. **Implement the `ISDRDevice` interface**
+
    ```typescript
    // src/models/YourDevice.ts
    export class YourDevice implements ISDRDevice {
@@ -317,6 +327,7 @@ To add support for a new SDR device:
    ```
 
 2. **Create a device adapter if needed**
+
    ```typescript
    // src/models/YourDeviceAdapter.ts
    export class YourDeviceAdapter implements ISDRDevice {
@@ -325,6 +336,7 @@ To add support for a new SDR device:
    ```
 
 3. **Add device hook**
+
    ```typescript
    // src/hooks/useYourDevice.ts
    export function useYourDevice() {
@@ -333,9 +345,10 @@ To add support for a new SDR device:
    ```
 
 4. **Write comprehensive tests**
+
    ```typescript
    // src/models/__tests__/YourDevice.test.ts
-   describe('YourDevice', () => {
+   describe("YourDevice", () => {
      // Test all interface methods
    });
    ```

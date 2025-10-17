@@ -118,7 +118,7 @@
 
 ## Data Flow
 
-1. **DSP Operations**: 
+1. **DSP Operations**:
    - Functions call `performanceMonitor.mark()` at start
    - Functions call `performanceMonitor.measure()` at end
    - Metrics automatically categorized (fft, waveform, spectrogram)

@@ -85,6 +85,42 @@ body {
   margin-bottom: 1.5rem;
 }
 
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.card-header-collapsible {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  margin: -1.5rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+}
+
+.card-header-collapsible:hover {
+  background-color: #f7fafc;
+}
+
+.card-header-collapsible:focus {
+  outline: 2px solid #5aa3e8;
+  outline-offset: 2px;
+}
+
+.card-collapse-icon {
+  font-size: 1rem;
+  color: #718096;
+  margin-left: 1rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.card-content {
+  margin-top: 1rem;
+}
+
 .card-title {
   font-size: 1.25rem;
   font-weight: 600;
@@ -95,7 +131,7 @@ body {
 .card-subtitle {
   font-size: 0.875rem;
   color: #718096;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 /* Button Styles */
@@ -780,6 +816,33 @@ a:focus-visible,
 .performance-controls {
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+
+.fps-counter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(90, 163, 232, 0.2);
+  border: 1px solid rgba(90, 163, 232, 0.4);
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-right: 8px;
+}
+
+.fps-label {
+  color: #a0aab5;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.fps-value {
+  color: #5aa3e8;
+  font-size: 14px;
+  font-weight: bold;
+  min-width: 24px;
+  text-align: right;
 }
 
 .btn-sm {
@@ -840,3 +903,160 @@ a:focus-visible,
   text-align: center;
 }
 
+/* Device Diagnostics Component */
+.device-diagnostics {
+  background: rgba(20, 30, 50, 0.95);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid rgba(90, 163, 232, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.diagnostics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(90, 163, 232, 0.2);
+}
+
+.diagnostics-header h3 {
+  color: #e0e6ed;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.diagnostics-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.diagnostics-badge.ok {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.diagnostics-badge.warning {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.diagnostics-badge.error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.diagnostics-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.diagnostic-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(90, 163, 232, 0.1);
+}
+
+.diagnostic-item:last-child {
+  border-bottom: none;
+}
+
+.diagnostic-icon {
+  font-size: 18px;
+  font-weight: bold;
+  min-width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diagnostic-content {
+  flex: 1;
+  color: #e0e6ed;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.diagnostic-content strong {
+  color: #5aa3e8;
+  font-weight: 600;
+}
+
+.troubleshooting-guide,
+.info-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 6px;
+  background: rgba(30, 40, 60, 0.6);
+  border-left: 3px solid;
+}
+
+.troubleshooting-guide {
+  border-left-color: #fbbf24;
+}
+
+.troubleshooting-guide h4 {
+  color: #fbbf24;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+}
+
+.troubleshooting-guide ol {
+  margin: 0;
+  padding-left: 20px;
+  color: #e0e6ed;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.troubleshooting-guide li {
+  margin-bottom: 8px;
+}
+
+.troubleshooting-guide code {
+  background: rgba(90, 163, 232, 0.15);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  color: #5aa3e8;
+  display: inline-block;
+  margin: 4px 0;
+}
+
+.troubleshooting-guide p {
+  color: #e0e6ed;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.info-panel {
+  border-left-color: #60a5fa;
+}
+
+.info-panel p {
+  color: #e0e6ed;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.info-panel strong {
+  color: #5aa3e8;
+  font-weight: 600;
+}

@@ -15,7 +15,13 @@ type CategoryStats = {
   [category: string]: PerformanceStats;
 };
 
-export default function PerformanceMetrics(): React.JSX.Element {
+type PerformanceMetricsProps = {
+  currentFPS?: number;
+};
+
+export default function PerformanceMetrics({
+  currentFPS = 0,
+}: PerformanceMetricsProps): React.JSX.Element {
   const [stats, setStats] = useState<CategoryStats>({});
   const [longTaskCount, setLongTaskCount] = useState(0);
   const [enabled, setEnabled] = useState(true);
@@ -64,6 +70,10 @@ export default function PerformanceMetrics(): React.JSX.Element {
       <div className="performance-header">
         <h3>Performance Metrics</h3>
         <div className="performance-controls">
+          <div className="fps-counter">
+            <span className="fps-label">FPS:</span>
+            <span className="fps-value">{currentFPS}</span>
+          </div>
           <button
             onClick={handleToggleMonitoring}
             className={`btn btn-sm ${enabled ? "btn-primary" : "btn-secondary"}`}

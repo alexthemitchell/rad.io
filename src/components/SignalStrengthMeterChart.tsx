@@ -1,7 +1,6 @@
-import { useMemo } from "react";
 import SignalStrengthMeter from "./SignalStrengthMeter";
-import { testSamples } from "../hooks/__test__/testSamples";
-import { convertToSamples, Sample } from "../utils/dsp";
+import EmptyState from "./EmptyState";
+import { Sample } from "../utils/dsp";
 
 type SignalStrengthMeterChartProps = {
   samples?: Sample[];
@@ -9,24 +8,25 @@ type SignalStrengthMeterChartProps = {
 
 /**
  * Chart wrapper for SignalStrengthMeter
- * Uses live samples when available, falls back to test data otherwise
+ * Shows signal strength when data is available
  */
 function SignalStrengthMeterChart({
-  samples,
+  samples = [],
 }: SignalStrengthMeterChartProps): React.JSX.Element {
-  const fallbackSamples = useMemo(
-    () => convertToSamples(testSamples.slice(0, 1024) as [number, number][]),
-    [],
-  );
+  const hasData = samples.length > 0;
 
-  const displaySamples = useMemo(() => {
-    if (samples && samples.length > 0) {
-      return samples;
-    }
-    return fallbackSamples;
-  }, [samples, fallbackSamples]);
+  if (!hasData) {
+    return (
+      <EmptyState
+        width="100%"
+        height="120px"
+        title="Waiting for signal data"
+        message="Connect and start reception to view signal strength"
+      />
+    );
+  }
 
-  return <SignalStrengthMeter samples={displaySamples} />;
+  return <SignalStrengthMeter samples={samples} />;
 }
 
 export default SignalStrengthMeterChart;

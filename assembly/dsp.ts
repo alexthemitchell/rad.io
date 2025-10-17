@@ -26,7 +26,7 @@ class Complex {
   mul(other: Complex): Complex {
     return new Complex(
       this.real * other.real - this.imag * other.imag,
-      this.real * other.imag + this.imag * other.real
+      this.real * other.imag + this.imag * other.real,
     );
   }
 
@@ -38,7 +38,7 @@ class Complex {
 /**
  * Calculate FFT using Cooley-Tukey algorithm (radix-2 DIT)
  * Much faster than naive DFT: O(N log N) vs O(N²)
- * 
+ *
  * @param iSamples - I (in-phase) component samples
  * @param qSamples - Q (quadrature) component samples
  * @param fftSize - FFT size (must be power of 2)
@@ -48,7 +48,7 @@ export function calculateFFT(
   iSamples: Float32Array,
   qSamples: Float32Array,
   fftSize: i32,
-  output: Float32Array
+  output: Float32Array,
 ): void {
   // Validate inputs
   if (fftSize & (fftSize - 1)) {
@@ -86,7 +86,7 @@ export function calculateFFT(
   // Cooley-Tukey FFT
   let m: i32 = 2;
   while (m <= n) {
-    const theta = -2.0 * Math.PI / f64(m);
+    const theta = (-2.0 * Math.PI) / f64(m);
     const wm = new Complex(Math.cos(theta), Math.sin(theta));
 
     for (let k = 0; k < n; k += m) {
@@ -111,7 +111,7 @@ export function calculateFFT(
   for (let k = 0; k < n; k++) {
     const magnitude = samples[k].magnitude();
     const dB = magnitude > 0.0 ? 20.0 * Math.log10(magnitude) : -100.0;
-    
+
     // Frequency shift: move DC to center
     const shiftedIdx = k < half ? k + half : k - half;
     output[shiftedIdx] = f32(dB);
@@ -120,7 +120,7 @@ export function calculateFFT(
 
 /**
  * Calculate waveform amplitude and phase from IQ samples
- * 
+ *
  * @param iSamples - I (in-phase) component samples
  * @param qSamples - Q (quadrature) component samples
  * @param amplitude - Pre-allocated output array for amplitude
@@ -132,7 +132,7 @@ export function calculateWaveform(
   qSamples: Float32Array,
   amplitude: Float32Array,
   phase: Float32Array,
-  count: i32
+  count: i32,
 ): void {
   for (let i = 0; i < count; i++) {
     const I = i < iSamples.length ? iSamples[i] : 0.0;
@@ -149,7 +149,7 @@ export function calculateWaveform(
 /**
  * Calculate multiple spectrogram rows efficiently
  * Processes multiple FFT windows in sequence
- * 
+ *
  * @param iSamples - I (in-phase) component samples
  * @param qSamples - Q (quadrature) component samples
  * @param fftSize - FFT size (must be power of 2)
@@ -161,21 +161,21 @@ export function calculateSpectrogram(
   qSamples: Float32Array,
   fftSize: i32,
   output: Float32Array,
-  rowCount: i32
+  rowCount: i32,
 ): void {
   const rowOutput = new Float32Array(fftSize);
-  
+
   for (let row = 0; row < rowCount; row++) {
     const startIdx = row * fftSize;
     const endIdx = startIdx + fftSize;
-    
+
     // Extract window samples
     const windowI = iSamples.slice(startIdx, endIdx);
     const windowQ = qSamples.slice(startIdx, endIdx);
-    
+
     // Calculate FFT for this window
     calculateFFT(windowI, windowQ, fftSize, rowOutput);
-    
+
     // Copy to output
     for (let i = 0; i < fftSize; i++) {
       output[row * fftSize + i] = rowOutput[i];

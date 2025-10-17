@@ -13,6 +13,7 @@ The WASM DSP module provides near-native performance for computationally intensi
 ### Performance Characteristics
 
 Expected performance improvements with WASM:
+
 - **FFT (2048 samples)**: 5-10x faster
 - **Waveform (10k samples)**: 3-5x faster
 - **Spectrogram**: Proportional to FFT improvement
@@ -54,7 +55,7 @@ NO  → dsp.ts → JavaScript fallback → Compatible computation
 The system automatically detects WASM support and falls back to JavaScript:
 
 ```typescript
-import { isWasmAvailable } from './utils/dspWasm';
+import { isWasmAvailable } from "./utils/dspWasm";
 
 // WASM is used automatically when available
 const result = calculateFFTSync(samples, fftSize);
@@ -78,6 +79,7 @@ Loading is asynchronous and non-blocking. If loading fails, the system automatic
 ### FFT Algorithm
 
 **JavaScript (DFT)**: O(N²) complexity
+
 ```typescript
 for (let k = 0; k < N; k++) {
   for (let n = 0; n < N; n++) {
@@ -87,6 +89,7 @@ for (let k = 0; k < N; k++) {
 ```
 
 **WASM (Cooley-Tukey FFT)**: O(N log N) complexity
+
 ```typescript
 // Bit-reversal permutation
 // Butterfly operations with twiddle factors
@@ -96,6 +99,7 @@ for (let k = 0; k < N; k++) {
 ### Memory Management
 
 WASM uses WebAssembly linear memory:
+
 - **Shared memory**: Data is copied between JavaScript and WASM
 - **I/Q separation**: Samples are separated into two Float32Arrays for SIMD efficiency
 - **Pre-allocated buffers**: Output arrays are allocated in JavaScript
@@ -153,6 +157,7 @@ npm test -- src/utils/__tests__/dspWasm.test.ts
 ```
 
 Test coverage includes:
+
 - Feature detection
 - Module loading and caching
 - Mathematical equivalence with JavaScript
@@ -164,7 +169,10 @@ Test coverage includes:
 Performance benchmarking utilities are provided:
 
 ```typescript
-import { runBenchmarkSuite, formatBenchmarkResults } from './utils/dspBenchmark';
+import {
+  runBenchmarkSuite,
+  formatBenchmarkResults,
+} from "./utils/dspBenchmark";
 
 // Run benchmarks
 const results = await runBenchmarkSuite();
@@ -187,6 +195,7 @@ Results show operation timings, WASM vs JS comparison, and speedup factors.
 ### Fallback Behavior
 
 When WASM is not supported:
+
 1. Feature detection returns `false`
 2. JavaScript implementation is used automatically
 3. User experience is unchanged (slightly slower performance)
@@ -200,10 +209,10 @@ AssemblyScript compilation uses these optimization flags:
 
 ```json
 {
-  "optimizeLevel": 3,    // Maximum optimization
-  "shrinkLevel": 0,      // No size optimization (prefer speed)
-  "converge": false,     // Faster compilation
-  "noAssert": false      // Keep assertions for safety
+  "optimizeLevel": 3, // Maximum optimization
+  "shrinkLevel": 0, // No size optimization (prefer speed)
+  "converge": false, // Faster compilation
+  "noAssert": false // Keep assertions for safety
 }
 ```
 
@@ -223,6 +232,7 @@ Potential performance improvements:
 **Symptoms**: Console warning "Failed to load WASM module, falling back to JavaScript"
 
 **Possible Causes**:
+
 - WASM file not found (check dist/dsp.wasm exists)
 - CORS issues (ensure same-origin or proper CORS headers)
 - Browser doesn't support WebAssembly
@@ -232,6 +242,7 @@ Potential performance improvements:
 ### Performance Not Improving
 
 **Check**:
+
 1. WASM is actually being used: `isWasmAvailable()` returns `true`
 2. Sample sizes are large enough to see benefit (>1024 samples)
 3. Browser DevTools shows dsp.wasm is loaded
@@ -242,7 +253,8 @@ Potential performance improvements:
 
 **Error**: "Cannot find module 'assemblyscript'"
 
-**Solution**: 
+**Solution**:
+
 ```bash
 npm install --save-dev assemblyscript @assemblyscript/loader
 ```
@@ -256,31 +268,41 @@ npm install --save-dev assemblyscript @assemblyscript/loader
 ### Public Functions (dspWasm.ts)
 
 #### `isWasmSupported(): boolean`
+
 Returns true if WebAssembly is supported in the current environment.
 
 #### `loadWasmModule(): Promise<WasmDSPModule | null>`
+
 Loads and initializes the WASM module. Returns null if loading fails.
 
 #### `isWasmAvailable(): boolean`
+
 Returns true if WASM module is currently loaded and ready to use.
 
 #### `preloadWasmModule(): void`
+
 Starts loading WASM module in the background. Called automatically on app initialization.
 
 ### WASM Module Functions (assembly/dsp.ts)
 
 #### `calculateFFT(iSamples, qSamples, fftSize, output): void`
+
 Calculates FFT using Cooley-Tukey algorithm.
+
 - **Input**: Separate I and Q sample arrays, FFT size (must be power of 2)
 - **Output**: Magnitude spectrum in dB, frequency-shifted
 
 #### `calculateWaveform(iSamples, qSamples, amplitude, phase, count): void`
+
 Calculates amplitude and phase from IQ samples.
+
 - **Input**: I and Q sample arrays, sample count
 - **Output**: Amplitude and phase arrays
 
 #### `calculateSpectrogram(iSamples, qSamples, fftSize, output, rowCount): void`
+
 Calculates multiple FFT rows for spectrogram.
+
 - **Input**: I and Q sample arrays, FFT size, row count
 - **Output**: Flattened array of FFT results
 

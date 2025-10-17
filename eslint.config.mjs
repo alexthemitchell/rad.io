@@ -16,7 +16,7 @@ export default defineConfig([
   },
   {
     files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
-    languageOptions: { 
+    languageOptions: {
       globals: {
         ...globals.browser,
         ...globals.node,
@@ -35,20 +35,23 @@ export default defineConfig([
       // React rules
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off", // Using TypeScript for prop validation
-      
+
       // React Hooks rules
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
-      
+
       // TypeScript rules
-      "@typescript-eslint/no-unused-vars": ["warn", { 
-        argsIgnorePattern: "^_",
-        varsIgnorePattern: "^_",
-      }],
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/explicit-function-return-type": "error",
       "@typescript-eslint/explicit-module-boundary-types": "error",
-      
+
       // Accessibility rules - enforce best practices
       "jsx-a11y/alt-text": "error",
       "jsx-a11y/anchor-has-content": "error",
@@ -76,14 +79,14 @@ export default defineConfig([
       "jsx-a11y/role-supports-aria-props": "error",
       "jsx-a11y/scope": "error",
       "jsx-a11y/tabindex-no-positive": "error",
-      
+
       // General code quality rules
       "no-console": ["error", { allow: ["warn", "error"] }],
       "no-debugger": "warn",
       "prefer-const": "error",
       "no-var": "error",
-      "eqeqeq": ["error", "always"],
-      "curly": ["error", "all"],
+      eqeqeq: ["error", "always"],
+      curly: ["error", "all"],
     },
     settings: {
       react: {

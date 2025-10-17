@@ -9,8 +9,9 @@ This document provides a visual guide to the accessibility improvements implemen
 All three main visualizations now have descriptive ARIA labels and can be keyboard-focused:
 
 #### IQ Constellation Diagram
+
 ```jsx
-<canvas 
+<canvas
   role="img"
   aria-label="IQ Constellation diagram showing 1024 signal samples. 
              In-phase (I) component ranges from -0.500 to 0.500 with range 1.000. 
@@ -21,14 +22,16 @@ All three main visualizations now have descriptive ARIA labels and can be keyboa
 ```
 
 **Screen Reader Experience:**
+
 - Announces the visualization type
 - Reports the number of samples
 - Describes I and Q component ranges
 - Provides context about what the pattern represents
 
 #### Spectrogram
+
 ```jsx
-<canvas 
+<canvas
   role="img"
   aria-label="Spectrogram showing 50 time frames across 100 frequency bins (1000 to 1100). 
              Peak power of -45.23 dB detected at frequency bin 1050. 
@@ -38,14 +41,16 @@ All three main visualizations now have descriptive ARIA labels and can be keyboa
 ```
 
 **Screen Reader Experience:**
+
 - Announces the visualization type
 - Reports time frames and frequency bins
 - Identifies peak power location and strength
 - Explains the color mapping
 
 #### Amplitude Waveform
+
 ```jsx
-<canvas 
+<canvas
   role="img"
   aria-label="Amplitude waveform showing 2048 time-domain samples. 
              Signal amplitude ranges from 0.000 to 0.850 with average 0.425. 
@@ -55,6 +60,7 @@ All three main visualizations now have descriptive ARIA labels and can be keyboa
 ```
 
 **Screen Reader Experience:**
+
 - Announces the visualization type
 - Reports sample count
 - Describes amplitude range (min, max, average)
@@ -77,6 +83,7 @@ Page Down:  -1.0 MHz (FM) or -100 kHz (AM)
 ```
 
 **Visual Feedback:**
+
 ```css
 input:focus-visible {
   outline: 3px solid #667eea;
@@ -87,6 +94,7 @@ input:focus-visible {
 ```
 
 **Screen Reader Support:**
+
 - Input has descriptive `aria-label` with current value and range
 - Visually hidden hint text explains keyboard shortcuts
 - Changes are announced via live region
@@ -102,11 +110,13 @@ A skip link allows keyboard users to bypass the navigation:
 ```
 
 **Behavior:**
+
 - Hidden by default (positioned off-screen)
 - Becomes visible when focused via keyboard
 - Jumps directly to main content area
 
 **CSS:**
+
 ```css
 .skip-link {
   position: absolute;
@@ -129,9 +139,9 @@ A skip link allows keyboard users to bypass the navigation:
 Dynamic status updates are announced to screen readers:
 
 ```jsx
-<div 
-  role="status" 
-  aria-live="polite" 
+<div
+  role="status"
+  aria-live="polite"
   aria-atomic="true"
   className="visually-hidden"
 >
@@ -140,6 +150,7 @@ Dynamic status updates are announced to screen readers:
 ```
 
 **Announcements Include:**
+
 - "Connecting to SDR device..."
 - "Started receiving radio signals"
 - "Frequency changed to 100.3 MHz"
@@ -147,14 +158,16 @@ Dynamic status updates are announced to screen readers:
 - "Failed to connect to device"
 
 **Implementation:**
+
 ```typescript
 const handleSetFrequency = async (newFrequency: number) => {
   setFrequency(newFrequency);
   if (device) {
     await device.setFrequency(newFrequency);
-    const displayFreq = signalType === "FM" 
-      ? `${(newFrequency / 1e6).toFixed(1)} MHz`
-      : `${(newFrequency / 1e3).toFixed(0)} kHz`;
+    const displayFreq =
+      signalType === "FM"
+        ? `${(newFrequency / 1e6).toFixed(1)} MHz`
+        : `${(newFrequency / 1e3).toFixed(0)} kHz`;
     setLiveRegionMessage(`Frequency changed to ${displayFreq}`);
   }
 };
@@ -203,7 +216,7 @@ The application uses proper semantic elements:
   <a href="#main-content" className="skip-link">
     Skip to main content
   </a>
-  
+
   {/* Live region */}
   <div role="status" aria-live="polite" className="visually-hidden">
     {liveRegionMessage}
@@ -218,20 +231,30 @@ The application uses proper semantic elements:
   {/* Main content */}
   <main id="main-content" role="main">
     {/* Toolbar */}
-    <div className="action-bar" role="toolbar" aria-label="Device control actions">
-      <button aria-label="Start receiving radio signals">Start Reception</button>
+    <div
+      className="action-bar"
+      role="toolbar"
+      aria-label="Device control actions"
+    >
+      <button aria-label="Start receiving radio signals">
+        Start Reception
+      </button>
       <button aria-label="Stop receiving radio signals">Stop Reception</button>
       <button aria-label="Disconnect SDR device">Disconnect</button>
     </div>
-    
+
     {/* Cards */}
     <section className="card" aria-labelledby="radio-controls-title">
       <h2 id="radio-controls-title">Radio Controls</h2>
       {/* Controls */}
     </section>
-    
+
     {/* Visualizations */}
-    <div className="visualizations" role="region" aria-label="Signal visualizations">
+    <div
+      className="visualizations"
+      role="region"
+      aria-label="Signal visualizations"
+    >
       {/* Visualization cards */}
     </div>
   </main>
@@ -243,6 +266,7 @@ The application uses proper semantic elements:
 All form controls have proper label associations:
 
 #### Text Input with Label
+
 ```jsx
 <label className="control-label" htmlFor="frequency-input">
   Frequency (MHz)
@@ -250,8 +274,8 @@ All form controls have proper label associations:
 <input
   id="frequency-input"
   type="number"
-  aria-label="Center frequency in MHz. Range: 88.1 to 107.9 MHz. 
-             Current: 100.3 MHz. Use arrow keys for fine tuning, 
+  aria-label="Center frequency in MHz. Range: 88.1 to 107.9 MHz.
+             Current: 100.3 MHz. Use arrow keys for fine tuning,
              Page Up/Down for coarse tuning."
   aria-describedby="frequency-hint"
 />
@@ -261,24 +285,21 @@ All form controls have proper label associations:
 ```
 
 #### Button Groups with ARIA
+
 ```jsx
 <div className="control-group">
-  <div className="control-label" id="signal-type-label">Signal Type</div>
-  <div 
-    className="signal-type-selector" 
-    role="group" 
+  <div className="control-label" id="signal-type-label">
+    Signal Type
+  </div>
+  <div
+    className="signal-type-selector"
+    role="group"
     aria-labelledby="signal-type-label"
   >
-    <button
-      aria-label="FM Radio mode (currently selected)"
-      aria-pressed="true"
-    >
+    <button aria-label="FM Radio mode (currently selected)" aria-pressed="true">
       FM
     </button>
-    <button
-      aria-label="AM Radio mode"
-      aria-pressed="false"
-    >
+    <button aria-label="AM Radio mode" aria-pressed="false">
       AM
     </button>
   </div>
@@ -286,6 +307,7 @@ All form controls have proper label associations:
 ```
 
 #### Preset Stations
+
 ```jsx
 <button
   className="preset-btn active"
@@ -361,8 +383,8 @@ export default [
       "jsx-a11y/interactive-supports-focus": "error",
       "jsx-a11y/label-has-associated-control": "error",
       // ... 20+ more rules
-    }
-  }
+    },
+  },
 ];
 ```
 
@@ -376,6 +398,7 @@ export default [
 ## Keyboard Navigation Map
 
 ### Tab Order
+
 1. Skip to content link (appears on focus)
 2. Connect Device button
 3. Start Reception button
@@ -392,15 +415,15 @@ export default [
 
 ### Keyboard Shortcuts Summary
 
-| Element | Shortcut | Action |
-|---------|----------|--------|
-| Frequency Input | Arrow Up | Increase by 0.1 MHz / 10 kHz |
-| Frequency Input | Arrow Down | Decrease by 0.1 MHz / 10 kHz |
-| Frequency Input | Page Up | Increase by 1.0 MHz / 100 kHz |
-| Frequency Input | Page Down | Decrease by 1.0 MHz / 100 kHz |
-| All Buttons | Enter/Space | Activate button |
-| All Elements | Tab | Move to next element |
-| All Elements | Shift+Tab | Move to previous element |
+| Element         | Shortcut    | Action                        |
+| --------------- | ----------- | ----------------------------- |
+| Frequency Input | Arrow Up    | Increase by 0.1 MHz / 10 kHz  |
+| Frequency Input | Arrow Down  | Decrease by 0.1 MHz / 10 kHz  |
+| Frequency Input | Page Up     | Increase by 1.0 MHz / 100 kHz |
+| Frequency Input | Page Down   | Decrease by 1.0 MHz / 100 kHz |
+| All Buttons     | Enter/Space | Activate button               |
+| All Elements    | Tab         | Move to next element          |
+| All Elements    | Shift+Tab   | Move to previous element      |
 
 ## Screen Reader Experience
 
@@ -446,7 +469,7 @@ User tabs to first button:
 > "Click to connect your SDR device via WebUSB. Ensure device is plugged in..."
 
 User tabs to frequency input:
-> "Center frequency in MHz. Range: 88.1 to 107.9 MHz. Current: 100.3 MHz. 
+> "Center frequency in MHz. Range: 88.1 to 107.9 MHz. Current: 100.3 MHz.
    Use arrow keys for fine tuning, Page Up/Down for coarse tuning."
 > "Edit text, 100.3"
 
@@ -454,15 +477,16 @@ User presses Arrow Up:
 > Live region announces: "Frequency changed to 100.4 MHz"
 
 User tabs to IQ Constellation:
-> "IQ Constellation diagram showing 1024 signal samples. 
-   In-phase (I) component ranges from -0.500 to 0.500 with range 1.000. 
-   Quadrature (Q) component ranges from -0.500 to 0.500 with range 1.000. 
+> "IQ Constellation diagram showing 1024 signal samples.
+   In-phase (I) component ranges from -0.500 to 0.500 with range 1.000.
+   Quadrature (Q) component ranges from -0.500 to 0.500 with range 1.000.
    The pattern represents the modulation scheme and signal quality."
 ```
 
 ## Browser Compatibility
 
 ### WebUSB Support
+
 - ✅ Chrome 61+
 - ✅ Edge 79+
 - ✅ Opera 48+
@@ -470,6 +494,7 @@ User tabs to IQ Constellation:
 - ❌ Safari (WebUSB not supported)
 
 ### Accessibility Features Support
+
 - ✅ All modern browsers support ARIA
 - ✅ All modern browsers support semantic HTML5
 - ✅ All modern browsers support focus-visible
@@ -478,6 +503,7 @@ User tabs to IQ Constellation:
 ## Future Enhancements
 
 ### Potential Improvements
+
 1. **Audio Feedback**: Add optional audio cues for frequency changes
 2. **High Contrast Mode**: Detect and support high contrast themes
 3. **Reduced Motion**: Respect prefers-reduced-motion setting
@@ -486,6 +512,7 @@ User tabs to IQ Constellation:
 6. **Voice Commands**: Add voice control for hands-free operation
 
 ### Testing Enhancements
+
 1. **Automated Accessibility Audits**: Integrate axe-core for CI/CD
 2. **Screen Reader Testing**: Add NVDA/JAWS test automation
 3. **Keyboard Navigation Tests**: Add E2E keyboard navigation tests
