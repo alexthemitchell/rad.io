@@ -59,10 +59,19 @@ export function useHackRFDevice(): {
     if (!usbDevice) {
       return;
     }
-    if (!usbDevice.opened) {
-      const hackRF = new HackRFOneAdapter(usbDevice);
-      hackRF.open().then(() => setDevice(hackRF));
-    }
+    const hackRF = new HackRFOneAdapter(usbDevice);
+    const setup = async (): Promise<void> => {
+      try {
+        if (!usbDevice.opened) {
+          await hackRF.open();
+        }
+        // Always set the device so upstream can configure and begin streaming
+        setDevice(hackRF);
+      } catch (err) {
+        console.error("Failed to initialize HackRF adapter:", err);
+      }
+    };
+    void setup();
   }, [usbDevice]);
   useEffect(() => {
     return cleanup;

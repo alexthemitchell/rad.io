@@ -182,7 +182,14 @@ function Visualizer(): React.JSX.Element {
   const handleToggleAudio = useCallback(() => {
     setIsAudioPlaying((prev) => {
       const newState = !prev;
-      if (!newState) {
+      if (newState) {
+        // Ensure AudioContext is running after a user gesture
+        try {
+          void audioContextRef.current?.resume();
+        } catch (e) {
+          console.error("Failed to resume AudioContext:", e);
+        }
+      } else {
         // Clear audio buffer when stopping
         audioSampleBufferRef.current = [];
         audioProcessorRef.current?.reset();
@@ -388,16 +395,16 @@ function Visualizer(): React.JSX.Element {
       enabled: false,
     },
   ]);
-  const [currentTalkgroup, setCurrentTalkgroup] = useState<string | null>(null);
-  const [currentTalkgroupName, setCurrentTalkgroupName] = useState<
+  const [currentTalkgroup, _setCurrentTalkgroup] = useState<string | null>(null);
+  const [currentTalkgroupName, _setCurrentTalkgroupName] = useState<
     string | null
   >(null);
-  const [signalPhase, setSignalPhase] = useState<"Phase 1" | "Phase 2" | null>(
+  const [signalPhase, _setSignalPhase] = useState<"Phase 1" | "Phase 2" | null>(
     null,
   );
-  const [tdmaSlot, setTdmaSlot] = useState<number | null>(null);
-  const [signalStrength, setSignalStrength] = useState(0);
-  const [isEncrypted, setIsEncrypted] = useState(false);
+  const [tdmaSlot, _setTdmaSlot] = useState<number | null>(null);
+  const [signalStrength, _setSignalStrength] = useState(0);
+  const [isEncrypted, _setIsEncrypted] = useState(false);
 
   const handleSetFrequency = async (newFrequency: number): Promise<void> => {
     setFrequency(newFrequency);
@@ -491,46 +498,7 @@ function Visualizer(): React.JSX.Element {
     void beginDeviceStreaming(device);
   }, [device, beginDeviceStreaming]);
 
-  // Simulate P25 activity (in real implementation, this would decode actual P25 data)
-  useEffect(() => {
-    if (listening && signalType === "P25") {
-      const timeoutIds: NodeJS.Timeout[] = [];
-      const interval = setInterval(() => {
-        // Simulate random talkgroup activity
-        const enabledTalkgroups = talkgroups.filter((tg) => tg.enabled);
-        if (enabledTalkgroups.length > 0 && Math.random() > 0.5) {
-          const randomTg =
-            enabledTalkgroups[
-              Math.floor(Math.random() * enabledTalkgroups.length)
-            ];
-          if (randomTg) {
-            setCurrentTalkgroup(randomTg.id);
-            setCurrentTalkgroupName(randomTg.name);
-            setSignalPhase(Math.random() > 0.5 ? "Phase 2" : "Phase 1");
-            setTdmaSlot(Math.random() > 0.5 ? 1 : 2);
-            setSignalStrength(Math.floor(Math.random() * 40 + 60));
-            setIsEncrypted(Math.random() > 0.7);
 
-            // Clear after a few seconds
-            const timeoutId = setTimeout(() => {
-              setCurrentTalkgroup(null);
-              setCurrentTalkgroupName(null);
-              setSignalPhase(null);
-              setTdmaSlot(null);
-              setSignalStrength(0);
-              setIsEncrypted(false);
-            }, 3000);
-            timeoutIds.push(timeoutId);
-          }
-        }
-      }, 5000);
-
-      return (): void => {
-        clearInterval(interval);
-        timeoutIds.forEach((id) => clearTimeout(id));
-      };
-    }
-  }, [listening, signalType, talkgroups]);
 
   const startListening = useCallback(async (): Promise<void> => {
     if (listening) {

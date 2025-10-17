@@ -8,7 +8,7 @@ A professional browser-based SDR application with industry-standard visualizatio
 
 ### 🎛️ Signal Control
 
-- **AM/FM Band Selection**: Toggle between FM (88.1-107.9 MHz) and AM (530-1700 kHz)
+- **AM/FM/P25 Band Selection**: Toggle between FM (88.1-107.9 MHz), AM (530-1700 kHz), and P25 Phase 2 (700-800 MHz, 150-174 MHz)
 - **Preset Stations**: One-click tuning to popular stations
 - **Manual Frequency Control**: Precise frequency adjustment
 - **Device Configuration**: LNA gain, amplifier control, sample rate
@@ -21,12 +21,14 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Interactive Controls**: Pan, zoom, and multi-touch gestures for all visualizations
 - **Keyboard Navigation**: Accessible controls for precision signal analysis
 
-### 🎤 Speech Recognition
+### 🎤 Speech Recognition & P25 Decoding
 
 - **Browser-Native Transcription**: Web Speech API integration for real-time speech-to-text
 - **AI-Ready Audio Stream**: Clean demodulated audio optimized for recognition
 - **Multiple Language Support**: Transcribe communications in various languages
 - **Robust Error Handling**: Gracefully handles noisy/distorted radio audio
+- **P25 Phase 2 Decoder**: H-DQPSK demodulation, TDMA slot extraction, frame synchronization
+- **Trunked Radio Support**: Monitor talkgroups, control channels, and encrypted transmissions
 
 ### 🔌 Universal Device Support
 
@@ -180,6 +182,44 @@ See [Interactive Controls Documentation](./INTERACTIVE_CONTROLS.md) for detailed
 - Multi-language monitoring
 
 **Note**: Web Speech API requires Chrome/Edge browsers and may request microphone permission.
+
+### P25 Phase 2 Digital Radio
+
+**Monitoring P25 Systems**
+
+1. Select "P25" signal type
+2. Configure system parameters:
+   - Control Channel frequency (e.g., 770.95625 MHz)
+   - NAC (Network Access Code)
+   - System ID
+   - WACN (Wide Area Communications Network)
+3. Add talkgroups to monitor
+4. Start reception to decode transmissions
+
+**Understanding P25 Indicators**
+
+- **Phase**: Shows P25 Phase 2 when decoding TDMA signals
+- **TDMA Slot**: Indicates which time slot (1 or 2) is active
+- **Signal Quality**: 0-100% based on constellation accuracy
+- **Encryption**: Shows if transmission is encrypted
+- **Talkgroup**: Active talkgroup ID and name
+
+**P25 Features:**
+
+- **H-DQPSK Demodulation**: Differential QPSK with 6000 symbols/sec
+- **TDMA Slot Extraction**: Separates two simultaneous voice channels
+- **Frame Synchronization**: Detects P25 frame boundaries
+- **Signal Quality Metrics**: Real-time constellation analysis
+- **Talkgroup Scanning**: Monitor multiple talkgroups simultaneously
+
+**Frequency Bands:**
+
+- **700 MHz Band**: 764-776 MHz, 794-806 MHz (most common)
+- **800 MHz Band**: 851-870 MHz (also common)
+- **VHF Band**: 150-174 MHz (rural/legacy systems)
+- **UHF Band**: 450-470 MHz (some regions)
+
+See [P25_DECODER.md](./P25_DECODER.md) for technical details and API documentation.
 
 ### Digital Signal Processing Pipeline
 
