@@ -50,6 +50,7 @@ playAudioBuffer()
 ### The 20 MSPS Problem
 
 **ISSUE**: Using 20 MSPS (20,000,000 samples/second) causes audio playback failure:
+
 - No audible sound despite controls showing "Playing FM audio"
 - Excessive CPU load for real-time browser demodulation
 - Decimation ratio ~417:1 (20,000,000 / 48,000) impractical for JavaScript
@@ -57,6 +58,7 @@ playAudioBuffer()
 ### Solution: Browser-Optimized Rate
 
 **Use 2.048 MSPS** (2,048,000 samples/second) for browser applications:
+
 - Decimation ratio ~42:1 (practical for real-time)
 - CPU-efficient processing
 - Maintains adequate bandwidth for FM broadcasts (±200 kHz)
@@ -67,6 +69,7 @@ playAudioBuffer()
 **ALL THREE locations must use same rate**:
 
 **1. Audio Processor Initialization** (lines ~70-84):
+
 ```typescript
 useEffect(() => {
   audioContextRef.current = new AudioContext();
@@ -85,6 +88,7 @@ useEffect(() => {
 ```
 
 **2. Device Streaming Configuration** (lines ~319-365):
+
 ```typescript
 const beginDeviceStreaming = async (device: ISDRDevice) => {
   setActiveDevice(device);
@@ -100,6 +104,7 @@ const beginDeviceStreaming = async (device: ISDRDevice) => {
 ```
 
 **3. Initial Device Configuration** (lines ~480-494):
+
 ```typescript
 useEffect(() => {
   if (!device) return;
@@ -134,6 +139,7 @@ const AUDIO_BUFFER_SIZE = 131072; // ~64ms at 2.048 MSPS
 **Formula**: `buffer_size = (target_latency_ms / 1000) * sdr_sample_rate`
 
 **Trade-offs**:
+
 - Larger buffer: More stable audio, higher latency
 - Smaller buffer: Lower latency, more prone to dropouts
 - Sweet spot: 64-128ms for FM broadcast reception
@@ -215,9 +221,8 @@ const processAudioChunk = useCallback(
         0,
         AUDIO_BUFFER_SIZE,
       );
-      audioSampleBufferRef.current = audioSampleBufferRef.current.slice(
-        AUDIO_BUFFER_SIZE,
-      );
+      audioSampleBufferRef.current =
+        audioSampleBufferRef.current.slice(AUDIO_BUFFER_SIZE);
 
       const demodType = getDemodType(signalType);
       const result = await audioProcessorRef.current.extractAudio(
@@ -233,7 +238,13 @@ const processAudioChunk = useCallback(
       playAudioBuffer(result);
     }
   },
-  [isAudioPlaying, signalType, getDemodType, playAudioBuffer, AUDIO_BUFFER_SIZE],
+  [
+    isAudioPlaying,
+    signalType,
+    getDemodType,
+    playAudioBuffer,
+    AUDIO_BUFFER_SIZE,
+  ],
 );
 ```
 
@@ -266,6 +277,7 @@ const playAudioBuffer = useCallback(
 ## AudioControls Component
 
 ### Location
+
 `src/components/AudioControls.tsx`
 
 ### Props Interface
@@ -309,6 +321,7 @@ export interface AudioControlsProps {
 ## Testing
 
 ### Test File
+
 `src/components/__tests__/AudioControls.test.tsx`
 
 ### Test Coverage
@@ -403,16 +416,19 @@ const handleToggleMute = useCallback(() => {
 ### Common Issues
 
 **Issue**: No audio output despite "Playing FM audio" status
+
 - **Root Cause**: Sample rate mismatch (20 MSPS used instead of 2.048 MSPS)
 - **Solution**: Ensure all three configuration locations use 2,048,000 Hz
 - **Verification**: Check console for "Sample rate set to 2.048 MSPS"
 
 **Issue**: Audio choppy or distorted
+
 - **Root Cause**: Buffer size too small or CPU overload
 - **Solution**: Increase AUDIO_BUFFER_SIZE to 131,072 or higher
 - **Verification**: Monitor buffer fill rate in console
 
 **Issue**: Audio controls never enabled
+
 - **Root Cause**: `listening` state not set to true
 - **Solution**: Verify `setListening(true)` called in `beginDeviceStreaming`
 

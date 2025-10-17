@@ -3,6 +3,7 @@
 ## Overview
 
 When debugging complex browser-based SDR applications, browser automation (Playwright MCP) is invaluable for:
+
 - Reproducing issues consistently
 - Capturing real-time console diagnostics
 - Verifying UI state transitions
@@ -16,6 +17,7 @@ This guide documents effective patterns learned from debugging rad.io's DSP pipe
 ### 1. Initial Setup and Navigation
 
 **Start dev server first** (HTTPS required for WebUSB):
+
 ```typescript
 // Verify dev server running
 await run_task("Start dev server");
@@ -23,6 +25,7 @@ await get_task_output(taskId); // Confirm server started on https://localhost:80
 ```
 
 **Launch browser and navigate**:
+
 ```typescript
 await mcp_microsoft_pla_browser_navigate({ url: "https://localhost:8080" });
 await mcp_microsoft_pla_browser_wait_for({ text: "rad.io", time: 5 });
@@ -31,44 +34,54 @@ await mcp_microsoft_pla_browser_wait_for({ text: "rad.io", time: 5 });
 ### 2. Capture Initial State
 
 **Take accessibility snapshot** (better than screenshot for state inspection):
+
 ```typescript
 const snapshot = await mcp_microsoft_pla_browser_snapshot();
 // Review snapshot for button states, aria-labels, status text
 ```
 
 **Check for JavaScript errors**:
+
 ```typescript
-const errors = await mcp_microsoft_pla_browser_console_messages({ onlyErrors: true });
+const errors = await mcp_microsoft_pla_browser_console_messages({
+  onlyErrors: true,
+});
 // Empty array = good; errors present = investigate before proceeding
 ```
 
 ### 3. Interact with UI Elements
 
 **Find elements by accessibility attributes** (most reliable):
+
 ```typescript
 // From snapshot, identify ref and element description
 await mcp_microsoft_pla_browser_click({
   element: "Start Reception button",
-  ref: "paragraph [role=button] [name=\"Start Reception\"]"
+  ref: 'paragraph [role=button] [name="Start Reception"]',
 });
 ```
 
 **Wait for expected state changes**:
+
 ```typescript
-await mcp_microsoft_pla_browser_wait_for({ 
+await mcp_microsoft_pla_browser_wait_for({
   text: "Stop Reception", // Button label should change
-  time: 3 
+  time: 3,
 });
 ```
 
 ### 4. Capture Diagnostic Console Output
 
 **Monitor all console messages** (not just errors):
+
 ```typescript
-const allMessages = await mcp_microsoft_pla_browser_console_messages({ onlyErrors: false });
+const allMessages = await mcp_microsoft_pla_browser_console_messages({
+  onlyErrors: false,
+});
 ```
 
 **Look for key diagnostic patterns**:
+
 - Configuration confirmations: "Sample rate set to X MSPS"
 - USB streaming status: "transferIn ok, X bytes"
 - Data processing: "Parsed X samples"
@@ -78,6 +91,7 @@ const allMessages = await mcp_microsoft_pla_browser_console_messages({ onlyError
 ### 5. Verify Complex State Transitions
 
 **Example: Audio playback activation**:
+
 ```typescript
 // 1. Take snapshot before click
 const beforeSnapshot = await mcp_microsoft_pla_browser_snapshot();
@@ -85,29 +99,32 @@ const beforeSnapshot = await mcp_microsoft_pla_browser_snapshot();
 // 2. Click Play Audio button
 await mcp_microsoft_pla_browser_click({
   element: "Play Audio button",
-  ref: "button [name=\"▶ Play Audio\"]"
+  ref: 'button [name="▶ Play Audio"]',
 });
 
 // 3. Wait for expected text change
-await mcp_microsoft_pla_browser_wait_for({ 
-  text: "⏸ Pause Audio", 
-  time: 2 
+await mcp_microsoft_pla_browser_wait_for({
+  text: "⏸ Pause Audio",
+  time: 2,
 });
 
 // 4. Verify status update
-await mcp_microsoft_pla_browser_wait_for({ 
-  text: "🎵 Playing FM audio", 
-  time: 2 
+await mcp_microsoft_pla_browser_wait_for({
+  text: "🎵 Playing FM audio",
+  time: 2,
 });
 
 // 5. Check for new console messages
-const audioMessages = await mcp_microsoft_pla_browser_console_messages({ onlyErrors: false });
+const audioMessages = await mcp_microsoft_pla_browser_console_messages({
+  onlyErrors: false,
+});
 // Filter for audio-related logs
 ```
 
 ### 6. Screenshot for Visual Verification
 
 **When to take screenshots**:
+
 - Complex visualizations (IQ constellation, spectrogram)
 - Layout issues
 - Visual feedback verification
@@ -116,11 +133,12 @@ const audioMessages = await mcp_microsoft_pla_browser_console_messages({ onlyErr
 ```typescript
 await mcp_microsoft_pla_browser_take_screenshot({
   filename: "visualizers-active.png",
-  type: "png"
+  type: "png",
 });
 ```
 
 **Accessibility snapshot preferred for**:
+
 - Button states (enabled/disabled)
 - Text content verification
 - ARIA attributes
@@ -129,6 +147,7 @@ await mcp_microsoft_pla_browser_take_screenshot({
 ### 7. Handle Known Failure Modes
 
 **TimeoutError on click** (element disabled or not interactive):
+
 ```typescript
 try {
   await mcp_microsoft_pla_browser_click({ element: "...", ref: "..." });
@@ -143,6 +162,7 @@ try {
 ```
 
 **Device-level issues** (USB transfer timeouts):
+
 - Not code bugs, but environmental/hardware issues
 - Confirm via console messages: "USB transfer timeout"
 - Recovery: User must unplug/replug device
@@ -151,11 +171,13 @@ try {
 ### 8. Cleanup and Iteration
 
 **Close browser between test runs**:
+
 ```typescript
 await mcp_microsoft_pla_browser_close();
 ```
 
 **Reload page for clean state** (if browser stays open):
+
 ```typescript
 await mcp_microsoft_pla_browser_navigate({ url: "https://localhost:8080" });
 ```
@@ -165,6 +187,7 @@ await mcp_microsoft_pla_browser_navigate({ url: "https://localhost:8080" });
 ### Healthy Streaming Session
 
 **Expected console sequence**:
+
 ```
 1. "Sample rate set to 2.048 MSPS"
 2. "transferIn ok, 4096 bytes" (repeating)
@@ -174,6 +197,7 @@ await mcp_microsoft_pla_browser_navigate({ url: "https://localhost:8080" });
 ```
 
 **Expected UI states**:
+
 - "Connected" → "Receiving" status
 - "Start Reception" → "Stop Reception" button
 - Visualizers change from "Waiting for signal data" to active charts
@@ -182,16 +206,19 @@ await mcp_microsoft_pla_browser_navigate({ url: "https://localhost:8080" });
 ### Problematic Patterns
 
 **No data despite "Receiving"**:
+
 - Console shows: "transferIn ok" but no "Parsed X samples"
 - Root cause: Sample rate not configured before streaming
 - Fix: Verify `setSampleRate()` called before `receive()`
 
 **Audio controls enabled but no sound**:
+
 - Console shows: Streaming active, no errors
 - Root cause: Sample rate mismatch with AudioStreamProcessor
 - Fix: Synchronize rates across all configuration points
 
 **USB transfer timeouts**:
+
 - Console shows: "USB transfer timeout (attempt X/3)"
 - Root cause: Device-level issue (firmware, hardware, USB bus)
 - Not a code bug: Recovery guidance provided to user
@@ -201,12 +228,14 @@ await mcp_microsoft_pla_browser_navigate({ url: "https://localhost:8080" });
 After making code changes to fix issues:
 
 1. **Rebuild application**:
+
    ```typescript
    await run_task("Build");
    await get_task_output(taskId); // Confirm success
    ```
 
 2. **Reload browser** (or restart if server restarted):
+
    ```typescript
    await mcp_microsoft_pla_browser_navigate({ url: "https://localhost:8080" });
    ```
@@ -229,17 +258,20 @@ After making code changes to fix issues:
 ## WebUSB-Specific Considerations
 
 **Browser security context**:
+
 - WebUSB requires HTTPS (not HTTP)
 - Dev server must use SSL certificates
 - User gesture required for device selection (automation can't bypass)
 
 **Device selection prompt** (automation limitation):
+
 - Browser shows native OS dialog for device pairing
 - Automation cannot interact with OS-level dialogs
 - **Workaround**: User must manually select device before automation
 - Document in setup instructions: "Pair device before running automation"
 
 **Physical device required**:
+
 - WebUSB automation can't use mock devices
 - USB device must be connected and functioning
 - Device firmware must be compatible
@@ -248,6 +280,7 @@ After making code changes to fix issues:
 ## Effective Console Log Analysis
 
 **High-signal patterns to search for**:
+
 - "set to" → Configuration confirmations
 - "ok" → Successful operations
 - "error" or "Error" → Problems
@@ -256,19 +289,24 @@ After making code changes to fix issues:
 - "samples" → Data processing info
 
 **Filtering technique** (in code):
+
 ```typescript
-const messages = await mcp_microsoft_pla_browser_console_messages({ onlyErrors: false });
-const relevantMessages = messages.filter(msg => 
-  msg.includes("Sample rate") ||
-  msg.includes("transferIn") ||
-  msg.includes("Parsed") ||
-  msg.includes("Visualization")
+const messages = await mcp_microsoft_pla_browser_console_messages({
+  onlyErrors: false,
+});
+const relevantMessages = messages.filter(
+  (msg) =>
+    msg.includes("Sample rate") ||
+    msg.includes("transferIn") ||
+    msg.includes("Parsed") ||
+    msg.includes("Visualization"),
 );
 ```
 
 ## Integration with Development Workflow
 
 **Combine automation with code analysis**:
+
 1. Use automation to reproduce issue and capture diagnostics
 2. Use `read_file` and `semantic_search` to understand code paths
 3. Identify root cause from console output + code review
@@ -277,6 +315,7 @@ const relevantMessages = messages.filter(msg =>
 6. Run quality gates (type-check, lint, tests)
 
 **Don't over-automate**:
+
 - Simple console inspections: Use `get_terminal_output` on dev server
 - Type errors: Use `get_errors` tool
 - Component behavior: Use `runTests` for unit tests
@@ -285,18 +324,21 @@ const relevantMessages = messages.filter(msg =>
 ## Troubleshooting Automation Issues
 
 **Browser automation hangs**:
+
 - Check dev server is actually running (not crashed)
 - Verify URL is accessible (https://localhost:8080)
 - Wait for page load with sufficient timeout
 - Check for JavaScript errors blocking page load
 
 **Element not found errors**:
+
 - Take snapshot to verify element exists
 - Check element is not disabled (can't click disabled elements)
 - Verify ref matches current DOM structure
 - Wait for dynamic content to load
 
 **Console messages missing**:
+
 - Some messages logged before automation attached
 - Take snapshot at multiple points in interaction
 - Use `onlyErrors: false` to see all message types

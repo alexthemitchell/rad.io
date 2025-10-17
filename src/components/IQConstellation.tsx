@@ -402,6 +402,7 @@ void main() {
         ref={canvasRef}
         role="img"
         aria-label={accessibleDescription}
+        tabIndex={0}
         {...handlers}
         onDoubleClick={(): void => resetTransform()}
       />

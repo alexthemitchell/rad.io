@@ -10,6 +10,7 @@
 - Backpressure: if UI can’t keep up, drop visualization frames first; keep DSP chain real‑time.
 
 Code links
+
 - Models: src/models/HackRFOne.ts, HackRFOneAdapter.ts
 - Hooks: src/hooks/useUSBDevice.ts, useHackRFDevice.ts
 - Debug: WEBUSB_STREAMING_DEBUG_GUIDE
