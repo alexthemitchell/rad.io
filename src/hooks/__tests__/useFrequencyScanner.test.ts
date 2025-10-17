@@ -6,7 +6,7 @@ import {
   SDRDeviceInfo,
   SDRCapabilities,
   DeviceMemoryInfo,
-  IQSampleCallback,
+  SDRDeviceType,
 } from "../../models/SDRDevice";
 
 // Mock device
@@ -17,7 +17,7 @@ class MockSDRDevice implements ISDRDevice {
 
   async getDeviceInfo(): Promise<SDRDeviceInfo> {
     return {
-      type: "HackRF One" as any,
+      type: SDRDeviceType.HACKRF_ONE,
       vendorId: 0x1d50,
       productId: 0x6089,
       serialNumber: "0000000000000000",
