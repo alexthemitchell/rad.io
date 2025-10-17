@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">rad.io favicon</title>
+  <defs>
+    <linearGradient id="grad" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#7B61FF"/>
+      <stop offset="1" stop-color="#FF4D6D"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2"/>
+    </filter>
+  </defs>
+
+  <!-- Background circle with gradient -->
+  <circle cx="256" cy="256" r="248" fill="url(#grad)"/>
+
+  <!-- Subtle inner glow (soft) -->
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="12" filter="url(#soft)"/>
+
+  <!-- Broadcast waves (to right) -->
+  <g stroke="#FFFFFF" stroke-width="28" stroke-linecap="round" fill="none" opacity="0.95">
+    <!-- Closest thin arc -->
+    <path d="M300 256 C320 236, 360 200, 402 180" />
+    <!-- Middle arc -->
+    <path d="M280 256 C305 220, 360 176, 418 148" />
+    <!-- Outer arc -->
+    <path d="M260 256 C295 200, 370 150, 436 116" />
+  </g>
+
+  <!-- Play triangle (center-left) -->
+  <polygon points="180,200 180,312 312,256" fill="#FFFFFF" />
+
+  <!-- Small accent dot (station) -->
+  <circle cx="336" cy="256" r="18" fill="#FFFFFF" />
+</svg>

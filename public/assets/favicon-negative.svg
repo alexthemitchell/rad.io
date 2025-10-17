@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title-neg">
+  <title id="title-neg">rad.io favicon (dark variant)</title>
+  <defs>
+    <linearGradient id="grad2" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0f1724"/>
+      <stop offset="1" stop-color="#1f2a44"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark background -->
+  <rect width="512" height="512" rx="88" fill="url(#grad2)"/>
+
+  <!-- Broadcast waves (accent color) -->
+  <g stroke="#7B61FF" stroke-width="28" stroke-linecap="round" fill="none" opacity="0.95">
+    <path d="M300 256 C320 236, 360 200, 402 180" />
+    <path d="M280 256 C305 220, 360 176, 418 148" />
+    <path d="M260 256 C295 200, 370 150, 436 116" />
+  </g>
+
+  <!-- Play triangle (accent, reversed) -->
+  <polygon points="180,200 180,312 312,256" fill="#7B61FF" />
+
+  <!-- Small accent dot -->
+  <circle cx="336" cy="256" r="18" fill="#7B61FF" />
+</svg>
