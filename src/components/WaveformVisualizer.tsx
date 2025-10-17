@@ -55,24 +55,14 @@ export default function WaveformVisualizer({
     if (shouldUseWorker) {
       if (!workerRef.current) {
         try {
-          // dynamic worker via eval to avoid Jest parse of import.meta
-          const worker = (0, eval)(
-            `new Worker(new URL("../workers/visualization.worker.ts", import.meta.url))`,
+          // Use webpack's worker-loader syntax for production builds
+          const worker = new Worker(
+            new URL("../workers/visualization.worker.ts", import.meta.url),
           );
           workerRef.current = worker;
-        } catch {
-          try {
-            const workerCode = `self.onmessage = function(){};`;
-            const blob = new Blob([workerCode], {
-              type: "application/javascript",
-            });
-            const url = URL.createObjectURL(blob);
-            const worker = new Worker(url);
-            workerRef.current = worker;
-          } catch (e2) {
-            console.error("Could not create visualization worker", e2);
-            workerRef.current = null;
-          }
+        } catch (e) {
+          console.error("Could not create visualization worker", e);
+          workerRef.current = null;
         }
         if (workerRef.current) {
           workerRef.current.onmessage = (ev): void => {
@@ -99,6 +89,11 @@ export default function WaveformVisualizer({
               }
             ).transferControlToOffscreen === "function";
           if (canTransfer) {
+            // Set canvas dimensions BEFORE transferring to OffscreenCanvas
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+
             const offscreen = (
               canvas as HTMLCanvasElement & {
                 transferControlToOffscreen: () => OffscreenCanvas;
@@ -112,12 +107,14 @@ export default function WaveformVisualizer({
                 vizType: "waveform",
                 width,
                 height,
+                dpr,
               },
               [offscreen],
             );
           }
         } else {
-          workerRef.current.postMessage({ type: "resize", width, height });
+          const dpr = window.devicePixelRatio || 1;
+          workerRef.current.postMessage({ type: "resize", width, height, dpr });
         }
 
         if (transferredRef.current) {

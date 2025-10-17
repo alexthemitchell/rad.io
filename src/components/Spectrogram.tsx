@@ -67,9 +67,9 @@ export default function Spectrogram({
     if (supportsOffscreen) {
       if (!workerRef.current) {
         try {
-          // dynamic worker via eval to avoid Jest parse of import.meta
-          const worker = (0, eval)(
-            `new Worker(new URL("../workers/visualization.worker.ts", import.meta.url))`,
+          // Use webpack's worker-loader syntax for production builds
+          const worker = new Worker(
+            new URL("../workers/visualization.worker.ts", import.meta.url),
           );
           workerRef.current = worker;
           const w = workerRef.current;
@@ -87,7 +87,8 @@ export default function Spectrogram({
               }
             };
           }
-        } catch {
+        } catch (e) {
+          console.error("Could not create visualization worker", e);
           workerRef.current = null;
         }
       }
@@ -101,6 +102,11 @@ export default function Spectrogram({
               }
             ).transferControlToOffscreen === "function";
           if (canTransfer) {
+            // Set canvas dimensions BEFORE transferring to OffscreenCanvas
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+
             const offscreen = (
               canvas as HTMLCanvasElement & {
                 transferControlToOffscreen: () => OffscreenCanvas;
@@ -114,6 +120,7 @@ export default function Spectrogram({
                 vizType: "spectrogram",
                 width,
                 height,
+                dpr,
                 freqMin,
                 freqMax,
               },
@@ -121,7 +128,13 @@ export default function Spectrogram({
             );
           }
         } else {
-          workerRef.current.postMessage({ type: "resize", width, height });
+          const dpr = window.devicePixelRatio || 1;
+          workerRef.current.postMessage({
+            type: "resize",
+            width,
+            height,
+            dpr,
+          });
         }
 
         if (transferredRef.current) {
