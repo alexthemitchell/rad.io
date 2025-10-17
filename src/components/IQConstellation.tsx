@@ -67,11 +67,11 @@ export default function IQConstellation({
           // Use webpack's worker-loader syntax for production builds
           // For tests, this will be mocked
           const worker = new Worker(
-            new URL("../workers/visualization.worker.ts", import.meta.url)
+            new URL("../workers/visualization.worker.ts", import.meta.url),
           );
           workerRef.current = worker as unknown as Worker;
         } catch (e1) {
-          console.error('[IQConstellation] Worker creation failed:', e1);
+          console.error("[IQConstellation] Worker creation failed:", e1);
           workerRef.current = null;
         }
         if (workerRef.current) {
@@ -104,7 +104,7 @@ export default function IQConstellation({
             const dpr = window.devicePixelRatio || 1;
             canvas.width = width * dpr;
             canvas.height = height * dpr;
-            
+
             const offscreen = (
               canvas as HTMLCanvasElement & {
                 transferControlToOffscreen: () => OffscreenCanvas;

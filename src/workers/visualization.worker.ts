@@ -55,7 +55,12 @@ let dpr = 1;
 let freqMin = 0;
 let freqMax = 0;
 
-function setup(canvas: OffscreenCanvas, w: number, h: number, devicePixelRatio: number): void {
+function setup(
+  canvas: OffscreenCanvas,
+  w: number,
+  h: number,
+  devicePixelRatio: number,
+): void {
   offscreen = canvas;
   width = w;
   height = h;
