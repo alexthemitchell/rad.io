@@ -219,3 +219,14 @@ The DSP pipeline visualization shows the complete signal flow:
 - ❌ Safari (WebUSB not implemented)
 
 **Note**: HTTPS context is required for WebUSB access.
+
+## Agent guide: Serena memories
+
+For AI agents contributing to this repository, use Serena memories to keep context lean and high-signal:
+
+- Start by listing available memories and look for "SERENA_MEMORY_BEST_PRACTICES".
+- Read that memory for concise best practices on minimizing noise-to-signal in context, retrieval order, and when/what to write.
+- Only write new memories for durable, reusable knowledge (architecture decisions, debugging playbooks, repo-wide workflows). Prefer updating an existing memory over creating duplicates.
+- Favor symbol-first exploration over full-file reads. Avoid re-reading the same content with multiple tools.
+
+See `.github/copilot-instructions.md` for detailed agent workflows and available tools.

@@ -8,13 +8,53 @@
 - Look for tools like #problems #runTasks #runTests #usages and #executePrompt to help you interact with the development environment
 - **Critical**: Prefer to use #runTests and #runTasks over #runCommands
 - Avoid using #runCommands unless no other tool can provide the answer and the output is absolutely necessary
-- Use #microsoft/playwright-mcp/\* commands to test your code in a browser environment. Take screenshots and analyze them to verify your work.
+- Use Playwright MCP browser tools to test your code in a browser environment. Take screenshots and analyze them to verify your work.
 - **Prefer to read symbol data with serena tools over reading entirety of files**: use #oraios/serena/find_referencing_symbols #oraios/serena/get_symbols_overview #oraios/serena/search_for_pattern
 - **Maintain Long Term Memory**: use #oraios/serena/read_memory when thinking about how to solve problems and #oraios/serena/write_memory when you have learned something new that will be valuable for a future Agent.
+- Before reading code, list memories and retrieve high-signal guidance: use #oraios/serena/list_memories to find "SERENA_MEMORY_BEST_PRACTICES", then #oraios/serena/read_memory to load it. Apply its retrieval-first, symbol-first workflow to minimize noise.
 - Always keep the user in mind as a tool to help you solve problems. For example, when connecting to a device using WebUSB, you may need to ask the user to select the device from a browser prompt that you cannot see or interact with.
 - Remember when using WebUSB that physical devices are required to fully test your code. You may need to ask the user to assist you with this. Physical devices are unreliable and may not always be available, so plan accordingly and verify with the user if you are unsure of the availability of a device.
 - The goal of this project includes the creation of TypeScript-first WebUSB drivers for SDR hardware. This is a complex task that requires careful planning and execution. Use the tools available to you to research and implement these drivers, and always keep the user in mind as a resource to help you solve problems.
-- Always end your turn by evaluating whether you should add or update long term memory with #oraios/serena/list_memories and #oraios/serena/write_memory
+
+## Agent performance & context hygiene
+
+Follow these practices to keep your context lean and optimize execution:
+
+1. Retrieval before reading
+
+- Use #oraios/serena/list_memories → scan for relevant items (start with "SERENA_MEMORY_BEST_PRACTICES").
+- Use #oraios/serena/read_memory only for relevant memories; if a memory answers your question, avoid scanning the codebase.
+
+2. Symbol-first code exploration
+
+- Prefer these tools in order:
+  - #oraios/serena/get_symbols_overview
+  - #oraios/serena/find_symbol (include_body=true only when necessary)
+  - #oraios/serena/find_referencing_symbols
+- For discovery, use #oraios/serena/search_for_pattern with tight include globs and minimal context lines.
+- Avoid reading entire files unless strictly necessary. Never re-read the same content with multiple tools.
+
+3. Memory writing policy (what to store)
+
+- Capture durable, reusable knowledge: architecture decisions, invariants, concise debugging playbooks (root cause → minimal signal → fix), and repo-wide workflows.
+- Keep memories short (≈150–400 words), scannable, and link to code paths instead of inlining code.
+- Update existing memories rather than creating near-duplicates; explicitly deprecate outdated tips. Do not store secrets or large logs.
+
+4. Operational hygiene
+
+- Use a structured todo list to plan work; keep one item in progress.
+- Before edits, sanity-check your scope and assumptions; after multi-step searches, review whether collected information is sufficient.
+- After edits to runnable code: use #runTests for targeted tests. Then run lint, type-check, and build using project scripts.
+
+5. Quick workflow
+
+- list_memories → read_memory (relevant only)
+- explore via symbols (overview → symbol → references)
+- search_for_pattern if needed; avoid full-file reads
+- implement → run relevant tests → lint/type-check
+- write/update memory (concise, durable, linked to code)
+
+Security & privacy: Never store secrets in memories; prefer repo paths and commit SHAs over external links that can drift.
 
 ## Getting Started
 
@@ -192,7 +232,7 @@ type ComponentProps = {
 **Component Styling:**
 
 - Scoped styles via BEM-like naming
-- Professional color palette: `#e0e6ed` (primary), `#a0aab5` (secondary), `#5aa3e8` (accent)
+- Professional color palette with clearly defined primary, secondary, and accent colors
 - Consistent spacing: 60-80px margins
 - Animation keyframes for status indicators
 

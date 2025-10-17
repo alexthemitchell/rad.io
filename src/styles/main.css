@@ -1060,3 +1060,128 @@ a:focus-visible,
   color: #5aa3e8;
   font-weight: 600;
 }
+
+/* Audio Controls */
+.audio-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(30, 40, 60, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(90, 163, 232, 0.2);
+}
+
+.audio-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-audio {
+  min-width: 140px;
+  font-weight: 600;
+}
+
+.btn-mute {
+  min-width: 60px;
+  font-size: 20px;
+  padding: 8px 16px;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.volume-label {
+  color: #e0e6ed;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.volume-slider {
+  flex: 1;
+  height: 6px;
+  background: rgba(90, 163, 232, 0.2);
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #5aa3e8;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #5aa3e8;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.volume-slider:hover::-webkit-slider-thumb {
+  background: #7bb9f0;
+  transform: scale(1.1);
+}
+
+.volume-slider:hover::-moz-range-thumb {
+  background: #7bb9f0;
+  transform: scale(1.1);
+}
+
+.volume-slider:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(90, 163, 232, 0.3);
+}
+
+.volume-slider:focus::-moz-range-thumb {
+  box-shadow: 0 0 0 3px rgba(90, 163, 232, 0.3);
+}
+
+.volume-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.volume-display {
+  color: #e0e6ed;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 45px;
+  text-align: right;
+}
+
+.audio-status {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(30, 40, 60, 0.5);
+  text-align: center;
+}
+
+.audio-status-active {
+  color: #34d399;
+  font-weight: 500;
+}
+
+.audio-status-inactive {
+  color: #a0aab5;
+  font-weight: 400;
+}

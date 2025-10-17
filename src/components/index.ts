@@ -3,6 +3,7 @@
  * Provides centralized exports for all UI components
  */
 
+export { default as AudioControls } from "./AudioControls";
 export { default as BandwidthSelector } from "./BandwidthSelector";
 export { default as Card } from "./Card";
 export { default as DeviceDiagnostics } from "./DeviceDiagnostics";

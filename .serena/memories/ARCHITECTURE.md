@@ -29,6 +29,8 @@ Models (Device Logic) → Hooks (React Integration) → Views (Components)
 - Plug-and-play hardware support
 - Consistent API across different hardware
 
+> Agent note: For guidance on minimizing context noise when navigating this architecture, see the Serena memory "SERENA_MEMORY_BEST_PRACTICES" (use list_memories then read_memory to retrieve). Prefer symbol-first exploration over full-file reads.
+
 ### Data Flow
 
 ```

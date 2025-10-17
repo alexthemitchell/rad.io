@@ -44,7 +44,11 @@ export default function AudioControls({
   const displayVolume = isMuted ? 0 : Math.round(volume * 100);
 
   return (
-    <div className="audio-controls" role="group" aria-label="Audio playback controls">
+    <div
+      className="audio-controls"
+      role="group"
+      aria-label="Audio playback controls"
+    >
       <div className="audio-controls-row">
         {/* Play/Pause Button */}
         <button
@@ -108,9 +112,7 @@ export default function AudioControls({
             🎵 Playing {signalType} audio
           </span>
         ) : (
-          <span className="audio-status-inactive">
-            Audio paused
-          </span>
+          <span className="audio-status-inactive">Audio paused</span>
         )}
       </div>
     </div>

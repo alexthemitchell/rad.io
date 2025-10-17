@@ -18,9 +18,15 @@ import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import PerformanceMetrics from "../components/PerformanceMetrics";
+import AudioControls from "../components/AudioControls";
 import { Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { ISDRDevice } from "../models/SDRDevice";
+import {
+  AudioStreamProcessor,
+  DemodulationType,
+  type AudioStreamResult,
+} from "../utils/audioStream";
 import "../styles/main.css";
 
 const MAX_BUFFER_SAMPLES = 32768;
@@ -38,6 +44,11 @@ function Visualizer(): React.JSX.Element {
   const [currentFPS, setCurrentFPS] = useState<number>(0);
   const [deviceError, setDeviceError] = useState<Error | null>(null);
 
+  // Audio playback state
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioVolume, setAudioVolume] = useState(0.5);
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
+
   const sampleBufferRef = useRef<Sample[]>([]);
   const latestChunkRef = useRef<Sample[]>([]);
   const rafIdRef = useRef<number | null>(null);
@@ -46,6 +57,154 @@ function Visualizer(): React.JSX.Element {
   const fpsLastUpdateRef = useRef<number>(0);
   const receivePromiseRef = useRef<Promise<void> | null>(null);
   const shouldStartOnConnectRef = useRef(false);
+
+  // Audio processing refs
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const audioSampleBufferRef = useRef<Sample[]>([]);
+  const AUDIO_BUFFER_SIZE = 8192; // Process audio in chunks
+
+  // Initialize audio context and processor
+  useEffect(() => {
+    const initialVolume = audioVolume;
+    audioContextRef.current = new AudioContext();
+    gainNodeRef.current = audioContextRef.current.createGain();
+    gainNodeRef.current.connect(audioContextRef.current.destination);
+    gainNodeRef.current.gain.value = initialVolume;
+
+    // Create processor with SDR sample rate (20 MHz for HackRF)
+    audioProcessorRef.current = new AudioStreamProcessor(20000000);
+
+    return (): void => {
+      audioProcessorRef.current?.cleanup();
+      audioContextRef.current?.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update volume
+  useEffect(() => {
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = isAudioMuted ? 0 : audioVolume;
+    }
+  }, [audioVolume, isAudioMuted]);
+
+  // Map signal type to demodulation type
+  const getDemodType = useCallback((type: SignalType): DemodulationType => {
+    switch (type) {
+      case "FM":
+        return DemodulationType.FM;
+      case "AM":
+        return DemodulationType.AM;
+      case "P25":
+        // P25 uses C4FM modulation, FM demod extracts symbols
+        return DemodulationType.FM;
+      default:
+        return DemodulationType.FM;
+    }
+  }, []);
+
+  // Play audio buffer
+  const playAudioBuffer = useCallback(
+    (result: AudioStreamResult) => {
+      const audioContext = audioContextRef.current;
+      const gainNode = gainNodeRef.current;
+
+      if (!audioContext || !gainNode || !isAudioPlaying) {
+        return;
+      }
+
+      try {
+        // Create buffer source
+        const source = audioContext.createBufferSource();
+        source.buffer = result.audioBuffer;
+
+        // Connect through gain node for volume control
+        source.connect(gainNode);
+
+        // Start playback
+        source.start();
+      } catch (error) {
+        console.error("Audio playback error:", error);
+      }
+    },
+    [isAudioPlaying],
+  );
+
+  // Process audio from sample chunks
+  const processAudioChunk = useCallback(
+    async (chunk: Sample[]): Promise<void> => {
+      if (!isAudioPlaying || !audioProcessorRef.current) {
+        return;
+      }
+
+      // Add to audio buffer
+      audioSampleBufferRef.current = audioSampleBufferRef.current.concat(chunk);
+
+      // Process when we have enough samples
+      if (audioSampleBufferRef.current.length >= AUDIO_BUFFER_SIZE) {
+        const samplesToProcess = audioSampleBufferRef.current.slice(
+          0,
+          AUDIO_BUFFER_SIZE,
+        );
+        audioSampleBufferRef.current =
+          audioSampleBufferRef.current.slice(AUDIO_BUFFER_SIZE);
+
+        try {
+          const demodType = getDemodType(signalType);
+          const result = await audioProcessorRef.current.extractAudio(
+            samplesToProcess,
+            demodType,
+            {
+              sampleRate: 48000, // CD quality audio
+              channels: 1, // Mono output
+              enableDeEmphasis: signalType === "FM", // De-emphasis for FM only
+            },
+          );
+
+          playAudioBuffer(result);
+        } catch (error) {
+          console.error("Audio processing error:", error);
+        }
+      }
+    },
+    [
+      isAudioPlaying,
+      signalType,
+      getDemodType,
+      playAudioBuffer,
+      AUDIO_BUFFER_SIZE,
+    ],
+  );
+
+  // Audio control handlers
+  const handleToggleAudio = useCallback(() => {
+    setIsAudioPlaying((prev) => {
+      const newState = !prev;
+      if (!newState) {
+        // Clear audio buffer when stopping
+        audioSampleBufferRef.current = [];
+        audioProcessorRef.current?.reset();
+      }
+      setLiveRegionMessage(
+        newState ? "Audio playback started" : "Audio playback stopped",
+      );
+      return newState;
+    });
+  }, []);
+
+  const handleVolumeChange = useCallback((volume: number) => {
+    setAudioVolume(volume);
+  }, []);
+
+  const handleToggleMute = useCallback(() => {
+    setIsAudioMuted((prev) => {
+      const newState = !prev;
+      setLiveRegionMessage(newState ? "Audio muted" : "Audio unmuted");
+      return newState;
+    });
+  }, []);
 
   const cancelScheduledUpdate = useCallback((): void => {
     if (
@@ -124,6 +283,11 @@ function Visualizer(): React.JSX.Element {
       sampleBufferRef.current = trimmed;
       latestChunkRef.current = chunk.slice();
 
+      // Process audio if enabled
+      processAudioChunk(chunk).catch((error) => {
+        console.error("Audio processing error:", error);
+      });
+
       performanceMonitor.measure("pipeline-processing", markName);
 
       const now =
@@ -134,7 +298,7 @@ function Visualizer(): React.JSX.Element {
         scheduleVisualizationUpdate();
       }
     },
-    [scheduleVisualizationUpdate],
+    [scheduleVisualizationUpdate, processAudioChunk],
   );
 
   const beginDeviceStreaming = useCallback(
@@ -591,6 +755,22 @@ function Visualizer(): React.JSX.Element {
               onStationSelect={handleSetFrequency}
             />
           )}
+        </Card>
+
+        <Card
+          title="Audio Playback"
+          subtitle="Real-time audio demodulation and output"
+        >
+          <AudioControls
+            isPlaying={isAudioPlaying}
+            volume={audioVolume}
+            isMuted={isAudioMuted}
+            signalType={signalType}
+            isAvailable={!!device && listening}
+            onTogglePlay={handleToggleAudio}
+            onVolumeChange={handleVolumeChange}
+            onToggleMute={handleToggleMute}
+          />
         </Card>
 
         {signalType === "P25" && (
