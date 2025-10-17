@@ -49,8 +49,8 @@ export default function BandwidthSelector({
         ))}
       </select>
       <span id="bandwidth-hint" className="visually-hidden">
-        Baseband filter bandwidth controls the frequency range captured. Narrower
-        settings reduce interference in crowded bands.
+        Baseband filter bandwidth controls the frequency range captured.
+        Narrower settings reduce interference in crowded bands.
       </span>
     </div>
   );

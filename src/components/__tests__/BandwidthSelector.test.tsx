@@ -73,7 +73,9 @@ describe("BandwidthSelector", () => {
       />,
     );
 
-    expect(screen.getByRole("option", { name: "1.75 MHz" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "1.75 MHz" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "28 MHz" })).toBeInTheDocument();
   });
 
@@ -83,9 +85,7 @@ describe("BandwidthSelector", () => {
 
     const options = screen.getAllByRole("option");
     expect(options.length).toBeGreaterThan(0);
-    expect(
-      screen.getByRole("option", { name: "20 MHz" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "20 MHz" })).toBeInTheDocument();
   });
 
   it("includes accessibility attributes", () => {

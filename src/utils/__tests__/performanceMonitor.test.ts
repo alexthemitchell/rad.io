@@ -2,10 +2,7 @@
  * Tests for Performance Monitoring Utilities
  */
 
-import {
-  performanceMonitor,
-  measurePerformance,
-} from "../performanceMonitor";
+import { performanceMonitor, measurePerformance } from "../performanceMonitor";
 
 describe("PerformanceMonitor", () => {
   beforeEach(() => {
@@ -50,7 +47,10 @@ describe("PerformanceMonitor", () => {
 
     it("should categorize spectrogram measurements correctly", () => {
       performanceMonitor.mark("spectrogram-start");
-      performanceMonitor.measure("spectrogram-calculation", "spectrogram-start");
+      performanceMonitor.measure(
+        "spectrogram-calculation",
+        "spectrogram-start",
+      );
 
       const spectrogramMetrics = performanceMonitor.getMetrics("spectrogram");
       expect(spectrogramMetrics.length).toBeGreaterThanOrEqual(0);
@@ -177,20 +177,20 @@ describe("measurePerformance decorator", () => {
   });
 
   it("should measure synchronous function performance", () => {
-    const testFn = measurePerformance("test-sync", ((x: number) => x * 2) as (...args: unknown[]) => unknown);
+    const testFn = measurePerformance(
+      "test-sync",
+      ((x: number) => x * 2) as (...args: unknown[]) => unknown,
+    );
 
     const result = testFn(5);
     expect(result).toBe(10);
   });
 
   it("should measure async function performance", async () => {
-    const asyncFn = measurePerformance(
-      "test-async",
-      (async (x: number) => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return x * 2;
-      }) as (...args: unknown[]) => unknown,
-    );
+    const asyncFn = measurePerformance("test-async", (async (x: number) => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return x * 2;
+    }) as (...args: unknown[]) => unknown);
 
     const result = await asyncFn(5);
     expect(result).toBe(10);
