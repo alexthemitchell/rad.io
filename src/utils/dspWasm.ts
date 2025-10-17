@@ -30,10 +30,27 @@ interface WasmDSPModule {
   ): void;
 }
 
+function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
+  return (
+    typeof mod.calculateFFT === "function" &&
+    typeof mod.calculateWaveform === "function" &&
+    typeof mod.calculateSpectrogram === "function"
+  );
+}
+
 // Module state
 let wasmModule: WasmDSPModule | null = null;
-let wasmLoading: Promise<WasmDSPModule> | null = null;
+let wasmLoading: Promise<WasmDSPModule | null> | null = null;
 let wasmSupported = false;
+
+const dynamicImportModule: (specifier: string) => Promise<unknown> =
+  typeof Function === "function"
+    ? (new Function("specifier", "return import(specifier);") as (
+        specifier: string,
+      ) => Promise<unknown>)
+    : async (): Promise<unknown> => {
+        throw new Error("Dynamic import is not supported in this environment");
+      };
 
 /**
  * Check if WebAssembly is supported in this environment
@@ -57,55 +74,63 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
 
   // Return existing loading promise if in progress
   if (wasmLoading) {
-    return wasmLoading.catch(() => null);
+    try {
+      return await wasmLoading;
+    } catch {
+      return null;
+    }
   }
 
   // Check if WASM is supported
-  if (!isWasmSupported()) {
+  if (!isWasmSupported() || typeof window === "undefined") {
     wasmSupported = false;
     return null;
   }
 
-  // Start loading
-  wasmLoading = (async (): Promise<WasmDSPModule> => {
-    try {
-      // Fetch the WASM binary
-      const wasmUrl = new URL("/dsp.wasm", window.location.origin);
-      const wasmResponse = await fetch(wasmUrl.href);
+  const candidateUrls = [
+    new URL("release.js", window.location.href).toString(),
+    new URL("/release.js", window.location.origin).toString(),
+    new URL("dsp.js", window.location.href).toString(),
+    new URL("/dsp.js", window.location.origin).toString(),
+  ];
 
-      if (!wasmResponse.ok) {
-        throw new Error("Failed to fetch WASM module");
+  const loadPromise = (async (): Promise<WasmDSPModule | null> => {
+    let lastError: unknown;
+
+    for (const url of candidateUrls) {
+      try {
+        const mod = (await dynamicImportModule(url)) as Partial<WasmDSPModule>;
+        if (!isValidModule(mod)) {
+          throw new Error("Invalid WASM module exports");
+        }
+
+        wasmModule = {
+          calculateFFT: mod.calculateFFT,
+          calculateWaveform: mod.calculateWaveform,
+          calculateSpectrogram: mod.calculateSpectrogram,
+        };
+        wasmSupported = true;
+        return wasmModule;
+      } catch (error) {
+        lastError = error;
       }
-
-      const wasmBinary = await wasmResponse.arrayBuffer();
-
-      // Instantiate WASM module directly
-      const wasmInstance = await WebAssembly.instantiate(wasmBinary, {
-        env: {
-          abort: () => {
-            throw new Error("WASM module aborted");
-          },
-          seed: () => Date.now(),
-        },
-      });
-
-      wasmModule = wasmInstance.instance.exports as unknown as WasmDSPModule;
-      wasmSupported = true;
-
-      return wasmModule as WasmDSPModule;
-    } catch (error) {
-      console.warn(
-        "Failed to load WASM module, falling back to JavaScript:",
-        error,
-      );
-      wasmSupported = false;
-      wasmLoading = null;
-      // This should never be reached since we cast the promise type
-      throw error;
     }
+
+    console.warn(
+      "Failed to load WASM module, falling back to JavaScript:",
+      lastError,
+    );
+    wasmModule = null;
+    wasmSupported = false;
+    return null;
   })();
 
-  return wasmLoading.catch(() => null);
+  wasmLoading = loadPromise.then((module) => {
+    wasmLoading = null;
+    return module;
+  });
+
+  return wasmLoading;
 }
 
 /**

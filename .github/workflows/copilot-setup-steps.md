@@ -87,16 +87,12 @@ npm run build
 The project has **122+ tests** that must pass. Due to memory constraints:
 
 **DO:**
-- Run specific test files during development:
-  ```bash
-  npm test -- src/utils/__tests__/dsp.test.ts
-  npm test -- src/models/__tests__/SDRDevice.test.ts
-  ```
-- Use `--maxWorkers=1` to reduce memory usage
+
 - Clean up after tests with proper hooks (`afterEach`, `beforeEach`)
 - Use memory management utilities from `src/utils/testMemoryManager.ts`
 
 **DON'T:**
+
 - Run the full test suite unless necessary
 - Generate large test datasets (>10k samples) without chunking
 - Skip cleanup in tests (always use `unmount()` for components)
@@ -128,9 +124,9 @@ describe("Test Suite", () => {
     }));
 
     const { container, unmount } = render(<Component samples={samples} />);
-    
+
     // ... assertions ...
-    
+
     // Always unmount components
     unmount();
   });
@@ -154,6 +150,7 @@ See `.github/workflows/README.md` for detailed workflow documentation.
 ### Issue: "prettier: not found"
 
 **Solution:**
+
 ```bash
 # Use npx to run prettier without global install
 npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css,md}"
@@ -162,6 +159,7 @@ npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css,md}"
 ### Issue: Tests run out of memory (FATAL ERROR: heap limit)
 
 **Solution:**
+
 - Reduce test dataset sizes (see `src/components/__tests__/VisualizationSDRData.test.tsx` for examples)
 - Use memory management utilities
 - Add cleanup hooks
@@ -170,6 +168,7 @@ npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css,md}"
 ### Issue: Canvas mock errors in tests
 
 **Solution:**
+
 - Check `jest.setup.ts` for proper canvas mocking
 - Ensure all canvas methods are mocked in test setup
 - See `src/components/__tests__/IQConstellation.test.tsx` for reference
@@ -177,6 +176,7 @@ npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css,md}"
 ### Issue: TypeScript errors after adding new features
 
 **Solution:**
+
 ```bash
 # Run type check to see all errors
 npm run type-check

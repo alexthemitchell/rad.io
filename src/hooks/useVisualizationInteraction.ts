@@ -77,7 +77,9 @@ export function useVisualizationInteraction(
   // Calculate distance between two pointers for pinch gesture
   const getPointerDistance = useCallback(
     (pointers: Map<number, { x: number; y: number }>) => {
-      if (pointers.size !== 2) {return null;}
+      if (pointers.size !== 2) {
+        return null;
+      }
       const coords = Array.from(pointers.values());
       const dx = coords[0]!.x - coords[1]!.x;
       const dy = coords[0]!.y - coords[1]!.y;
@@ -89,7 +91,9 @@ export function useVisualizationInteraction(
   // Handle pointer down
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
-      if (!settings.enablePan && !settings.enableMultiTouch) {return;}
+      if (!settings.enablePan && !settings.enableMultiTouch) {
+        return;
+      }
 
       e.preventDefault();
       const canvas = e.currentTarget;
@@ -110,17 +114,26 @@ export function useVisualizationInteraction(
         state.initialScale = transform.scale;
       }
     },
-    [settings.enablePan, settings.enableMultiTouch, transform.scale, getPointerDistance],
+    [
+      settings.enablePan,
+      settings.enableMultiTouch,
+      transform.scale,
+      getPointerDistance,
+    ],
   );
 
   // Handle pointer move
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
-      if (!settings.enablePan && !settings.enableMultiTouch) {return;}
+      if (!settings.enablePan && !settings.enableMultiTouch) {
+        return;
+      }
 
       const state = pointerStateRef.current;
-      
-      if (!state.pointers.has(e.pointerId)) {return;}
+
+      if (!state.pointers.has(e.pointerId)) {
+        return;
+      }
 
       state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -139,7 +152,11 @@ export function useVisualizationInteraction(
             scale: newScale,
           }));
         }
-      } else if (state.isPointerDown && state.pointerId === e.pointerId && settings.enablePan) {
+      } else if (
+        state.isPointerDown &&
+        state.pointerId === e.pointerId &&
+        settings.enablePan
+      ) {
         // Single finger/pointer pan
         e.preventDefault();
         const dx = (e.clientX - state.lastX) * settings.panSensitivity;
@@ -185,14 +202,16 @@ export function useVisualizationInteraction(
   // Handle wheel event for zoom
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLCanvasElement>) => {
-      if (!settings.enableZoom) {return;}
+      if (!settings.enableZoom) {
+        return;
+      }
 
       e.preventDefault();
-      
+
       // Use deltaY for vertical scrolling (most common)
       const delta = -e.deltaY;
-      const zoomFactor = 1 + (delta * settings.zoomSensitivity * 0.001);
-      
+      const zoomFactor = 1 + delta * settings.zoomSensitivity * 0.001;
+
       const newScale = Math.max(
         settings.minZoom,
         Math.min(settings.maxZoom, transform.scale * zoomFactor),
@@ -209,7 +228,9 @@ export function useVisualizationInteraction(
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLCanvasElement>) => {
-      if (!settings.enableKeyboard) {return;}
+      if (!settings.enableKeyboard) {
+        return;
+      }
 
       const step = 10 * settings.panSensitivity;
       const zoomStep = 0.1 * settings.zoomSensitivity;

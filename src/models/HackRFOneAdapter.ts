@@ -23,6 +23,7 @@ export class HackRFOneAdapter implements ISDRDevice {
   private device: HackRFOne;
   private currentFrequency: number = 100e6; // 100 MHz default
   private currentSampleRate: number = 20e6; // 20 MS/s default
+  private currentBandwidth: number = 20e6; // 20 MHz default
   private isReceivingFlag: boolean = false;
 
   constructor(usbDevice: USBDevice) {
@@ -49,6 +50,10 @@ export class HackRFOneAdapter implements ISDRDevice {
       maxVGAGain: 62, // 0-62 dB in 2 dB steps
       supportsAmpControl: true,
       supportsAntennaControl: true,
+      supportedBandwidths: [
+        1.75e6, 2.5e6, 3.5e6, 5e6, 5.5e6, 6e6, 7e6, 8e6, 9e6, 10e6, 12e6, 14e6,
+        15e6, 20e6, 24e6, 28e6,
+      ], // HackRF baseband filter bandwidths
     };
   }
 
@@ -105,6 +110,35 @@ export class HackRFOneAdapter implements ISDRDevice {
     await this.device.setAmpEnable(enabled);
   }
 
+  async setBandwidth(bandwidthHz: number): Promise<void> {
+    const capabilities = this.getCapabilities();
+    const supportedBandwidths = capabilities.supportedBandwidths || [];
+
+    // Validate bandwidth is supported
+    if (
+      supportedBandwidths.length > 0 &&
+      !supportedBandwidths.includes(bandwidthHz)
+    ) {
+      // Find the closest supported bandwidth
+      const nearest = supportedBandwidths.reduce((prev, curr) =>
+        Math.abs(curr - bandwidthHz) < Math.abs(prev - bandwidthHz)
+          ? curr
+          : prev,
+      );
+      console.warn(
+        `Bandwidth ${bandwidthHz / 1e6} MHz not supported. Using nearest: ${nearest / 1e6} MHz`,
+      );
+      bandwidthHz = nearest;
+    }
+
+    this.currentBandwidth = bandwidthHz;
+    await this.device.setBandwidth(bandwidthHz);
+  }
+
+  async getBandwidth(): Promise<number> {
+    return this.currentBandwidth;
+  }
+
   async receive(
     callback: IQSampleCallback,
     config?: Partial<SDRStreamConfig>,
@@ -116,6 +150,9 @@ export class HackRFOneAdapter implements ISDRDevice {
       }
       if (config.sampleRate !== undefined) {
         await this.setSampleRate(config.sampleRate);
+      }
+      if (config.bandwidth !== undefined) {
+        await this.setBandwidth(config.bandwidth);
       }
       if (config.lnaGain !== undefined) {
         await this.setLNAGain(config.lnaGain);

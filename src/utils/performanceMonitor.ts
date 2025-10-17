@@ -249,9 +249,24 @@ class PerformanceMonitor {
       avg: sum / metrics.length,
       min: durations[0]!,
       max: durations[durations.length - 1]!,
-      p50: durations[Math.min(Math.max(Math.ceil(durations.length * 0.5) - 1, 0), durations.length - 1)]!,
-      p95: durations[Math.min(Math.max(Math.ceil(durations.length * 0.95) - 1, 0), durations.length - 1)]!,
-      p99: durations[Math.min(Math.max(Math.ceil(durations.length * 0.99) - 1, 0), durations.length - 1)]!,
+      p50: durations[
+        Math.min(
+          Math.max(Math.ceil(durations.length * 0.5) - 1, 0),
+          durations.length - 1,
+        )
+      ]!,
+      p95: durations[
+        Math.min(
+          Math.max(Math.ceil(durations.length * 0.95) - 1, 0),
+          durations.length - 1,
+        )
+      ]!,
+      p99: durations[
+        Math.min(
+          Math.max(Math.ceil(durations.length * 0.99) - 1, 0),
+          durations.length - 1,
+        )
+      ]!,
     };
   }
 

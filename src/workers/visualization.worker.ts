@@ -6,6 +6,7 @@ type MessageInit = {
   vizType: "spectrogram" | "constellation" | "waveform";
   width: number;
   height: number;
+  dpr?: number;
   freqMin?: number;
   freqMax?: number;
 };
@@ -21,6 +22,12 @@ type WaveformSample =
     }
   | Sample;
 
+type ViewTransform = {
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+};
+
 type MessageRender = {
   type: "render";
   data: {
@@ -28,6 +35,7 @@ type MessageRender = {
     fftData?: Float32Array[];
     freqMin?: number;
     freqMax?: number;
+    transform?: ViewTransform;
   };
 };
 
@@ -35,6 +43,7 @@ type MessageResize = {
   type: "resize";
   width: number;
   height: number;
+  dpr?: number;
 };
 
 let offscreen: OffscreenCanvas | null = null;
@@ -42,13 +51,20 @@ let ctx: OffscreenCanvasRenderingContext2D | null = null;
 let vizType: MessageInit["vizType"] | null = null;
 let width = 0;
 let height = 0;
+let dpr = 1;
 let freqMin = 0;
 let freqMax = 0;
 
-function setup(canvas: OffscreenCanvas, w: number, h: number): void {
+function setup(
+  canvas: OffscreenCanvas,
+  w: number,
+  h: number,
+  devicePixelRatio: number,
+): void {
   offscreen = canvas;
   width = w;
   height = h;
+  dpr = devicePixelRatio;
   ctx = offscreen.getContext("2d", {
     alpha: false,
   }) as OffscreenCanvasRenderingContext2D;
@@ -59,10 +75,8 @@ function setup(canvas: OffscreenCanvas, w: number, h: number): void {
     });
     return;
   }
-  // handle high-DPI inside the worker by scaling to devicePixelRatio (browser provides it on main thread, but fallback to 1)
-  const dpr = 1; // OffscreenCanvas can't access window.devicePixelRatio reliably in workers
-  offscreen.width = Math.round(width * dpr);
-  offscreen.height = Math.round(height * dpr);
+  // Canvas dimensions are already set on main thread before transfer
+  // Just need to apply scaling for logical coordinates
   const ctxReset = ctx as { reset?: () => void };
   if (typeof ctxReset.reset === "function") {
     ctxReset.reset();
@@ -78,13 +92,20 @@ function clearBackground(): void {
   ctx.fillRect(0, 0, width, height);
 }
 
-function drawConstellation(samples: Sample[]): void {
+function drawConstellation(samples: Sample[], transform?: ViewTransform): void {
   if (!ctx) {
     return;
   }
   const c = ctx;
   const start = performance.now();
   clearBackground();
+
+  // Apply user interaction transform (pan and zoom)
+  if (transform) {
+    c.save();
+    c.translate(transform.offsetX, transform.offsetY);
+    c.scale(transform.scale, transform.scale);
+  }
   const margin = { top: 60, bottom: 70, left: 80, right: 60 };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
@@ -150,6 +171,11 @@ function drawConstellation(samples: Sample[]): void {
     c!.arc(x, y, density > 0.5 ? 2.5 : 2, 0, Math.PI * 2);
     c!.fill();
   });
+
+  // Restore context state after transform
+  if (transform) {
+    c.restore();
+  }
 
   const end = performance.now();
   postMessage({
@@ -303,16 +329,24 @@ self.onmessage = (
       vizType = msg.vizType;
       freqMin = msg.freqMin ?? 0;
       freqMax = msg.freqMax ?? 0;
-      setup(msg.canvas, msg.width, msg.height);
+      setup(msg.canvas, msg.width, msg.height, msg.dpr ?? 1);
       return;
     }
 
     if (msg.type === "resize") {
       width = msg.width;
       height = msg.height;
-      if (offscreen) {
-        offscreen.width = width;
-        offscreen.height = height;
+      if (msg.dpr !== undefined) {
+        dpr = msg.dpr;
+      }
+      if (offscreen && ctx) {
+        offscreen.width = Math.round(width * dpr);
+        offscreen.height = Math.round(height * dpr);
+        const ctxReset = ctx as { reset?: () => void };
+        if (typeof ctxReset.reset === "function") {
+          ctxReset.reset();
+        }
+        ctx.scale(dpr, dpr);
       }
       return;
     }
@@ -322,7 +356,7 @@ self.onmessage = (
         return;
       }
       if (vizType === "constellation") {
-        drawConstellation(msg.data.samples || []);
+        drawConstellation(msg.data.samples || [], msg.data.transform);
       } else if (vizType === "spectrogram") {
         drawSpectrogram(
           msg.data.fftData || [],

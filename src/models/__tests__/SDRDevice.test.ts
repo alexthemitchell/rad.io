@@ -31,6 +31,7 @@ class MockSDRDevice implements ISDRDevice {
   private _sampleRate = 10e6; // 10 MSPS default
   private _lnaGain = 16;
   private _ampEnabled = false;
+  private _bandwidth = 20e6; // 20 MHz default
   private receiveInterval?: NodeJS.Timeout;
 
   // Memory management
@@ -130,6 +131,24 @@ class MockSDRDevice implements ISDRDevice {
       throw new Error("Device not open");
     }
     this._ampEnabled = enabled;
+  }
+
+  async setBandwidth(bandwidthHz: number): Promise<void> {
+    if (!this._isOpen) {
+      throw new Error("Device not open");
+    }
+    const supportedBandwidths = this.capabilities.supportedBandwidths || [];
+    if (
+      supportedBandwidths.length > 0 &&
+      !supportedBandwidths.includes(bandwidthHz)
+    ) {
+      throw new Error(`Bandwidth ${bandwidthHz} Hz not supported`);
+    }
+    this._bandwidth = bandwidthHz;
+  }
+
+  async getBandwidth(): Promise<number> {
+    return this._bandwidth;
   }
 
   async receive(callback: (data: DataView) => void): Promise<void> {
@@ -436,6 +455,71 @@ describe("SDRDevice Interface", () => {
     it("should disable amplifier", async () => {
       await device.setAmpEnable(false);
       expect(true).toBe(true);
+    });
+  });
+
+  describe("Bandwidth Control", () => {
+    let device: MockSDRDevice;
+
+    beforeEach(async () => {
+      device = new MockSDRDevice();
+      await device.open();
+    });
+
+    afterEach(async () => {
+      await device.close();
+    });
+
+    it("should set bandwidth", async () => {
+      if (device.setBandwidth) {
+        await device.setBandwidth(10e6);
+        if (device.getBandwidth) {
+          const bw = await device.getBandwidth();
+          expect(bw).toBe(10e6);
+        }
+      }
+    });
+
+    it("should accept all supported bandwidths", async () => {
+      const caps = device.getCapabilities();
+      const supportedBandwidths = caps.supportedBandwidths || [];
+
+      if (device.setBandwidth && supportedBandwidths.length > 0) {
+        for (const bw of supportedBandwidths) {
+          await device.setBandwidth(bw);
+          if (device.getBandwidth) {
+            const setBw = await device.getBandwidth();
+            expect(setBw).toBe(bw);
+          }
+        }
+      }
+    });
+
+    it("should reject unsupported bandwidth", async () => {
+      if (device.setBandwidth) {
+        await expect(device.setBandwidth(999e6)).rejects.toThrow(
+          "not supported",
+        );
+      }
+    });
+
+    it("should provide bandwidth capabilities", () => {
+      const caps = device.getCapabilities();
+      expect(caps.supportedBandwidths).toBeDefined();
+      expect(caps.supportedBandwidths).toBeInstanceOf(Array);
+      if (caps.supportedBandwidths) {
+        expect(caps.supportedBandwidths.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("should include standard HackRF bandwidths", () => {
+      const caps = device.getCapabilities();
+      const supportedBandwidths = caps.supportedBandwidths || [];
+
+      // Check for common HackRF bandwidths
+      expect(supportedBandwidths).toContain(1.75e6);
+      expect(supportedBandwidths).toContain(20e6);
+      expect(supportedBandwidths).toContain(28e6);
     });
   });
 
