@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
+import { useLiveRegion } from "../hooks/useLiveRegion";
 import SignalTypeSelector, {
   SignalType,
 } from "../components/SignalTypeSelector";
@@ -17,7 +18,7 @@ function Scanner(): React.JSX.Element {
   const scanner = useFrequencyScanner(device);
 
   // Live region for screen reader announcements
-  const [liveRegionMessage, setLiveRegionMessage] = useState("");
+  const { announce, LiveRegion } = useLiveRegion();
 
   // P25 Trunked Radio State
   const [talkgroups, setTalkgroups] = useState<Talkgroup[]>([
@@ -65,7 +66,7 @@ function Scanner(): React.JSX.Element {
 
   const handleSignalTypeChange = (type: SignalType): void => {
     setSignalType(type);
-    setLiveRegionMessage(`Signal type changed to ${type}`);
+    announce(`Signal type changed to ${type}`);
   };
 
   const handleTalkgroupToggle = (id: string): void => {
@@ -94,14 +95,7 @@ function Scanner(): React.JSX.Element {
         Skip to main content
       </a>
 
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="visually-hidden"
-      >
-        {liveRegionMessage}
-      </div>
+      <LiveRegion />
 
       <main id="main-content" role="main">
         <Card

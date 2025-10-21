@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useLiveRegion } from "../hooks/useLiveRegion";
 import SignalTypeSelector, {
   SignalType,
 } from "../components/SignalTypeSelector";
@@ -78,7 +79,7 @@ function LiveMonitor(): React.JSX.Element {
   const AUDIO_BUFFER_SIZE = 131072;
 
   // Live region for screen reader announcements
-  const [liveRegionMessage, setLiveRegionMessage] = useState("");
+  const { announce, LiveRegion } = useLiveRegion();
 
   // P25 state
   const [controlChannel, setControlChannel] = useState(770.95625e6);
@@ -209,12 +210,12 @@ function LiveMonitor(): React.JSX.Element {
         audioSampleBufferRef.current = [];
         audioProcessorRef.current?.reset();
       }
-      setLiveRegionMessage(
+      announce(
         newState ? "Audio playback started" : "Audio playback stopped",
       );
       return newState;
     });
-  }, []);
+  }, [announce]);
 
   const handleVolumeChange = useCallback((volume: number) => {
     setAudioVolume(volume);
@@ -223,10 +224,10 @@ function LiveMonitor(): React.JSX.Element {
   const handleToggleMute = useCallback(() => {
     setIsAudioMuted((prev) => {
       const newState = !prev;
-      setLiveRegionMessage(newState ? "Audio muted" : "Audio unmuted");
+      announce(newState ? "Audio muted" : "Audio unmuted");
       return newState;
     });
-  }, []);
+  }, [announce]);
 
   const cancelScheduledUpdate = useCallback((): void => {
     if (
@@ -311,7 +312,7 @@ function LiveMonitor(): React.JSX.Element {
       clearVisualizationState();
       setListening(true);
       setDeviceError(null);
-      setLiveRegionMessage("Started receiving radio signals");
+      announce("Started receiving radio signals");
 
       console.warn("beginDeviceStreaming: Configuring device before streaming");
       try {
@@ -334,7 +335,7 @@ function LiveMonitor(): React.JSX.Element {
           console.error(err);
           const error = err instanceof Error ? err : new Error(String(err));
           setDeviceError(error);
-          setLiveRegionMessage("Failed to receive radio signals");
+          announce("Failed to receive radio signals");
           throw err;
         })
         .finally(() => {
@@ -351,7 +352,7 @@ function LiveMonitor(): React.JSX.Element {
         receivePromiseRef.current = null;
       }
     },
-    [clearVisualizationState, handleSampleChunk],
+    [clearVisualizationState, handleSampleChunk, announce],
   );
 
   const handleSetFrequency = async (newFrequency: number): Promise<void> => {
@@ -362,7 +363,7 @@ function LiveMonitor(): React.JSX.Element {
         signalType === "FM"
           ? `${(newFrequency / 1e6).toFixed(1)} MHz`
           : `${(newFrequency / 1e3).toFixed(0)} kHz`;
-      setLiveRegionMessage(`Frequency changed to ${displayFreq}`);
+      announce(`Frequency changed to ${displayFreq}`);
     }
   };
 
@@ -370,13 +371,13 @@ function LiveMonitor(): React.JSX.Element {
     setBandwidth(newBandwidth);
     if (device && device.setBandwidth) {
       await device.setBandwidth(newBandwidth);
-      setLiveRegionMessage(`Bandwidth filter set to ${newBandwidth / 1e6} MHz`);
+      announce(`Bandwidth filter set to ${newBandwidth / 1e6} MHz`);
     }
   };
 
   const handleSignalTypeChange = (type: SignalType): void => {
     setSignalType(type);
-    setLiveRegionMessage(`Signal type changed to ${type}`);
+    announce(`Signal type changed to ${type}`);
     if (type === "FM" && frequency < 88.1e6) {
       handleSetFrequency(100.3e6).catch(console.error);
     } else if (type === "AM" && frequency > 1.7e6) {
@@ -441,14 +442,14 @@ function LiveMonitor(): React.JSX.Element {
       }
       shouldStartOnConnectRef.current = true;
       setIsInitializing(true);
-      setLiveRegionMessage("Connecting to SDR device...");
+      announce("Connecting to SDR device...");
       try {
         await initialize();
-        setLiveRegionMessage("SDR device connected");
+        announce("SDR device connected");
       } catch (err) {
         console.error(err);
         shouldStartOnConnectRef.current = false;
-        setLiveRegionMessage(
+        announce(
           "Failed to connect to device. Please check device connection and browser permissions.",
         );
       } finally {
@@ -459,7 +460,7 @@ function LiveMonitor(): React.JSX.Element {
 
     shouldStartOnConnectRef.current = false;
     void beginDeviceStreaming(device);
-  }, [beginDeviceStreaming, device, initialize, isInitializing, listening]);
+  }, [beginDeviceStreaming, device, initialize, isInitializing, listening, announce]);
 
   const stopListening = useCallback(async (): Promise<void> => {
     if (device && device.isReceiving()) {
@@ -481,8 +482,8 @@ function LiveMonitor(): React.JSX.Element {
 
     cancelScheduledUpdate();
     setListening(false);
-    setLiveRegionMessage("Stopped receiving radio signals");
-  }, [cancelScheduledUpdate, device]);
+    announce("Stopped receiving radio signals");
+  }, [cancelScheduledUpdate, device, announce]);
 
   return (
     <div className="container">
@@ -490,14 +491,7 @@ function LiveMonitor(): React.JSX.Element {
         Skip to main content
       </a>
 
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="visually-hidden"
-      >
-        {liveRegionMessage}
-      </div>
+      <LiveRegion />
 
       <main id="main-content" role="main">
         <div

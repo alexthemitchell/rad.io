@@ -17,7 +17,7 @@ function App(): React.JSX.Element {
       <div>
         <header className="header" role="banner">
           <h1>rad.io</h1>
-          <p>Software-Defined Radio Visualizer - Auto-Connect Enabled</p>
+          <p>Software-Defined Radio Visualizer</p>
           <Navigation />
         </header>
 

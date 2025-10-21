@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useLiveRegion } from "../hooks/useLiveRegion";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import Card from "../components/Card";
@@ -24,7 +25,7 @@ function Analysis(): React.JSX.Element {
   const receivePromiseRef = useRef<Promise<void> | null>(null);
 
   // Live region for screen reader announcements
-  const [liveRegionMessage, setLiveRegionMessage] = useState("");
+  const { announce, LiveRegion } = useLiveRegion();
 
   const cancelScheduledUpdate = useCallback((): void => {
     if (
@@ -115,7 +116,7 @@ function Analysis(): React.JSX.Element {
     async (activeDevice: ISDRDevice): Promise<void> => {
       clearVisualizationState();
       setListening(true);
-      setLiveRegionMessage("Started receiving radio signals for analysis");
+      announce("Started receiving radio signals for analysis");
 
       console.warn("beginDeviceStreaming: Configuring device before streaming");
       try {
@@ -134,7 +135,7 @@ function Analysis(): React.JSX.Element {
         })
         .catch((err) => {
           console.error(err);
-          setLiveRegionMessage("Failed to receive radio signals");
+          announce("Failed to receive radio signals");
           throw err;
         })
         .finally(() => {
@@ -151,7 +152,7 @@ function Analysis(): React.JSX.Element {
         receivePromiseRef.current = null;
       }
     },
-    [clearVisualizationState, handleSampleChunk],
+    [clearVisualizationState, handleSampleChunk, announce],
   );
 
   // Start streaming if device is receiving
@@ -187,8 +188,8 @@ function Analysis(): React.JSX.Element {
 
     cancelScheduledUpdate();
     setListening(false);
-    setLiveRegionMessage("Stopped receiving radio signals");
-  }, [cancelScheduledUpdate, device]);
+    announce("Stopped receiving radio signals");
+  }, [cancelScheduledUpdate, device, announce]);
 
   return (
     <div className="container">
@@ -196,14 +197,7 @@ function Analysis(): React.JSX.Element {
         Skip to main content
       </a>
 
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="visually-hidden"
-      >
-        {liveRegionMessage}
-      </div>
+      <LiveRegion />
 
       <main id="main-content" role="main">
         <Card
