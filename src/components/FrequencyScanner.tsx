@@ -279,7 +279,7 @@ function FrequencyScanner({
                 </tr>
               </thead>
               <tbody>
-                {activeSignals
+                {[...activeSignals]
                   .sort((a, b) => b.strength - a.strength)
                   .map((signal, index) => (
                     <tr key={`${signal.frequency}-${index}`}>

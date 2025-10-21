@@ -68,7 +68,9 @@ export function useFrequencyScanner(
   const [activeSignals, setActiveSignals] = useState<ActiveSignal[]>([]);
   const [progress, setProgress] = useState(0);
 
-  const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track an in-flight dwell/settle timeout and its resolver so we can abort instantly
+  const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dwellResolveRef = useRef<(() => void) | null>(null);
   const samplesRef = useRef<number[]>([]);
   const isScanningRef = useRef(false);
 
@@ -102,8 +104,27 @@ export function useFrequencyScanner(
         await device.setFrequency(frequency);
         setCurrentFrequency(frequency);
 
-        // Wait for dwell time to collect samples
-        await new Promise((resolve) => setTimeout(resolve, config.dwellTime));
+        // Clear any previous samples immediately after tuning to avoid contamination
+        samplesRef.current = [];
+
+        // Wait for dwell time to collect samples (abortable)
+        await new Promise<void>((resolve) => {
+          // Store resolver so pause/stop can resolve early
+          dwellResolveRef.current = (): void => {
+            dwellResolveRef.current = null;
+            resolve();
+          };
+          scanTimeoutRef.current = setTimeout(() => {
+            scanTimeoutRef.current = null;
+            dwellResolveRef.current = null;
+            resolve();
+          }, config.dwellTime);
+        });
+
+        // If scanning has been paused/stopped during dwell, exit early
+        if (!isScanningRef.current) {
+          return;
+        }
 
         // Calculate signal strength from collected samples
         const strength = calculateSignalStrength(samplesRef.current);
@@ -130,7 +151,7 @@ export function useFrequencyScanner(
           onSignalDetected?.(signal);
         }
 
-        // Clear samples for next frequency
+        // Clear samples for next frequency window
         samplesRef.current = [];
       } catch (error) {
         console.error(`Error scanning frequency ${frequency}:`, error);
@@ -154,7 +175,20 @@ export function useFrequencyScanner(
     }
 
     const { startFrequency, endFrequency, stepSize } = config;
-    const totalSteps = Math.ceil((endFrequency - startFrequency) / stepSize);
+    if (stepSize <= 0 || endFrequency < startFrequency) {
+      // Invalid configuration, abort scan gracefully
+      setState("idle");
+      isScanningRef.current = false;
+      setCurrentFrequency(null);
+      setProgress(0);
+      return;
+    }
+
+    // Inclusive step count (start and end included)
+    const totalSteps = Math.max(
+      1,
+      Math.floor((endFrequency - startFrequency) / stepSize) + 1,
+    );
     let currentStep = 0;
 
     for (
@@ -164,7 +198,8 @@ export function useFrequencyScanner(
     ) {
       await scanFrequency(freq);
       currentStep++;
-      setProgress((currentStep / totalSteps) * 100);
+      const pct = Math.min(100, (currentStep / totalSteps) * 100);
+      setProgress(pct);
     }
 
     // Scan complete
@@ -194,8 +229,18 @@ export function useFrequencyScanner(
     setProgress(0);
     setActiveSignals([]);
 
-    // Start the scan
-    performScan();
+    // Start the scan (fire-and-forget). We intentionally do not await here
+    // to avoid blocking the UI thread and to keep startScan() resolving
+    // immediately (tests rely on this). Handle rejection to avoid unhandled
+    // promise rejections.
+    void performScan().catch((err) => {
+      console.error("Error during performScan():", err);
+      // Fail-safe: reset scanning state if the scan pipeline unexpectedly rejects
+      setState("idle");
+      isScanningRef.current = false;
+      setCurrentFrequency(null);
+      setProgress(0);
+    });
   }, [device, state, performScan]);
 
   /**
@@ -205,9 +250,13 @@ export function useFrequencyScanner(
     if (state === "scanning") {
       setState("paused");
       isScanningRef.current = false;
+      // Abort any in-flight dwell
       if (scanTimeoutRef.current) {
         clearTimeout(scanTimeoutRef.current);
         scanTimeoutRef.current = null;
+      }
+      if (dwellResolveRef.current) {
+        dwellResolveRef.current();
       }
     }
   }, [state]);
@@ -219,7 +268,14 @@ export function useFrequencyScanner(
     if (state === "paused") {
       setState("scanning");
       isScanningRef.current = true;
-      performScan();
+      // Resume scan without awaiting to avoid blocking; catch errors for safety
+      void performScan().catch((err) => {
+        console.error("Error during performScan() on resume:", err);
+        setState("idle");
+        isScanningRef.current = false;
+        setCurrentFrequency(null);
+        setProgress(0);
+      });
     }
   }, [state, performScan]);
 
@@ -234,6 +290,9 @@ export function useFrequencyScanner(
     if (scanTimeoutRef.current) {
       clearTimeout(scanTimeoutRef.current);
       scanTimeoutRef.current = null;
+    }
+    if (dwellResolveRef.current) {
+      dwellResolveRef.current();
     }
   }, []);
 
@@ -273,6 +332,9 @@ export function useFrequencyScanner(
     return (): void => {
       if (scanTimeoutRef.current) {
         clearTimeout(scanTimeoutRef.current);
+      }
+      if (dwellResolveRef.current) {
+        dwellResolveRef.current();
       }
     };
   }, []);
