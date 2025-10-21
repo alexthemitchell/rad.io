@@ -1,5 +1,4 @@
 import { NavLink } from "react-router-dom";
-import "../styles/main.css";
 
 function Navigation(): React.JSX.Element {
   return (
