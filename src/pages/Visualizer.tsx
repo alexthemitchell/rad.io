@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import SignalTypeSelector, {
   SignalType,
 } from "../components/SignalTypeSelector";
@@ -12,6 +13,7 @@ import TalkgroupScanner, { Talkgroup } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import P25SystemPresets from "../components/P25SystemPresets";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
+import FrequencyScanner from "../components/FrequencyScanner";
 import Card from "../components/Card";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
@@ -43,6 +45,9 @@ function Visualizer(): React.JSX.Element {
   const [latestSamples, setLatestSamples] = useState<Sample[]>([]);
   const [currentFPS, setCurrentFPS] = useState<number>(0);
   const [deviceError, setDeviceError] = useState<Error | null>(null);
+
+  // Frequency scanner hook
+  const scanner = useFrequencyScanner(device);
 
   // Audio playback state
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -281,7 +286,7 @@ function Visualizer(): React.JSX.Element {
         return;
       }
 
-      console.warn(`handleSampleChunk: received ${chunk.length} samples`);
+      console.debug(`handleSampleChunk: received ${chunk.length} samples`);
 
       const markName = `pipeline-chunk-start-${
         typeof performance !== "undefined" ? performance.now() : Date.now()
@@ -303,17 +308,23 @@ function Visualizer(): React.JSX.Element {
         console.error("Audio processing error:", error);
       });
 
+      // Update frequency scanner with amplitude data
+      if (scanner.state === "scanning") {
+        const amplitudes = chunk.map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
+        scanner.updateSamples(amplitudes);
+      }
+
       performanceMonitor.measure("pipeline-processing", markName);
 
       const now =
         typeof performance !== "undefined" ? performance.now() : Date.now();
       if (now - lastUpdateRef.current >= UPDATE_INTERVAL_MS) {
         lastUpdateRef.current = now;
-        console.warn("Scheduling visualization update");
+        console.debug("Scheduling visualization update");
         scheduleVisualizationUpdate();
       }
     },
-    [scheduleVisualizationUpdate, processAudioChunk],
+    [scheduleVisualizationUpdate, processAudioChunk, scanner],
   );
 
   const beginDeviceStreaming = useCallback(
@@ -748,6 +759,23 @@ function Visualizer(): React.JSX.Element {
             onToggleMute={handleToggleMute}
           />
         </Card>
+
+        {signalType !== "P25" && (
+          <FrequencyScanner
+            state={scanner.state}
+            config={scanner.config}
+            currentFrequency={scanner.currentFrequency}
+            activeSignals={scanner.activeSignals}
+            progress={scanner.progress}
+            onStartScan={scanner.startScan}
+            onPauseScan={scanner.pauseScan}
+            onResumeScan={scanner.resumeScan}
+            onStopScan={scanner.stopScan}
+            onConfigChange={scanner.updateConfig}
+            onClearSignals={scanner.clearSignals}
+            deviceAvailable={device !== undefined && device.isOpen()}
+          />
+        )}
 
         {signalType === "P25" && (
           <>

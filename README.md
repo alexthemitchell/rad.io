@@ -9,6 +9,7 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **AM/FM/P25 Band Selection**: Toggle between FM (88.1-107.9 MHz), AM (530-1700 kHz), and P25 Phase 2 (700-800 MHz, 150-174 MHz)
 - **Preset Stations**: One-click tuning to popular stations
 - **Manual Frequency Control**: Precise frequency adjustment
+- **Frequency Scanner**: Automated scanning across user-defined ranges with signal detection and logging
 - **Device Configuration**: LNA gain, amplifier control, sample rate
 
 ### Professional Visualizations 📊
@@ -109,6 +110,38 @@ npm run build
 2. Click "Start Reception" button
 3. Visualizations update with live data
 4. Click "Stop Reception" to pause
+
+### Frequency Scanner
+
+The automated frequency scanner sweeps through a user-defined range to detect and log active signals.
+
+**Configuration:**
+
+1. **Start Frequency**: Lower bound of scan range (MHz)
+2. **End Frequency**: Upper bound of scan range (MHz)
+3. **Step Size**: Frequency increment between scans (kHz)
+4. **Detection Threshold**: Signal strength required to log a signal (0-100%)
+5. **Dwell Time**: Time spent on each frequency (ms)
+
+**Usage:**
+
+1. Configure scan parameters (default: 88-108 MHz, 100 kHz steps, 30% threshold)
+2. Click "Start Scan" to begin automated scanning
+3. Active signals are detected and logged in the table
+4. Use "Pause" to temporarily halt scanning
+5. Use "Resume" to continue from paused state
+6. Use "Stop" to end scanning completely
+7. Export results to JSON for further analysis
+
+**Active Signals Table:**
+
+- Lists all detected signals sorted by strength
+- Shows frequency, signal strength percentage, and detection time
+- Color-coded strength bars: Red (weak), Orange (moderate), Green (strong)
+- "Export" button saves results as JSON file
+- "Clear" button removes all detected signals from the list
+
+**Note**: Device must be connected and scanning only works for FM/AM modes (not P25).
 
 ### Understanding the Visualizations
 
