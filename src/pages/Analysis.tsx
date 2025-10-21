@@ -167,7 +167,7 @@ function Analysis(): React.JSX.Element {
     };
   }, [cancelScheduledUpdate]);
 
-  const stopListening = useCallback(async (): Promise<void> => {
+  const _stopListening = useCallback(async (): Promise<void> => {
     if (device && device.isReceiving()) {
       try {
         await device.stopRx();

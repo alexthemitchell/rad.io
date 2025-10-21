@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import SignalTypeSelector, {
   SignalType,
@@ -28,6 +29,7 @@ const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
 
 function LiveMonitor(): React.JSX.Element {
+  const location = useLocation();
   const { device, initialize, cleanup, isCheckingPaired } = useHackRFDevice();
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -37,6 +39,24 @@ function LiveMonitor(): React.JSX.Element {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [latestSamples, setLatestSamples] = useState<Sample[]>([]);
   const [deviceError, setDeviceError] = useState<Error | null>(null);
+
+  // Handle navigation state (e.g., from Scanner)
+  useEffect(() => {
+    const state = location.state as {
+      frequency?: number;
+      signalType?: SignalType;
+    } | null;
+    if (state?.frequency) {
+      setFrequency(state.frequency);
+      if (state.signalType) {
+        setSignalType(state.signalType);
+      }
+      // Tune to the frequency if device is available
+      if (device) {
+        device.setFrequency(state.frequency).catch(console.error);
+      }
+    }
+  }, [location.state, device]);
 
   // Audio playback state
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
