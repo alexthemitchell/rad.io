@@ -43,7 +43,7 @@ class PerformanceMonitor {
    */
   private initializeObserver(): void {
     if (typeof PerformanceObserver === "undefined") {
-      console.warn("PerformanceObserver not available in this environment");
+      // Not available in this environment (e.g., Node/JSDOM). Silently skip.
       return;
     }
 
@@ -68,8 +68,8 @@ class PerformanceMonitor {
 
       // Observe measures and marks
       this.observer.observe({ entryTypes: ["measure", "mark"] });
-    } catch (error) {
-      console.warn("Could not initialize PerformanceObserver:", error);
+    } catch {
+      // Silently skip observer initialization failures
     }
   }
 
@@ -91,14 +91,19 @@ class PerformanceMonitor {
    * Mark the start of a performance measurement
    */
   mark(name: string): void {
-    if (!this.enabled || typeof performance === "undefined") {
+    if (
+      !this.enabled ||
+      typeof performance === "undefined" ||
+      typeof performance.mark !== "function"
+    ) {
       return;
     }
 
+    // Fail silently if marking isn't supported
     try {
       performance.mark(name);
-    } catch (error) {
-      console.warn(`Could not create performance mark '${name}':`, error);
+    } catch {
+      // no-op
     }
   }
 
@@ -106,7 +111,13 @@ class PerformanceMonitor {
    * Measure performance between two marks
    */
   measure(name: string, startMark: string, endMark?: string): void {
-    if (!this.enabled || typeof performance === "undefined") {
+    if (
+      !this.enabled ||
+      typeof performance === "undefined" ||
+      typeof performance.mark !== "function" ||
+      typeof performance.measure !== "function" ||
+      typeof performance.getEntriesByName !== "function"
+    ) {
       return;
     }
 
@@ -146,11 +157,8 @@ class PerformanceMonitor {
           categoryMetrics.shift();
         }
       }
-    } catch (error) {
-      console.warn(
-        `Could not create performance measure '${name}' from '${startMark}' to '${endMark}':`,
-        error,
-      );
+    } catch {
+      // no-op
     }
   }
 
@@ -277,12 +285,16 @@ class PerformanceMonitor {
     this.metrics.clear();
     this.longTasks = [];
 
-    if (typeof performance !== "undefined") {
+    if (
+      typeof performance !== "undefined" &&
+      typeof performance.clearMarks === "function" &&
+      typeof performance.clearMeasures === "function"
+    ) {
       try {
         performance.clearMarks();
         performance.clearMeasures();
-      } catch (error) {
-        console.warn("Could not clear performance entries:", error);
+      } catch {
+        // no-op
       }
     }
   }
@@ -367,7 +379,12 @@ export function measurePerformance<T extends (...args: unknown[]) => unknown>(
 ): T {
   return ((...args: unknown[]) => {
     const counter = performanceMarkCounter++;
-    const startMark = `${name}-start-${performance.now()}-${counter}`;
+    const now =
+      typeof performance !== "undefined" &&
+      typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+    const startMark = `${name}-start-${now}-${counter}`;
     performanceMonitor.mark(startMark);
 
     try {
