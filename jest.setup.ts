@@ -1,4 +1,9 @@
 import "@testing-library/jest-dom";
+import { TextEncoder, TextDecoder } from "util";
+
+// Polyfill TextEncoder/TextDecoder for react-router-dom in tests
+global.TextEncoder = TextEncoder as any;
+global.TextDecoder = TextDecoder as any;
 
 // Mock canvas methods for testing
 HTMLCanvasElement.prototype.getContext = function () {

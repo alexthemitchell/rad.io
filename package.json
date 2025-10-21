@@ -37,6 +37,7 @@
     "@types/jest": "^29.5.14",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
+    "@types/react-router-dom": "^5.3.3",
     "@types/w3c-web-usb": "^1.0.10",
     "assemblyscript": "^0.28.8",
     "copy-webpack-plugin": "^13.0.1",
@@ -61,7 +62,8 @@
   },
   "dependencies": {
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.9.4"
   },
   "exports": {
     ".": {

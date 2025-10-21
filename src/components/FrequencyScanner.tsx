@@ -30,6 +30,8 @@ export interface FrequencyScannerProps {
   onClearSignals: () => void;
   /** Whether device is available */
   deviceAvailable: boolean;
+  /** Optional callback to tune to a found signal */
+  onTuneToSignal?: (frequency: number) => void;
 }
 
 /**
@@ -49,6 +51,7 @@ function FrequencyScanner({
   onConfigChange,
   onClearSignals,
   deviceAvailable,
+  onTuneToSignal,
 }: FrequencyScannerProps): React.JSX.Element {
   const isScanning = state === "scanning";
   const isPaused = state === "paused";
@@ -276,6 +279,7 @@ function FrequencyScanner({
                   <th>Frequency</th>
                   <th>Strength</th>
                   <th>Time</th>
+                  {onTuneToSignal && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -302,6 +306,17 @@ function FrequencyScanner({
                         </div>
                       </td>
                       <td>{signal.timestamp.toLocaleTimeString()}</td>
+                      {onTuneToSignal && (
+                        <td>
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => onTuneToSignal(signal.frequency)}
+                            title="Tune to this frequency in Live Monitor"
+                          >
+                            Tune
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
               </tbody>
