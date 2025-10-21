@@ -88,6 +88,17 @@ export default function IQConstellation({
         }
 
         if (gl) {
+          // Optimize: downsample for density calculation if too many samples
+          // Rendering all points is fine, but density calc can be expensive
+          const MAX_DENSITY_SAMPLES = 8192;
+          const densitySamples =
+            samples.length > MAX_DENSITY_SAMPLES
+              ? samples.filter(
+                  (_, i) =>
+                    i % Math.ceil(samples.length / MAX_DENSITY_SAMPLES) === 0,
+                )
+              : samples;
+
           // Build positions in NDC [-1,1] using min/max
           const iValues = samples.map((s) => s.I);
           const qValues = samples.map((s) => s.Q);
@@ -112,13 +123,16 @@ export default function IQConstellation({
           // Density-based alpha (approximate) on CPU
           const gridSize = 0.003;
           const densityMap = new Map<string, number>();
-          for (const s of samples) {
+          // Use downsampled set for density calculation
+          for (const s of densitySamples) {
             const gi = Math.round(s.I / gridSize) * gridSize;
             const gq = Math.round(s.Q / gridSize) * gridSize;
             const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
             densityMap.set(key, (densityMap.get(key) || 0) + 1);
           }
           const maxDensity = Math.max(...Array.from(densityMap.values()), 1);
+
+          // But use full sample set for rendering colors
           const colors = new Float32Array(samples.length * 4);
           for (let i = 0; i < samples.length; i++) {
             const s = samples[i]!;

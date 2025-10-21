@@ -132,7 +132,33 @@ export default function Spectrogram({
           if (!isFinite(gmax)) {
             gmax = 1;
           }
-          const effMin = gmin + (gmax - gmin) * 0.05;
+
+          // Adaptive dynamic range compression threshold
+          // Instead of fixed 5%, use percentile-based threshold for better weak signal visibility
+          // Collect all finite power values
+          const allPowers: number[] = [];
+          for (const row of fftData) {
+            for (let b = freqMin; b < freqMax && b < row.length; b++) {
+              const v = row[b]!;
+              if (isFinite(v)) {
+                allPowers.push(v);
+              }
+            }
+          }
+
+          // Calculate adaptive threshold based on 10th percentile
+          // This adapts to signal strength: strong signals compress more, weak signals less
+          let adaptiveThreshold = 0.05; // Default 5% fallback
+          if (allPowers.length > 0) {
+            allPowers.sort((a, b) => a - b);
+            const p10 = allPowers[Math.floor(allPowers.length * 0.1)]!;
+            // Normalize threshold based on data distribution
+            const dataSpread = (p10 - gmin) / Math.max(1e-9, gmax - gmin);
+            // Clamp between 5% and 20% for stability
+            adaptiveThreshold = Math.max(0.05, Math.min(0.2, dataSpread));
+          }
+
+          const effMin = gmin + (gmax - gmin) * adaptiveThreshold;
           const range = Math.max(1e-9, gmax - effMin);
 
           // Build RGBA texture data: width = frames, height = bins

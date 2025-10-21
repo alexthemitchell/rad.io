@@ -79,13 +79,22 @@ export type AudioStreamResult = {
 class FMDemodulator {
   private previousPhase = 0;
   private deEmphasisState = 0;
+  private dcBlockerState = 0;
+  private dcBlockerPrevInput = 0;
   private readonly deEmphasisAlpha: number;
+  private readonly dcBlockerAlpha: number;
 
   constructor(sampleRate: number, enableDeEmphasis = true) {
     // De-emphasis filter: 75μs time constant for broadcast FM
     // α = 1 / (1 + RC*fs) where RC = 75e-6 for broadcast FM
     const RC = 75e-6;
     this.deEmphasisAlpha = enableDeEmphasis ? 1 / (1 + RC * sampleRate) : 1.0;
+
+    // DC blocking filter: High-pass at ~0.5 Hz to remove DC drift
+    // α = 1 - (2π * f_cutoff / f_s) for small cutoffs
+    // Using α = 0.9999 gives cutoff ≈ 0.8 Hz at 48kHz sample rate
+    const dcCutoffHz = 0.5;
+    this.dcBlockerAlpha = 1 - (2 * Math.PI * dcCutoffHz) / sampleRate;
   }
 
   /**
@@ -124,7 +133,15 @@ class FMDemodulator {
         (1 - this.deEmphasisAlpha) * this.deEmphasisState;
       audio = this.deEmphasisState;
 
-      audioSamples[i] = audio;
+      // Apply DC blocking filter (IIR high-pass filter)
+      // y[n] = α * (y[n-1] + x[n] - x[n-1])
+      const dcBlocked =
+        this.dcBlockerAlpha *
+        (this.dcBlockerState + audio - this.dcBlockerPrevInput);
+      this.dcBlockerState = dcBlocked;
+      this.dcBlockerPrevInput = audio;
+
+      audioSamples[i] = dcBlocked;
       this.previousPhase = phase;
     }
 
@@ -137,6 +154,8 @@ class FMDemodulator {
   reset(): void {
     this.previousPhase = 0;
     this.deEmphasisState = 0;
+    this.dcBlockerState = 0;
+    this.dcBlockerPrevInput = 0;
   }
 }
 
@@ -153,7 +172,9 @@ class FMDemodulator {
  */
 class AMDemodulator {
   private dcFilterState = 0;
-  private readonly dcFilterAlpha = 0.001; // DC removal filter coefficient
+  private readonly dcFilterAlpha = 0.01; // DC removal filter coefficient (faster adaptation)
+  private sampleCount = 0;
+  private readonly initSamples = 100; // Initialization period
 
   /**
    * Demodulate IQ samples to audio using envelope detection
@@ -171,13 +192,28 @@ class AMDemodulator {
       // Calculate envelope (magnitude)
       const magnitude = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);
 
+      // Initialize DC estimate with first samples
+      if (this.sampleCount < this.initSamples) {
+        this.dcFilterState += magnitude / this.initSamples;
+        this.sampleCount++;
+        audioSamples[i] = 0; // Output silence during initialization
+        continue;
+      }
+
       // Remove DC component using IIR filter
       this.dcFilterState =
         this.dcFilterAlpha * magnitude +
         (1 - this.dcFilterAlpha) * this.dcFilterState;
 
-      // Subtract DC and normalize
-      const audio = (magnitude - this.dcFilterState) * 2.0;
+      // Subtract DC
+      let audio = magnitude - this.dcFilterState;
+
+      // Adaptive gain control (AGC) to maintain consistent audio level
+      // Target RMS of 0.5 with gain limiting to prevent distortion
+      const targetRMS = 0.5;
+      const currentRMS = Math.abs(audio);
+      const gain = currentRMS > 0.01 ? targetRMS / currentRMS : 2.0;
+      audio *= Math.min(gain, 4.0); // Limit max gain to 4.0
 
       audioSamples[i] = audio;
     }
@@ -190,6 +226,7 @@ class AMDemodulator {
    */
   reset(): void {
     this.dcFilterState = 0;
+    this.sampleCount = 0;
   }
 }
 
@@ -307,8 +344,12 @@ export class AudioStreamProcessor {
   /**
    * Decimate audio samples to target sample rate
    *
-   * Uses simple linear interpolation for downsampling.
-   * For production use, consider adding anti-aliasing filter.
+   * Implements proper decimation with anti-aliasing low-pass filter to prevent
+   * frequency aliasing. Uses a moving average filter as anti-aliasing followed
+   * by linear interpolation for resampling.
+   *
+   * TODO: For even better quality, consider implementing a proper FIR low-pass
+   * filter with configurable cutoff frequency and tap count.
    */
   private decimateAudio(
     samples: Float32Array,
@@ -320,17 +361,42 @@ export class AudioStreamProcessor {
     }
 
     const ratio = inputRate / outputRate;
+
+    // Step 1: Anti-aliasing low-pass filter
+    // Filter cutoff should be at Nyquist frequency of output rate (outputRate / 2)
+    // Moving average filter size based on decimation ratio
+    const filterSize = Math.max(1, Math.ceil(ratio / 2));
+    const filtered = new Float32Array(samples.length);
+
+    // Apply moving average filter (simple but effective anti-aliasing)
+    for (let i = 0; i < samples.length; i++) {
+      let sum = 0;
+      let count = 0;
+
+      // Average samples within filter window
+      const startIdx = Math.max(0, i - filterSize);
+      const endIdx = Math.min(samples.length - 1, i + filterSize);
+
+      for (let j = startIdx; j <= endIdx; j++) {
+        sum += samples[j]!;
+        count++;
+      }
+
+      filtered[i] = sum / count;
+    }
+
+    // Step 2: Decimate with linear interpolation
     const outputLength = Math.floor(samples.length / ratio);
     const decimated = new Float32Array(outputLength);
 
     for (let i = 0; i < outputLength; i++) {
       const sourceIndex = i * ratio;
       const index0 = Math.floor(sourceIndex);
-      const index1 = Math.min(index0 + 1, samples.length - 1);
+      const index1 = Math.min(index0 + 1, filtered.length - 1);
       const frac = sourceIndex - index0;
 
-      // Linear interpolation
-      decimated[i] = samples[index0]! * (1 - frac) + samples[index1]! * frac;
+      // Linear interpolation on filtered samples
+      decimated[i] = filtered[index0]! * (1 - frac) + filtered[index1]! * frac;
     }
 
     return decimated;

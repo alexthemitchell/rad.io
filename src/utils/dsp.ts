@@ -12,6 +12,42 @@ export type Sample = {
 };
 
 /**
+ * Cache for pre-computed sine and cosine tables for common FFT sizes
+ * Improves performance by avoiding repeated trig calculations
+ */
+const trigCache = new Map<number, { cos: Float32Array; sin: Float32Array }>();
+
+/**
+ * Get or compute trig tables for a given FFT size
+ */
+function getTrigTables(fftSize: number): {
+  cos: Float32Array;
+  sin: Float32Array;
+} {
+  if (!trigCache.has(fftSize)) {
+    const cos = new Float32Array(fftSize);
+    const sin = new Float32Array(fftSize);
+
+    for (let k = 0; k < fftSize; k++) {
+      const angle = (-2 * Math.PI * k) / fftSize;
+      cos[k] = Math.cos(angle);
+      sin[k] = Math.sin(angle);
+    }
+
+    trigCache.set(fftSize, { cos, sin });
+
+    // Limit cache size to prevent memory growth
+    // Keep only the 10 most recently used sizes
+    if (trigCache.size > 10) {
+      const firstKey = trigCache.keys().next().value as number;
+      trigCache.delete(firstKey);
+    }
+  }
+
+  return trigCache.get(fftSize)!;
+}
+
+/**
  * Calculate FFT using Web Audio API's AnalyserNode
  * This provides native, optimized FFT calculations without external dependencies
  */
@@ -74,6 +110,10 @@ export function calculateFFTSync(
   const markStart = `fft-${fftSize}-start`;
   performanceMonitor.mark(markStart);
 
+  // Minimum magnitude to prevent underflow and -Infinity in dB calculation
+  // Corresponds to approximately -200 dB, providing a reasonable noise floor
+  const MIN_MAGNITUDE = 1e-10;
+
   try {
     // Try WASM first if available
     if (isWasmAvailable()) {
@@ -87,6 +127,9 @@ export function calculateFFTSync(
     // Fallback to JavaScript DFT implementation
     const output = new Float32Array(fftSize);
 
+    // Get pre-computed trig tables for performance
+    const { cos: cosTable, sin: sinTable } = getTrigTables(fftSize);
+
     // Perform DFT (Discrete Fourier Transform)
     for (let k = 0; k < fftSize; k++) {
       let realSum = 0;
@@ -98,20 +141,24 @@ export function calculateFFTSync(
           continue;
         }
 
-        const angle = (-2 * Math.PI * k * n) / fftSize;
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
+        // Use pre-computed trig values
+        // angle = (-2 * Math.PI * k * n) / fftSize = k * (-2π/N) * n
+        // We have cos/sin for k, need to multiply by n via angle addition
+        const baseAngle = (k * n) % fftSize;
+        const cos = cosTable[baseAngle]!;
+        const sin = sinTable[baseAngle]!;
 
         // Complex multiplication: (I + jQ) * (cos + j*sin)
         realSum += sample.I * cos - sample.Q * sin;
         imagSum += sample.I * sin + sample.Q * cos;
       }
 
-      // Calculate magnitude
+      // Calculate magnitude with underflow protection
       const magnitude = Math.sqrt(realSum * realSum + imagSum * imagSum);
 
       // Convert to dB: 20 * log10(magnitude)
-      output[k] = magnitude > 0 ? 20 * Math.log10(magnitude) : -100;
+      // Use MIN_MAGNITUDE to prevent -Infinity and handle numerical underflow
+      output[k] = 20 * Math.log10(Math.max(magnitude, MIN_MAGNITUDE));
     }
 
     // Shift FFT to center zero frequency
@@ -219,6 +266,10 @@ export function calculateWaveform(samples: Sample[]): {
     for (let i = 0; i < samples.length; i++) {
       const sample = samples[i];
       if (!sample) {
+        // Explicitly mark invalid data with NaN for phase
+        // Amplitude defaults to 0 which is semantically correct (no signal)
+        amplitude[i] = 0;
+        phase[i] = NaN;
         continue;
       }
 
