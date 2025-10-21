@@ -74,6 +74,50 @@ body {
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* Navigation */
+.main-nav {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 0;
+}
+
+.nav-link {
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.nav-link.active {
+  background: #fff;
+  color: #1e40af;
+  border-color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+  .main-nav {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0 1rem;
+  }
+
+  .nav-link {
+    text-align: center;
+  }
+}
+
 /* Card Component */
 .card {
   background: #fff;
@@ -1184,4 +1228,29 @@ a:focus-visible,
 .audio-status-inactive {
   color: #a0aab5;
   font-weight: 400;
+}
+
+/* Info and Empty State Messages */
+.info-message {
+  padding: 1rem;
+  background: #dbeafe;
+  border-left: 4px solid #3b82f6;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.info-message p {
+  margin: 0;
+  color: #1e40af;
+}
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1rem;
 }

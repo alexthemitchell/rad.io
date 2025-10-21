@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import VisualizerPage from "./pages/Visualizer";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Navigation from "./components/Navigation";
+import LiveMonitor from "./pages/LiveMonitor";
+import Scanner from "./pages/Scanner";
+import Analysis from "./pages/Analysis";
 import { preloadWasmModule } from "./utils/dspWasm";
 
 function App(): React.JSX.Element {
@@ -9,9 +13,21 @@ function App(): React.JSX.Element {
   }, []);
 
   return (
-    <div>
-      <VisualizerPage />
-    </div>
+    <Router>
+      <div>
+        <header className="header" role="banner">
+          <h1>rad.io</h1>
+          <p>Software-Defined Radio Visualizer - Auto-Connect Enabled</p>
+          <Navigation />
+        </header>
+
+        <Routes>
+          <Route path="/" element={<LiveMonitor />} />
+          <Route path="/scanner" element={<Scanner />} />
+          <Route path="/analysis" element={<Analysis />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
