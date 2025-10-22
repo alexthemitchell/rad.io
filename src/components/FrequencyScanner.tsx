@@ -128,36 +128,37 @@ function FrequencyScanner({
         </div>
 
         <div className="form-group">
-          <label htmlFor="step-size">
-            Step Size (kHz):
+          <label htmlFor="fft-size">
+            FFT Size (frequency resolution):
             <input
-              id="step-size"
+              id="fft-size"
               type="number"
-              value={config.stepSize / 1e3}
+              value={config.fftSize}
               onChange={(e) =>
-                onConfigChange({ stepSize: parseFloat(e.target.value) * 1e3 })
+                onConfigChange({ fftSize: parseInt(e.target.value, 10) })
               }
               disabled={!isIdle}
-              step="10"
-              min="1"
-              max="1000"
+              step="512"
+              min="512"
+              max="8192"
             />
           </label>
         </div>
 
         <div className="form-group">
           <label htmlFor="threshold">
-            Detection Threshold ({(config.threshold * 100).toFixed(0)}%):
+            Detection Threshold ({config.thresholdDb} dB above noise):
             <input
               id="threshold"
-              type="range"
-              value={config.threshold}
+              type="number"
+              value={config.thresholdDb}
               onChange={(e) =>
-                onConfigChange({ threshold: parseFloat(e.target.value) })
+                onConfigChange({ thresholdDb: parseFloat(e.target.value) })
               }
-              min="0"
-              max="1"
-              step="0.01"
+              min="3"
+              max="30"
+              step="1"
+              disabled={!isIdle}
             />
           </label>
         </div>

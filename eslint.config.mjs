@@ -42,7 +42,7 @@ export default defineConfig([
 
       // TypeScript rules
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
@@ -69,7 +69,7 @@ export default defineConfig([
       "jsx-a11y/label-has-associated-control": "error",
       "jsx-a11y/mouse-events-have-key-events": "error",
       "jsx-a11y/no-access-key": "error",
-      "jsx-a11y/no-autofocus": "warn",
+      "jsx-a11y/no-autofocus": "error",
       "jsx-a11y/no-distracting-elements": "error",
       "jsx-a11y/no-noninteractive-element-interactions": "error",
       "jsx-a11y/no-noninteractive-tabindex": "error",

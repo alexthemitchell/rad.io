@@ -15,9 +15,10 @@ describe("FrequencyScanner", () => {
   const defaultConfig = {
     startFrequency: 88e6,
     endFrequency: 108e6,
-    stepSize: 100e3,
-    threshold: 0.3,
+    thresholdDb: 10,
     dwellTime: 50,
+    fftSize: 2048,
+    minPeakSpacing: 100e3,
   };
 
   const mockSignals: ActiveSignal[] = [
@@ -69,7 +70,7 @@ describe("FrequencyScanner", () => {
 
       expect(screen.getByLabelText(/Start Frequency/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/End Frequency/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Step Size/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/FFT Size/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Detection Threshold/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Dwell Time/i)).toBeInTheDocument();
     });
@@ -189,7 +190,7 @@ describe("FrequencyScanner", () => {
       });
     });
 
-    it("calls onConfigChange when threshold is adjusted", () => {
+    it("calls onConfigChange when threshold (dB) is adjusted", () => {
       render(
         <FrequencyScanner
           state="idle"
@@ -203,10 +204,10 @@ describe("FrequencyScanner", () => {
       );
 
       const thresholdInput = screen.getByLabelText(/Detection Threshold/i);
-      fireEvent.change(thresholdInput, { target: { value: "0.5" } });
+      fireEvent.change(thresholdInput, { target: { value: "15" } });
 
       expect(mockHandlers.onConfigChange).toHaveBeenCalledWith({
-        threshold: 0.5,
+        thresholdDb: 15,
       });
     });
 
@@ -458,8 +459,8 @@ describe("FrequencyScanner", () => {
       const endFreqInput = screen.getByLabelText(/End Frequency/i);
       expect(endFreqInput).toHaveAttribute("id", "end-freq");
 
-      const stepInput = screen.getByLabelText(/Step Size/i);
-      expect(stepInput).toHaveAttribute("id", "step-size");
+      const fftSizeInput = screen.getByLabelText(/FFT Size/i);
+      expect(fftSizeInput).toHaveAttribute("id", "fft-size");
 
       const thresholdInput = screen.getByLabelText(/Detection Threshold/i);
       expect(thresholdInput).toHaveAttribute("id", "threshold");

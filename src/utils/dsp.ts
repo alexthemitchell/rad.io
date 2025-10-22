@@ -317,3 +317,122 @@ export function calculateSignalStrength(samples: Sample[]): number {
   const dBm = rms > 0 ? 20 * Math.log10(rms) : -100;
   return Math.max(-100, Math.min(0, dBm));
 }
+
+/**
+ * Detected peak in power spectrum
+ */
+export interface SpectralPeak {
+  /** Frequency in Hz */
+  frequency: number;
+  /** Power in dB */
+  powerDb: number;
+  /** FFT bin index */
+  binIndex: number;
+}
+
+/**
+ * Convert FFT bin index to frequency in Hz
+ * @param binIndex - FFT bin index (0 to fftSize-1)
+ * @param fftSize - Size of FFT
+ * @param sampleRate - Sample rate in Hz
+ * @param centerFrequency - Center frequency of the captured spectrum in Hz
+ * @returns Frequency in Hz
+ */
+export function binToFrequency(
+  binIndex: number,
+  fftSize: number,
+  sampleRate: number,
+  centerFrequency: number,
+): number {
+  // FFT output is shifted with DC at center
+  // Bin 0 corresponds to -sampleRate/2 offset from center
+  // Bin fftSize/2 corresponds to +0 Hz offset from center
+  // Bin fftSize-1 corresponds to +sampleRate/2 offset from center
+
+  const frequencyResolution = sampleRate / fftSize;
+  const offset = (binIndex - fftSize / 2) * frequencyResolution;
+  return centerFrequency + offset;
+}
+
+/**
+ * Detect peaks in power spectrum above threshold
+ * Uses simple local maximum detection with configurable parameters
+ *
+ * @param powerSpectrum - Power spectrum in dB (output from calculateFFTSync)
+ * @param sampleRate - Sample rate in Hz
+ * @param centerFrequency - Center frequency of the captured spectrum in Hz
+ * @param thresholdDb - Minimum power threshold in dB
+ * @param minPeakSpacing - Minimum spacing between peaks in Hz (prevents duplicate detections)
+ * @param edgeMargin - Number of bins to ignore at spectrum edges (avoids filter rolloff artifacts)
+ * @returns Array of detected peaks sorted by power (strongest first)
+ */
+export function detectSpectralPeaks(
+  powerSpectrum: Float32Array,
+  sampleRate: number,
+  centerFrequency: number,
+  thresholdDb: number,
+  minPeakSpacing: number = 100e3, // 100 kHz default for FM stations
+  edgeMargin: number = 10, // Ignore edge bins
+): SpectralPeak[] {
+  const peaks: SpectralPeak[] = [];
+  const fftSize = powerSpectrum.length;
+
+  // Scan for local maxima above threshold
+  for (let i = edgeMargin; i < fftSize - edgeMargin; i++) {
+    const power = powerSpectrum[i];
+
+    if (power === undefined || power < thresholdDb) {
+      continue;
+    }
+
+    // Check if this is a local maximum
+    const prevPower = powerSpectrum[i - 1] ?? -Infinity;
+    const nextPower = powerSpectrum[i + 1] ?? -Infinity;
+
+    if (power > prevPower && power > nextPower) {
+      const frequency = binToFrequency(i, fftSize, sampleRate, centerFrequency);
+
+      // Check spacing constraint against existing peaks
+      const tooClose = peaks.some(
+        (peak) => Math.abs(peak.frequency - frequency) < minPeakSpacing,
+      );
+
+      if (!tooClose) {
+        peaks.push({
+          frequency,
+          powerDb: power,
+          binIndex: i,
+        });
+      }
+    }
+  }
+
+  // Sort by power (strongest first)
+  peaks.sort((a, b) => b.powerDb - a.powerDb);
+
+  return peaks;
+}
+
+/**
+ * Calculate average noise floor from power spectrum
+ * Uses percentile method to avoid bias from strong signals
+ *
+ * @param powerSpectrum - Power spectrum in dB
+ * @param percentile - Percentile to use (0.25 = 25th percentile, robust to outliers)
+ * @returns Noise floor estimate in dB
+ */
+export function estimateNoiseFloor(
+  powerSpectrum: Float32Array,
+  percentile: number = 0.25,
+): number {
+  if (powerSpectrum.length === 0) {
+    return -100;
+  }
+
+  // Sort power values
+  const sorted = Array.from(powerSpectrum).sort((a, b) => a - b);
+
+  // Return value at specified percentile
+  const index = Math.floor(sorted.length * percentile);
+  return sorted[index] ?? -100;
+}

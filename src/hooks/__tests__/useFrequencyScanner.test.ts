@@ -33,6 +33,7 @@ class MockSDRDevice implements ISDRDevice {
       supportsAmpControl: true,
       supportsAntennaControl: false,
       supportedBandwidths: [20e6],
+      maxBandwidth: 20e6,
     };
   }
 
@@ -63,6 +64,11 @@ class MockSDRDevice implements ISDRDevice {
   async getSampleRate(): Promise<number> {
     return 2e6;
   }
+
+  async getUsableBandwidth(): Promise<number> {
+    // Simulate ~80% usable portion of 2 MHz
+    return 1.6e6;
+  }
   reset(): Promise<void> {
     return Promise.resolve();
   }
@@ -77,6 +83,8 @@ class MockSDRDevice implements ISDRDevice {
 
   async receive(): Promise<void> {
     this._isReceiving = true;
+    // Return a promise that never resolves to simulate continuous streaming
+    return new Promise<void>(() => {});
   }
 
   async stopRx(): Promise<void> {
@@ -138,10 +146,11 @@ describe("useFrequencyScanner", () => {
       expect(result.current.config).toEqual({
         startFrequency: 88e6,
         endFrequency: 108e6,
+        thresholdDb: 10,
+        dwellTime: 100,
+        fftSize: 2048,
+        minPeakSpacing: 100e3,
         enableRDS: true,
-        stepSize: 100e3,
-        threshold: 0.3,
-        dwellTime: 50,
       });
     });
   });
@@ -171,16 +180,16 @@ describe("useFrequencyScanner", () => {
       expect(result.current.config.endFrequency).toBe(110e6);
     });
 
-    it("updates threshold", () => {
+    it("updates threshold dB", () => {
       const { result } = renderHook(() =>
         useFrequencyScanner(mockDevice as ISDRDevice),
       );
 
       act(() => {
-        result.current.updateConfig({ threshold: 0.5 });
+        result.current.updateConfig({ thresholdDb: 12 });
       });
 
-      expect(result.current.config.threshold).toBe(0.5);
+      expect(result.current.config.thresholdDb).toBe(12);
     });
 
     it("updates multiple config values at once", () => {
@@ -192,13 +201,15 @@ describe("useFrequencyScanner", () => {
         result.current.updateConfig({
           startFrequency: 90e6,
           endFrequency: 110e6,
-          stepSize: 200e3,
+          fftSize: 4096,
+          minPeakSpacing: 75e3,
         });
       });
 
       expect(result.current.config.startFrequency).toBe(90e6);
       expect(result.current.config.endFrequency).toBe(110e6);
-      expect(result.current.config.stepSize).toBe(200e3);
+      expect(result.current.config.fftSize).toBe(4096);
+      expect(result.current.config.minPeakSpacing).toBe(75e3);
     });
   });
 
@@ -212,6 +223,7 @@ describe("useFrequencyScanner", () => {
         await result.current.startScan();
       });
 
+      // With mock receive hanging, scanner should remain in scanning state
       expect(result.current.state).toBe("scanning");
     });
 

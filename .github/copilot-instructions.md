@@ -13,7 +13,6 @@
 - **Maintain Long Term Memory**: use #oraios/serena/read_memory when thinking about how to solve problems and #oraios/serena/write_memory when you have learned something new that will be valuable for a future Agent.
 - Before reading code, list memories and retrieve high-signal guidance: use #oraios/serena/list_memories to find "SERENA_MEMORY_BEST_PRACTICES", then #oraios/serena/read_memory to load it. Apply its retrieval-first, symbol-first workflow to minimize noise.
 - Always keep the user in mind as a tool to help you solve problems. For example, when connecting to a device using WebUSB, you may need to ask the user to select the device from a browser prompt that you cannot see or interact with.
-- Remember when using WebUSB that physical devices are required to fully test your code. You may need to ask the user to assist you with this. Physical devices are unreliable and may not always be available, so plan accordingly and verify with the user if you are unsure of the availability of a device.
 - The goal of this project includes the creation of TypeScript-first WebUSB drivers for SDR hardware. This is a complex task that requires careful planning and execution. Use the tools available to you to research and implement these drivers, and always keep the user in mind as a resource to help you solve problems.
 
 ## Agent performance & context hygiene
@@ -39,6 +38,8 @@ Follow these practices to keep your context lean and optimize execution:
 - Capture durable, reusable knowledge: architecture decisions, invariants, concise debugging playbooks (root cause → minimal signal → fix), and repo-wide workflows.
 - Keep memories short (≈150–400 words), scannable, and link to code paths instead of inlining code.
 - Update existing memories rather than creating near-duplicates; explicitly deprecate outdated tips. Do not store secrets or large logs.
+- Before writing a memory, first use #oraios/serena/read_memory to find best practices on long term memory management.
+- You do not need to write any notes summarizing changes to memory, nor to files which are committed to the respository. Save these for comments and chat messages only.
 
 4. Operational hygiene
 

@@ -54,6 +54,7 @@ export class HackRFOneAdapter implements ISDRDevice {
         1.75e6, 2.5e6, 3.5e6, 5e6, 5.5e6, 6e6, 7e6, 8e6, 9e6, 10e6, 12e6, 14e6,
         15e6, 20e6, 24e6, 28e6,
       ], // HackRF baseband filter bandwidths
+      maxBandwidth: 20e6, // 20 MHz maximum instantaneous bandwidth
     };
   }
 
@@ -89,6 +90,13 @@ export class HackRFOneAdapter implements ISDRDevice {
 
   async getSampleRate(): Promise<number> {
     return this.currentSampleRate;
+  }
+
+  async getUsableBandwidth(): Promise<number> {
+    // HackRF has ~80% usable bandwidth due to anti-aliasing filter rolloff
+    // For conservative estimate, return 80% of sample rate
+    // This ensures we don't try to detect signals at the very edges
+    return this.currentSampleRate * 0.8;
   }
 
   async setLNAGain(gainDb: number): Promise<void> {

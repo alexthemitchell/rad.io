@@ -40,6 +40,8 @@ export type SDRCapabilities = {
   supportsAmpControl: boolean;
   supportsAntennaControl: boolean;
   supportedBandwidths?: number[]; // Hz
+  /** Maximum instantaneous bandwidth in Hz (typically equal to max sample rate) */
+  maxBandwidth?: number; // Hz
 };
 
 export type SDRStreamConfig = {
@@ -121,9 +123,16 @@ export interface ISDRDevice {
   setSampleRate(sampleRateHz: number): Promise<void>;
 
   /**
-   * Get current sample rate in Hz
+   * Get current sample rate
    */
   getSampleRate(): Promise<number>;
+
+  /**
+   * Get maximum usable bandwidth in Hz
+   * This is typically equal to the current sample rate, but may be less
+   * depending on device filtering characteristics
+   */
+  getUsableBandwidth(): Promise<number>;
 
   /**
    * Set LNA (Low Noise Amplifier) gain

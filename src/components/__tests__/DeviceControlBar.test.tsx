@@ -13,6 +13,7 @@ const createMockDevice = (overrides = {}): ISDRDevice => ({
   getFrequency: jest.fn(),
   setSampleRate: jest.fn(),
   getSampleRate: jest.fn(() => Promise.resolve(2048000)),
+  getUsableBandwidth: jest.fn(() => Promise.resolve(1638400)),
   setLNAGain: jest.fn(),
   setAmpEnable: jest.fn(),
   receive: jest.fn(),

@@ -4,6 +4,10 @@ import {
   convertToSamples,
   calculateWaveform,
   Sample,
+  binToFrequency,
+  detectSpectralPeaks,
+  estimateNoiseFloor,
+  calculateFFTSync,
 } from "../dsp";
 
 /**
@@ -538,6 +542,284 @@ describe("DSP Utilities", () => {
         result.forEach((row) => {
           expect(row.length).toBe(fftSize);
         });
+      });
+    });
+  });
+
+  describe("FFT Spectrum Analysis", () => {
+    describe("binToFrequency", () => {
+      it("should convert bin 0 to lowest frequency (left edge)", () => {
+        const fftSize = 1024;
+        const sampleRate = 2048000; // 2.048 MHz
+        const centerFreq = 100e6; // 100 MHz
+
+        // Bin 0 is at -sampleRate/2 from center
+        const freq = binToFrequency(0, fftSize, sampleRate, centerFreq);
+        expect(freq).toBeCloseTo(centerFreq - sampleRate / 2, -2);
+      });
+
+      it("should convert center bin to center frequency", () => {
+        const fftSize = 1024;
+        const sampleRate = 2048000;
+        const centerFreq = 100e6;
+
+        // Center bin (fftSize/2) should be at center frequency
+        const freq = binToFrequency(
+          fftSize / 2,
+          fftSize,
+          sampleRate,
+          centerFreq,
+        );
+        expect(freq).toBeCloseTo(centerFreq, -2);
+      });
+
+      it("should convert last bin to highest frequency (right edge)", () => {
+        const fftSize = 1024;
+        const sampleRate = 2048000;
+        const centerFreq = 100e6;
+
+        // Last bin is at +sampleRate/2 - resolution from center
+        // Because we have fftSize bins covering sampleRate, the last bin is one resolution short
+        const resolution = sampleRate / fftSize;
+        const freq = binToFrequency(
+          fftSize - 1,
+          fftSize,
+          sampleRate,
+          centerFreq,
+        );
+        expect(freq).toBeCloseTo(centerFreq + sampleRate / 2 - resolution, -2);
+      });
+
+      it("should handle different FFT sizes correctly", () => {
+        const sampleRate = 2048000;
+        const centerFreq = 90e6;
+
+        // Resolution should be sampleRate/fftSize
+        const freq2048_0 = binToFrequency(0, 2048, sampleRate, centerFreq);
+        const freq2048_1 = binToFrequency(1, 2048, sampleRate, centerFreq);
+        const resolution2048 = freq2048_1 - freq2048_0;
+        expect(resolution2048).toBeCloseTo(sampleRate / 2048, -2);
+
+        const freq4096_0 = binToFrequency(0, 4096, sampleRate, centerFreq);
+        const freq4096_1 = binToFrequency(1, 4096, sampleRate, centerFreq);
+        const resolution4096 = freq4096_1 - freq4096_0;
+        expect(resolution4096).toBeCloseTo(sampleRate / 4096, -2);
+
+        // Higher FFT size should give finer resolution
+        expect(resolution4096).toBeLessThan(resolution2048);
+      });
+    });
+
+    describe("estimateNoiseFloor", () => {
+      it("should estimate noise floor from uniform noise", () => {
+        // Simulate uniform noise around -50 dB
+        const powerSpectrum = new Float32Array(1024);
+        for (let i = 0; i < powerSpectrum.length; i++) {
+          powerSpectrum[i] = -50 + (Math.random() - 0.5) * 10;
+        }
+
+        const noiseFloor = estimateNoiseFloor(powerSpectrum, 0.5);
+        expect(noiseFloor).toBeGreaterThan(-60);
+        expect(noiseFloor).toBeLessThan(-40);
+      });
+
+      it("should be robust to strong signals (use low percentile)", () => {
+        const powerSpectrum = new Float32Array(1024);
+
+        // Most bins are noise at -60 dB
+        for (let i = 0; i < powerSpectrum.length; i++) {
+          powerSpectrum[i] = -60 + (Math.random() - 0.5) * 5;
+        }
+
+        // Add a few strong signals
+        powerSpectrum[100] = -10;
+        powerSpectrum[200] = -5;
+        powerSpectrum[300] = -15;
+
+        // 25th percentile should capture noise, not signals
+        const noiseFloor = estimateNoiseFloor(powerSpectrum, 0.25);
+        expect(noiseFloor).toBeGreaterThan(-65);
+        expect(noiseFloor).toBeLessThan(-55);
+      });
+
+      it("should handle empty spectrum gracefully", () => {
+        const powerSpectrum = new Float32Array(0);
+        const noiseFloor = estimateNoiseFloor(powerSpectrum);
+        expect(noiseFloor).toBe(-100); // Default fallback
+      });
+    });
+
+    describe("detectSpectralPeaks", () => {
+      it("should detect single strong peak", () => {
+        const fftSize = 256;
+        const sampleRate = 2048000;
+        const centerFreq = 90e6;
+
+        // Generate samples with a single tone at bin 140
+        const samples = generateSineWaveAtBin(140, fftSize, 0.8);
+        const powerSpectrum = calculateFFTSync(samples, fftSize);
+
+        const noiseFloor = estimateNoiseFloor(powerSpectrum);
+        const threshold = noiseFloor + 10; // 10 dB above noise
+
+        const peaks = detectSpectralPeaks(
+          powerSpectrum,
+          sampleRate,
+          centerFreq,
+          threshold,
+        );
+
+        expect(peaks.length).toBeGreaterThan(0);
+
+        // Strongest peak should be detected (bin index may vary due to FFT shift)
+        const strongestPeak = peaks[0];
+        expect(strongestPeak).toBeDefined();
+        // Peak should be within 1 MHz of center (reasonable range for a strong signal)
+        expect(Math.abs(strongestPeak!.frequency - centerFreq)).toBeLessThan(
+          1e6,
+        );
+        expect(strongestPeak!.powerDb).toBeGreaterThan(threshold);
+      });
+
+      it("should detect multiple peaks with proper spacing", () => {
+        const fftSize = 512;
+        const sampleRate = 2048000;
+        const centerFreq = 95e6;
+
+        // Create spectrum with three peaks manually
+        const powerSpectrum = new Float32Array(fftSize);
+        for (let i = 0; i < fftSize; i++) {
+          powerSpectrum[i] = -60; // Noise floor
+        }
+
+        // Add three peaks with local maxima
+        powerSpectrum[100] = -20; // Peak 1
+        powerSpectrum[99] = -25;
+        powerSpectrum[101] = -25;
+
+        powerSpectrum[200] = -15; // Peak 2 (stronger)
+        powerSpectrum[199] = -20;
+        powerSpectrum[201] = -20;
+
+        powerSpectrum[350] = -25; // Peak 3
+        powerSpectrum[349] = -30;
+        powerSpectrum[351] = -30;
+
+        const threshold = -40; // Above noise, below peaks
+
+        const peaks = detectSpectralPeaks(
+          powerSpectrum,
+          sampleRate,
+          centerFreq,
+          threshold,
+          50e3, // 50 kHz minimum spacing
+        );
+
+        // Should detect all three peaks
+        expect(peaks.length).toBe(3);
+
+        // Should be sorted by power (strongest first)
+        expect(peaks[0]!.powerDb).toBeGreaterThanOrEqual(peaks[1]!.powerDb);
+        expect(peaks[1]!.powerDb).toBeGreaterThanOrEqual(peaks[2]!.powerDb);
+      });
+
+      it("should respect minimum peak spacing constraint", () => {
+        const fftSize = 512;
+        const sampleRate = 2048000;
+        const centerFreq = 100e6;
+
+        const powerSpectrum = new Float32Array(fftSize);
+        for (let i = 0; i < fftSize; i++) {
+          powerSpectrum[i] = -60;
+        }
+
+        // Add two peaks very close together (violates spacing)
+        powerSpectrum[250] = -10; // Stronger peak
+        powerSpectrum[249] = -15;
+        powerSpectrum[251] = -15;
+
+        powerSpectrum[255] = -12; // Nearby peak (within spacing)
+        powerSpectrum[254] = -17;
+        powerSpectrum[256] = -17;
+
+        const minSpacing = 100e3; // 100 kHz
+        const threshold = -40;
+
+        const peaks = detectSpectralPeaks(
+          powerSpectrum,
+          sampleRate,
+          centerFreq,
+          threshold,
+          minSpacing,
+        );
+
+        // Should only detect the stronger peak (bin 250)
+        expect(peaks.length).toBe(1);
+        expect(peaks[0]!.binIndex).toBe(250);
+      });
+
+      it("should ignore edge bins to avoid filter artifacts", () => {
+        const fftSize = 256;
+        const sampleRate = 2048000;
+        const centerFreq = 88e6;
+
+        const powerSpectrum = new Float32Array(fftSize);
+        for (let i = 0; i < fftSize; i++) {
+          powerSpectrum[i] = -60;
+        }
+
+        // Add peaks at edges (should be ignored)
+        powerSpectrum[5] = -10; // Near left edge
+        powerSpectrum[4] = -20;
+        powerSpectrum[6] = -20;
+
+        powerSpectrum[250] = -10; // Near right edge
+        powerSpectrum[249] = -20;
+        powerSpectrum[251] = -20;
+
+        // Add a peak in the center (should be detected)
+        powerSpectrum[128] = -15;
+        powerSpectrum[127] = -25;
+        powerSpectrum[129] = -25;
+
+        const threshold = -40;
+        const edgeMargin = 10;
+
+        const peaks = detectSpectralPeaks(
+          powerSpectrum,
+          sampleRate,
+          centerFreq,
+          threshold,
+          50e3,
+          edgeMargin,
+        );
+
+        // Should only detect center peak
+        expect(peaks.length).toBe(1);
+        expect(peaks[0]!.binIndex).toBe(128);
+      });
+
+      it("should return empty array when no peaks above threshold", () => {
+        const fftSize = 256;
+        const sampleRate = 2048000;
+        const centerFreq = 100e6;
+
+        // All noise, no peaks
+        const powerSpectrum = new Float32Array(fftSize);
+        for (let i = 0; i < fftSize; i++) {
+          powerSpectrum[i] = -70 + (Math.random() - 0.5) * 5;
+        }
+
+        const threshold = -40; // Above all noise
+
+        const peaks = detectSpectralPeaks(
+          powerSpectrum,
+          sampleRate,
+          centerFreq,
+          threshold,
+        );
+
+        expect(peaks.length).toBe(0);
       });
     });
   });

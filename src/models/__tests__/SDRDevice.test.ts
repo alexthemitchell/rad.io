@@ -119,6 +119,11 @@ class MockSDRDevice implements ISDRDevice {
     return this._sampleRate;
   }
 
+  async getUsableBandwidth(): Promise<number> {
+    // Typically a fraction of the current sample rate due to filtering (e.g., 80%)
+    return this._sampleRate * 0.8;
+  }
+
   async setLNAGain(gainDb: number): Promise<void> {
     if (!this._isOpen) {
       throw new Error("Device not open");

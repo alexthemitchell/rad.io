@@ -2,6 +2,12 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { ISDRDevice, IQSample } from "../models/SDRDevice";
 import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
+import {
+  calculateFFTSync,
+  detectSpectralPeaks,
+  estimateNoiseFloor,
+  type SpectralPeak,
+} from "../utils/dsp";
 
 /**
  * Configuration for frequency scanning
@@ -11,12 +17,14 @@ export interface FrequencyScanConfig {
   startFrequency: number;
   /** End frequency in Hz */
   endFrequency: number;
-  /** Step size in Hz */
-  stepSize: number;
-  /** Signal strength threshold for detection (0-1 scale) */
-  threshold: number;
-  /** Dwell time per frequency in ms */
+  /** Signal threshold in dB above noise floor for detection */
+  thresholdDb: number;
+  /** Dwell time per frequency chunk in ms */
   dwellTime: number;
+  /** FFT size for spectral analysis (larger = better frequency resolution) */
+  fftSize: number;
+  /** Minimum spacing between detected peaks in Hz (prevents duplicates) */
+  minPeakSpacing: number;
   /** Enable RDS decoding for FM scans (default: false) */
   enableRDS?: boolean;
 }
@@ -68,9 +76,10 @@ export function useFrequencyScanner(
   const [config, setConfig] = useState<FrequencyScanConfig>({
     startFrequency: 88e6, // 88 MHz (FM radio start)
     endFrequency: 108e6, // 108 MHz (FM radio end)
-    stepSize: 100e3, // 100 kHz
-    threshold: 0.3, // 30% signal strength
-    dwellTime: 50, // 50ms per frequency
+    thresholdDb: 10, // 10 dB above noise floor
+    dwellTime: 100, // 100ms per frequency chunk
+    fftSize: 2048, // 2048-point FFT for good resolution
+    minPeakSpacing: 100e3, // 100 kHz minimum between peaks (FM station spacing)
     enableRDS: true, // Enable RDS decoding by default for FM scans
   });
   const [currentFrequency, setCurrentFrequency] = useState<number | null>(null);
@@ -86,26 +95,11 @@ export function useFrequencyScanner(
   const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
 
   /**
-   * Calculate signal strength from IQ samples
+   * Scan a single frequency chunk using FFT-based wideband analysis
+   * This captures the full bandwidth and detects all signals simultaneously
    */
-  const calculateSignalStrength = useCallback((samples: number[]): number => {
-    if (samples.length === 0) {
-      return 0;
-    }
-
-    // Calculate RMS (Root Mean Square) for signal strength
-    const sumSquares = samples.reduce((sum, val) => sum + val * val, 0);
-    const rms = Math.sqrt(sumSquares / samples.length);
-
-    // Normalize to 0-1 range (assuming max amplitude is 1.0)
-    return Math.min(rms, 1.0);
-  }, []);
-
-  /**
-   * Scan a single frequency
-   */
-  const scanFrequency = useCallback(
-    async (frequency: number): Promise<void> => {
+  const scanFrequencyChunk = useCallback(
+    async (centerFrequency: number, sampleRate: number): Promise<void> => {
       if (!device || !device.isOpen()) {
         return;
       }
@@ -116,32 +110,27 @@ export function useFrequencyScanner(
           await device.stopRx();
         }
 
-        // Tune to frequency
-        await device.setFrequency(frequency);
-        setCurrentFrequency(frequency);
+        // Tune to center frequency
+        await device.setFrequency(centerFrequency);
+        setCurrentFrequency(centerFrequency);
 
-        // Clear any previous samples immediately after tuning to avoid contamination
-        samplesRef.current = [];
+        // Clear previous samples
         iqSamplesRef.current = [];
 
-        // Start receiving samples
-        await device.receive((data: DataView) => {
-          // Parse the raw data into IQ samples
+        // Start receiving samples (non-blocking - starts streaming in background)
+        void device.receive((data: DataView) => {
+          // Only process if still scanning
+          if (!isScanningRef.current) {
+            return;
+          }
+
+          // Parse and store IQ samples
           const samples = device.parseSamples(data);
-
-          // Store IQ samples for RDS processing
           iqSamplesRef.current.push(...samples);
-
-          // Calculate amplitudes for signal strength
-          const amplitudes = samples.map((s) =>
-            Math.sqrt(s.I * s.I + s.Q * s.Q),
-          );
-          samplesRef.current.push(...amplitudes);
         });
 
         // Wait for dwell time to collect samples (abortable)
         await new Promise<void>((resolve) => {
-          // Store resolver so pause/stop can resolve early
           dwellResolveRef.current = (): void => {
             dwellResolveRef.current = null;
             resolve();
@@ -154,38 +143,70 @@ export function useFrequencyScanner(
         });
 
         // Stop streaming
-        await device.stopRx();
+        if (device.isReceiving()) {
+          await device.stopRx();
+        }
 
-        // If scanning has been paused/stopped during dwell, exit early
+        // If scanning stopped during dwell, exit
         if (!isScanningRef.current) {
           return;
         }
 
-        // Calculate signal strength from collected samples
-        const strength = calculateSignalStrength(samplesRef.current);
+        // Need sufficient samples for FFT analysis
+        if (iqSamplesRef.current.length < config.fftSize) {
+          console.warn(
+            `Insufficient samples for FFT: got ${iqSamplesRef.current.length}, need ${config.fftSize}`,
+          );
+          return;
+        }
 
-        // Check if signal exceeds threshold
-        if (strength >= config.threshold) {
+        // Perform FFT analysis on collected samples
+        const powerSpectrum = calculateFFTSync(
+          iqSamplesRef.current.slice(0, config.fftSize),
+          config.fftSize,
+        );
+
+        // Estimate noise floor
+        const noiseFloor = estimateNoiseFloor(powerSpectrum);
+        const threshold = noiseFloor + config.thresholdDb;
+
+        // Detect peaks above threshold
+        const peaks = detectSpectralPeaks(
+          powerSpectrum,
+          sampleRate,
+          centerFrequency,
+          threshold,
+          config.minPeakSpacing,
+        );
+
+        // Process each detected peak
+        for (const peak of peaks) {
+          // Convert power dB to 0-1 strength scale (relative to dynamic range)
+          // Assume typical dynamic range of 60 dB
+          const dynamicRangeDb = 60;
+          const strengthNormalized = Math.max(
+            0,
+            Math.min(1, (peak.powerDb - noiseFloor) / dynamicRangeDb),
+          );
+
           const signal: ActiveSignal = {
-            frequency,
-            strength,
+            frequency: peak.frequency,
+            strength: strengthNormalized,
             timestamp: new Date(),
           };
 
-          // For FM frequencies (88-108 MHz), attempt RDS decoding if enabled
-          const isFM = frequency >= 88e6 && frequency <= 108e6;
+          // For FM frequencies, optionally decode RDS
+          const isFM = peak.frequency >= 88e6 && peak.frequency <= 108e6;
           if (isFM && config.enableRDS && iqSamplesRef.current.length > 0) {
             try {
               // Initialize audio processor if not already created
               if (!audioProcessorRef.current) {
-                const sampleRate = await device.getSampleRate();
                 audioProcessorRef.current = new AudioStreamProcessor(
                   sampleRate,
                 );
               }
 
               // Process a batch of IQ samples for RDS extraction
-              // Use a limited sample size to keep dwell time reasonable
               const sampleBatch = iqSamplesRef.current.slice(0, 50000);
               const result = await audioProcessorRef.current.extractAudio(
                 sampleBatch,
@@ -196,63 +217,59 @@ export function useFrequencyScanner(
                 },
               );
 
-              // Attach RDS data to signal if available
+              // Attach RDS data if available
               if (result.rdsData) {
                 signal.rdsData = result.rdsData;
                 signal.rdsStats = result.rdsStats;
               }
             } catch (error) {
-              console.warn(`RDS extraction failed for ${frequency}:`, error);
-              // Continue without RDS data
+              console.warn(
+                `RDS extraction failed for ${peak.frequency}:`,
+                error,
+              );
             }
           }
 
+          // Add or update signal in list
           setActiveSignals((prev) => {
-            // Check if we already have this frequency
-            const exists = prev.find((s) => s.frequency === frequency);
+            const exists = prev.find((s) => s.frequency === signal.frequency);
             if (exists) {
-              // Update existing signal with new strength
-              return prev.map((s) => (s.frequency === frequency ? signal : s));
+              return prev.map((s) =>
+                s.frequency === signal.frequency ? signal : s,
+              );
             }
-            // Add new signal
             return [...prev, signal];
           });
 
           onSignalDetected?.(signal);
         }
 
-        // Clear samples for next frequency window
-        samplesRef.current = [];
+        // Clear samples for next chunk
         iqSamplesRef.current = [];
       } catch (error) {
-        console.error(`Error scanning frequency ${frequency}:`, error);
-        // Make sure streaming is stopped even on error
+        console.error(
+          `Error scanning frequency chunk ${centerFrequency}:`,
+          error,
+        );
         if (device.isReceiving()) {
           await device.stopRx().catch(console.error);
         }
       }
     },
-    [
-      device,
-      config.dwellTime,
-      config.threshold,
-      config.enableRDS,
-      calculateSignalStrength,
-      onSignalDetected,
-    ],
+    [device, config, onSignalDetected],
   );
 
   /**
-   * Perform full scan
+   * Perform full scan using FFT-based wideband analysis
    */
   const performScan = useCallback(async (): Promise<void> => {
     if (!device || !device.isOpen() || !isScanningRef.current) {
       return;
     }
 
-    const { startFrequency, endFrequency, stepSize } = config;
-    if (stepSize <= 0 || endFrequency < startFrequency) {
-      // Invalid configuration, abort scan gracefully
+    const { startFrequency, endFrequency } = config;
+    if (endFrequency < startFrequency) {
+      // Invalid configuration
       setState("idle");
       isScanningRef.current = false;
       setCurrentFrequency(null);
@@ -260,32 +277,56 @@ export function useFrequencyScanner(
       return;
     }
 
-    // Inclusive step count (start and end included)
-    const totalSteps = Math.max(
-      1,
-      Math.floor((endFrequency - startFrequency) / stepSize) + 1,
-    );
-    let currentStep = 0;
+    try {
+      // Get device sample rate and usable bandwidth
+      // IMPORTANT: Ensure device is configured with a valid sample rate
+      // If sample rate has never been set, set it to a browser-friendly value
+      let sampleRate = await device.getSampleRate();
+      if (!sampleRate || sampleRate === 0) {
+        // Set to 2.048 MSPS for browser-friendly real-time processing
+        sampleRate = 2.048e6;
+        await device.setSampleRate(sampleRate);
+        console.info(
+          `Scanner: Initialized device sample rate to ${sampleRate / 1e6} MSPS`,
+        );
+      }
+      const usableBandwidth = await device.getUsableBandwidth();
 
-    for (
-      let freq = startFrequency;
-      freq <= endFrequency && isScanningRef.current;
-      freq += stepSize
-    ) {
-      await scanFrequency(freq);
-      currentStep++;
-      const pct = Math.min(100, (currentStep / totalSteps) * 100);
-      setProgress(pct);
-    }
+      // Calculate center frequencies to cover the full range
+      const scanRange = endFrequency - startFrequency;
+      const stepSize = usableBandwidth * 0.9; // 90% overlap to avoid edge artifacts
+      const totalSteps = Math.max(1, Math.ceil(scanRange / stepSize));
 
-    // Scan complete
-    if (isScanningRef.current) {
+      let currentStep = 0;
+
+      // Scan each frequency chunk
+      for (
+        let centerFreq = startFrequency + usableBandwidth / 2;
+        centerFreq <= endFrequency - usableBandwidth / 2 &&
+        isScanningRef.current;
+        centerFreq += stepSize
+      ) {
+        await scanFrequencyChunk(centerFreq, sampleRate);
+        currentStep++;
+        const pct = Math.min(100, (currentStep / totalSteps) * 100);
+        setProgress(pct);
+      }
+
+      // Scan complete
+      if (isScanningRef.current) {
+        setState("idle");
+        isScanningRef.current = false;
+        setCurrentFrequency(null);
+        setProgress(0);
+      }
+    } catch (error) {
+      console.error("Error during scan:", error);
       setState("idle");
       isScanningRef.current = false;
       setCurrentFrequency(null);
       setProgress(0);
     }
-  }, [device, config, scanFrequency]);
+  }, [device, config, scanFrequencyChunk]);
 
   /**
    * Start scanning

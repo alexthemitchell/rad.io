@@ -9,7 +9,7 @@ This project follows the Contributor Covenant Code of Conduct, version 2.1.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers. We will review and investigate all complaints promptly and fairly.
 
-- Primary contact: REPLACE_ME_EMAIL
+- Primary contact: alex+github@alexmitchelltech.com
 - If you are unsure how to report, you may alternatively open a private message to a maintainer on GitHub.
 
 All maintainers are obligated to respect the privacy and security of the reporter of any incident.
