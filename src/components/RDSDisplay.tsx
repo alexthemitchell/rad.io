@@ -32,13 +32,17 @@ export function RDSDisplay({
 
   // Auto-scroll radio text
   useEffect(() => {
-    if (!rdsData?.rt || rdsData.rt.length <= 32) return;
+    if (!rdsData?.rt || rdsData.rt.length <= 32) {
+      return;
+    }
 
     const interval = setInterval(() => {
       setScrollPosition((pos) => (pos + 1) % rdsData.rt.length);
     }, 300);
 
-    return () => clearInterval(interval);
+    return (): void => {
+      clearInterval(interval);
+    };
   }, [rdsData?.rt]);
 
   // No RDS data available
@@ -58,7 +62,9 @@ export function RDSDisplay({
 
   // Format radio text for scrolling
   const getDisplayText = (text: string, maxLength = 32): string => {
-    if (!text || text.length <= maxLength) return text.padEnd(maxLength, " ");
+    if (!text || text.length <= maxLength) {
+      return text.padEnd(maxLength, " ");
+    }
 
     // Create scrolling effect
     const doubled = text + "  •  " + text;
@@ -69,12 +75,16 @@ export function RDSDisplay({
   const syncStatus = stats?.syncLocked ? "Locked" : "Searching";
   const syncColor = stats?.syncLocked ? "#4ade80" : "#fbbf24";
   const qualityPercent = rdsData.signalQuality || 0;
-  const qualityColor =
-    qualityPercent > 80
-      ? "#4ade80"
-      : qualityPercent > 50
-        ? "#fbbf24"
-        : "#f87171";
+  const getQualityColor = (quality: number): string => {
+    if (quality > 80) {
+      return "#4ade80";
+    } else if (quality > 50) {
+      return "#fbbf24";
+    } else {
+      return "#f87171";
+    }
+  };
+  const qualityColor = getQualityColor(qualityPercent);
 
   return (
     <div className={`rds-display ${className}`}>

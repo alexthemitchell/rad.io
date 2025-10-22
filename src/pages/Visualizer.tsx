@@ -24,6 +24,7 @@ import AudioControls from "../components/AudioControls";
 import RecordingControls, {
   type RecordingState,
 } from "../components/RecordingControls";
+import RDSDisplay from "../components/RDSDisplay";
 import { Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { ISDRDevice, type IQSample } from "../models/SDRDevice";
@@ -38,6 +39,7 @@ import {
   downloadRecording,
   type IQRecording,
 } from "../utils/iqRecorder";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 import "../styles/main.css";
 
 const MAX_BUFFER_SAMPLES = 32768;
@@ -68,6 +70,10 @@ function Visualizer(): React.JSX.Element {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioVolume, setAudioVolume] = useState(0.5);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
+
+  // RDS state
+  const [rdsData, setRdsData] = useState<RDSStationData | null>(null);
+  const [rdsStats, setRdsStats] = useState<RDSDecoderStats | null>(null);
 
   const sampleBufferRef = useRef<Sample[]>([]);
   const latestChunkRef = useRef<Sample[]>([]);
@@ -199,10 +205,19 @@ function Visualizer(): React.JSX.Element {
               sampleRate: 48000, // CD quality audio
               channels: 1, // Mono output
               enableDeEmphasis: signalType === "FM", // De-emphasis for FM only
+              enableRDS: signalType === "FM", // Enable RDS decoding for FM
             },
           );
 
           playAudioBuffer(result);
+
+          // Update RDS data if available
+          if (result.rdsData) {
+            setRdsData(result.rdsData);
+          }
+          if (result.rdsStats) {
+            setRdsStats(result.rdsStats);
+          }
         } catch (error) {
           console.error("Audio processing error:", error);
         }
@@ -722,6 +737,13 @@ function Visualizer(): React.JSX.Element {
   const handleSignalTypeChange = (type: SignalType): void => {
     setSignalType(type);
     setLiveRegionMessage(`Signal type changed to ${type}`);
+
+    // Clear RDS data when switching away from FM
+    if (type !== "FM") {
+      setRdsData(null);
+      setRdsStats(null);
+    }
+
     // Set default frequency for each type
     if (type === "FM" && frequency < 88.1e6) {
       handleSetFrequency(100.3e6).catch(console.error);
@@ -950,6 +972,17 @@ function Visualizer(): React.JSX.Element {
             onToggleMute={handleToggleMute}
           />
         </Card>
+
+        {signalType === "FM" && isAudioPlaying && (
+          <Card
+            title="RDS - Radio Data System"
+            subtitle="Real-time FM station information and metadata"
+            collapsible={true}
+            defaultExpanded={true}
+          >
+            <RDSDisplay rdsData={rdsData} stats={rdsStats} />
+          </Card>
+        )}
 
         <RecordingControls
           recordingState={recordingState}

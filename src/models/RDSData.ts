@@ -182,7 +182,9 @@ export function createEmptyRDSData(): RDSStationData {
  * PI code encodes country and station identification
  */
 export function formatPICode(pi: number): string {
-  if (pi === null || pi === undefined) return "----";
+  if (pi === null || pi === undefined) {
+    return "----";
+  }
   return pi.toString(16).toUpperCase().padStart(4, "0");
 }
 
@@ -192,13 +194,17 @@ export function formatPICode(pi: number): string {
  */
 export function getCountryFromPI(pi: number): string {
   const countryCode = (pi >> 12) & 0xf;
-  const extendedCode = (pi >> 8) & 0xf;
 
   // Simplified country mapping (US/North America focused)
-  if (countryCode === 0x1) return "US";
-  if (countryCode === 0xc || countryCode === 0xd || countryCode === 0xe)
+  if (countryCode === 0x1) {
     return "US";
-  if (countryCode === 0x2) return "CA";
+  }
+  if (countryCode === 0xc || countryCode === 0xd || countryCode === 0xe) {
+    return "US";
+  }
+  if (countryCode === 0x2) {
+    return "CA";
+  }
 
   return "Unknown";
 }

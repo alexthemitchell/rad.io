@@ -15,19 +15,13 @@
  * - https://digitalcommons.andrews.edu/cgi/viewcontent.cgi?article=1003&context=honors
  */
 
-import type { IQSample } from "../models/SDRDevice";
 import type {
   RDSBlock,
   RDSGroup,
   RDSStationData,
   RDSDecoderStats,
-  RDSGroupType,
 } from "../models/RDSData";
-import {
-  createEmptyRDSData,
-  RDSProgramType,
-  RDSGroupType as GroupType,
-} from "../models/RDSData";
+import { createEmptyRDSData } from "../models/RDSData";
 
 /**
  * RDS Constants
@@ -36,7 +30,6 @@ const RDS_SUBCARRIER_FREQ = 57000; // Hz (3 × 19 kHz stereo pilot)
 const RDS_BAUD_RATE = 1187.5; // bits per second
 const RDS_BLOCK_BITS = 26; // 16 data + 10 checkword
 const RDS_GROUP_BLOCKS = 4;
-const RDS_SYNC_BITS = 10; // Offset word size
 
 /**
  * RDS Offset Words (Syndrome patterns for block synchronization)
@@ -139,7 +132,9 @@ export class RDSDecoder {
 
       // Update phase
       this.phase += (2 * Math.PI * this.frequency) / this.sampleRate;
-      if (this.phase > 2 * Math.PI) this.phase -= 2 * Math.PI;
+      if (this.phase > 2 * Math.PI) {
+        this.phase -= 2 * Math.PI;
+      }
 
       // Output is the in-phase component (BPSK signal)
       output[i] = i_component;
@@ -154,11 +149,9 @@ export class RDSDecoder {
   private demodulateSubcarrier(signal: Float32Array): number[] {
     const bits: number[] = [];
     let bitAccumulator = 0;
-    let sampleCount = 0;
 
     for (let i = 0; i < signal.length; i++) {
       bitAccumulator += signal[i]!;
-      sampleCount++;
 
       // Check if we've accumulated enough samples for one bit
       this.bitPhase++;
@@ -170,7 +163,6 @@ export class RDSDecoder {
         bits.push(bit);
 
         bitAccumulator = 0;
-        sampleCount = 0;
       }
     }
 
@@ -212,7 +204,9 @@ export class RDSDecoder {
    * Attempt to find block synchronization using offset words
    */
   private attemptBlockSync(): void {
-    if (this.blockBuffer.length < RDS_BLOCK_BITS) return;
+    if (this.blockBuffer.length < RDS_BLOCK_BITS) {
+      return;
+    }
 
     // Try to decode a block and check all possible offset words
     const blockBits = this.blockBuffer.slice(0, RDS_BLOCK_BITS);
@@ -235,11 +229,17 @@ export class RDSDecoder {
       this.stats.lastSync = Date.now();
 
       // Determine offset word
-      if (syndrome === OFFSET_WORDS.A) block.offsetWord = "A";
-      else if (syndrome === OFFSET_WORDS.B) block.offsetWord = "B";
-      else if (syndrome === OFFSET_WORDS.C) block.offsetWord = "C";
-      else if (syndrome === OFFSET_WORDS.Cp) block.offsetWord = "C'";
-      else if (syndrome === OFFSET_WORDS.D) block.offsetWord = "D";
+      if (syndrome === OFFSET_WORDS.A) {
+        block.offsetWord = "A";
+      } else if (syndrome === OFFSET_WORDS.B) {
+        block.offsetWord = "B";
+      } else if (syndrome === OFFSET_WORDS.C) {
+        block.offsetWord = "C";
+      } else if (syndrome === OFFSET_WORDS.Cp) {
+        block.offsetWord = "C'";
+      } else if (syndrome === OFFSET_WORDS.D) {
+        block.offsetWord = "D";
+      }
 
       block.valid = true;
       this.blockBuffer.splice(0, RDS_BLOCK_BITS);
@@ -301,8 +301,6 @@ export class RDSDecoder {
       this.blockPosition = 1;
     } else if (block.offsetWord === "B") {
       // Block B contains group type and other info
-      const groupType = (block.data >> 12) & 0xf;
-      const version = (block.data >> 11) & 0x1 ? "B" : "A";
       const tp = Boolean((block.data >> 10) & 0x1);
       const pty = (block.data >> 5) & 0x1f;
 
@@ -345,7 +343,6 @@ export class RDSDecoder {
    */
   private parseGroup2(group: RDSGroup): void {
     const version = group.version;
-    const textAB = Boolean(group.blocks[1].data & 0x10); // Text A/B flag
     const segmentAddress = group.blocks[1].data & 0xf;
 
     let chars: string[];
