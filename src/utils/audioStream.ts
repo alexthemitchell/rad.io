@@ -25,6 +25,8 @@
  */
 
 import type { IQSample } from "../models/SDRDevice";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
+import { RDSDecoder } from "./rdsDecoder";
 
 /**
  * Audio output format configuration
@@ -36,6 +38,8 @@ export type AudioOutputConfig = {
   channels?: 1 | 2;
   /** Enable de-emphasis filter for FM (default: true) */
   enableDeEmphasis?: boolean;
+  /** Enable RDS decoding for FM signals (default: false) */
+  enableRDS?: boolean;
 };
 
 /**
@@ -61,6 +65,10 @@ export type AudioStreamResult = {
   demodType: DemodulationType;
   /** AudioBuffer for direct Web Audio API usage */
   audioBuffer: AudioBuffer;
+  /** RDS station data (if RDS decoding enabled and available) */
+  rdsData?: RDSStationData;
+  /** RDS decoder statistics (if RDS decoding enabled) */
+  rdsStats?: RDSDecoderStats;
 };
 
 /**
@@ -239,6 +247,7 @@ class AMDemodulator {
 export class AudioStreamProcessor {
   private fmDemodulator: FMDemodulator | null = null;
   private amDemodulator: AMDemodulator | null = null;
+  private rdsDecoder: RDSDecoder | null = null;
   private audioContext: AudioContext;
   private currentDemodType: DemodulationType = DemodulationType.NONE;
 
@@ -280,6 +289,7 @@ export class AudioStreamProcessor {
       sampleRate = 48000,
       channels = 1,
       enableDeEmphasis = true,
+      enableRDS = false,
     } = config;
 
     // Initialize demodulator if needed
@@ -298,10 +308,22 @@ export class AudioStreamProcessor {
       }
     }
 
+    // Initialize RDS decoder if requested and using FM
+    if (enableRDS && demodType === DemodulationType.FM && !this.rdsDecoder) {
+      this.rdsDecoder = new RDSDecoder(this.sdrSampleRate);
+    } else if (!enableRDS && this.rdsDecoder) {
+      this.rdsDecoder = null;
+    }
+
     // Demodulate based on type
     let audioSamples: Float32Array;
     if (demodType === DemodulationType.FM && this.fmDemodulator) {
       audioSamples = this.fmDemodulator.demodulate(samples);
+
+      // Extract RDS data from FM baseband if enabled
+      if (this.rdsDecoder && audioSamples.length > 0) {
+        this.rdsDecoder.processBaseband(audioSamples);
+      }
     } else if (demodType === DemodulationType.AM && this.amDemodulator) {
       audioSamples = this.amDemodulator.demodulate(samples);
     } else {
@@ -332,13 +354,21 @@ export class AudioStreamProcessor {
       channelData.set(decimatedSamples);
     }
 
-    return {
+    const result: AudioStreamResult = {
       audioData: decimatedSamples,
       sampleRate,
       channels,
       demodType,
       audioBuffer,
     };
+
+    // Add RDS data if decoder is active
+    if (this.rdsDecoder) {
+      result.rdsData = this.rdsDecoder.getStationData();
+      result.rdsStats = this.rdsDecoder.getStats();
+    }
+
+    return result;
   }
 
   /**
@@ -408,6 +438,7 @@ export class AudioStreamProcessor {
   reset(): void {
     this.fmDemodulator?.reset();
     this.amDemodulator?.reset();
+    this.rdsDecoder?.reset();
   }
 
   /**
@@ -415,6 +446,7 @@ export class AudioStreamProcessor {
    */
   async cleanup(): Promise<void> {
     await this.audioContext.close();
+    this.rdsDecoder = null;
   }
 }
 
