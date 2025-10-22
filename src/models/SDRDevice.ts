@@ -187,6 +187,14 @@ export interface ISDRDevice {
    * Useful for testing and memory optimization
    */
   clearBuffers(): void;
+
+  /**
+   * Software reset the device via USB control transfer
+   * Sends a reset command to the device firmware without requiring physical intervention
+   * @returns Promise that resolves when reset command is sent
+   * @throws Error if reset fails
+   */
+  reset(): Promise<void>;
 }
 
 /**

@@ -947,6 +947,69 @@ a:focus-visible,
   text-align: center;
 }
 
+/* Device Control Bar Component */
+.device-control-bar {
+  background: rgba(20, 30, 50, 0.95);
+  border-radius: 8px;
+  margin: 20px 0;
+  border: 1px solid rgba(90, 163, 232, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.device-control-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  flex-wrap: wrap;
+}
+
+.device-status-badge,
+.device-error-badge {
+  margin-left: auto;
+}
+
+.status-indicator {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-indicator.status-active {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.status-indicator.status-idle {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.status-indicator.status-error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.device-diagnostics-panel {
+  padding: 0 20px 20px;
+  border-top: 1px solid rgba(90, 163, 232, 0.2);
+}
+
+.device-diagnostics-panel .device-diagnostics {
+  margin: 0;
+  border: none;
+  background: transparent;
+  padding: 16px 0 0;
+  box-shadow: none;
+}
+
 /* Device Diagnostics Component */
 .device-diagnostics {
   background: rgba(20, 30, 50, 0.95);

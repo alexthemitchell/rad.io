@@ -5,7 +5,7 @@ import SignalTypeSelector, {
   SignalType,
 } from "../components/SignalTypeSelector";
 import BandwidthSelector from "../components/BandwidthSelector";
-import DeviceDiagnostics from "../components/DeviceDiagnostics";
+import DeviceControlBar from "../components/DeviceControlBar";
 import PresetStations from "../components/PresetStations";
 import RadioControls from "../components/RadioControls";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
@@ -44,7 +44,12 @@ const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS (1000ms / 30fps ≈ 33ms)
 
 function Visualizer(): React.JSX.Element {
-  const { device, initialize, cleanup, isCheckingPaired } = useHackRFDevice();
+  const {
+    device,
+    initialize,
+    cleanup: _cleanup,
+    isCheckingPaired,
+  } = useHackRFDevice();
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [signalType, setSignalType] = useState<SignalType>("FM");
@@ -54,6 +59,7 @@ function Visualizer(): React.JSX.Element {
   const [latestSamples, setLatestSamples] = useState<Sample[]>([]);
   const [currentFPS, setCurrentFPS] = useState<number>(0);
   const [deviceError, setDeviceError] = useState<Error | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Frequency scanner hook
   const scanner = useFrequencyScanner(device);
@@ -245,6 +251,47 @@ function Visualizer(): React.JSX.Element {
       return newState;
     });
   }, []);
+
+  // Device reset handler
+  const handleResetDevice = useCallback(async () => {
+    if (!device || isResetting) {
+      return;
+    }
+
+    setIsResetting(true);
+    setLiveRegionMessage("Resetting device...");
+
+    try {
+      console.warn("Visualizer: Attempting software reset");
+      await device.reset();
+      setDeviceError(null);
+      setLiveRegionMessage(
+        "Device reset successful. You can try starting reception again.",
+      );
+      console.warn("Visualizer: Reset successful");
+    } catch (error) {
+      console.error("Visualizer: Reset failed:", error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      setDeviceError(new Error(`Reset failed: ${errorMsg}`));
+      setLiveRegionMessage(
+        "Device reset failed. Please try unplugging and replugging the device.",
+      );
+    } finally {
+      setIsResetting(false);
+    }
+  }, [device, isResetting]);
+
+  // Debug: log when an error occurs that should expose reset UI
+  useEffect(() => {
+    if (deviceError && deviceError.message.includes("Device not responding")) {
+      console.warn(
+        "Visualizer: deviceError requires reset UI; handler present?",
+        typeof handleResetDevice === "function",
+        "isResetting:",
+        isResetting,
+      );
+    }
+  }, [deviceError, handleResetDevice, isResetting]);
 
   // Recording stop handler (defined early because it's used in handleSampleChunk)
   const handleStopRecording = useCallback(() => {
@@ -820,98 +867,18 @@ function Visualizer(): React.JSX.Element {
       </header>
 
       <main id="main-content" role="main">
-        <div
-          className="action-bar"
-          role="toolbar"
-          aria-label="Device control actions"
-        >
-          <div className="action-bar-left">
-            <button
-              className="btn btn-primary"
-              onClick={startListening}
-              disabled={listening || isInitializing || isCheckingPaired}
-              title={
-                listening
-                  ? "Device is currently receiving. Click 'Stop Reception' first."
-                  : isInitializing
-                    ? "Connecting to your SDR device. Please grant WebUSB access if prompted."
-                    : isCheckingPaired
-                      ? "Checking for previously paired devices..."
-                      : device
-                        ? "Start receiving IQ samples from the SDR device. Visualizations will update with live data."
-                        : "Click to connect your SDR device via WebUSB. Ensure device is plugged in and browser supports WebUSB."
-              }
-              aria-label={
-                device
-                  ? "Start receiving radio signals"
-                  : "Connect SDR device via WebUSB"
-              }
-            >
-              {device
-                ? "Start Reception"
-                : isCheckingPaired
-                  ? "Checking for Device..."
-                  : isInitializing
-                    ? "Connecting..."
-                    : "Connect Device"}
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={stopListening}
-              disabled={!listening}
-              title={
-                listening
-                  ? "Stop receiving IQ samples and pause visualizations. Device remains connected."
-                  : "Reception is not active. Click 'Start Reception' first."
-              }
-              aria-label="Stop receiving radio signals"
-            >
-              Stop Reception
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={cleanup}
-              disabled={listening}
-              title={
-                listening
-                  ? "Stop reception before disconnecting the device."
-                  : "Disconnect and release the SDR device. You'll need to reconnect to use it again."
-              }
-              aria-label="Disconnect SDR device"
-            >
-              Disconnect
-            </button>
-          </div>
-          <div className="action-bar-right">
-            <div
-              className="status-indicator"
-              role="status"
-              aria-live="polite"
-              title={
-                device
-                  ? listening
-                    ? "Device is connected and actively receiving IQ samples"
-                    : "Device is connected but not receiving. Click 'Start Reception' to begin."
-                  : "No device connected. Click 'Connect Device' to get started."
-              }
-            >
-              <span
-                className={`status-dot ${device ? "active" : "inactive"}`}
-              />
-              {device
-                ? listening
-                  ? "Receiving"
-                  : "Connected"
-                : "Not Connected"}
-            </div>
-          </div>
-        </div>
-
-        <DeviceDiagnostics
+        <DeviceControlBar
           device={device}
-          isListening={listening}
+          listening={listening}
+          isInitializing={isInitializing}
+          isCheckingPaired={isCheckingPaired}
+          deviceError={deviceError}
           frequency={frequency}
-          error={deviceError}
+          onConnect={initialize}
+          onStartReception={startListening}
+          onStopReception={stopListening}
+          onResetDevice={handleResetDevice}
+          isResetting={isResetting}
         />
 
         <Card title="Radio Controls" subtitle="Configure your SDR receiver">
