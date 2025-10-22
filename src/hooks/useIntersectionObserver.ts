@@ -1,4 +1,4 @@
-import { useEffect, useState, RefObject } from "react";
+import { useEffect, useState, RefObject, useMemo } from "react";
 
 export type UseIntersectionObserverOptions = {
   /**
@@ -33,6 +33,16 @@ export function useIntersectionObserver(
 ): boolean {
   const [isVisible, setIsVisible] = useState<boolean>(false);
 
+  // Memoize options to prevent unnecessary observer recreations
+  const observerOptions = useMemo(
+    () => ({
+      root: options.root ?? null,
+      rootMargin: options.rootMargin ?? "0px",
+      threshold: options.threshold ?? 0,
+    }),
+    [options.root, options.rootMargin, options.threshold],
+  );
+
   useEffect((): (() => void) | void => {
     const element = ref.current;
     if (!element) {
@@ -43,11 +53,7 @@ export function useIntersectionObserver(
       ([entry]): void => {
         setIsVisible(entry?.isIntersecting ?? false);
       },
-      {
-        root: options.root ?? null,
-        rootMargin: options.rootMargin ?? "0px",
-        threshold: options.threshold ?? 0,
-      },
+      observerOptions,
     );
 
     observer.observe(element);
@@ -55,7 +61,7 @@ export function useIntersectionObserver(
     return (): void => {
       observer.disconnect();
     };
-  }, [ref, options.root, options.rootMargin, options.threshold]);
+  }, [ref, observerOptions]);
 
   return isVisible;
 }

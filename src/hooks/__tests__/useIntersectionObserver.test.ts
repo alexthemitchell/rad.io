@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useIntersectionObserver } from "../useIntersectionObserver";
 import { createRef } from "react";
 
@@ -46,7 +46,6 @@ describe("useIntersectionObserver", () => {
   });
 
   it("should update visibility when intersection changes", () => {
-    const { act } = require("@testing-library/react");
     const element = document.createElement("div");
     const ref = { current: element };
 
