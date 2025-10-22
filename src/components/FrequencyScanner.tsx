@@ -278,6 +278,8 @@ function FrequencyScanner({
                 <tr>
                   <th>Frequency</th>
                   <th>Strength</th>
+                  <th>Station</th>
+                  <th>RDS Info</th>
                   <th>Time</th>
                   {onTuneToSignal && <th>Actions</th>}
                 </tr>
@@ -304,6 +306,36 @@ function FrequencyScanner({
                           />
                           <span>{(signal.strength * 100).toFixed(1)}%</span>
                         </div>
+                      </td>
+                      <td>
+                        {signal.rdsData?.ps ? (
+                          <div className="rds-station">
+                            <strong>{signal.rdsData.ps}</strong>
+                          </div>
+                        ) : (
+                          <span className="no-rds">—</span>
+                        )}
+                      </td>
+                      <td>
+                        {signal.rdsData ? (
+                          <div className="rds-info">
+                            {signal.rdsData.rt && (
+                              <div
+                                className="rds-text"
+                                title={signal.rdsData.rt}
+                              >
+                                {signal.rdsData.rt.length > 30
+                                  ? `${signal.rdsData.rt.substring(0, 30)}...`
+                                  : signal.rdsData.rt}
+                              </div>
+                            )}
+                            {signal.rdsStats?.syncLocked && (
+                              <span className="rds-badge">RDS</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="no-rds">No RDS</span>
+                        )}
                       </td>
                       <td>{signal.timestamp.toLocaleTimeString()}</td>
                       {onTuneToSignal && (
@@ -460,6 +492,43 @@ function FrequencyScanner({
           transition: width 0.3s ease;
         }
 
+        .rds-station {
+          font-family: monospace;
+          font-size: 0.875rem;
+          color: #60a5fa;
+        }
+
+        .rds-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          font-size: 0.75rem;
+        }
+
+        .rds-text {
+          color: #9ca3af;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 250px;
+        }
+
+        .rds-badge {
+          display: inline-block;
+          padding: 0.125rem 0.375rem;
+          background: #10b981;
+          color: #000;
+          border-radius: 0.25rem;
+          font-weight: 600;
+          font-size: 0.625rem;
+          text-transform: uppercase;
+        }
+
+        .no-rds {
+          color: #6b7280;
+          font-style: italic;
+        }
+
         @media (max-width: 768px) {
           .scanner-config {
             grid-template-columns: 1fr;
@@ -469,6 +538,10 @@ function FrequencyScanner({
             flex-direction: column;
             align-items: flex-start;
             gap: 0.5rem;
+          }
+
+          .rds-text {
+            max-width: 150px;
           }
         }
       `}</style>

@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ISDRDevice } from "../models/SDRDevice";
+import { ISDRDevice, IQSample } from "../models/SDRDevice";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
+import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
 
 /**
  * Configuration for frequency scanning
@@ -15,6 +17,8 @@ export interface FrequencyScanConfig {
   threshold: number;
   /** Dwell time per frequency in ms */
   dwellTime: number;
+  /** Enable RDS decoding for FM scans (default: false) */
+  enableRDS?: boolean;
 }
 
 /**
@@ -29,6 +33,10 @@ export interface ActiveSignal {
   timestamp: Date;
   /** Optional label */
   label?: string;
+  /** RDS station data (FM signals only) */
+  rdsData?: RDSStationData;
+  /** RDS decoder statistics (FM signals only) */
+  rdsStats?: RDSDecoderStats;
 }
 
 /**
@@ -54,7 +62,7 @@ export function useFrequencyScanner(
   stopScan: () => void;
   updateConfig: (updates: Partial<FrequencyScanConfig>) => void;
   clearSignals: () => void;
-  updateSamples: (amplitudes: number[]) => void;
+  updateSamples: (amplitudes: number[], iqSamples?: IQSample[]) => void;
 } {
   const [state, setState] = useState<ScannerState>("idle");
   const [config, setConfig] = useState<FrequencyScanConfig>({
@@ -63,6 +71,7 @@ export function useFrequencyScanner(
     stepSize: 100e3, // 100 kHz
     threshold: 0.3, // 30% signal strength
     dwellTime: 50, // 50ms per frequency
+    enableRDS: true, // Enable RDS decoding by default for FM scans
   });
   const [currentFrequency, setCurrentFrequency] = useState<number | null>(null);
   const [activeSignals, setActiveSignals] = useState<ActiveSignal[]>([]);
@@ -72,7 +81,9 @@ export function useFrequencyScanner(
   const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dwellResolveRef = useRef<(() => void) | null>(null);
   const samplesRef = useRef<number[]>([]);
+  const iqSamplesRef = useRef<IQSample[]>([]);
   const isScanningRef = useRef(false);
+  const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
 
   /**
    * Calculate signal strength from IQ samples
@@ -100,12 +111,33 @@ export function useFrequencyScanner(
       }
 
       try {
+        // Stop any previous streaming
+        if (device.isReceiving()) {
+          await device.stopRx();
+        }
+
         // Tune to frequency
         await device.setFrequency(frequency);
         setCurrentFrequency(frequency);
 
         // Clear any previous samples immediately after tuning to avoid contamination
         samplesRef.current = [];
+        iqSamplesRef.current = [];
+
+        // Start receiving samples
+        await device.receive((data: DataView) => {
+          // Parse the raw data into IQ samples
+          const samples = device.parseSamples(data);
+
+          // Store IQ samples for RDS processing
+          iqSamplesRef.current.push(...samples);
+
+          // Calculate amplitudes for signal strength
+          const amplitudes = samples.map((s) =>
+            Math.sqrt(s.I * s.I + s.Q * s.Q),
+          );
+          samplesRef.current.push(...amplitudes);
+        });
 
         // Wait for dwell time to collect samples (abortable)
         await new Promise<void>((resolve) => {
@@ -120,6 +152,9 @@ export function useFrequencyScanner(
             resolve();
           }, config.dwellTime);
         });
+
+        // Stop streaming
+        await device.stopRx();
 
         // If scanning has been paused/stopped during dwell, exit early
         if (!isScanningRef.current) {
@@ -137,6 +172,41 @@ export function useFrequencyScanner(
             timestamp: new Date(),
           };
 
+          // For FM frequencies (88-108 MHz), attempt RDS decoding if enabled
+          const isFM = frequency >= 88e6 && frequency <= 108e6;
+          if (isFM && config.enableRDS && iqSamplesRef.current.length > 0) {
+            try {
+              // Initialize audio processor if not already created
+              if (!audioProcessorRef.current) {
+                const sampleRate = await device.getSampleRate();
+                audioProcessorRef.current = new AudioStreamProcessor(
+                  sampleRate,
+                );
+              }
+
+              // Process a batch of IQ samples for RDS extraction
+              // Use a limited sample size to keep dwell time reasonable
+              const sampleBatch = iqSamplesRef.current.slice(0, 50000);
+              const result = await audioProcessorRef.current.extractAudio(
+                sampleBatch,
+                DemodulationType.FM,
+                {
+                  sampleRate: 48000,
+                  enableRDS: true,
+                },
+              );
+
+              // Attach RDS data to signal if available
+              if (result.rdsData) {
+                signal.rdsData = result.rdsData;
+                signal.rdsStats = result.rdsStats;
+              }
+            } catch (error) {
+              console.warn(`RDS extraction failed for ${frequency}:`, error);
+              // Continue without RDS data
+            }
+          }
+
           setActiveSignals((prev) => {
             // Check if we already have this frequency
             const exists = prev.find((s) => s.frequency === frequency);
@@ -153,14 +223,20 @@ export function useFrequencyScanner(
 
         // Clear samples for next frequency window
         samplesRef.current = [];
+        iqSamplesRef.current = [];
       } catch (error) {
         console.error(`Error scanning frequency ${frequency}:`, error);
+        // Make sure streaming is stopped even on error
+        if (device.isReceiving()) {
+          await device.stopRx().catch(console.error);
+        }
       }
     },
     [
       device,
       config.dwellTime,
       config.threshold,
+      config.enableRDS,
       calculateSignalStrength,
       onSignalDetected,
     ],
@@ -317,15 +393,27 @@ export function useFrequencyScanner(
    * Update samples from IQ data
    * This should be called from the main visualizer when new samples arrive
    */
-  const updateSamples = useCallback((amplitudes: number[]): void => {
-    if (isScanningRef.current) {
-      samplesRef.current = [...samplesRef.current, ...amplitudes];
-      // Keep only recent samples to avoid memory issues
-      if (samplesRef.current.length > 10000) {
-        samplesRef.current = samplesRef.current.slice(-5000);
+  const updateSamples = useCallback(
+    (amplitudes: number[], iqSamples?: IQSample[]): void => {
+      if (isScanningRef.current) {
+        samplesRef.current = [...samplesRef.current, ...amplitudes];
+        // Keep only recent samples to avoid memory issues
+        if (samplesRef.current.length > 10000) {
+          samplesRef.current = samplesRef.current.slice(-5000);
+        }
+
+        // Also store IQ samples if provided (for RDS decoding)
+        if (iqSamples && config.enableRDS) {
+          iqSamplesRef.current = [...iqSamplesRef.current, ...iqSamples];
+          // Keep only recent IQ samples to avoid memory issues
+          if (iqSamplesRef.current.length > 50000) {
+            iqSamplesRef.current = iqSamplesRef.current.slice(-25000);
+          }
+        }
       }
-    }
-  }, []);
+    },
+    [config.enableRDS],
+  );
 
   // Cleanup on unmount
   useEffect(() => {

@@ -87,6 +87,9 @@ class MockSDRDevice implements ISDRDevice {
   isOpen(): boolean {
     return this._isOpen;
   }
+  reset(): Promise<void> {
+    return Promise.resolve();
+  }
 
   async setFrequency(frequencyHz: number): Promise<void> {
     if (!this._isOpen) {
