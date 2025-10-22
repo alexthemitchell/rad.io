@@ -26,6 +26,20 @@ import {
   createEmptyRDSData,
   RDSGroupType as GroupType,
 } from "../models/RDSData";
+import type {
+  TMCMessage,
+  TMCDecoderStats,
+} from "../models/TMCData";
+import {
+  TMCDirection,
+  TMCDuration,
+  TMCExtent,
+  getEventInfo,
+  formatDuration,
+  formatExtent,
+  formatDirection,
+  createEmptyTMCStats,
+} from "../models/TMCData";
 
 /**
  * RDS Constants
@@ -80,6 +94,10 @@ export class RDSDecoder {
   private psBuffer: string[] = new Array(8).fill("");
   private rtBuffer: string[] = new Array(64).fill("");
 
+  // TMC data storage
+  private tmcMessages: Map<number, TMCMessage> = new Map();
+  private tmcStats: TMCDecoderStats;
+
   constructor(sampleRate: number) {
     this.sampleRate = sampleRate;
     this.samplesPerBit = sampleRate / RDS_BAUD_RATE;
@@ -93,6 +111,7 @@ export class RDSDecoder {
       syncLocked: false,
       lastSync: 0,
     };
+    this.tmcStats = createEmptyTMCStats();
   }
 
   /**
@@ -376,6 +395,9 @@ export class RDSDecoder {
     } else if (groupType === 2) {
       // Group 2A or 2B - Radio Text
       this.parseGroup2(group);
+    } else if (groupType === 8 && version === "A") {
+      // Group 8A - TMC (Traffic Message Channel)
+      this.parseGroup8A(group);
     }
 
     // Clear group blocks for next group
@@ -396,6 +418,8 @@ export class RDSDecoder {
         : GroupType.RADIO_TEXT_2B;
     } else if (type === 4 && version === "A") {
       return GroupType.CLOCK_TIME_4A;
+    } else if (type === 8 && version === "A") {
+      return GroupType.TMC_8A;
     }
     return GroupType.UNKNOWN;
   }
@@ -464,6 +488,124 @@ export class RDSDecoder {
   }
 
   /**
+   * Parse Group 8A - TMC (Traffic Message Channel)
+   * 
+   * Group 8A Format (ISO 14819-1):
+   * Block B: Group type (8A), DP bit, CI (Continuity Index)
+   * Block C: Event code (11 bits), Extent (3 bits), Direction (1 bit), Diversion (1 bit)
+   * Block D: Location code (16 bits)
+   */
+  private parseGroup8A(group: RDSGroup): void {
+    this.tmcStats.group8ACount++;
+
+    try {
+      // Block B contains continuity index (CI) and other control bits
+      const blockB = group.blocks[1]!.data;
+      const continuityIndex = blockB & 0x7; // 3 bits (0-7)
+      
+      // Block C contains event information
+      const blockC = group.blocks[2]!.data;
+      const eventCode = (blockC >> 5) & 0x7ff; // 11 bits (top 11 bits)
+      const extent = (blockC >> 2) & 0x7; // 3 bits
+      const direction = (blockC >> 1) & 0x1; // 1 bit
+      const diversionAdvice = blockC & 0x1; // 1 bit (LSB)
+
+      // Block D contains location code
+      const blockD = group.blocks[3]!.data;
+      const locationCode = blockD; // 16 bits
+
+      // Get event information
+      const eventInfo = getEventInfo(eventCode);
+
+      // Calculate duration from continuity index (simplified)
+      // In reality, duration comes from multi-group messages
+      const duration = continuityIndex as TMCDuration;
+
+      // Determine TMC direction
+      let tmcDirection: TMCDirection;
+      if (direction === 0) {
+        tmcDirection = TMCDirection.POSITIVE;
+      } else {
+        tmcDirection = TMCDirection.NEGATIVE;
+      }
+
+      // Create message ID from location + event + direction
+      const messageId = (locationCode << 16) | (eventCode << 1) | direction;
+
+      // Calculate expiration time based on duration
+      const now = Date.now();
+      let expiresAt: number | null = null;
+      if (duration !== TMCDuration.NO_DURATION) {
+        // Simple mapping: each duration code = ~30 minutes
+        expiresAt = now + duration * 30 * 60 * 1000;
+      }
+
+      // Check if this message already exists
+      const existingMessage = this.tmcMessages.get(messageId);
+
+      if (existingMessage) {
+        // Update existing message
+        existingMessage.updateCount++;
+        existingMessage.receivedAt = now;
+        if (expiresAt) {
+          existingMessage.expiresAt = expiresAt;
+        }
+      } else {
+        // Create new TMC message
+        const tmcMessage: TMCMessage = {
+          messageId,
+          eventCode,
+          eventText: eventInfo.text,
+          category: eventInfo.category,
+          severity: eventInfo.severity,
+          locationCode,
+          locationText: `Location ${locationCode}`,
+          direction: tmcDirection,
+          extent: extent as TMCExtent,
+          extentText: formatExtent(extent as TMCExtent),
+          duration,
+          durationText: formatDuration(duration),
+          diversionAdvice: Boolean(diversionAdvice),
+          urgency: eventInfo.severity, // Map severity to urgency
+          receivedAt: now,
+          expiresAt,
+          updateCount: 1,
+        };
+
+        this.tmcMessages.set(messageId, tmcMessage);
+        this.tmcStats.messagesReceived++;
+      }
+
+      // Clean up expired messages
+      this.cleanupExpiredTMCMessages();
+
+      this.tmcStats.lastMessageAt = now;
+      this.tmcStats.messagesActive = this.tmcMessages.size;
+    } catch (error) {
+      this.tmcStats.parseErrors++;
+      console.warn("[TMC] Parse error:", error);
+    }
+  }
+
+  /**
+   * Clean up expired TMC messages
+   */
+  private cleanupExpiredTMCMessages(): void {
+    const now = Date.now();
+    const toDelete: number[] = [];
+
+    for (const [messageId, message] of this.tmcMessages.entries()) {
+      if (message.expiresAt && message.expiresAt < now) {
+        toDelete.push(messageId);
+      }
+    }
+
+    for (const messageId of toDelete) {
+      this.tmcMessages.delete(messageId);
+    }
+  }
+
+  /**
    * Get current RDS station data
    */
   getStationData(): RDSStationData {
@@ -475,6 +617,23 @@ export class RDSDecoder {
    */
   getStats(): RDSDecoderStats {
     return { ...this.stats };
+  }
+
+  /**
+   * Get active TMC messages
+   */
+  getTMCMessages(): TMCMessage[] {
+    this.cleanupExpiredTMCMessages();
+    return Array.from(this.tmcMessages.values()).sort(
+      (a, b) => b.severity - a.severity
+    );
+  }
+
+  /**
+   * Get TMC decoder statistics
+   */
+  getTMCStats(): TMCDecoderStats {
+    return { ...this.tmcStats };
   }
 
   /**
@@ -490,6 +649,8 @@ export class RDSDecoder {
       syncLocked: false,
       lastSync: 0,
     };
+    this.tmcStats = createEmptyTMCStats();
+    this.tmcMessages.clear();
     this.blockSync = false;
     this.blockBuffer = [];
     this.blockPosition = 0;
