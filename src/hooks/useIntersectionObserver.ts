@@ -49,12 +49,9 @@ export function useIntersectionObserver(
       return;
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]): void => {
-        setIsVisible(entry?.isIntersecting ?? false);
-      },
-      observerOptions,
-    );
+    const observer = new IntersectionObserver(([entry]): void => {
+      setIsVisible(entry?.isIntersecting ?? false);
+    }, observerOptions);
 
     observer.observe(element);
 

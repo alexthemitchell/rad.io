@@ -167,7 +167,9 @@ describe("RecordingControls", () => {
       );
 
       expect(screen.getByText(/▶ Playback/)).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "▶ Play" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "▶ Play" }),
+      ).toBeInTheDocument();
       expect(screen.getByText(/00:05/)).toBeInTheDocument();
       // Duration appears twice - once in info and once in playback time display
       expect(screen.getAllByText(/00:10/)).toHaveLength(2);
@@ -471,9 +473,7 @@ describe("RecordingControls", () => {
         />,
       );
 
-      expect(
-        screen.getByLabelText("Recording controls"),
-      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Recording controls")).toBeInTheDocument();
       expect(screen.getByLabelText("Load recording file")).toBeInTheDocument();
     });
 
@@ -491,10 +491,7 @@ describe("RecordingControls", () => {
       );
 
       const recordBtn = screen.getByText(/● Record/);
-      expect(recordBtn).toHaveAttribute(
-        "title",
-        "Start recording IQ samples",
-      );
+      expect(recordBtn).toHaveAttribute("title", "Start recording IQ samples");
     });
   });
 });

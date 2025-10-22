@@ -345,9 +345,7 @@ export function downloadRecording(
 /**
  * Load recording from a File object
  */
-export async function loadRecordingFromFile(
-  file: File,
-): Promise<IQRecording> {
+export async function loadRecordingFromFile(file: File): Promise<IQRecording> {
   const buffer = await file.arrayBuffer();
 
   // Detect format by file extension or content

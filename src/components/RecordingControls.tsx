@@ -5,10 +5,7 @@
  */
 
 import { useState, useCallback } from "react";
-import {
-  type IQRecording,
-  loadRecordingFromFile,
-} from "../utils/iqRecorder";
+import { type IQRecording, loadRecordingFromFile } from "../utils/iqRecorder";
 
 export type RecordingState = "idle" | "recording" | "playback";
 
@@ -88,7 +85,9 @@ function RecordingControls({
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
-      if (!file) {return;}
+      if (!file) {
+        return;
+      }
 
       try {
         const recording = await loadRecordingFromFile(file);

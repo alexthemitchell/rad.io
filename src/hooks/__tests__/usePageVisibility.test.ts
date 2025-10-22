@@ -78,10 +78,7 @@ describe("usePageVisibility", () => {
   });
 
   it("should clean up event listener on unmount", () => {
-    const removeEventListenerSpy = jest.spyOn(
-      document,
-      "removeEventListener",
-    );
+    const removeEventListenerSpy = jest.spyOn(document, "removeEventListener");
 
     const { unmount } = renderHook(() => usePageVisibility());
 

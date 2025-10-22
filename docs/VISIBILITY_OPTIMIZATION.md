@@ -7,17 +7,21 @@ The rad.io application now implements browser-native APIs to optimize resource u
 ## Features
 
 ### 1. Page Visibility API
+
 The `usePageVisibility` hook detects when the browser tab is hidden or minimized, allowing components to pause rendering operations.
 
 **Behavior:**
+
 - Returns `true` when the tab is active and visible
 - Returns `false` when the tab is hidden, minimized, or switched away from
 - Automatically resumes rendering when the tab becomes visible again
 
 ### 2. IntersectionObserver API
+
 The `useIntersectionObserver` hook detects when visualization components are scrolled out of view, suspending rendering for off-screen elements.
 
 **Behavior:**
+
 - Returns `true` when at least 10% of the element is visible in the viewport
 - Returns `false` when the element is completely off-screen
 - Resumes rendering automatically when scrolled back into view
@@ -33,6 +37,7 @@ All three main visualization components now support visibility-based optimizatio
 ### Default Behavior
 
 By default, visualizations automatically pause rendering when:
+
 1. The browser tab is hidden/inactive
 2. The visualization is scrolled out of view
 
@@ -47,10 +52,10 @@ For use cases where continuous rendering is required even when not visible (e.g.
 
 ```tsx
 // Continue rendering even when hidden or off-screen
-<IQConstellation 
-  samples={samples} 
-  width={750} 
-  height={400} 
+<IQConstellation
+  samples={samples}
+  width={750}
+  height={400}
   continueInBackground={true}
 />
 ```
@@ -69,12 +74,14 @@ When properly utilized, this optimization can:
 ### Hooks
 
 #### `usePageVisibility()`
+
 ```typescript
 const isPageVisible = usePageVisibility();
 // Returns: boolean - true if tab is active, false if hidden
 ```
 
 #### `useIntersectionObserver(ref, options?)`
+
 ```typescript
 const canvasRef = useRef<HTMLCanvasElement>(null);
 const isElementVisible = useIntersectionObserver(canvasRef, {
@@ -109,6 +116,7 @@ The implementation includes comprehensive test suites:
 - `src/hooks/__tests__/useIntersectionObserver.test.ts` - Tests for element visibility detection
 
 Run tests with:
+
 ```bash
 npm test -- --testPathPatterns='use(PageVisibility|IntersectionObserver)'
 ```

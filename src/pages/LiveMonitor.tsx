@@ -210,9 +210,7 @@ function LiveMonitor(): React.JSX.Element {
         audioSampleBufferRef.current = [];
         audioProcessorRef.current?.reset();
       }
-      announce(
-        newState ? "Audio playback started" : "Audio playback stopped",
-      );
+      announce(newState ? "Audio playback started" : "Audio playback stopped");
       return newState;
     });
   }, [announce]);
@@ -460,7 +458,14 @@ function LiveMonitor(): React.JSX.Element {
 
     shouldStartOnConnectRef.current = false;
     void beginDeviceStreaming(device);
-  }, [beginDeviceStreaming, device, initialize, isInitializing, listening, announce]);
+  }, [
+    beginDeviceStreaming,
+    device,
+    initialize,
+    isInitializing,
+    listening,
+    announce,
+  ]);
 
   const stopListening = useCallback(async (): Promise<void> => {
     if (device && device.isReceiving()) {
