@@ -31,7 +31,17 @@ export function useIntersectionObserver(
   ref: RefObject<Element | null>,
   options: UseIntersectionObserverOptions = {},
 ): boolean {
-  const [isVisible, setIsVisible] = useState<boolean>(false);
+  // Gracefully degrade in non-browser or test environments where
+  // IntersectionObserver may not be available. Default to visible so
+  // components can render and size canvases synchronously in tests/SSR.
+  const isSupported =
+    typeof window !== "undefined" &&
+    typeof (window as unknown as { IntersectionObserver?: unknown })
+      .IntersectionObserver !== "undefined";
+
+  const [isVisible, setIsVisible] = useState<boolean>(
+    isSupported ? false : true,
+  );
 
   // Memoize options to prevent unnecessary observer recreations
   const observerOptions = useMemo(
@@ -44,6 +54,12 @@ export function useIntersectionObserver(
   );
 
   useEffect((): (() => void) | void => {
+    // If IntersectionObserver isn't supported, treat the element as visible
+    // and skip setting up an observer.
+    if (!isSupported) {
+      return;
+    }
+
     const element = ref.current;
     if (!element) {
       return;
@@ -58,7 +74,7 @@ export function useIntersectionObserver(
     return (): void => {
       observer.disconnect();
     };
-  }, [ref, observerOptions]);
+  }, [ref, observerOptions, isSupported]);
 
   return isVisible;
 }
