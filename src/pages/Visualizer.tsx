@@ -21,14 +21,23 @@ import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import AudioControls from "../components/AudioControls";
+import RecordingControls, {
+  type RecordingState,
+} from "../components/RecordingControls";
 import { Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
-import { ISDRDevice } from "../models/SDRDevice";
+import { ISDRDevice, type IQSample } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,
   DemodulationType,
   type AudioStreamResult,
 } from "../utils/audioStream";
+import {
+  IQRecorder,
+  IQPlayback,
+  downloadRecording,
+  type IQRecording,
+} from "../utils/iqRecorder";
 import "../styles/main.css";
 
 const MAX_BUFFER_SAMPLES = 32768;
@@ -70,6 +79,17 @@ function Visualizer(): React.JSX.Element {
   const audioSampleBufferRef = useRef<Sample[]>([]);
   // Accumulate ~64ms of RF at 2.048 MSPS (~131,072 IQ samples) before audio extraction
   const AUDIO_BUFFER_SIZE = 131072;
+
+  // Recording state
+  const [recordingState, setRecordingState] = useState<RecordingState>("idle");
+  const iqRecorderRef = useRef<IQRecorder | null>(null);
+  const iqPlaybackRef = useRef<IQPlayback | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [recordingSampleCount, setRecordingSampleCount] = useState(0);
+  const [playbackProgress, setPlaybackProgress] = useState(0);
+  const [playbackTime, setPlaybackTime] = useState(0);
+  const [isPlaybackPlaying, setIsPlaybackPlaying] = useState(false);
+  const playbackIntervalRef = useRef<number | null>(null);
 
   // Initialize audio context and processor
   useEffect(() => {
@@ -226,6 +246,20 @@ function Visualizer(): React.JSX.Element {
     });
   }, []);
 
+  // Recording stop handler (defined early because it's used in handleSampleChunk)
+  const handleStopRecording = useCallback(() => {
+    if (!iqRecorderRef.current || recordingState !== "recording") {return;}
+
+    iqRecorderRef.current.stop();
+    const recording = iqRecorderRef.current.getRecording();
+    setRecordingState("idle");
+    setRecordingDuration(recording.metadata.duration);
+    setRecordingSampleCount(recording.metadata.sampleCount);
+    setLiveRegionMessage(
+      `Recording stopped. ${recording.metadata.sampleCount} samples captured`,
+    );
+  }, [recordingState]);
+
   const cancelScheduledUpdate = useCallback((): void => {
     if (
       typeof cancelAnimationFrame === "function" &&
@@ -293,6 +327,25 @@ function Visualizer(): React.JSX.Element {
       }`;
       performanceMonitor.mark(markName);
 
+      // Record samples if recording is active
+      if (iqRecorderRef.current && recordingState === "recording") {
+        const iqSamples: IQSample[] = chunk.map((s) => ({
+          I: s.I,
+          Q: s.Q,
+        }));
+        const stillRecording = iqRecorderRef.current.addSamples(iqSamples);
+
+        // Update recording stats
+        setRecordingSampleCount(iqRecorderRef.current.getSampleCount());
+        setRecordingDuration(iqRecorderRef.current.getDuration());
+
+        // Auto-stop if buffer limit reached
+        if (!stillRecording) {
+          handleStopRecording();
+          setLiveRegionMessage("Recording stopped: buffer limit reached");
+        }
+      }
+
       const combined = sampleBufferRef.current.length
         ? sampleBufferRef.current.concat(chunk)
         : chunk.slice();
@@ -324,7 +377,13 @@ function Visualizer(): React.JSX.Element {
         scheduleVisualizationUpdate();
       }
     },
-    [scheduleVisualizationUpdate, processAudioChunk, scanner],
+    [
+      scheduleVisualizationUpdate,
+      processAudioChunk,
+      scanner,
+      recordingState,
+      handleStopRecording,
+    ],
   );
 
   const beginDeviceStreaming = useCallback(
@@ -374,6 +433,157 @@ function Visualizer(): React.JSX.Element {
       }
     },
     [clearVisualizationState, handleSampleChunk],
+  );
+
+  // Recording handlers (continued - handleStopRecording defined earlier)
+  const handleStartRecording = useCallback(() => {
+    if (!device || recordingState !== "idle") {return;}
+
+    // Create recorder with current parameters
+    iqRecorderRef.current = new IQRecorder(
+      2048000, // Sample rate
+      frequency,
+      10_000_000, // Max 10M samples (~5 seconds at 2 MSPS)
+      signalType,
+      "HackRF One",
+    );
+
+    iqRecorderRef.current.start();
+    setRecordingState("recording");
+    setRecordingDuration(0);
+    setRecordingSampleCount(0);
+    setLiveRegionMessage("Recording started");
+  }, [device, recordingState, frequency, signalType]);
+
+  const handleSaveRecording = useCallback(
+    (filename: string, format: "binary" | "json") => {
+      if (!iqRecorderRef.current) {return;}
+
+      const recording = iqRecorderRef.current.getRecording();
+      downloadRecording(recording, filename, format);
+      setLiveRegionMessage(`Recording saved as ${filename}`);
+    },
+    [],
+  );
+
+  const handleLoadRecording = useCallback(
+    (recording: IQRecording) => {
+      // Stop any active streaming
+      if (listening && device) {
+        void device.stopRx();
+        setListening(false);
+      }
+
+      // Stop any existing playback
+      if (iqPlaybackRef.current) {
+        iqPlaybackRef.current.cleanup();
+        iqPlaybackRef.current = null;
+      }
+
+      // Update frequency and signal type from recording metadata
+      setFrequency(recording.metadata.frequency);
+      if (recording.metadata.signalType) {
+        setSignalType(recording.metadata.signalType as SignalType);
+      }
+
+      // Create playback controller
+      iqPlaybackRef.current = new IQPlayback(
+        recording,
+        (chunk: IQSample[]) => {
+          // Convert IQSample to Sample format
+          const samples: Sample[] = chunk.map((s) => ({
+            I: s.I,
+            Q: s.Q,
+          }));
+          handleSampleChunk(samples);
+        },
+        32768, // Samples per chunk
+      );
+
+      setRecordingState("playback");
+      setRecordingDuration(recording.metadata.duration);
+      setRecordingSampleCount(recording.metadata.sampleCount);
+      setPlaybackProgress(0);
+      setPlaybackTime(0);
+      setIsPlaybackPlaying(false);
+      setLiveRegionMessage(
+        `Recording loaded: ${recording.metadata.sampleCount} samples`,
+      );
+    },
+    [listening, device, handleSampleChunk],
+  );
+
+  const handleStartPlayback = useCallback(() => {
+    if (!iqPlaybackRef.current || recordingState !== "playback") {return;}
+
+    iqPlaybackRef.current.start();
+    setIsPlaybackPlaying(true);
+
+    // Update playback progress every 100ms
+    playbackIntervalRef.current = window.setInterval(() => {
+      if (iqPlaybackRef.current) {
+        setPlaybackProgress(iqPlaybackRef.current.getProgress());
+        setPlaybackTime(iqPlaybackRef.current.getCurrentTime());
+
+        if (
+          !iqPlaybackRef.current.getIsPlaying() &&
+          iqPlaybackRef.current.getProgress() >= 1
+        ) {
+          // Playback complete
+          setIsPlaybackPlaying(false);
+          if (playbackIntervalRef.current) {
+            clearInterval(playbackIntervalRef.current);
+            playbackIntervalRef.current = null;
+          }
+        }
+      }
+    }, 100);
+
+    setLiveRegionMessage("Playback started");
+  }, [recordingState]);
+
+  const handlePausePlayback = useCallback(() => {
+    if (!iqPlaybackRef.current || recordingState !== "playback") {return;}
+
+    iqPlaybackRef.current.pause();
+    setIsPlaybackPlaying(false);
+
+    if (playbackIntervalRef.current) {
+      clearInterval(playbackIntervalRef.current);
+      playbackIntervalRef.current = null;
+    }
+
+    setLiveRegionMessage("Playback paused");
+  }, [recordingState]);
+
+  const handleStopPlayback = useCallback(() => {
+    if (!iqPlaybackRef.current) {return;}
+
+    iqPlaybackRef.current.stop();
+    setIsPlaybackPlaying(false);
+
+    if (playbackIntervalRef.current) {
+      clearInterval(playbackIntervalRef.current);
+      playbackIntervalRef.current = null;
+    }
+
+    // Clean up playback and return to idle
+    iqPlaybackRef.current.cleanup();
+    iqPlaybackRef.current = null;
+    setRecordingState("idle");
+    clearVisualizationState();
+    setLiveRegionMessage("Stopped playback, returned to live mode");
+  }, [clearVisualizationState]);
+
+  const handleSeekPlayback = useCallback(
+    (position: number) => {
+      if (!iqPlaybackRef.current || recordingState !== "playback") {return;}
+
+      iqPlaybackRef.current.seek(position);
+      setPlaybackProgress(position);
+      setPlaybackTime(iqPlaybackRef.current.getCurrentTime());
+    },
+    [recordingState],
   );
 
   // Live region for screen reader announcements
@@ -759,6 +969,30 @@ function Visualizer(): React.JSX.Element {
             onToggleMute={handleToggleMute}
           />
         </Card>
+
+        <RecordingControls
+          recordingState={recordingState}
+          canRecord={
+            device !== undefined &&
+            device.isOpen() &&
+            listening &&
+            recordingState === "idle"
+          }
+          canPlayback={recordingState === "playback"}
+          isPlaying={isPlaybackPlaying}
+          duration={recordingDuration}
+          playbackProgress={playbackProgress}
+          playbackTime={playbackTime}
+          sampleCount={recordingSampleCount}
+          onStartRecording={handleStartRecording}
+          onStopRecording={handleStopRecording}
+          onSaveRecording={handleSaveRecording}
+          onLoadRecording={handleLoadRecording}
+          onStartPlayback={handleStartPlayback}
+          onPausePlayback={handlePausePlayback}
+          onStopPlayback={handleStopPlayback}
+          onSeek={handleSeekPlayback}
+        />
 
         {signalType !== "P25" && (
           <FrequencyScanner
