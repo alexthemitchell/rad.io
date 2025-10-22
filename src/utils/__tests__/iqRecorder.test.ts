@@ -395,7 +395,7 @@ describe("IQPlayback", () => {
 
   test("should calculate current time correctly", () => {
     playback.seek(0.5);
-    const expectedTime = (100 / 2) / 2048000; // Half of 100 samples
+    const expectedTime = 100 / 2 / 2048000; // Half of 100 samples
     expect(playback.getCurrentTime()).toBeCloseTo(expectedTime, 6);
   });
 

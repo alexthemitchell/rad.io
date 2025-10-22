@@ -1279,8 +1279,9 @@ a:focus-visible,
 
 .info-value {
   color: #2d3748;
-  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
-    "Courier New", monospace;
+  font-family:
+    "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New",
+    monospace;
 }
 
 .status-badge {
@@ -1377,8 +1378,9 @@ a:focus-visible,
   justify-content: space-between;
   font-size: 0.875rem;
   color: #718096;
-  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas,
-    "Courier New", monospace;
+  font-family:
+    "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New",
+    monospace;
 }
 
 /* Dialog */

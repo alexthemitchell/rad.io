@@ -1,11 +1,13 @@
 # Recording and Playback Feature Implementation
 
 ## Overview
+
 Implemented comprehensive IQ data recording and playback functionality for rad.io SDR visualizer. Users can now capture live signals to files and replay them later for offline analysis.
 
 ## Key Components
 
 ### 1. IQRecorder Utility (`src/utils/iqRecorder.ts`)
+
 - **IQRecorder class**: Manages live sample capture with configurable buffer limits
 - **IQPlayback class**: Handles playback timing, seeking, and chunk delivery
 - **File formats**:
@@ -14,6 +16,7 @@ Implemented comprehensive IQ data recording and playback functionality for rad.i
 - **Features**: Auto-stop at buffer limit, duration calculation, metadata preservation
 
 ### 2. RecordingControls Component (`src/components/RecordingControls.tsx`)
+
 - **Recording UI**: Start/stop button with pulsing indicator, duration/sample count display
 - **Save dialog**: Filename input, format selection (binary/JSON)
 - **Load**: File picker supporting .iq and .json files
@@ -21,6 +24,7 @@ Implemented comprehensive IQ data recording and playback functionality for rad.i
 - **Accessibility**: Proper ARIA labels, keyboard navigation, screen reader announcements
 
 ### 3. Visualizer Integration (`src/pages/Visualizer.tsx`)
+
 - **State management**: RecordingState enum (idle/recording/playback)
 - **Recording flow**: Hooks into `handleSampleChunk` → accumulates in IQRecorder → updates stats
 - **Playback flow**: Loads file → creates IQPlayback controller → feeds chunks to visualization pipeline
@@ -47,6 +51,7 @@ playback.stop();
 ```
 
 ## Testing
+
 - 24 IQRecorder unit tests (recording, export/import, playback)
 - 22 RecordingControls component tests (UI interactions, state management)
 - All tests passing (464 total)
@@ -54,6 +59,7 @@ playback.stop();
 ## File Format Details
 
 **Binary .iq structure:**
+
 ```
 [4 bytes: metadata length (uint32)]
 [N bytes: metadata JSON]
@@ -61,6 +67,7 @@ playback.stop();
 ```
 
 **JSON structure:**
+
 ```json
 {
   "metadata": {
@@ -77,11 +84,13 @@ playback.stop();
 ```
 
 ## Known Limitations
+
 - Max buffer: 10M samples (~5 seconds at 2 MSPS) to prevent memory issues
 - Binary format uses Float32 (not optimized compression)
 - Playback timing uses setInterval (not sample-accurate, but sufficient for visualization)
 
 ## Future Enhancements
+
 - Compression support (e.g., gzip)
 - Streaming record (write to disk during capture)
 - Multiple file format support (SigMF, GNU Radio)
@@ -89,6 +98,7 @@ playback.stop();
 - Segment/loop playback
 
 ## Related Files
+
 - `src/utils/iqRecorder.ts` - Core recording/playback logic
 - `src/components/RecordingControls.tsx` - UI component
 - `src/pages/Visualizer.tsx` - Integration point

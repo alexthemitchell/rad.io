@@ -248,7 +248,9 @@ function Visualizer(): React.JSX.Element {
 
   // Recording stop handler (defined early because it's used in handleSampleChunk)
   const handleStopRecording = useCallback(() => {
-    if (!iqRecorderRef.current || recordingState !== "recording") {return;}
+    if (!iqRecorderRef.current || recordingState !== "recording") {
+      return;
+    }
 
     iqRecorderRef.current.stop();
     const recording = iqRecorderRef.current.getRecording();
@@ -437,7 +439,9 @@ function Visualizer(): React.JSX.Element {
 
   // Recording handlers (continued - handleStopRecording defined earlier)
   const handleStartRecording = useCallback(() => {
-    if (!device || recordingState !== "idle") {return;}
+    if (!device || recordingState !== "idle") {
+      return;
+    }
 
     // Create recorder with current parameters
     iqRecorderRef.current = new IQRecorder(
@@ -457,7 +461,9 @@ function Visualizer(): React.JSX.Element {
 
   const handleSaveRecording = useCallback(
     (filename: string, format: "binary" | "json") => {
-      if (!iqRecorderRef.current) {return;}
+      if (!iqRecorderRef.current) {
+        return;
+      }
 
       const recording = iqRecorderRef.current.getRecording();
       downloadRecording(recording, filename, format);
@@ -514,7 +520,9 @@ function Visualizer(): React.JSX.Element {
   );
 
   const handleStartPlayback = useCallback(() => {
-    if (!iqPlaybackRef.current || recordingState !== "playback") {return;}
+    if (!iqPlaybackRef.current || recordingState !== "playback") {
+      return;
+    }
 
     iqPlaybackRef.current.start();
     setIsPlaybackPlaying(true);
@@ -543,7 +551,9 @@ function Visualizer(): React.JSX.Element {
   }, [recordingState]);
 
   const handlePausePlayback = useCallback(() => {
-    if (!iqPlaybackRef.current || recordingState !== "playback") {return;}
+    if (!iqPlaybackRef.current || recordingState !== "playback") {
+      return;
+    }
 
     iqPlaybackRef.current.pause();
     setIsPlaybackPlaying(false);
@@ -557,7 +567,9 @@ function Visualizer(): React.JSX.Element {
   }, [recordingState]);
 
   const handleStopPlayback = useCallback(() => {
-    if (!iqPlaybackRef.current) {return;}
+    if (!iqPlaybackRef.current) {
+      return;
+    }
 
     iqPlaybackRef.current.stop();
     setIsPlaybackPlaying(false);
@@ -577,7 +589,9 @@ function Visualizer(): React.JSX.Element {
 
   const handleSeekPlayback = useCallback(
     (position: number) => {
-      if (!iqPlaybackRef.current || recordingState !== "playback") {return;}
+      if (!iqPlaybackRef.current || recordingState !== "playback") {
+        return;
+      }
 
       iqPlaybackRef.current.seek(position);
       setPlaybackProgress(position);

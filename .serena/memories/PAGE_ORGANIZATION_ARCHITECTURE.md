@@ -1,12 +1,15 @@
 # Page Organization & Architecture Learnings
 
 ## Purpose
+
 This memory captures key architectural patterns and learnings for organizing React applications into multiple pages, specifically for SDR applications with complex state management needs.
 
 ## Key Architectural Patterns
 
 ### Multi-Page Organization by User Intent
+
 Pages should be organized around **user workflows** rather than technical capabilities:
+
 - **Discovery/Exploration**: Scanning, searching, finding signals
 - **Active Monitoring**: Real-time reception, listening, viewing live data
 - **Analysis/Deep Dive**: Detailed inspection, performance metrics, recording
@@ -14,17 +17,20 @@ Pages should be organized around **user workflows** rather than technical capabi
 ### State Management Across Pages
 
 **Device State (Shared)**:
+
 - Use singleton hooks (e.g., `useHackRFDevice()`) for hardware resources
 - Device connection persists across page navigation
 - Multiple pages can access the same device instance
 - Pattern: Context or custom hook with ref-based singleton
 
 **Page-Specific State (Isolated)**:
+
 - Sample buffers: Each page manages its own (prevents memory bloat)
 - Audio processing: Only active on pages that need it
 - Visualization state: Per-page to avoid unnecessary computation
 
 **Navigation State (Temporary)**:
+
 - Use React Router's `location.state` for cross-page data passing
 - Example: Scanner → LiveMonitor frequency tuning
 - Pattern: `navigate(path, { state: { frequency, signalType } })`
@@ -32,17 +38,20 @@ Pages should be organized around **user workflows** rather than technical capabi
 ### Why useRef for Performance-Critical State
 
 **Performance Rationale**:
+
 - Sample buffers update 30+ times/second
 - RAF (requestAnimationFrame) callbacks need stable references
 - Avoiding re-renders on every sample chunk (performance critical)
 - Refs store mutable values without triggering re-renders
 
 **When to use useRef vs useState**:
+
 - **useRef**: High-frequency updates, RAF callbacks, timers, buffers
 - **useState**: UI-visible state, user interactions, control values
 - Mixed approach: Refs for internals, state for rendering
 
 **Example Pattern**:
+
 ```typescript
 // Internal state (no re-render needed)
 const sampleBufferRef = useRef<Sample[]>([]);
@@ -63,11 +72,13 @@ if (shouldUpdate) {
 ### Accessibility Across Pages
 
 **Screen Reader Patterns**:
+
 - Create reusable hooks for common a11y features
 - `useLiveRegion()`: Centralizes ARIA live region management
 - Benefits: Consistent announcements, reduced duplication, easier testing
 
 **Pattern**:
+
 ```typescript
 // Hook provides announce function + LiveRegion component
 const { announce, LiveRegion } = useLiveRegion();
@@ -82,12 +93,14 @@ announce("Device connected");
 ### Navigation Architecture
 
 **Tab-Based Navigation**:
+
 - Clear visual hierarchy (header with tabs)
 - Mobile-responsive (vertical stack on small screens)
 - Active state highlighting for orientation
 - Use NavLink for automatic active class
 
 **Skip Links & Focus Management**:
+
 - Include skip-to-main-content links on all pages
 - Maintain focus context during navigation
 - Announce page changes to screen readers
@@ -119,6 +132,7 @@ announce("Device connected");
    - Import order in index: global → layout → components
 
 **Migration Path**:
+
 - Start with file split (least disruptive)
 - Gradually migrate to CSS Modules for new components
 - Keep global utilities (color palette, spacing scale)
@@ -126,34 +140,41 @@ announce("Device connected");
 ## Common Pitfalls & Solutions
 
 **Pitfall**: Sharing sample buffers across pages
+
 - **Problem**: Memory bloat, stale data
 - **Solution**: Per-page buffers, clear on unmount
 
 **Pitfall**: Re-rendering on every sample
+
 - **Problem**: UI lag, dropped frames
 - **Solution**: Throttle with RAF, use refs for buffers
 
 **Pitfall**: Device state conflicts
+
 - **Problem**: Multiple pages trying to control device
 - **Solution**: Singleton pattern, single source of truth
 
 **Pitfall**: Lost navigation context
+
 - **Problem**: User forgets which frequency they were on
 - **Solution**: Pass state via router, auto-tune on arrival
 
 ## Performance Optimization Lessons
 
 **30 FPS Throttling**:
+
 - Sample updates run at device rate (2+ MSPS)
 - UI updates throttled to 30 FPS via `UPDATE_INTERVAL_MS`
 - Pattern: `if (now - lastUpdate > interval) { updateUI(); }`
 
 **Audio Processing Isolation**:
+
 - Only LiveMonitor runs audio pipeline
 - Other pages don't waste CPU on unused processing
 - Conditional initialization based on page needs
 
 **Buffer Management**:
+
 - Cap at 32768 samples (prevents unbounded growth)
 - Slice old data: `buffer.slice(buffer.length - MAX)`
 - Clear buffers on page unmount
@@ -161,12 +182,14 @@ announce("Device connected");
 ## Testing Considerations
 
 **Page-Level Testing**:
+
 - Each page can be tested in isolation
 - Mock shared hooks (useHackRFDevice, etc.)
 - Test navigation state handling
 - Verify cleanup on unmount
 
 **Hook Testing**:
+
 - Test `useLiveRegion` independently
 - Verify announce timing and message queue
 - Test LiveRegion rendering and ARIA attributes
@@ -174,16 +197,19 @@ announce("Device connected");
 ## Future Enhancements
 
 **State Persistence**:
+
 - localStorage for user preferences
 - Session state for temporary data
 - IndexedDB for large datasets (recordings)
 
 **Advanced Routing**:
+
 - Nested routes for sub-pages
 - Route guards for device requirements
 - Query params for shareable configs
 
 **Cross-Page Features**:
+
 - Signal bookmarks (saved across pages)
 - History tracking (recent frequencies)
 - Multi-device support (device selector)
@@ -191,6 +217,7 @@ announce("Device connected");
 ## Key Takeaway
 
 For SDR applications with real-time data and complex user workflows:
+
 - Organize by **user intent**, not technical structure
 - Use **refs for performance**, **state for UI**
 - Share device, isolate buffers

@@ -3,15 +3,15 @@ import React, { useState } from "react";
 /**
  * Hook for managing live region announcements for screen readers
  * Provides a state setter for announcing messages and a component to render the live region
- * 
+ *
  * @returns {Object} - Contains announce function and LiveRegion component
- * 
+ *
  * @example
  * const { announce, LiveRegion } = useLiveRegion();
- * 
+ *
  * // Announce a message
  * announce("Device connected successfully");
- * 
+ *
  * // Render the live region (typically at the top of your component)
  * return (
  *   <div>
