@@ -2,11 +2,11 @@ Minimal Playwright MCP smoke test for rad.io.
 
 Steps
 
-1) Start dev server (HTTPS): `npm start` (or VS Code task).
-2) Navigate: `browser_navigate({ url: "https://localhost:8080" })`.
-3) Wait for shell text: `browser_wait_for({ text: "Software-Defined Radio Visualizer" })`.
-4) Take screenshot: `browser_take_screenshot({ filename: ".playwright-mcp/radio-home.png", fullPage: true })`.
-5) Optional: capture console errors: `browser_console_messages({ onlyErrors: true })` (should be none).
+1. Start dev server (HTTPS): `npm start` (or VS Code task).
+2. Navigate: `browser_navigate({ url: "https://localhost:8080" })`.
+3. Wait for shell text: `browser_wait_for({ text: "Software-Defined Radio Visualizer" })`.
+4. Take screenshot: `browser_take_screenshot({ filename: ".playwright-mcp/radio-home.png", fullPage: true })`.
+5. Optional: capture console errors: `browser_console_messages({ onlyErrors: true })` (should be none).
 
 Assertions (accessibility snapshot)
 

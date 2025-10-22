@@ -2,11 +2,11 @@ Purpose: Concise map of CI expectations and local reproduction for rad.io, plus 
 
 CI checks (GitHub Actions)
 
-1) Lint (ESLint) → no errors
-2) Format (Prettier) → clean
-3) TypeScript type-check → no errors
-4) Unit tests (Jest) → all pass deterministically
-5) Build (webpack) → bundles + WASM copied to dist
+1. Lint (ESLint) → no errors
+2. Format (Prettier) → clean
+3. TypeScript type-check → no errors
+4. Unit tests (Jest) → all pass deterministically
+5. Build (webpack) → bundles + WASM copied to dist
 
 Local reproduction order (fast loop)
 

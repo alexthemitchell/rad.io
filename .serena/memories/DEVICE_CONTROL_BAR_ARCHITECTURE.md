@@ -13,6 +13,7 @@ Previously, device connection and control UI was duplicated across pages (Visual
 ### Shared Component Pattern
 
 Created a reusable `DeviceControlBar` component that:
+
 - Provides device connection controls
 - Manages start/stop reception buttons
 - Displays device status indicators
@@ -55,17 +56,17 @@ src/
 
 ```typescript
 interface DeviceControlBarProps {
-  device?: ISDRDevice;              // Current device instance
-  listening: boolean;               // Is device actively receiving?
-  isInitializing: boolean;          // Is connection in progress?
-  isCheckingPaired?: boolean;       // Checking for paired devices?
-  deviceError?: Error | null;       // Any device errors
-  frequency?: number;               // Current frequency (for diagnostics)
-  onConnect: () => Promise<void>;   // Connect device handler
-  onStartReception: () => Promise<void>;  // Start reception handler
-  onStopReception: () => Promise<void>;   // Stop reception handler
-  onResetDevice?: () => Promise<void>;    // Device reset handler
-  isResetting?: boolean;            // Is reset in progress?
+  device?: ISDRDevice; // Current device instance
+  listening: boolean; // Is device actively receiving?
+  isInitializing: boolean; // Is connection in progress?
+  isCheckingPaired?: boolean; // Checking for paired devices?
+  deviceError?: Error | null; // Any device errors
+  frequency?: number; // Current frequency (for diagnostics)
+  onConnect: () => Promise<void>; // Connect device handler
+  onStartReception: () => Promise<void>; // Start reception handler
+  onStopReception: () => Promise<void>; // Stop reception handler
+  onResetDevice?: () => Promise<void>; // Device reset handler
+  isResetting?: boolean; // Is reset in progress?
 }
 ```
 
@@ -97,7 +98,7 @@ Each page follows this pattern:
 function PageComponent(): React.JSX.Element {
   // Get shared device instance
   const { device, initialize, isCheckingPaired } = useHackRFDevice();
-  
+
   // Page-specific state
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -173,6 +174,7 @@ Added new CSS classes in `main.css`:
 ## Testing
 
 Created comprehensive test suite covering:
+
 - Button rendering based on state
 - Button click handlers
 - Diagnostics toggle functionality
@@ -185,6 +187,7 @@ All 10 tests pass successfully.
 ## Future Enhancements
 
 Potential improvements:
+
 1. Add device disconnect button (currently cleanup is implicit)
 2. Add device selection dropdown for multi-device support
 3. Remember diagnostics expanded state per-user preference
@@ -200,6 +203,7 @@ Potential improvements:
 ## Key Takeaway
 
 For applications with shared hardware resources:
+
 - Use **singleton hooks** for the resource itself (device)
 - Use **presentation components** for shared UI (DeviceControlBar)
 - Let **pages manage** their own processing logic and callbacks
