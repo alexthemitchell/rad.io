@@ -45,10 +45,16 @@ class MockSpeechSynthesisUtterance {
   onmark: ((event: SpeechSynthesisEvent) => void) | null = null;
   onboundary: ((event: SpeechSynthesisEvent) => void) | null = null;
 
-  addEventListener(_type: string, _listener: EventListenerOrEventListenerObject): void {
+  addEventListener(
+    _type: string,
+    _listener: EventListenerOrEventListenerObject,
+  ): void {
     // Mock implementation
   }
-  removeEventListener(_type: string, _listener: EventListenerOrEventListenerObject): void {
+  removeEventListener(
+    _type: string,
+    _listener: EventListenerOrEventListenerObject,
+  ): void {
     // Mock implementation
   }
   dispatchEvent(_event: Event): boolean {
@@ -88,11 +94,27 @@ class MockSpeechSynthesis {
   paused = false;
 
   private voices: SpeechSynthesisVoice[] = [
-    new MockSpeechSynthesisVoice("Google US English", "en-US", true) as unknown as SpeechSynthesisVoice,
-    new MockSpeechSynthesisVoice("Google UK English Female", "en-GB") as unknown as SpeechSynthesisVoice,
-    new MockSpeechSynthesisVoice("Google español", "es-ES") as unknown as SpeechSynthesisVoice,
-    new MockSpeechSynthesisVoice("Google français", "fr-FR") as unknown as SpeechSynthesisVoice,
-    new MockSpeechSynthesisVoice("Google Deutsch", "de-DE") as unknown as SpeechSynthesisVoice,
+    new MockSpeechSynthesisVoice(
+      "Google US English",
+      "en-US",
+      true,
+    ) as unknown as SpeechSynthesisVoice,
+    new MockSpeechSynthesisVoice(
+      "Google UK English Female",
+      "en-GB",
+    ) as unknown as SpeechSynthesisVoice,
+    new MockSpeechSynthesisVoice(
+      "Google español",
+      "es-ES",
+    ) as unknown as SpeechSynthesisVoice,
+    new MockSpeechSynthesisVoice(
+      "Google français",
+      "fr-FR",
+    ) as unknown as SpeechSynthesisVoice,
+    new MockSpeechSynthesisVoice(
+      "Google Deutsch",
+      "de-DE",
+    ) as unknown as SpeechSynthesisVoice,
   ];
 
   speak(utterance: MockSpeechSynthesisUtterance): void {
@@ -127,10 +149,16 @@ class MockSpeechSynthesis {
     return this.voices;
   }
 
-  addEventListener(_type: string, _listener: EventListenerOrEventListenerObject): void {
+  addEventListener(
+    _type: string,
+    _listener: EventListenerOrEventListenerObject,
+  ): void {
     // Mock implementation
   }
-  removeEventListener(_type: string, _listener: EventListenerOrEventListenerObject): void {
+  removeEventListener(
+    _type: string,
+    _listener: EventListenerOrEventListenerObject,
+  ): void {
     // Mock implementation
   }
   dispatchEvent(_event: Event): boolean {
@@ -328,8 +356,14 @@ beforeAll(() => {
     (global as unknown as { window: typeof global }).window = global;
   }
 
-  (global as unknown as { SpeechSynthesisUtterance: typeof MockSpeechSynthesisUtterance }).SpeechSynthesisUtterance = MockSpeechSynthesisUtterance;
-  (global as unknown as { speechSynthesis: MockSpeechSynthesis }).speechSynthesis = new MockSpeechSynthesis();
+  (
+    global as unknown as {
+      SpeechSynthesisUtterance: typeof MockSpeechSynthesisUtterance;
+    }
+  ).SpeechSynthesisUtterance = MockSpeechSynthesisUtterance;
+  (
+    global as unknown as { speechSynthesis: MockSpeechSynthesis }
+  ).speechSynthesis = new MockSpeechSynthesis();
 });
 
 afterAll(() => {
@@ -338,8 +372,7 @@ afterAll(() => {
     .webkitSpeechRecognition;
   delete (global as unknown as { SpeechSynthesisUtterance?: unknown })
     .SpeechSynthesisUtterance;
-  delete (global as unknown as { speechSynthesis?: unknown })
-    .speechSynthesis;
+  delete (global as unknown as { speechSynthesis?: unknown }).speechSynthesis;
 });
 
 /**
@@ -378,7 +411,9 @@ async function synthesizeSpeech(
     };
 
     if (global.speechSynthesis) {
-      global.speechSynthesis.speak(utterance as unknown as SpeechSynthesisUtterance);
+      global.speechSynthesis.speak(
+        utterance as unknown as SpeechSynthesisUtterance,
+      );
     } else {
       reject(new Error("SpeechSynthesis not available"));
     }
@@ -729,7 +764,9 @@ describe("End-to-End Speech Synthesis → Recognition", () => {
       const originalSpeak = global.speechSynthesis?.speak;
 
       if (global.speechSynthesis) {
-        global.speechSynthesis.speak = (utterance: MockSpeechSynthesisUtterance): void => {
+        global.speechSynthesis.speak = (
+          utterance: MockSpeechSynthesisUtterance,
+        ): void => {
           setTimeout(() => {
             if (utterance.onerror) {
               utterance.onerror(new Event("error"));
@@ -741,7 +778,9 @@ describe("End-to-End Speech Synthesis → Recognition", () => {
       await expect(synthesizeSpeech("test", "en-US")).rejects.toThrow();
 
       if (global.speechSynthesis && originalSpeak) {
-        global.speechSynthesis.speak = originalSpeak as unknown as (utterance: MockSpeechSynthesisUtterance) => void;
+        global.speechSynthesis.speak = originalSpeak as unknown as (
+          utterance: MockSpeechSynthesisUtterance,
+        ) => void;
       }
     });
 
