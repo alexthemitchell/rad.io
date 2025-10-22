@@ -20,8 +20,12 @@ import type {
   RDSGroup,
   RDSStationData,
   RDSDecoderStats,
+  RDSGroupType,
 } from "../models/RDSData";
-import { createEmptyRDSData } from "../models/RDSData";
+import {
+  createEmptyRDSData,
+  RDSGroupType as GroupType,
+} from "../models/RDSData";
 
 /**
  * RDS Constants
@@ -58,7 +62,6 @@ export class RDSDecoder {
   private stats: RDSDecoderStats;
 
   // Signal processing state
-  private phaseLocked = false;
   private phase = 0;
   private frequency = RDS_SUBCARRIER_FREQ;
 
@@ -71,6 +74,7 @@ export class RDSDecoder {
   private blockSync = false;
   private blockBuffer: number[] = [];
   private blockPosition = 0;
+  private currentGroupBlocks: RDSBlock[] = [];
 
   // RDS data buffers
   private psBuffer: string[] = new Array(8).fill("");
@@ -295,12 +299,15 @@ export class RDSDecoder {
    * Process a validated RDS block
    */
   private processBlock(block: RDSBlock): void {
-    // Block A always contains PI code
+    // Block A always contains PI code and starts a new group
     if (block.offsetWord === "A") {
       this.stationData.pi = block.data;
       this.blockPosition = 1;
+      this.currentGroupBlocks = [block];
     } else if (block.offsetWord === "B") {
       // Block B contains group type and other info
+      const groupType = (block.data >> 12) & 0xf;
+      const version = (block.data >> 11) & 0x1 ? "B" : "A";
       const tp = Boolean((block.data >> 10) & 0x1);
       const pty = (block.data >> 5) & 0x1f;
 
@@ -308,13 +315,89 @@ export class RDSDecoder {
       this.stationData.pty = pty;
 
       this.blockPosition = 2;
+      this.currentGroupBlocks.push(block);
+
+      // Store group type and version for later use
+      this.currentGroupBlocks[1]!.groupType = groupType;
+      this.currentGroupBlocks[1]!.groupVersion = version;
     } else if (block.offsetWord === "C" || block.offsetWord === "C'") {
       this.blockPosition = 3;
+      this.currentGroupBlocks.push(block);
     } else if (block.offsetWord === "D") {
-      this.blockPosition = 0; // Reset for next group
+      this.blockPosition = 0;
+      this.currentGroupBlocks.push(block);
+
+      // We now have a complete group (4 blocks)
+      if (this.currentGroupBlocks.length === 4) {
+        this.processCompleteGroup();
+      }
     }
 
     this.stationData.lastUpdate = Date.now();
+  }
+
+  /**
+   * Process a complete RDS group (4 blocks)
+   */
+  private processCompleteGroup(): void {
+    if (this.currentGroupBlocks.length !== 4) {
+      return;
+    }
+
+    this.stats.totalGroups++;
+    this.stats.validGroups++;
+
+    // Extract group type and version from Block B
+    const blockB = this.currentGroupBlocks[1]!;
+    const groupType = blockB.groupType || 0;
+    const version = (blockB.groupVersion || "A") as "A" | "B";
+
+    // Create RDS group structure
+    const group: RDSGroup = {
+      blocks: this.currentGroupBlocks as [
+        RDSBlock,
+        RDSBlock,
+        RDSBlock,
+        RDSBlock,
+      ],
+      groupType: this.getGroupTypeName(groupType, version),
+      version: version,
+      pi: this.currentGroupBlocks[0]!.data,
+      pty: (blockB.data >> 5) & 0x1f,
+      tp: Boolean((blockB.data >> 10) & 0x1),
+      ta: Boolean((blockB.data >> 4) & 0x1),
+      timestamp: Date.now(),
+    };
+
+    // Parse based on group type
+    if (groupType === 0) {
+      // Group 0A or 0B - Program Service Name
+      this.parseGroup0(group);
+    } else if (groupType === 2) {
+      // Group 2A or 2B - Radio Text
+      this.parseGroup2(group);
+    }
+
+    // Clear group blocks for next group
+    this.currentGroupBlocks = [];
+  }
+
+  /**
+   * Get group type name from type code and version
+   */
+  private getGroupTypeName(type: number, version: "A" | "B"): RDSGroupType {
+    if (type === 0) {
+      return version === "A"
+        ? GroupType.BASIC_TUNING_0A
+        : GroupType.BASIC_TUNING_0B;
+    } else if (type === 2) {
+      return version === "A"
+        ? GroupType.RADIO_TEXT_2A
+        : GroupType.RADIO_TEXT_2B;
+    } else if (type === 4 && version === "A") {
+      return GroupType.CLOCK_TIME_4A;
+    }
+    return GroupType.UNKNOWN;
   }
 
   /**
@@ -407,10 +490,10 @@ export class RDSDecoder {
       syncLocked: false,
       lastSync: 0,
     };
-    this.phaseLocked = false;
     this.blockSync = false;
     this.blockBuffer = [];
     this.blockPosition = 0;
+    this.currentGroupBlocks = [];
     this.psBuffer = new Array(8).fill("");
     this.rtBuffer = new Array(64).fill("");
   }

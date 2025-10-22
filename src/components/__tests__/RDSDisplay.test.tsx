@@ -229,7 +229,8 @@ describe("RDSDisplay", () => {
     });
 
     it("should display truncated radio text in compact mode", () => {
-      const longText = "This is a very long radio text that should be truncated";
+      const longText =
+        "This is a very long radio text that should be truncated";
       const dataLongRT = { ...mockRDSData, rt: longText };
 
       render(<RDSDisplayCompact rdsData={dataLongRT} />);

@@ -112,18 +112,14 @@ export function RDSDisplay({
 
       {/* Main Display - Station Name */}
       <div className="rds-main">
-        <div className="rds-station-name">
-          {rdsData.ps || "--------"}
-        </div>
+        <div className="rds-station-name">{rdsData.ps || "--------"}</div>
       </div>
 
       {/* Radio Text Display */}
       {rdsData.rt && (
         <div className="rds-radio-text">
           <div className="rds-rt-label">📝 Radio Text:</div>
-          <div className="rds-rt-content">
-            {getDisplayText(rdsData.rt, 48)}
-          </div>
+          <div className="rds-rt-content">{getDisplayText(rdsData.rt, 48)}</div>
         </div>
       )}
 
@@ -184,9 +180,7 @@ export function RDSDisplay({
             Error Rate: {stats.errorRate.toFixed(1)}%
           </span>
           {stats.correctedBlocks > 0 && (
-            <span className="rds-stat">
-              Corrected: {stats.correctedBlocks}
-            </span>
+            <span className="rds-stat">Corrected: {stats.correctedBlocks}</span>
           )}
         </div>
       )}
@@ -215,7 +209,11 @@ export function RDSDisplayCompact({
     <div className="rds-display-compact">
       <div className="rds-compact-ps">{rdsData.ps || "--------"}</div>
       {rdsData.rt && (
-        <div className="rds-compact-rt" title={rdsData.rt}>
+        <div
+          className="rds-compact-rt"
+          title={rdsData.rt}
+          aria-label={rdsData.rt}
+        >
           {rdsData.rt.substring(0, 24)}
           {rdsData.rt.length > 24 ? "..." : ""}
         </div>

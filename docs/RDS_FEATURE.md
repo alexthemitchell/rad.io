@@ -31,6 +31,7 @@ The implementation supports several key RDS data types:
 5. **RDS data will appear automatically** if the station broadcasts RDS
 
 The RDS display shows:
+
 - Station name in large letters
 - Radio text with auto-scrolling for long messages
 - Program type (e.g., "Rock Music", "News")
@@ -42,37 +43,33 @@ The RDS display shows:
 ### Programmatically
 
 ```typescript
-import { AudioStreamProcessor, DemodulationType } from './utils/audioStream';
-import { RDSDecoder } from './utils/rdsDecoder';
+import { AudioStreamProcessor, DemodulationType } from "./utils/audioStream";
+import { RDSDecoder } from "./utils/rdsDecoder";
 
 // Create audio processor
 const processor = new AudioStreamProcessor(2048000); // 2.048 MHz sample rate
 
 // Extract audio with RDS enabled
-const result = await processor.extractAudio(
-  iqSamples,
-  DemodulationType.FM,
-  {
-    sampleRate: 48000,
-    channels: 1,
-    enableDeEmphasis: true,
-    enableRDS: true, // Enable RDS decoding
-  }
-);
+const result = await processor.extractAudio(iqSamples, DemodulationType.FM, {
+  sampleRate: 48000,
+  channels: 1,
+  enableDeEmphasis: true,
+  enableRDS: true, // Enable RDS decoding
+});
 
 // Access RDS data
 if (result.rdsData) {
-  console.log('Station Name:', result.rdsData.ps);
-  console.log('Radio Text:', result.rdsData.rt);
-  console.log('Program Type:', result.rdsData.pty);
-  console.log('PI Code:', result.rdsData.pi.toString(16).toUpperCase());
+  console.log("Station Name:", result.rdsData.ps);
+  console.log("Radio Text:", result.rdsData.rt);
+  console.log("Program Type:", result.rdsData.pty);
+  console.log("PI Code:", result.rdsData.pi.toString(16).toUpperCase());
 }
 
 // Check decoder statistics
 if (result.rdsStats) {
-  console.log('Sync Locked:', result.rdsStats.syncLocked);
-  console.log('Valid Groups:', result.rdsStats.validGroups);
-  console.log('Error Rate:', result.rdsStats.errorRate);
+  console.log("Sync Locked:", result.rdsStats.syncLocked);
+  console.log("Valid Groups:", result.rdsStats.validGroups);
+  console.log("Error Rate:", result.rdsStats.errorRate);
 }
 ```
 
@@ -129,11 +126,13 @@ RDS Display (RDSDisplay.tsx)
 ## Requirements
 
 ### Hardware
+
 - SDR device (e.g., HackRF One, RTL-SDR with upconverter)
 - FM antenna or connection to FM signal source
 - Sufficient signal strength (SNR > ~15 dB recommended)
 
 ### Software
+
 - Modern web browser with WebUSB support
 - JavaScript enabled
 - FM station broadcasting RDS data (not all stations support RDS)
@@ -143,12 +142,14 @@ RDS Display (RDSDisplay.tsx)
 ### "No RDS Data" Displayed
 
 **Possible Causes:**
+
 1. Station does not broadcast RDS (common in some regions)
 2. Signal strength too weak
 3. FM mode not selected
 4. Audio playback not enabled
 
 **Solutions:**
+
 - Try a different FM station (public radio stations often have RDS)
 - Improve antenna positioning
 - Verify FM mode is active and audio is playing
@@ -157,12 +158,14 @@ RDS Display (RDSDisplay.tsx)
 ### RDS Data Updates Slowly
 
 **This is normal behavior:**
+
 - RDS data is transmitted slowly (1187.5 bits/second)
 - Station name: transmitted 2 characters at a time, repeated
 - Radio text: transmitted 4 characters at a time (2A) or 2 (2B)
 - Full decode requires multiple group repetitions
 
 **To improve:**
+
 - Ensure strong signal (better SNR = fewer errors = faster decode)
 - Wait 10-20 seconds for complete information
 - Some stations update radio text infrequently
@@ -170,12 +173,14 @@ RDS Display (RDSDisplay.tsx)
 ### Poor RDS Quality / High Error Rate
 
 **Possible Causes:**
+
 1. Weak signal strength
 2. Multipath interference
 3. Adjacent channel interference
 4. RF gain set too high (causing saturation)
 
 **Solutions:**
+
 - Adjust antenna for better signal
 - Move away from obstructions
 - Try different frequencies

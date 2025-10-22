@@ -73,6 +73,8 @@ export interface RDSBlock {
   offsetWord: string; // A, B, C, C', or D
   valid: boolean; // Checkword validation result
   corrected: boolean; // Whether error correction was applied
+  groupType?: number; // Group type code (0-15) extracted from Block B
+  groupVersion?: string; // Group version ('A' or 'B') extracted from Block B
 }
 
 /**

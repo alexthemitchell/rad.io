@@ -2,10 +2,10 @@ Update: Playwright MCP specifics for rad.io dev server.
 
 Quick smoke steps
 
-1) Start dev server (HTTPS): npm start (or VS Code task). WDS serves https://localhost:8080 with a self‑signed cert.
-2) Navigate: mcp_microsoft_pla_browser_navigate → https://localhost:8080
-3) Verify page: wait_for("Software-Defined Radio Visualizer") or use accessibility snapshot
-4) Screenshot: take_screenshot({ filename: ".playwright-mcp/radio-home.png" })
+1. Start dev server (HTTPS): npm start (or VS Code task). WDS serves https://localhost:8080 with a self‑signed cert.
+2. Navigate: mcp_microsoft_pla_browser_navigate → https://localhost:8080
+3. Verify page: wait_for("Software-Defined Radio Visualizer") or use accessibility snapshot
+4. Screenshot: take_screenshot({ filename: ".playwright-mcp/radio-home.png" })
 
 Common issues & remedies
 

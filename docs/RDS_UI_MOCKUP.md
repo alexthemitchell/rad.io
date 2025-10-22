@@ -69,27 +69,32 @@
 ## Color Coding
 
 ### Signal Quality Bar
+
 - **Green (85-100%)**: Excellent signal, high quality decode
 - **Yellow (50-84%)**: Good signal, moderate quality
 - **Red (0-49%)**: Poor signal, low quality decode
 
 ### Sync Status
+
 - **Green "Locked"**: Successfully synchronized with RDS blocks
 - **Yellow "Searching"**: Attempting to find block synchronization
 
 ### Traffic Indicators
+
 - **"✓ Available"**: Station broadcasts traffic information (TP=1, TA=0)
 - **"🚨 Announcement"**: Active traffic announcement (TP=1, TA=1)
 
 ## Responsive Behavior
 
 ### Desktop (>768px)
+
 - Full metadata grid with 2 columns
 - Large station name (48px font)
 - Radio text at 18px font
 - All metadata visible
 
 ### Mobile (<768px)
+
 - Metadata grid stacks to single column
 - Station name reduced to 32px
 - Radio text at 14px
@@ -98,17 +103,20 @@
 ## Interactive Features
 
 ### Auto-Scrolling Radio Text
+
 - When radio text exceeds display width (>48 characters)
 - Scrolls left continuously at 300ms interval
-- Creates loop effect with separator: "message  •  message"
+- Creates loop effect with separator: "message • message"
 - Provides smooth reading experience
 
 ### Collapsible Card
+
 - Can be collapsed to save screen space
 - State persists across sessions
 - Collapse/expand animation
 
 ### Dynamic Updates
+
 - Station data updates in real-time as RDS groups are decoded
 - Quality bar animates smoothly on signal changes
 - Statistics increment as groups are received
@@ -117,18 +125,21 @@
 ## Accessibility Features
 
 ### Screen Reader Support
+
 - Semantic HTML structure
 - ARIA labels for all interactive elements
 - Clear hierarchy with headings
 - Status updates announced
 
 ### Keyboard Navigation
+
 - Tab through interactive elements
 - Enter/Space to collapse/expand
 - Focus indicators visible
 - Skip links available
 
 ### Visual Accessibility
+
 - High contrast text on background
 - Color is not sole indicator (icons + text)
 - Readable font sizes
@@ -137,10 +148,12 @@
 ## CSS Classes Reference
 
 ### Main Container
+
 - `.rds-display` - Main container
 - `.rds-display.rds-no-data` - No data state modifier
 
 ### Header Section
+
 - `.rds-header` - Header with PI and quality
 - `.rds-pi` - PI code display
 - `.rds-quality` - Quality bar container
@@ -148,25 +161,30 @@
 - `.rds-quality-fill` - Quality bar fill (animated)
 
 ### Station Name
+
 - `.rds-main` - Main display area
 - `.rds-station-name` - Large station name
 
 ### Radio Text
+
 - `.rds-radio-text` - Radio text container
 - `.rds-rt-label` - "Radio Text:" label
 - `.rds-rt-content` - Scrolling text content
 
 ### Metadata Grid
+
 - `.rds-metadata` - Grid container
 - `.rds-meta-item` - Individual metadata item
 - `.rds-meta-label` - Item label
 - `.rds-meta-value` - Item value
 
 ### Statistics
+
 - `.rds-stats` - Statistics footer
 - `.rds-stat` - Individual statistic
 
 ### Compact Variant
+
 - `.rds-display-compact` - Compact container
 - `.rds-compact-ps` - Compact station name
 - `.rds-compact-rt` - Compact radio text
@@ -175,11 +193,13 @@
 ## Integration in Visualizer
 
 ### Placement
+
 - Appears after Audio Controls card
 - Before Recording Controls section
 - Part of main content flow
 
 ### Visibility Conditions
+
 ```typescript
 {signalType === "FM" && isAudioPlaying && (
   <Card title="RDS - Radio Data System">
@@ -189,6 +209,7 @@
 ```
 
 ### State Management
+
 ```typescript
 // State variables
 const [rdsData, setRdsData] = useState<RDSStationData | null>(null);
@@ -209,18 +230,21 @@ if (signalType !== "FM") {
 ## Animation Specifications
 
 ### Quality Bar Fill
+
 - Property: `width`, `background-color`
 - Duration: 300ms
 - Easing: ease
 - Smooth transition between quality levels
 
 ### Radio Text Scroll
+
 - Interval: 300ms per character
 - Direction: Left (decreasing position)
-- Loop: Continuous with separator "  •  "
+- Loop: Continuous with separator " • "
 - Reset on text change
 
 ### Card Expand/Collapse
+
 - Duration: 200ms (inherited from Card component)
 - Easing: ease-in-out
 - Content fade during transition
@@ -228,6 +252,7 @@ if (signalType !== "FM") {
 ## Testing Considerations
 
 ### Unit Tests (30 tests)
+
 - No data state rendering
 - Station data display accuracy
 - Statistics calculations
@@ -235,12 +260,14 @@ if (signalType !== "FM") {
 - Compact variant rendering
 
 ### Integration Tests
+
 - State updates from audio processor
 - Mode switching behavior
 - Cleanup on unmount
 - Memory leak prevention
 
 ### Manual Testing Scenarios
+
 1. Tune to FM station without RDS → "No RDS Data" message
 2. Tune to FM station with RDS → Data appears within 1-10 seconds
 3. Switch to AM → RDS display disappears

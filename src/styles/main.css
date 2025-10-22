@@ -1253,7 +1253,9 @@ a:focus-visible,
 
 .rds-quality-fill {
   height: 100%;
-  transition: width 0.3s ease, background-color 0.3s ease;
+  transition:
+    width 0.3s ease,
+    background-color 0.3s ease;
 }
 
 .rds-main {
@@ -1268,7 +1270,11 @@ a:focus-visible,
   letter-spacing: 8px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
   padding: 20px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.05)
+  );
   border-radius: 8px;
 }
 
