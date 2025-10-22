@@ -2,6 +2,8 @@ import { useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
+import { usePageVisibility } from "../hooks/usePageVisibility";
+import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 
 type SpectrogramProps = {
   fftData: Float32Array[];
@@ -9,6 +11,11 @@ type SpectrogramProps = {
   height?: number;
   freqMin?: number;
   freqMax?: number;
+  /**
+   * When true, rendering continues even when the tab is hidden or element is off-screen.
+   * Defaults to false for power efficiency.
+   */
+  continueInBackground?: boolean;
 };
 
 export default function Spectrogram({
@@ -17,10 +24,17 @@ export default function Spectrogram({
   height = 800,
   freqMin = 1000,
   freqMax = 1100,
+  continueInBackground = false,
 }: SpectrogramProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
+
+  // Visibility optimization hooks
+  const isPageVisible = usePageVisibility();
+  const isElementVisible = useIntersectionObserver(canvasRef, {
+    threshold: 0.1,
+  });
 
   // WebGL resources
   const glStateRef = useRef<{
@@ -72,6 +86,11 @@ export default function Spectrogram({
   useEffect((): void => {
     const canvas = canvasRef.current;
     if (!canvas || fftData.length === 0) {
+      return;
+    }
+
+    // Skip rendering if not visible (unless continueInBackground is true)
+    if (!continueInBackground && (!isPageVisible || !isElementVisible)) {
       return;
     }
 
@@ -422,7 +441,17 @@ export default function Spectrogram({
     };
 
     void run();
-  }, [fftData, width, height, freqMin, freqMax, transform]);
+  }, [
+    fftData,
+    width,
+    height,
+    freqMin,
+    freqMax,
+    transform,
+    isPageVisible,
+    isElementVisible,
+    continueInBackground,
+  ]);
 
   // Cleanup worker and GL on unmount
   useEffect((): (() => void) => {

@@ -8,3 +8,5 @@ export { default as useSDR } from "./useSDR";
 export { default as useSpeaker } from "./useSpeaker";
 export { useUSBDevice } from "./useUSBDevice";
 export { useFrequencyScanner } from "./useFrequencyScanner";
+export { usePageVisibility } from "./usePageVisibility";
+export { useIntersectionObserver } from "./useIntersectionObserver";

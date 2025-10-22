@@ -2,6 +2,8 @@ import { useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
+import { usePageVisibility } from "../hooks/usePageVisibility";
+import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 
 type Sample = {
   I: number;
@@ -12,12 +14,18 @@ type IQConstellationProps = {
   samples: Sample[];
   width?: number;
   height?: number;
+  /**
+   * When true, rendering continues even when the tab is hidden or element is off-screen.
+   * Defaults to false for power efficiency.
+   */
+  continueInBackground?: boolean;
 };
 
 export default function IQConstellation({
   samples,
   width = 750,
   height = 400,
+  continueInBackground = false,
 }: IQConstellationProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
@@ -35,6 +43,12 @@ export default function IQConstellation({
 
   // Add interaction handlers for pan, zoom, and gestures
   const { transform, handlers, resetTransform } = useVisualizationInteraction();
+
+  // Visibility optimization hooks
+  const isPageVisible = usePageVisibility();
+  const isElementVisible = useIntersectionObserver(canvasRef, {
+    threshold: 0.1,
+  });
 
   // Generate accessible text description of the constellation data
   const accessibleDescription = useMemo((): string => {
@@ -57,6 +71,11 @@ export default function IQConstellation({
   useEffect((): void => {
     const canvas = canvasRef.current;
     if (!canvas || samples.length === 0) {
+      return;
+    }
+
+    // Skip rendering if not visible (unless continueInBackground is true)
+    if (!continueInBackground && (!isPageVisible || !isElementVisible)) {
       return;
     }
 
@@ -371,7 +390,15 @@ void main() {
     };
     // Kick off async rendering
     void run();
-  }, [samples, width, height, transform]);
+  }, [
+    samples,
+    width,
+    height,
+    transform,
+    isPageVisible,
+    isElementVisible,
+    continueInBackground,
+  ]);
 
   // Cleanup worker and GL on unmount
   useEffect((): (() => void) => {
