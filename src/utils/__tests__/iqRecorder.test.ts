@@ -89,13 +89,16 @@ describe("IQRecorder", () => {
     largeRecorder.start();
 
     // Add 2048000 samples (1 second at 2.048 MSPS)
+    // Add in batches to avoid stack overflow
     const sampleCount = 2048000;
-    const samples: IQSample[] = [];
-    for (let i = 0; i < sampleCount; i++) {
-      samples.push({ I: Math.random(), Q: Math.random() });
+    const batchSize = 10000;
+    for (let i = 0; i < sampleCount; i += batchSize) {
+      const batch: IQSample[] = [];
+      for (let j = 0; j < batchSize; j++) {
+        batch.push({ I: Math.random(), Q: Math.random() });
+      }
+      largeRecorder.addSamples(batch);
     }
-
-    largeRecorder.addSamples(samples);
 
     expect(largeRecorder.getDuration()).toBeCloseTo(1.0, 1);
   });

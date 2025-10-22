@@ -4,7 +4,6 @@
 
 import { render, screen, fireEvent } from "@testing-library/react";
 import RecordingControls from "../RecordingControls";
-import type { IQRecording } from "../../utils/iqRecorder";
 
 describe("RecordingControls", () => {
   const mockCallbacks = {
@@ -273,17 +272,19 @@ describe("RecordingControls", () => {
       const progressBar = screen.getByRole("progressbar");
 
       // Mock getBoundingClientRect
-      Element.prototype.getBoundingClientRect = jest.fn(() => ({
-        width: 400,
-        height: 8,
-        top: 0,
-        left: 0,
-        bottom: 8,
-        right: 400,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }));
+      Element.prototype.getBoundingClientRect = jest.fn(
+        (): DOMRect => ({
+          width: 400,
+          height: 8,
+          top: 0,
+          left: 0,
+          bottom: 8,
+          right: 400,
+          x: 0,
+          y: 0,
+          toJSON: () => ({}),
+        }),
+      );
 
       // Simulate click at 75% position
       fireEvent.click(progressBar, { clientX: 300, clientY: 4 });

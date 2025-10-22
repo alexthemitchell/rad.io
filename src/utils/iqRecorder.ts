@@ -226,7 +226,9 @@ export function exportToBinary(recording: IQRecording): ArrayBuffer {
   const sampleOffset = 4 + metadataLength;
   for (let i = 0; i < recording.samples.length; i++) {
     const sample = recording.samples[i];
-    if (!sample) continue;
+    if (!sample) {
+      continue;
+    }
     const offset = sampleOffset + i * 8; // 8 bytes per sample (2 floats)
     view.setFloat32(offset, sample.I, true);
     view.setFloat32(offset + 4, sample.Q, true);

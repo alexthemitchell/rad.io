@@ -8,7 +8,6 @@ import { useState, useCallback } from "react";
 import {
   type IQRecording,
   loadRecordingFromFile,
-  downloadRecording,
 } from "../utils/iqRecorder";
 
 export type RecordingState = "idle" | "recording" | "playback";
@@ -89,7 +88,7 @@ function RecordingControls({
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
-      if (!file) return;
+      if (!file) {return;}
 
       try {
         const recording = await loadRecordingFromFile(file);
@@ -121,7 +120,9 @@ function RecordingControls({
   // Handle seek on progress bar
   const handleSeek = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!onSeek) return;
+      if (!onSeek) {
+        return;
+      }
 
       const rect = event.currentTarget.getBoundingClientRect();
       const x = event.clientX - rect.left;
@@ -243,7 +244,13 @@ function RecordingControls({
             <div
               className="playback-progress-bar"
               onClick={handleSeek}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  handleSeek(e as unknown as React.MouseEvent<HTMLDivElement>);
+                }
+              }}
               role="progressbar"
+              tabIndex={0}
               aria-valuenow={Math.floor(playbackProgress * 100)}
               aria-valuemin={0}
               aria-valuemax={100}
@@ -264,8 +271,18 @@ function RecordingControls({
 
       {/* Save Dialog */}
       {showSaveDialog && (
-        <div className="dialog-overlay" onClick={() => setShowSaveDialog(false)}>
-          <div className="dialog" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="dialog-overlay"
+          onClick={() => setShowSaveDialog(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setShowSaveDialog(false);
+            }
+          }}
+          role="presentation"
+          tabIndex={-1}
+        >
+          <div className="dialog" role="dialog" aria-modal="true">
             <h4>Save Recording</h4>
 
             <label htmlFor="save-filename">Filename:</label>
@@ -275,7 +292,6 @@ function RecordingControls({
               value={saveFilename}
               onChange={(e) => setSaveFilename(e.target.value)}
               placeholder="my-recording"
-              autoFocus
             />
 
             <label htmlFor="save-format">Format:</label>
