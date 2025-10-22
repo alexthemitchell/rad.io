@@ -74,8 +74,9 @@ describe("useVisualizationInteraction", () => {
     expect(result.current.handlers).toHaveProperty("onPointerMove");
     expect(result.current.handlers).toHaveProperty("onPointerUp");
     expect(result.current.handlers).toHaveProperty("onPointerCancel");
-    expect(result.current.handlers).toHaveProperty("onWheel");
     expect(result.current.handlers).toHaveProperty("onKeyDown");
+    expect(result.current).toHaveProperty("canvasRef");
+    expect(typeof result.current.canvasRef).toBe("function");
   });
 
   it("should handle keyboard navigation - arrow keys", () => {

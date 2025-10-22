@@ -52,7 +52,12 @@ export function useHackRFDevice(): {
   ]);
 
   const cleanup = useCallback((): void => {
-    device?.close().catch(console.error);
+    device?.close().catch((error) => {
+      console.error(
+        "useHackRFDevice: Failed to close device during cleanup",
+        error,
+      );
+    });
   }, [device]);
 
   useEffect(() => {
@@ -68,7 +73,15 @@ export function useHackRFDevice(): {
         // Always set the device so upstream can configure and begin streaming
         setDevice(hackRF);
       } catch (err) {
-        console.error("Failed to initialize HackRF adapter:", err);
+        console.error(
+          "useHackRFDevice: Failed to initialize HackRF adapter",
+          err,
+          {
+            wasOpened: usbDevice.opened,
+            productId: usbDevice.productId,
+            vendorId: usbDevice.vendorId,
+          },
+        );
       }
     };
     void setup();

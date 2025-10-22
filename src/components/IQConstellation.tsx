@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
@@ -27,7 +27,7 @@ export default function IQConstellation({
   height = 400,
   continueInBackground = false,
 }: IQConstellationProps): ReactElement {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   // Track whether this canvas element has been transferred to OffscreenCanvas
   const transferredRef = useRef<boolean>(false);
@@ -42,11 +42,25 @@ export default function IQConstellation({
   }>({ gl: null, program: null, vbo: null, colorVBO: null, pointSize: 2.0 });
 
   // Add interaction handlers for pan, zoom, and gestures
-  const { transform, handlers, resetTransform } = useVisualizationInteraction();
+  const {
+    transform,
+    handlers,
+    canvasRef: interactionCanvasRef,
+    resetTransform,
+  } = useVisualizationInteraction();
+
+  // Combined ref callback to handle both internal ref and interaction ref
+  const canvasRef = useCallback(
+    (element: HTMLCanvasElement | null) => {
+      internalCanvasRef.current = element;
+      interactionCanvasRef(element);
+    },
+    [interactionCanvasRef],
+  );
 
   // Visibility optimization hooks
   const isPageVisible = usePageVisibility();
-  const isElementVisible = useIntersectionObserver(canvasRef, {
+  const isElementVisible = useIntersectionObserver(internalCanvasRef, {
     threshold: 0.1,
   });
 
@@ -69,7 +83,7 @@ export default function IQConstellation({
   }, [samples]);
 
   useEffect((): void => {
-    const canvas = canvasRef.current;
+    const canvas = internalCanvasRef.current;
     if (!canvas || samples.length === 0) {
       return;
     }
@@ -221,7 +235,15 @@ void main() {
         }
       } catch (err) {
         // fall back
-        console.warn("[IQConstellation] WebGL path failed, falling back:", err);
+        console.warn(
+          "IQConstellation: WebGL rendering failed, falling back to worker/2D",
+          err,
+          {
+            canvasSize: { width, height },
+            sampleCount: samples.length,
+            errorType: err instanceof Error ? err.name : typeof err,
+          },
+        );
       }
 
       const supportsOffscreen =
@@ -245,7 +267,14 @@ void main() {
             const worker = new Worker(workerUrl);
             workerRef.current = worker as unknown as Worker;
           } catch (e1) {
-            console.error("[IQConstellation] Worker creation failed:", e1);
+            console.error(
+              "IQConstellation: Worker creation failed, falling back to main thread",
+              e1,
+              {
+                supportsOffscreen: typeof OffscreenCanvas === "function",
+                supportsWorker: typeof Worker !== "undefined",
+              },
+            );
             workerRef.current = null;
           }
           if (workerRef.current) {
@@ -256,9 +285,10 @@ void main() {
                 renderTimeMs?: number;
               };
               if (d?.type === "metrics") {
-                console.warn(
-                  `[viz worker] ${d.viz} render ${d.renderTimeMs?.toFixed(2)}ms`,
-                );
+                console.debug("IQConstellation: Worker render metrics", {
+                  visualization: d.viz,
+                  renderTimeMs: d.renderTimeMs?.toFixed(2),
+                });
               }
             };
           }

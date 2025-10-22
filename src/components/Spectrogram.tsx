@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
@@ -26,13 +26,13 @@ export default function Spectrogram({
   freqMax = 1100,
   continueInBackground = false,
 }: SpectrogramProps): ReactElement {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
 
   // Visibility optimization hooks
   const isPageVisible = usePageVisibility();
-  const isElementVisible = useIntersectionObserver(canvasRef, {
+  const isElementVisible = useIntersectionObserver(internalCanvasRef, {
     threshold: 0.1,
   });
 
@@ -56,7 +56,21 @@ export default function Spectrogram({
   });
 
   // Add interaction handlers for pan, zoom, and gestures
-  const { transform, handlers, resetTransform } = useVisualizationInteraction();
+  const {
+    transform,
+    handlers,
+    canvasRef: interactionCanvasRef,
+    resetTransform,
+  } = useVisualizationInteraction();
+
+  // Combined ref callback to handle both internal ref and interaction ref
+  const canvasRef = useCallback(
+    (element: HTMLCanvasElement | null) => {
+      internalCanvasRef.current = element;
+      interactionCanvasRef(element);
+    },
+    [interactionCanvasRef],
+  );
 
   // Generate accessible text description of the spectrogram data
   const accessibleDescription = useMemo((): string => {
@@ -84,7 +98,7 @@ export default function Spectrogram({
   }, [fftData, freqMin, freqMax]);
 
   useEffect((): void => {
-    const canvas = canvasRef.current;
+    const canvas = internalCanvasRef.current;
     if (!canvas || fftData.length === 0) {
       return;
     }

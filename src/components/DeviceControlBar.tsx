@@ -48,7 +48,10 @@ export function DeviceControlBar({
     try {
       await onConnect();
     } catch (error) {
-      console.error("Failed to connect device:", error);
+      console.error("DeviceControlBar: Failed to connect device", error, {
+        errorType: error instanceof Error ? error.name : typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
     }
   }, [onConnect]);
 
@@ -56,15 +59,21 @@ export function DeviceControlBar({
     try {
       await onStartReception();
     } catch (error) {
-      console.error("Failed to start reception:", error);
+      console.error("DeviceControlBar: Failed to start reception", error, {
+        errorType: error instanceof Error ? error.name : typeof error,
+        hasDevice: !!device,
+        deviceState: device?.getCapabilities(),
+      });
     }
-  }, [onStartReception]);
+  }, [onStartReception, device]);
 
   const handleStopReception = useCallback(async () => {
     try {
       await onStopReception();
     } catch (error) {
-      console.error("Failed to stop reception:", error);
+      console.error("DeviceControlBar: Failed to stop reception", error, {
+        errorType: error instanceof Error ? error.name : typeof error,
+      });
     }
   }, [onStopReception]);
 
