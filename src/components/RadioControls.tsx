@@ -16,11 +16,14 @@ export default function RadioControls({
     target: { value },
   }: ChangeEvent<HTMLInputElement>): void => {
     const numValue = Number(value);
-    if (signalType === "FM") {
-      setFrequency(numValue * 1e6).catch(console.error);
-    } else {
-      setFrequency(numValue * 1e3).catch(console.error);
-    }
+    const frequencyHz = signalType === "FM" ? numValue * 1e6 : numValue * 1e3;
+    setFrequency(frequencyHz).catch((error) => {
+      console.error("RadioControls: Failed to set frequency", error, {
+        requestedFrequency: frequencyHz,
+        signalType,
+        inputValue: value,
+      });
+    });
   };
 
   // Keyboard navigation for frequency tuning
@@ -52,11 +55,19 @@ export default function RadioControls({
     const max = signalType === "FM" ? 107.9 : 1700;
     newValue = Math.max(min, Math.min(max, newValue));
 
-    if (signalType === "FM") {
-      setFrequency(newValue * 1e6).catch(console.error);
-    } else {
-      setFrequency(newValue * 1e3).catch(console.error);
-    }
+    const frequencyHz = signalType === "FM" ? newValue * 1e6 : newValue * 1e3;
+    setFrequency(frequencyHz).catch((error) => {
+      console.error(
+        "RadioControls: Failed to set frequency via keyboard",
+        error,
+        {
+          requestedFrequency: frequencyHz,
+          signalType,
+          key: e.key,
+          bounds: { min, max },
+        },
+      );
+    });
   };
 
   const displayValue = signalType === "FM" ? frequency / 1e6 : frequency / 1e3;

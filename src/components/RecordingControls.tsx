@@ -93,7 +93,16 @@ function RecordingControls({
         const recording = await loadRecordingFromFile(file);
         onLoadRecording(recording);
       } catch (error) {
-        console.error("Failed to load recording:", error);
+        console.error(
+          "RecordingControls: Failed to load recording file",
+          error,
+          {
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+            errorType: error instanceof Error ? error.name : typeof error,
+          },
+        );
         alert(
           `Failed to load recording: ${error instanceof Error ? error.message : "Unknown error"}`,
         );

@@ -2,6 +2,16 @@
 
 A professional browser-based SDR application with industry-standard visualizations, universal device support, and comprehensive testing.
 
+## Common Usecases
+
+### Live FM Radio
+
+### Live AM Radio
+
+### Police Scanner
+
+### Listening to Walkie Talkies
+
 ## Features
 
 ### Signal Control 🎛️

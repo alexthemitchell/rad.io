@@ -154,6 +154,13 @@ export class HackRFOne {
   private readonly maxBufferSize: number = 16 * 1024 * 1024; // 16 MB max
   private inEndpointNumber: number = 1;
 
+  // Store last known device configuration for automatic recovery
+  private lastSampleRate: number | null = null;
+  private lastFrequency: number | null = null;
+  private lastBandwidth: number | null = null;
+  private lastLNAGain: number | null = null;
+  private lastAmpEnabled: boolean = false;
+
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice;
   }
@@ -231,7 +238,10 @@ export class HackRFOne {
         try {
           await this.usbDevice.releaseInterface(this.interfaceNumber);
         } catch (err) {
-          console.warn("Failed to release HackRF interface", err);
+          console.warn("Failed to release HackRF interface", {
+            interfaceNumber: this.interfaceNumber,
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
       }
       await this.usbDevice.close();
@@ -342,6 +352,7 @@ export class HackRFOne {
       command: RequestCommand.SET_FREQ,
       data: payload,
     });
+    this.lastFrequency = frequency;
   }
 
   async setAmpEnable(enabled: boolean): Promise<void> {
@@ -350,6 +361,7 @@ export class HackRFOne {
       command: RequestCommand.AMP_ENABLE,
       value,
     });
+    this.lastAmpEnabled = enabled;
   }
 
   /**
@@ -369,6 +381,7 @@ export class HackRFOne {
     if (data.byteLength !== 1 || !data.getUint8(data.byteOffset)) {
       throw new Error("Invalid Param");
     }
+    this.lastLNAGain = gain;
   }
 
   private async setTransceiverMode(value: TransceiverMode): Promise<void> {
@@ -386,6 +399,7 @@ export class HackRFOne {
       command: RequestCommand.SAMPLE_RATE_SET,
       data: payload,
     });
+    this.lastSampleRate = sampleRate;
   }
 
   /**
@@ -405,6 +419,7 @@ export class HackRFOne {
       value,
       index,
     });
+    this.lastBandwidth = bandwidthHz;
   }
 
   /**
@@ -439,9 +454,12 @@ export class HackRFOne {
 
     const isDev = process.env.NODE_ENV === "development";
     if (isDev) {
-      console.warn(
-        `HackRFOne.receive: Starting streaming loop, endpoint=${this.inEndpointNumber}`,
-      );
+      console.warn("HackRFOne.receive: Starting streaming loop", {
+        endpoint: this.inEndpointNumber,
+        sampleRate: this.lastSampleRate,
+        frequency: this.lastFrequency,
+        bandwidth: this.lastBandwidth,
+      });
     }
 
     let iterationCount = 0;
@@ -453,9 +471,11 @@ export class HackRFOne {
       try {
         iterationCount++;
         if (isDev && iterationCount <= 5) {
-          console.warn(
-            `HackRFOne.receive: Iteration ${iterationCount}, calling transferIn`,
-          );
+          console.warn("HackRFOne.receive: Requesting USB transfer", {
+            iteration: iterationCount,
+            endpoint: this.inEndpointNumber,
+            bufferSize: 4096,
+          });
         }
 
         // Wrap transferIn with timeout protection
@@ -471,7 +491,8 @@ export class HackRFOne {
         consecutiveTimeouts = 0;
 
         if (isDev && iterationCount <= 5) {
-          console.warn(`HackRFOne.receive: transferIn result:`, {
+          console.warn("HackRFOne.receive: USB transfer completed", {
+            iteration: iterationCount,
             status: result.status,
             byteLength: result.data?.byteLength || 0,
             hasData: !!result.data,
@@ -484,47 +505,116 @@ export class HackRFOne {
 
           if (isDev && iterationCount <= 3) {
             console.warn(
-              `HackRFOne.receive: Got ${result.data.byteLength} bytes, callback=${!!callback}`,
+              "HackRFOne.receive: Data received, invoking callback",
+              {
+                iteration: iterationCount,
+                bytes: result.data.byteLength,
+                hasCallback: !!callback,
+              },
             );
           }
           if (callback) {
             callback(result.data);
           }
         } else if (isDev && iterationCount <= 5) {
-          console.warn(
-            `HackRFOne.receive: No data in result, status=${result.status}`,
-          );
+          console.warn("HackRFOne.receive: No data in transfer result", {
+            iteration: iterationCount,
+            status: result.status,
+          });
         }
       } catch (err: unknown) {
         const error = err as Error & { name?: string };
         if (error.name === "AbortError") {
           // transferIn aborted as expected during shutdown
+          if (isDev) {
+            console.warn("HackRFOne.receive: Transfer aborted (shutdown)", {
+              iteration: iterationCount,
+            });
+          }
           break;
         } else if (error.message?.includes("timeout")) {
           consecutiveTimeouts++;
-          console.error(
-            `Transfer timeout (${consecutiveTimeouts}/${MAX_CONSECUTIVE_TIMEOUTS}): ${error.message}`,
-          );
+          console.warn("HackRFOne.receive: USB transfer timeout", {
+            consecutiveCount: consecutiveTimeouts,
+            maxAllowed: MAX_CONSECUTIVE_TIMEOUTS,
+            iteration: iterationCount,
+            willRetry: consecutiveTimeouts < MAX_CONSECUTIVE_TIMEOUTS,
+          });
 
           if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
-            throw new Error(
-              "Device not responding after multiple attempts. Please:\n" +
-                "1. Unplug and replug the USB cable\n" +
-                "2. Press the reset button on the HackRF\n" +
-                "3. Try a different USB port\n" +
-                "4. Verify device works with hackrf_info command",
-            );
+            // Attempt fast automatic recovery
+            try {
+              console.warn(
+                "HackRFOne.receive: Max timeouts reached, initiating automatic recovery",
+                {
+                  timeoutCount: consecutiveTimeouts,
+                  deviceState: {
+                    sampleRate: this.lastSampleRate,
+                    frequency: this.lastFrequency,
+                    bandwidth: this.lastBandwidth,
+                  },
+                },
+              );
+              await this.fastRecovery();
+              console.warn(
+                "HackRFOne.receive: Automatic recovery successful, resuming stream",
+                {
+                  iteration: iterationCount,
+                },
+              );
+              // Reset timeout counter and continue streaming
+              consecutiveTimeouts = 0;
+              continue;
+            } catch (recoveryError) {
+              // If fast recovery fails, throw error with manual instructions
+              console.error(
+                "HackRFOne.receive: Automatic recovery failed",
+                recoveryError,
+                {
+                  iteration: iterationCount,
+                  deviceState: {
+                    sampleRate: this.lastSampleRate,
+                    frequency: this.lastFrequency,
+                    bandwidth: this.lastBandwidth,
+                  },
+                },
+              );
+              throw new Error(
+                "Device not responding after automatic recovery attempt. Please:\n" +
+                  "1. Unplug and replug the USB cable\n" +
+                  "2. Press the reset button on the HackRF\n" +
+                  "3. Try a different USB port\n" +
+                  "4. Verify device works with hackrf_info command",
+              );
+            }
           }
-          // Continue loop to retry
+          // Continue loop to retry (for timeouts < MAX_CONSECUTIVE_TIMEOUTS)
         } else {
-          console.error("Unexpected error during transferIn:", err);
+          console.error(
+            "HackRFOne.receive: Unexpected error during USB transfer",
+            err,
+            {
+              iteration: iterationCount,
+              errorName: error.name,
+              deviceState: {
+                streaming: this.streaming,
+                opened: this.usbDevice.opened,
+              },
+            },
+          );
           throw err;
         }
       }
     }
 
     if (isDev) {
-      console.warn("HackRFOne.receive: Streaming loop ended");
+      console.warn("HackRFOne.receive: Streaming loop ended", {
+        totalIterations: iterationCount,
+        finalState: {
+          streaming: this.streaming,
+          closing: this.closing,
+        },
+      });
     }
     await this.setTransceiverMode(TransceiverMode.OFF);
     await this.controlTransferOut({
@@ -544,7 +634,14 @@ export class HackRFOne {
    * Uses HACKRF_VENDOR_REQUEST_RESET (vendor request 30)
    */
   async reset(): Promise<void> {
-    console.warn("HackRFOne.reset: Sending software reset command to device");
+    console.warn("HackRFOne.reset: Initiating software reset", {
+      deviceState: {
+        opened: this.usbDevice.opened,
+        streaming: this.streaming,
+        sampleRate: this.lastSampleRate,
+        frequency: this.lastFrequency,
+      },
+    });
 
     try {
       await this.controlTransferOut({
@@ -552,13 +649,109 @@ export class HackRFOne {
         value: 0,
         index: 0,
       });
-      console.warn("HackRFOne.reset: Reset command sent successfully");
+      console.warn("HackRFOne.reset: Reset command sent successfully", {
+        delayMs: 500,
+      });
 
       // Give device time to reset (typically takes a few hundred ms)
       await this.delay(500);
     } catch (error) {
-      console.error("HackRFOne.reset: Failed to reset device:", error);
+      console.error("HackRFOne.reset: Failed to reset device", error, {
+        deviceOpened: this.usbDevice.opened,
+        commandSent: RequestCommand.RESET,
+      });
       throw new Error(`Failed to reset device: ${error}`);
+    }
+  }
+
+  /**
+   * Fast recovery from timeout: reset and automatically reconfigure device
+   * This makes recovery seamless for the user - no need to restart reception
+   */
+  private async fastRecovery(): Promise<void> {
+    const isDev = process.env.NODE_ENV === "development";
+    if (isDev) {
+      console.warn("HackRFOne.fastRecovery: Starting automatic recovery", {
+        savedState: {
+          sampleRate: this.lastSampleRate,
+          frequency: this.lastFrequency,
+          bandwidth: this.lastBandwidth,
+          lnaGain: this.lastLNAGain,
+          ampEnabled: this.lastAmpEnabled,
+        },
+      });
+    }
+
+    // Quick reset with minimal delay
+    await this.controlTransferOut({
+      command: RequestCommand.RESET,
+      value: 0,
+      index: 0,
+    });
+
+    // Minimal delay - just enough for device to stabilize
+    await this.delay(150);
+
+    // Reconfigure device to last known state
+    if (this.lastSampleRate !== null) {
+      const { freqHz, divider } = computeSampleRateParams(this.lastSampleRate);
+      const payload = createUint32LEBuffer([freqHz, divider]);
+      await this.controlTransferOut({
+        command: RequestCommand.SAMPLE_RATE_SET,
+        data: payload,
+      });
+    }
+
+    if (this.lastFrequency !== null) {
+      const { mhz, hz } = splitFrequencyComponents(this.lastFrequency);
+      const payload = createUint32LEBuffer([mhz, hz]);
+      await this.controlTransferOut({
+        command: RequestCommand.SET_FREQ,
+        data: payload,
+      });
+    }
+
+    if (this.lastBandwidth !== null) {
+      const rounded = Math.round(this.lastBandwidth);
+      const value = rounded & 0xffff;
+      const index = (rounded >>> 16) & 0xffff;
+      await this.controlTransferOut({
+        command: RequestCommand.BASEBAND_FILTER_BANDWIDTH_SET,
+        value,
+        index,
+      });
+    }
+
+    if (this.lastLNAGain !== null) {
+      await this.controlTransferIn({
+        command: RequestCommand.SET_LNA_GAIN,
+        index: this.lastLNAGain,
+        length: 1,
+      });
+    }
+
+    await this.controlTransferOut({
+      command: RequestCommand.AMP_ENABLE,
+      value: Number(this.lastAmpEnabled),
+    });
+
+    // Restart transceiver mode
+    await this.setTransceiverMode(TransceiverMode.RECEIVE);
+
+    if (isDev) {
+      console.warn(
+        "HackRFOne.fastRecovery: Device recovered and reconfigured successfully",
+        {
+          restoredState: {
+            sampleRate: this.lastSampleRate,
+            frequency: this.lastFrequency,
+            bandwidth: this.lastBandwidth,
+            lnaGain: this.lastLNAGain,
+            ampEnabled: this.lastAmpEnabled,
+            transceiverMode: "RECEIVE",
+          },
+        },
+      );
     }
   }
 

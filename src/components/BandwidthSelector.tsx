@@ -20,11 +20,16 @@ export default function BandwidthSelector({
     15e6, 20e6, 24e6, 28e6,
   ],
 }: BandwidthSelectorProps): React.JSX.Element {
-  const handleBandwidthChange = ({
-    target: { value },
-  }: ChangeEvent<HTMLSelectElement>): void => {
-    const bandwidthHz = Number(value);
-    setBandwidth(bandwidthHz).catch(console.error);
+  const handleBandwidthChange = (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ): void => {
+    const bandwidthHz = Number(e.target.value);
+    setBandwidth(bandwidthHz).catch((error) => {
+      console.error("BandwidthSelector: Failed to set bandwidth", error, {
+        requestedBandwidth: bandwidthHz,
+        requestedBandwidthMHz: (bandwidthHz / 1e6).toFixed(2),
+      });
+    });
   };
 
   return (

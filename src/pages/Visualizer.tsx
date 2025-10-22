@@ -165,7 +165,13 @@ function Visualizer(): React.JSX.Element {
         source.connect(gainNode);
         source.start();
       } catch (error) {
-        console.error("Audio playback error:", error);
+        console.error("Visualizer: Audio playback failed", error, {
+          audioContextState: audioContext?.state,
+          resultChannels: result.channels,
+          resultSampleRate: result.sampleRate,
+          resultDataLength: result.audioData.length,
+          isAudioEnabled: isAudioPlaying,
+        });
       }
     },
     [isAudioPlaying],
@@ -365,11 +371,22 @@ function Visualizer(): React.JSX.Element {
   const handleSampleChunk = useCallback(
     (chunk: Sample[]): void => {
       if (!chunk || chunk.length === 0) {
-        console.warn("handleSampleChunk: received empty chunk");
+        console.warn("Visualizer: Received empty sample chunk", {
+          chunkType: typeof chunk,
+          isNull: chunk === null,
+          isUndefined: chunk === undefined,
+        });
         return;
       }
 
-      console.debug(`handleSampleChunk: received ${chunk.length} samples`);
+      console.debug("Visualizer: Processing sample chunk", {
+        sampleCount: chunk.length,
+        firstSample: chunk[0] ? { I: chunk[0].I, Q: chunk[0].Q } : null,
+        bufferState: {
+          currentSize: sampleBufferRef.current.length,
+          maxSize: MAX_BUFFER_SAMPLES,
+        },
+      });
 
       const markName = `pipeline-chunk-start-${
         typeof performance !== "undefined" ? performance.now() : Date.now()
@@ -422,7 +439,10 @@ function Visualizer(): React.JSX.Element {
         typeof performance !== "undefined" ? performance.now() : Date.now();
       if (now - lastUpdateRef.current >= UPDATE_INTERVAL_MS) {
         lastUpdateRef.current = now;
-        console.debug("Scheduling visualization update");
+        console.debug("Visualizer: Scheduling visualization update", {
+          timeSinceLastUpdate: (now - lastUpdateRef.current).toFixed(2),
+          bufferSize: sampleBufferRef.current.length,
+        });
         scheduleVisualizationUpdate();
       }
     },
@@ -443,25 +463,50 @@ function Visualizer(): React.JSX.Element {
       setLiveRegionMessage("Started receiving radio signals");
 
       // Ensure device is configured with sample rate before starting
-      console.warn("beginDeviceStreaming: Configuring device before streaming");
+      console.warn("Visualizer: Configuring device for streaming", {
+        targetSampleRate: 2048000,
+        capabilities: activeDevice.getCapabilities(),
+      });
       try {
         await activeDevice.setSampleRate(2048000); // 2.048 MSPS for real-time audio
-        console.warn("beginDeviceStreaming: Sample rate set to 2.048 MSPS");
+        console.warn("Visualizer: Device configured successfully", {
+          sampleRate: 2048000,
+          readyToStream: true,
+        });
       } catch (err) {
-        console.error("Failed to set sample rate:", err);
+        console.error(
+          "Visualizer: Failed to configure device sample rate",
+          err,
+          {
+            requestedSampleRate: 2048000,
+            supportedRates: activeDevice.getCapabilities().supportedSampleRates,
+          },
+        );
         const error = err instanceof Error ? err : new Error(String(err));
         setDeviceError(error);
       }
 
       const receivePromise = activeDevice
         .receive((data) => {
-          console.warn("Received data, byteLength:", data?.byteLength || 0);
+          console.debug("Visualizer: Received raw data from device", {
+            byteLength: data?.byteLength || 0,
+            hasData: !!data,
+          });
           const parsed = activeDevice.parseSamples(data) as Sample[];
-          console.warn("Parsed samples count:", parsed?.length || 0);
+          console.debug("Visualizer: Parsed samples from raw data", {
+            sampleCount: parsed?.length || 0,
+            bytesPerSample:
+              data?.byteLength && parsed?.length
+                ? (data.byteLength / parsed.length).toFixed(2)
+                : "N/A",
+          });
           handleSampleChunk(parsed);
         })
         .catch((err) => {
-          console.error(err);
+          console.error("Visualizer: Device streaming failed", err, {
+            errorType: err instanceof Error ? err.name : typeof err,
+            errorMessage: err instanceof Error ? err.message : String(err),
+          });
           const error = err instanceof Error ? err : new Error(String(err));
           setDeviceError(error);
           setLiveRegionMessage("Failed to receive radio signals");

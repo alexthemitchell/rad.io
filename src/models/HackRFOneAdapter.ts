@@ -98,9 +98,12 @@ export class HackRFOneAdapter implements ISDRDevice {
       const nearest = validGains.reduce((prev, curr) =>
         Math.abs(curr - gainDb) < Math.abs(prev - gainDb) ? curr : prev,
       );
-      console.warn(
-        `HackRF LNA gain must be in 8 dB steps. Rounding ${gainDb} to ${nearest}`,
-      );
+      console.warn("HackRFOneAdapter: Adjusting LNA gain to valid step", {
+        requestedGain: gainDb,
+        adjustedGain: nearest,
+        validGains,
+        reason: "HackRF requires 8 dB steps",
+      });
       gainDb = nearest;
     }
     await this.device.setLNAGain(gainDb);
@@ -126,7 +129,14 @@ export class HackRFOneAdapter implements ISDRDevice {
           : prev,
       );
       console.warn(
-        `Bandwidth ${bandwidthHz / 1e6} MHz not supported. Using nearest: ${nearest / 1e6} MHz`,
+        "HackRFOneAdapter: Adjusting bandwidth to nearest supported value",
+        {
+          requestedBandwidthMHz: (bandwidthHz / 1e6).toFixed(2),
+          adjustedBandwidthMHz: (nearest / 1e6).toFixed(2),
+          supportedBandwidthsMHz: supportedBandwidths.map((bw) =>
+            (bw / 1e6).toFixed(2),
+          ),
+        },
       );
       bandwidthHz = nearest;
     }

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type InteractionSettings = {
   panSensitivity: number;
@@ -38,15 +38,17 @@ export function useVisualizationInteraction(
     onPointerMove: (e: React.PointerEvent<HTMLCanvasElement>) => void;
     onPointerUp: (e: React.PointerEvent<HTMLCanvasElement>) => void;
     onPointerCancel: (e: React.PointerEvent<HTMLCanvasElement>) => void;
-    onWheel: (e: React.WheelEvent<HTMLCanvasElement>) => void;
     onKeyDown: (e: React.KeyboardEvent<HTMLCanvasElement>) => void;
   };
+  canvasRef: (element: HTMLCanvasElement | null) => void;
   resetTransform: () => void;
 } {
   const [settings] = useState<InteractionSettings>({
     ...DEFAULT_SETTINGS,
     ...initialSettings,
   });
+
+  const canvasElementRef = useRef<HTMLCanvasElement | null>(null);
 
   const [transform, setTransform] = useState<ViewTransform>({
     offsetX: 0,
@@ -199,9 +201,9 @@ export function useVisualizationInteraction(
     [],
   );
 
-  // Handle wheel event for zoom
+  // Handle wheel event for zoom (native event for passive: false support)
   const handleWheel = useCallback(
-    (e: React.WheelEvent<HTMLCanvasElement>) => {
+    (e: WheelEvent) => {
       if (!settings.enableZoom) {
         return;
       }
@@ -287,6 +289,25 @@ export function useVisualizationInteraction(
     setTransform({ offsetX: 0, offsetY: 0, scale: 1 });
   }, []);
 
+  // Attach wheel event listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const canvas = canvasElementRef.current;
+    if (!canvas || !settings.enableZoom) {
+      return;
+    }
+
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+
+    return (): void => {
+      canvas.removeEventListener("wheel", handleWheel);
+    };
+  }, [handleWheel, settings.enableZoom]);
+
+  // Callback ref to capture canvas element
+  const canvasRef = useCallback((element: HTMLCanvasElement | null) => {
+    canvasElementRef.current = element;
+  }, []);
+
   return {
     transform,
     settings,
@@ -295,9 +316,9 @@ export function useVisualizationInteraction(
       onPointerMove: handlePointerMove,
       onPointerUp: handlePointerUp,
       onPointerCancel: handlePointerUp,
-      onWheel: handleWheel,
       onKeyDown: handleKeyDown,
     },
+    canvasRef,
     resetTransform,
   };
 }

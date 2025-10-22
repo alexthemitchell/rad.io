@@ -86,11 +86,20 @@ function Analysis(): React.JSX.Element {
   const handleSampleChunk = useCallback(
     (chunk: Sample[]): void => {
       if (!chunk || chunk.length === 0) {
-        console.warn("handleSampleChunk: received empty chunk");
+        console.warn("Analysis: Received empty sample chunk", {
+          chunkType: typeof chunk,
+          isNull: chunk === null,
+        });
         return;
       }
 
-      console.debug(`handleSampleChunk: received ${chunk.length} samples`);
+      console.debug("Analysis: Processing sample chunk", {
+        sampleCount: chunk.length,
+        bufferState: {
+          currentSize: sampleBufferRef.current.length,
+          maxSize: MAX_BUFFER_SAMPLES,
+        },
+      });
 
       const markName = `pipeline-chunk-start-${
         typeof performance !== "undefined" ? performance.now() : Date.now()
@@ -112,7 +121,10 @@ function Analysis(): React.JSX.Element {
         typeof performance !== "undefined" ? performance.now() : Date.now();
       if (now - lastUpdateRef.current >= UPDATE_INTERVAL_MS) {
         lastUpdateRef.current = now;
-        console.debug("Scheduling visualization update");
+        console.debug("Analysis: Scheduling visualization update", {
+          bufferSize: sampleBufferRef.current.length,
+          timeSinceLastUpdate: (now - lastUpdateRef.current).toFixed(2),
+        });
         scheduleVisualizationUpdate();
       }
     },
@@ -126,13 +138,23 @@ function Analysis(): React.JSX.Element {
       setDeviceError(null);
       announce("Started receiving radio signals for analysis");
 
-      console.warn("beginDeviceStreaming: Configuring device before streaming");
+      console.warn("Analysis: Configuring device for streaming", {
+        targetSampleRate: 2048000,
+        targetFrequency: frequency,
+      });
       try {
         await activeDevice.setSampleRate(2048000);
         await activeDevice.setFrequency(frequency);
-        console.warn("beginDeviceStreaming: Sample rate set to 2.048 MSPS");
+        console.warn("Analysis: Device configured successfully", {
+          sampleRate: 2048000,
+          frequency,
+        });
       } catch (err) {
-        console.error("Failed to configure device:", err);
+        console.error("Analysis: Failed to configure device", err, {
+          requestedSampleRate: 2048000,
+          requestedFrequency: frequency,
+          supportedRates: activeDevice.getCapabilities().supportedSampleRates,
+        });
         setDeviceError(
           err instanceof Error ? err : new Error("Failed to configure device"),
         );
@@ -140,13 +162,19 @@ function Analysis(): React.JSX.Element {
 
       const receivePromise = activeDevice
         .receive((data) => {
-          console.warn("Received data, byteLength:", data?.byteLength || 0);
+          console.debug("Analysis: Received raw data from device", {
+            byteLength: data?.byteLength || 0,
+          });
           const parsed = activeDevice.parseSamples(data) as Sample[];
-          console.warn("Parsed samples count:", parsed?.length || 0);
+          console.debug("Analysis: Parsed samples from raw data", {
+            sampleCount: parsed?.length || 0,
+          });
           handleSampleChunk(parsed);
         })
         .catch((err) => {
-          console.error(err);
+          console.error("Analysis: Device streaming failed", err, {
+            errorType: err instanceof Error ? err.name : typeof err,
+          });
           setDeviceError(
             err instanceof Error ? err : new Error("Failed to receive data"),
           );

@@ -117,8 +117,14 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
     }
 
     console.warn(
-      "Failed to load WASM module, falling back to JavaScript:",
+      "dspWasm: Failed to load WASM module, falling back to JavaScript",
       lastError,
+      {
+        attemptedPaths: ["../assembly/dsp", "./wasm-build/dsp"],
+        wasmSupported: typeof WebAssembly !== "undefined",
+        errorType:
+          lastError instanceof Error ? lastError.name : typeof lastError,
+      },
     );
     wasmModule = null;
     wasmSupported = false;
@@ -174,7 +180,15 @@ export function calculateFFTWasm(
 
     return output;
   } catch (error) {
-    console.warn("WASM FFT calculation failed, falling back to JS:", error);
+    console.warn(
+      "dspWasm: FFT calculation failed, falling back to JS implementation",
+      error,
+      {
+        fftSize,
+        inputSampleCount: samples.length,
+        errorType: error instanceof Error ? error.name : typeof error,
+      },
+    );
     return null;
   }
 }
@@ -214,8 +228,12 @@ export function calculateWaveformWasm(
     return { amplitude, phase };
   } catch (error) {
     console.warn(
-      "WASM waveform calculation failed, falling back to JS:",
+      "dspWasm: Waveform calculation failed, falling back to JS implementation",
       error,
+      {
+        inputLength: samples.length,
+        errorType: error instanceof Error ? error.name : typeof error,
+      },
     );
     return null;
   }
@@ -272,8 +290,13 @@ export function calculateSpectrogramWasm(
     return rows;
   } catch (error) {
     console.warn(
-      "WASM spectrogram calculation failed, falling back to JS:",
+      "dspWasm: Spectrogram calculation failed, falling back to JS implementation",
       error,
+      {
+        fftSize,
+        inputLength: samples.length,
+        errorType: error instanceof Error ? error.name : typeof error,
+      },
     );
     return null;
   }
