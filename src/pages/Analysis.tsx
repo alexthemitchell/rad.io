@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { useLiveRegion } from "../hooks/useLiveRegion";
+import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import Card from "../components/Card";
@@ -12,10 +13,16 @@ const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
 
 function Analysis(): React.JSX.Element {
-  const { device } = useHackRFDevice();
+  const { device, initialize, isCheckingPaired } = useHackRFDevice();
   const [listening, setListening] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
+  const [frequency, setFrequency] = useState(100.3e6);
+  const [deviceError, setDeviceError] = useState<Error | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
   const [samples, setSamples] = useState<Sample[]>([]);
   const [currentFPS, setCurrentFPS] = useState<number>(0);
+
+  const shouldStartOnConnectRef = useRef(false);
 
   const sampleBufferRef = useRef<Sample[]>([]);
   const rafIdRef = useRef<number | null>(null);
@@ -116,14 +123,19 @@ function Analysis(): React.JSX.Element {
     async (activeDevice: ISDRDevice): Promise<void> => {
       clearVisualizationState();
       setListening(true);
+      setDeviceError(null);
       announce("Started receiving radio signals for analysis");
 
       console.warn("beginDeviceStreaming: Configuring device before streaming");
       try {
         await activeDevice.setSampleRate(2048000);
+        await activeDevice.setFrequency(frequency);
         console.warn("beginDeviceStreaming: Sample rate set to 2.048 MSPS");
       } catch (err) {
-        console.error("Failed to set sample rate:", err);
+        console.error("Failed to configure device:", err);
+        setDeviceError(
+          err instanceof Error ? err : new Error("Failed to configure device"),
+        );
       }
 
       const receivePromise = activeDevice
@@ -135,6 +147,9 @@ function Analysis(): React.JSX.Element {
         })
         .catch((err) => {
           console.error(err);
+          setDeviceError(
+            err instanceof Error ? err : new Error("Failed to receive data"),
+          );
           announce("Failed to receive radio signals");
           throw err;
         })
@@ -152,15 +167,81 @@ function Analysis(): React.JSX.Element {
         receivePromiseRef.current = null;
       }
     },
-    [clearVisualizationState, handleSampleChunk, announce],
+    [clearVisualizationState, handleSampleChunk, announce, frequency],
   );
 
-  // Start streaming if device is receiving
-  useEffect((): void => {
-    if (device && device.isReceiving() && !listening) {
-      void beginDeviceStreaming(device);
+  // Handle device connection
+  const handleConnect = useCallback(async (): Promise<void> => {
+    if (isInitializing) {
+      return;
     }
-  }, [device, listening, beginDeviceStreaming]);
+
+    shouldStartOnConnectRef.current = false;
+    setIsInitializing(true);
+
+    try {
+      await initialize();
+      setDeviceError(null);
+      announce("SDR device connected");
+    } catch (err) {
+      console.error(err);
+      setDeviceError(
+        err instanceof Error ? err : new Error("Failed to connect device"),
+      );
+      announce("Failed to connect device");
+    } finally {
+      setIsInitializing(false);
+    }
+  }, [initialize, isInitializing, announce]);
+
+  // Handle start reception
+  const startListening = useCallback(async (): Promise<void> => {
+    if (listening) {
+      return;
+    }
+
+    if (!device) {
+      shouldStartOnConnectRef.current = true;
+      await handleConnect();
+      return;
+    }
+
+    shouldStartOnConnectRef.current = false;
+    await beginDeviceStreaming(device);
+  }, [device, listening, handleConnect, beginDeviceStreaming]);
+
+  // Handle device reset
+  const handleResetDevice = useCallback(async (): Promise<void> => {
+    if (!device || isResetting) {
+      return;
+    }
+
+    setIsResetting(true);
+
+    try {
+      console.warn("Analysis: Attempting software reset");
+      await device.reset();
+      setDeviceError(null);
+      announce("Device reset successful");
+      console.warn("Analysis: Reset successful");
+    } catch (error) {
+      console.error("Analysis: Reset failed:", error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      setDeviceError(new Error(`Reset failed: ${errorMsg}`));
+      announce("Device reset failed");
+    } finally {
+      setIsResetting(false);
+    }
+  }, [device, isResetting, announce]);
+
+  // Auto-start reception after connection if requested
+  useEffect((): void => {
+    if (!device || !shouldStartOnConnectRef.current) {
+      return;
+    }
+    shouldStartOnConnectRef.current = false;
+    void beginDeviceStreaming(device);
+  }, [device, beginDeviceStreaming]);
 
   useEffect((): (() => void) => {
     return () => {
@@ -200,6 +281,20 @@ function Analysis(): React.JSX.Element {
       <LiveRegion />
 
       <main id="main-content" role="main">
+        <DeviceControlBar
+          device={device}
+          listening={listening}
+          isInitializing={isInitializing}
+          isCheckingPaired={isCheckingPaired}
+          deviceError={deviceError}
+          frequency={frequency}
+          onConnect={handleConnect}
+          onStartReception={startListening}
+          onStopReception={_stopListening}
+          onResetDevice={handleResetDevice}
+          isResetting={isResetting}
+        />
+
         <Card
           title="Signal Analysis"
           subtitle="Deep dive into DSP processing and signal characteristics"
@@ -207,14 +302,15 @@ function Analysis(): React.JSX.Element {
           {!device ? (
             <div className="empty-state">
               <p>
-                No device connected. Please connect and start receiving on the
-                Live Monitor page first.
+                No device connected. Use the controls above to connect your SDR
+                device.
               </p>
             </div>
           ) : !listening ? (
             <div className="info-message">
               <p>
-                Start reception on the Live Monitor page to see analysis data.
+                Click &quot;Start Reception&quot; above to begin receiving and
+                analyzing signal data.
               </p>
             </div>
           ) : (

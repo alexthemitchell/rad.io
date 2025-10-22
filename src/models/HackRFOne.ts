@@ -539,6 +539,30 @@ export class HackRFOne {
   }
 
   /**
+   * Software reset the HackRF device via USB control transfer
+   * This is equivalent to the hackrf_reset() function in libhackrf
+   * Uses HACKRF_VENDOR_REQUEST_RESET (vendor request 30)
+   */
+  async reset(): Promise<void> {
+    console.warn("HackRFOne.reset: Sending software reset command to device");
+
+    try {
+      await this.controlTransferOut({
+        command: RequestCommand.RESET,
+        value: 0,
+        index: 0,
+      });
+      console.warn("HackRFOne.reset: Reset command sent successfully");
+
+      // Give device time to reset (typically takes a few hundred ms)
+      await this.delay(500);
+    } catch (error) {
+      console.error("HackRFOne.reset: Failed to reset device:", error);
+      throw new Error(`Failed to reset device: ${error}`);
+    }
+  }
+
+  /**
    * Track incoming buffer for memory management
    */
   private trackBuffer(data: DataView): void {

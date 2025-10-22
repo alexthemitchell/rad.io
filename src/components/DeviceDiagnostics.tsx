@@ -6,6 +6,8 @@ interface DeviceDiagnosticsProps {
   isListening: boolean;
   frequency?: number;
   error?: Error | null;
+  onResetDevice?: () => void;
+  isResetting?: boolean;
 }
 
 interface DiagnosticItem {
@@ -25,6 +27,8 @@ export function DeviceDiagnostics({
   isListening,
   frequency,
   error,
+  onResetDevice,
+  isResetting,
 }: DeviceDiagnosticsProps): React.JSX.Element {
   const diagnostics: DiagnosticItem[] = [];
 
@@ -122,6 +126,8 @@ export function DeviceDiagnostics({
   const hasError = diagnostics.some((d) => d.status === "error");
   const hasWarning = diagnostics.some((d) => d.status === "warning");
 
+  // (debug removed)
+
   return (
     <div className="device-diagnostics">
       <div className="diagnostics-header">
@@ -154,9 +160,29 @@ export function DeviceDiagnostics({
         ))}
       </ul>
 
-      {hasError && error?.message.includes("timeout") && (
+      {hasError && error?.message.includes("Device not responding") && (
         <div className="troubleshooting-guide">
-          <h4>Troubleshooting Steps:</h4>
+          <h4>Device Timeout - Reset Required</h4>
+          <p>
+            The device stopped responding. You can try a software reset without
+            unplugging the device:
+          </p>
+          <button
+            className="btn btn-primary"
+            onClick={onResetDevice}
+            disabled={!onResetDevice || !!isResetting}
+            style={{ marginTop: "10px" }}
+            title={
+              !onResetDevice
+                ? "Reset action unavailable in this build"
+                : undefined
+            }
+          >
+            {isResetting ? "Resetting Device..." : "🔄 Reset Device"}
+          </button>
+          <h5 style={{ marginTop: "15px" }}>
+            If software reset doesn&apos;t work:
+          </h5>
           <ol>
             <li>Unplug and replug the USB cable</li>
             <li>Press the reset button on your HackRF device</li>

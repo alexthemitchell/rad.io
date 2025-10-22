@@ -6,6 +6,7 @@
 export { default as AudioControls } from "./AudioControls";
 export { default as BandwidthSelector } from "./BandwidthSelector";
 export { default as Card } from "./Card";
+export { default as DeviceControlBar } from "./DeviceControlBar";
 export { default as DeviceDiagnostics } from "./DeviceDiagnostics";
 export { default as DSPPipeline } from "./DSPPipeline";
 export { default as InteractiveDSPPipeline } from "./InteractiveDSPPipeline";

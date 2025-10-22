@@ -207,6 +207,13 @@ export class HackRFOneAdapter implements ISDRDevice {
     this.device.clearBuffers();
   }
 
+  /**
+   * Software reset the device via USB control transfer
+   */
+  async reset(): Promise<void> {
+    await this.device.reset();
+  }
+
   // Expose the underlying HackRFOne instance for advanced use
   getUnderlyingDevice(): HackRFOne {
     return this.device;

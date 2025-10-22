@@ -5,7 +5,7 @@ function Navigation(): React.JSX.Element {
     <nav className="main-nav" role="navigation" aria-label="Main navigation">
       <NavLink
         to="/"
-        className={({ isActive }) =>
+        className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
         title="Live signal monitoring and audio playback"
@@ -14,7 +14,7 @@ function Navigation(): React.JSX.Element {
       </NavLink>
       <NavLink
         to="/scanner"
-        className={({ isActive }) =>
+        className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
         title="Scan frequencies and talkgroups"
@@ -23,7 +23,7 @@ function Navigation(): React.JSX.Element {
       </NavLink>
       <NavLink
         to="/analysis"
-        className={({ isActive }) =>
+        className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
         title="Deep signal analysis and DSP pipeline"
