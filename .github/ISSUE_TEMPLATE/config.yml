@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and Support
+    url: https://github.com/alexthemitchell/rad.io/discussions
+    about: Ask questions and get help from the community
+  - name: Security Policy
+    url: https://github.com/alexthemitchell/rad.io/blob/main/SECURITY.md
+    about: Please report security vulnerabilities following our policy

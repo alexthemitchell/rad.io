@@ -1,15 +1,32 @@
-import { useMemo } from "react";
 import WaveformVisualizer from "./WaveformVisualizer";
-import { testSamples } from "../hooks/__test__/testSamples";
-import { convertToSamples } from "../utils/dsp";
+import EmptyState from "./EmptyState";
+import { Sample } from "../utils/dsp";
 
-function WaveformChart() {
-  const samples = useMemo(
-    () => convertToSamples(testSamples.slice(0, 2048) as [number, number][]),
-    [],
-  );
+type WaveformChartProps = {
+  samples?: Sample[];
+  width?: number;
+  height?: number;
+};
 
-  return <WaveformVisualizer samples={samples} width={750} height={300} />;
+function WaveformChart({
+  samples = [],
+  width = 750,
+  height = 300,
+}: WaveformChartProps): React.JSX.Element {
+  const hasData = samples.length > 0;
+
+  if (!hasData) {
+    return (
+      <EmptyState
+        width={width}
+        height={height}
+        title="Waiting for signal data"
+        message="Connect and start reception to view amplitude waveform"
+      />
+    );
+  }
+
+  return <WaveformVisualizer samples={samples} width={width} height={height} />;
 }
 
 export default WaveformChart;

@@ -8,11 +8,17 @@ type SignalTypeSelectorProps = {
 export default function SignalTypeSelector({
   signalType,
   onSignalTypeChange,
-}: SignalTypeSelectorProps) {
+}: SignalTypeSelectorProps): React.JSX.Element {
   return (
     <div className="control-group">
-      <label className="control-label">Signal Type</label>
-      <div className="signal-type-selector">
+      <div className="control-label" id="signal-type-label">
+        Signal Type
+      </div>
+      <div
+        className="signal-type-selector"
+        role="group"
+        aria-labelledby="signal-type-label"
+      >
         <button
           className={`signal-type-btn ${signalType === "FM" ? "active" : ""}`}
           onClick={() => onSignalTypeChange("FM")}

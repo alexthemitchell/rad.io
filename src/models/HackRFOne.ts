@@ -1,6 +1,89 @@
 //// filepath: c:\Users\Owner\dev\rad.io\src\models\HackRFOne.ts
 import { TransceiverMode } from "./HackRFDevice/constants";
 
+const UINT32_MAX = 0xffffffff;
+const MHZ_IN_HZ = 1_000_000;
+const MAX_SAMPLE_RATE_DIVIDER = 32;
+
+function assertFiniteNonNegative(value: number, label: string): void {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative finite number`);
+  }
+}
+
+function splitFrequencyComponents(frequencyHz: number): {
+  mhz: number;
+  hz: number;
+} {
+  assertFiniteNonNegative(frequencyHz, "Frequency");
+  const rounded = Math.round(frequencyHz);
+  const mhz = Math.floor(rounded / MHZ_IN_HZ);
+  const hz = rounded - mhz * MHZ_IN_HZ;
+  if (mhz > UINT32_MAX || hz > UINT32_MAX) {
+    throw new Error("Frequency components exceed uint32 range");
+  }
+  return { mhz, hz };
+}
+
+function createUint32LEBuffer(values: number[]): ArrayBuffer {
+  const buffer = new ArrayBuffer(values.length * 4);
+  const view = new DataView(buffer);
+  values.forEach((value, index) => {
+    assertFiniteNonNegative(value, "Control value");
+    const rounded = Math.round(value);
+    if (rounded > UINT32_MAX) {
+      throw new Error("Control value exceeds uint32 range");
+    }
+    view.setUint32(index * 4, rounded >>> 0, true);
+  });
+  return buffer;
+}
+
+function computeSampleRateParams(sampleRate: number): {
+  freqHz: number;
+  divider: number;
+} {
+  if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
+    throw new Error("Sample rate must be a positive finite number");
+  }
+
+  const target = sampleRate;
+  const initialFreq = Math.round(target);
+  if (!Number.isFinite(initialFreq) || initialFreq <= 0) {
+    throw new Error("Sample rate cannot be rounded to uint32");
+  }
+  if (initialFreq > UINT32_MAX) {
+    throw new Error("Sample rate exceeds uint32 range");
+  }
+
+  let bestFreq = initialFreq;
+  let bestDivider = 1;
+  let smallestError = Math.abs(initialFreq - target);
+
+  for (let divider = 1; divider <= MAX_SAMPLE_RATE_DIVIDER; divider++) {
+    const candidate = Math.round(target * divider);
+    if (
+      !Number.isFinite(candidate) ||
+      candidate <= 0 ||
+      candidate > UINT32_MAX
+    ) {
+      continue;
+    }
+    const achieved = candidate / divider;
+    const error = Math.abs(achieved - target);
+    if (error < smallestError) {
+      bestFreq = candidate;
+      bestDivider = divider;
+      smallestError = error;
+      if (error === 0) {
+        break;
+      }
+    }
+  }
+
+  return { freqHz: bestFreq, divider: bestDivider };
+}
+
 export enum RequestCommand {
   SET_TRANSCEIVER_MODE = 1,
   MAX2837_WRITE = 2,
@@ -55,7 +138,7 @@ type ControlTransferOutProps = {
 
 export class HackRFOne {
   private usbDevice: USBDevice;
-  private interfaceNumber: number;
+  private interfaceNumber: number | null = null;
 
   // Added property to control streaming state
   private streaming: boolean = false;
@@ -69,31 +152,91 @@ export class HackRFOne {
   private sampleBuffers: DataView[] = [];
   private totalBufferSize: number = 0;
   private readonly maxBufferSize: number = 16 * 1024 * 1024; // 16 MB max
+  private inEndpointNumber: number = 1;
 
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice;
-    const { configuration } = this.usbDevice;
-    if (!configuration) {
-      throw new Error("No configurations available on USB device");
+  }
+
+  async open(): Promise<void> {
+    this.closing = false;
+
+    if (this.usbDevice.opened && this.interfaceNumber !== null) {
+      return;
     }
-    const [iface] = configuration.interfaces;
-    if (!iface) {
+
+    if (!this.usbDevice.opened) {
+      await this.usbDevice.open();
+    }
+
+    if (!this.usbDevice.configuration) {
+      const configValue =
+        this.usbDevice.configurations?.[0]?.configurationValue ?? 1;
+      await this.usbDevice.selectConfiguration(configValue);
+    }
+
+    const configuration = this.usbDevice.configuration;
+    if (!configuration || configuration.interfaces.length === 0) {
       throw new Error("No interface found on USB device configuration");
     }
-    this.interfaceNumber = iface.interfaceNumber;
-  }
 
-  async open() {
-    await this.usbDevice.open();
+    let selectedInterface: USBInterface | undefined;
+    let selectedAlternate: USBAlternateInterface | undefined;
+
+    for (const iface of configuration.interfaces) {
+      for (const alternate of iface.alternates) {
+        const hasBulkInEndpoint = alternate.endpoints.some(
+          (endpoint) => endpoint.type === "bulk" && endpoint.direction === "in",
+        );
+        if (hasBulkInEndpoint) {
+          selectedInterface = iface;
+          selectedAlternate = alternate;
+          break;
+        }
+      }
+      if (selectedInterface && selectedAlternate) {
+        break;
+      }
+    }
+
+    if (!selectedInterface || !selectedAlternate) {
+      throw new Error("No suitable streaming interface found on HackRF device");
+    }
+
+    const inEndpoint = selectedAlternate.endpoints.find(
+      (endpoint) => endpoint.type === "bulk" && endpoint.direction === "in",
+    );
+
+    if (!inEndpoint) {
+      throw new Error(
+        "No bulk IN endpoint available on selected HackRF interface",
+      );
+    }
+
+    this.interfaceNumber = selectedInterface.interfaceNumber;
+    this.inEndpointNumber = inEndpoint.endpointNumber;
     await this.usbDevice.claimInterface(this.interfaceNumber);
+    await this.usbDevice.selectAlternateInterface(
+      this.interfaceNumber,
+      selectedAlternate.alternateSetting,
+    );
   }
 
-  async close() {
+  async close(): Promise<void> {
     // Signal shutdown: stop streaming and prevent new transfers
     this.streaming = false;
     this.closing = true;
-    await this.usbDevice.releaseInterface(this.interfaceNumber);
-    await this.usbDevice.close();
+    if (this.usbDevice.opened) {
+      if (this.interfaceNumber !== null) {
+        try {
+          await this.usbDevice.releaseInterface(this.interfaceNumber);
+        } catch (err) {
+          console.warn("Failed to release HackRF interface", err);
+        }
+      }
+      await this.usbDevice.close();
+    }
+    this.interfaceNumber = null;
   }
 
   private async controlTransferIn({
@@ -101,7 +244,7 @@ export class HackRFOne {
     value = 0,
     index = 0,
     length,
-  }: ControlTransferInProps) {
+  }: ControlTransferInProps): Promise<USBInTransferResult> {
     if (this.closing || !this.usbDevice.opened) {
       throw new Error(
         "Device is closing or closed. Aborting controlTransferIn.",
@@ -138,7 +281,7 @@ export class HackRFOne {
     value = 0,
     data,
     index = 0,
-  }: ControlTransferOutProps) {
+  }: ControlTransferOutProps): Promise<USBOutTransferResult> {
     const release = await this.acquireLock();
     try {
       if (this.closing || !this.usbDevice.opened) {
@@ -192,16 +335,16 @@ export class HackRFOne {
    *
    * @param frequency Center Frequency, in Hertz
    */
-  async setFrequency(frequency: number) {
-    // TODO: Verify frequency is valid
-    // Convert frequency(64bit) to Mhz(32bit) + Hz(32bit)
-    const mhzPart = frequency / 1e6;
-    const hzPart = frequency % 1e6;
-    const data = new Uint32Array([mhzPart, hzPart]);
-    await this.controlTransferOut({ command: RequestCommand.SET_FREQ, data });
+  async setFrequency(frequency: number): Promise<void> {
+    const { mhz, hz } = splitFrequencyComponents(frequency);
+    const payload = createUint32LEBuffer([mhz, hz]);
+    await this.controlTransferOut({
+      command: RequestCommand.SET_FREQ,
+      data: payload,
+    });
   }
 
-  async setAmpEnable(enabled: boolean) {
+  async setAmpEnable(enabled: boolean): Promise<void> {
     const value = Number(enabled);
     await this.controlTransferOut({
       command: RequestCommand.AMP_ENABLE,
@@ -213,7 +356,7 @@ export class HackRFOne {
    * Set RX LNA (IF) gain, 0-40dB in 8dB steps
    * @param gain RX IF gain value in dB
    */
-  async setLNAGain(gain: number) {
+  async setLNAGain(gain: number): Promise<void> {
     const { data } = await this.controlTransferIn({
       command: RequestCommand.SET_LNA_GAIN,
       index: gain,
@@ -228,7 +371,7 @@ export class HackRFOne {
     }
   }
 
-  private async setTransceiverMode(value: TransceiverMode) {
+  private async setTransceiverMode(value: TransceiverMode): Promise<void> {
     await this.controlTransferOut({
       command: RequestCommand.SET_TRANSCEIVER_MODE,
       value,
@@ -236,39 +379,152 @@ export class HackRFOne {
   }
 
   // New method to set the sample rate (in Hz)
-  async setSampleRate(sampleRate: number) {
-    const data = new Uint32Array([sampleRate]);
+  async setSampleRate(sampleRate: number): Promise<void> {
+    const { freqHz, divider } = computeSampleRateParams(sampleRate);
+    const payload = createUint32LEBuffer([freqHz, divider]);
     await this.controlTransferOut({
       command: RequestCommand.SAMPLE_RATE_SET,
-      data,
+      data: payload,
     });
   }
 
+  /**
+   * Set baseband filter bandwidth
+   * @param bandwidthHz Bandwidth in Hz (1.75 MHz to 28 MHz)
+   */
+  async setBandwidth(bandwidthHz: number): Promise<void> {
+    assertFiniteNonNegative(bandwidthHz, "Bandwidth");
+    const rounded = Math.round(bandwidthHz);
+    if (rounded > UINT32_MAX) {
+      throw new Error("Bandwidth exceeds uint32 range");
+    }
+    const value = rounded & 0xffff;
+    const index = (rounded >>> 16) & 0xffff;
+    await this.controlTransferOut({
+      command: RequestCommand.BASEBAND_FILTER_BANDWIDTH_SET,
+      value,
+      index,
+    });
+  }
+
+  /**
+   * Creates a timeout promise that rejects after the specified duration
+   */
+  private createTimeout(ms: number, message: string): Promise<never> {
+    return new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    });
+  }
+
+  /**
+   * Validates device is properly configured before streaming
+   */
+  private validateDeviceHealth(): void {
+    if (!this.usbDevice.opened) {
+      throw new Error("Device is not open");
+    }
+    if (this.closing) {
+      throw new Error("Device is closing");
+    }
+    // Additional health checks can be added here
+  }
+
   // New method to start reception with an optional data callback
-  async receive(callback?: (data: DataView) => void) {
+  async receive(callback?: (data: DataView) => void): Promise<void> {
+    // Validate device health before streaming
+    this.validateDeviceHealth();
+
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
     this.streaming = true;
+
+    const isDev = process.env.NODE_ENV === "development";
+    if (isDev) {
+      console.warn(
+        `HackRFOne.receive: Starting streaming loop, endpoint=${this.inEndpointNumber}`,
+      );
+    }
+
+    let iterationCount = 0;
+    let consecutiveTimeouts = 0;
+    const TIMEOUT_MS = 5000; // 5 second timeout
+    const MAX_CONSECUTIVE_TIMEOUTS = 3;
+
     while (this.streaming) {
       try {
-        const result = await this.usbDevice.transferIn(1, 4096);
+        iterationCount++;
+        if (isDev && iterationCount <= 5) {
+          console.warn(
+            `HackRFOne.receive: Iteration ${iterationCount}, calling transferIn`,
+          );
+        }
+
+        // Wrap transferIn with timeout protection
+        const result = await Promise.race([
+          this.usbDevice.transferIn(this.inEndpointNumber, 4096),
+          this.createTimeout(
+            TIMEOUT_MS,
+            `transferIn timeout after ${TIMEOUT_MS}ms - device may need reset`,
+          ),
+        ]);
+
+        // Reset timeout counter on successful transfer
+        consecutiveTimeouts = 0;
+
+        if (isDev && iterationCount <= 5) {
+          console.warn(`HackRFOne.receive: transferIn result:`, {
+            status: result.status,
+            byteLength: result.data?.byteLength || 0,
+            hasData: !!result.data,
+          });
+        }
+
         if (result.data) {
           // Track buffer for memory management
           this.trackBuffer(result.data);
 
+          if (isDev && iterationCount <= 3) {
+            console.warn(
+              `HackRFOne.receive: Got ${result.data.byteLength} bytes, callback=${!!callback}`,
+            );
+          }
           if (callback) {
             callback(result.data);
           }
+        } else if (isDev && iterationCount <= 5) {
+          console.warn(
+            `HackRFOne.receive: No data in result, status=${result.status}`,
+          );
         }
       } catch (err: unknown) {
         const error = err as Error & { name?: string };
         if (error.name === "AbortError") {
           // transferIn aborted as expected during shutdown
           break;
+        } else if (error.message?.includes("timeout")) {
+          consecutiveTimeouts++;
+          console.error(
+            `Transfer timeout (${consecutiveTimeouts}/${MAX_CONSECUTIVE_TIMEOUTS}): ${error.message}`,
+          );
+
+          if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
+            throw new Error(
+              "Device not responding after multiple attempts. Please:\n" +
+                "1. Unplug and replug the USB cable\n" +
+                "2. Press the reset button on the HackRF\n" +
+                "3. Try a different USB port\n" +
+                "4. Verify device works with hackrf_info command",
+            );
+          }
+          // Continue loop to retry
         } else {
           console.error("Unexpected error during transferIn:", err);
-          break;
+          throw err;
         }
       }
+    }
+
+    if (isDev) {
+      console.warn("HackRFOne.receive: Streaming loop ended");
     }
     await this.setTransceiverMode(TransceiverMode.OFF);
     await this.controlTransferOut({
@@ -278,7 +534,7 @@ export class HackRFOne {
   }
 
   // New method to stop reception
-  async stopRx() {
+  async stopRx(): Promise<void> {
     this.streaming = false;
   }
 

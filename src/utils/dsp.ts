@@ -1,7 +1,51 @@
+import {
+  calculateFFTWasm,
+  calculateWaveformWasm,
+  calculateSpectrogramWasm,
+  isWasmAvailable,
+} from "./dspWasm";
+import { performanceMonitor } from "./performanceMonitor";
+
 export type Sample = {
   I: number;
   Q: number;
 };
+
+/**
+ * Cache for pre-computed sine and cosine tables for common FFT sizes
+ * Improves performance by avoiding repeated trig calculations
+ */
+const trigCache = new Map<number, { cos: Float32Array; sin: Float32Array }>();
+
+/**
+ * Get or compute trig tables for a given FFT size
+ */
+function getTrigTables(fftSize: number): {
+  cos: Float32Array;
+  sin: Float32Array;
+} {
+  if (!trigCache.has(fftSize)) {
+    const cos = new Float32Array(fftSize);
+    const sin = new Float32Array(fftSize);
+
+    for (let k = 0; k < fftSize; k++) {
+      const angle = (-2 * Math.PI * k) / fftSize;
+      cos[k] = Math.cos(angle);
+      sin[k] = Math.sin(angle);
+    }
+
+    trigCache.set(fftSize, { cos, sin });
+
+    // Limit cache size to prevent memory growth
+    // Keep only the 10 most recently used sizes
+    if (trigCache.size > 10) {
+      const firstKey = trigCache.keys().next().value as number;
+      trigCache.delete(firstKey);
+    }
+  }
+
+  return trigCache.get(fftSize)!;
+}
 
 /**
  * Calculate FFT using Web Audio API's AnalyserNode
@@ -57,47 +101,78 @@ export function calculateFFT(samples: Sample[], fftSize: number): Float32Array {
 /**
  * Calculate FFT synchronously using manual DFT
  * Optimized for visualization with proper frequency shifting
+ * Now with WASM acceleration when available
  */
 export function calculateFFTSync(
   samples: Sample[],
   fftSize: number,
 ): Float32Array {
-  const output = new Float32Array(fftSize);
+  const markStart = `fft-${fftSize}-start`;
+  performanceMonitor.mark(markStart);
 
-  // Perform DFT (Discrete Fourier Transform)
-  for (let k = 0; k < fftSize; k++) {
-    let realSum = 0;
-    let imagSum = 0;
+  // Minimum magnitude to prevent underflow and -Infinity in dB calculation
+  // Corresponds to approximately -200 dB, providing a reasonable noise floor
+  const MIN_MAGNITUDE = 1e-10;
 
-    for (let n = 0; n < Math.min(samples.length, fftSize); n++) {
-      const sample = samples[n];
-      if (!sample) {
-        continue;
+  try {
+    // Try WASM first if available
+    if (isWasmAvailable()) {
+      const wasmResult = calculateFFTWasm(samples, fftSize);
+      if (wasmResult) {
+        performanceMonitor.measure("fft-wasm", markStart);
+        return wasmResult;
       }
-
-      const angle = (-2 * Math.PI * k * n) / fftSize;
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-
-      // Complex multiplication: (I + jQ) * (cos + j*sin)
-      realSum += sample.I * cos - sample.Q * sin;
-      imagSum += sample.I * sin + sample.Q * cos;
     }
 
-    // Calculate magnitude
-    const magnitude = Math.sqrt(realSum * realSum + imagSum * imagSum);
+    // Fallback to JavaScript DFT implementation
+    const output = new Float32Array(fftSize);
 
-    // Convert to dB: 20 * log10(magnitude)
-    output[k] = magnitude > 0 ? 20 * Math.log10(magnitude) : -100;
+    // Get pre-computed trig tables for performance
+    const { cos: cosTable, sin: sinTable } = getTrigTables(fftSize);
+
+    // Perform DFT (Discrete Fourier Transform)
+    for (let k = 0; k < fftSize; k++) {
+      let realSum = 0;
+      let imagSum = 0;
+
+      for (let n = 0; n < Math.min(samples.length, fftSize); n++) {
+        const sample = samples[n];
+        if (!sample) {
+          continue;
+        }
+
+        // Use pre-computed trig values
+        // angle = (-2 * Math.PI * k * n) / fftSize = k * (-2π/N) * n
+        // We have cos/sin for k, need to multiply by n via angle addition
+        const baseAngle = (k * n) % fftSize;
+        const cos = cosTable[baseAngle]!;
+        const sin = sinTable[baseAngle]!;
+
+        // Complex multiplication: (I + jQ) * (cos + j*sin)
+        realSum += sample.I * cos - sample.Q * sin;
+        imagSum += sample.I * sin + sample.Q * cos;
+      }
+
+      // Calculate magnitude with underflow protection
+      const magnitude = Math.sqrt(realSum * realSum + imagSum * imagSum);
+
+      // Convert to dB: 20 * log10(magnitude)
+      // Use MIN_MAGNITUDE to prevent -Infinity and handle numerical underflow
+      output[k] = 20 * Math.log10(Math.max(magnitude, MIN_MAGNITUDE));
+    }
+
+    // Shift FFT to center zero frequency
+    const shifted = new Float32Array(fftSize);
+    const half = Math.floor(fftSize / 2);
+    shifted.set(output.slice(half), 0);
+    shifted.set(output.slice(0, half), half);
+
+    performanceMonitor.measure("fft-js", markStart);
+    return shifted;
+  } catch (error) {
+    performanceMonitor.measure("fft-error", markStart);
+    throw error;
   }
-
-  // Shift FFT to center zero frequency
-  const shifted = new Float32Array(fftSize);
-  const half = Math.floor(fftSize / 2);
-  shifted.set(output.slice(half), 0);
-  shifted.set(output.slice(0, half), half);
-
-  return shifted;
 }
 
 /**
@@ -112,23 +187,43 @@ export function calculateSpectrogramRow(
 
 /**
  * Calculate full spectrogram from sample data
+ * Now with WASM acceleration when available
  */
 export function calculateSpectrogram(
   samples: Sample[],
   fftSize: number,
 ): Float32Array[] {
-  const rowCount = Math.floor(samples.length / fftSize);
-  const spectrogramData: Float32Array[] = [];
+  const markStart = "spectrogram-start";
+  performanceMonitor.mark(markStart);
 
-  for (let i = 0; i < rowCount; i++) {
-    const startIndex = i * fftSize;
-    const endIndex = startIndex + fftSize;
-    const rowSamples = samples.slice(startIndex, endIndex);
-    const row = calculateSpectrogramRow(rowSamples, fftSize);
-    spectrogramData.push(row);
+  try {
+    // Try WASM first if available
+    if (isWasmAvailable()) {
+      const wasmResult = calculateSpectrogramWasm(samples, fftSize);
+      if (wasmResult) {
+        performanceMonitor.measure("spectrogram-wasm", markStart);
+        return wasmResult;
+      }
+    }
+
+    // Fallback to JavaScript implementation
+    const rowCount = Math.floor(samples.length / fftSize);
+    const spectrogramData: Float32Array[] = [];
+
+    for (let i = 0; i < rowCount; i++) {
+      const startIndex = i * fftSize;
+      const endIndex = startIndex + fftSize;
+      const rowSamples = samples.slice(startIndex, endIndex);
+      const row = calculateSpectrogramRow(rowSamples, fftSize);
+      spectrogramData.push(row);
+    }
+
+    performanceMonitor.measure("spectrogram-js", markStart);
+    return spectrogramData;
+  } catch (error) {
+    performanceMonitor.measure("spectrogram-error", markStart);
+    throw error;
   }
-
-  return spectrogramData;
 }
 
 /**
@@ -145,26 +240,80 @@ export function convertToSamples(rawSamples: [number, number][]): Sample[] {
 
 /**
  * Calculate waveform data for time-domain visualization
+ * Now with WASM acceleration when available
  */
 export function calculateWaveform(samples: Sample[]): {
   amplitude: Float32Array;
   phase: Float32Array;
 } {
-  const amplitude = new Float32Array(samples.length);
-  const phase = new Float32Array(samples.length);
+  const markStart = "waveform-start";
+  performanceMonitor.mark(markStart);
 
+  try {
+    // Try WASM first if available
+    if (isWasmAvailable()) {
+      const wasmResult = calculateWaveformWasm(samples);
+      if (wasmResult) {
+        performanceMonitor.measure("waveform-wasm", markStart);
+        return wasmResult;
+      }
+    }
+
+    // Fallback to JavaScript implementation
+    const amplitude = new Float32Array(samples.length);
+    const phase = new Float32Array(samples.length);
+
+    for (let i = 0; i < samples.length; i++) {
+      const sample = samples[i];
+      if (!sample) {
+        // Explicitly mark invalid data with NaN for phase
+        // Amplitude defaults to 0 which is semantically correct (no signal)
+        amplitude[i] = 0;
+        phase[i] = NaN;
+        continue;
+      }
+
+      // Calculate amplitude (magnitude of complex number)
+      amplitude[i] = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);
+
+      // Calculate phase
+      phase[i] = Math.atan2(sample.Q, sample.I);
+    }
+
+    performanceMonitor.measure("waveform-js", markStart);
+    return { amplitude, phase };
+  } catch (error) {
+    performanceMonitor.measure("waveform-error", markStart);
+    throw error;
+  }
+}
+
+/**
+ * Calculate signal strength from IQ samples
+ * Returns signal strength in dBm (relative to maximum possible signal)
+ * Range is typically -100 dBm (very weak) to 0 dBm (maximum)
+ */
+export function calculateSignalStrength(samples: Sample[]): number {
+  if (samples.length === 0) {
+    return -100; // Minimum signal strength
+  }
+
+  // Calculate RMS (Root Mean Square) power
+  let sumSquares = 0;
   for (let i = 0; i < samples.length; i++) {
     const sample = samples[i];
     if (!sample) {
       continue;
     }
-
-    // Calculate amplitude (magnitude of complex number)
-    amplitude[i] = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);
-
-    // Calculate phase
-    phase[i] = Math.atan2(sample.Q, sample.I);
+    // Power is magnitude squared: I^2 + Q^2
+    sumSquares += sample.I * sample.I + sample.Q * sample.Q;
   }
 
-  return { amplitude, phase };
+  const rms = Math.sqrt(sumSquares / samples.length);
+
+  // Convert to dBm (assuming normalized range where max amplitude is 1.0)
+  // dBm = 20 * log10(rms)
+  // Clamp to reasonable range: -100 to 0 dBm
+  const dBm = rms > 0 ? 20 * Math.log10(rms) : -100;
+  return Math.max(-100, Math.min(0, dBm));
 }

@@ -1,5 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
+import type { ReactElement } from "react";
 import { calculateWaveform, Sample } from "../utils/dsp";
+import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 
 type WaveformVisualizerProps = {
   samples: Sample[];
@@ -11,314 +13,340 @@ export default function WaveformVisualizer({
   samples,
   width = 750,
   height = 300,
-}: WaveformVisualizerProps) {
+}: WaveformVisualizerProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const transferredRef = useRef<boolean>(false);
 
-  useEffect(() => {
+  // WebGL state
+  const glStateRef = useRef<{
+    gl: import("../utils/webgl").GL | null;
+    program: WebGLProgram | null;
+    vbo: WebGLBuffer | null;
+  }>({ gl: null, program: null, vbo: null });
+
+  // Add interaction handlers for pan, zoom, and gestures
+  const { transform, handlers, resetTransform } = useVisualizationInteraction();
+
+  // Generate accessible text description of the waveform data
+  const accessibleDescription = useMemo((): string => {
+    if (samples.length === 0) {
+      return "No waveform data";
+    }
+
+    const waveformData = calculateWaveform(samples);
+    const amplitude = waveformData.amplitude;
+    if (amplitude.length === 0) {
+      return "Waveform calculation failed";
+    }
+
+    const maxAmplitude = Math.max(...Array.from(amplitude));
+    const minAmplitude = Math.min(...Array.from(amplitude));
+    const avgAmplitude =
+      Array.from(amplitude).reduce((a, b) => a + b, 0) / amplitude.length;
+
+    return `Amplitude waveform showing ${samples.length} time-domain samples. Signal amplitude ranges from ${minAmplitude.toFixed(3)} to ${maxAmplitude.toFixed(3)} with average ${avgAmplitude.toFixed(3)}. The waveform represents signal strength variation over time.`;
+  }, [samples]);
+
+  useEffect((): void => {
     const canvas = canvasRef.current;
     if (!canvas || samples.length === 0) {
       return;
     }
 
-    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    if (!ctx) {
-      return;
-    }
-
-    // Set up high DPI canvas
+    // Set canvas dimensions synchronously for immediate availability in tests
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    ctx.scale(dpr, dpr);
 
-    // Professional dark background
-    ctx.fillStyle = "#0a0e1a";
-    ctx.fillRect(0, 0, width, height);
+    const run = async (): Promise<void> => {
+      // Try WebGL first
+      try {
+        const webgl = await import("../utils/webgl");
+        const pixelW = Math.max(1, Math.floor(width * dpr));
+        const pixelH = Math.max(1, Math.floor(height * dpr));
+        canvas.width = pixelW;
+        canvas.height = pixelH;
 
-    const margin = { top: 60, bottom: 60, left: 70, right: 60 };
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
+        let { gl } = glStateRef.current;
+        if (!gl) {
+          const got = webgl.getGL(canvas);
+          gl = got.gl;
+          glStateRef.current.gl = gl;
+        }
 
-    // Calculate waveform data
-    const { amplitude } = calculateWaveform(samples);
+        if (gl) {
+          // Calculate waveform data
+          const { amplitude } = calculateWaveform(samples);
+          if (amplitude.length === 0) {
+            return;
+          }
 
-    // Calculate statistics for adaptive scaling
-    const maxAmplitude = Math.max(...Array.from(amplitude));
-    const minAmplitude = Math.min(...Array.from(amplitude));
-    const amplitudeRange = maxAmplitude - minAmplitude || 1;
-    const avgAmplitude =
-      Array.from(amplitude).reduce((a, b) => a + b, 0) / amplitude.length;
+          // Calculate statistics for adaptive scaling
+          const maxAmplitude = Math.max(...Array.from(amplitude));
+          const minAmplitude = Math.min(...Array.from(amplitude));
+          const amplitudeRange = maxAmplitude - minAmplitude || 1;
+          const padding = amplitudeRange * 0.1;
+          const displayMin = minAmplitude - padding;
+          const displayMax = maxAmplitude + padding;
+          const displayRange = displayMax - displayMin;
 
-    // Add padding to range
-    const padding = amplitudeRange * 0.1;
-    const displayMin = minAmplitude - padding;
-    const displayMax = maxAmplitude + padding;
-    const displayRange = displayMax - displayMin;
+          // Build positions in NDC [-1,1] for LINE_STRIP
+          const positions = new Float32Array(amplitude.length * 2);
+          for (let i = 0; i < amplitude.length; i++) {
+            const x = -1 + (2 * i) / (amplitude.length - 1);
+            const amp = amplitude[i]!;
+            const y = -1 + (2 * (amp - displayMin)) / displayRange;
+            positions[i * 2 + 0] = x;
+            positions[i * 2 + 1] = y;
+          }
 
-    // Draw fine grid
-    ctx.strokeStyle = "rgba(70, 90, 120, 0.1)";
-    ctx.lineWidth = 0.5;
+          if (!glStateRef.current.program) {
+            const vs = `
+attribute vec2 a_position;
+void main() {
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+            const fs = `
+precision mediump float;
+void main() {
+  gl_FragColor = vec4(0.39, 0.86, 1.0, 0.9); // rgba(100,220,255,0.9)
+}`;
+            const prog = webgl.createProgram(gl, vs, fs);
+            glStateRef.current.program = prog;
+            glStateRef.current.vbo = gl.createBuffer();
+          }
 
-    const gridLines = 8;
-    for (let i = 0; i <= gridLines; i++) {
-      const y = margin.top + (chartHeight * i) / gridLines;
-      ctx.beginPath();
-      ctx.moveTo(margin.left, y);
-      ctx.lineTo(margin.left + chartWidth, y);
-      ctx.stroke();
-    }
+          gl.viewport(0, 0, pixelW, pixelH);
+          gl.disable(gl.DEPTH_TEST);
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+          gl.clearColor(0.04, 0.06, 0.1, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
 
-    // Vertical grid lines
-    const timeLines = 10;
-    for (let i = 0; i <= timeLines; i++) {
-      const x = margin.left + (chartWidth * i) / timeLines;
-      ctx.beginPath();
-      ctx.moveTo(x, margin.top);
-      ctx.lineTo(x, margin.top + chartHeight);
-      ctx.stroke();
-    }
+          const prog = glStateRef.current.program!;
+          gl.useProgram(prog);
+          const aPos = gl.getAttribLocation(prog, "a_position");
 
-    // Draw major grid lines
-    ctx.strokeStyle = "rgba(100, 130, 170, 0.2)";
-    ctx.lineWidth = 1;
+          gl.bindBuffer(gl.ARRAY_BUFFER, glStateRef.current.vbo);
+          gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
+          gl.enableVertexAttribArray(aPos);
+          gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
-    for (let i = 0; i <= 4; i++) {
-      const y = margin.top + (chartHeight * i) / 4;
-      ctx.beginPath();
-      ctx.moveTo(margin.left, y);
-      ctx.lineTo(margin.left + chartWidth, y);
-      ctx.stroke();
-    }
+          gl.lineWidth(2.0);
+          gl.drawArrays(gl.LINE_STRIP, 0, amplitude.length);
 
-    // Draw axes
-    ctx.strokeStyle = "#5aa3e8";
-    ctx.lineWidth = 2.5;
-
-    // Y-axis
-    ctx.beginPath();
-    ctx.moveTo(margin.left, margin.top);
-    ctx.lineTo(margin.left, margin.top + chartHeight);
-    ctx.stroke();
-
-    // X-axis
-    const zeroY =
-      margin.top +
-      chartHeight -
-      ((0 - displayMin) / displayRange) * chartHeight;
-    ctx.beginPath();
-    ctx.moveTo(margin.left, zeroY);
-    ctx.lineTo(margin.left + chartWidth, zeroY);
-    ctx.stroke();
-
-    // Adaptive downsampling for performance
-    const maxPoints = chartWidth * 2;
-    const step = Math.max(1, Math.floor(samples.length / maxPoints));
-
-    // Draw waveform with anti-aliasing
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    // Draw filled area first
-    ctx.beginPath();
-    ctx.moveTo(margin.left, zeroY);
-
-    for (let i = 0; i < amplitude.length; i += step) {
-      const x = margin.left + (i / amplitude.length) * chartWidth;
-      const amp = amplitude[i]!;
-      const y =
-        margin.top +
-        chartHeight -
-        ((amp - displayMin) / displayRange) * chartHeight;
-
-      if (i === 0) {
-        ctx.lineTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
+          return;
+        }
+      } catch (err) {
+        console.warn(
+          "[WaveformVisualizer] WebGL path failed, falling back:",
+          err,
+        );
       }
-    }
 
-    ctx.lineTo(margin.left + chartWidth, zeroY);
-    ctx.closePath();
+      const supportsOffscreen =
+        typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
+      const shouldUseWorker = supportsOffscreen;
 
-    // Gradient fill under curve
-    const fillGradient = ctx.createLinearGradient(
-      0,
-      margin.top,
-      0,
-      margin.top + chartHeight,
-    );
-    fillGradient.addColorStop(0, "rgba(100, 220, 255, 0.25)");
-    fillGradient.addColorStop(0.5, "rgba(70, 180, 255, 0.15)");
-    fillGradient.addColorStop(1, "rgba(50, 140, 255, 0.05)");
+      if (shouldUseWorker) {
+        if (!workerRef.current) {
+          try {
+            const workerUrl =
+              typeof window !== "undefined" && typeof URL !== "undefined"
+                ? new URL(
+                    "../workers/visualization.worker.ts",
+                    window.location.href,
+                  )
+                : ("../workers/visualization.worker.ts" as unknown as URL);
+            const worker = new Worker(workerUrl);
+            workerRef.current = worker;
+          } catch (e) {
+            console.error("Could not create visualization worker", e);
+            workerRef.current = null;
+          }
+          if (workerRef.current) {
+            workerRef.current.onmessage = (ev): void => {
+              const d = ev.data as unknown as {
+                type?: string;
+                viz?: string;
+                renderTimeMs?: number;
+              };
+              if (d?.type === "metrics") {
+                console.warn(
+                  `[viz worker] ${d.viz} render ${d.renderTimeMs?.toFixed(2)}ms`,
+                );
+              }
+            };
+          }
+        }
 
-    ctx.fillStyle = fillGradient;
-    ctx.fill();
+        if (workerRef.current) {
+          if (!transferredRef.current) {
+            const canTransfer =
+              typeof (
+                canvas as HTMLCanvasElement & {
+                  transferControlToOffscreen?: () => OffscreenCanvas;
+                }
+              ).transferControlToOffscreen === "function";
+            if (canTransfer) {
+              canvas.width = width * dpr;
+              canvas.height = height * dpr;
 
-    // Draw main waveform line with glow effect
-    ctx.beginPath();
-    for (let i = 0; i < amplitude.length; i += step) {
-      const x = margin.left + (i / amplitude.length) * chartWidth;
-      const amp = amplitude[i]!;
-      const y =
-        margin.top +
-        chartHeight -
-        ((amp - displayMin) / displayRange) * chartHeight;
+              const offscreen = (
+                canvas as HTMLCanvasElement & {
+                  transferControlToOffscreen: () => OffscreenCanvas;
+                }
+              ).transferControlToOffscreen();
+              transferredRef.current = true;
+              workerRef.current.postMessage(
+                {
+                  type: "init",
+                  canvas: offscreen,
+                  vizType: "waveform",
+                  width,
+                  height,
+                  dpr,
+                },
+                [offscreen],
+              );
+            }
+          } else {
+            workerRef.current.postMessage({
+              type: "resize",
+              width,
+              height,
+              dpr,
+            });
+          }
 
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
+          if (transferredRef.current) {
+            workerRef.current.postMessage({
+              type: "render",
+              data: { samples, transform },
+            });
+            return;
+          }
+        }
       }
-    }
 
-    // Outer glow
-    ctx.strokeStyle = "rgba(100, 220, 255, 0.3)";
-    ctx.lineWidth = 4;
-    ctx.stroke();
+      // Fallback: render on main thread (existing implementation)
+      if (transferredRef.current) {
+        return;
+      }
+      const ctx = canvas.getContext("2d", {
+        alpha: false,
+        desynchronized: true,
+      });
+      if (!ctx) {
+        return;
+      }
 
-    // Main line
-    ctx.strokeStyle = "rgba(100, 220, 255, 0.9)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+      // Set up high DPI canvas
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.scale(dpr, dpr);
 
-    // Inner highlight
-    ctx.strokeStyle = "rgba(200, 240, 255, 0.7)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
+      // Apply user interaction transform (pan and zoom)
+      ctx.save();
+      ctx.translate(transform.offsetX, transform.offsetY);
+      ctx.scale(transform.scale, transform.scale);
 
-    // Draw axis labels
-    ctx.fillStyle = "#e0e6ed";
-    ctx.font =
-      "bold 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+      // Professional dark background
+      ctx.fillStyle = "#0a0e1a";
+      ctx.fillRect(0, 0, width, height);
 
-    // X-axis label
-    ctx.fillText("Time (samples)", width / 2, height - 20);
+      const margin = { top: 60, bottom: 60, left: 70, right: 60 };
+      const chartWidth = width - margin.left - margin.right;
+      const chartHeight = height - margin.top - margin.bottom;
 
-    // Y-axis label
-    ctx.save();
-    ctx.translate(18, height / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText("Amplitude", 0, 0);
-    ctx.restore();
+      // Calculate waveform data
+      const { amplitude } = calculateWaveform(samples);
 
-    // Draw tick labels
-    ctx.font = "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#a0aab5";
+      // Calculate statistics for adaptive scaling
+      const maxAmplitude = Math.max(...Array.from(amplitude));
+      const minAmplitude = Math.min(...Array.from(amplitude));
+      const amplitudeRange = maxAmplitude - minAmplitude || 1;
 
-    // Y-axis ticks
-    const yTicks = 5;
-    for (let i = 0; i <= yTicks; i++) {
-      const amp = displayMin + (displayRange * i) / yTicks;
-      const y = margin.top + chartHeight - (chartHeight * i) / yTicks;
+      // Add padding to range
+      const padding = amplitudeRange * 0.1;
+      const displayMin = minAmplitude - padding;
+      const displayMax = maxAmplitude + padding;
+      const displayRange = displayMax - displayMin;
 
-      ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
-      ctx.fillText(amp.toFixed(3), margin.left - 8, y);
-
-      // Tick mark
-      ctx.strokeStyle = "#5aa3e8";
-      ctx.lineWidth = 1.5;
+      // Draw a simplified waveform for fallback (keeps responsive)
+      ctx.strokeStyle = "rgba(100,220,255,0.9)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(margin.left - 5, y);
-      ctx.lineTo(margin.left, y);
+      const maxPoints = Math.max(100, Math.round(chartWidth * 2));
+      const step = Math.max(1, Math.floor(amplitude.length / maxPoints));
+      for (let i = 0; i < amplitude.length; i += step) {
+        const x = margin.left + (i / amplitude.length) * chartWidth;
+        const amp = amplitude[i]!;
+        const y =
+          margin.top +
+          chartHeight -
+          ((amp - displayMin) / displayRange) * chartHeight;
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
       ctx.stroke();
-    }
 
-    // X-axis ticks
-    const xTicks = 5;
-    for (let i = 0; i <= xTicks; i++) {
-      const sampleNum = Math.floor((samples.length * i) / xTicks);
-      const x = margin.left + (chartWidth * i) / xTicks;
+      // Restore context state after transform
+      ctx.restore();
+    };
+    void run();
+  }, [samples, width, height, transform]);
 
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      ctx.fillText(sampleNum.toString(), x, zeroY + 8);
+  // Cleanup worker and GL on unmount
+  useEffect((): (() => void) => {
+    const st = glStateRef.current;
+    return () => {
+      // GL cleanup
+      try {
+        if (st.gl && st.vbo) {
+          st.gl.deleteBuffer(st.vbo);
+        }
+        if (st.gl && st.program) {
+          st.gl.deleteProgram(st.program);
+        }
+      } catch {
+        // ignore cleanup errors
+      }
 
-      // Tick mark
-      ctx.strokeStyle = "#5aa3e8";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x, zeroY);
-      ctx.lineTo(x, zeroY + 5);
-      ctx.stroke();
-    }
+      if (workerRef.current) {
+        try {
+          workerRef.current.postMessage({ type: "dispose" });
+        } catch (e) {
+          console.warn("dispose postMessage failed", e);
+        }
+        try {
+          workerRef.current.terminate();
+        } catch (e) {
+          console.warn("worker terminate failed", e);
+        }
+        workerRef.current = null;
+      }
+      transferredRef.current = false;
+    };
+  }, []);
 
-    // Draw reference lines for min/max/avg
-    ctx.setLineDash([5, 5]);
-    ctx.lineWidth = 1;
-
-    // Max line
-    const maxY =
-      margin.top +
-      chartHeight -
-      ((maxAmplitude - displayMin) / displayRange) * chartHeight;
-    ctx.strokeStyle = "rgba(255, 100, 100, 0.5)";
-    ctx.beginPath();
-    ctx.moveTo(margin.left, maxY);
-    ctx.lineTo(margin.left + chartWidth, maxY);
-    ctx.stroke();
-
-    // Min line
-    const minY =
-      margin.top +
-      chartHeight -
-      ((minAmplitude - displayMin) / displayRange) * chartHeight;
-    ctx.strokeStyle = "rgba(100, 200, 100, 0.5)";
-    ctx.beginPath();
-    ctx.moveTo(margin.left, minY);
-    ctx.lineTo(margin.left + chartWidth, minY);
-    ctx.stroke();
-
-    // Avg line
-    const avgY =
-      margin.top +
-      chartHeight -
-      ((avgAmplitude - displayMin) / displayRange) * chartHeight;
-    ctx.strokeStyle = "rgba(255, 200, 100, 0.5)";
-    ctx.beginPath();
-    ctx.moveTo(margin.left, avgY);
-    ctx.lineTo(margin.left + chartWidth, avgY);
-    ctx.stroke();
-
-    ctx.setLineDash([]);
-
-    // Add title
-    ctx.font =
-      "bold 17px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#e0e6ed";
-    ctx.textAlign = "center";
-    ctx.fillText("Amplitude Waveform", width / 2, 28);
-
-    // Add statistics
-    ctx.font = "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#a0aab5";
-    ctx.textAlign = "right";
-    ctx.fillText(
-      `Max: ${maxAmplitude.toFixed(4)} | Min: ${minAmplitude.toFixed(4)} | Avg: ${avgAmplitude.toFixed(4)}`,
-      width - 20,
-      28,
-    );
-
-    // Add legend for reference lines
-    ctx.textAlign = "left";
-    ctx.font = "10px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-
-    const legendY = margin.top + 10;
-    const legendX = margin.left + 10;
-
-    ctx.fillStyle = "rgba(255, 100, 100, 0.7)";
-    ctx.fillText("━━ Max", legendX, legendY);
-
-    ctx.fillStyle = "rgba(255, 200, 100, 0.7)";
-    ctx.fillText("━━ Avg", legendX + 60, legendY);
-
-    ctx.fillStyle = "rgba(100, 200, 100, 0.7)";
-    ctx.fillText("━━ Min", legendX + 120, legendY);
-  }, [samples, width, height]);
-
-  return <canvas ref={canvasRef} style={{ borderRadius: "8px" }} />;
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <canvas
+        ref={canvasRef}
+        role="img"
+        aria-label={accessibleDescription}
+        {...handlers}
+        onDoubleClick={(): void => resetTransform()}
+      />
+    </div>
+  );
 }

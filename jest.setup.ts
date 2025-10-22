@@ -1,14 +1,19 @@
-import '@testing-library/jest-dom';
+import "@testing-library/jest-dom";
+import { TextEncoder, TextDecoder } from "util";
+
+// Polyfill TextEncoder/TextDecoder for react-router-dom in tests
+global.TextEncoder = TextEncoder as any;
+global.TextDecoder = TextDecoder as any;
 
 // Mock canvas methods for testing
-HTMLCanvasElement.prototype.getContext = function() {
+HTMLCanvasElement.prototype.getContext = function () {
   return {
-    fillStyle: '',
-    strokeStyle: '',
+    fillStyle: "",
+    strokeStyle: "",
     lineWidth: 1,
-    font: '',
-    textAlign: 'left',
-    textBaseline: 'top',
+    font: "",
+    textAlign: "left",
+    textBaseline: "top",
     globalAlpha: 1,
     fillRect: jest.fn(),
     strokeRect: jest.fn(),
@@ -37,4 +42,3 @@ HTMLCanvasElement.prototype.getContext = function() {
     })),
   } as any;
 };
-

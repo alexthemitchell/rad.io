@@ -2,35 +2,56 @@
 
 A professional browser-based SDR application with industry-standard visualizations, universal device support, and comprehensive testing.
 
-![rad.io Screenshot](https://github.com/user-attachments/assets/f86b68ed-3a56-4090-8b41-aaf0bf22e47d)
-
 ## Features
 
-### 🎛️ Signal Control
-- **AM/FM Band Selection**: Toggle between FM (88.1-107.9 MHz) and AM (530-1700 kHz)
+### Signal Control 🎛️
+
+- **AM/FM/P25 Band Selection**: Toggle between FM (88.1-107.9 MHz), AM (530-1700 kHz), and P25 Phase 2 (700-800 MHz, 150-174 MHz)
 - **Preset Stations**: One-click tuning to popular stations
 - **Manual Frequency Control**: Precise frequency adjustment
+- **Frequency Scanner**: Automated scanning across user-defined ranges with signal detection and logging
 - **Device Configuration**: LNA gain, amplifier control, sample rate
 
-### 📊 Professional Visualizations
+### Professional Visualizations 📊
+
 - **IQ Constellation Diagram**: Density-based heat mapping with Z-ordering
 - **Amplitude Waveform**: Time-domain envelope with reference lines
 - **Power Spectral Density**: Viridis colormap spectrogram
+- **Interactive Controls**: Pan, zoom, and multi-touch gestures for all visualizations
+- **Keyboard Navigation**: Accessible controls for precision signal analysis
 
-### 🔌 Universal Device Support
+### Speech Recognition & P25 Decoding 🎤
+
+- **Browser-Native Transcription**: Web Speech API integration for real-time speech-to-text
+- **AI-Ready Audio Stream**: Clean demodulated audio optimized for recognition
+- **Multiple Language Support**: Transcribe communications in various languages
+- **Robust Error Handling**: Gracefully handles noisy/distorted radio audio
+- **P25 Phase 2 Decoder**: H-DQPSK demodulation, TDMA slot extraction, frame synchronization
+- **Trunked Radio Support**: Monitor talkgroups, control channels, and encrypted transmissions
+
+### Universal Device Support 🔌
+
 - **HackRF One**: Native implementation
 - **RTL-SDR**: Format conversion utilities
 - **Airspy**: Database support
 - **Custom SDRs**: Implement `ISDRDevice` interface
 
-### ✅ Quality Assurance
-- **122+ Unit Tests**: Comprehensive coverage with realistic signal data
-- **CI/CD Pipeline**: Automated lint, test, format, build, type-check
-- **Zero External Dependencies**: Native WebAudio API and Canvas rendering
+### Quality Assurance ✅
+
+- **Comprehensive Unit Tests**: Coverage across DSP, devices, and components
+- **CI/CD Pipeline**: Automated lint, test (with coverage), format, build, and type-check
+- **Zero External Visualization Dependencies**: Native WebAudio API and Canvas rendering
+
+### Accessibility ♿
+
+- **Keyboard Navigation**: Full keyboard control with arrow keys and shortcuts
+- **ARIA Labels**: Descriptive text alternatives for all visualizations
+- **Focus Management**: Clear visual indicators and logical tab order
 
 ## Quick Start
 
 ### Prerequisites
+
 - Modern web browser with WebUSB support (Chrome 61+, Edge 79+, Opera 48+)
 - HTTPS context (required for WebUSB)
 - Compatible SDR device (HackRF One, RTL-SDR, etc.)
@@ -49,7 +70,7 @@ npm install
 npm start
 ```
 
-The application will be available at `https://localhost:8080`
+The development server runs over HTTPS at `https://localhost:8080` by default.
 
 ### Building for Production
 
@@ -72,11 +93,13 @@ npm run build
 ### Tuning to a Station
 
 **Method 1: Preset Stations**
+
 1. Select signal type (FM/AM)
 2. Click a preset station button
 3. Device automatically tunes to the frequency
 
 **Method 2: Manual Entry**
+
 1. Enter frequency in the input field
 2. Units automatically adjust (MHz for FM, kHz for AM)
 3. Press Enter or click away to apply
@@ -88,9 +111,42 @@ npm run build
 3. Visualizations update with live data
 4. Click "Stop Reception" to pause
 
+### Frequency Scanner
+
+The automated frequency scanner sweeps through a user-defined range to detect and log active signals.
+
+**Configuration:**
+
+1. **Start Frequency**: Lower bound of scan range (MHz)
+2. **End Frequency**: Upper bound of scan range (MHz)
+3. **Step Size**: Frequency increment between scans (kHz)
+4. **Detection Threshold**: Signal strength required to log a signal (0-100%)
+5. **Dwell Time**: Time spent on each frequency (ms)
+
+**Usage:**
+
+1. Configure scan parameters (default: 88-108 MHz, 100 kHz steps, 30% threshold)
+2. Click "Start Scan" to begin automated scanning
+3. Active signals are detected and logged in the table
+4. Use "Pause" to temporarily halt scanning
+5. Use "Resume" to continue from paused state
+6. Use "Stop" to end scanning completely
+7. Export results to JSON for further analysis
+
+**Active Signals Table:**
+
+- Lists all detected signals sorted by strength
+- Shows frequency, signal strength percentage, and detection time
+- Color-coded strength bars: Red (weak), Orange (moderate), Green (strong)
+- "Export" button saves results as JSON file
+- "Clear" button removes all detected signals from the list
+
+**Note**: Device must be connected and scanning only works for FM/AM modes (not P25).
+
 ### Understanding the Visualizations
 
 **IQ Constellation Diagram**
+
 - Shows I (in-phase) and Q (quadrature) signal components
 - Density-based coloring: blue (sparse) → cyan → white (dense)
 - Circular pattern = FM signal
@@ -98,6 +154,7 @@ npm run build
 - Distinct points = Digital modulation
 
 **Amplitude Waveform**
+
 - Time-domain signal envelope
 - Red line = Maximum amplitude
 - Orange line = Average amplitude
@@ -105,11 +162,93 @@ npm run build
 - Useful for: AM detection, signal strength monitoring
 
 **Spectrogram (Power Spectral Density)**
+
 - Frequency spectrum over time
 - Color scale: Purple (low power) → Yellow (high power)
 - Horizontal axis = Time
 - Vertical axis = Frequency
 - Bright bands = Strong signals
+
+### Interactive Visualization Controls
+
+All visualizations support advanced pointer and wheel events for intuitive exploration:
+
+**Mouse & Pointer:**
+
+- **Pan**: Click and drag to move the view
+- **Zoom**: Use mouse wheel to zoom in/out
+- **Reset**: Click "Reset View" button when transformed
+
+**Touch & Multi-Touch:**
+
+- **Pan**: Single finger drag
+- **Pinch-to-Zoom**: Two finger pinch gesture
+- **Tap**: Focus on specific signal features
+
+**Keyboard Navigation** (for accessibility):
+
+- **Arrow Keys**: Pan in any direction (←, →, ↑, ↓)
+- **+/-**: Zoom in and out
+- **0**: Reset to default view
+
+Interactive controls are implemented via `src/hooks/useVisualizationInteraction.ts` and used across visualization components such as `Spectrogram`, `IQConstellation`, and `WaveformVisualizer`.
+
+### Speech Recognition
+
+**Basic Transcription**
+
+1. Tune to a voice transmission (FM/AM)
+2. Ensure good signal strength
+3. Speech recognition automatically transcribes audio
+4. View transcripts in real-time
+
+**Supported Use Cases:**
+
+- Public safety radio monitoring
+- Aviation communications
+- Amateur radio logging
+- Emergency broadcast transcription
+- Multi-language monitoring
+
+**Note**: Web Speech API requires Chrome/Edge browsers and may request microphone permission.
+
+### P25 Phase 2 Digital Radio
+
+**Monitoring P25 Systems**
+
+1. Select "P25" signal type
+2. Configure system parameters:
+   - Control Channel frequency (e.g., 770.95625 MHz)
+   - NAC (Network Access Code)
+   - System ID
+   - WACN (Wide Area Communications Network)
+3. Add talkgroups to monitor
+4. Start reception to decode transmissions
+
+**Understanding P25 Indicators**
+
+- **Phase**: Shows P25 Phase 2 when decoding TDMA signals
+- **TDMA Slot**: Indicates which time slot (1 or 2) is active
+- **Signal Quality**: 0-100% based on constellation accuracy
+- **Encryption**: Shows if transmission is encrypted
+- **Talkgroup**: Active talkgroup ID and name
+
+**P25 Features:**
+
+- **H-DQPSK Demodulation**: Differential QPSK with 6000 symbols/sec
+- **TDMA Slot Extraction**: Separates two simultaneous voice channels
+- **Frame Synchronization**: Detects P25 frame boundaries
+- **Signal Quality Metrics**: Real-time constellation analysis
+- **Talkgroup Scanning**: Monitor multiple talkgroups simultaneously
+
+**Frequency Bands:**
+
+- **700 MHz Band**: 764-776 MHz, 794-806 MHz (most common)
+- **800 MHz Band**: 851-870 MHz (also common)
+- **VHF Band**: 150-174 MHz (rural/legacy systems)
+- **UHF Band**: 450-470 MHz (some regions)
+
+See implementation in `src/utils/p25decoder.ts` for technical details and API surface.
 
 ### Digital Signal Processing Pipeline
 
@@ -122,143 +261,7 @@ The DSP pipeline visualization shows the complete signal flow:
 5. **Demodulation**: Signal extraction
 6. **Audio Output**: Speaker/headphones
 
-## Development
-
-### Project Structure
-
-```
-src/
-├── components/     # UI components and visualizations
-├── models/         # SDR device implementations  
-├── hooks/          # React hooks for device management
-├── utils/          # DSP algorithms and utilities
-├── pages/          # Top-level page components
-└── styles/         # CSS styling
-```
-
-### Available Scripts
-
-```bash
-# Development
-npm start              # HTTPS dev server with HMR
-npm run dev            # Alias for npm start
-
-# Quality Control
-npm run lint           # ESLint validation
-npm run lint:fix       # Auto-fix linting issues
-npm run format         # Format code with Prettier
-npm run format:check   # Check code formatting
-npm run type-check     # TypeScript validation
-npm run validate       # Run all quality checks + build
-npm run self-assess    # Run comprehensive self-assessment
-
-# Testing
-npm test               # Run all tests
-npm run test:unit      # Run unit tests (DSP, memory, device)
-npm run test:components # Run component tests
-npm run test:watch     # Watch mode
-npm run test:coverage  # Coverage report
-
-# Build
-npm run build          # Development build
-npm run build:prod     # Production build
-
-# Cleanup
-npm run clean          # Remove build artifacts and dependencies
-```
-
-### Running Tests
-
-```bash
-# Run all 122+ tests
-npm test
-
-# Run specific test suites
-npm run test:unit        # Unit tests only (faster)
-npm run test:components  # Component tests only
-
-# Test suites:
-# - DSP Utilities (29 tests)
-# - IQ Constellation (11 tests)
-# - Spectrogram (13 tests)
-# - SDR Device Interface (43 tests)
-# - Realistic SDR Data (26 tests)
-# - Memory Management (10 tests)
-```
-
-### Code Quality Standards
-
-All pull requests must pass:
-- ✅ ESLint validation
-- ✅ Prettier formatting
-- ✅ TypeScript type checking
-- ✅ Jest test suite (100% pass rate)
-- ✅ Webpack build
-
-### Self-Assessment Agent
-
-The repository includes an automated self-assessment agent that performs comprehensive quality checks:
-
-```bash
-# Run self-assessment
-npm run self-assess
-
-# View assessment reports
-cat .serena/memories/index.md
-```
-
-**Features:**
-- Code quality verification (lint, format, type-check)
-- Build validation
-- Test execution with coverage analysis
-- Categorized improvement suggestions (critical, high, medium, low)
-- Detailed markdown reports saved to `.serena/memories/`
-- Automatic tracking and indexing of assessments
-
-**When to use:**
-- After completing a task or feature
-- Before creating a pull request
-- To verify quality standards are met
-- To get constructive feedback on changes
-
-See `.github/agents/README.md` for detailed documentation.
-
 ## Architecture
-
-### Universal SDR Interface
-
-All SDR devices implement the `ISDRDevice` interface:
-
-```typescript
-interface ISDRDevice {
-  // Lifecycle
-  open(): Promise<void>;
-  close(): Promise<void>;
-  isOpen(): boolean;
-  
-  // Configuration
-  setFrequency(frequencyHz: number): Promise<void>;
-  setSampleRate(sampleRateHz: number): Promise<void>;
-  setLNAGain(gainDb: number): Promise<void>;
-  setAmpEnable(enabled: boolean): Promise<void>;
-  
-  // Streaming
-  receive(callback?: IQSampleCallback): Promise<void>;
-  stopRx(): Promise<void>;
-  isReceiving(): boolean;
-  
-  // Metadata
-  getDeviceInfo(): Promise<SDRDeviceInfo>;
-  getCapabilities(): SDRCapabilities;
-}
-```
-
-### Visualization Pipeline
-
-1. **Raw IQ Samples**: Int8/Uint8/Int16 from device
-2. **Format Conversion**: Convert to Float32Array
-3. **DSP Processing**: FFT, magnitude calculation, dB conversion
-4. **Canvas Rendering**: GPU-accelerated with high-DPI support
 
 ### Technology Stack
 
@@ -271,177 +274,49 @@ interface ISDRDevice {
 - **Webpack**: Build tooling
 - **GitHub Actions**: CI/CD pipeline
 
-## Adding New SDR Devices
-
-To add support for a new SDR device:
-
-1. **Implement `ISDRDevice` interface**:
-```typescript
-export class YourSDRDevice implements ISDRDevice {
-  // Implement all interface methods
-}
-```
-
-2. **Add device to known devices database**:
-```typescript
-export const KNOWN_SDR_DEVICES: SDRUSBFilter[] = [
-  { vendorId: 0xYOUR_VID, productId: 0xYOUR_PID, type: SDRDeviceType.YOUR_DEVICE }
-];
-```
-
-3. **Create device hook**:
-```typescript
-export function useYourSDRDevice() {
-  const { device: usbDevice, requestDevice } = useUSBDevice([
-    { vendorId: 0xYOUR_VID }
-  ]);
-  // ... setup logic
-}
-```
-
-4. **Add tests**: Create test suite in `src/models/__tests__/YourSDRDevice.test.ts`
-
 ## Browser Compatibility
 
 ### Supported Browsers
+
 - ✅ Google Chrome 61+
 - ✅ Microsoft Edge 79+
 - ✅ Opera 48+
 
 ### Not Supported
+
 - ❌ Firefox (WebUSB not implemented)
 - ❌ Safari (WebUSB not implemented)
 
 **Note**: HTTPS context is required for WebUSB access.
 
-## Troubleshooting
+## Windows notes
 
-### Device Not Detected
+- PowerShell is the default shell; commands shown use npm scripts so they work the same across platforms.
+- The `clean` script uses `rimraf` for cross‑platform deletion of `dist`, `node_modules`, and `build`.
 
-**Problem**: "No device found" when connecting
+## Agent guide: Serena memories
 
-**Solutions**:
-1. Verify USB connection
-2. Check device is powered on
-3. Try different USB port/cable
-4. Ensure browser supports WebUSB
-5. Grant USB permissions at OS level
+For AI agents contributing to this repository, use Serena memories to keep context lean and high-signal:
 
-### Connection Drops
+- Start by listing available memories and look for "SERENA_MEMORY_BEST_PRACTICES".
+- Read that memory for concise best practices on minimizing noise-to-signal in context, retrieval order, and when/what to write.
+- Only write new memories for durable, reusable knowledge (architecture decisions, debugging playbooks, repo-wide workflows). Prefer updating an existing memory over creating duplicates.
+- Favor symbol-first exploration over full-file reads. Avoid re-reading the same content with multiple tools.
 
-**Problem**: Device disconnects during use
+See `.github/copilot-instructions.md` for detailed agent workflows and available tools.
 
-**Solutions**:
-1. Check USB cable quality
-2. Reduce USB cable length
-3. Use powered USB hub
-4. Update device firmware
-5. Check for USB port power issues
+## Community health
 
-### Slow Visualizations
+This repository includes community health files to help guide contributors and users:
 
-**Problem**: Choppy or lagging displays
+- Code of Conduct: `CODE_OF_CONDUCT.md`
+- Security Policy: `SECURITY.md`
+- Support: `SUPPORT.md`
+- Governance: `GOVERNANCE.md`
 
-**Solutions**:
-1. Reduce sample rate
-2. Close other browser tabs
-3. Enable hardware acceleration in browser
-4. Update graphics drivers
-5. Use smaller visualization windows
+You can also find issue templates and the pull request template under `.github/`.
 
-### Build Errors
+## Additional accessibility resources
 
-**Problem**: `npm install` or `npm run build` fails
-
-**Solutions**:
-1. Delete `node_modules` and `package-lock.json`
-2. Run `npm install` again
-3. Ensure Node.js version >= 16
-4. Check for port conflicts (8080)
-5. Clear npm cache: `npm cache clean --force`
-
-## Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. **Fork the repository**
-2. **Create feature branch**: `git checkout -b feature/your-feature`
-3. **Make changes**: Follow code style and add tests
-4. **Run quality checks**:
-   ```bash
-   npm run lint:fix
-   npm run format
-   npm run type-check
-   npm test
-   npm run build
-   ```
-5. **Commit changes**: `git commit -m "Add your feature"`
-6. **Push to branch**: `git push origin feature/your-feature`
-7. **Create Pull Request**: Automated checks will run
-
-### Code Style Guidelines
-
-- Use TypeScript strict mode
-- Follow existing component patterns
-- Add JSDoc comments for public APIs
-- Write tests for new features
-- Keep changes minimal and focused
-- Update documentation
-
-## Performance
-
-### Bundle Size
-- Production build: 4.9 MB (gzipped: ~1.2 MB)
-- Zero external visualization dependencies
-- Native WebAudio API and Canvas rendering
-
-### Rendering Performance
-- 60 FPS visualization updates
-- GPU-accelerated canvas rendering
-- Adaptive downsampling for large datasets
-- High-DPI support for retina displays
-
-### Test Coverage
-- 122+ unit tests across 5 test suites
-- 100% pass rate
-- Mathematical accuracy validation
-- Realistic signal data testing
-
-## License
-
-This project is open source. Please check the LICENSE file for details.
-
-## Acknowledgments
-
-- **Industry Standards**: IQ constellation best practices from UVic ECE Communications Labs
-- **Scientific Colormaps**: Viridis from matplotlib project
-- **WebUSB API**: W3C Web Incubator Community Group
-- **Signal Processing**: DSP literature and research papers
-
-## Support
-
-For issues, questions, or feature requests:
-- **GitHub Issues**: https://github.com/alexthemitchell/rad.io/issues
-- **Documentation**: See `.github/copilot-instructions.md` for detailed technical docs
-- **Examples**: Check test files for usage examples
-
-## Roadmap
-
-### Planned Features
-- Real-time audio demodulation
-- Waterfall display mode
-- Recording and playback
-- Additional device support (SDRPlay, BladeRF)
-- Frequency scanning
-- Signal strength meter
-- Bandwidth filtering controls
-
-### Performance Enhancements
-- WebGL rendering for large datasets
-- Web Workers for DSP processing
-- OffscreenCanvas for background rendering
-- WASM FFT implementations
-
----
-
-**Built with ❤️ for the SDR community**
+- GitHub’s guidance for accessible profile/README content: https://github.blog/developer-skills/github/5-tips-for-making-your-github-profile-page-accessible/
+  - Key ideas we follow here: descriptive image alt text, meaningful link text (no “click here”), clear heading hierarchy, and emojis that complement the text (not replace it).

@@ -1,4 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
+import type { ReactElement } from "react";
+import { performanceMonitor } from "../utils/performanceMonitor";
+import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 
 type SpectrogramProps = {
   fftData: Float32Array[];
@@ -14,290 +17,461 @@ export default function Spectrogram({
   height = 800,
   freqMin = 1000,
   freqMax = 1100,
-}: SpectrogramProps) {
+}: SpectrogramProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const transferredRef = useRef<boolean>(false);
 
-  useEffect(() => {
+  // WebGL resources
+  const glStateRef = useRef<{
+    gl: import("../utils/webgl").GL | null;
+    isWebGL2: boolean;
+    program: WebGLProgram | null;
+    quadVBO: WebGLBuffer | null;
+    uvVBO: WebGLBuffer | null;
+    texture: WebGLTexture | null;
+    lastTexSize: { w: number; h: number } | null;
+  }>({
+    gl: null,
+    isWebGL2: false,
+    program: null,
+    quadVBO: null,
+    uvVBO: null,
+    texture: null,
+    lastTexSize: null,
+  });
+
+  // Add interaction handlers for pan, zoom, and gestures
+  const { transform, handlers, resetTransform } = useVisualizationInteraction();
+
+  // Generate accessible text description of the spectrogram data
+  const accessibleDescription = useMemo((): string => {
+    if (fftData.length === 0) {
+      return "No spectrogram data";
+    }
+
+    const numFrames = fftData.length;
+    const binCount = freqMax - freqMin;
+
+    // Find peak power and its frequency
+    let maxPower = -Infinity;
+    let maxPowerBin = 0;
+    fftData.forEach((row) => {
+      for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
+        const value = row[bin]!;
+        if (isFinite(value) && value > maxPower) {
+          maxPower = value;
+          maxPowerBin = bin;
+        }
+      }
+    });
+
+    return `Spectrogram showing ${numFrames} time frames across ${binCount} frequency bins (${freqMin} to ${freqMax}). Peak power of ${maxPower.toFixed(2)} dB detected at frequency bin ${maxPowerBin}. Colors represent signal strength from low (dark) to high (bright).`;
+  }, [fftData, freqMin, freqMax]);
+
+  useEffect((): void => {
     const canvas = canvasRef.current;
     if (!canvas || fftData.length === 0) {
       return;
     }
 
-    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    if (!ctx) {
-      return;
-    }
-
-    // Set up high DPI canvas for crisp rendering
+    // Set canvas dimensions synchronously for immediate availability in tests
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    ctx.scale(dpr, dpr);
 
-    // Professional dark background
-    ctx.fillStyle = "#0a0e1a";
-    ctx.fillRect(0, 0, width, height);
+    const run = async (): Promise<void> => {
+      const markStart = "render-spectrogram-start";
+      performanceMonitor.mark(markStart);
 
-    const margin = { top: 70, bottom: 70, left: 80, right: 120 };
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
+      // Try WebGL first for high-performance rendering
+      try {
+        const webgl = await import("../utils/webgl");
+        const pixelW = Math.max(1, Math.floor(width * dpr));
+        const pixelH = Math.max(1, Math.floor(height * dpr));
+        canvas.width = pixelW;
+        canvas.height = pixelH;
 
-    // Calculate dimensions
-    const numFrames = fftData.length;
-    const fftSize = fftData[0]?.length || 1024;
-    const frameWidth = Math.max(1, chartWidth / numFrames);
-    const binHeight = chartHeight / (freqMax - freqMin);
+        let { gl, isWebGL2 } = glStateRef.current;
+        if (!gl) {
+          const got = webgl.getGL(canvas);
+          gl = got.gl;
+          isWebGL2 = got.isWebGL2;
+          glStateRef.current.gl = gl;
+          glStateRef.current.isWebGL2 = isWebGL2;
+        }
 
-    // Industry-standard viridis colormap (perceptually uniform)
-    // Based on matplotlib viridis - scientifically validated
-    const viridisColors = [
-      [68, 1, 84], // Dark purple (low)
-      [72, 35, 116],
-      [64, 67, 135], // Purple-blue
-      [52, 94, 141],
-      [41, 120, 142], // Blue
-      [32, 144, 140],
-      [34, 167, 132], // Cyan-green
-      [68, 190, 112],
-      [121, 209, 81], // Green
-      [189, 222, 38],
-      [253, 231, 37], // Yellow (high)
-    ];
+        if (gl) {
+          const bins = Math.max(
+            1,
+            Math.min(fftData[0]?.length || 0, freqMax - freqMin),
+          );
+          const frames = fftData.length;
 
-    const getViridisColor = (normalized: number): string => {
-      const t = Math.max(0, Math.min(1, normalized));
-      const idx = t * (viridisColors.length - 1);
-      const lower = Math.floor(idx);
-      const upper = Math.ceil(idx);
-      const frac = idx - lower;
+          // Compute dynamic range
+          let gmin = Infinity;
+          let gmax = -Infinity;
+          for (const row of fftData) {
+            for (let b = freqMin; b < freqMax && b < row.length; b++) {
+              const v = row[b]!;
+              if (isFinite(v)) {
+                if (v < gmin) {
+                  gmin = v;
+                }
+                if (v > gmax) {
+                  gmax = v;
+                }
+              }
+            }
+          }
+          if (!isFinite(gmin)) {
+            gmin = 0;
+          }
+          if (!isFinite(gmax)) {
+            gmax = 1;
+          }
 
-      const c1 = viridisColors[lower] || viridisColors[0]!;
-      const c2 =
-        viridisColors[upper] || viridisColors[viridisColors.length - 1]!;
+          // Adaptive dynamic range compression threshold
+          // Instead of fixed 5%, use percentile-based threshold for better weak signal visibility
+          // Collect all finite power values
+          const allPowers: number[] = [];
+          for (const row of fftData) {
+            for (let b = freqMin; b < freqMax && b < row.length; b++) {
+              const v = row[b]!;
+              if (isFinite(v)) {
+                allPowers.push(v);
+              }
+            }
+          }
 
-      const r = Math.round(c1[0]! + (c2[0]! - c1[0]!) * frac);
-      const g = Math.round(c1[1]! + (c2[1]! - c1[1]!) * frac);
-      const b = Math.round(c1[2]! + (c2[2]! - c1[2]!) * frac);
+          // Calculate adaptive threshold based on 10th percentile
+          // This adapts to signal strength: strong signals compress more, weak signals less
+          let adaptiveThreshold = 0.05; // Default 5% fallback
+          if (allPowers.length > 0) {
+            allPowers.sort((a, b) => a - b);
+            const p10 = allPowers[Math.floor(allPowers.length * 0.1)]!;
+            // Normalize threshold based on data distribution
+            const dataSpread = (p10 - gmin) / Math.max(1e-9, gmax - gmin);
+            // Clamp between 5% and 20% for stability
+            adaptiveThreshold = Math.max(0.05, Math.min(0.2, dataSpread));
+          }
 
-      return `rgb(${r}, ${g}, ${b})`;
+          const effMin = gmin + (gmax - gmin) * adaptiveThreshold;
+          const range = Math.max(1e-9, gmax - effMin);
+
+          // Build RGBA texture data: width = frames, height = bins
+          const texW = Math.max(1, frames);
+          const texH = Math.max(1, bins);
+          const lut = webgl.viridisLUT256();
+          const rgba = new Uint8Array(texW * texH * 4);
+          for (let x = 0; x < texW; x++) {
+            const row = fftData[x]!;
+            for (let y = 0; y < texH; y++) {
+              const bin = freqMin + y;
+              const v = row && bin < row.length ? row[bin]! : 0;
+              const norm = Math.max(0, Math.min(1, (v - effMin) / range));
+              const idx = (norm * 255) | 0;
+              const base = (x + y * texW) * 4;
+              const lbase = idx << 2;
+              rgba[base + 0] = lut[lbase] ?? 0;
+              rgba[base + 1] = lut[lbase + 1] ?? 0;
+              rgba[base + 2] = lut[lbase + 2] ?? 0;
+              rgba[base + 3] = 255;
+            }
+          }
+
+          // Init GL resources once
+          if (!glStateRef.current.program) {
+            const prog = webgl.createProgram(
+              gl,
+              webgl.FULLSCREEN_VS,
+              webgl.TEXTURE_FS,
+            );
+            glStateRef.current.program = prog;
+            const quad = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+            gl.bufferData(gl.ARRAY_BUFFER, webgl.QUAD_VERTICES, gl.STATIC_DRAW);
+            glStateRef.current.quadVBO = quad;
+            const uv = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, uv);
+            gl.bufferData(gl.ARRAY_BUFFER, webgl.TEX_COORDS, gl.STATIC_DRAW);
+            glStateRef.current.uvVBO = uv;
+          }
+
+          // Create or update texture
+          const lastSize = glStateRef.current.lastTexSize;
+          if (
+            !glStateRef.current.texture ||
+            !lastSize ||
+            lastSize.w !== texW ||
+            lastSize.h !== texH
+          ) {
+            if (glStateRef.current.texture) {
+              gl.deleteTexture(glStateRef.current.texture);
+            }
+            const tex = webgl.createTextureRGBA(gl, texW, texH, rgba);
+            glStateRef.current.texture = tex;
+            glStateRef.current.lastTexSize = { w: texW, h: texH };
+          } else {
+            webgl.updateTextureRGBA(
+              gl,
+              glStateRef.current.texture!,
+              texW,
+              texH,
+              rgba,
+            );
+          }
+
+          // Draw fullscreen textured quad
+          gl.viewport(0, 0, pixelW, pixelH);
+          gl.disable(gl.DEPTH_TEST);
+          gl.disable(gl.BLEND);
+          gl.clearColor(0.04, 0.06, 0.1, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          const prog = glStateRef.current.program!;
+          gl.useProgram(prog);
+          const aPos = gl.getAttribLocation(prog, "a_position");
+          const aUV = gl.getAttribLocation(prog, "a_texCoord");
+          const uTex = gl.getUniformLocation(prog, "u_texture");
+
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, glStateRef.current.texture);
+          gl.uniform1i(uTex, 0);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, glStateRef.current.quadVBO);
+          gl.enableVertexAttribArray(aPos);
+          gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+          gl.bindBuffer(gl.ARRAY_BUFFER, glStateRef.current.uvVBO);
+          gl.enableVertexAttribArray(aUV);
+          gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 0, 0);
+
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+          performanceMonitor.measure("render-spectrogram", markStart);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Spectrogram] WebGL path failed, falling back:", err);
+      }
+
+      const supportsOffscreen =
+        typeof OffscreenCanvas === "function" && typeof Worker !== "undefined";
+      if (supportsOffscreen) {
+        if (!workerRef.current) {
+          try {
+            const workerUrl =
+              typeof window !== "undefined" && typeof URL !== "undefined"
+                ? new URL(
+                    "../workers/visualization.worker.ts",
+                    window.location.href,
+                  )
+                : ("../workers/visualization.worker.ts" as unknown as URL);
+            const worker = new Worker(workerUrl);
+            workerRef.current = worker;
+            const w = workerRef.current;
+            if (w) {
+              w.onmessage = (ev): void => {
+                const d = ev.data as unknown as {
+                  type?: string;
+                  viz?: string;
+                  renderTimeMs?: number;
+                };
+                if (d?.type === "metrics") {
+                  console.warn(
+                    `[viz worker] ${d.viz} render ${d.renderTimeMs?.toFixed(2)}ms`,
+                  );
+                }
+              };
+            }
+          } catch (e) {
+            console.error("Could not create visualization worker", e);
+            workerRef.current = null;
+          }
+        }
+
+        if (workerRef.current) {
+          if (!transferredRef.current) {
+            const canTransfer =
+              typeof (
+                canvas as HTMLCanvasElement & {
+                  transferControlToOffscreen?: () => OffscreenCanvas;
+                }
+              ).transferControlToOffscreen === "function";
+            if (canTransfer) {
+              canvas.width = width * dpr;
+              canvas.height = height * dpr;
+
+              const offscreen = (
+                canvas as HTMLCanvasElement & {
+                  transferControlToOffscreen: () => OffscreenCanvas;
+                }
+              ).transferControlToOffscreen();
+              transferredRef.current = true;
+              workerRef.current.postMessage(
+                {
+                  type: "init",
+                  canvas: offscreen,
+                  vizType: "spectrogram",
+                  width,
+                  height,
+                  dpr,
+                  freqMin,
+                  freqMax,
+                },
+                [offscreen],
+              );
+            }
+          } else {
+            workerRef.current.postMessage({
+              type: "resize",
+              width,
+              height,
+              dpr,
+            });
+          }
+
+          if (transferredRef.current) {
+            workerRef.current.postMessage({
+              type: "render",
+              data: { fftData, freqMin, freqMax, transform },
+            });
+            return;
+          }
+        }
+      }
+
+      // Fallback: original rendering on main thread
+      if (transferredRef.current) {
+        return;
+      }
+      const ctx = canvas.getContext("2d", {
+        alpha: false,
+        desynchronized: true,
+      });
+      if (!ctx) {
+        return;
+      }
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.scale(dpr, dpr);
+
+      ctx.save();
+      ctx.translate(transform.offsetX, transform.offsetY);
+      ctx.scale(transform.scale, transform.scale);
+
+      ctx.fillStyle = "#0a0e1a";
+      ctx.fillRect(0, 0, width, height);
+
+      const margin = { top: 70, bottom: 70, left: 80, right: 120 };
+      const chartWidth = width - margin.left - margin.right;
+      const chartHeight = height - margin.top - margin.bottom;
+
+      const numFrames = fftData.length;
+      const frameWidth = Math.max(1, chartWidth / numFrames);
+      const binHeight = chartHeight / (freqMax - freqMin);
+
+      let globalMin = Infinity;
+      let globalMax = -Infinity;
+
+      fftData.forEach((row) => {
+        for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
+          const value = row[bin]!;
+          if (isFinite(value)) {
+            globalMin = Math.min(globalMin, value);
+            globalMax = Math.max(globalMax, value);
+          }
+        }
+      });
+
+      const range = globalMax - globalMin;
+      const effectiveMin = globalMin + range * 0.05;
+      const effectiveMax = globalMax;
+
+      fftData.forEach((row, frameIdx) => {
+        const x = margin.left + frameIdx * frameWidth;
+
+        for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
+          const value = row[bin]!;
+          if (!isFinite(value)) {
+            continue;
+          }
+
+          const normalized =
+            (value - effectiveMin) / (effectiveMax - effectiveMin);
+
+          const t = Math.max(0, Math.min(1, normalized));
+          const r = Math.round(68 + 185 * t);
+          const g = Math.round(1 + 220 * t);
+          const b = Math.round(84 - 50 * t);
+
+          const y = margin.top + chartHeight - (bin - freqMin) * binHeight;
+          ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          ctx.fillRect(x, y - binHeight, frameWidth + 0.5, binHeight + 0.5);
+        }
+      });
+
+      ctx.restore();
+
+      performanceMonitor.measure("render-spectrogram", markStart);
     };
 
-    // Find global min/max for dynamic range optimization
-    let globalMin = Infinity;
-    let globalMax = -Infinity;
+    void run();
+  }, [fftData, width, height, freqMin, freqMax, transform]);
 
-    fftData.forEach((row) => {
-      for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
-        const value = row[bin]!;
-        if (isFinite(value)) {
-          globalMin = Math.min(globalMin, value);
-          globalMax = Math.max(globalMax, value);
+  // Cleanup worker and GL on unmount
+  useEffect((): (() => void) => {
+    const st = glStateRef.current;
+    return () => {
+      if (workerRef.current) {
+        try {
+          workerRef.current.postMessage({ type: "dispose" });
+        } catch (e) {
+          console.warn("dispose postMessage failed", e);
         }
-      }
-    });
-
-    // Apply dynamic range compression for better visualization
-    const range = globalMax - globalMin;
-    const effectiveMin = globalMin + range * 0.05; // 5% threshold
-    const effectiveMax = globalMax;
-
-    // Render spectrogram bins
-    fftData.forEach((row, frameIdx) => {
-      const x = margin.left + frameIdx * frameWidth;
-
-      for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
-        const value = row[bin]!;
-        if (!isFinite(value)) {
-          continue;
+        try {
+          workerRef.current.terminate();
+        } catch (e) {
+          console.warn("worker terminate failed", e);
         }
-
-        // Normalize with dynamic range compression
-        const normalized =
-          (value - effectiveMin) / (effectiveMax - effectiveMin);
-
-        const color = getViridisColor(normalized);
-        const y = margin.top + chartHeight - (bin - freqMin) * binHeight;
-
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y - binHeight, frameWidth + 0.5, binHeight + 0.5);
+        workerRef.current = null;
       }
-    });
+      transferredRef.current = false;
 
-    // Draw professional axes
-    ctx.strokeStyle = "#5aa3e8";
-    ctx.lineWidth = 2.5;
-
-    // Y-axis (Frequency)
-    ctx.beginPath();
-    ctx.moveTo(margin.left, margin.top);
-    ctx.lineTo(margin.left, margin.top + chartHeight);
-    ctx.stroke();
-
-    // X-axis (Time)
-    ctx.beginPath();
-    ctx.moveTo(margin.left, margin.top + chartHeight);
-    ctx.lineTo(margin.left + chartWidth, margin.top + chartHeight);
-    ctx.stroke();
-
-    // Enhanced grid lines
-    ctx.strokeStyle = "rgba(100, 130, 170, 0.15)";
-    ctx.lineWidth = 1;
-
-    // Frequency grid lines (every 20 Hz)
-    for (let freq = freqMin; freq <= freqMax; freq += 20) {
-      const y = margin.top + chartHeight - (freq - freqMin) * binHeight;
-      ctx.beginPath();
-      ctx.moveTo(margin.left, y);
-      ctx.lineTo(margin.left + chartWidth, y);
-      ctx.stroke();
-    }
-
-    // Time grid lines (every 5 frames)
-    for (let frame = 0; frame < numFrames; frame += 5) {
-      const x = margin.left + frame * frameWidth;
-      ctx.beginPath();
-      ctx.moveTo(x, margin.top);
-      ctx.lineTo(x, margin.top + chartHeight);
-      ctx.stroke();
-    }
-
-    // Draw axis labels
-    ctx.fillStyle = "#e0e6ed";
-    ctx.font =
-      "bold 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    // X-axis label
-    ctx.fillText("Time (s)", margin.left + chartWidth / 2, height - 20);
-
-    // Y-axis label
-    ctx.save();
-    ctx.translate(18, margin.top + chartHeight / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText("Frequency (Hz)", 0, 0);
-    ctx.restore();
-
-    // Draw tick labels
-    ctx.font = "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#a0aab5";
-
-    // Y-axis (frequency) ticks - every 25 Hz
-    for (let freq = freqMin; freq <= freqMax; freq += 25) {
-      const y = margin.top + chartHeight - (freq - freqMin) * binHeight;
-
-      ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
-      ctx.fillText(freq.toString(), margin.left - 8, y);
-
-      // Tick mark
-      ctx.strokeStyle = "#5aa3e8";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(margin.left - 5, y);
-      ctx.lineTo(margin.left, y);
-      ctx.stroke();
-    }
-
-    // X-axis (time) ticks - show frame numbers
-    const timeStep = Math.ceil(numFrames / 6);
-    for (let frame = 0; frame <= numFrames; frame += timeStep) {
-      if (frame >= numFrames) {
-        frame = numFrames - 1;
+      // GL cleanup
+      try {
+        if (st.gl && st.texture) {
+          st.gl.deleteTexture(st.texture);
+        }
+        if (st.gl && st.quadVBO) {
+          st.gl.deleteBuffer(st.quadVBO);
+        }
+        if (st.gl && st.uvVBO) {
+          st.gl.deleteBuffer(st.uvVBO);
+        }
+        if (st.gl && st.program) {
+          st.gl.deleteProgram(st.program);
+        }
+      } catch {
+        // ignore cleanup errors
       }
-      const x = margin.left + frame * frameWidth;
-      const timeSec = (frame / numFrames) * 30; // Assuming 30 second total
+    };
+  }, []);
 
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      ctx.fillText(timeSec.toFixed(1), x, margin.top + chartHeight + 8);
-
-      // Tick mark
-      ctx.strokeStyle = "#5aa3e8";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x, margin.top + chartHeight);
-      ctx.lineTo(x, margin.top + chartHeight + 5);
-      ctx.stroke();
-    }
-
-    // Draw color scale legend
-    const legendWidth = 20;
-    const legendHeight = chartHeight;
-    const legendX = width - margin.right + 20;
-    const legendY = margin.top;
-
-    // Draw gradient for legend
-    const gradient = ctx.createLinearGradient(
-      0,
-      legendY + legendHeight,
-      0,
-      legendY,
-    );
-    for (let i = 0; i <= 10; i++) {
-      gradient.addColorStop(i / 10, getViridisColor(i / 10));
-    }
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
-
-    // Border for legend
-    ctx.strokeStyle = "rgba(100, 130, 170, 0.5)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(legendX, legendY, legendWidth, legendHeight);
-
-    // Legend labels
-    ctx.font = "10px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#a0aab5";
-    ctx.textAlign = "left";
-
-    const legendTicks = 5;
-    for (let i = 0; i <= legendTicks; i++) {
-      const y = legendY + legendHeight - (i / legendTicks) * legendHeight;
-      const dbValue =
-        effectiveMin + (i / legendTicks) * (effectiveMax - effectiveMin);
-
-      ctx.textBaseline = "middle";
-      ctx.fillText(`${dbValue.toFixed(0)} dB`, legendX + legendWidth + 5, y);
-
-      // Tick mark
-      ctx.strokeStyle = "#a0aab5";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(legendX, y);
-      ctx.lineTo(legendX + legendWidth, y);
-      ctx.stroke();
-    }
-
-    // Legend title
-    ctx.font =
-      "bold 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#e0e6ed";
-    ctx.textAlign = "center";
-    ctx.save();
-    ctx.translate(legendX + legendWidth / 2, legendY - 20);
-    ctx.fillText("Power", 0, 0);
-    ctx.restore();
-
-    // Add main title
-    ctx.font =
-      "bold 17px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#e0e6ed";
-    ctx.textAlign = "center";
-    ctx.fillText("Power Spectral Density", width / 2, 30);
-
-    // Add metadata
-    ctx.font = "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#a0aab5";
-    ctx.textAlign = "right";
-    ctx.fillText(
-      `${numFrames} frames | FFT: ${fftSize} bins`,
-      width - margin.right - legendWidth - 30,
-      30,
-    );
-  }, [fftData, width, height, freqMin, freqMax]);
-
-  return <canvas ref={canvasRef} style={{ borderRadius: "8px" }} />;
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <canvas
+        ref={canvasRef}
+        role="img"
+        aria-label={accessibleDescription}
+        {...handlers}
+        onDoubleClick={(): void => resetTransform()}
+      />
+    </div>
+  );
 }

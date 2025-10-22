@@ -1,0 +1,422 @@
+/**
+ * P25 Phase 2 Decoder
+ *
+ * Implements P25 Phase 2 TDMA digital radio signal decoding from IQ samples.
+ * P25 Phase 2 uses H-DQPSK (Harmonized Differential Quadrature Phase Shift Keying)
+ * modulation with TDMA (Time Division Multiple Access) to support two voice channels
+ * in a 12.5 kHz bandwidth.
+ *
+ * Key Features:
+ * - H-DQPSK demodulation
+ * - TDMA slot extraction (Slot 1 and Slot 2)
+ * - Symbol-to-bit decoding
+ * - Frame synchronization
+ * - Error detection
+ *
+ * References:
+ * - TIA-102 P25 Phase 2 Standard
+ * - Signal Identification Wiki: https://www.sigidwiki.com/wiki/Project_25_(P25)
+ */
+
+import { Sample } from "./dsp";
+
+/**
+ * P25 Phase 2 symbol mapping
+ * H-DQPSK uses 4 phase shifts corresponding to 2 bits per symbol
+ */
+export enum P25Symbol {
+  SYMBOL_00 = 0, // -135 degrees (or -3π/4 radians)
+  SYMBOL_01 = 1, // -45 degrees (or -π/4 radians)
+  SYMBOL_10 = 2, // +45 degrees (or +π/4 radians)
+  SYMBOL_11 = 3, // +135 degrees (or +3π/4 radians)
+}
+
+/**
+ * P25 Phase 2 TDMA slot (2 slots per frame)
+ */
+export enum P25TDMASlot {
+  SLOT_1 = 1,
+  SLOT_2 = 2,
+}
+
+/**
+ * P25 Phase 2 frame structure
+ */
+export type P25Frame = {
+  slot: P25TDMASlot;
+  symbols: number[];
+  bits: number[];
+  timestamp: number;
+  signalQuality: number; // 0-100
+  isValid: boolean;
+};
+
+/**
+ * P25 Phase 2 decoded data
+ */
+export type P25DecodedData = {
+  frames: P25Frame[];
+  talkgroupId?: number;
+  sourceId?: number;
+  isEncrypted: boolean;
+  errorRate: number;
+};
+
+/**
+ * P25 Phase 2 decoder configuration
+ */
+export type P25DecoderConfig = {
+  sampleRate: number;
+  symbolRate: number; // 6000 symbols/sec for P25 Phase 2
+  carrierFrequency: number;
+  syncThreshold: number; // 0-1, frame sync detection threshold
+};
+
+/**
+ * Default P25 Phase 2 decoder configuration
+ */
+export const DEFAULT_P25_CONFIG: P25DecoderConfig = {
+  sampleRate: 48000,
+  symbolRate: 6000, // P25 Phase 2 uses 6000 symbols/second
+  carrierFrequency: 0, // DC after downconversion
+  syncThreshold: 0.8,
+};
+
+/**
+ * P25 Phase 2 sync pattern (simplified - in reality this would be the full sync word)
+ */
+const P25_SYNC_PATTERN = [1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0];
+
+/**
+ * Calculate phase from IQ sample
+ */
+function calculatePhase(sample: Sample): number {
+  return Math.atan2(sample.Q, sample.I);
+}
+
+/**
+ * Normalize phase difference to [-π, π]
+ */
+function normalizePhase(phase: number): number {
+  while (phase > Math.PI) {
+    phase -= 2 * Math.PI;
+  }
+  while (phase < -Math.PI) {
+    phase += 2 * Math.PI;
+  }
+  return phase;
+}
+
+/**
+ * Map differential phase to P25 symbol
+ *
+ * P25 Phase 2 uses H-DQPSK with 4 phase shifts:
+ * - -135° (-3π/4) → Symbol 00
+ * - -45° (-π/4) → Symbol 01
+ * - +45° (+π/4) → Symbol 10
+ * - +135° (+3π/4) → Symbol 11
+ */
+export function phaseToSymbol(diffPhase: number): P25Symbol {
+  const phase = normalizePhase(diffPhase);
+
+  // Convert phase to degrees for easier comparison
+  const degrees = (phase * 180) / Math.PI;
+
+  if (degrees < -90) {
+    return P25Symbol.SYMBOL_00; // -135 degrees
+  } else if (degrees < 0) {
+    return P25Symbol.SYMBOL_01; // -45 degrees
+  } else if (degrees < 90) {
+    return P25Symbol.SYMBOL_10; // +45 degrees
+  } else {
+    return P25Symbol.SYMBOL_11; // +135 degrees
+  }
+}
+
+/**
+ * Convert P25 symbol to bit pair
+ */
+export function symbolToBits(symbol: P25Symbol): [number, number] {
+  switch (symbol) {
+    case P25Symbol.SYMBOL_00:
+      return [0, 0];
+    case P25Symbol.SYMBOL_01:
+      return [0, 1];
+    case P25Symbol.SYMBOL_10:
+      return [1, 0];
+    case P25Symbol.SYMBOL_11:
+      return [1, 1];
+    default:
+      return [0, 0];
+  }
+}
+
+/**
+ * Demodulate H-DQPSK from IQ samples
+ *
+ * This function extracts symbols from IQ samples using differential phase detection
+ */
+export function demodulateHDQPSK(
+  samples: Sample[],
+  config: P25DecoderConfig = DEFAULT_P25_CONFIG,
+): number[] {
+  if (samples.length < 2) {
+    return [];
+  }
+
+  const symbols: number[] = [];
+  const samplesPerSymbol = Math.floor(config.sampleRate / config.symbolRate);
+
+  // Process samples in chunks corresponding to symbol period
+  for (let i = samplesPerSymbol; i < samples.length; i += samplesPerSymbol) {
+    const prevSample = samples[i - samplesPerSymbol];
+    const currSample = samples[i];
+
+    if (!prevSample || !currSample) {
+      continue;
+    }
+
+    // Calculate phases
+    const prevPhase = calculatePhase(prevSample);
+    const currPhase = calculatePhase(currSample);
+
+    // Calculate differential phase
+    const diffPhase = normalizePhase(currPhase - prevPhase);
+
+    // Map to symbol
+    const symbol = phaseToSymbol(diffPhase);
+    symbols.push(symbol);
+  }
+
+  return symbols;
+}
+
+/**
+ * Extract TDMA slots from symbol stream
+ *
+ * P25 Phase 2 alternates between two TDMA slots
+ * Each slot contains half of the symbols in the stream
+ */
+export function extractTDMASlots(symbols: number[]): {
+  slot1: number[];
+  slot2: number[];
+} {
+  const slot1: number[] = [];
+  const slot2: number[] = [];
+
+  // TDMA alternates: even indices = slot 1, odd indices = slot 2
+  for (let i = 0; i < symbols.length; i++) {
+    if (i % 2 === 0) {
+      slot1.push(symbols[i] as number);
+    } else {
+      slot2.push(symbols[i] as number);
+    }
+  }
+
+  return { slot1, slot2 };
+}
+
+/**
+ * Convert symbols to bits
+ */
+export function symbolsToBits(symbols: number[]): number[] {
+  const bits: number[] = [];
+
+  for (const symbol of symbols) {
+    const [bit1, bit2] = symbolToBits(symbol as P25Symbol);
+    bits.push(bit1, bit2);
+  }
+
+  return bits;
+}
+
+/**
+ * Detect P25 frame synchronization pattern
+ *
+ * Returns the index where sync pattern was found, or -1 if not found
+ */
+export function detectFrameSync(
+  bits: number[],
+  threshold: number = 0.8,
+): number {
+  const syncLength = P25_SYNC_PATTERN.length;
+  const minMatches = Math.floor(syncLength * threshold);
+
+  for (let i = 0; i <= bits.length - syncLength; i++) {
+    let matches = 0;
+
+    for (let j = 0; j < syncLength; j++) {
+      if (bits[i + j] === P25_SYNC_PATTERN[j]) {
+        matches++;
+      }
+    }
+
+    if (matches >= minMatches) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+/**
+ * Calculate signal quality metric (0-100)
+ *
+ * Based on phase deviation from ideal constellation points
+ */
+export function calculateSignalQuality(
+  samples: Sample[],
+  symbols: number[],
+  config: P25DecoderConfig = DEFAULT_P25_CONFIG,
+): number {
+  if (samples.length < 2 || symbols.length === 0) {
+    return 0;
+  }
+
+  const samplesPerSymbol = Math.floor(config.sampleRate / config.symbolRate);
+  let totalError = 0;
+  let count = 0;
+
+  // Ideal phase shifts for each symbol
+  const idealPhases = {
+    [P25Symbol.SYMBOL_00]: (-135 * Math.PI) / 180,
+    [P25Symbol.SYMBOL_01]: (-45 * Math.PI) / 180,
+    [P25Symbol.SYMBOL_10]: (45 * Math.PI) / 180,
+    [P25Symbol.SYMBOL_11]: (135 * Math.PI) / 180,
+  };
+
+  for (
+    let i = 0;
+    i < Math.min(symbols.length, Math.floor(samples.length / samplesPerSymbol));
+    i++
+  ) {
+    const sampleIdx = (i + 1) * samplesPerSymbol;
+    const prevIdx = i * samplesPerSymbol;
+
+    if (sampleIdx >= samples.length || prevIdx >= samples.length) {
+      continue;
+    }
+
+    const prevSample = samples[prevIdx];
+    const currSample = samples[sampleIdx];
+    const symbol = symbols[i];
+
+    if (!prevSample || !currSample || symbol === undefined) {
+      continue;
+    }
+
+    const prevPhase = calculatePhase(prevSample);
+    const currPhase = calculatePhase(currSample);
+    const actualDiffPhase = normalizePhase(currPhase - prevPhase);
+    const idealPhase = idealPhases[symbol as P25Symbol];
+
+    if (idealPhase !== undefined) {
+      const error = Math.abs(normalizePhase(actualDiffPhase - idealPhase));
+      totalError += error;
+      count++;
+    }
+  }
+
+  if (count === 0) {
+    return 0;
+  }
+
+  // Convert average phase error to quality percentage
+  const avgError = totalError / count;
+  const maxError = Math.PI; // Maximum possible phase error
+  const quality = Math.max(0, Math.min(100, 100 * (1 - avgError / maxError)));
+
+  return Math.round(quality);
+}
+
+/**
+ * Decode P25 Phase 2 data from IQ samples
+ *
+ * Main entry point for P25 Phase 2 decoding
+ */
+export function decodeP25Phase2(
+  samples: Sample[],
+  config: P25DecoderConfig = DEFAULT_P25_CONFIG,
+): P25DecodedData {
+  // Step 1: Demodulate H-DQPSK to get symbols
+  const symbols = demodulateHDQPSK(samples, config);
+
+  if (symbols.length === 0) {
+    return {
+      frames: [],
+      isEncrypted: false,
+      errorRate: 1.0,
+    };
+  }
+
+  // Step 2: Extract TDMA slots
+  const { slot1, slot2 } = extractTDMASlots(symbols);
+
+  // Step 3: Convert symbols to bits for each slot
+  const slot1Bits = symbolsToBits(slot1);
+  const slot2Bits = symbolsToBits(slot2);
+
+  // Step 4: Detect frame sync
+  const slot1SyncIdx = detectFrameSync(slot1Bits, config.syncThreshold);
+  const slot2SyncIdx = detectFrameSync(slot2Bits, config.syncThreshold);
+
+  // Step 5: Calculate signal quality
+  const quality = calculateSignalQuality(samples, symbols, config);
+
+  // Step 6: Build frames
+  const frames: P25Frame[] = [];
+  const timestamp = Date.now();
+
+  if (slot1SyncIdx >= 0 && slot1.length > 0) {
+    frames.push({
+      slot: P25TDMASlot.SLOT_1,
+      symbols: slot1,
+      bits: slot1Bits,
+      timestamp,
+      signalQuality: quality,
+      isValid: true,
+    });
+  }
+
+  if (slot2SyncIdx >= 0 && slot2.length > 0) {
+    frames.push({
+      slot: P25TDMASlot.SLOT_2,
+      symbols: slot2,
+      bits: slot2Bits,
+      timestamp,
+      signalQuality: quality,
+      isValid: true,
+    });
+  }
+
+  // Step 7: Calculate error rate (simplified)
+  const errorRate =
+    frames.length > 0 ? Math.max(0, (100 - quality) / 100) : 1.0;
+
+  return {
+    frames,
+    isEncrypted: false, // Would need to parse header bits to determine this
+    errorRate,
+  };
+}
+
+/**
+ * Get human-readable description of P25 frame
+ */
+export function getFrameDescription(frame: P25Frame): string {
+  return `P25 Phase 2 - Slot ${frame.slot}, ${frame.symbols.length} symbols, Quality: ${frame.signalQuality}%, Valid: ${frame.isValid}`;
+}
+
+/**
+ * Extract talkgroup information from P25 frame bits
+ * (Simplified - real implementation would parse the full frame structure)
+ */
+export function extractTalkgroupInfo(_bits: number[]): {
+  talkgroupId?: number;
+  sourceId?: number;
+} {
+  // This is a placeholder - real implementation would parse the
+  // Link Control Word (LCW) from the frame to extract talkgroup info
+  // For now, return empty object
+  return {};
+}

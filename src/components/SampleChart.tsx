@@ -1,15 +1,32 @@
-import { useMemo } from "react";
 import IQConstellation from "./IQConstellation";
-import { testSamples } from "../hooks/__test__/testSamples";
-import { convertToSamples } from "../utils/dsp";
+import EmptyState from "./EmptyState";
+import { Sample } from "../utils/dsp";
 
-function SampleChart() {
-  const samples = useMemo(
-    () => convertToSamples(testSamples.slice(1024) as [number, number][]),
-    [],
-  );
+type SampleChartProps = {
+  samples?: Sample[];
+  width?: number;
+  height?: number;
+};
 
-  return <IQConstellation samples={samples} width={750} height={400} />;
+function SampleChart({
+  samples = [],
+  width = 750,
+  height = 400,
+}: SampleChartProps): React.JSX.Element {
+  const hasData = samples.length > 0;
+
+  if (!hasData) {
+    return (
+      <EmptyState
+        width={width}
+        height={height}
+        title="Waiting for signal data"
+        message="Connect and start reception to view IQ constellation"
+      />
+    );
+  }
+
+  return <IQConstellation samples={samples} width={width} height={height} />;
 }
 
 export default SampleChart;

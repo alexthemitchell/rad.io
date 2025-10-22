@@ -1,24 +1,80 @@
 # rad.io - SDR Visualizer Project Guide
 
+## Tools
+
+- **It is incredibly important to use the tools available to you when implementing your solutions.**
+- Start every turn by using #oraios/serena/activate_project
+- When using #microsoftdocs/mcp/microsoft_docs_fetch to fetch documentation, you can specify a URL or a search query. If you provide a search query, the tool will return the most relevant documentation it can find.
+- Look for tools like #problems #runTasks #runTests #usages and #executePrompt to help you interact with the development environment
+- **Critical**: Prefer to use #runTests and #runTasks over #runCommands
+- Avoid using #runCommands unless no other tool can provide the answer and the output is absolutely necessary
+- Use Playwright MCP browser tools to test your code in a browser environment. Take screenshots and analyze them to verify your work.
+- **Prefer to read symbol data with serena tools over reading entirety of files**: use #oraios/serena/find_referencing_symbols #oraios/serena/get_symbols_overview #oraios/serena/search_for_pattern
+- **Maintain Long Term Memory**: use #oraios/serena/read_memory when thinking about how to solve problems and #oraios/serena/write_memory when you have learned something new that will be valuable for a future Agent.
+- Before reading code, list memories and retrieve high-signal guidance: use #oraios/serena/list_memories to find "SERENA_MEMORY_BEST_PRACTICES", then #oraios/serena/read_memory to load it. Apply its retrieval-first, symbol-first workflow to minimize noise.
+- Always keep the user in mind as a tool to help you solve problems. For example, when connecting to a device using WebUSB, you may need to ask the user to select the device from a browser prompt that you cannot see or interact with.
+- Remember when using WebUSB that physical devices are required to fully test your code. You may need to ask the user to assist you with this. Physical devices are unreliable and may not always be available, so plan accordingly and verify with the user if you are unsure of the availability of a device.
+- The goal of this project includes the creation of TypeScript-first WebUSB drivers for SDR hardware. This is a complex task that requires careful planning and execution. Use the tools available to you to research and implement these drivers, and always keep the user in mind as a resource to help you solve problems.
+
+## Agent performance & context hygiene
+
+Follow these practices to keep your context lean and optimize execution:
+
+1. Retrieval before reading
+
+- Use #oraios/serena/list_memories → scan for relevant items (start with "SERENA_MEMORY_BEST_PRACTICES").
+- Use #oraios/serena/read_memory only for relevant memories; if a memory answers your question, avoid scanning the codebase.
+
+2. Symbol-first code exploration
+
+- Prefer these tools in order:
+  - #oraios/serena/get_symbols_overview
+  - #oraios/serena/find_symbol (include_body=true only when necessary)
+  - #oraios/serena/find_referencing_symbols
+- For discovery, use #oraios/serena/search_for_pattern with tight include globs and minimal context lines.
+- Avoid reading entire files unless strictly necessary. Never re-read the same content with multiple tools.
+
+3. Memory writing policy (what to store)
+
+- Capture durable, reusable knowledge: architecture decisions, invariants, concise debugging playbooks (root cause → minimal signal → fix), and repo-wide workflows.
+- Keep memories short (≈150–400 words), scannable, and link to code paths instead of inlining code.
+- Update existing memories rather than creating near-duplicates; explicitly deprecate outdated tips. Do not store secrets or large logs.
+
+4. Operational hygiene
+
+- Use a structured todo list to plan work; keep one item in progress.
+- Before edits, sanity-check your scope and assumptions; after multi-step searches, review whether collected information is sufficient.
+- After edits to runnable code: use #runTests for targeted tests. Then run lint, type-check, and build using project scripts.
+
+5. Quick workflow
+
+- list_memories → read_memory (relevant only)
+- explore via symbols (overview → symbol → references)
+- search_for_pattern if needed; avoid full-file reads
+- implement → run relevant tests → lint/type-check
+- write/update memory (concise, durable, linked to code)
+
+Security & privacy: Never store secrets in memories; prefer repo paths and commit SHAs over external links that can drift.
+
 ## Getting Started
 
 **🚀 NEW TO THIS PROJECT?** Read the [Copilot Agent Setup Steps](workflows/copilot-setup-steps.md) first for:
+
 - Environment setup instructions
-- Essential commands and workflows  
-- Memory management guidelines for testing
+- Essential commands and workflows
 - Common issues and solutions
 
 ## Project Overview
 
-rad.io is a professional browser-based Software Defined Radio (SDR) visualizer built with React + TypeScript. It provides industry-standard visualizations for IQ constellation diagrams, spectrograms, and waveform analysis with zero external visualization dependencies.
+rad.io is a browser-based Software Defined Radio (SDR) visualizer built with React + TypeScript. It provides industry-standard visualizations for digital signal processing, including IQ constellation diagrams, spectrograms, and waveform analysis with zero external visualization dependencies.
 
 **Key Technologies:**
+
 - React 19 with TypeScript (strict mode)
 - WebUSB API for hardware communication
 - HTML Canvas with WebAudio API for visualizations
-- Jest for comprehensive testing (122+ tests)
+- Jest for comprehensive testing
 - GitHub Actions for CI/CD quality control
-- **Device Memory API** for efficient buffer management and testing optimization
 
 ## Architecture & Design Patterns
 
@@ -66,106 +122,69 @@ src/
 1. **Application Entry**: `src/index.tsx` → `src/App.tsx` → `src/pages/Visualizer.tsx`
 2. **Device Discovery**: `useUSBDevice` hook requests WebUSB access
 3. **Device Initialization**: `useHackRFDevice` creates and configures device instance
-4. **Visualization Pipeline**: Raw IQ samples → DSP processing → Canvas rendering
+4. **Visualization Pipeline**: Raw IQ samples → DSP processing → WebGL/Canvas rendering
 
 ## Critical Implementation Details
 
 ### Universal SDR Interface (`src/models/SDRDevice.ts`)
 
-All SDR devices MUST implement `ISDRDevice` interface:
-
-```typescript
-interface ISDRDevice {
-  // Lifecycle
-  open(): Promise<void>;
-  close(): Promise<void>;
-  isOpen(): boolean;
-  
-  // Configuration
-  setFrequency(frequencyHz: number): Promise<void>;
-  getFrequency(): Promise<number>;
-  setSampleRate(sampleRateHz: number): Promise<void>;
-  setLNAGain(gainDb: number): Promise<void>;
-  setAmpEnable(enabled: boolean): Promise<void>;
-  
-  // Streaming
-  receive(callback?: IQSampleCallback): Promise<void>;
-  stopRx(): Promise<void>;
-  isReceiving(): boolean;
-  
-  // Metadata
-  getDeviceInfo(): Promise<SDRDeviceInfo>;
-  getCapabilities(): SDRCapabilities;
-  
-  // Data parsing
-  parseSamples(data: DataView): IQSample[];
-  
-  // Memory Management (NEW)
-  getMemoryInfo(): DeviceMemoryInfo;  // Query buffer usage
-  clearBuffers(): void;                // Release memory
-}
-```
-
-**Memory Management API** (see `MEMORY_API.md` for details):
-```typescript
-type DeviceMemoryInfo = {
-  totalBufferSize: number;      // Total buffer capacity in bytes
-  usedBufferSize: number;        // Current memory usage
-  activeBuffers: number;         // Number of active sample buffers
-  maxSamples: number;            // Maximum samples that can be buffered
-  currentSamples: number;        // Current samples in buffers
-};
-```
-
-The memory API enables:
-- Real-time buffer usage monitoring
-- Automatic cleanup when exceeding thresholds (16MB default for HackRF)
-- Test optimization to prevent heap overflow
-- Performance tuning for large dataset processing
+All SDR devices MUST implement `ISDRDevice` interface
 
 **Supported Devices:**
-- HackRF One (0x1d50:0x6089) - Native implementation
-- RTL-SDR (0x0bda:0x2838, 0x0bda:0x2832) - Format converters available
-- Airspy (0x1d50:0x60a1) - Database entry included
 
-### WebUSB Communication Pattern
+### WebUSB
 
 **Security Context Required**: HTTPS only (WebUSB restriction)
 
-```typescript
-// 1. Request device access
-const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x1d50 }] });
-
-// 2. Open and claim interface
-await device.open();
-await device.claimInterface(interfaceNumber);
-
-// 3. Control transfers (vendor commands)
-await device.controlTransferOut({
-  requestType: 'vendor',
-  recipient: 'device',
-  request: command,
-  value, index
-}, data);
-
-// 4. Bulk transfers (IQ data streaming)
-const result = await device.transferIn(endpoint, bufferSize);
-
-// 5. Cleanup
-await device.releaseInterface(interfaceNumber);
-await device.close();
-```
-
-**Critical Gotchas:**
-- Always check `device.opened` before transfers
-- Use mutex/locking for concurrent control transfers
-- Handle `InvalidStateError` with retries
-- Add delays after state changes (50-100ms)
-- Set `streaming` flags to prevent race conditions
-
 ### Visualization Components
 
+**WebGL Architecture (Primary Rendering Path):**
+
+All visualization components use WebGL for GPU-accelerated rendering with graceful fallback:
+
+1. **WebGL** (primary) - GPU-accelerated via `src/utils/webgl.ts`
+2. **OffscreenCanvas + Worker** (secondary) - Offscreen 2D in web worker
+3. **2D Canvas** (tertiary) - Main thread fallback
+
+**Shared WebGL Utilities (`src/utils/webgl.ts`):**
+
+- Context creation with WebGL2/WebGL1 detection
+- Shader compilation and program linking
+- Texture operations (RGBA, NEAREST filtering)
+- Viridis colormap LUT (256-point perceptually uniform)
+- Fullscreen quad rendering for textured visualizations
+
+**Component Implementations:**
+
+- **IQConstellation**: `gl.POINTS` with density-based alpha blending
+- **WaveformVisualizer**: `gl.LINE_STRIP` with adaptive amplitude scaling
+- **Spectrogram**: Textured quad with viridis-mapped power values
+
+**Critical WebGL Patterns:**
+
+```typescript
+// Synchronous canvas sizing BEFORE async import (test compatibility)
+const dpr = window.devicePixelRatio || 1;
+canvas.width = width * dpr;
+canvas.height = height * dpr;
+
+// Then async import for bundle optimization
+const webgl = await import("../utils/webgl");
+
+// Resource lifecycle: create once, update data, cleanup on unmount
+const glStateRef = useRef({ gl: null, program: null, vbo: null });
+useEffect(() => {
+  const st = glStateRef.current; // Capture before return
+  return () => {
+    if (st.gl && st.program) st.gl.deleteProgram(st.program);
+  };
+}, []); // Empty deps - cleanup once
+```
+
+**See WEBGL_VISUALIZATION_ARCHITECTURE memory for complete details.**
+
 **Design Principles Applied:**
+
 1. **Perceptually Uniform Colormaps**: Viridis (11-point interpolation) for spectrograms
 2. **Density-Based Rendering**: Z-ordering (low→high) for IQ constellations
 3. **GPU Acceleration**: `desynchronized: true` canvas context hint
@@ -173,11 +192,12 @@ await device.close();
 5. **Professional Typography**: System font stack (SF Pro, Segoe UI)
 
 **Canvas Optimization Techniques:**
+
 ```typescript
 const canvas = canvasRef.current;
-const ctx = canvas.getContext('2d', { 
-  alpha: false,           // Opaque for performance
-  desynchronized: true    // GPU acceleration hint
+const ctx = canvas.getContext("2d", {
+  alpha: false, // Opaque for performance
+  desynchronized: true, // GPU acceleration hint
 });
 
 // High DPI scaling
@@ -195,127 +215,43 @@ ctx.translate(0.5, 0.5);
 ### DSP Processing (`src/utils/dsp.ts`)
 
 **WebAudio API Integration:**
+
 - Manual DFT implementation for synchronous FFT
 - Proper frequency shifting (zero at center)
 - dB scaling: `20 * log10(magnitude)`
 - Parseval's theorem validation in tests
 
 **Signal Processing Chain:**
+
 1. Raw IQ samples (Int8/Uint8/Int16) → Float32
 2. Interleaved I/Q → Complex pairs
 3. DFT → Frequency domain
 4. Frequency shift → Centered spectrum
 5. Magnitude → dB conversion
 
-## Development Workflows
-
-### Build & Test Commands
-
-```bash
-# Development
-npm start              # HTTPS dev server with HMR
-
-# Build
-npm run build          # Production webpack build
-
-# Quality Control
-npm run lint           # ESLint validation
-npm run lint:fix       # Auto-fix linting issues
-npm run format         # Prettier code formatting
-npm run format:check   # Validate formatting
-npm run type-check     # TypeScript compiler check
-
-# Testing
-npm test               # Run all 122+ tests
-npm run test:watch     # Watch mode
-npm run test:coverage  # Coverage report
-```
-
-### CI/CD Quality Gates
-
-**All PRs to `main` must pass:**
-1. ✅ Lint Code (ESLint)
-2. ✅ Run Tests (Jest - 122 tests)
-3. ✅ Check Formatting (Prettier)
-4. ✅ Build Application (Webpack)
-5. ✅ TypeScript Type Check (tsc)
-
-Workflow: `.github/workflows/quality-checks.yml`
-Execution time: ~2-4 minutes (parallel jobs)
-
-### Testing Strategy
-
-**Test Coverage: 122 tests across 5 suites**
-
-1. **DSP Utilities (29 tests)**: Sine wave generation, FFT accuracy, mathematical properties
-2. **IQ Constellation (11 tests)**: Canvas rendering, patterns, boundary conditions
-3. **Spectrogram (13 tests)**: FFT data, frequency ranges, multi-tone signals
-4. **SDR Device Interface (43 tests)**: Lifecycle, configuration, format conversion, validation
-5. **Realistic SDR Data (26 tests)**: FM/AM/QPSK/noise signals, cross-visualization consistency
-6. **Memory Manager (10 tests)**: Buffer pooling, chunked generation, batch processing, monitoring
-
-**Test Data Generation:**
-```typescript
-// Sine wave for FFT accuracy testing
-generateSineWave(frequency, amplitude, sampleCount, phase)
-
-// Realistic modulation schemes
-generateFMSignal()    // 75kHz deviation
-generateAMSignal()    // 80% modulation index
-generateQPSKSignal()  // 4-point constellation
-generateMultiToneSignal()
-generatePulsedSignal()
-generateNoiseSignal()
-
-// Memory-optimized generation (NEW)
-generateSamplesChunked(count, generator, chunkSize)  // For large datasets
-processSamplesBatched(samples, processor, batchSize)  // Batch processing
-```
-
-**Memory Management in Tests:**
-```typescript
-import { clearMemoryPools } from '../../utils/testMemoryManager';
-
-describe("Test Suite", () => {
-  beforeEach(() => {
-    if (global.gc) global.gc();  // Force GC when available
-  });
-  
-  afterEach(() => {
-    clearMemoryPools();  // Clean up buffer pools
-  });
-  
-  it("test", () => {
-    const { unmount } = render(<Component />);
-    // ... assertions ...
-    unmount();  // Always unmount components
-  });
-});
-```
-
-**Important**: Due to memory constraints, avoid generating datasets >10k samples without using chunked generation. See `src/utils/testMemoryManager.ts` for utilities.
-
 ## Code Style & Best Practices
 
 ### TypeScript Patterns
 
 **Strict Mode Compliance:**
+
 - `strict: true` in tsconfig.json
 - Explicit types for all exports
 - No `any` types without justification
 - Proper error handling with typed errors
 
 **Component Patterns:**
+
 ```typescript
 // Functional components with hooks
 function ComponentName({ prop1, prop2 }: ComponentProps) {
   const [state, setState] = useState<StateType>(initialValue);
-  
+
   useEffect(() => {
     // Side effects with cleanup
     return () => cleanup();
   }, [dependencies]);
-  
+
   return <div>...</div>;
 }
 
@@ -330,127 +266,40 @@ type ComponentProps = {
 ### CSS Styling Conventions
 
 **Utility-First Approach:**
+
 - Reusable classes: `.btn`, `.card`, `.status-indicator`
 - Responsive with CSS Grid and Flexbox
 - Mobile breakpoints at 768px
 - CSS variables for theme colors
 
 **Component Styling:**
+
 - Scoped styles via BEM-like naming
-- Professional color palette: `#e0e6ed` (primary), `#a0aab5` (secondary), `#5aa3e8` (accent)
+- Professional color palette with clearly defined primary, secondary, and accent colors
 - Consistent spacing: 60-80px margins
 - Animation keyframes for status indicators
 
-## Adding New SDR Devices
-
-### Implementation Checklist
-
-1. **Implement `ISDRDevice` interface** in `src/models/YourDevice.ts`
-2. **Add USB vendor/product IDs** to `KNOWN_SDR_DEVICES` in `SDRDevice.ts`
-3. **Implement format conversion** if using non-standard sample format
-4. **Create device-specific hook** in `src/hooks/useYourDevice.ts`
-5. **Add validation tests** in `src/models/__tests__/YourDevice.test.ts`
-6. **Test with realistic signals** in `src/components/__tests__/VisualizationSDRData.test.tsx`
-
-### Example: RTL-SDR Implementation
-
-```typescript
-export class RTLSDRDevice implements ISDRDevice {
-  private usbDevice: USBDevice;
-  private currentFrequency: number = 100e6;
-  
-  async open() {
-    await this.usbDevice.open();
-    await this.usbDevice.claimInterface(0);
-  }
-  
-  parseSamples(data: DataView): IQSample[] {
-    // RTL-SDR uses Uint8 format
-    return convertUint8ToIQ(data);
-  }
-  
-  // ... implement remaining interface methods
-}
-```
-
-## Common Issues & Solutions
-
-### WebUSB Connection Issues
-
-**Problem**: "Device not found" or connection fails
-**Solution**: 
-- Ensure HTTPS context (required for WebUSB)
-- Check vendor/product ID matches device
-- Verify USB permissions on OS level
-- Try different USB port/cable
-
-### Invalid State Errors
-
-**Problem**: `InvalidStateError` during transfers
-**Solution**:
-- Implement retry logic with delays
-- Use mutex/locking for concurrent operations
-- Check `device.opened` before all transfers
-- Add 50-100ms delays after state changes
-
-### Canvas Rendering Performance
-
-**Problem**: Slow or choppy visualizations
-**Solution**:
-- Enable `desynchronized: true` for GPU hints
-- Use `alpha: false` for opaque rendering
-- Implement adaptive downsampling
-- Debounce resize events
-
-### Test Failures
-
-**Problem**: Tests failing after changes
-**Solution**:
-- Run `npm test` to identify specific failures
-- Check FFT accuracy tolerances (±1 bin is acceptable)
-- Verify sample generation functions
-- Ensure canvas mocks are properly configured
-
 ## Documentation & Resources
-
-### Internal Documentation
-
-- **API Documentation**: See JSDoc comments in source files
-- **Component README**: Check individual component files for usage examples
-- **Test Documentation**: Review test files for expected behavior examples
 
 ### External References
 
-- **IQ Constellation**: UVic ECE Communications Labs best practices
-- **Spectrogram Standards**: Signal processing literature
-- **Viridis Colormap**: Matplotlib scientific visualization standards
+- **IQ Constellation**: https://www.mathworks.com/help/comm/ref/constellationdiagram.html
+- **Viridis Colormap**: https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html
 - **WebUSB API**: MDN Web Docs - https://developer.mozilla.org/en-US/docs/Web/API/USB
-
-## Future Enhancements
-
-**Planned Features:**
-- Real-time audio demodulation (FM/AM)
-- Waterfall display mode
-- Recording and playback
-- Additional device support (SDRPlay, BladeRF)
-- Frequency scanning
-- Signal strength meter
-
-**Performance Optimizations:**
-- WebGL rendering for large datasets
-- Web Workers for DSP processing
-- OffscreenCanvas for background rendering
-- WASM FFT implementations
+- **HackRF One Reference Implementation**: https://github.com/greatscottgadgets/hackrf/blob/master/host/libhackrf/src/hackrf.c
+- **Wireless Lab IIT-M**: https://varun19299.github.io/ID4100-Wireless-Lab-IITM/
 
 ## Support & Contributing
 
 **Getting Help:**
+
 1. Review this documentation
 2. Check existing tests for usage examples
 3. Examine component source code and JSDoc
 4. Review GitHub Issues for similar problems
 
 **Quality Standards:**
+
 - All code must pass lint, format, type-check, and tests
 - Add tests for new features
 - Follow existing code patterns
@@ -458,6 +307,7 @@ export class RTLSDRDevice implements ISDRDevice {
 - Include JSDoc comments for public APIs
 
 **Submitting Changes:**
+
 1. Create feature branch from `main`
 2. Make minimal, focused changes
 3. Add/update tests
