@@ -240,6 +240,9 @@ describe("useFrequencyScanner", () => {
     it("does not start scanning when device is not open", async () => {
       const closedDevice = new MockSDRDevice();
       jest.spyOn(closedDevice, "isOpen").mockReturnValue(false);
+      jest
+        .spyOn(closedDevice, "open")
+        .mockRejectedValue(new Error("Device failed to open"));
 
       const { result } = renderHook(() =>
         useFrequencyScanner(closedDevice as ISDRDevice),

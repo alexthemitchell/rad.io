@@ -1,8 +1,47 @@
 coverage:
   status:
-    project: #add everything under here, more options at https://docs.codecov.com/docs/commit-status
+    project:
       default:
-        # basic
-        target: auto #default
-        threshold: 0%
+        target: auto
+        threshold: 1%
         base: auto
+        if_ci_failed: error
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+        if_ci_failed: error
+
+comment:
+  layout: "reach,diff,flags,tree,files"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+flags:
+  utils:
+    paths:
+      - src/utils/
+    carryforward: true
+  models:
+    paths:
+      - src/models/
+    carryforward: true
+  components:
+    paths:
+      - src/components/
+    carryforward: true
+  hooks:
+    paths:
+      - src/hooks/
+    carryforward: true
+
+ignore:
+  - "src/index.tsx"
+  - "src/**/index.ts"
+  - "src/**/*.d.ts"
+  - "src/workers/**"
+  - "assembly/**"
+  - "dist/**"
+  - "node_modules/**"

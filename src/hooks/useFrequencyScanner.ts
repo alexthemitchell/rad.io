@@ -6,7 +6,6 @@ import {
   calculateFFTSync,
   detectSpectralPeaks,
   estimateNoiseFloor,
-  type SpectralPeak,
 } from "../utils/dsp";
 
 /**

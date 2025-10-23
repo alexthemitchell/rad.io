@@ -44,13 +44,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
+      - name: Run tests with coverage
         run: npm test -- --coverage
 
-      - name: Upload coverage reports
+      - name: Check coverage thresholds
+        run: |
+          echo "Coverage thresholds enforced via jest.config.js"
+          echo "Thresholds:"
+          echo "  - Global: 45% statements, 39% branches, 46% functions, 45% lines"
+          echo "  - DSP utilities: ≥95% coverage"
+          echo "  - Device models: ≥90% coverage"
+          echo "  - Core utilities: ≥75-95% coverage"
+
+      - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info,./coverage/coverage-final.json
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
+          verbose: true
 
   format:
     name: Check Formatting

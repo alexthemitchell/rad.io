@@ -1,5 +1,8 @@
 # rad.io - Software-Defined Radio Visualizer
 
+[![codecov](https://codecov.io/gh/alexthemitchell/rad.io/branch/main/graph/badge.svg)](https://codecov.io/gh/alexthemitchell/rad.io)
+[![Quality Checks](https://github.com/alexthemitchell/rad.io/actions/workflows/quality-checks.yml/badge.svg)](https://github.com/alexthemitchell/rad.io/actions/workflows/quality-checks.yml)
+
 A professional browser-based SDR application with industry-standard visualizations, universal device support, and comprehensive testing.
 
 ## Common Usecases
