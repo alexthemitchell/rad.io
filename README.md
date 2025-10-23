@@ -57,9 +57,24 @@ A professional browser-based SDR application with industry-standard visualizatio
 
 ### Accessibility ♿
 
-- **Keyboard Navigation**: Full keyboard control with arrow keys and shortcuts
-- **ARIA Labels**: Descriptive text alternatives for all visualizations
+rad.io is committed to providing an accessible experience for all users, including those using assistive technologies. The application follows WCAG 2.1 AA standards.
+
+#### Key Features
+
+- **Full Keyboard Navigation**: Complete control without a mouse, including arrow keys and shortcuts
+- **Screen Reader Support**: Comprehensive ARIA labels and live regions for all content
 - **Focus Management**: Clear visual indicators and logical tab order
+- **Skip Links**: Jump directly to main content
+- **Color Contrast**: WCAG AA compliant (4.5:1 for text, 3:1 for UI components)
+- **Responsive Design**: Works at 200% browser zoom without horizontal scrolling
+
+#### Testing & Compliance
+
+- **36 Automated Tests**: Jest-axe and manual accessibility tests
+- **ESLint Enforcement**: 25+ jsx-a11y rules enforced in CI/CD
+- **Continuous Validation**: All PRs require accessibility checks to pass
+
+**Learn More**: See [ACCESSIBILITY.md](./ACCESSIBILITY.md) for complete documentation.
 
 ## Quick Start
 
