@@ -62,6 +62,9 @@ function Visualizer(): React.JSX.Element {
   const [currentFPS, setCurrentFPS] = useState<number>(0);
   const [deviceError, setDeviceError] = useState<Error | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [spectrogramMode, setSpectrogramMode] = useState<
+    "spectrogram" | "waterfall"
+  >("spectrogram");
 
   // Frequency scanner hook
   const scanner = useFrequencyScanner(device);
@@ -1134,12 +1137,43 @@ function Visualizer(): React.JSX.Element {
             <WaveformChart samples={samples} />
           </Card>
 
-          <Card
-            title="Spectrogram"
-            subtitle="Frequency spectrum over time showing signal strength"
-          >
-            <FFTChart samples={samples} />
-          </Card>
+          <div style={{ position: "relative" }}>
+            <Card
+              title={
+                spectrogramMode === "waterfall"
+                  ? "Waterfall Display"
+                  : "Spectrogram"
+              }
+              subtitle={
+                spectrogramMode === "waterfall"
+                  ? "Scrolling frequency spectrum over time"
+                  : "Frequency spectrum over time showing signal strength"
+              }
+            >
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() =>
+                    setSpectrogramMode((prev) =>
+                      prev === "spectrogram" ? "waterfall" : "spectrogram",
+                    )
+                  }
+                  className="btn"
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    right: "10px",
+                    zIndex: 10,
+                  }}
+                  aria-label={`Switch to ${spectrogramMode === "waterfall" ? "spectrogram" : "waterfall"} mode`}
+                >
+                  {spectrogramMode === "waterfall"
+                    ? "📊 Static"
+                    : "💧 Waterfall"}
+                </button>
+                <FFTChart samples={samples} mode={spectrogramMode} />
+              </div>
+            </Card>
+          </div>
         </div>
       </main>
     </div>

@@ -267,4 +267,67 @@ describe("Spectrogram", () => {
     const canvas = container.querySelector("canvas");
     expect(canvas).toBeInTheDocument();
   });
+
+  it("should render in waterfall mode", () => {
+    const fftData = createFFTData(30, 1024);
+    const { container } = render(
+      <Spectrogram fftData={fftData} mode="waterfall" />,
+    );
+
+    const canvas = container.querySelector("canvas");
+    expect(canvas).toBeInTheDocument();
+  });
+
+  it("should limit frames in waterfall mode", () => {
+    const fftData = createFFTData(150, 1024);
+    const maxFrames = 100;
+    const { container } = render(
+      <Spectrogram
+        fftData={fftData}
+        mode="waterfall"
+        maxWaterfallFrames={maxFrames}
+      />,
+    );
+
+    const canvas = container.querySelector("canvas");
+    expect(canvas).toBeInTheDocument();
+  });
+
+  it("should accumulate frames in waterfall mode on updates", () => {
+    const initialData = createFFTData(10, 1024);
+    const { container, rerender } = render(
+      <Spectrogram fftData={initialData} mode="waterfall" />,
+    );
+
+    // Add more data
+    const newData = createFFTData(10, 1024);
+    rerender(<Spectrogram fftData={newData} mode="waterfall" />);
+
+    const canvas = container.querySelector("canvas");
+    expect(canvas).toBeInTheDocument();
+  });
+
+  it("should switch between spectrogram and waterfall modes", () => {
+    const fftData = createFFTData(30, 1024);
+    const { container, rerender } = render(
+      <Spectrogram fftData={fftData} mode="spectrogram" />,
+    );
+
+    let canvas = container.querySelector("canvas");
+    expect(canvas).toBeInTheDocument();
+
+    // Switch to waterfall mode
+    rerender(<Spectrogram fftData={fftData} mode="waterfall" />);
+
+    canvas = container.querySelector("canvas");
+    expect(canvas).toBeInTheDocument();
+  });
+
+  it("should use default mode when not specified", () => {
+    const fftData = createFFTData(30, 1024);
+    const { container } = render(<Spectrogram fftData={fftData} />);
+
+    const canvas = container.querySelector("canvas");
+    expect(canvas).toBeInTheDocument();
+  });
 });

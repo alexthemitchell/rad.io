@@ -13,6 +13,8 @@ type FFTChartProps = {
   fftSize?: number;
   freqMin?: number;
   freqMax?: number;
+  mode?: "spectrogram" | "waterfall";
+  maxWaterfallFrames?: number;
 };
 
 function FFTChart({
@@ -22,6 +24,8 @@ function FFTChart({
   fftSize = DEFAULT_FFT_SIZE,
   freqMin = 1000,
   freqMax = 1100,
+  mode = "spectrogram",
+  maxWaterfallFrames = 100,
 }: FFTChartProps): React.JSX.Element {
   const spectrogramData = useMemo(() => {
     if (samples.length < fftSize) {
@@ -55,6 +59,8 @@ function FFTChart({
       height={height}
       freqMin={freqMin}
       freqMax={freqMax}
+      mode={mode}
+      maxWaterfallFrames={maxWaterfallFrames}
     />
   );
 }
