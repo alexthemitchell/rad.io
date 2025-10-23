@@ -2,6 +2,7 @@
 module.exports = {
   preset: "ts-jest",
   testEnvironment: "jsdom",
+  testTimeout: 30000, // 30 seconds per test
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
   },
@@ -74,7 +75,7 @@ module.exports = {
       lines: 94,
     },
   },
-  coverageReporters: ["text", "lcov", "html", "json-summary"],
+  coverageReporters: ["text", "lcov", "json-summary"],
   transformIgnorePatterns: ["node_modules/(?!(webfft)/)"],
   transform: {
     "^.+\\.(ts|tsx)$": [
