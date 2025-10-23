@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useMemo } from "react";
 import type { ReactElement } from "react";
-import { calculateWaveform, Sample } from "../utils/dsp";
+import { calculateWaveform, type Sample } from "../utils/dsp";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useIntersectionObserver } from "../hooks/useIntersectionObserver";

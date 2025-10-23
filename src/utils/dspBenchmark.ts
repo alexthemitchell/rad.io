@@ -7,7 +7,7 @@ import {
   calculateFFTSync,
   calculateWaveform,
   calculateSpectrogram,
-  Sample,
+  type Sample,
 } from "./dsp";
 import {
   loadWasmModule,

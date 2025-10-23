@@ -8,14 +8,14 @@
 
 import { HackRFOne } from "./HackRFOne";
 import {
-  ISDRDevice,
-  IQSample,
-  IQSampleCallback,
-  SDRDeviceInfo,
-  SDRCapabilities,
+  type ISDRDevice,
+  type IQSample,
+  type IQSampleCallback,
+  type SDRDeviceInfo,
+  type SDRCapabilities,
   SDRDeviceType,
-  SDRStreamConfig,
-  DeviceMemoryInfo,
+  type SDRStreamConfig,
+  type DeviceMemoryInfo,
   convertInt8ToIQ,
 } from "./SDRDevice";
 

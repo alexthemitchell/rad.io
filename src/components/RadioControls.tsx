@@ -1,5 +1,5 @@
-import { ChangeEvent, KeyboardEvent } from "react";
-import { SignalType } from "./SignalTypeSelector";
+import type { ChangeEvent, KeyboardEvent } from "react";
+import type { SignalType } from "./SignalTypeSelector";
 
 type RadioControlsProps = {
   frequency: number;

@@ -1,6 +1,6 @@
 import IQConstellation from "./IQConstellation";
 import EmptyState from "./EmptyState";
-import { Sample } from "../utils/dsp";
+import type { Sample } from "../utils/dsp";
 
 type SampleChartProps = {
   samples?: Sample[];

@@ -65,3 +65,5 @@ Quick Workflow
 4. Solve & validate (tests/lint/types)
 5. Write/update memory (150–400 words, scannable, link paths)
 6. Optionally add next-step hints or known pitfalls
+
+**Do not write new memories explaining a fix; only write memories that include generic debugging patterns that were successful**

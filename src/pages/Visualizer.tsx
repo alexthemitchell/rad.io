@@ -2,14 +2,16 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import SignalTypeSelector, {
-  SignalType,
+  type SignalType,
 } from "../components/SignalTypeSelector";
 import BandwidthSelector from "../components/BandwidthSelector";
 import DeviceControlBar from "../components/DeviceControlBar";
 import PresetStations from "../components/PresetStations";
 import RadioControls from "../components/RadioControls";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
-import TalkgroupScanner, { Talkgroup } from "../components/TalkgroupScanner";
+import TalkgroupScanner, {
+  type Talkgroup,
+} from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import P25SystemPresets from "../components/P25SystemPresets";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
@@ -25,9 +27,9 @@ import RecordingControls, {
   type RecordingState,
 } from "../components/RecordingControls";
 import RDSDisplay from "../components/RDSDisplay";
-import { Sample } from "../utils/dsp";
+import type { Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
-import { ISDRDevice, type IQSample } from "../models/SDRDevice";
+import type { ISDRDevice, IQSample } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,
   DemodulationType,

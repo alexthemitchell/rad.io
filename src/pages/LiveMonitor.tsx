@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import SignalTypeSelector, {
-  SignalType,
+  type SignalType,
 } from "../components/SignalTypeSelector";
 import BandwidthSelector from "../components/BandwidthSelector";
 import DeviceControlBar from "../components/DeviceControlBar";
@@ -17,9 +17,9 @@ import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import AudioControls from "../components/AudioControls";
-import { Sample } from "../utils/dsp";
+import type { Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
-import { ISDRDevice } from "../models/SDRDevice";
+import type { ISDRDevice } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,
   DemodulationType,
@@ -28,6 +28,7 @@ import {
 
 const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
+const AUDIO_BUFFER_SIZE = 131072;
 
 function LiveMonitor(): React.JSX.Element {
   const location = useLocation();
@@ -82,7 +83,6 @@ function LiveMonitor(): React.JSX.Element {
   const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const audioSampleBufferRef = useRef<Sample[]>([]);
-  const AUDIO_BUFFER_SIZE = 131072;
 
   // Live region for screen reader announcements
   const { announce, LiveRegion } = useLiveRegion();
@@ -194,13 +194,7 @@ function LiveMonitor(): React.JSX.Element {
         }
       }
     },
-    [
-      isAudioPlaying,
-      signalType,
-      getDemodType,
-      playAudioBuffer,
-      AUDIO_BUFFER_SIZE,
-    ],
+    [isAudioPlaying, signalType, getDemodType, playAudioBuffer],
   );
 
   const handleToggleAudio = useCallback(() => {

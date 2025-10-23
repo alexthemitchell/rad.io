@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import Spectrogram from "./Spectrogram";
 import EmptyState from "./EmptyState";
-import { calculateSpectrogram, Sample } from "../utils/dsp";
+import { calculateSpectrogram, type Sample } from "../utils/dsp";
 
 const DEFAULT_FFT_SIZE = 1024;
 const DEFAULT_FRAME_COUNT = 32;
+const MIN_UPDATE_INTERVAL_MS = 100; // Throttle to max 10 updates/sec to reduce memory pressure
 
 type FFTChartProps = {
   samples?: Sample[];
@@ -27,16 +28,30 @@ function FFTChart({
   mode = "spectrogram",
   maxWaterfallFrames = 100,
 }: FFTChartProps): React.JSX.Element {
+  const lastUpdateRef = useRef<number>(0);
+  const cachedDataRef = useRef<Float32Array[]>([]);
+
   const spectrogramData = useMemo(() => {
     if (samples.length < fftSize) {
       return [];
     }
+
+    // Throttle recalculation to reduce memory churn
+    const now = performance.now();
+    if (now - lastUpdateRef.current < MIN_UPDATE_INTERVAL_MS) {
+      return cachedDataRef.current;
+    }
+
     const windowSize = fftSize * DEFAULT_FRAME_COUNT;
     const windowed = samples.slice(Math.max(0, samples.length - windowSize));
     if (windowed.length < fftSize) {
       return [];
     }
-    return calculateSpectrogram(windowed, fftSize);
+
+    lastUpdateRef.current = now;
+    const result = calculateSpectrogram(windowed, fftSize);
+    cachedDataRef.current = result;
+    return result;
   }, [samples, fftSize]);
 
   const hasData = spectrogramData.length > 0;

@@ -1,6 +1,6 @@
 import SignalStrengthMeter from "./SignalStrengthMeter";
 import EmptyState from "./EmptyState";
-import { Sample } from "../utils/dsp";
+import type { Sample } from "../utils/dsp";
 
 type SignalStrengthMeterChartProps = {
   samples?: Sample[];

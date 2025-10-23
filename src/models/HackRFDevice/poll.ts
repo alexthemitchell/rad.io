@@ -1,4 +1,4 @@
-import { StreamOptions } from "./StreamOptions";
+import type { StreamOptions } from "./StreamOptions";
 
 export const defaultStreamOptions: StreamOptions = {
   transferCount: 4,

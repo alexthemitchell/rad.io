@@ -1,4 +1,4 @@
-import { ChangeEvent, useState } from "react";
+import { useState, type ChangeEvent } from "react";
 
 export type Talkgroup = {
   id: string;

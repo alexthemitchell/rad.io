@@ -5,9 +5,9 @@ import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import Card from "../components/Card";
-import { Sample } from "../utils/dsp";
+import type { Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
-import { ISDRDevice } from "../models/SDRDevice";
+import type { ISDRDevice } from "../models/SDRDevice";
 
 const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS

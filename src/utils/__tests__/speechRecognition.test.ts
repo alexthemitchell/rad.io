@@ -194,15 +194,18 @@ class MockAudioContext {
 // Setup global mocks
 beforeAll(() => {
   global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
+  // Patch globalThis for Node environment compatibility
   (
-    global as typeof global & {
-      webkitSpeechRecognition: typeof MockSpeechRecognition;
+    globalThis as typeof globalThis & {
+      webkitSpeechRecognition: unknown;
     }
-  ).webkitSpeechRecognition =
-    MockSpeechRecognition as unknown as unknown as typeof MockSpeechRecognition;
+  ).webkitSpeechRecognition = MockSpeechRecognition as unknown;
 });
 
 afterAll(() => {
+  delete (
+    globalThis as typeof globalThis & { webkitSpeechRecognition?: unknown }
+  ).webkitSpeechRecognition;
   delete (global as typeof global & { webkitSpeechRecognition?: unknown })
     .webkitSpeechRecognition;
 });

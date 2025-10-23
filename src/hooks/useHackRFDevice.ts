@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useUSBDevice } from "./useUSBDevice";
 import { HackRFOneAdapter } from "../models/HackRFOneAdapter";
-import { ISDRDevice } from "../models/SDRDevice";
+import type { ISDRDevice } from "../models/SDRDevice";
 
 /**
  * React hook for managing HackRF One device lifecycle
