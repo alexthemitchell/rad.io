@@ -18,7 +18,7 @@ export function getGL(canvas: HTMLCanvasElement): {
     antialias: false,
     preserveDrawingBuffer: false,
     desynchronized: true as unknown as boolean,
-  }) as WebGL2RenderingContext | null;
+  });
   if (gl2) {
     return { gl: gl2, isWebGL2: true };
   }
@@ -60,7 +60,7 @@ export function createProgram(
 ): WebGLProgram {
   const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
   const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
-  const prog = gl.createProgram()!;
+  const prog = gl.createProgram();
   gl.attachShader(prog, vs);
   gl.attachShader(prog, fs);
   gl.linkProgram(prog);
@@ -83,7 +83,7 @@ export function createTextureRGBA(
   height: number,
   data: Uint8Array | null,
 ): WebGLTexture {
-  const tex = gl.createTexture()!;
+  const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   // Use nearest to avoid blurring small pixels
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);

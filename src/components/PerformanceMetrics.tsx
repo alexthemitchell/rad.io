@@ -11,9 +11,7 @@ type PerformanceStats = {
   p99: number;
 };
 
-type CategoryStats = {
-  [category: string]: PerformanceStats;
-};
+type CategoryStats = Record<string, PerformanceStats>;
 
 type PerformanceMetricsProps = {
   currentFPS?: number;

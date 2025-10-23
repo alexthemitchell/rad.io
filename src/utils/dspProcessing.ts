@@ -1,6 +1,6 @@
-import type { ISDRDevice } from "../models/SDRDevice";
-import type { Sample } from "./dsp";
 import { calculateSignalStrength } from "./dsp";
+import type { Sample } from "./dsp";
+import type { ISDRDevice } from "../models/SDRDevice";
 
 export function processRFInput(
   _device: ISDRDevice | undefined,

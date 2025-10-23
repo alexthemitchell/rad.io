@@ -10,7 +10,7 @@
  * - RTL2832U datasheet
  */
 
-import { IQSample } from './SDRDevice';
+import { type IQSample } from './SDRDevice';
 
 /**
  * RTL-SDR control commands (vendor requests)

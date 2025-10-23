@@ -61,7 +61,7 @@ export function DeviceControlBar({
     } catch (error) {
       console.error("DeviceControlBar: Failed to start reception", error, {
         errorType: error instanceof Error ? error.name : typeof error,
-        hasDevice: !!device,
+        hasDevice: Boolean(device),
         deviceState: device?.getCapabilities(),
       });
     }

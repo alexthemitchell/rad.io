@@ -15,6 +15,19 @@
  * - https://digitalcommons.andrews.edu/cgi/viewcontent.cgi?article=1003&context=honors
  */
 
+import {
+  createEmptyRDSData,
+  RDSGroupType as GroupType,
+} from "../models/RDSData";
+import {
+  TMCDirection,
+  TMCDuration,
+  type TMCExtent,
+  getEventInfo,
+  formatDuration,
+  formatExtent,
+  createEmptyTMCStats,
+ type TMCMessage, type TMCDecoderStats } from "../models/TMCData";
 import type {
   RDSBlock,
   RDSGroup,
@@ -22,20 +35,6 @@ import type {
   RDSDecoderStats,
   RDSGroupType,
 } from "../models/RDSData";
-import {
-  createEmptyRDSData,
-  RDSGroupType as GroupType,
-} from "../models/RDSData";
-import type { TMCMessage, TMCDecoderStats } from "../models/TMCData";
-import {
-  TMCDirection,
-  TMCDuration,
-  TMCExtent,
-  getEventInfo,
-  formatDuration,
-  formatExtent,
-  createEmptyTMCStats,
-} from "../models/TMCData";
 
 /**
  * RDS Constants
@@ -92,7 +91,7 @@ export class RDSDecoder {
   private rtBuffer: string[] = new Array(64).fill("");
 
   // TMC data storage
-  private tmcMessages: Map<number, TMCMessage> = new Map();
+  private tmcMessages = new Map<number, TMCMessage>();
   private tmcStats: TMCDecoderStats;
 
   constructor(sampleRate: number) {
@@ -497,18 +496,18 @@ export class RDSDecoder {
 
     try {
       // Block B contains continuity index (CI) and other control bits
-      const blockB = group.blocks[1]!.data;
+      const blockB = group.blocks[1].data;
       const continuityIndex = blockB & 0x7; // 3 bits (0-7)
 
       // Block C contains event information
-      const blockC = group.blocks[2]!.data;
+      const blockC = group.blocks[2].data;
       const eventCode = (blockC >> 5) & 0x7ff; // 11 bits (top 11 bits)
       const extent = (blockC >> 2) & 0x7; // 3 bits
       const direction = (blockC >> 1) & 0x1; // 1 bit
       const diversionAdvice = blockC & 0x1; // 1 bit (LSB)
 
       // Block D contains location code
-      const blockD = group.blocks[3]!.data;
+      const blockD = group.blocks[3].data;
       const locationCode = blockD; // 16 bits
 
       // Get event information
@@ -539,7 +538,7 @@ export class RDSDecoder {
       let expiresAt: number | null = null;
       if (duration !== TMCDuration.NO_DURATION) {
         // Map TMCDuration enum to actual duration in milliseconds
-        const durationToMs: { [key in TMCDuration]: number } = {
+        const durationToMs: Record<TMCDuration, number> = {
           [TMCDuration.NO_DURATION]: 0,
           [TMCDuration.MINUTES_15]: 15 * 60 * 1000,
           [TMCDuration.MINUTES_30]: 30 * 60 * 1000,

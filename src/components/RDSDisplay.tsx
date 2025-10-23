@@ -11,8 +11,8 @@
  */
 
 import { useEffect, useState, type ReactElement } from "react";
-import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 import { PTY_NAMES, formatPICode, getCountryFromPI } from "../models/RDSData";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 
 interface RDSDisplayProps {
   rdsData: RDSStationData | null;

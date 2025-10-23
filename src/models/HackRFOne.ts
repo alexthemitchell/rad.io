@@ -141,25 +141,25 @@ export class HackRFOne {
   private interfaceNumber: number | null = null;
 
   // Added property to control streaming state
-  private streaming: boolean = false;
+  private streaming = false;
   // New flag to indicate that shutdown has begun
-  private closing: boolean = false;
+  private closing = false;
 
   // Add a simple mutex to prevent concurrent USB state changes
   private transferMutex: Promise<void> = Promise.resolve();
 
   // Memory management for buffers
   private sampleBuffers: DataView[] = [];
-  private totalBufferSize: number = 0;
+  private totalBufferSize = 0;
   private readonly maxBufferSize: number = 16 * 1024 * 1024; // 16 MB max
-  private inEndpointNumber: number = 1;
+  private inEndpointNumber = 1;
 
   // Store last known device configuration for automatic recovery
   private lastSampleRate: number | null = null;
   private lastFrequency: number | null = null;
   private lastBandwidth: number | null = null;
   private lastLNAGain: number | null = null;
-  private lastAmpEnabled: boolean = false;
+  private lastAmpEnabled = false;
 
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice;
@@ -425,7 +425,7 @@ export class HackRFOne {
   /**
    * Creates a timeout promise that rejects after the specified duration
    */
-  private createTimeout(ms: number, message: string): Promise<never> {
+  private async createTimeout(ms: number, message: string): Promise<never> {
     return new Promise((_, reject) => {
       setTimeout(() => reject(new Error(message)), ms);
     });
@@ -495,7 +495,7 @@ export class HackRFOne {
             iteration: iterationCount,
             status: result.status,
             byteLength: result.data?.byteLength || 0,
-            hasData: !!result.data,
+            hasData: Boolean(result.data),
           });
         }
 
@@ -509,7 +509,7 @@ export class HackRFOne {
               {
                 iteration: iterationCount,
                 bytes: result.data.byteLength,
-                hasCallback: !!callback,
+                hasCallback: Boolean(callback),
               },
             );
           }

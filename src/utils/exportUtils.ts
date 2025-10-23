@@ -33,7 +33,7 @@ export function copyToClipboard(text: string): void {
 
 export function savePNGFromCanvas(
   canvas: HTMLCanvasElement,
-  filename: string = "stage.png",
+  filename = "stage.png",
 ): void {
   const url = canvas.toDataURL("image/png");
   const a = document.createElement("a");

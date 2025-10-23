@@ -11,7 +11,7 @@ import type { Sample } from "./dsp";
  * Sample buffer pool to reuse arrays and reduce allocations
  */
 class SampleBufferPool {
-  private pools: Map<number, Sample[][]> = new Map();
+  private pools = new Map<number, Sample[][]>();
   private readonly maxPoolSize = 10;
 
   /**
@@ -91,7 +91,7 @@ export function clearMemoryPools(): void {
 export function generateSamplesChunked(
   sampleCount: number,
   generator: (n: number) => Sample,
-  chunkSize: number = 10000,
+  chunkSize = 10000,
 ): Sample[] {
   const chunks: Sample[][] = [];
   const numChunks = Math.ceil(sampleCount / chunkSize);
@@ -118,7 +118,7 @@ export function generateSamplesChunked(
 export function processSamplesBatched<T>(
   samples: Sample[],
   processor: (batch: Sample[]) => T,
-  batchSize: number = 5000,
+  batchSize = 5000,
 ): T[] {
   const results: T[] = [];
   const numBatches = Math.ceil(samples.length / batchSize);
@@ -143,8 +143,8 @@ export function processSamplesBatched<T>(
  * Memory monitoring for tests
  */
 export class TestMemoryMonitor {
-  private startMemory: number = 0;
-  private peakMemory: number = 0;
+  private startMemory = 0;
+  private peakMemory = 0;
 
   start(): void {
     if (typeof process !== "undefined" && process.memoryUsage) {

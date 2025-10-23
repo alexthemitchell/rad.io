@@ -1,44 +1,44 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
-import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
+import AudioControls from "../components/AudioControls";
+import BandwidthSelector from "../components/BandwidthSelector";
+import Card from "../components/Card";
+import DeviceControlBar from "../components/DeviceControlBar";
+import FrequencyScanner from "../components/FrequencyScanner";
+import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
+import P25SystemPresets from "../components/P25SystemPresets";
+import PresetStations from "../components/PresetStations";
 import SignalTypeSelector, {
   SignalType,
 } from "../components/SignalTypeSelector";
-import BandwidthSelector from "../components/BandwidthSelector";
-import DeviceControlBar from "../components/DeviceControlBar";
-import PresetStations from "../components/PresetStations";
 import RadioControls from "../components/RadioControls";
-import TrunkedRadioControls from "../components/TrunkedRadioControls";
-import TalkgroupScanner, { Talkgroup } from "../components/TalkgroupScanner";
+import TalkgroupScanner, { type Talkgroup } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
-import P25SystemPresets from "../components/P25SystemPresets";
-import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
-import FrequencyScanner from "../components/FrequencyScanner";
-import Card from "../components/Card";
+import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import SampleChart from "../components/SampleChart";
 import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import PerformanceMetrics from "../components/PerformanceMetrics";
-import AudioControls from "../components/AudioControls";
 import RecordingControls, {
   type RecordingState,
 } from "../components/RecordingControls";
 import RDSDisplay from "../components/RDSDisplay";
-import { Sample } from "../utils/dsp";
-import { performanceMonitor } from "../utils/performanceMonitor";
-import { ISDRDevice, type IQSample } from "../models/SDRDevice";
+import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
+import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,
   DemodulationType,
   type AudioStreamResult,
 } from "../utils/audioStream";
+import { type Sample } from "../utils/dsp";
 import {
   IQRecorder,
   IQPlayback,
   downloadRecording,
   type IQRecording,
 } from "../utils/iqRecorder";
+import { performanceMonitor } from "../utils/performanceMonitor";
 import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 import "../styles/main.css";
 
@@ -508,7 +508,7 @@ function Visualizer(): React.JSX.Element {
         .receive((data) => {
           console.debug("Visualizer: Received raw data from device", {
             byteLength: data?.byteLength || 0,
-            hasData: !!data,
+            hasData: Boolean(data),
           });
           const parsed = activeDevice.parseSamples(data) as Sample[];
           console.debug("Visualizer: Parsed samples from raw data", {
@@ -776,7 +776,7 @@ function Visualizer(): React.JSX.Element {
 
   const handleSetBandwidth = async (newBandwidth: number): Promise<void> => {
     setBandwidth(newBandwidth);
-    if (device && device.setBandwidth) {
+    if (device?.setBandwidth) {
       await device.setBandwidth(newBandwidth);
       setLiveRegionMessage(`Bandwidth filter set to ${newBandwidth / 1e6} MHz`);
     }
@@ -892,7 +892,7 @@ function Visualizer(): React.JSX.Element {
   }, [beginDeviceStreaming, device, initialize, isInitializing, listening]);
 
   const stopListening = useCallback(async (): Promise<void> => {
-    if (device && device.isReceiving()) {
+    if (device?.isReceiving()) {
       try {
         await device.stopRx();
       } catch (err) {
@@ -964,7 +964,7 @@ function Visualizer(): React.JSX.Element {
                   signalType={signalType}
                   setFrequency={handleSetFrequency}
                 />
-                {device && device.getCapabilities().supportedBandwidths ? (
+                {device?.getCapabilities().supportedBandwidths ? (
                   <BandwidthSelector
                     bandwidth={bandwidth}
                     setBandwidth={handleSetBandwidth}
@@ -1103,7 +1103,7 @@ function Visualizer(): React.JSX.Element {
         )}
 
         <InteractiveDSPPipeline
-          device={device as ISDRDevice | undefined}
+          device={device}
           samples={samples}
         />
 

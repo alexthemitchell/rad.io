@@ -8,13 +8,13 @@
 
 import { RTLSDRDevice } from './RTLSDRDevice';
 import {
-  ISDRDevice,
-  IQSample,
-  IQSampleCallback,
-  SDRDeviceInfo,
-  SDRCapabilities,
-  SDRStreamConfig,
-  DeviceMemoryInfo,
+  type ISDRDevice,
+  type IQSample,
+  type IQSampleCallback,
+  type SDRDeviceInfo,
+  type SDRCapabilities,
+  type SDRStreamConfig,
+  type DeviceMemoryInfo,
   SDRDeviceType,
   convertUint8ToIQ,
 } from './SDRDevice';

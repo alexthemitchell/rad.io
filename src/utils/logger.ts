@@ -24,9 +24,7 @@ export enum LogCategory {
   USER_ACTION = "👆 USER",
 }
 
-interface LogContext {
-  [key: string]: unknown;
-}
+type LogContext = Record<string, unknown>;
 
 interface LoggerConfig {
   minLevel: LogLevel;
