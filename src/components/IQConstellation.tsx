@@ -104,7 +104,94 @@ export default function IQConstellation({
       const markStart = "render-iq-constellation-start";
       performanceMonitor.mark(markStart);
 
-      // Try WebGL first
+      // Try WebGPU first (modern browsers)
+      try {
+        const webgpu = await import("../utils/webgpu");
+        if (webgpu.isWebGPUSupported()) {
+          const pixelW = Math.max(1, Math.floor(width * dpr));
+          const pixelH = Math.max(1, Math.floor(height * dpr));
+          canvas.width = pixelW;
+          canvas.height = pixelH;
+
+          const renderer = new webgpu.WebGPUPointRenderer();
+          const initialized = await renderer.initialize(canvas);
+          
+          if (initialized) {
+            // Build positions in NDC [-1,1] using min/max
+            const iValues = samples.map((s) => s.I);
+            const qValues = samples.map((s) => s.Q);
+            const iMin = Math.min(...iValues, -0.1);
+            const iMax = Math.max(...iValues, 0.1);
+            const qMin = Math.min(...qValues, -0.1);
+            const qMax = Math.max(...qValues, 0.1);
+            const padI = (iMax - iMin) * 0.1;
+            const padQ = (qMax - qMin) * 0.1;
+            const sI = 2 / (iMax - iMin + 2 * padI);
+            const sQ = 2 / (qMax - qMin + 2 * padQ);
+            const oI = -1 - sI * (iMin - padI);
+            const oQ = -1 - sQ * (qMin - padQ);
+
+            const positions = new Float32Array(samples.length * 2);
+            for (let i = 0; i < samples.length; i++) {
+              const s = samples[i]!;
+              positions[i * 2 + 0] = sI * s.I + oI;
+              positions[i * 2 + 1] = sQ * s.Q + oQ;
+            }
+
+            // Density-based alpha calculation
+            const gridSize = 0.003;
+            const densityMap = new Map<string, number>();
+            const MAX_DENSITY_SAMPLES = 8192;
+            const densitySamples =
+              samples.length > MAX_DENSITY_SAMPLES
+                ? samples.filter(
+                    (_, i) =>
+                      i % Math.ceil(samples.length / MAX_DENSITY_SAMPLES) === 0,
+                  )
+                : samples;
+            
+            for (const s of densitySamples) {
+              const gi = Math.round(s.I / gridSize) * gridSize;
+              const gq = Math.round(s.Q / gridSize) * gridSize;
+              const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
+              densityMap.set(key, (densityMap.get(key) || 0) + 1);
+            }
+            const maxDensity = Math.max(...Array.from(densityMap.values()), 1);
+
+            const colors = new Float32Array(samples.length * 4);
+            for (let i = 0; i < samples.length; i++) {
+              const s = samples[i]!;
+              const gi = Math.round(s.I / gridSize) * gridSize;
+              const gq = Math.round(s.Q / gridSize) * gridSize;
+              const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
+              const dens = (densityMap.get(key) || 1) / maxDensity;
+              const alpha = Math.min(1, 0.4 + dens * 0.8);
+              colors[i * 4 + 0] = 0.31; // r ~ 80/255
+              colors[i * 4 + 1] = 0.78; // g ~ 200/255
+              colors[i * 4 + 2] = 1.0; // b ~ 255/255
+              colors[i * 4 + 3] = alpha;
+            }
+
+            const success = renderer.render({
+              positions,
+              colors,
+              pointSize: Math.max(2, Math.round(2 * dpr)),
+            });
+
+            if (success) {
+              performanceMonitor.measure("render-iq-constellation", markStart);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(
+          "IQConstellation: WebGPU rendering failed, falling back to WebGL",
+          err,
+        );
+      }
+
+      // Try WebGL next
       try {
         // Use shared WebGL utilities
         const webgl = await import("../utils/webgl");
