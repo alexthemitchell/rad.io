@@ -119,7 +119,7 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
   }
   
   // RTL-SDR doesn't have separate VGA gain control
-  async setVGAGain?(gainDb: number): Promise<void> {
+  async setVGAGain?(_gainDb: number): Promise<void> {
     // No-op for RTL-SDR
     console.debug('RTL-SDR does not support separate VGA gain control');
   }
@@ -131,14 +131,14 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
   }
   
   // RTL-SDR doesn't have configurable bandwidth filter
-  async setBandwidth?(bandwidthHz: number): Promise<void> {
+  async setBandwidth?(_bandwidthHz: number): Promise<void> {
     // No-op for RTL-SDR - bandwidth is determined by sample rate
     console.debug('RTL-SDR bandwidth is determined by sample rate');
   }
   
   async receive(
     callback: IQSampleCallback,
-    config?: Partial<SDRStreamConfig>
+    _config?: Partial<SDRStreamConfig>
   ): Promise<void> {
     return this.device.receive((samples) => {
       // Convert IQSample[] to DataView for callback

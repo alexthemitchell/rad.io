@@ -36,15 +36,15 @@ class MockUSBDevice {
     this.opened = false;
   }
   
-  async selectConfiguration(config: number): Promise<void> {
+  async selectConfiguration(_config: number): Promise<void> {
     // Mock implementation
   }
   
-  async claimInterface(iface: number): Promise<void> {
+  async claimInterface(_iface: number): Promise<void> {
     // Mock implementation
   }
   
-  async releaseInterface(iface: number): Promise<void> {
+  async releaseInterface(_iface: number): Promise<void> {
     // Mock implementation
   }
   
@@ -86,17 +86,17 @@ class MockUSBDevice {
   
   // Stub methods to satisfy USBDevice interface
   async reset(): Promise<void> {}
-  async selectAlternateInterface(iface: number, alt: number): Promise<void> {}
-  async transferOut(endpoint: number, data: BufferSource): Promise<USBOutTransferResult> {
+  async selectAlternateInterface(_iface: number, _alt: number): Promise<void> {}
+  async transferOut(_endpoint: number, _data: BufferSource): Promise<USBOutTransferResult> {
     return { bytesWritten: 0, status: 'ok' };
   }
-  async isochronousTransferIn(endpoint: number, packetLengths: number[]): Promise<USBIsochronousInTransferResult> {
+  async isochronousTransferIn(_endpoint: number, _packetLengths: number[]): Promise<USBIsochronousInTransferResult> {
     return { data: undefined, packets: [] };
   }
-  async isochronousTransferOut(endpoint: number, data: BufferSource, packetLengths: number[]): Promise<USBIsochronousOutTransferResult> {
+  async isochronousTransferOut(_endpoint: number, _data: BufferSource, _packetLengths: number[]): Promise<USBIsochronousOutTransferResult> {
     return { packets: [] };
   }
-  async clearHalt(direction: USBDirection, endpoint: number): Promise<void> {}
+  async clearHalt(_direction: USBDirection, _endpoint: number): Promise<void> {}
   forget(): Promise<void> { return Promise.resolve(); }
 }
 

@@ -29,7 +29,7 @@ enum RTLSDRCommand {
 /**
  * RTL-SDR register blocks
  */
-enum RTLSDRBlock {
+enum _RTLSDRBlock {
   USB = 0,
   SYS = 1,
   DEMOD = 2,
@@ -86,7 +86,7 @@ export class RTLSDRDevice {
     // Initialize device
     await this.initialize();
     
-    console.log('RTL-SDR opened successfully');
+    console.debug('RTL-SDR opened successfully');
   }
   
   private async initialize(): Promise<void> {
@@ -128,18 +128,18 @@ export class RTLSDRDevice {
     // Set manual gain mode
     await this.writeDemodReg(0x01, 0x05, 0);
     
-    console.log('RTL-SDR initialized');
+    console.debug('RTL-SDR initialized');
   }
   
   async close(): Promise<void> {
-    if (this.closing) return;
+    if (this.closing) { return; }
     this.closing = true;
     
     try {
       await this.stopRx();
       await this.device.releaseInterface(this.INTERFACE_NUM);
       await this.device.close();
-      console.log('RTL-SDR closed successfully');
+      console.debug('RTL-SDR closed successfully');
     } catch (err) {
       console.error('RTL-SDR close error:', err);
     } finally {
