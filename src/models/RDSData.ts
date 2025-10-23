@@ -21,6 +21,7 @@ export enum RDSGroupType {
   RADIO_TEXT_2B = "2B", // Radio Text (RT) - 32 chars
   CLOCK_TIME_4A = "4A", // Clock Time and Date
   ALTERNATIVE_FREQ_0A_0B = "0A/0B", // Alternative Frequencies
+  TMC_8A = "8A", // Traffic Message Channel
   PROGRAM_TYPE_10A = "10A", // Program Type Name
   UNKNOWN = "UNKNOWN",
 }

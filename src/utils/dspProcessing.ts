@@ -55,8 +55,8 @@ export function processFFT(
 }
 
 export function processDemodulation(
-  samples: Sample[],
-  params: {
+  _samples: Sample[],
+  _params: {
     demod: string;
     fmDeviation: number;
     amDepth: number;
@@ -71,8 +71,8 @@ export function processDemodulation(
 }
 
 export function processAudioOutput(
-  samples: Sample[] | null,
-  params: {
+  _samples: Sample[] | null,
+  _params: {
     volume: number;
     mute: boolean;
     audioFilter: string;
