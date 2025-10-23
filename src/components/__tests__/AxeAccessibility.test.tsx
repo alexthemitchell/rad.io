@@ -322,7 +322,7 @@ describe("Axe Accessibility Tests", () => {
         rules: {
           "button-name": { enabled: true },
           "heading-order": { enabled: true },
-          "label": { enabled: true },
+          label: { enabled: true },
           "link-name": { enabled: true },
         },
       });

@@ -23,6 +23,7 @@ While unit tests with jest-axe cover component-level accessibility, E2E tests ve
 ### Installation
 
 Dependencies are already installed:
+
 ```bash
 # Already in package.json
 "@axe-core/playwright": "^4.x.x"
@@ -49,9 +50,9 @@ browser_wait_for({ text: "Software-Defined Radio Visualizer" })
 browser_snapshot()
 
 # Take screenshot for visual verification
-browser_take_screenshot({ 
+browser_take_screenshot({
   filename: "accessibility-test.png",
-  fullPage: true 
+  fullPage: true
 })
 ```
 
@@ -61,63 +62,63 @@ Create E2E test files in `e2e/` directory:
 
 ```typescript
 // e2e/accessibility.spec.ts
-import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
-test.describe('Accessibility E2E Tests', () => {
-  test('home page should have no accessibility violations', async ({ page }) => {
-    await page.goto('https://localhost:8080');
+test.describe("Accessibility E2E Tests", () => {
+  test("home page should have no accessibility violations", async ({
+    page,
+  }) => {
+    await page.goto("https://localhost:8080");
     await page.waitForSelector('h1:has-text("rad.io")');
-    
+
     const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
-    
+
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
-  test('keyboard navigation through main controls', async ({ page }) => {
-    await page.goto('https://localhost:8080');
-    
+  test("keyboard navigation through main controls", async ({ page }) => {
+    await page.goto("https://localhost:8080");
+
     // Press Tab to navigate
-    await page.keyboard.press('Tab');  // Skip link
-    await page.keyboard.press('Tab');  // Connect button
-    
+    await page.keyboard.press("Tab"); // Skip link
+    await page.keyboard.press("Tab"); // Connect button
+
     // Verify focus is visible
     const focusedElement = await page.evaluate(() => {
       return document.activeElement?.tagName;
     });
-    
-    expect(focusedElement).toBe('BUTTON');
+
+    expect(focusedElement).toBe("BUTTON");
   });
 
-  test('frequency input keyboard controls', async ({ page }) => {
-    await page.goto('https://localhost:8080');
-    
+  test("frequency input keyboard controls", async ({ page }) => {
+    await page.goto("https://localhost:8080");
+
     // Navigate to frequency input
-    const freqInput = await page.locator('input[aria-label*="Center frequency"]');
+    const freqInput = await page.locator(
+      'input[aria-label*="Center frequency"]',
+    );
     await freqInput.focus();
-    
+
     // Test arrow key navigation
-    await page.keyboard.press('ArrowUp');
-    
+    await page.keyboard.press("ArrowUp");
+
     // Verify frequency increased
     const value = await freqInput.inputValue();
     expect(parseFloat(value)).toBeGreaterThan(100);
   });
 
-  test('all pages should be accessible', async ({ page }) => {
-    const pages = [
-      '/',
-      '/scanner',
-      '/analysis'
-    ];
-    
+  test("all pages should be accessible", async ({ page }) => {
+    const pages = ["/", "/scanner", "/analysis"];
+
     for (const path of pages) {
       await page.goto(`https://localhost:8080${path}`);
-      
+
       const accessibilityScanResults = await new AxeBuilder({ page })
-        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
         .analyze();
-      
+
       expect(accessibilityScanResults.violations).toEqual([]);
     }
   });
@@ -125,6 +126,7 @@ test.describe('Accessibility E2E Tests', () => {
 ```
 
 Run with:
+
 ```bash
 # Install Playwright browsers (one-time setup)
 npx playwright install chromium
@@ -157,6 +159,7 @@ npx playwright test --reporter=html
 ### Screen Reader Test
 
 **With NVDA (Windows)**:
+
 1. Install NVDA from https://www.nvaccess.org/
 2. Start NVDA (Ctrl+Alt+N)
 3. Open rad.io
@@ -168,6 +171,7 @@ npx playwright test --reporter=html
    - Error messages are read aloud
 
 **With VoiceOver (macOS)**:
+
 1. Enable VoiceOver (Cmd+F5)
 2. Open rad.io
 3. Use VoiceOver cursor (Ctrl+Option+Arrow keys)
@@ -202,58 +206,58 @@ npx playwright test --reporter=html
 ### Testing Focus Management
 
 ```typescript
-test('focus moves to modal on open', async ({ page }) => {
-  await page.goto('https://localhost:8080');
-  
+test("focus moves to modal on open", async ({ page }) => {
+  await page.goto("https://localhost:8080");
+
   // Open modal
   await page.click('button:has-text("Settings")');
-  
+
   // Verify focus moved into modal
   const focusedElement = await page.evaluate(() => {
-    return document.activeElement?.getAttribute('role');
+    return document.activeElement?.getAttribute("role");
   });
-  
-  expect(focusedElement).toBe('dialog');
+
+  expect(focusedElement).toBe("dialog");
 });
 ```
 
 ### Testing Live Regions
 
 ```typescript
-test('status changes are announced', async ({ page }) => {
-  await page.goto('https://localhost:8080');
-  
+test("status changes are announced", async ({ page }) => {
+  await page.goto("https://localhost:8080");
+
   // Get live region
   const liveRegion = await page.locator('[aria-live="polite"]');
-  
+
   // Trigger action
   await page.click('button:has-text("Connect Device")');
-  
+
   // Wait for announcement
   await page.waitForFunction(
-    (element) => element.textContent?.includes('Connecting'),
-    await liveRegion.elementHandle()
+    (element) => element.textContent?.includes("Connecting"),
+    await liveRegion.elementHandle(),
   );
-  
+
   const announcement = await liveRegion.textContent();
-  expect(announcement).toContain('Connecting to SDR device');
+  expect(announcement).toContain("Connecting to SDR device");
 });
 ```
 
 ### Testing Keyboard Shortcuts
 
 ```typescript
-test('arrow keys adjust frequency', async ({ page }) => {
-  await page.goto('https://localhost:8080');
-  
+test("arrow keys adjust frequency", async ({ page }) => {
+  await page.goto("https://localhost:8080");
+
   const freqInput = await page.locator('input[aria-label*="frequency"]');
   await freqInput.focus();
-  
+
   const initialValue = parseFloat(await freqInput.inputValue());
-  
+
   // Press arrow up
-  await page.keyboard.press('ArrowUp');
-  
+  await page.keyboard.press("ArrowUp");
+
   const newValue = parseFloat(await freqInput.inputValue());
   expect(newValue).toBeGreaterThan(initialValue);
 });
@@ -291,25 +295,25 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'
-      
+          node-version: "18"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
-      
+
       - name: Start dev server
         run: npm start &
         env:
           CI: true
-      
+
       - name: Wait for server
         run: npx wait-on https://localhost:8080
-      
+
       - name: Run E2E accessibility tests
         run: npx playwright test e2e/accessibility.spec.ts
-      
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v3
@@ -330,6 +334,7 @@ jobs:
 ### Certificate Errors with HTTPS
 
 If you get certificate errors:
+
 ```bash
 # Option 1: Accept self-signed cert in Playwright
 browser.newContext({ ignoreHTTPSErrors: true })
@@ -341,12 +346,13 @@ browser.newContext({ ignoreHTTPSErrors: true })
 ### Flaky Tests
 
 If tests are flaky:
+
 ```typescript
 // Use waitForLoadState
-await page.waitForLoadState('networkidle');
+await page.waitForLoadState("networkidle");
 
 // Use explicit waits
-await page.waitForSelector('selector', { state: 'visible' });
+await page.waitForSelector("selector", { state: "visible" });
 
 // Increase timeout for slow operations
 test.setTimeout(60000);

@@ -81,6 +81,7 @@ If PR includes significant UI changes, test with a screen reader:
 - [ ] **Linux**: Orca
 
 Verify:
+
 - [ ] All content is announced
 - [ ] Navigation makes sense when using screen reader
 - [ ] Interactive elements clearly indicate their purpose
@@ -153,6 +154,7 @@ npm run validate
 ## Common Issues and Fixes
 
 ### Issue: "Button has no accessible name"
+
 **Fix**: Add `aria-label` or visible text content to button
 
 ```tsx
@@ -166,6 +168,7 @@ npm run validate
 ```
 
 ### Issue: "Form element does not have an associated label"
+
 **Fix**: Add a `<label>` element with `htmlFor`
 
 ```tsx
@@ -178,6 +181,7 @@ npm run validate
 ```
 
 ### Issue: "Elements must have sufficient color contrast"
+
 **Fix**: Increase contrast between text and background
 
 ```css
@@ -191,6 +195,7 @@ background: #fff;
 ```
 
 ### Issue: "Interactive element cannot be focused"
+
 **Fix**: Ensure element is natively focusable or add `tabIndex={0}`
 
 ```tsx

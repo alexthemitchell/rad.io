@@ -14,16 +14,16 @@ rad.io is committed to providing an accessible experience for all users, includi
 
 #### Keyboard Shortcuts
 
-| Context | Key | Action |
-|---------|-----|--------|
-| Frequency Input | ↑ Arrow Up | Increase frequency by 0.1 MHz (FM) / 10 kHz (AM) |
-| Frequency Input | ↓ Arrow Down | Decrease frequency by 0.1 MHz (FM) / 10 kHz (AM) |
-| Frequency Input | Page Up | Increase frequency by 1.0 MHz (FM) / 100 kHz (AM) |
-| Frequency Input | Page Down | Decrease frequency by 1.0 MHz (FM) / 100 kHz (AM) |
-| All Buttons | Enter / Space | Activate button |
-| All Elements | Tab | Move to next focusable element |
-| All Elements | Shift+Tab | Move to previous focusable element |
-| Skip Link | Tab (on page load) | Jump directly to main content |
+| Context         | Key                | Action                                            |
+| --------------- | ------------------ | ------------------------------------------------- |
+| Frequency Input | ↑ Arrow Up         | Increase frequency by 0.1 MHz (FM) / 10 kHz (AM)  |
+| Frequency Input | ↓ Arrow Down       | Decrease frequency by 0.1 MHz (FM) / 10 kHz (AM)  |
+| Frequency Input | Page Up            | Increase frequency by 1.0 MHz (FM) / 100 kHz (AM) |
+| Frequency Input | Page Down          | Decrease frequency by 1.0 MHz (FM) / 100 kHz (AM) |
+| All Buttons     | Enter / Space      | Activate button                                   |
+| All Elements    | Tab                | Move to next focusable element                    |
+| All Elements    | Shift+Tab          | Move to previous focusable element                |
+| Skip Link       | Tab (on page load) | Jump directly to main content                     |
 
 #### Focus Management
 
@@ -39,6 +39,7 @@ rad.io is committed to providing an accessible experience for all users, includi
 All interactive elements and visualizations have descriptive ARIA labels:
 
 **Canvas Visualizations**:
+
 - `role="img"` with detailed `aria-label` describing:
   - Data type and count (e.g., "1024 signal samples")
   - Value ranges (min, max, average)
@@ -46,11 +47,13 @@ All interactive elements and visualizations have descriptive ARIA labels:
   - Current peak values or notable features
 
 **Form Controls**:
+
 - `aria-label` with context: "Center frequency in MHz. Range: 88.1 to 107.9 MHz. Current: 100.3 MHz"
 - `aria-describedby` linking to hint text for keyboard shortcuts
 - `aria-pressed` for toggle buttons (FM/AM/P25 selection)
 
 **Dynamic Content**:
+
 - Live regions with `aria-live="polite"` announce:
   - Connection status changes
   - Frequency changes
@@ -70,6 +73,7 @@ All interactive elements and visualizations have descriptive ARIA labels:
 #### Color Contrast
 
 All text and interactive elements meet WCAG 2.1 AA contrast requirements:
+
 - **Normal text**: Minimum 4.5:1 contrast ratio
 - **Large text**: Minimum 3:1 contrast ratio
 - **UI components**: Minimum 3:1 contrast ratio
@@ -121,6 +125,7 @@ The project enforces 25+ jsx-a11y rules via ESLint:
 ```
 
 Run linting locally:
+
 ```bash
 npm run lint
 ```
@@ -138,6 +143,7 @@ npm test -- src/components/__tests__/Accessibility.test.tsx
 ```
 
 **Coverage** (36 total accessibility-focused tests):
+
 - 15 axe-core automated scans
 - 21 manual ARIA/keyboard tests
 - All major components tested
@@ -148,6 +154,7 @@ npm test -- src/components/__tests__/Accessibility.test.tsx
 ### Continuous Integration
 
 All accessibility tests run automatically on every PR via GitHub Actions:
+
 - ESLint accessibility rules must pass
 - All jest-axe tests must pass
 - No new violations allowed
@@ -157,11 +164,13 @@ All accessibility tests run automatically on every PR via GitHub Actions:
 ### Screen Reader Testing
 
 While automated tests catch many issues, manual screen reader testing is recommended for:
+
 - Complex interactive components
 - Dynamic content updates
 - Multi-step workflows
 
 **Recommended Screen Readers**:
+
 - **NVDA** (Windows, free): https://www.nvaccess.org/
 - **JAWS** (Windows, commercial): https://www.freedomscientific.com/
 - **VoiceOver** (macOS, built-in): Cmd+F5 to enable
@@ -180,6 +189,7 @@ Before submitting PRs with UI changes:
 ### Browser Zoom Testing
 
 Test your changes at 200% browser zoom:
+
 1. Open app in Chrome/Edge
 2. Press Ctrl+Plus (+) repeatedly until 200%
 3. Verify:
@@ -201,6 +211,7 @@ When adding a new component, ensure:
 5. **Tests**: Add axe-core and manual accessibility tests
 
 Example:
+
 ```tsx
 function NewComponent() {
   return (
@@ -242,6 +253,7 @@ WebUSB is only available in Chromium-based browsers (Chrome, Edge, Opera). Firef
 ### WebGL Fallbacks
 
 Canvas visualizations use WebGL for performance but gracefully fall back to 2D canvas:
+
 - Screen reader announcements work in all rendering modes
 - ARIA labels describe data regardless of rendering method
 - Focus and keyboard navigation unaffected by rendering mode

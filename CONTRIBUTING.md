@@ -469,6 +469,7 @@ All PRs must maintain or improve accessibility. Before submitting:
 5. **Review the checklist**: See [.github/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md)
 
 **Key Resources**:
+
 - Full accessibility guide: [ACCESSIBILITY.md](./ACCESSIBILITY.md)
 - PR review checklist: [.github/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md)
 - WCAG 2.1 Guidelines: https://www.w3.org/WAI/WCAG21/quickref/
