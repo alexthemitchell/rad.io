@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom";
 import { TextEncoder, TextDecoder } from "util";
+import { toHaveNoViolations } from "jest-axe";
 
 // Polyfill TextEncoder/TextDecoder for react-router-dom in tests
 global.TextEncoder = TextEncoder as any;
@@ -42,3 +43,6 @@ HTMLCanvasElement.prototype.getContext = function () {
     })),
   } as any;
 };
+
+// Extend Jest matchers with axe accessibility matchers
+expect.extend(toHaveNoViolations);
