@@ -41,7 +41,7 @@ export default function Spectrogram({
   const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
-  
+
   // Waterfall mode: maintain a rolling buffer of frames
   const waterfallBufferRef = useRef<Float32Array[]>([]);
 
@@ -109,7 +109,8 @@ export default function Spectrogram({
 
     const numFrames = displayData.length;
     const binCount = freqMax - freqMin;
-    const modeDescription = mode === "waterfall" ? "Waterfall display" : "Spectrogram";
+    const modeDescription =
+      mode === "waterfall" ? "Waterfall display" : "Spectrogram";
 
     // Find peak power and its frequency
     let maxPower = -Infinity;
