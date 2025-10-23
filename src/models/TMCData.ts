@@ -258,9 +258,11 @@ export const TMC_EVENT_CODES: Record<
 /**
  * Get event information from event code
  */
-export function getEventInfo(
-  eventCode: number,
-): { text: string; category: TMCEventCategory; severity: TMCEventSeverity } {
+export function getEventInfo(eventCode: number): {
+  text: string;
+  category: TMCEventCategory;
+  severity: TMCEventSeverity;
+} {
   return (
     TMC_EVENT_CODES[eventCode] || {
       text: `Unknown event (${eventCode})`,

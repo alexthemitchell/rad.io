@@ -101,10 +101,10 @@ describe("TMC Decoder Integration", () => {
   describe("Reset", () => {
     it("should clear TMC messages on reset", () => {
       const decoder = createRDSDecoder(228000);
-      
+
       // Reset should clear all state
       decoder.reset();
-      
+
       const messages = decoder.getTMCMessages();
       const stats = decoder.getTMCStats();
 
@@ -129,10 +129,10 @@ describe("TMC Decoder Integration", () => {
 
     it("should clean up expired messages", () => {
       const decoder = createRDSDecoder(228000);
-      
+
       // Get messages (should trigger cleanup)
       const messages = decoder.getTMCMessages();
-      
+
       // Should only return non-expired messages
       const now = Date.now();
       for (const message of messages) {

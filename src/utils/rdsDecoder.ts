@@ -26,10 +26,7 @@ import {
   createEmptyRDSData,
   RDSGroupType as GroupType,
 } from "../models/RDSData";
-import type {
-  TMCMessage,
-  TMCDecoderStats,
-} from "../models/TMCData";
+import type { TMCMessage, TMCDecoderStats } from "../models/TMCData";
 import {
   TMCDirection,
   TMCDuration,
@@ -37,7 +34,6 @@ import {
   getEventInfo,
   formatDuration,
   formatExtent,
-  formatDirection,
   createEmptyTMCStats,
 } from "../models/TMCData";
 
@@ -489,7 +485,7 @@ export class RDSDecoder {
 
   /**
    * Parse Group 8A - TMC (Traffic Message Channel)
-   * 
+   *
    * Group 8A Format (ISO 14819-1):
    * Block B: Group type (8A), DP bit, CI (Continuity Index)
    * Block C: Event code (11 bits), Extent (3 bits), Direction (1 bit), Diversion (1 bit)
@@ -502,7 +498,7 @@ export class RDSDecoder {
       // Block B contains continuity index (CI) and other control bits
       const blockB = group.blocks[1]!.data;
       const continuityIndex = blockB & 0x7; // 3 bits (0-7)
-      
+
       // Block C contains event information
       const blockC = group.blocks[2]!.data;
       const eventCode = (blockC >> 5) & 0x7ff; // 11 bits (top 11 bits)
@@ -594,15 +590,16 @@ export class RDSDecoder {
     const now = Date.now();
     const toDelete: number[] = [];
 
-    for (const [messageId, message] of this.tmcMessages.entries()) {
+    // Use Array.from to avoid downlevelIteration requirement
+    Array.from(this.tmcMessages.entries()).forEach(([messageId, message]) => {
       if (message.expiresAt && message.expiresAt < now) {
         toDelete.push(messageId);
       }
-    }
+    });
 
-    for (const messageId of toDelete) {
+    toDelete.forEach((messageId) => {
       this.tmcMessages.delete(messageId);
-    }
+    });
   }
 
   /**
@@ -625,7 +622,7 @@ export class RDSDecoder {
   getTMCMessages(): TMCMessage[] {
     this.cleanupExpiredTMCMessages();
     return Array.from(this.tmcMessages.values()).sort(
-      (a, b) => b.severity - a.severity
+      (a, b) => b.severity - a.severity,
     );
   }
 

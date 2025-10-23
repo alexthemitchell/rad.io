@@ -1,5 +1,3 @@
-import { ChangeEvent } from "react";
-
 type BandwidthSelectorProps = {
   bandwidth: number;
   setBandwidth: (bandwidthHz: number) => Promise<void>;
