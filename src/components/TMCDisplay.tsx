@@ -211,15 +211,7 @@ export function TMCDisplayCompact({
   }
 
   // Show only the most severe message
-  const topMessage = messages[0];
-  if (!topMessage) {
-    return (
-      <div className={`tmc-display-compact tmc-no-data ${className}`}>
-        <span className="tmc-icon">🚦</span>
-        <span className="tmc-text">No Traffic</span>
-      </div>
-    );
-  }
+  const topMessage = messages[0]!;
 
   return (
     <div

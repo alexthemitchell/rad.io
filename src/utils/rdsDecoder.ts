@@ -513,9 +513,12 @@ export class RDSDecoder {
       // Get event information
       const eventInfo = getEventInfo(eventCode);
 
-      // Calculate duration from continuity index (simplified)
-      // In reality, duration comes from multi-group messages
-      const duration = continuityIndex as TMCDuration;
+      // Note: According to ISO 14819-1, continuity index (CI) is used for message
+      // correlation and updating, not for duration encoding. Duration information
+      // comes from multi-group messages or supplementary data.
+      // For now, we default to NO_DURATION as a placeholder until full multi-group
+      // message support is implemented.
+      const duration = TMCDuration.NO_DURATION;
 
       // Determine TMC direction
       let tmcDirection: TMCDirection;
@@ -525,15 +528,27 @@ export class RDSDecoder {
         tmcDirection = TMCDirection.NEGATIVE;
       }
 
-      // Create message ID from location + event + direction
-      const messageId = (locationCode << 16) | (eventCode << 1) | direction;
+      // Create message ID from location + event + direction + continuity index
+      // Include CI for proper message tracking and updates
+      const messageId =
+        (locationCode << 16) | (eventCode << 3) | (continuityIndex & 0x7);
 
       // Calculate expiration time based on duration
       const now = Date.now();
       let expiresAt: number | null = null;
       if (duration !== TMCDuration.NO_DURATION) {
-        // Simple mapping: each duration code = ~30 minutes
-        expiresAt = now + duration * 30 * 60 * 1000;
+        // Map TMCDuration enum to actual duration in milliseconds
+        const durationToMs: { [key in TMCDuration]: number } = {
+          [TMCDuration.NO_DURATION]: 0,
+          [TMCDuration.MINUTES_15]: 15 * 60 * 1000,
+          [TMCDuration.MINUTES_30]: 30 * 60 * 1000,
+          [TMCDuration.HOUR_1]: 60 * 60 * 1000,
+          [TMCDuration.HOURS_2]: 2 * 60 * 60 * 1000,
+          [TMCDuration.HOURS_3_TO_4]: 3.5 * 60 * 60 * 1000,
+          [TMCDuration.HOURS_4_TO_8]: 6 * 60 * 60 * 1000,
+          [TMCDuration.LONGER_THAN_8_HOURS]: 12 * 60 * 60 * 1000,
+        };
+        expiresAt = now + (durationToMs[duration] ?? 0);
       }
 
       // Check if this message already exists
