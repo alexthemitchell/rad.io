@@ -44,10 +44,28 @@ A professional browser-based SDR application with industry-standard visualizatio
 
 ### Universal Device Support 🔌
 
-- **HackRF One**: Native implementation
-- **RTL-SDR**: Format conversion utilities
-- **Airspy**: Database support
-- **Custom SDRs**: Implement `ISDRDevice` interface
+rad.io features a **comprehensive device integration framework** that enables plug-and-play support for multiple SDR hardware platforms.
+
+**Supported Devices:**
+- **HackRF One**: Native WebUSB implementation (1 MHz - 6 GHz)
+- **RTL-SDR**: Full support for RTL2832U-based devices (24-1766 MHz)
+- **Airspy**: Database support (coming soon)
+- **Custom SDRs**: Extensible architecture via `ISDRDevice` interface
+
+**Framework Features:**
+- **Universal Interface**: All devices implement the same `ISDRDevice` interface
+- **Type-Safe Integration**: Strict TypeScript with comprehensive type checking
+- **Plug-and-Play**: Automatic device detection and configuration
+- **Memory Management**: Built-in buffer tracking and cleanup
+- **Comprehensive Testing**: Full test coverage for device implementations
+
+**Developer Resources:**
+- 📖 [Device Integration Guide](docs/DEVICE_INTEGRATION.md) - Step-by-step instructions
+- 📚 [Architecture Documentation](ARCHITECTURE.md) - Framework design and patterns
+- 📝 [Device Template](src/models/templates/DeviceTemplate.ts) - Starter template for new devices
+
+Adding a new device takes ~200 lines of code with the provided template and guide.
+
 
 ### Quality Assurance ✅
 
