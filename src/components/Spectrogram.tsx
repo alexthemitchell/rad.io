@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import type { ReactElement } from "react";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
@@ -42,8 +42,8 @@ export default function Spectrogram({
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
 
-  // Waterfall mode: maintain a rolling buffer of frames
-  const waterfallBufferRef = useRef<Float32Array[]>([]);
+  // Waterfall mode: maintain a rolling buffer of frames using state
+  const [waterfallBuffer, setWaterfallBuffer] = useState<Float32Array[]>([]);
 
   // Visibility optimization hooks
   const isPageVisible = usePageVisibility();
@@ -87,19 +87,29 @@ export default function Spectrogram({
     [interactionCanvasRef],
   );
 
-  // Compute display data based on mode
-  const displayData = useMemo((): Float32Array[] => {
+  // Update the waterfall buffer when fftData, mode, or maxWaterfallFrames change
+  useEffect(() => {
     if (mode === "waterfall") {
       // Append new frames to buffer
-      const newBuffer = [...waterfallBufferRef.current, ...fftData];
-      // Keep only the most recent maxWaterfallFrames
-      const trimmed = newBuffer.slice(-maxWaterfallFrames);
-      waterfallBufferRef.current = trimmed;
-      return trimmed;
+      setWaterfallBuffer((prevBuffer) => {
+        const newBuffer = [...prevBuffer, ...fftData];
+        // Keep only the most recent maxWaterfallFrames
+        return newBuffer.slice(-maxWaterfallFrames);
+      });
+    } else {
+      // Reset buffer when not in waterfall mode
+      setWaterfallBuffer([]);
+    }
+  }, [fftData, mode, maxWaterfallFrames]);
+
+  // Compute display data based on mode (pure, no side effects)
+  const displayData = useMemo((): Float32Array[] => {
+    if (mode === "waterfall") {
+      return waterfallBuffer;
     }
     // Static spectrogram mode: show all data as-is
     return fftData;
-  }, [fftData, mode, maxWaterfallFrames]);
+  }, [waterfallBuffer, fftData, mode]);
 
   // Generate accessible text description of the spectrogram data
   const accessibleDescription = useMemo((): string => {
