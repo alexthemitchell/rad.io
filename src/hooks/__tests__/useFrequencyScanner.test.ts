@@ -63,6 +63,9 @@ class MockSDRDevice implements ISDRDevice {
   async getSampleRate(): Promise<number> {
     return 2e6;
   }
+  reset(): Promise<void> {
+    return Promise.resolve();
+  }
 
   async setLNAGain(): Promise<void> {
     // Mock implementation
@@ -135,6 +138,7 @@ describe("useFrequencyScanner", () => {
       expect(result.current.config).toEqual({
         startFrequency: 88e6,
         endFrequency: 108e6,
+        enableRDS: true,
         stepSize: 100e3,
         threshold: 0.3,
         dwellTime: 50,
