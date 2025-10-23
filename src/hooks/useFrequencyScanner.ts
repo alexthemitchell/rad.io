@@ -88,11 +88,48 @@ export function useFrequencyScanner(
 
   // Track an in-flight dwell/settle timeout and its resolver so we can abort instantly
   const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sampleCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const dwellResolveRef = useRef<(() => void) | null>(null);
   const samplesRef = useRef<number[]>([]);
   const iqSamplesRef = useRef<IQSample[]>([]);
   const isScanningRef = useRef(false);
+  const receivePromiseRef = useRef<Promise<void> | null>(null);
   const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
+
+  const clearPendingTimers = useCallback((): void => {
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = null;
+    }
+    if (sampleCheckTimeoutRef.current) {
+      clearTimeout(sampleCheckTimeoutRef.current);
+      sampleCheckTimeoutRef.current = null;
+    }
+  }, []);
+
+  const settleReceivePromise = useCallback(async (): Promise<void> => {
+    if (receivePromiseRef.current) {
+      try {
+        await receivePromiseRef.current;
+      } catch (error) {
+        if (error instanceof Error) {
+          const msg = error.message ?? "";
+          if (
+            error.name !== "AbortError" &&
+            !msg.includes("Device is closing or closed")
+          ) {
+            console.error("Scanner: receive loop error", error);
+          }
+        } else {
+          console.error("Scanner: receive loop error", error);
+        }
+      } finally {
+        receivePromiseRef.current = null;
+      }
+    }
+  }, []);
 
   /**
    * Scan a single frequency chunk using FFT-based wideband analysis
@@ -105,9 +142,11 @@ export function useFrequencyScanner(
       }
 
       try {
-        // Stop any previous streaming
+        // Stop any previous streaming and ensure the receive loop settled
+        await settleReceivePromise();
         if (device.isReceiving()) {
           await device.stopRx();
+          await settleReceivePromise();
         }
 
         // Tune to center frequency
@@ -118,7 +157,7 @@ export function useFrequencyScanner(
         iqSamplesRef.current = [];
 
         // Start receiving samples (non-blocking - starts streaming in background)
-        void device.receive((data: DataView) => {
+        receivePromiseRef.current = device.receive((data: DataView) => {
           // Only process if still scanning
           if (!isScanningRef.current) {
             return;
@@ -127,25 +166,58 @@ export function useFrequencyScanner(
           // Parse and store IQ samples
           const samples = device.parseSamples(data);
           iqSamplesRef.current.push(...samples);
+
+          if (
+            iqSamplesRef.current.length >= config.fftSize &&
+            dwellResolveRef.current
+          ) {
+            dwellResolveRef.current();
+          }
         });
 
         // Wait for dwell time to collect samples (abortable)
         await new Promise<void>((resolve) => {
-          dwellResolveRef.current = (): void => {
+          let resolved = false;
+          const finalize = (): void => {
+            if (resolved) {
+              return;
+            }
+            resolved = true;
             dwellResolveRef.current = null;
+            clearPendingTimers();
             resolve();
           };
-          scanTimeoutRef.current = setTimeout(() => {
-            scanTimeoutRef.current = null;
-            dwellResolveRef.current = null;
-            resolve();
-          }, config.dwellTime);
+
+          const monitorSamples = (): void => {
+            sampleCheckTimeoutRef.current = null;
+            if (!isScanningRef.current) {
+              finalize();
+              return;
+            }
+            if (iqSamplesRef.current.length >= config.fftSize) {
+              finalize();
+              return;
+            }
+            sampleCheckTimeoutRef.current = setTimeout(monitorSamples, 10);
+          };
+
+          dwellResolveRef.current = finalize;
+          scanTimeoutRef.current = setTimeout(finalize, config.dwellTime);
+          sampleCheckTimeoutRef.current = setTimeout(monitorSamples, 10);
+
+          if (iqSamplesRef.current.length >= config.fftSize) {
+            finalize();
+          }
         });
+
+        // Ensure timers are cleared if the promise resolved via external signal
+        clearPendingTimers();
 
         // Stop streaming
         if (device.isReceiving()) {
           await device.stopRx();
         }
+        await settleReceivePromise();
 
         // If scanning stopped during dwell, exit
         if (!isScanningRef.current) {
@@ -178,6 +250,34 @@ export function useFrequencyScanner(
           threshold,
           config.minPeakSpacing,
         );
+
+        let maxPower = -Infinity;
+        let minPower = Infinity;
+        for (let i = 0; i < powerSpectrum.length; i++) {
+          const value = powerSpectrum[i]!;
+          if (value > maxPower) {
+            maxPower = value;
+          }
+          if (value < minPower) {
+            minPower = value;
+          }
+        }
+
+        if (Number.isFinite(maxPower) && Number.isFinite(minPower)) {
+          const peakFrequencies = peaks.map((peak) =>
+            Number((peak.frequency / 1e6).toFixed(3)),
+          );
+          console.debug("Scanner chunk stats", {
+            centerFrequencyMHz: Number((centerFrequency / 1e6).toFixed(3)),
+            sampleCount: iqSamplesRef.current.length,
+            noiseFloorDb: Number(noiseFloor.toFixed(2)),
+            thresholdDb: Number(threshold.toFixed(2)),
+            maxPowerDb: Number(maxPower.toFixed(2)),
+            minPowerDb: Number(minPower.toFixed(2)),
+            peaksDetected: peaks.length,
+            peakFrequenciesMHz: peakFrequencies,
+          });
+        }
 
         // Process each detected peak
         for (const peak of peaks) {
@@ -251,12 +351,20 @@ export function useFrequencyScanner(
           `Error scanning frequency chunk ${centerFrequency}:`,
           error,
         );
+        clearPendingTimers();
         if (device.isReceiving()) {
           await device.stopRx().catch(console.error);
         }
+        await settleReceivePromise();
       }
     },
-    [device, config, onSignalDetected],
+    [
+      device,
+      config,
+      onSignalDetected,
+      clearPendingTimers,
+      settleReceivePromise,
+    ],
   );
 
   /**
@@ -281,15 +389,40 @@ export function useFrequencyScanner(
       // Get device sample rate and usable bandwidth
       // IMPORTANT: Ensure device is configured with a valid sample rate
       // If sample rate has never been set, set it to a browser-friendly value
-      let sampleRate = await device.getSampleRate();
-      if (!sampleRate || sampleRate === 0) {
-        // Set to 2.048 MSPS for browser-friendly real-time processing
-        sampleRate = 2.048e6;
-        await device.setSampleRate(sampleRate);
+      const preferredSampleRate = 2.048e6;
+      const currentSampleRate = await device.getSampleRate();
+      const previousSampleRate =
+        currentSampleRate && currentSampleRate > 0 ? currentSampleRate : null;
+
+      let sampleRateToUse = previousSampleRate ?? preferredSampleRate;
+
+      const shouldForcePreferredRate =
+        previousSampleRate === null ||
+        Math.abs(previousSampleRate - preferredSampleRate) >
+          preferredSampleRate * 0.01;
+
+      if (shouldForcePreferredRate) {
+        sampleRateToUse = preferredSampleRate;
         console.info(
-          `Scanner: Initialized device sample rate to ${sampleRate / 1e6} MSPS`,
+          `Scanner: Using preferred sample rate ${(
+            sampleRateToUse / 1e6
+          ).toFixed(3)} MSPS`,
         );
       }
+
+      if (previousSampleRate !== sampleRateToUse) {
+        const previousLabel = previousSampleRate
+          ? `${(previousSampleRate / 1e6).toFixed(3)} MSPS`
+          : "unknown";
+        console.info(
+          `Scanner: Adjusting device sample rate from ${previousLabel} to ${(
+            sampleRateToUse / 1e6
+          ).toFixed(3)} MSPS`,
+        );
+      }
+
+      await device.setSampleRate(sampleRateToUse);
+      const sampleRate = sampleRateToUse;
       const usableBandwidth = await device.getUsableBandwidth();
 
       // Calculate center frequencies to cover the full range
@@ -332,9 +465,19 @@ export function useFrequencyScanner(
    * Start scanning
    */
   const startScan = useCallback(async (): Promise<void> => {
-    if (!device || !device.isOpen()) {
-      console.error("Device not available or not open");
+    if (!device) {
+      console.error("Scanner: Device not available");
       return;
+    }
+
+    if (!device.isOpen()) {
+      try {
+        await device.open();
+        console.info("Scanner: Opened device before starting scan");
+      } catch (error) {
+        console.error("Scanner: Failed to open device for scanning", error);
+        return;
+      }
     }
 
     if (state === "scanning") {
@@ -368,15 +511,13 @@ export function useFrequencyScanner(
       setState("paused");
       isScanningRef.current = false;
       // Abort any in-flight dwell
-      if (scanTimeoutRef.current) {
-        clearTimeout(scanTimeoutRef.current);
-        scanTimeoutRef.current = null;
-      }
+      clearPendingTimers();
       if (dwellResolveRef.current) {
         dwellResolveRef.current();
       }
+      void settleReceivePromise();
     }
-  }, [state]);
+  }, [state, clearPendingTimers, settleReceivePromise]);
 
   /**
    * Resume scanning
@@ -404,14 +545,12 @@ export function useFrequencyScanner(
     isScanningRef.current = false;
     setCurrentFrequency(null);
     setProgress(0);
-    if (scanTimeoutRef.current) {
-      clearTimeout(scanTimeoutRef.current);
-      scanTimeoutRef.current = null;
-    }
+    clearPendingTimers();
     if (dwellResolveRef.current) {
       dwellResolveRef.current();
     }
-  }, []);
+    void settleReceivePromise();
+  }, [clearPendingTimers, settleReceivePromise]);
 
   /**
    * Update scanner configuration
@@ -462,11 +601,15 @@ export function useFrequencyScanner(
       if (scanTimeoutRef.current) {
         clearTimeout(scanTimeoutRef.current);
       }
+      if (sampleCheckTimeoutRef.current) {
+        clearTimeout(sampleCheckTimeoutRef.current);
+      }
       if (dwellResolveRef.current) {
         dwellResolveRef.current();
       }
+      void settleReceivePromise();
     };
-  }, []);
+  }, [settleReceivePromise]);
 
   return {
     // State

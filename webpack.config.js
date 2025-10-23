@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
 
@@ -36,7 +37,10 @@ module.exports = {
     }),
   ],
   devServer: {
-    static: "./dist",
+    static: {
+      directory: path.resolve(__dirname, "dist"),
+    },
+    historyApiFallback: true,
     hot: true,
     server: "https",
   },
