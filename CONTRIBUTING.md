@@ -219,7 +219,180 @@ it("should handle large datasets efficiently", () => {
 
 ## Test Coverage Goals
 
-- Aim for strong coverage across utility functions, device models, and key components.
+rad.io enforces strict coverage thresholds to maintain code quality and prevent regressions. All new code must meet or exceed these minimums:
+
+### Module-Specific Thresholds
+
+#### Critical DSP Utilities (≥95% coverage required)
+
+- `src/utils/dsp.ts` - Core DSP functions (FFT, spectrogram, waveform)
+- `src/utils/testMemoryManager.ts` - Test infrastructure
+
+**Why 95%?** These modules perform complex mathematical operations that directly affect signal quality. Any uncovered edge case could result in incorrect visualizations or crashes.
+
+#### Device Models (≥90% coverage required)
+
+- `src/models/SDRDevice.ts` - Universal device interface
+- `src/models/HackRFOne.ts` - Hardware communication layer
+
+**Why 90%?** Device drivers interact with hardware and must handle all error conditions gracefully. High coverage ensures robust USB communication and proper error recovery.
+
+#### Core Utilities (≥75-85% coverage required)
+
+- `src/utils/audioStream.ts` (85%) - Real-time audio processing
+- `src/utils/iqRecorder.ts` (75%) - Recording and playback
+- `src/utils/speechRecognition.ts` (75%) - Speech-to-text integration
+- `src/utils/p25decoder.ts` (95%) - P25 protocol decoder
+- `src/utils/rdsDecoder.ts` (55%) - RDS/RBDS data decoder
+- `src/utils/tmcDecoder.ts` (85%) - Traffic message decoder
+
+#### UI Components (≥70-75% coverage encouraged)
+
+- React components with WebGL fallbacks may have lower thresholds due to browser API mocking limitations
+- Focus on testing component logic, state management, and user interactions
+- Visual rendering tested via manual verification and E2E tests
+
+### Coverage Enforcement
+
+**CI/CD Pipeline**
+
+- All PRs must maintain or improve overall coverage
+- Per-module thresholds are enforced in `jest.config.js`
+- Codecov integration provides visual coverage reports
+- PRs that decrease coverage below thresholds will fail CI
+
+**Local Verification**
+
+```bash
+# Check coverage for all modules
+npm test -- --coverage
+
+# Check coverage for specific module
+npm test -- src/utils/__tests__/dsp.test.ts --coverage
+
+# Generate HTML coverage report
+npm test -- --coverage --coverageReporters=html
+open coverage/index.html
+```
+
+**Coverage Badge**
+
+[![codecov](https://codecov.io/gh/alexthemitchell/rad.io/branch/main/graph/badge.svg)](https://codecov.io/gh/alexthemitchell/rad.io)
+
+The badge in README.md reflects current coverage and links to detailed reports.
+
+### Test Strategy by Module Type
+
+#### DSP Functions
+
+- Test mathematical correctness with known inputs/outputs
+- Validate edge cases (zero, negative, NaN, Infinity)
+- Verify energy conservation (Parseval's theorem)
+- Test frequency accuracy within ±1 bin
+- Benchmark performance for large datasets
+
+**Example:**
+
+```typescript
+it("should satisfy Parseval's theorem (energy conservation)", () => {
+  const samples = generateSineWave(1000, 440, 48000);
+  const spectrum = calculateSpectrogramRow(samples, 512);
+
+  const timeEnergy = samples.reduce((sum, s) => sum + s.i ** 2 + s.q ** 2, 0);
+  const freqEnergy = spectrum.reduce((sum, val) => sum + val ** 2, 0);
+
+  expect(freqEnergy).toBeCloseTo(timeEnergy / spectrum.length, -1);
+});
+```
+
+#### Device Models
+
+- Mock WebUSB API to simulate hardware responses
+- Test all error conditions (device disconnected, invalid commands)
+- Verify state management (open/close, start/stop)
+- Test parameter validation (frequency ranges, gain limits)
+- Simulate realistic data streams
+
+**Example:**
+
+```typescript
+it("should recover from device disconnection", async () => {
+  const device = new HackRFOne(mockUSBDevice);
+  await device.open();
+  await device.startReceiving();
+
+  // Simulate disconnection
+  mockUSBDevice.opened = false;
+
+  await expect(device.setFrequency(100e6)).rejects.toThrow("Device not open");
+  expect(device.isOpen()).toBe(false);
+});
+```
+
+#### React Components
+
+- Test user interactions (clicks, keyboard input)
+- Verify state changes and side effects
+- Mock browser APIs (WebGL, WebUSB, Web Audio)
+- Test accessibility (ARIA attributes, keyboard navigation)
+- Validate error boundaries and fallback rendering
+
+**Example:**
+
+```typescript
+it("should fallback to 2D canvas when WebGL unavailable", () => {
+  // Mock WebGL failure
+  jest.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+
+  const { container } = render(<IQConstellation samples={mockSamples} />);
+
+  // Should still render
+  expect(container.querySelector("canvas")).toBeInTheDocument();
+});
+```
+
+### Adding Tests for New Features
+
+When adding new functionality:
+
+1. **Write tests first (TDD approach)** - Define expected behavior before implementation
+2. **Test public APIs** - Focus on inputs/outputs, not internal implementation
+3. **Cover edge cases** - Test boundary conditions, invalid inputs, error handling
+4. **Mock external dependencies** - Isolate unit under test from browser APIs, network, file system
+5. **Verify coverage** - Run `npm test -- --coverage` to confirm new code meets thresholds
+6. **Document test assumptions** - Add comments explaining complex test setups or mock data
+
+### Dealing with Hard-to-Test Code
+
+Some code paths are difficult to test due to browser API limitations:
+
+- **WebGL rendering** - Mock `getContext()` to test fallback logic
+- **WebUSB device access** - Create mock USB device objects
+- **Web Audio API** - Mock `AudioContext` and nodes
+- **IndexedDB** - Use fake-indexeddb package
+- **Web Workers** - Test worker code in isolation
+
+**When coverage is impractical:**
+
+1. Document why full coverage isn't achievable (add comment in code)
+2. Manually verify behavior with browser testing
+3. Add E2E tests if available
+4. Consider refactoring to extract testable logic
+
+### Coverage vs Quality
+
+**Coverage is a tool, not a goal.** High coverage doesn't guarantee bug-free code:
+
+- 100% statement coverage can miss logic errors
+- Edge cases may not be covered even with high line coverage
+- Integration issues can exist despite perfect unit test coverage
+
+**Focus on:**
+
+- **Meaningful tests** - Each test should verify specific behavior
+- **Realistic scenarios** - Use production-like data and workflows
+- **Regression prevention** - Add tests for every bug fix
+- **Maintainability** - Tests should be clear, concise, and well-documented
 
 ## Commit Messages
 
