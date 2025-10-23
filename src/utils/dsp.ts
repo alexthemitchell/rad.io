@@ -39,7 +39,7 @@ function getTrigTables(fftSize: number): {
     // Limit cache size to prevent memory growth
     // Keep only the 10 most recently used sizes
     if (trigCache.size > 10) {
-      const firstKey = trigCache.keys().next().value as number;
+      const firstKey = trigCache.keys().next().value!;
       trigCache.delete(firstKey);
     }
   }
@@ -229,7 +229,7 @@ export function calculateSpectrogram(
 /**
  * Convert raw IQ samples to Sample objects
  */
-export function convertToSamples(rawSamples: [number, number][]): Sample[] {
+export function convertToSamples(rawSamples: Array<[number, number]>): Sample[] {
   return rawSamples.map(([i, q]) => {
     if (i === undefined || q === undefined) {
       throw new Error("invalid sample");
@@ -371,8 +371,8 @@ export function detectSpectralPeaks(
   sampleRate: number,
   centerFrequency: number,
   thresholdDb: number,
-  minPeakSpacing: number = 100e3, // 100 kHz default for FM stations
-  edgeMargin: number = 10, // Ignore edge bins
+  minPeakSpacing = 100e3, // 100 kHz default for FM stations
+  edgeMargin = 10, // Ignore edge bins
 ): SpectralPeak[] {
   const peaks: SpectralPeak[] = [];
   const fftSize = powerSpectrum.length;
@@ -423,7 +423,7 @@ export function detectSpectralPeaks(
  */
 export function estimateNoiseFloor(
   powerSpectrum: Float32Array,
-  percentile: number = 0.25,
+  percentile = 0.25,
 ): number {
   if (powerSpectrum.length === 0) {
     return -100;

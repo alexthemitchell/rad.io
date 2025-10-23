@@ -15,6 +15,19 @@
  * - https://digitalcommons.andrews.edu/cgi/viewcontent.cgi?article=1003&context=honors
  */
 
+import {
+  createEmptyRDSData,
+  RDSGroupType as GroupType,
+} from "../models/RDSData";
+import {
+  TMCDirection,
+  TMCDuration,
+  type TMCExtent,
+  getEventInfo,
+  formatDuration,
+  formatExtent,
+  createEmptyTMCStats,
+ type TMCMessage, type TMCDecoderStats } from "../models/TMCData";
 import type {
   RDSBlock,
   RDSGroup,
@@ -22,20 +35,6 @@ import type {
   RDSDecoderStats,
   RDSGroupType,
 } from "../models/RDSData";
-import {
-  createEmptyRDSData,
-  RDSGroupType as GroupType,
-} from "../models/RDSData";
-import type { TMCMessage, TMCDecoderStats } from "../models/TMCData";
-import {
-  TMCDirection,
-  TMCDuration,
-  TMCExtent,
-  getEventInfo,
-  formatDuration,
-  formatExtent,
-  createEmptyTMCStats,
-} from "../models/TMCData";
 
 /**
  * RDS Constants
@@ -76,14 +75,15 @@ export class RDSDecoder {
   private frequency = RDS_SUBCARRIER_FREQ;
 
   // Bit synchronization state
-  private bitSync = false;
+  // TODO: Implement proper bit synchronization - private _bitSync = false;
   private bitPhase = 0;
   private samplesPerBit: number;
 
   // Block synchronization state
   private blockSync = false;
   private blockBuffer: number[] = [];
-  private blockPosition = 0;
+  // TODO: Use blockPosition for error recovery - currently only written to, commented out for noUnusedLocals
+  // private blockPosition = 0;
   private currentGroupBlocks: RDSBlock[] = [];
 
   // RDS data buffers
@@ -91,7 +91,7 @@ export class RDSDecoder {
   private rtBuffer: string[] = new Array(64).fill("");
 
   // TMC data storage
-  private tmcMessages: Map<number, TMCMessage> = new Map();
+  private tmcMessages = new Map<number, TMCMessage>();
   private tmcStats: TMCDecoderStats;
 
   constructor(sampleRate: number) {
@@ -213,7 +213,7 @@ export class RDSDecoder {
         } else {
           // Lost sync
           this.blockSync = false;
-          this.blockPosition = 0;
+          // this.blockPosition = 0;
         }
       }
     }
@@ -243,7 +243,7 @@ export class RDSDecoder {
     ) {
       // Found sync!
       this.blockSync = true;
-      this.blockPosition = 0;
+      // this.blockPosition = 0;
       this.stats.syncLocked = true;
       this.stats.lastSync = Date.now();
 
@@ -317,7 +317,7 @@ export class RDSDecoder {
     // Block A always contains PI code and starts a new group
     if (block.offsetWord === "A") {
       this.stationData.pi = block.data;
-      this.blockPosition = 1;
+      // this.blockPosition = 1;
       this.currentGroupBlocks = [block];
     } else if (block.offsetWord === "B") {
       // Block B contains group type and other info
@@ -329,17 +329,17 @@ export class RDSDecoder {
       this.stationData.tp = tp;
       this.stationData.pty = pty;
 
-      this.blockPosition = 2;
+      // this.blockPosition = 2;
       this.currentGroupBlocks.push(block);
 
       // Store group type and version for later use
       this.currentGroupBlocks[1]!.groupType = groupType;
       this.currentGroupBlocks[1]!.groupVersion = version;
     } else if (block.offsetWord === "C" || block.offsetWord === "C'") {
-      this.blockPosition = 3;
+      // this.blockPosition = 3;
       this.currentGroupBlocks.push(block);
     } else if (block.offsetWord === "D") {
-      this.blockPosition = 0;
+      // this.blockPosition = 0;
       this.currentGroupBlocks.push(block);
 
       // We now have a complete group (4 blocks)
@@ -496,18 +496,18 @@ export class RDSDecoder {
 
     try {
       // Block B contains continuity index (CI) and other control bits
-      const blockB = group.blocks[1]!.data;
+      const blockB = group.blocks[1].data;
       const continuityIndex = blockB & 0x7; // 3 bits (0-7)
 
       // Block C contains event information
-      const blockC = group.blocks[2]!.data;
+      const blockC = group.blocks[2].data;
       const eventCode = (blockC >> 5) & 0x7ff; // 11 bits (top 11 bits)
       const extent = (blockC >> 2) & 0x7; // 3 bits
       const direction = (blockC >> 1) & 0x1; // 1 bit
       const diversionAdvice = blockC & 0x1; // 1 bit (LSB)
 
       // Block D contains location code
-      const blockD = group.blocks[3]!.data;
+      const blockD = group.blocks[3].data;
       const locationCode = blockD; // 16 bits
 
       // Get event information
@@ -538,7 +538,7 @@ export class RDSDecoder {
       let expiresAt: number | null = null;
       if (duration !== TMCDuration.NO_DURATION) {
         // Map TMCDuration enum to actual duration in milliseconds
-        const durationToMs: { [key in TMCDuration]: number } = {
+        const durationToMs: Record<TMCDuration, number> = {
           [TMCDuration.NO_DURATION]: 0,
           [TMCDuration.MINUTES_15]: 15 * 60 * 1000,
           [TMCDuration.MINUTES_30]: 30 * 60 * 1000,
@@ -665,7 +665,7 @@ export class RDSDecoder {
     this.tmcMessages.clear();
     this.blockSync = false;
     this.blockBuffer = [];
-    this.blockPosition = 0;
+    // this.blockPosition = 0;
     this.currentGroupBlocks = [];
     this.psBuffer = new Array(8).fill("");
     this.rtBuffer = new Array(64).fill("");

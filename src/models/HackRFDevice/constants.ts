@@ -34,7 +34,7 @@ export enum ErrorCode {
   OTHER = -9999,
 }
 
-export const errorMessages: { [code: number]: string } = {
+export const errorMessages: Record<number, string> = {
   [ErrorCode.INVALID_PARAM]: "invalid parameter(s)",
   [ErrorCode.NOT_FOUND]: "HackRF not found",
   [ErrorCode.BUSY]: "HackRF busy",
@@ -56,7 +56,7 @@ export enum BoardId {
   RAD1O = 3,
 }
 
-export const boardIdNames: { [boardId: number]: string } = {
+export const boardIdNames: Record<number, string> = {
   [BoardId.JELLYBEAN]: "Jellybean",
   [BoardId.JAWBREAKER]: "Jawbreaker",
   [BoardId.HACKRF_ONE]: "HackRF One",
@@ -70,7 +70,7 @@ export enum UsbBoardId {
   RAD1O = 0xcc15,
 }
 
-export const usbBoardIdNames: { [usbBoardId: number]: string } = {
+export const usbBoardIdNames: Record<number, string> = {
   [UsbBoardId.JAWBREAKER]: "Jawbreaker",
   [UsbBoardId.HACKRF_ONE]: "HackRF One",
   [UsbBoardId.RAD1O]: "rad1o",
@@ -85,7 +85,7 @@ export enum RfPathFilter {
   HIGH_PASS = 2,
 }
 
-export const rfPathFilterNames: { [rfPathFilter: number]: string } = {
+export const rfPathFilterNames: Record<number, string> = {
   [RfPathFilter.BYPASS]: "mixer bypass",
   [RfPathFilter.LOW_PASS]: "low pass filter",
   [RfPathFilter.HIGH_PASS]: "high pass filter",

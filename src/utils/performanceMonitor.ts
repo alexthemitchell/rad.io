@@ -29,10 +29,10 @@ export interface LongTaskEntry {
  * Performance monitor class for tracking DSP and rendering pipeline
  */
 class PerformanceMonitor {
-  private metrics: Map<string, PerformanceMetrics[]> = new Map();
+  private metrics = new Map<string, PerformanceMetrics[]>();
   private longTasks: LongTaskEntry[] = [];
   private observer: PerformanceObserver | null = null;
-  private enabled: boolean = true;
+  private enabled = true;
 
   constructor() {
     this.initializeObserver();

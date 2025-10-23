@@ -1,4 +1,4 @@
-import { useEffect, useState, RefObject, useMemo } from "react";
+import { useEffect, useState, type RefObject, useMemo } from "react";
 
 export type UseIntersectionObserverOptions = {
   /**

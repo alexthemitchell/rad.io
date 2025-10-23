@@ -18,7 +18,7 @@
  * - Signal Identification Wiki: https://www.sigidwiki.com/wiki/Project_25_(P25)
  */
 
-import { Sample } from "./dsp";
+import { type Sample } from "./dsp";
 
 /**
  * P25 Phase 2 symbol mapping
@@ -207,9 +207,9 @@ export function extractTDMASlots(symbols: number[]): {
   // TDMA alternates: even indices = slot 1, odd indices = slot 2
   for (let i = 0; i < symbols.length; i++) {
     if (i % 2 === 0) {
-      slot1.push(symbols[i] as number);
+      slot1.push(symbols[i]!);
     } else {
-      slot2.push(symbols[i] as number);
+      slot2.push(symbols[i]!);
     }
   }
 
@@ -237,7 +237,7 @@ export function symbolsToBits(symbols: number[]): number[] {
  */
 export function detectFrameSync(
   bits: number[],
-  threshold: number = 0.8,
+  threshold = 0.8,
 ): number {
   const syncLength = P25_SYNC_PATTERN.length;
   const minMatches = Math.floor(syncLength * threshold);

@@ -1,15 +1,15 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
-import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
-import { useLiveRegion } from "../hooks/useLiveRegion";
-import SignalTypeSelector, {
-  SignalType,
-} from "../components/SignalTypeSelector";
-import FrequencyScanner from "../components/FrequencyScanner";
-import TalkgroupScanner, { Talkgroup } from "../components/TalkgroupScanner";
-import TalkgroupStatus from "../components/TalkgroupStatus";
 import Card from "../components/Card";
+import FrequencyScanner from "../components/FrequencyScanner";
+import SignalTypeSelector, {
+  type SignalType,
+} from "../components/SignalTypeSelector";
+import TalkgroupScanner, { type Talkgroup } from "../components/TalkgroupScanner";
+import TalkgroupStatus from "../components/TalkgroupStatus";
+import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
+import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useLiveRegion } from "../hooks/useLiveRegion";
 
 function Scanner(): React.JSX.Element {
   const navigate = useNavigate();

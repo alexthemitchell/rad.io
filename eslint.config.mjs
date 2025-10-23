@@ -4,6 +4,7 @@ import tseslint from "typescript-eslint";
 import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import jsxA11y from "eslint-plugin-jsx-a11y";
+import pluginImport from "eslint-plugin-import";
 import json from "@eslint/json";
 import markdown from "@eslint/markdown";
 import { defineConfig } from "eslint/config";
@@ -25,15 +26,24 @@ export default defineConfig([
         ...globals.browser,
         ...globals.node,
       },
+      parserOptions: {
+        project: "./tsconfig.json",
+      },
     },
   },
   ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.strict,
+  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.stylistic,
+  ...tseslint.configs.stylisticTypeChecked,
   pluginReact.configs.flat.recommended,
   jsxA11y.flatConfigs.recommended,
   {
     files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     plugins: {
       "react-hooks": pluginReactHooks,
+      import: pluginImport,
     },
     rules: {
       // React rules
@@ -44,7 +54,7 @@ export default defineConfig([
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
 
-      // TypeScript rules
+      // TypeScript rules - Basic
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -55,6 +65,120 @@ export default defineConfig([
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/explicit-function-return-type": "error",
       "@typescript-eslint/explicit-module-boundary-types": "error",
+
+      // TypeScript rules - Type Safety
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/await-thenable": "error",
+      "@typescript-eslint/no-misused-promises": "error",
+      "@typescript-eslint/promise-function-async": "error",
+      "@typescript-eslint/require-array-sort-compare": "error",
+      "@typescript-eslint/no-unnecessary-type-assertion": "error",
+
+      // TypeScript rules - Modern JavaScript Features
+      "@typescript-eslint/prefer-nullish-coalescing": "warn",
+      "@typescript-eslint/prefer-optional-chain": "warn",
+      "@typescript-eslint/prefer-reduce-type-parameter": "warn",
+      "@typescript-eslint/prefer-for-of": "warn",
+
+      // TypeScript rules - Code Quality
+      "@typescript-eslint/switch-exhaustiveness-check": "error",
+      "@typescript-eslint/no-unnecessary-condition": "warn", // Changed to warn - can have false positives
+      "@typescript-eslint/consistent-type-imports": [
+        "warn",  // Changed to warn to not break existing code
+        {
+          prefer: "type-imports",
+          fixStyle: "inline-type-imports",
+        },
+      ],
+      "@typescript-eslint/array-type": ["warn", { default: "array-simple" }],
+      "@typescript-eslint/consistent-type-definitions": "off", // Allow both type and interface
+      "@typescript-eslint/restrict-template-expressions": [
+        "error",
+        {
+          allowNumber: true,  // Allow numbers in template literals
+          allowBoolean: true,
+        },
+      ],
+      "@typescript-eslint/no-non-null-assertion": "warn", // Warn instead of error
+      "@typescript-eslint/no-confusing-void-expression": [
+        "error",
+        {
+          ignoreArrowShorthand: true,
+        },
+      ],
+
+      // TypeScript rules - Naming Conventions
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          selector: "default",
+          format: ["camelCase"],
+          leadingUnderscore: "allow",
+          trailingUnderscore: "allow",
+        },
+        {
+          selector: "import",
+          format: ["camelCase", "PascalCase"],
+        },
+        {
+          selector: "variable",
+          format: ["camelCase", "UPPER_CASE", "PascalCase"],
+          leadingUnderscore: "allow",
+          trailingUnderscore: "allow",
+        },
+        {
+          selector: "function",
+          format: ["camelCase", "PascalCase"],
+        },
+        {
+          selector: "parameter",
+          format: ["camelCase"],
+          leadingUnderscore: "allow",
+        },
+        {
+          selector: "property",
+          format: ["camelCase", "PascalCase", "UPPER_CASE"],
+          leadingUnderscore: "allow",
+        },
+        {
+          selector: "typeLike",
+          format: ["PascalCase"],
+        },
+        {
+          selector: "enumMember",
+          format: ["PascalCase", "UPPER_CASE"],
+        },
+        {
+          selector: "interface",
+          format: ["PascalCase"],
+          // Prefer I prefix but don't require it for existing code
+          custom: {
+            regex: "^I?[A-Z]",
+            match: true,
+          },
+        },
+      ],
+
+      // Import plugin rules
+      "import/order": [
+        "error",
+        {
+          groups: [
+            "builtin",
+            "external",
+            "internal",
+            "parent",
+            "sibling",
+            "index",
+            "object",
+            "type",
+          ],
+          alphabetize: { order: "asc", caseInsensitive: true },
+          "newlines-between": "never",
+        },
+      ],
+      "import/no-cycle": "error",
+      "import/no-duplicates": "error",
 
       // Accessibility rules - enforce best practices
       "jsx-a11y/alt-text": "error",
@@ -94,10 +218,23 @@ export default defineConfig([
       "no-var": "error",
       eqeqeq: ["error", "always"],
       curly: ["error", "all"],
+      "no-implicit-coercion": "error",
+      "no-param-reassign": [
+        "error",
+        {
+          props: true,
+          ignorePropertyModificationsFor: ["ref", "refs", "state"],
+        },
+      ],
+      "default-case-last": "error",
     },
     settings: {
       react: {
         version: "detect",
+      },
+      "import/resolver": {
+        typescript: true,
+        node: true,
       },
     },
   },

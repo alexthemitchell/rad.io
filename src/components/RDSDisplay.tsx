@@ -10,9 +10,9 @@
  * - Other metadata (TP, TA, time)
  */
 
-import React, { useEffect, useState, type ReactElement } from "react";
-import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
+import { useEffect, useState, type ReactElement } from "react";
 import { PTY_NAMES, formatPICode, getCountryFromPI } from "../models/RDSData";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 
 interface RDSDisplayProps {
   rdsData: RDSStationData | null;

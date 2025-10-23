@@ -24,9 +24,9 @@
  * @module audioStream
  */
 
-import type { IQSample } from "../models/SDRDevice";
-import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 import { RDSDecoder } from "./rdsDecoder";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
+import type { IQSample } from "../models/SDRDevice";
 
 /**
  * Audio output format configuration

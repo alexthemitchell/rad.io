@@ -9,9 +9,9 @@
  * - Statistics
  */
 
-import React, { type ReactElement } from "react";
-import type { TMCMessage, TMCDecoderStats } from "../models/TMCData";
+import { type ReactElement } from "react";
 import { getSeverityColor, TMCEventSeverity } from "../models/TMCData";
+import type { TMCMessage, TMCDecoderStats } from "../models/TMCData";
 
 interface TMCDisplayProps {
   messages: TMCMessage[];

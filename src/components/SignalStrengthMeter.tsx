@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sample, calculateSignalStrength } from "../utils/dsp";
+import { type Sample, calculateSignalStrength } from "../utils/dsp";
 
 type SignalStrengthMeterProps = {
   samples?: Sample[];

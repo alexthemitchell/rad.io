@@ -8,23 +8,23 @@
 
 import { HackRFOne } from "./HackRFOne";
 import {
-  ISDRDevice,
-  IQSample,
-  IQSampleCallback,
-  SDRDeviceInfo,
-  SDRCapabilities,
+  type ISDRDevice,
+  type IQSample,
+  type IQSampleCallback,
+  type SDRDeviceInfo,
+  type SDRCapabilities,
   SDRDeviceType,
-  SDRStreamConfig,
-  DeviceMemoryInfo,
+  type SDRStreamConfig,
+  type DeviceMemoryInfo,
   convertInt8ToIQ,
 } from "./SDRDevice";
 
 export class HackRFOneAdapter implements ISDRDevice {
   private device: HackRFOne;
-  private currentFrequency: number = 100e6; // 100 MHz default
-  private currentSampleRate: number = 20e6; // 20 MS/s default
-  private currentBandwidth: number = 20e6; // 20 MHz default
-  private isReceivingFlag: boolean = false;
+  private currentFrequency = 100e6; // 100 MHz default
+  private currentSampleRate = 20e6; // 20 MS/s default
+  private currentBandwidth = 20e6; // 20 MHz default
+  private isReceivingFlag = false;
 
   constructor(usbDevice: USBDevice) {
     this.device = new HackRFOne(usbDevice);

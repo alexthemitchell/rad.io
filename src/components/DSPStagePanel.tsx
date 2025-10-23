@@ -1,6 +1,6 @@
 import React from "react";
-import type { DSPPipelineStage } from "../hooks/useDSPPipeline";
 import DSPStageControls from "./DSPStageControls";
+import type { DSPPipelineStage } from "../hooks/useDSPPipeline";
 
 export type DSPStagePanelProps = {
   stage: DSPPipelineStage;

@@ -1,12 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ISDRDevice, IQSample } from "../models/SDRDevice";
-import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
+import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
 import {
   calculateFFTSync,
   detectSpectralPeaks,
   estimateNoiseFloor,
 } from "../utils/dsp";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 
 /**
  * Configuration for frequency scanning
@@ -136,7 +136,7 @@ export function useFrequencyScanner(
    */
   const scanFrequencyChunk = useCallback(
     async (centerFrequency: number, sampleRate: number): Promise<void> => {
-      if (!device || !device.isOpen()) {
+      if (!device?.isOpen()) {
         return;
       }
 

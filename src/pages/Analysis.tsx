@@ -1,13 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
-import { useLiveRegion } from "../hooks/useLiveRegion";
+import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
-import Card from "../components/Card";
-import { Sample } from "../utils/dsp";
+import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useLiveRegion } from "../hooks/useLiveRegion";
+import { type ISDRDevice } from "../models/SDRDevice";
+import { type Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
-import { ISDRDevice } from "../models/SDRDevice";
 
 const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
@@ -278,7 +278,7 @@ function Analysis(): React.JSX.Element {
   }, [cancelScheduledUpdate]);
 
   const _stopListening = useCallback(async (): Promise<void> => {
-    if (device && device.isReceiving()) {
+    if (device?.isReceiving()) {
       try {
         await device.stopRx();
       } catch (err) {
@@ -349,7 +349,7 @@ function Analysis(): React.JSX.Element {
         </Card>
 
         <InteractiveDSPPipeline
-          device={device as ISDRDevice | undefined}
+          device={device}
           samples={samples}
         />
 

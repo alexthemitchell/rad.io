@@ -67,7 +67,7 @@ function setup(
   dpr = devicePixelRatio;
   ctx = offscreen.getContext("2d", {
     alpha: false,
-  }) as OffscreenCanvasRenderingContext2D;
+  })!;
   if (!ctx) {
     postMessage({
       type: "error",
@@ -166,10 +166,10 @@ function drawConstellation(samples: Sample[], transform?: ViewTransform): void {
     const x = scaleI(sample.I);
     const y = scaleQ(sample.Q);
     const alpha = Math.min(1, 0.4 + density * 0.8);
-    c!.fillStyle = `rgba(80,200,255,${alpha})`;
-    c!.beginPath();
-    c!.arc(x, y, density > 0.5 ? 2.5 : 2, 0, Math.PI * 2);
-    c!.fill();
+    c.fillStyle = `rgba(80,200,255,${alpha})`;
+    c.beginPath();
+    c.arc(x, y, density > 0.5 ? 2.5 : 2, 0, Math.PI * 2);
+    c.fill();
   });
 
   // Restore context state after transform
@@ -246,10 +246,10 @@ function drawSpectrogram(
       const r = Math.round(68 + 185 * clamped);
       const g = Math.round(1 + 220 * clamped);
       const b = Math.round(84 - 50 * clamped);
-      c!.fillStyle = `rgb(${r},${g},${b})`;
+      c.fillStyle = `rgb(${r},${g},${b})`;
       const binHeight = chartHeight / Math.max(1, freqMaxLocal - freqMinLocal);
       const y = margin.top + chartHeight - (bin - freqMinLocal) * binHeight;
-      c!.fillRect(x, y - binHeight, frameWidth + 0.5, binHeight + 0.5);
+      c.fillRect(x, y - binHeight, frameWidth + 0.5, binHeight + 0.5);
     }
   }
 
@@ -296,7 +296,7 @@ function drawWaveform(samples: WaveformSample[]): void {
   const maxPoints = Math.max(100, Math.round(chartWidth * 2));
   const step = Math.max(1, Math.floor(amps.length / maxPoints));
 
-  c!.beginPath();
+  c.beginPath();
   for (let i = 0; i < amps.length; i += step) {
     const x = margin.left + (i / amps.length) * chartWidth;
     const amp = amps[i]!;
@@ -305,14 +305,14 @@ function drawWaveform(samples: WaveformSample[]): void {
       chartHeight -
       ((amp - displayMin) / displayRange) * chartHeight;
     if (i === 0) {
-      c!.moveTo(x, y);
+      c.moveTo(x, y);
     } else {
-      c!.lineTo(x, y);
+      c.lineTo(x, y);
     }
   }
-  c!.lineWidth = 2;
-  c!.strokeStyle = "rgba(100,220,255,0.9)";
-  c!.stroke();
+  c.lineWidth = 2;
+  c.strokeStyle = "rgba(100,220,255,0.9)";
+  c.stroke();
 
   const end = performance.now();
   postMessage({ type: "metrics", viz: "waveform", renderTimeMs: end - start });

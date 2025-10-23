@@ -1,19 +1,19 @@
 import React, { useMemo } from "react";
 import useDSPPipeline, { type DSPPipelineStage } from "../hooks/useDSPPipeline";
-import type { ISDRDevice } from "../models/SDRDevice";
-import type { Sample } from "../utils/dsp";
-import WaveformChart from "./WaveformChart";
-import IQConstellation from "./IQConstellation";
-import FFTChart from "./FFTChart";
-import DSPStagePanel from "./DSPStagePanel";
-import DSPComparisonView from "./DSPComparisonView";
-import DSPStageMetrics from "./DSPStageMetrics";
 import {
   exportStageDataAsCSV,
   exportStageDataAsJSON,
   copyToClipboard,
   savePNGFromCanvas,
 } from "../utils/exportUtils";
+import DSPComparisonView from "./DSPComparisonView";
+import DSPStageMetrics from "./DSPStageMetrics";
+import DSPStagePanel from "./DSPStagePanel";
+import FFTChart from "./FFTChart";
+import IQConstellation from "./IQConstellation";
+import WaveformChart from "./WaveformChart";
+import type { ISDRDevice } from "../models/SDRDevice";
+import type { Sample } from "../utils/dsp";
 
 type Props = {
   device: ISDRDevice | undefined;
@@ -105,7 +105,7 @@ export default function InteractiveDSPPipeline({
                   exportStageDataAsCSV(
                     selectedStage.id,
                     Array.isArray(selectedStage.outputData)
-                      ? (selectedStage.outputData as Record<string, unknown>[])
+                      ? (selectedStage.outputData as Array<Record<string, unknown>>)
                       : [],
                   ),
                 )
@@ -121,7 +121,7 @@ export default function InteractiveDSPPipeline({
                   exportStageDataAsJSON(
                     selectedStage.id,
                     Array.isArray(selectedStage.outputData)
-                      ? (selectedStage.outputData as Record<string, unknown>[])
+                      ? (selectedStage.outputData as Array<Record<string, unknown>>)
                       : [],
                   ),
                 )
@@ -136,7 +136,7 @@ export default function InteractiveDSPPipeline({
                 const canvas = document.querySelector("canvas");
                 if (canvas) {
                   savePNGFromCanvas(
-                    canvas as HTMLCanvasElement,
+                    canvas,
                     `${selectedStage.id}.png`,
                   );
                 }

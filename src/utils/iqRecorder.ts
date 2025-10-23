@@ -5,7 +5,7 @@
  * from SDR receivers. Supports both binary (.iq) and JSON (.json) formats.
  */
 
-import { IQSample } from "../models/SDRDevice";
+import { type IQSample } from "../models/SDRDevice";
 
 /**
  * Metadata for recorded IQ data
