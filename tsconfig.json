@@ -112,6 +112,7 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/__tests__/**",
-    "assembly"
+    "assembly",
+    "src/models/templates"
   ]
 }
