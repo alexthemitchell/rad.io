@@ -16,6 +16,16 @@ type SpectrogramProps = {
    * Defaults to false for power efficiency.
    */
   continueInBackground?: boolean;
+  /**
+   * Display mode: "spectrogram" shows all frames statically, "waterfall" scrolls new data from top
+   * Defaults to "spectrogram" for backward compatibility.
+   */
+  mode?: "spectrogram" | "waterfall";
+  /**
+   * Maximum number of frames to show in waterfall mode. Older frames are discarded.
+   * Only used when mode is "waterfall". Defaults to 100.
+   */
+  maxWaterfallFrames?: number;
 };
 
 export default function Spectrogram({
@@ -25,10 +35,15 @@ export default function Spectrogram({
   freqMin = 1000,
   freqMax = 1100,
   continueInBackground = false,
+  mode = "spectrogram",
+  maxWaterfallFrames = 100,
 }: SpectrogramProps): ReactElement {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
+  
+  // Waterfall mode: maintain a rolling buffer of frames
+  const waterfallBufferRef = useRef<Float32Array[]>([]);
 
   // Visibility optimization hooks
   const isPageVisible = usePageVisibility();
@@ -72,19 +87,34 @@ export default function Spectrogram({
     [interactionCanvasRef],
   );
 
+  // Compute display data based on mode
+  const displayData = useMemo((): Float32Array[] => {
+    if (mode === "waterfall") {
+      // Append new frames to buffer
+      const newBuffer = [...waterfallBufferRef.current, ...fftData];
+      // Keep only the most recent maxWaterfallFrames
+      const trimmed = newBuffer.slice(-maxWaterfallFrames);
+      waterfallBufferRef.current = trimmed;
+      return trimmed;
+    }
+    // Static spectrogram mode: show all data as-is
+    return fftData;
+  }, [fftData, mode, maxWaterfallFrames]);
+
   // Generate accessible text description of the spectrogram data
   const accessibleDescription = useMemo((): string => {
-    if (fftData.length === 0) {
+    if (displayData.length === 0) {
       return "No spectrogram data";
     }
 
-    const numFrames = fftData.length;
+    const numFrames = displayData.length;
     const binCount = freqMax - freqMin;
+    const modeDescription = mode === "waterfall" ? "Waterfall display" : "Spectrogram";
 
     // Find peak power and its frequency
     let maxPower = -Infinity;
     let maxPowerBin = 0;
-    fftData.forEach((row) => {
+    displayData.forEach((row) => {
       for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
         const value = row[bin]!;
         if (isFinite(value) && value > maxPower) {
@@ -94,12 +124,12 @@ export default function Spectrogram({
       }
     });
 
-    return `Spectrogram showing ${numFrames} time frames across ${binCount} frequency bins (${freqMin} to ${freqMax}). Peak power of ${maxPower.toFixed(2)} dB detected at frequency bin ${maxPowerBin}. Colors represent signal strength from low (dark) to high (bright).`;
-  }, [fftData, freqMin, freqMax]);
+    return `${modeDescription} showing ${numFrames} time frames across ${binCount} frequency bins (${freqMin} to ${freqMax}). Peak power of ${maxPower.toFixed(2)} dB detected at frequency bin ${maxPowerBin}. Colors represent signal strength from low (dark) to high (bright).`;
+  }, [displayData, freqMin, freqMax, mode]);
 
   useEffect((): void => {
     const canvas = internalCanvasRef.current;
-    if (!canvas || fftData.length === 0) {
+    if (!canvas || displayData.length === 0) {
       return;
     }
 
@@ -139,14 +169,14 @@ export default function Spectrogram({
         if (gl) {
           const bins = Math.max(
             1,
-            Math.min(fftData[0]?.length || 0, freqMax - freqMin),
+            Math.min(displayData[0]?.length || 0, freqMax - freqMin),
           );
-          const frames = fftData.length;
+          const frames = displayData.length;
 
           // Compute dynamic range
           let gmin = Infinity;
           let gmax = -Infinity;
-          for (const row of fftData) {
+          for (const row of displayData) {
             for (let b = freqMin; b < freqMax && b < row.length; b++) {
               const v = row[b]!;
               if (isFinite(v)) {
@@ -170,7 +200,7 @@ export default function Spectrogram({
           // Instead of fixed 5%, use percentile-based threshold for better weak signal visibility
           // Collect all finite power values
           const allPowers: number[] = [];
-          for (const row of fftData) {
+          for (const row of displayData) {
             for (let b = freqMin; b < freqMax && b < row.length; b++) {
               const v = row[b]!;
               if (isFinite(v)) {
@@ -200,7 +230,7 @@ export default function Spectrogram({
           const lut = webgl.viridisLUT256();
           const rgba = new Uint8Array(texW * texH * 4);
           for (let x = 0; x < texW; x++) {
-            const row = fftData[x]!;
+            const row = displayData[x]!;
             for (let y = 0; y < texH; y++) {
               const bin = freqMin + y;
               const v = row && bin < row.length ? row[bin]! : 0;
@@ -369,7 +399,7 @@ export default function Spectrogram({
           if (transferredRef.current) {
             workerRef.current.postMessage({
               type: "render",
-              data: { fftData, freqMin, freqMax, transform },
+              data: { fftData: displayData, freqMin, freqMax, transform },
             });
             return;
           }
@@ -405,14 +435,14 @@ export default function Spectrogram({
       const chartWidth = width - margin.left - margin.right;
       const chartHeight = height - margin.top - margin.bottom;
 
-      const numFrames = fftData.length;
+      const numFrames = displayData.length;
       const frameWidth = Math.max(1, chartWidth / numFrames);
       const binHeight = chartHeight / (freqMax - freqMin);
 
       let globalMin = Infinity;
       let globalMax = -Infinity;
 
-      fftData.forEach((row) => {
+      displayData.forEach((row) => {
         for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
           const value = row[bin]!;
           if (isFinite(value)) {
@@ -426,7 +456,7 @@ export default function Spectrogram({
       const effectiveMin = globalMin + range * 0.05;
       const effectiveMax = globalMax;
 
-      fftData.forEach((row, frameIdx) => {
+      displayData.forEach((row, frameIdx) => {
         const x = margin.left + frameIdx * frameWidth;
 
         for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
@@ -456,7 +486,7 @@ export default function Spectrogram({
 
     void run();
   }, [
-    fftData,
+    displayData,
     width,
     height,
     freqMin,
