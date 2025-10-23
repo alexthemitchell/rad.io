@@ -158,24 +158,16 @@ export function getViridisLUT(): Uint8Array {
     let r: number, g: number, b: number;
 
     if (idx >= keyColors.length - 1) {
-      const lastColor = keyColors[keyColors.length - 1];
-      if (!lastColor) {
-        r = g = b = 0;
-      } else {
-        r = lastColor[0];
-        g = lastColor[1];
-        b = lastColor[2];
-      }
+      const lastColor = keyColors[keyColors.length - 1]!;
+      r = lastColor[0]!;
+      g = lastColor[1]!;
+      b = lastColor[2]!;
     } else {
-      const c0 = keyColors[idx];
-      const c1 = keyColors[idx + 1];
-      if (!c0 || !c1) {
-        r = g = b = 0;
-      } else {
-        r = c0[0]! + (c1[0]! - c0[0]!) * frac;
-        g = c0[1]! + (c1[1]! - c0[1]!) * frac;
-        b = c0[2]! + (c1[2]! - c0[2]!) * frac;
-      }
+      const c0 = keyColors[idx]!;
+      const c1 = keyColors[idx + 1]!;
+      r = c0[0]! + (c1[0]! - c0[0]!) * frac;
+      g = c0[1]! + (c1[1]! - c0[1]!) * frac;
+      b = c0[2]! + (c1[2]! - c0[2]!) * frac;
     }
 
     lut[i * 4 + 0] = Math.round(r);
@@ -301,7 +293,9 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
 
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
     const result = await initWebGPU(canvas);
-    if (!result) {return false;}
+    if (!result) {
+      return false;
+    }
 
     this.device = result.device;
     this.context = result.context;
@@ -367,10 +361,14 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
   }
 
   render(data: unknown): boolean {
-    if (!this.device || !this.context || !this.pipeline) {return false;}
+    if (!this.device || !this.context || !this.pipeline) {
+      return false;
+    }
 
     const pointData = data as PointData;
-    if (!pointData.positions || pointData.positions.length === 0) {return false;}
+    if (!pointData.positions || pointData.positions.length === 0) {
+      return false;
+    }
 
     this.pointCount = pointData.positions.length / 2;
 
@@ -461,7 +459,9 @@ export class WebGPULineRenderer implements IVisualizationRenderer {
 
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
     const result = await initWebGPU(canvas);
-    if (!result) {return false;}
+    if (!result) {
+      return false;
+    }
 
     this.device = result.device;
     this.context = result.context;
@@ -539,11 +539,14 @@ export class WebGPULineRenderer implements IVisualizationRenderer {
   }
 
   render(data: unknown): boolean {
-    if (!this.device || !this.context || !this.pipeline || !this.bindGroup || !this.uniformBuffer)
-      {return false;}
+    if (!this.device || !this.context || !this.pipeline || !this.bindGroup || !this.uniformBuffer) {
+      return false;
+    }
 
     const lineData = data as LineData;
-    if (!lineData.positions || lineData.positions.length === 0) {return false;}
+    if (!lineData.positions || lineData.positions.length === 0) {
+      return false;
+    }
 
     this.pointCount = lineData.positions.length / 2;
 
@@ -629,7 +632,9 @@ export class WebGPUTextureRenderer implements IVisualizationRenderer {
 
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
     const result = await initWebGPU(canvas);
-    if (!result) {return false;}
+    if (!result) {
+      return false;
+    }
 
     this.device = result.device;
     this.context = result.context;
@@ -691,10 +696,14 @@ export class WebGPUTextureRenderer implements IVisualizationRenderer {
   }
 
   render(data: unknown): boolean {
-    if (!this.device || !this.context || !this.pipeline || !this.sampler) {return false;}
+    if (!this.device || !this.context || !this.pipeline || !this.sampler) {
+      return false;
+    }
 
     const textureData = data as TextureData;
-    if (!textureData.data || textureData.width === 0 || textureData.height === 0) {return false;}
+    if (!textureData.data || textureData.width === 0 || textureData.height === 0) {
+      return false;
+    }
 
     // Create or update texture if size changed
     if (
