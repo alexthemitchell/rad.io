@@ -34,6 +34,12 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Interactive Controls**: Pan, zoom, and multi-touch gestures for all visualizations
 - **Keyboard Navigation**: Accessible controls for precision signal analysis
 
+**Modern GPU Acceleration**:
+- **WebGPU Rendering**: Modern GPU API for maximum performance (Chrome 113+, Edge 113+)
+- **WebGL Fallback**: Wide browser support with hardware acceleration
+- **Progressive Enhancement**: Graceful degradation to Canvas 2D for older browsers
+- **Zero Dependencies**: Native browser APIs only - no external visualization libraries
+
 ### Speech Recognition & P25 Decoding 🎤
 
 - **Browser-Native Transcription**: Web Speech API integration for real-time speech-to-text
@@ -74,6 +80,7 @@ Adding a new device takes ~200 lines of code with the provided template and guid
 
 - **Comprehensive Unit Tests**: Coverage across DSP, devices, and components
 - **CI/CD Pipeline**: Automated lint, test (with coverage), format, build, and type-check
+- **Standard Visualization Interface**: `IVisualizationRenderer` ensures consistent rendering across WebGPU, WebGL, and Canvas backends
 - **Zero External Visualization Dependencies**: Native WebAudio API and Canvas rendering
 
 ### Accessibility ♿

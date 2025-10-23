@@ -75,9 +75,9 @@ export function createBuffer(
   });
 
   if (data instanceof Float32Array) {
-    new Float32Array(buffer.getMappedRange()).set(data as Float32Array);
+    new Float32Array(buffer.getMappedRange()).set(data);
   } else {
-    new Uint8Array(buffer.getMappedRange()).set(data as Uint8Array);
+    new Uint8Array(buffer.getMappedRange()).set(data);
   }
   buffer.unmap();
 
@@ -172,9 +172,9 @@ export function getViridisLUT(): Uint8Array {
       if (!c0 || !c1) {
         r = g = b = 0;
       } else {
-        r = c0[0] + (c1[0] - c0[0]) * frac;
-        g = c0[1] + (c1[1] - c0[1]) * frac;
-        b = c0[2] + (c1[2] - c0[2]) * frac;
+        r = c0[0]! + (c1[0]! - c0[0]!) * frac;
+        g = c0[1]! + (c1[1]! - c0[1]!) * frac;
+        b = c0[2]! + (c1[2]! - c0[2]!) * frac;
       }
     }
 
@@ -301,7 +301,7 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
 
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
     const result = await initWebGPU(canvas);
-    if (!result) return false;
+    if (!result) {return false;}
 
     this.device = result.device;
     this.context = result.context;
@@ -367,10 +367,10 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
   }
 
   render(data: unknown): boolean {
-    if (!this.device || !this.context || !this.pipeline) return false;
+    if (!this.device || !this.context || !this.pipeline) {return false;}
 
     const pointData = data as PointData;
-    if (!pointData.positions || pointData.positions.length === 0) return false;
+    if (!pointData.positions || pointData.positions.length === 0) {return false;}
 
     this.pointCount = pointData.positions.length / 2;
 
@@ -461,7 +461,7 @@ export class WebGPULineRenderer implements IVisualizationRenderer {
 
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
     const result = await initWebGPU(canvas);
-    if (!result) return false;
+    if (!result) {return false;}
 
     this.device = result.device;
     this.context = result.context;
@@ -540,15 +540,15 @@ export class WebGPULineRenderer implements IVisualizationRenderer {
 
   render(data: unknown): boolean {
     if (!this.device || !this.context || !this.pipeline || !this.bindGroup || !this.uniformBuffer)
-      return false;
+      {return false;}
 
     const lineData = data as LineData;
-    if (!lineData.positions || lineData.positions.length === 0) return false;
+    if (!lineData.positions || lineData.positions.length === 0) {return false;}
 
     this.pointCount = lineData.positions.length / 2;
 
     // Update uniform buffer with color
-    const color = lineData.color || [0.39, 0.86, 1.0, 0.9];
+    const color = lineData.color ?? [0.39, 0.86, 1.0, 0.9];
     this.device.queue.writeBuffer(this.uniformBuffer, 0, new Float32Array(color));
 
     // Update or create vertex buffer
@@ -629,7 +629,7 @@ export class WebGPUTextureRenderer implements IVisualizationRenderer {
 
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
     const result = await initWebGPU(canvas);
-    if (!result) return false;
+    if (!result) {return false;}
 
     this.device = result.device;
     this.context = result.context;
@@ -691,10 +691,10 @@ export class WebGPUTextureRenderer implements IVisualizationRenderer {
   }
 
   render(data: unknown): boolean {
-    if (!this.device || !this.context || !this.pipeline || !this.sampler) return false;
+    if (!this.device || !this.context || !this.pipeline || !this.sampler) {return false;}
 
     const textureData = data as TextureData;
-    if (!textureData.data || textureData.width === 0 || textureData.height === 0) return false;
+    if (!textureData.data || textureData.width === 0 || textureData.height === 0) {return false;}
 
     // Create or update texture if size changed
     if (
