@@ -76,14 +76,15 @@ export class RDSDecoder {
   private frequency = RDS_SUBCARRIER_FREQ;
 
   // Bit synchronization state
-  private bitSync = false;
+  // TODO: Implement proper bit synchronization - private _bitSync = false;
   private bitPhase = 0;
   private samplesPerBit: number;
 
   // Block synchronization state
   private blockSync = false;
   private blockBuffer: number[] = [];
-  private blockPosition = 0;
+  // TODO: Use blockPosition for error recovery - currently only written to, commented out for noUnusedLocals
+  // private blockPosition = 0;
   private currentGroupBlocks: RDSBlock[] = [];
 
   // RDS data buffers
@@ -213,7 +214,7 @@ export class RDSDecoder {
         } else {
           // Lost sync
           this.blockSync = false;
-          this.blockPosition = 0;
+          // this.blockPosition = 0;
         }
       }
     }
@@ -243,7 +244,7 @@ export class RDSDecoder {
     ) {
       // Found sync!
       this.blockSync = true;
-      this.blockPosition = 0;
+      // this.blockPosition = 0;
       this.stats.syncLocked = true;
       this.stats.lastSync = Date.now();
 
@@ -317,7 +318,7 @@ export class RDSDecoder {
     // Block A always contains PI code and starts a new group
     if (block.offsetWord === "A") {
       this.stationData.pi = block.data;
-      this.blockPosition = 1;
+      // this.blockPosition = 1;
       this.currentGroupBlocks = [block];
     } else if (block.offsetWord === "B") {
       // Block B contains group type and other info
@@ -329,17 +330,17 @@ export class RDSDecoder {
       this.stationData.tp = tp;
       this.stationData.pty = pty;
 
-      this.blockPosition = 2;
+      // this.blockPosition = 2;
       this.currentGroupBlocks.push(block);
 
       // Store group type and version for later use
       this.currentGroupBlocks[1]!.groupType = groupType;
       this.currentGroupBlocks[1]!.groupVersion = version;
     } else if (block.offsetWord === "C" || block.offsetWord === "C'") {
-      this.blockPosition = 3;
+      // this.blockPosition = 3;
       this.currentGroupBlocks.push(block);
     } else if (block.offsetWord === "D") {
-      this.blockPosition = 0;
+      // this.blockPosition = 0;
       this.currentGroupBlocks.push(block);
 
       // We now have a complete group (4 blocks)
@@ -665,7 +666,7 @@ export class RDSDecoder {
     this.tmcMessages.clear();
     this.blockSync = false;
     this.blockBuffer = [];
-    this.blockPosition = 0;
+    // this.blockPosition = 0;
     this.currentGroupBlocks = [];
     this.psBuffer = new Array(8).fill("");
     this.rtBuffer = new Array(64).fill("");

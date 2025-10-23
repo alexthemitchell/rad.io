@@ -3,7 +3,7 @@ import type { Sample } from "./dsp";
 import { calculateSignalStrength } from "./dsp";
 
 export function processRFInput(
-  device: ISDRDevice | undefined,
+  _device: ISDRDevice | undefined,
   samples: Sample[],
 ): { output: Sample[]; metrics: { signalStrength: number } } {
   // Limit buffer size and compute signal strength
@@ -44,7 +44,7 @@ export function processIQSampling(
 }
 
 export function processFFT(
-  samples: Sample[],
+  _samples: Sample[],
   params: { fftSize: number; window: string; overlap: number; wasm: boolean },
 ): { output: null; metrics: { bins: number } } {
   // Placeholder: just return null for now

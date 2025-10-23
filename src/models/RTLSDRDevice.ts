@@ -28,13 +28,16 @@ enum RTLSDRCommand {
 
 /**
  * RTL-SDR register blocks
+ * TODO: Uncomment when implementing low-level register access
  */
+/*
 enum _RTLSDRBlock {
   USB = 0,
   SYS = 1,
   DEMOD = 2,
   TUNER = 3,
 }
+*/
 
 /**
  * Supported tuner types
@@ -57,7 +60,7 @@ export class RTLSDRDevice {
   // Device state
   private frequency = 100e6;  // 100 MHz default
   private sampleRate = 2.048e6;  // 2.048 MSPS default
-  private gain = 0;
+  // TODO: Implement AGC - private _gain = 0;
   private tunerType: RTLSDRTunerType = RTLSDRTunerType.UNKNOWN;
   
   // USB configuration
@@ -217,7 +220,7 @@ export class RTLSDRDevice {
     await this.writeTunerI2C(0x05, (gainTenthsDb >> 8) & 0xff);
     await this.writeTunerI2C(0x06, gainTenthsDb & 0xff);
     
-    this.gain = gainDb;
+    // TODO: Store gain value when AGC is implemented
     console.debug('RTL-SDR gain set:', gainDb, 'dB');
   }
   
@@ -303,7 +306,12 @@ export class RTLSDRDevice {
     });
   }
   
-  private async readDemodReg(page: number, addr: number): Promise<number> {
+  /**
+   * Read demodulator register
+   * TODO: Uncomment when implementing low-level register debugging
+   */
+  /*
+  private async _readDemodReg(page: number, addr: number): Promise<number> {
     const index = (page << 8) | addr;
     const result = await this.device.controlTransferIn({
       requestType: 'vendor',
@@ -315,6 +323,7 @@ export class RTLSDRDevice {
     
     return result.data ? result.data.getUint8(0) : 0;
   }
+  */
   
   private async writeTunerI2C(reg: number, value: number): Promise<void> {
     await this.device.controlTransferOut({
@@ -326,7 +335,12 @@ export class RTLSDRDevice {
     });
   }
   
-  private async readTunerI2C(reg: number): Promise<number> {
+  /**
+   * Read tuner I2C register
+   * TODO: Uncomment when implementing low-level register debugging
+   */
+  /*
+  private async _readTunerI2C(reg: number): Promise<number> {
     const result = await this.device.controlTransferIn({
       requestType: 'vendor',
       recipient: 'device',
@@ -337,5 +351,6 @@ export class RTLSDRDevice {
     
     return result.data ? result.data.getUint8(0) : 0;
   }
+  */
 }
 

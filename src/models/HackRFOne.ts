@@ -452,7 +452,7 @@ export class HackRFOne {
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
     this.streaming = true;
 
-    const isDev = process.env.NODE_ENV === "development";
+    const isDev = process.env['NODE_ENV'] === "development";
     if (isDev) {
       console.warn("HackRFOne.receive: Starting streaming loop", {
         endpoint: this.inEndpointNumber,
@@ -669,7 +669,7 @@ export class HackRFOne {
    * This makes recovery seamless for the user - no need to restart reception
    */
   private async fastRecovery(): Promise<void> {
-    const isDev = process.env.NODE_ENV === "development";
+    const isDev = process.env['NODE_ENV'] === "development";
     if (isDev) {
       console.warn("HackRFOne.fastRecovery: Starting automatic recovery", {
         savedState: {

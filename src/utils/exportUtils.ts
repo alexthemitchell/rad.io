@@ -1,7 +1,7 @@
 // Utility functions for exporting pipeline data and visualizations
 
 export function exportStageDataAsCSV<T extends Record<string, unknown>>(
-  stageId: string,
+  _stageId: string,
   data: T[],
 ): string {
   if (!data || !Array.isArray(data) || data.length === 0 || !data[0]) {
