@@ -655,12 +655,14 @@ export class HackRFOne {
 
       // Give device time to reset (typically takes a few hundred ms)
       await this.delay(500);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("HackRFOne.reset: Failed to reset device", error, {
         deviceOpened: this.usbDevice.opened,
         commandSent: RequestCommand.RESET,
       });
-      throw new Error(`Failed to reset device: ${error}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to reset device: ${errorMessage}`);
     }
   }
 

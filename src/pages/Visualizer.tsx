@@ -3,28 +3,28 @@ import AudioControls from "../components/AudioControls";
 import BandwidthSelector from "../components/BandwidthSelector";
 import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
+import FFTChart from "../components/FFTChart";
 import FrequencyScanner from "../components/FrequencyScanner";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import P25SystemPresets from "../components/P25SystemPresets";
+import PerformanceMetrics from "../components/PerformanceMetrics";
 import PresetStations from "../components/PresetStations";
-import SignalTypeSelector, {
-  SignalType,
-} from "../components/SignalTypeSelector";
 import RadioControls from "../components/RadioControls";
+import RDSDisplay from "../components/RDSDisplay";
+import RecordingControls, {
+  type RecordingState,
+} from "../components/RecordingControls";
+import SampleChart from "../components/SampleChart";
+import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
+import SignalTypeSelector, {
+  type SignalType,
+} from "../components/SignalTypeSelector";
 import TalkgroupScanner, {
   type Talkgroup,
 } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
-import SampleChart from "../components/SampleChart";
-import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
-import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
-import PerformanceMetrics from "../components/PerformanceMetrics";
-import RecordingControls, {
-  type RecordingState,
-} from "../components/RecordingControls";
-import RDSDisplay from "../components/RDSDisplay";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
@@ -443,7 +443,7 @@ function Visualizer(): React.JSX.Element {
       latestChunkRef.current = chunk.slice();
 
       // Process audio if enabled
-      processAudioChunk(chunk).catch((error) => {
+      processAudioChunk(chunk).catch((error: unknown) => {
         console.error("Audio processing error:", error);
       });
 

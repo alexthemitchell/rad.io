@@ -42,7 +42,7 @@ enum _RTLSDRBlock {
 /**
  * Supported tuner types
  */
-enum RTLSDRTunerType {
+export enum RTLSDRTunerType {
   UNKNOWN = 0,
   E4000 = 1,
   FC0012 = 2,

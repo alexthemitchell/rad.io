@@ -52,7 +52,7 @@ export function useHackRFDevice(): {
   ]);
 
   const cleanup = useCallback((): void => {
-    device?.close().catch((error) => {
+    device?.close().catch((error: unknown) => {
       console.error(
         "useHackRFDevice: Failed to close device during cleanup",
         error,

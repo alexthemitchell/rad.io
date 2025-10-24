@@ -22,7 +22,7 @@ export default function BandwidthSelector({
     e: React.ChangeEvent<HTMLSelectElement>,
   ): void => {
     const bandwidthHz = Number(e.target.value);
-    setBandwidth(bandwidthHz).catch((error) => {
+    setBandwidth(bandwidthHz).catch((error: unknown) => {
       console.error("BandwidthSelector: Failed to set bandwidth", error, {
         requestedBandwidth: bandwidthHz,
         requestedBandwidthMHz: (bandwidthHz / 1e6).toFixed(2),

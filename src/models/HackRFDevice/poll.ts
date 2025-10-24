@@ -47,12 +47,12 @@ export async function poll(
         tryCancel();
       }
     };
-    const wrapReject = (x: unknown): void => (
-      (settled = true),
-      (rejected = true),
-      (reason = x),
-      tryCancel()
-    );
+    const wrapReject = (x: unknown): void => {
+      settled = true;
+      rejected = true;
+      reason = x;
+      tryCancel();
+    };
     const safeCall = (fn: () => void): void => {
       if (settled) {
         return;

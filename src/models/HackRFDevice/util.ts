@@ -42,7 +42,7 @@ export class CancellablePromise<T> extends Promise<T> {
 }
 
 /** each entry is a uint32 (bandwidth in hz) */
-export const max2837_ft = [
+export const max2837Ft = [
   1750000, 2500000, 3500000, 5000000, 5500000, 6000000, 7000000, 8000000,
   9000000, 10000000, 12000000, 14000000, 15000000, 20000000, 24000000, 28000000,
 ];
@@ -57,14 +57,14 @@ export function computeBasebandFilterBwRoundDownLt(
 ): number | undefined {
   checkU32(bandwidthHz);
   let idx: number;
-  for (idx = 0; idx < max2837_ft.length; idx++) {
-    if (max2837_ft[idx]! >= bandwidthHz) {
+  for (idx = 0; idx < max2837Ft.length; idx++) {
+    if (max2837Ft[idx]! >= bandwidthHz) {
       break;
     }
   }
   // Round down (if no equal to first entry)
   idx = Math.max(idx - 1, 0);
-  return max2837_ft[idx];
+  return max2837Ft[idx];
 }
 
 /**
@@ -77,16 +77,16 @@ export function computeBasebandFilterBw(
 ): number | undefined {
   checkU32(bandwidthHz);
   let idx: number;
-  for (idx = 0; idx < max2837_ft.length; idx++) {
-    if (max2837_ft[idx]! >= bandwidthHz) {
+  for (idx = 0; idx < max2837Ft.length; idx++) {
+    if (max2837Ft[idx]! >= bandwidthHz) {
       break;
     }
   }
   // Round down (if no equal to first entry) and if > bandwidthHz
-  if (max2837_ft[idx]! >= bandwidthHz) {
+  if (max2837Ft[idx]! >= bandwidthHz) {
     idx = Math.max(idx - 1, 0);
   }
-  return max2837_ft[idx];
+  return max2837Ft[idx];
 }
 
 // VALIDATION

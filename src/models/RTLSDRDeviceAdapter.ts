@@ -6,7 +6,7 @@
  * compatibility with the visualization and control components.
  */
 
-import { RTLSDRDevice } from "./RTLSDRDevice";
+import { RTLSDRDevice, RTLSDRTunerType } from "./RTLSDRDevice";
 import {
   type ISDRDevice,
   type IQSample,
@@ -35,23 +35,27 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
     let tunerName = "Unknown";
 
     switch (tunerType) {
-      case 1:
+      case RTLSDRTunerType.E4000:
         tunerName = "E4000";
         break;
-      case 2:
+      case RTLSDRTunerType.FC0012:
         tunerName = "FC0012";
         break;
-      case 3:
+      case RTLSDRTunerType.FC0013:
         tunerName = "FC0013";
         break;
-      case 4:
+      case RTLSDRTunerType.FC2580:
         tunerName = "FC2580";
         break;
-      case 5:
+      case RTLSDRTunerType.R820T:
         tunerName = "R820T";
         break;
-      case 6:
+      case RTLSDRTunerType.R828D:
         tunerName = "R828D";
+        break;
+      case RTLSDRTunerType.UNKNOWN:
+      default:
+        tunerName = "Unknown";
         break;
     }
 

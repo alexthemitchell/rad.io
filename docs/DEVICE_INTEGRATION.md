@@ -756,6 +756,7 @@ const rtlsdr = useRTLSDRDevice();
 const currentDevice = deviceType === 'HackRF' ? hackrf.device : rtlsdr.device;
 
 return (
+
 <div>
 <select onChange={(e) => setDeviceType(e.target.value as any)}>
 <option value="HackRF">HackRF One</option>

@@ -9,14 +9,14 @@ import P25SystemPresets from "../components/P25SystemPresets";
 import PresetStations from "../components/PresetStations";
 import RadioControls from "../components/RadioControls";
 import SampleChart from "../components/SampleChart";
+import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import SignalTypeSelector, {
-  SignalType,
+  type SignalType,
 } from "../components/SignalTypeSelector";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
-import { useLiveRegion } from "../hooks/useLiveRegion";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import WaveformChart from "../components/WaveformChart";
-import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
+import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useLiveRegion } from "../hooks/useLiveRegion";
 import { type ISDRDevice } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,
@@ -85,7 +85,7 @@ function LiveMonitor(): React.JSX.Element {
   const AUDIO_BUFFER_SIZE = 131072;
 
   // Live region for screen reader announcements
-  const { announce, LiveRegion } = useLiveRegion();
+  const { announce, liveRegion: LiveRegion } = useLiveRegion();
 
   // P25 state
   const [controlChannel, setControlChannel] = useState(770.95625e6);
@@ -318,7 +318,7 @@ function LiveMonitor(): React.JSX.Element {
       sampleBufferRef.current = trimmed;
       latestChunkRef.current = chunk.slice();
 
-      processAudioChunk(chunk).catch((error) => {
+      processAudioChunk(chunk).catch((error: unknown) => {
         console.error("Audio processing error:", error);
       });
 

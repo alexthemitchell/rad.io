@@ -21,6 +21,10 @@ function renderVis(
       return <IQConstellation samples={(data as Sample[]) || []} />;
     case "fft":
       return <FFTChart samples={(data as Sample[]) || []} />;
+    case "demodulation":
+    case "audio-output":
+      // No visualization for these stages yet
+      return null;
     default:
       return null;
   }

@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+coverage
+*.min.js
+*.map
+.cache
+.DS_Store
+package-lock.json
+# Template files with placeholder syntax
+src/models/templates/

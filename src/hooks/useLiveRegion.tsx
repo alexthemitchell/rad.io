@@ -22,7 +22,7 @@ import React, { useState } from "react";
  */
 export function useLiveRegion(): {
   announce: (text: string) => void;
-  LiveRegion: () => React.JSX.Element;
+  liveRegion: () => React.JSX.Element;
 } {
   const [message, setMessage] = useState("");
 
@@ -38,7 +38,7 @@ export function useLiveRegion(): {
    * Component that renders the live region for screen reader announcements
    * Should be included once in your component tree
    */
-  const LiveRegion = (): React.JSX.Element => (
+  const liveRegion = (): React.JSX.Element => (
     <div
       role="status"
       aria-live="polite"
@@ -49,5 +49,5 @@ export function useLiveRegion(): {
     </div>
   );
 
-  return { announce, LiveRegion };
+  return { announce, liveRegion };
 }

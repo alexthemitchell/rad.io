@@ -17,7 +17,7 @@ export default function RadioControls({
   }: ChangeEvent<HTMLInputElement>): void => {
     const numValue = Number(value);
     const frequencyHz = signalType === "FM" ? numValue * 1e6 : numValue * 1e3;
-    setFrequency(frequencyHz).catch((error) => {
+    setFrequency(frequencyHz).catch((error: unknown) => {
       console.error("RadioControls: Failed to set frequency", error, {
         requestedFrequency: frequencyHz,
         signalType,
@@ -56,7 +56,7 @@ export default function RadioControls({
     newValue = Math.max(min, Math.min(max, newValue));
 
     const frequencyHz = signalType === "FM" ? newValue * 1e6 : newValue * 1e3;
-    setFrequency(frequencyHz).catch((error) => {
+    setFrequency(frequencyHz).catch((error: unknown) => {
       console.error(
         "RadioControls: Failed to set frequency via keyboard",
         error,
