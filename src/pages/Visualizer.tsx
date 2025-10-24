@@ -443,7 +443,7 @@ function Visualizer(): React.JSX.Element {
       latestChunkRef.current = chunk.slice();
 
       // Process audio if enabled
-      processAudioChunk(chunk).catch((error) => {
+      processAudioChunk(chunk).catch((error: unknown) => {
         console.error("Audio processing error:", error);
       });
 

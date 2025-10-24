@@ -318,7 +318,7 @@ function LiveMonitor(): React.JSX.Element {
       sampleBufferRef.current = trimmed;
       latestChunkRef.current = chunk.slice();
 
-      processAudioChunk(chunk).catch((error) => {
+      processAudioChunk(chunk).catch((error: unknown) => {
         console.error("Audio processing error:", error);
       });
 

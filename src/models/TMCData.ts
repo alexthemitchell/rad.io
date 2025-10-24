@@ -8,6 +8,11 @@
  * - ISO 14819-1: RDS-TMC coding protocol (ALERT-C)
  * - ISO 14819-2: Event and location codes
  * - https://en.wikipedia.org/wiki/Traffic_message_channel
+ *
+ * Note: Numeric keys in event code maps are from TMC specification and are intentional.
+ */
+
+/* eslint-disable @typescript-eslint/naming-convention */
  */
 
 /**
