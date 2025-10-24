@@ -6,7 +6,7 @@ This test suite validates the complete audio pipeline using Web Speech APIs, sim
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │              END-TO-END TEST PIPELINE                            │
 └─────────────────────────────────────────────────────────────────┘
@@ -126,7 +126,9 @@ All tests use **mocked Web Speech APIs** for consistent, deterministic behavior 
 
 ### Expected Output
 
-```
+### Expected Output
+
+```text
 PASS src/utils/__tests__/speechEndToEnd.test.ts
   End-to-End Speech Synthesis → Recognition
     API Support
@@ -143,8 +145,8 @@ PASS src/utils/__tests__/speechEndToEnd.test.ts
       ✓ should provide accuracy calculation utility
 
 Test Suites: 1 passed, 1 total
-Tests:       31 passed, 31 total
 ```
+
 
 ## Accuracy Calculation
 

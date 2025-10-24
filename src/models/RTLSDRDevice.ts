@@ -10,7 +10,7 @@
  * - RTL2832U datasheet
  */
 
-import type { IQSample } from "./SDRDevice";
+import { type IQSample } from './SDRDevice';
 
 /**
  * RTL-SDR control commands (vendor requests)
@@ -28,13 +28,16 @@ enum RTLSDRCommand {
 
 /**
  * RTL-SDR register blocks
+ * TODO: Uncomment when implementing low-level register access
  */
+/*
 enum _RTLSDRBlock {
   USB = 0,
   SYS = 1,
   DEMOD = 2,
   TUNER = 3,
 }
+*/
 
 /**
  * Supported tuner types
@@ -55,9 +58,9 @@ export class RTLSDRDevice {
   private closing = false;
 
   // Device state
-  private frequency = 100e6; // 100 MHz default
-  private sampleRate = 2.048e6; // 2.048 MSPS default
-  private gain = 0;
+  private frequency = 100e6;  // 100 MHz default
+  private sampleRate = 2.048e6;  // 2.048 MSPS default
+  // TODO: Implement AGC - private _gain = 0;
   private tunerType: RTLSDRTunerType = RTLSDRTunerType.UNKNOWN;
 
   // USB configuration
@@ -224,9 +227,8 @@ export class RTLSDRDevice {
     // Set tuner gain via I2C
     await this.writeTunerI2C(0x05, (gainTenthsDb >> 8) & 0xff);
     await this.writeTunerI2C(0x06, gainTenthsDb & 0xff);
-
-    this.gain = gainDb;
-    console.debug("RTL-SDR gain set:", gainDb, "dB");
+  // TODO: Store gain value when AGC is implemented
+  console.debug('RTL-SDR gain set:', gainDb, 'dB');
   }
 
   async setAGC(enabled: boolean): Promise<void> {
@@ -317,8 +319,12 @@ export class RTLSDRDevice {
       index,
     });
   }
-
-  private async readDemodReg(page: number, addr: number): Promise<number> {
+  /**
+   * Read demodulator register
+   * TODO: Uncomment when implementing low-level register debugging
+   */
+  /*
+  private async _readDemodReg(page: number, addr: number): Promise<number> {
     const index = (page << 8) | addr;
     const result = await this.device.controlTransferIn(
       {
@@ -333,7 +339,7 @@ export class RTLSDRDevice {
 
     return result.data ? result.data.getUint8(0) : 0;
   }
-
+  */
   private async writeTunerI2C(reg: number, value: number): Promise<void> {
     await this.device.controlTransferOut({
       requestType: "vendor",
@@ -343,19 +349,20 @@ export class RTLSDRDevice {
       index: reg,
     });
   }
-
-  private async readTunerI2C(reg: number): Promise<number> {
-    const result = await this.device.controlTransferIn(
-      {
-        requestType: "vendor",
-        recipient: "device",
-        request: RTLSDRCommand.I2C_READ_REG,
-        value: 0,
-        index: reg,
-      },
-      1,
-    );
-
+  /**
+   * Read tuner I2C register
+   * TODO: Uncomment when implementing low-level register debugging
+   */
+  /*
+  private async _readTunerI2C(reg: number): Promise<number> {
+    const result = await this.device.controlTransferIn({
+      requestType: 'vendor',
+      recipient: 'device',
+      request: RTLSDRCommand.I2C_READ_REG,
+      value: 0,
+      index: reg,
+    }, 1);
     return result.data ? result.data.getUint8(0) : 0;
   }
+  */
 }

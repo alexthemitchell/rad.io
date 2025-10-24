@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navigation from "./components/Navigation";
+import Analysis from "./pages/Analysis";
 import LiveMonitor from "./pages/LiveMonitor";
 import Scanner from "./pages/Scanner";
-import Analysis from "./pages/Analysis";
 import { preloadWasmModule } from "./utils/dspWasm";
 
 function App(): React.JSX.Element {

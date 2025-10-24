@@ -204,10 +204,12 @@ function getSpeechRecognitionConstructor():
  *
  * Note: Currently unused as Web Speech API typically requires live microphone input.
  * Kept for potential future use with custom MediaStream implementations.
+ * TODO: Uncomment when implementing custom MediaStream for speech recognition
  *
  * @param _audioBuffer - AudioBuffer from demodulated audio
  * @returns MediaStream containing the audio
  */
+/*
 async function _audioBufferToMediaStream(
   _audioBuffer: AudioBuffer,
 ): Promise<MediaStream> {
@@ -229,6 +231,7 @@ async function _audioBufferToMediaStream(
 
   return destination.stream;
 }
+*/
 
 /**
  * Speech Recognition Processor

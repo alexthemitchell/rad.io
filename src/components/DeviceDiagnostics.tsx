@@ -54,7 +54,7 @@ export function DeviceDiagnostics({
   }
 
   // Streaming status
-  if (device && device.isOpen()) {
+  if (device?.isOpen()) {
     if (isListening) {
       diagnostics.push({
         label: "Streaming Status",
@@ -170,7 +170,7 @@ export function DeviceDiagnostics({
           <button
             className="btn btn-primary"
             onClick={onResetDevice}
-            disabled={!onResetDevice || !!isResetting}
+            disabled={!onResetDevice || Boolean(isResetting)}
             style={{ marginTop: "10px" }}
             title={
               !onResetDevice

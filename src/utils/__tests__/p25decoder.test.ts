@@ -17,7 +17,7 @@ import {
   extractTalkgroupInfo,
   DEFAULT_P25_CONFIG,
 } from "../p25decoder";
-import { Sample } from "../dsp";
+import { type Sample } from "../dsp";
 
 describe("P25 Phase 2 Decoder", () => {
   describe("phaseToSymbol", () => {

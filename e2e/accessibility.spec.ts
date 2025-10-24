@@ -276,12 +276,6 @@ test.describe("Color Contrast", () => {
     await page.goto("https://localhost:8080");
     await page.waitForSelector("button");
 
-    // Run axe check specifically for color contrast
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2aa"])
-      .disableRules(["color-contrast"]) // Disable if you want to check manually
-      .analyze();
-
     // Re-enable for actual test
     const contrastResults = await new AxeBuilder({ page })
       .include("body")
@@ -316,14 +310,6 @@ test.describe("Responsive and Zoom", () => {
     });
 
     await page.waitForTimeout(500); // Let layout settle
-
-    // Verify no horizontal scroll
-    const hasHorizontalScroll = await page.evaluate(() => {
-      return (
-        document.documentElement.scrollWidth >
-        document.documentElement.clientWidth
-      );
-    });
 
     // At 200% zoom, some horizontal scroll may be acceptable
     // More important is that content is still accessible

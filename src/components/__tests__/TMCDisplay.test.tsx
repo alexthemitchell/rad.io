@@ -2,7 +2,6 @@
  * Tests for TMC Display Component
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import TMCDisplay, { TMCDisplayCompact } from "../TMCDisplay";

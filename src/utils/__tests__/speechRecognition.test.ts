@@ -455,7 +455,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -538,7 +537,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -584,7 +582,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -623,7 +620,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -662,7 +658,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -727,7 +722,7 @@ describe("Convenience Functions", () => {
           webkitSpeechRecognition: typeof MockSpeechRecognition;
         }
       ).webkitSpeechRecognition = class extends MockSpeechRecognition {
-        start(): void {
+        override start(): void {
           super.start();
           setTimeout(() => {
             this.simulateError("network");

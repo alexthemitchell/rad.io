@@ -5,7 +5,7 @@
  * from SDR receivers. Supports both binary (.iq) and JSON (.json) formats.
  */
 
-import type { IQSample } from "../models/SDRDevice";
+import { type IQSample } from "../models/SDRDevice";
 
 /**
  * Metadata for recorded IQ data
@@ -241,10 +241,16 @@ export function exportToBinary(recording: IQRecording): ArrayBuffer {
  * Import IQ recording from JSON string
  */
 export function importFromJSON(jsonString: string): IQRecording {
-  const parsed = JSON.parse(jsonString);
+  const parsed = JSON.parse(jsonString) as unknown;
 
   // Validate structure
-  if (!parsed.metadata || !parsed.samples || !Array.isArray(parsed.samples)) {
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("metadata" in parsed) ||
+    !("samples" in parsed) ||
+    !Array.isArray(parsed.samples)
+  ) {
     throw new Error("Invalid IQ recording JSON format");
   }
 

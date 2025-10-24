@@ -1,11 +1,11 @@
 import { renderHook, act } from "@testing-library/react";
 import { useFrequencyScanner } from "../useFrequencyScanner";
 import {
-  ISDRDevice,
-  IQSample,
-  SDRDeviceInfo,
-  SDRCapabilities,
-  DeviceMemoryInfo,
+  type ISDRDevice,
+  type IQSample,
+  type SDRDeviceInfo,
+  type SDRCapabilities,
+  type DeviceMemoryInfo,
   SDRDeviceType,
 } from "../../models/SDRDevice";
 

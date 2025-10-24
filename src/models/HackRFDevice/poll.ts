@@ -1,4 +1,4 @@
-import type { StreamOptions } from "./StreamOptions";
+import { type StreamOptions } from "./StreamOptions";
 
 export const defaultStreamOptions: StreamOptions = {
   transferCount: 4,
@@ -74,7 +74,7 @@ export async function poll(
     };
 
     // allocate / fill buffers
-    const tasks: (() => void)[] = [];
+    const tasks: Array<() => void> = [];
     for (let i = 0; !settled && i < transferCount; i++) {
       const buffer = Buffer.alloc(transferBufferSize);
       const array = new Int8Array(

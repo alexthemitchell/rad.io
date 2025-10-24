@@ -1,30 +1,30 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
-import { useLiveRegion } from "../hooks/useLiveRegion";
+import AudioControls from "../components/AudioControls";
+import BandwidthSelector from "../components/BandwidthSelector";
+import Card from "../components/Card";
+import DeviceControlBar from "../components/DeviceControlBar";
+import FFTChart from "../components/FFTChart";
+import P25SystemPresets from "../components/P25SystemPresets";
+import PresetStations from "../components/PresetStations";
+import RadioControls from "../components/RadioControls";
+import SampleChart from "../components/SampleChart";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
-import BandwidthSelector from "../components/BandwidthSelector";
-import DeviceControlBar from "../components/DeviceControlBar";
-import PresetStations from "../components/PresetStations";
-import RadioControls from "../components/RadioControls";
+import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useLiveRegion } from "../hooks/useLiveRegion";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
-import P25SystemPresets from "../components/P25SystemPresets";
-import Card from "../components/Card";
-import SampleChart from "../components/SampleChart";
-import FFTChart from "../components/FFTChart";
 import WaveformChart from "../components/WaveformChart";
 import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
-import AudioControls from "../components/AudioControls";
-import type { Sample } from "../utils/dsp";
-import { performanceMonitor } from "../utils/performanceMonitor";
-import type { ISDRDevice } from "../models/SDRDevice";
+import { type ISDRDevice } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,
   DemodulationType,
   type AudioStreamResult,
 } from "../utils/audioStream";
+import { type Sample } from "../utils/dsp";
+import { performanceMonitor } from "../utils/performanceMonitor";
 
 const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
@@ -391,7 +391,7 @@ function LiveMonitor(): React.JSX.Element {
 
   const handleSetBandwidth = async (newBandwidth: number): Promise<void> => {
     setBandwidth(newBandwidth);
-    if (device && device.setBandwidth) {
+    if (device?.setBandwidth) {
       await device.setBandwidth(newBandwidth);
       announce(`Bandwidth filter set to ${newBandwidth / 1e6} MHz`);
     }
@@ -492,7 +492,7 @@ function LiveMonitor(): React.JSX.Element {
   ]);
 
   const stopListening = useCallback(async (): Promise<void> => {
-    if (device && device.isReceiving()) {
+    if (device?.isReceiving()) {
       try {
         await device.stopRx();
       } catch (err) {
@@ -550,7 +550,7 @@ function LiveMonitor(): React.JSX.Element {
                   signalType={signalType}
                   setFrequency={handleSetFrequency}
                 />
-                {device && device.getCapabilities().supportedBandwidths ? (
+                {device?.getCapabilities().supportedBandwidths ? (
                   <BandwidthSelector
                     bandwidth={bandwidth}
                     setBandwidth={handleSetBandwidth}

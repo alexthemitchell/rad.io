@@ -3,7 +3,7 @@ import {
   calculateSpectrogram,
   convertToSamples,
   calculateWaveform,
-  Sample,
+  type Sample,
   binToFrequency,
   detectSpectralPeaks,
   estimateNoiseFloor,

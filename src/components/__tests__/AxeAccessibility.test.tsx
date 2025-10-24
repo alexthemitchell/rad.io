@@ -12,7 +12,7 @@ import AudioControls from "../AudioControls";
 import SignalStrengthMeter from "../SignalStrengthMeter";
 import DeviceControlBar from "../DeviceControlBar";
 import Navigation from "../Navigation";
-import { Sample } from "../../utils/dsp";
+import { type Sample } from "../../utils/dsp";
 
 // Mock canvas context for visualization components
 const mockCanvasContext = (): void => {

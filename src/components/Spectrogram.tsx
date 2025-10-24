@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
-import type { ReactElement } from "react";
-import { performanceMonitor } from "../utils/performanceMonitor";
-import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
-import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
+import { usePageVisibility } from "../hooks/usePageVisibility";
+import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
+import { performanceMonitor } from "../utils/performanceMonitor";
+import type { ReactElement } from "react";
 
 type SpectrogramProps = {
   fftData: Float32Array[];
@@ -295,7 +295,7 @@ export default function Spectrogram({
           } else {
             webgl.updateTextureRGBA(
               gl,
-              glStateRef.current.texture!,
+              glStateRef.current.texture,
               texW,
               texH,
               rgba,
@@ -308,7 +308,7 @@ export default function Spectrogram({
           gl.disable(gl.BLEND);
           gl.clearColor(0.04, 0.06, 0.1, 1);
           gl.clear(gl.COLOR_BUFFER_BIT);
-          const prog = glStateRef.current.program!;
+          const prog = glStateRef.current.program;
           gl.useProgram(prog);
           const aPos = gl.getAttribLocation(prog, "a_position");
           const aUV = gl.getAttribLocation(prog, "a_texCoord");

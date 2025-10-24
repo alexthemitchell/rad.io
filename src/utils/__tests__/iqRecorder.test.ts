@@ -11,7 +11,7 @@ import {
   importFromBinary,
   type IQRecording,
 } from "../iqRecorder";
-import { IQSample } from "../../models/SDRDevice";
+import type { IQSample } from "../../models/SDRDevice";
 
 describe("IQRecorder", () => {
   let recorder: IQRecorder;

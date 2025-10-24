@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useMemo } from "react";
-import type { ReactElement } from "react";
-import { calculateWaveform, type Sample } from "../utils/dsp";
-import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
-import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
+import { usePageVisibility } from "../hooks/usePageVisibility";
+import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
+import { calculateWaveform, type Sample } from "../utils/dsp";
+import type { ReactElement } from "react";
 
 type WaveformVisualizerProps = {
   samples: Sample[];
@@ -159,7 +159,7 @@ void main() {
           gl.clearColor(0.04, 0.06, 0.1, 1);
           gl.clear(gl.COLOR_BUFFER_BIT);
 
-          const prog = glStateRef.current.program!;
+          const prog = glStateRef.current.program;
           gl.useProgram(prog);
           const aPos = gl.getAttribLocation(prog, "a_position");
 

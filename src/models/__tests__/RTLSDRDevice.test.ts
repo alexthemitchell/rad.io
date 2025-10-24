@@ -49,7 +49,7 @@ class MockUSBDevice {
   }
 
   async controlTransferOut(
-    setup: USBControlTransferParameters,
+    _setup: USBControlTransferParameters,
     data?: BufferSource,
   ): Promise<USBOutTransferResult> {
     return {
@@ -74,7 +74,7 @@ class MockUSBDevice {
   }
 
   async transferIn(
-    endpoint: number,
+    _endpoint: number,
     length: number,
   ): Promise<USBInTransferResult> {
     // Add small delay to prevent tight loop in tests

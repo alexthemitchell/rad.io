@@ -24,9 +24,7 @@ export enum LogCategory {
   USER_ACTION = "👆 USER",
 }
 
-interface LogContext {
-  [key: string]: unknown;
-}
+type LogContext = Record<string, unknown>;
 
 interface LoggerConfig {
   minLevel: LogLevel;
@@ -41,7 +39,7 @@ class Logger {
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = {
       minLevel:
-        process.env.NODE_ENV === "development" ? LogLevel.DEBUG : LogLevel.INFO,
+        process.env['NODE_ENV'] === "development" ? LogLevel.DEBUG : LogLevel.INFO,
       enabledCategories: undefined, // undefined means all enabled
       includeTimestamp: true,
       includeStackTrace: false,

@@ -1,7 +1,7 @@
 // Utility functions for exporting pipeline data and visualizations
 
 export function exportStageDataAsCSV<T extends Record<string, unknown>>(
-  stageId: string,
+  _stageId: string,
   data: T[],
 ): string {
   if (!data || !Array.isArray(data) || data.length === 0 || !data[0]) {
@@ -33,7 +33,7 @@ export function copyToClipboard(text: string): void {
 
 export function savePNGFromCanvas(
   canvas: HTMLCanvasElement,
-  filename: string = "stage.png",
+  filename = "stage.png",
 ): void {
   const url = canvas.toDataURL("image/png");
   const a = document.createElement("a");

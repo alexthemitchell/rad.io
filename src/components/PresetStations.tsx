@@ -1,4 +1,4 @@
-import type { SignalType } from "./SignalTypeSelector";
+import { type SignalType } from "./SignalTypeSelector";
 
 type Station = {
   name: string;

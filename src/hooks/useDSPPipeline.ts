@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ISDRDevice } from "../models/SDRDevice";
-import type { Sample } from "../utils/dsp";
 import {
   processRFInput,
   processTuner,
@@ -9,6 +7,8 @@ import {
   processDemodulation,
   processAudioOutput,
 } from "../utils/dspProcessing";
+import type { ISDRDevice } from "../models/SDRDevice";
+import type { Sample } from "../utils/dsp";
 
 export type StageParameters = Record<string, number | boolean | string>;
 export type StageMetrics = Record<string, number | string | boolean>;
