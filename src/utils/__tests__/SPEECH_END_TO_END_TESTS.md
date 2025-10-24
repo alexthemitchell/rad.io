@@ -147,7 +147,6 @@ PASS src/utils/__tests__/speechEndToEnd.test.ts
 Test Suites: 1 passed, 1 total
 ```
 
-
 ## Accuracy Calculation
 
 The test suite includes a word-level accuracy calculator:

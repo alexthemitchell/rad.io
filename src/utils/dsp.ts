@@ -238,9 +238,15 @@ export function calculateSpectrogram(
 export function convertToSamples(
   rawSamples: Array<[number, number]>,
 ): Sample[] {
-  return rawSamples.map(([i, q]) => {
-    return { I: i, Q: q };
-  });
+  const result: Sample[] = [];
+  for (const pair of rawSamples) {
+    const [i, q] = pair;
+    if (!Number.isFinite(i) || !Number.isFinite(q)) {
+      throw new Error("invalid sample");
+    }
+    result.push({ I: i, Q: q });
+  }
+  return result;
 }
 
 /**
