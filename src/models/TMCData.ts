@@ -13,7 +13,6 @@
  */
 
 /* eslint-disable @typescript-eslint/naming-convention */
- */
 
 /**
  * TMC Event Categories (simplified from ISO 14819-2)

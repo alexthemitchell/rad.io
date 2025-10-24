@@ -85,7 +85,7 @@ function LiveMonitor(): React.JSX.Element {
   const AUDIO_BUFFER_SIZE = 131072;
 
   // Live region for screen reader announcements
-  const { announce, LiveRegion } = useLiveRegion();
+  const { announce, liveRegion: LiveRegion } = useLiveRegion();
 
   // P25 state
   const [controlChannel, setControlChannel] = useState(770.95625e6);
