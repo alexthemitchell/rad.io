@@ -160,7 +160,111 @@ export default function Spectrogram({
       const markStart = "render-spectrogram-start";
       performanceMonitor.mark(markStart);
 
-      // Try WebGL first for high-performance rendering
+      // Try WebGPU first (modern browsers)
+      try {
+        const webgpu = await import("../utils/webgpu");
+        if (webgpu.isWebGPUSupported()) {
+          const pixelW = Math.max(1, Math.floor(width * dpr));
+          const pixelH = Math.max(1, Math.floor(height * dpr));
+          canvas.width = pixelW;
+          canvas.height = pixelH;
+
+          const renderer = new webgpu.WebGPUTextureRenderer();
+          const initialized = await renderer.initialize(canvas);
+
+          if (initialized) {
+            const bins = Math.max(
+              1,
+              Math.min(displayData[0]?.length || 0, freqMax - freqMin),
+            );
+            const frames = displayData.length;
+
+            // Compute dynamic range
+            let gmin = Infinity;
+            let gmax = -Infinity;
+            for (const row of displayData) {
+              for (let b = freqMin; b < freqMax && b < row.length; b++) {
+                const v = row[b]!;
+                if (isFinite(v)) {
+                  if (v < gmin) {
+                    gmin = v;
+                  }
+                  if (v > gmax) {
+                    gmax = v;
+                  }
+                }
+              }
+            }
+            if (!isFinite(gmin)) {
+              gmin = 0;
+            }
+            if (!isFinite(gmax)) {
+              gmax = 1;
+            }
+
+            // Adaptive dynamic range compression
+            const allPowers: number[] = [];
+            for (const row of displayData) {
+              for (let b = freqMin; b < freqMax && b < row.length; b++) {
+                const v = row[b]!;
+                if (isFinite(v)) {
+                  allPowers.push(v);
+                }
+              }
+            }
+
+            let adaptiveThreshold = 0.05;
+            if (allPowers.length > 0) {
+              allPowers.sort((a, b) => a - b);
+              const p10 = allPowers[Math.floor(allPowers.length * 0.1)]!;
+              const dataSpread = (p10 - gmin) / Math.max(1e-9, gmax - gmin);
+              adaptiveThreshold = Math.max(0.05, Math.min(0.2, dataSpread));
+            }
+
+            const effMin = gmin + (gmax - gmin) * adaptiveThreshold;
+            const range = Math.max(1e-9, gmax - effMin);
+
+            // Build RGBA texture data
+            const texW = Math.max(1, frames);
+            const texH = Math.max(1, bins);
+            const lut = webgpu.getViridisLUT();
+            const rgba = new Uint8Array(texW * texH * 4);
+            for (let x = 0; x < texW; x++) {
+              const row = displayData[x]!;
+              for (let y = 0; y < texH; y++) {
+                const bin = freqMin + y;
+                const v = row && bin < row.length ? row[bin]! : 0;
+                const norm = Math.max(0, Math.min(1, (v - effMin) / range));
+                const idx = (norm * 255) | 0;
+                const base = (x + y * texW) * 4;
+                const lbase = idx << 2;
+                rgba[base + 0] = lut[lbase] ?? 0;
+                rgba[base + 1] = lut[lbase + 1] ?? 0;
+                rgba[base + 2] = lut[lbase + 2] ?? 0;
+                rgba[base + 3] = 255;
+              }
+            }
+
+            const success = renderer.render({
+              data: rgba,
+              width: texW,
+              height: texH,
+            });
+
+            if (success) {
+              performanceMonitor.measure("render-spectrogram", markStart);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(
+          "[Spectrogram] WebGPU path failed, falling back to WebGL:",
+          err,
+        );
+      }
+
+      // Try WebGL next for high-performance rendering
       try {
         const webgl = await import("../utils/webgl");
         const pixelW = Math.max(1, Math.floor(width * dpr));

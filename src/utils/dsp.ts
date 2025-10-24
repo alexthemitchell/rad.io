@@ -229,7 +229,9 @@ export function calculateSpectrogram(
 /**
  * Convert raw IQ samples to Sample objects
  */
-export function convertToSamples(rawSamples: Array<[number, number]>): Sample[] {
+export function convertToSamples(
+  rawSamples: Array<[number, number]>,
+): Sample[] {
   return rawSamples.map(([i, q]) => {
     if (i === undefined || q === undefined) {
       throw new Error("invalid sample");

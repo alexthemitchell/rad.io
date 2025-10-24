@@ -11,7 +11,9 @@ import SignalTypeSelector, {
   SignalType,
 } from "../components/SignalTypeSelector";
 import RadioControls from "../components/RadioControls";
-import TalkgroupScanner, { type Talkgroup } from "../components/TalkgroupScanner";
+import TalkgroupScanner, {
+  type Talkgroup,
+} from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import SampleChart from "../components/SampleChart";
@@ -1102,10 +1104,7 @@ function Visualizer(): React.JSX.Element {
           </>
         )}
 
-        <InteractiveDSPPipeline
-          device={device}
-          samples={samples}
-        />
+        <InteractiveDSPPipeline device={device} samples={samples} />
 
         <Card
           title="Signal Strength Meter"

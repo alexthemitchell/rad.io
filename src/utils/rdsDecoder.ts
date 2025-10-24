@@ -27,7 +27,9 @@ import {
   formatDuration,
   formatExtent,
   createEmptyTMCStats,
- type TMCMessage, type TMCDecoderStats } from "../models/TMCData";
+  type TMCMessage,
+  type TMCDecoderStats,
+} from "../models/TMCData";
 import type {
   RDSBlock,
   RDSGroup,

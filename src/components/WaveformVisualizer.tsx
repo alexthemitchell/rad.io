@@ -95,7 +95,63 @@ export default function WaveformVisualizer({
     canvas.style.height = `${height}px`;
 
     const run = async (): Promise<void> => {
-      // Try WebGL first
+      // Try WebGPU first (modern browsers)
+      try {
+        const webgpu = await import("../utils/webgpu");
+        if (webgpu.isWebGPUSupported()) {
+          const pixelW = Math.max(1, Math.floor(width * dpr));
+          const pixelH = Math.max(1, Math.floor(height * dpr));
+          canvas.width = pixelW;
+          canvas.height = pixelH;
+
+          const renderer = new webgpu.WebGPULineRenderer();
+          const initialized = await renderer.initialize(canvas);
+
+          if (initialized) {
+            // Calculate waveform data
+            const { amplitude } = calculateWaveform(samples);
+            if (amplitude.length === 0) {
+              return;
+            }
+
+            // Calculate statistics for adaptive scaling
+            const maxAmplitude = Math.max(...Array.from(amplitude));
+            const minAmplitude = Math.min(...Array.from(amplitude));
+            const amplitudeRange = maxAmplitude - minAmplitude || 1;
+            const padding = amplitudeRange * 0.1;
+            const displayMin = minAmplitude - padding;
+            const displayMax = maxAmplitude + padding;
+            const displayRange = displayMax - displayMin;
+
+            // Build positions in NDC [-1,1] for LINE_STRIP
+            const positions = new Float32Array(amplitude.length * 2);
+            for (let i = 0; i < amplitude.length; i++) {
+              const x = -1 + (2 * i) / (amplitude.length - 1);
+              const amp = amplitude[i]!;
+              const y = -1 + (2 * (amp - displayMin)) / displayRange;
+              positions[i * 2 + 0] = x;
+              positions[i * 2 + 1] = y;
+            }
+
+            const success = renderer.render({
+              positions,
+              color: [0.39, 0.86, 1.0, 0.9], // rgba(100,220,255,0.9)
+              lineWidth: 2.0,
+            });
+
+            if (success) {
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(
+          "[WaveformVisualizer] WebGPU path failed, falling back to WebGL:",
+          err,
+        );
+      }
+
+      // Try WebGL next
       try {
         const webgl = await import("../utils/webgl");
         const pixelW = Math.max(1, Math.floor(width * dpr));

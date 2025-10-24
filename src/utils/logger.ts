@@ -39,7 +39,9 @@ class Logger {
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = {
       minLevel:
-        process.env['NODE_ENV'] === "development" ? LogLevel.DEBUG : LogLevel.INFO,
+        process.env["NODE_ENV"] === "development"
+          ? LogLevel.DEBUG
+          : LogLevel.INFO,
       enabledCategories: undefined, // undefined means all enabled
       includeTimestamp: true,
       includeStackTrace: false,
