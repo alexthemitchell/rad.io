@@ -9,14 +9,14 @@ import P25SystemPresets from "../components/P25SystemPresets";
 import PresetStations from "../components/PresetStations";
 import RadioControls from "../components/RadioControls";
 import SampleChart from "../components/SampleChart";
+import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import SignalTypeSelector, {
-  SignalType,
+  type SignalType,
 } from "../components/SignalTypeSelector";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
-import { useLiveRegion } from "../hooks/useLiveRegion";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import WaveformChart from "../components/WaveformChart";
-import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
+import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useLiveRegion } from "../hooks/useLiveRegion";
 import { type ISDRDevice } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,

@@ -11,7 +11,14 @@ import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   {
-    ignores: ["src/models/templates/**"],
+    ignores: [
+      "src/models/templates/**",
+      "**/__tests__/**",
+      "**/*.test.{ts,tsx}",
+      "e2e/**",
+      "jest.setup.ts",
+      "playwright.config.ts",
+    ],
   },
 
   {
