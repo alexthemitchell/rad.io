@@ -10,7 +10,7 @@
  * - RTL2832U datasheet
  */
 
-import { type IQSample } from './SDRDevice';
+import { type IQSample } from "./SDRDevice";
 
 /**
  * RTL-SDR control commands (vendor requests)
@@ -42,7 +42,7 @@ enum _RTLSDRBlock {
 /**
  * Supported tuner types
  */
-enum RTLSDRTunerType {
+export enum RTLSDRTunerType {
   UNKNOWN = 0,
   E4000 = 1,
   FC0012 = 2,
@@ -58,8 +58,8 @@ export class RTLSDRDevice {
   private closing = false;
 
   // Device state
-  private frequency = 100e6;  // 100 MHz default
-  private sampleRate = 2.048e6;  // 2.048 MSPS default
+  private frequency = 100e6; // 100 MHz default
+  private sampleRate = 2.048e6; // 2.048 MSPS default
   // TODO: Implement AGC - private _gain = 0;
   private tunerType: RTLSDRTunerType = RTLSDRTunerType.UNKNOWN;
 
@@ -227,8 +227,8 @@ export class RTLSDRDevice {
     // Set tuner gain via I2C
     await this.writeTunerI2C(0x05, (gainTenthsDb >> 8) & 0xff);
     await this.writeTunerI2C(0x06, gainTenthsDb & 0xff);
-  // TODO: Store gain value when AGC is implemented
-  console.debug('RTL-SDR gain set:', gainDb, 'dB');
+    // TODO: Store gain value when AGC is implemented
+    console.debug("RTL-SDR gain set:", gainDb, "dB");
   }
 
   async setAGC(enabled: boolean): Promise<void> {

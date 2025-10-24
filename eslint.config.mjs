@@ -4,13 +4,21 @@ import tseslint from "typescript-eslint";
 import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import jsxA11y from "eslint-plugin-jsx-a11y";
+import pluginImport from "eslint-plugin-import";
 import json from "@eslint/json";
 import markdown from "@eslint/markdown";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   {
-    ignores: ["src/models/templates/**"],
+    ignores: [
+      "src/models/templates/**",
+      "**/__tests__/**",
+      "**/*.test.{ts,tsx}",
+      "e2e/**",
+      "jest.setup.ts",
+      "playwright.config.ts",
+    ],
   },
 
   {
@@ -25,15 +33,24 @@ export default defineConfig([
         ...globals.browser,
         ...globals.node,
       },
+      parserOptions: {
+        project: "./tsconfig.json",
+      },
     },
   },
   ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.strict,
+  ...tseslint.configs.strictTypeChecked,
+  ...tseslint.configs.stylistic,
+  ...tseslint.configs.stylisticTypeChecked,
   pluginReact.configs.flat.recommended,
   jsxA11y.flatConfigs.recommended,
   {
     files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     plugins: {
       "react-hooks": pluginReactHooks,
+      import: pluginImport,
     },
     rules: {
       // React rules
@@ -44,7 +61,7 @@ export default defineConfig([
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
 
-      // TypeScript rules
+      // TypeScript rules - Basic
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -55,6 +72,136 @@ export default defineConfig([
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/explicit-function-return-type": "error",
       "@typescript-eslint/explicit-module-boundary-types": "error",
+      "@typescript-eslint/use-unknown-in-catch-callback-variable": "warn", // Downgraded - minor type safety issue
+      "@typescript-eslint/no-unsafe-assignment": "warn", // Downgraded - common with dynamic data
+      "@typescript-eslint/no-unsafe-member-access": "warn", // Downgraded - common with dynamic data
+      "@typescript-eslint/no-unsafe-return": "warn", // Downgraded - adapter patterns
+      "@typescript-eslint/no-unsafe-argument": "warn", // Downgraded - adapter patterns
+      "@typescript-eslint/no-unsafe-enum-comparison": "warn", // Downgraded - numeric enum patterns
+      "@typescript-eslint/no-redundant-type-constituents": "warn", // Downgraded - union type edge cases
+      "@typescript-eslint/no-unnecessary-type-parameters": "warn", // Downgraded - generic patterns
+      "@typescript-eslint/no-invalid-void-type": "warn", // Downgraded - callback patterns
+      "@typescript-eslint/no-confusing-void-expression": "warn", // Downgraded - terse code style
+      "@typescript-eslint/prefer-promise-reject-errors": "warn", // Downgraded - error handling patterns
+      "@typescript-eslint/restrict-template-expressions": "warn", // Downgraded - string formatting
+      "@typescript-eslint/restrict-plus-operands": "warn", // Downgraded - arithmetic patterns
+      "@typescript-eslint/no-implied-eval": "warn", // Downgraded - dynamic code patterns
+      "@typescript-eslint/no-deprecated": "warn", // Downgraded - legacy API usage
+
+      // TypeScript rules - Type Safety
+      "@typescript-eslint/no-floating-promises": "warn", // Downgraded to warn - many fire-and-forget patterns
+      "@typescript-eslint/await-thenable": "error",
+      "@typescript-eslint/no-misused-promises": "warn", // Downgraded to warn - event handlers
+      "@typescript-eslint/promise-function-async": "error",
+      "@typescript-eslint/require-array-sort-compare": "error",
+      "@typescript-eslint/no-unnecessary-type-assertion": "error",
+      "@typescript-eslint/require-await": "warn", // Downgraded to warn - async signatures needed for interface compliance
+
+      // TypeScript rules - Modern JavaScript Features
+      "@typescript-eslint/prefer-nullish-coalescing": "warn",
+      "@typescript-eslint/prefer-optional-chain": "warn",
+      "@typescript-eslint/prefer-reduce-type-parameter": "warn",
+      "@typescript-eslint/prefer-for-of": "warn",
+
+      // TypeScript rules - Code Quality
+      "@typescript-eslint/switch-exhaustiveness-check": "error",
+      "@typescript-eslint/no-unnecessary-condition": "warn", // Changed to warn - can have false positives
+      "@typescript-eslint/consistent-type-imports": [
+        "warn", // Changed to warn to not break existing code
+        {
+          prefer: "type-imports",
+          fixStyle: "inline-type-imports",
+        },
+      ],
+      "@typescript-eslint/array-type": ["warn", { default: "array-simple" }],
+      "@typescript-eslint/consistent-type-definitions": "off", // Allow both type and interface
+      "@typescript-eslint/restrict-template-expressions": [
+        "error",
+        {
+          allowNumber: true, // Allow numbers in template literals
+          allowBoolean: true,
+        },
+      ],
+      "@typescript-eslint/no-non-null-assertion": "warn", // Warn instead of error
+      "@typescript-eslint/no-confusing-void-expression": [
+        "error",
+        {
+          ignoreArrowShorthand: true,
+        },
+      ],
+
+      // TypeScript rules - Naming Conventions
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          selector: "default",
+          format: ["camelCase"],
+          leadingUnderscore: "allow",
+          trailingUnderscore: "allow",
+        },
+        {
+          selector: "import",
+          format: ["camelCase", "PascalCase"],
+        },
+        {
+          selector: "variable",
+          format: ["camelCase", "UPPER_CASE", "PascalCase"],
+          leadingUnderscore: "allow",
+          trailingUnderscore: "allow",
+        },
+        {
+          selector: "function",
+          format: ["camelCase", "PascalCase"],
+        },
+        {
+          selector: "parameter",
+          format: ["camelCase"],
+          leadingUnderscore: "allow",
+        },
+        {
+          selector: "property",
+          format: ["camelCase", "PascalCase", "UPPER_CASE"],
+          leadingUnderscore: "allow",
+        },
+        {
+          selector: "typeLike",
+          format: ["PascalCase"],
+        },
+        {
+          selector: "enumMember",
+          format: ["PascalCase", "UPPER_CASE"],
+        },
+        {
+          selector: "interface",
+          format: ["PascalCase"],
+          // Prefer I prefix but don't require it for existing code
+          custom: {
+            regex: "^I?[A-Z]",
+            match: true,
+          },
+        },
+      ],
+
+      // Import plugin rules
+      "import/order": [
+        "error",
+        {
+          groups: [
+            "builtin",
+            "external",
+            "internal",
+            "parent",
+            "sibling",
+            "index",
+            "object",
+            "type",
+          ],
+          alphabetize: { order: "asc", caseInsensitive: true },
+          "newlines-between": "never",
+        },
+      ],
+      "import/no-cycle": "error",
+      "import/no-duplicates": "error",
 
       // Accessibility rules - enforce best practices
       "jsx-a11y/alt-text": "error",
@@ -94,10 +241,23 @@ export default defineConfig([
       "no-var": "error",
       eqeqeq: ["error", "always"],
       curly: ["error", "all"],
+      "no-implicit-coercion": "error",
+      "no-param-reassign": [
+        "warn", // Downgraded - common pattern in DSP code
+        {
+          props: true,
+          ignorePropertyModificationsFor: ["ref", "refs", "state"],
+        },
+      ],
+      "default-case-last": "error",
     },
     settings: {
       react: {
         version: "detect",
+      },
+      "import/resolver": {
+        typescript: true,
+        node: true,
       },
     },
   },

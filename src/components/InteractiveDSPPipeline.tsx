@@ -29,14 +29,14 @@ function StageVisualization({
   switch (stage.id) {
     case "rf-input":
     case "tuner":
-      return <WaveformChart samples={(stage.outputData as Sample[]) || []} />;
+      return <WaveformChart samples={stage.outputData as Sample[]} />;
     case "iq-sampling":
-      return <IQConstellation samples={(stage.outputData as Sample[]) || []} />;
+      return <IQConstellation samples={stage.outputData as Sample[]} />;
     case "fft":
-      return <FFTChart samples={(stage.inputData as Sample[]) || []} />;
+      return <FFTChart samples={stage.inputData as Sample[]} />;
     case "demodulation":
     case "audio-output":
-      return <WaveformChart samples={(stage.outputData as Sample[]) || []} />;
+      return <WaveformChart samples={stage.outputData as Sample[]} />;
     default:
       return null;
   }
@@ -50,7 +50,7 @@ export default function InteractiveDSPPipeline({
     useDSPPipeline(device, samples);
 
   const selectedStage = useMemo(() => {
-    return stages.find((s) => s.id === selectedStageId) || stages[0];
+    return stages.find((s) => s.id === selectedStageId) ?? stages[0];
   }, [stages, selectedStageId]);
 
   return (
@@ -105,7 +105,9 @@ export default function InteractiveDSPPipeline({
                   exportStageDataAsCSV(
                     selectedStage.id,
                     Array.isArray(selectedStage.outputData)
-                      ? (selectedStage.outputData as Array<Record<string, unknown>>)
+                      ? (selectedStage.outputData as Array<
+                          Record<string, unknown>
+                        >)
                       : [],
                   ),
                 )
@@ -121,7 +123,9 @@ export default function InteractiveDSPPipeline({
                   exportStageDataAsJSON(
                     selectedStage.id,
                     Array.isArray(selectedStage.outputData)
-                      ? (selectedStage.outputData as Array<Record<string, unknown>>)
+                      ? (selectedStage.outputData as Array<
+                          Record<string, unknown>
+                        >)
                       : [],
                   ),
                 )
@@ -135,10 +139,7 @@ export default function InteractiveDSPPipeline({
               onClick={() => {
                 const canvas = document.querySelector("canvas");
                 if (canvas) {
-                  savePNGFromCanvas(
-                    canvas,
-                    `${selectedStage.id}.png`,
-                  );
+                  savePNGFromCanvas(canvas, `${selectedStage.id}.png`);
                 }
               }}
             >

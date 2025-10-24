@@ -52,6 +52,8 @@ export function TMCDisplay({
         return "MODERATE";
       case TMCEventSeverity.MINOR:
         return "MINOR";
+      case TMCEventSeverity.NONE:
+        return "INFO";
       default:
         return "INFO";
     }
@@ -67,6 +69,8 @@ export function TMCDisplay({
         return "⚡";
       case TMCEventSeverity.MINOR:
         return "ℹ️";
+      case TMCEventSeverity.NONE:
+        return "📋";
       default:
         return "📋";
     }

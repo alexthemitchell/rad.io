@@ -32,7 +32,7 @@ function Analysis(): React.JSX.Element {
   const receivePromiseRef = useRef<Promise<void> | null>(null);
 
   // Live region for screen reader announcements
-  const { announce, LiveRegion } = useLiveRegion();
+  const { announce, liveRegion: LiveRegion } = useLiveRegion();
 
   const cancelScheduledUpdate = useCallback((): void => {
     if (

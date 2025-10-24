@@ -20,7 +20,7 @@ function Scanner(): React.JSX.Element {
   const scanner = useFrequencyScanner(device);
 
   // Live region for screen reader announcements
-  const { announce, LiveRegion } = useLiveRegion();
+  const { announce, liveRegion: LiveRegion } = useLiveRegion();
 
   // P25 Trunked Radio State
   const [talkgroups, setTalkgroups] = useState<Talkgroup[]>([

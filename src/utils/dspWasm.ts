@@ -105,9 +105,9 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
         }
 
         wasmModule = {
-          calculateFFT: mod.calculateFFT,
-          calculateWaveform: mod.calculateWaveform,
-          calculateSpectrogram: mod.calculateSpectrogram,
+          calculateFFT: mod.calculateFFT.bind(mod),
+          calculateWaveform: mod.calculateWaveform.bind(mod),
+          calculateSpectrogram: mod.calculateSpectrogram.bind(mod),
         };
         wasmSupported = true;
         return wasmModule;

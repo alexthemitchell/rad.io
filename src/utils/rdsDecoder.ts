@@ -27,7 +27,9 @@ import {
   formatDuration,
   formatExtent,
   createEmptyTMCStats,
- type TMCMessage, type TMCDecoderStats } from "../models/TMCData";
+  type TMCMessage,
+  type TMCDecoderStats,
+} from "../models/TMCData";
 import type {
   RDSBlock,
   RDSGroup,
@@ -139,11 +141,11 @@ export class RDSDecoder {
       const sin = Math.sin(this.phase);
 
       // Quadrature mixing
-      const i_component = samples[i]! * cos;
-      const q_component = samples[i]! * sin;
+      const iComponent = samples[i]! * cos;
+      const qComponent = samples[i]! * sin;
 
       // Phase error detection
-      const phaseError = Math.atan2(q_component, i_component);
+      const phaseError = Math.atan2(qComponent, iComponent);
 
       // PLL loop filter (simple proportional)
       const phaseCorrection = phaseError * 0.01;
@@ -156,7 +158,7 @@ export class RDSDecoder {
       }
 
       // Output is the in-phase component (BPSK signal)
-      output[i] = i_component;
+      output[i] = iComponent;
     }
 
     return output;
