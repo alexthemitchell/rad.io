@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import FrequencyScanner from "../FrequencyScanner";
-import { ActiveSignal } from "../../hooks/useFrequencyScanner";
+import { type ActiveSignal } from "../../hooks/useFrequencyScanner";
 
 describe("FrequencyScanner", () => {
   const mockHandlers = {

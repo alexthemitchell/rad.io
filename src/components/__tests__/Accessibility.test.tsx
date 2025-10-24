@@ -6,7 +6,7 @@ import RadioControls from "../RadioControls";
 import SignalTypeSelector from "../SignalTypeSelector";
 import PresetStations from "../PresetStations";
 import Card from "../Card";
-import { Sample } from "../../utils/dsp";
+import type { Sample } from "../../utils/dsp";
 
 // Mock canvas context for visualization components
 const mockCanvasContext = (): void => {

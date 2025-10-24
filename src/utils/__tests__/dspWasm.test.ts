@@ -15,8 +15,8 @@ import {
   calculateFFTSync,
   calculateWaveform,
   calculateSpectrogram,
-  Sample,
 } from "../dsp";
+import type { Sample } from "../dsp";
 
 // Helper to generate test samples
 function generateTestSamples(count: number): Sample[] {

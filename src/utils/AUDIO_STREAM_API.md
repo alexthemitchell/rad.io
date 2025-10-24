@@ -34,7 +34,7 @@ The Audio Stream Extraction API converts raw in-phase/quadrature (IQ) samples fr
 
 The complete transformation from raw radio input to final audio output:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                     SIGNAL PROCESSING PIPELINE                   │
 └─────────────────────────────────────────────────────────────────┘
@@ -95,7 +95,7 @@ The complete transformation from raw radio input to final audio output:
 
 FM (Frequency Modulation) encoding varies the carrier frequency proportional to the audio signal:
 
-```
+```text
 Transmitted signal: s(t) = A·cos(2πfc·t + 2πkf·∫m(τ)dτ)
 where:
   fc = carrier frequency
@@ -111,7 +111,7 @@ To recover m(t):
 
 Implementation uses discrete differentiation:
 
-```
+```text
 Δφ(n) = φ(n) - φ(n-1)
 m(n) = Δφ(n) / π  (normalized to ±1)
 ```
@@ -120,7 +120,7 @@ m(n) = Δφ(n) / π  (normalized to ±1)
 
 AM (Amplitude Modulation) varies the carrier amplitude proportional to the audio signal:
 
-```
+```text
 Transmitted signal: s(t) = [A + m(t)]·cos(2πfc·t)
 where:
   A = carrier amplitude
@@ -136,7 +136,7 @@ To recover m(t):
 
 Broadcast FM applies pre-emphasis at the transmitter (high-pass filter) to improve SNR. The receiver must apply de-emphasis (low-pass filter):
 
-```
+```text
 H(s) = 1 / (1 + s·τ)
 where τ = 75μs (USA), 50μs (Europe)
 

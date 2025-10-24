@@ -37,7 +37,7 @@ The Web Speech API Integration enables automatic transcription of voice communic
 
 ### Signal Flow
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                  SPEECH RECOGNITION PIPELINE                     │
 └─────────────────────────────────────────────────────────────────┘

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
 import {
@@ -164,7 +164,8 @@ export function useFrequencyScanner(
 
           // Parse and store IQ samples
           const samples = device.parseSamples(data);
-          iqSamplesRef.current.push(...samples);
+          // More efficient: concat instead of push with spread to avoid call stack issues
+          iqSamplesRef.current = iqSamplesRef.current.concat(samples);
 
           if (
             iqSamplesRef.current.length >= config.fftSize &&
@@ -575,7 +576,8 @@ export function useFrequencyScanner(
   const updateSamples = useCallback(
     (amplitudes: number[], iqSamples?: IQSample[]): void => {
       if (isScanningRef.current) {
-        samplesRef.current = [...samplesRef.current, ...amplitudes];
+        // More efficient: use concat instead of spread to reduce intermediate allocations
+        samplesRef.current = samplesRef.current.concat(amplitudes);
         // Keep only recent samples to avoid memory issues
         if (samplesRef.current.length > 10000) {
           samplesRef.current = samplesRef.current.slice(-5000);
@@ -583,7 +585,7 @@ export function useFrequencyScanner(
 
         // Also store IQ samples if provided (for RDS decoding)
         if (iqSamples && config.enableRDS) {
-          iqSamplesRef.current = [...iqSamplesRef.current, ...iqSamples];
+          iqSamplesRef.current = iqSamplesRef.current.concat(iqSamples);
           // Keep only recent IQ samples to avoid memory issues
           if (iqSamplesRef.current.length > 50000) {
             iqSamplesRef.current = iqSamplesRef.current.slice(-25000);
@@ -610,21 +612,37 @@ export function useFrequencyScanner(
     };
   }, [settleReceivePromise]);
 
-  return {
-    // State
-    state,
-    config,
-    currentFrequency,
-    activeSignals,
-    progress,
+  return useMemo(
+    () => ({
+      // State
+      state,
+      config,
+      currentFrequency,
+      activeSignals,
+      progress,
 
-    // Actions
-    startScan,
-    pauseScan,
-    resumeScan,
-    stopScan,
-    updateConfig,
-    clearSignals,
-    updateSamples,
-  };
+      // Actions
+      startScan,
+      pauseScan,
+      resumeScan,
+      stopScan,
+      updateConfig,
+      clearSignals,
+      updateSamples,
+    }),
+    [
+      state,
+      config,
+      currentFrequency,
+      activeSignals,
+      progress,
+      startScan,
+      pauseScan,
+      resumeScan,
+      stopScan,
+      updateConfig,
+      clearSignals,
+      updateSamples,
+    ],
+  );
 }

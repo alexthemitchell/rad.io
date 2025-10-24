@@ -6,12 +6,12 @@
  */
 
 import {
-  ISDRDevice,
+  type ISDRDevice,
   SDRDeviceType,
-  SDRCapabilities,
-  SDRDeviceInfo,
-  IQSample,
-  DeviceMemoryInfo,
+  type SDRCapabilities,
+  type SDRDeviceInfo,
+  type IQSample,
+  type DeviceMemoryInfo,
   convertInt8ToIQ,
   convertUint8ToIQ,
   convertInt16ToIQ,
@@ -139,6 +139,7 @@ class MockSDRDevice implements ISDRDevice {
       throw new Error("Device not open");
     }
     this._ampEnabled = enabled;
+    void this._ampEnabled; // Mock implementation - value stored but not read in tests
   }
 
   async setBandwidth(bandwidthHz: number): Promise<void> {

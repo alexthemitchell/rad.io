@@ -30,6 +30,7 @@ import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import WaveformChart from "../components/WaveformChart";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { type RDSStationData, type RDSDecoderStats } from "../models/RDSData";
 import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,
@@ -44,7 +45,6 @@ import {
   type IQRecording,
 } from "../utils/iqRecorder";
 import { performanceMonitor } from "../utils/performanceMonitor";
-import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 import "../styles/main.css";
 
 const MAX_BUFFER_SAMPLES = 32768;
@@ -490,7 +490,7 @@ function Visualizer(): React.JSX.Element {
       latestChunkRef.current = chunk.slice();
 
       // Process audio if enabled
-      processAudioChunk(chunk).catch((error: unknown) => {
+      processAudioChunk(chunk).catch((error) => {
         console.error("Audio processing error:", error);
       });
 

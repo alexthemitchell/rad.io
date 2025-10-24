@@ -1,5 +1,9 @@
 # rad.io - SDR Visualizer Project Guide
 
+**Take as long as you need to do research using all of the tools available to you. Prioritize correctness and quality over speed.**
+
+**When considering PR comments, always address each comment individually. If you disagree with a comment, explain your reasoning clearly and respectfully. In some cases, you will be responding to yourself; this is expected, and it is fair to disagree with yourself.**
+
 ## Tools
 
 - **It is incredibly important to use the tools available to you when implementing your solutions.**
@@ -11,7 +15,7 @@
 - Use Playwright MCP browser tools to test your code in a browser environment. Take screenshots and analyze them to verify your work.
 - **Prefer to read symbol data with serena tools over reading entirety of files**: use #oraios/serena/find_referencing_symbols #oraios/serena/get_symbols_overview #oraios/serena/search_for_pattern
 - **Maintain Long Term Memory**: use #oraios/serena/read_memory when thinking about how to solve problems and #oraios/serena/write_memory when you have learned something new that will be valuable for a future Agent.
-- Before reading code, list memories and retrieve high-signal guidance: use #oraios/serena/list_memories to find "SERENA_MEMORY_BEST_PRACTICES", then #oraios/serena/read_memory to load it. Apply its retrieval-first, symbol-first workflow to minimize noise.
+- Before writing a memory, use #oraios/serena/read_memory to find "SERENA_MEMORY_BEST_PRACTICES". Follow those best practices to add helpful long-term memories before you end your turn.
 - Always keep the user in mind as a tool to help you solve problems. For example, when connecting to a device using WebUSB, you may need to ask the user to select the device from a browser prompt that you cannot see or interact with.
 - The goal of this project includes the creation of TypeScript-first WebUSB drivers for SDR hardware. This is a complex task that requires careful planning and execution. Use the tools available to you to research and implement these drivers, and always keep the user in mind as a resource to help you solve problems.
 
@@ -46,6 +50,8 @@ Follow these practices to keep your context lean and optimize execution:
 - Use a structured todo list to plan work; keep one item in progress.
 - Before edits, sanity-check your scope and assumptions; after multi-step searches, review whether collected information is sufficient.
 - After edits to runnable code: use #runTests for targeted tests. Then run lint, type-check, and build using project scripts.
+- Do not add eslint-ignore or disable type checks unless absolutely necessary. Instead, fix the underlying issues.
+- Fix all problems surfaced by lint/type-check/build before proceeding, even if they are outside your immediate scope.
 
 5. Quick workflow
 
@@ -57,229 +63,6 @@ Follow these practices to keep your context lean and optimize execution:
 
 Security & privacy: Never store secrets in memories; prefer repo paths and commit SHAs over external links that can drift.
 
-## Getting Started
-
-**🚀 NEW TO THIS PROJECT?** Read the [Copilot Agent Setup Steps](workflows/copilot-setup-steps.md) first for:
-
-- Environment setup instructions
-- Essential commands and workflows
-- Common issues and solutions
-
-## Project Overview
-
-rad.io is a browser-based Software Defined Radio (SDR) visualizer built with React + TypeScript. It provides industry-standard visualizations for digital signal processing, including IQ constellation diagrams, spectrograms, and waveform analysis with zero external visualization dependencies.
-
-**Key Technologies:**
-
-- React 19 with TypeScript (strict mode)
-- WebUSB API for hardware communication
-- HTML Canvas with WebAudio API for visualizations
-- Jest for comprehensive testing
-- GitHub Actions for CI/CD quality control
-
-## Architecture & Design Patterns
-
-### Core Architecture Principles
-
-1. **Universal Device Interface (`ISDRDevice`)**: All SDR hardware implements a standardized interface for plug-and-play compatibility
-2. **Hook-First UI**: Device lifecycle and interactions managed through React hooks
-3. **Separation of Concerns**: Clear boundaries between UI, device control, and DSP processing
-4. **Hardware Abstraction**: Device-specific implementations hidden behind common interface
-5. **Canvas-Based Visualizations**: Native browser APIs for high-performance rendering
-
-### Directory Structure
-
-```
-src/
-├── components/          # UI components and visualizations
-│   ├── IQConstellation.tsx    # Canvas-based IQ diagram
-│   ├── Spectrogram.tsx         # Power spectral density visualization
-│   ├── WaveformVisualizer.tsx  # Time-domain amplitude display
-│   ├── RadioControls.tsx       # Frequency/gain controls
-│   ├── PresetStations.tsx      # Quick station presets
-│   ├── SignalTypeSelector.tsx  # AM/FM toggle
-│   ├── DSPPipeline.tsx         # Signal flow visualization
-│   └── __tests__/              # Component tests
-├── models/              # Device implementations
-│   ├── SDRDevice.ts            # Universal interface definition
-│   ├── HackRFOne.ts            # HackRF device implementation
-│   ├── HackRFOneAdapter.ts     # ISDRDevice adapter
-│   └── __tests__/              # Device tests
-├── hooks/               # React hooks for device management
-│   ├── useHackRFDevice.ts      # HackRF-specific hook
-│   └── useUSBDevice.ts         # Generic WebUSB hook
-├── utils/               # Utility functions
-│   ├── dsp.ts                  # DSP algorithms (FFT, waveform)
-│   ├── testMemoryManager.ts    # Memory management for tests
-│   └── __tests__/              # DSP and memory tests
-├── pages/               # Top-level page components
-│   └── Visualizer.tsx          # Main application page
-└── styles/              # CSS styling
-    └── main.css                # Global styles and utilities
-```
-
-### Key Entry Points
-
-1. **Application Entry**: `src/index.tsx` → `src/App.tsx` → `src/pages/Visualizer.tsx`
-2. **Device Discovery**: `useUSBDevice` hook requests WebUSB access
-3. **Device Initialization**: `useHackRFDevice` creates and configures device instance
-4. **Visualization Pipeline**: Raw IQ samples → DSP processing → WebGL/Canvas rendering
-
-## Critical Implementation Details
-
-### Universal SDR Interface (`src/models/SDRDevice.ts`)
-
-All SDR devices MUST implement `ISDRDevice` interface
-
-**Supported Devices:**
-
-### WebUSB
-
-**Security Context Required**: HTTPS only (WebUSB restriction)
-
-### Visualization Components
-
-**WebGL Architecture (Primary Rendering Path):**
-
-All visualization components use WebGL for GPU-accelerated rendering with graceful fallback:
-
-1. **WebGL** (primary) - GPU-accelerated via `src/utils/webgl.ts`
-2. **OffscreenCanvas + Worker** (secondary) - Offscreen 2D in web worker
-3. **2D Canvas** (tertiary) - Main thread fallback
-
-**Shared WebGL Utilities (`src/utils/webgl.ts`):**
-
-- Context creation with WebGL2/WebGL1 detection
-- Shader compilation and program linking
-- Texture operations (RGBA, NEAREST filtering)
-- Viridis colormap LUT (256-point perceptually uniform)
-- Fullscreen quad rendering for textured visualizations
-
-**Component Implementations:**
-
-- **IQConstellation**: `gl.POINTS` with density-based alpha blending
-- **WaveformVisualizer**: `gl.LINE_STRIP` with adaptive amplitude scaling
-- **Spectrogram**: Textured quad with viridis-mapped power values
-
-**Critical WebGL Patterns:**
-
-```typescript
-// Synchronous canvas sizing BEFORE async import (test compatibility)
-const dpr = window.devicePixelRatio || 1;
-canvas.width = width * dpr;
-canvas.height = height * dpr;
-
-// Then async import for bundle optimization
-const webgl = await import("../utils/webgl");
-
-// Resource lifecycle: create once, update data, cleanup on unmount
-const glStateRef = useRef({ gl: null, program: null, vbo: null });
-useEffect(() => {
-  const st = glStateRef.current; // Capture before return
-  return () => {
-    if (st.gl && st.program) st.gl.deleteProgram(st.program);
-  };
-}, []); // Empty deps - cleanup once
-```
-
-**See WEBGL_VISUALIZATION_ARCHITECTURE memory for complete details.**
-
-**Design Principles Applied:**
-
-1. **Perceptually Uniform Colormaps**: Viridis (11-point interpolation) for spectrograms
-2. **Density-Based Rendering**: Z-ordering (low→high) for IQ constellations
-3. **GPU Acceleration**: `desynchronized: true` canvas context hint
-4. **High-DPI Support**: Automatic `devicePixelRatio` scaling
-5. **Professional Typography**: System font stack (SF Pro, Segoe UI)
-
-**Canvas Optimization Techniques:**
-
-```typescript
-const canvas = canvasRef.current;
-const ctx = canvas.getContext("2d", {
-  alpha: false, // Opaque for performance
-  desynchronized: true, // GPU acceleration hint
-});
-
-// High DPI scaling
-const dpr = window.devicePixelRatio || 1;
-canvas.width = width * dpr;
-canvas.height = height * dpr;
-canvas.style.width = `${width}px`;
-canvas.style.height = `${height}px`;
-ctx.scale(dpr, dpr);
-
-// Sub-pixel rendering for crisp lines
-ctx.translate(0.5, 0.5);
-```
-
-### DSP Processing (`src/utils/dsp.ts`)
-
-**WebAudio API Integration:**
-
-- Manual DFT implementation for synchronous FFT
-- Proper frequency shifting (zero at center)
-- dB scaling: `20 * log10(magnitude)`
-- Parseval's theorem validation in tests
-
-**Signal Processing Chain:**
-
-1. Raw IQ samples (Int8/Uint8/Int16) → Float32
-2. Interleaved I/Q → Complex pairs
-3. DFT → Frequency domain
-4. Frequency shift → Centered spectrum
-5. Magnitude → dB conversion
-
-## Code Style & Best Practices
-
-### TypeScript Patterns
-
-**Strict Mode Compliance:**
-
-- `strict: true` in tsconfig.json
-- Explicit types for all exports
-- No `any` types without justification
-- Proper error handling with typed errors
-
-**Component Patterns:**
-
-```typescript
-// Functional components with hooks
-function ComponentName({ prop1, prop2 }: ComponentProps) {
-  const [state, setState] = useState<StateType>(initialValue);
-
-  useEffect(() => {
-    // Side effects with cleanup
-    return () => cleanup();
-  }, [dependencies]);
-
-  return <div>...</div>;
-}
-
-// Prop types
-type ComponentProps = {
-  prop1: string;
-  prop2?: number;
-  onEvent: (data: EventData) => void;
-};
-```
-
-### CSS Styling Conventions
-
-**Utility-First Approach:**
-
-- Reusable classes: `.btn`, `.card`, `.status-indicator`
-- Responsive with CSS Grid and Flexbox
-- Mobile breakpoints at 768px
-- CSS variables for theme colors
-
-**Component Styling:**
-
-- Scoped styles via BEM-like naming
-- Professional color palette with clearly defined primary, secondary, and accent colors
-- Consistent spacing: 60-80px margins
-- Animation keyframes for status indicators
-
 ## Documentation & Resources
 
 ### External References
@@ -289,15 +72,6 @@ type ComponentProps = {
 - **WebUSB API**: MDN Web Docs - https://developer.mozilla.org/en-US/docs/Web/API/USB
 - **HackRF One Reference Implementation**: https://github.com/greatscottgadgets/hackrf/blob/master/host/libhackrf/src/hackrf.c
 - **Wireless Lab IIT-M**: https://varun19299.github.io/ID4100-Wireless-Lab-IITM/
-
-## Support & Contributing
-
-**Getting Help:**
-
-1. Review this documentation
-2. Check existing tests for usage examples
-3. Examine component source code and JSDoc
-4. Review GitHub Issues for similar problems
 
 **Quality Standards:**
 

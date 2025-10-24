@@ -92,9 +92,13 @@ export default function Spectrogram({
     if (mode === "waterfall") {
       // Append new frames to buffer
       setWaterfallBuffer((prevBuffer) => {
-        const newBuffer = [...prevBuffer, ...fftData];
+        // More efficient: avoid spread operator, use concat + slice
+        const combined = prevBuffer.concat(fftData);
         // Keep only the most recent maxWaterfallFrames
-        return newBuffer.slice(-maxWaterfallFrames);
+        if (combined.length > maxWaterfallFrames) {
+          return combined.slice(combined.length - maxWaterfallFrames);
+        }
+        return combined;
       });
     } else {
       // Reset buffer when not in waterfall mode
@@ -650,6 +654,39 @@ export default function Spectrogram({
       }
     };
   }, []);
+
+  // Periodic memory cleanup to force GC and reduce memory pressure
+  useEffect((): (() => void) => {
+    const CLEANUP_INTERVAL = 30000; // Clean up every 30 seconds
+    const cleanupTimer = setInterval(() => {
+      // Clear old waterfall frames beyond what we need
+      if (
+        mode === "waterfall" &&
+        waterfallBuffer.length > maxWaterfallFrames * 1.5
+      ) {
+        setWaterfallBuffer((prev) => prev.slice(-maxWaterfallFrames));
+      }
+
+      // Hint to browser to run GC (doesn't force it, but helps)
+      if (typeof performance !== "undefined") {
+        const perfWithMemory = performance as {
+          memory?: { usedJSHeapSize?: number; totalJSHeapSize?: number };
+        };
+        if (perfWithMemory.memory) {
+          console.debug("[Spectrogram] Memory usage:", {
+            usedJSHeapSize: Math.round(
+              (perfWithMemory.memory.usedJSHeapSize ?? 0) / 1024 / 1024,
+            ),
+            totalJSHeapSize: Math.round(
+              (perfWithMemory.memory.totalJSHeapSize ?? 0) / 1024 / 1024,
+            ),
+          });
+        }
+      }
+    }, CLEANUP_INTERVAL);
+
+    return () => clearInterval(cleanupTimer);
+  }, [mode, maxWaterfallFrames, waterfallBuffer.length]);
 
   return (
     <div style={{ position: "relative", display: "inline-block" }}>

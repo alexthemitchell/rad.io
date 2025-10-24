@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import IQConstellation from "../IQConstellation";
-import { Sample } from "../../utils/dsp";
+import type { Sample } from "../../utils/dsp";
 
 describe("IQConstellation", () => {
   const createSamples = (count: number): Sample[] => {

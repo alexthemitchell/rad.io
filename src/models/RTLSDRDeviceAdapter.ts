@@ -35,6 +35,9 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
     let tunerName = "Unknown";
 
     switch (tunerType) {
+      case RTLSDRTunerType.UNKNOWN:
+        tunerName = "Unknown";
+        break;
       case RTLSDRTunerType.E4000:
         tunerName = "E4000";
         break;
@@ -52,10 +55,6 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
         break;
       case RTLSDRTunerType.R828D:
         tunerName = "R828D";
-        break;
-      case RTLSDRTunerType.UNKNOWN:
-      default:
-        tunerName = "Unknown";
         break;
     }
 

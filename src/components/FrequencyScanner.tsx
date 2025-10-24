@@ -1,8 +1,7 @@
-import React from "react";
-import {
-  type ActiveSignal,
-  type ScannerState,
-  type FrequencyScanConfig,
+import type {
+  ActiveSignal,
+  ScannerState,
+  FrequencyScanConfig,
 } from "../hooks/useFrequencyScanner";
 
 export interface FrequencyScannerProps {

@@ -29,14 +29,14 @@ function StageVisualization({
   switch (stage.id) {
     case "rf-input":
     case "tuner":
-      return <WaveformChart samples={(stage.outputData as Sample[]) || []} />;
+      return <WaveformChart samples={stage.outputData as Sample[]} />;
     case "iq-sampling":
-      return <IQConstellation samples={(stage.outputData as Sample[]) || []} />;
+      return <IQConstellation samples={stage.outputData as Sample[]} />;
     case "fft":
-      return <FFTChart samples={(stage.inputData as Sample[]) || []} />;
+      return <FFTChart samples={stage.inputData as Sample[]} />;
     case "demodulation":
     case "audio-output":
-      return <WaveformChart samples={(stage.outputData as Sample[]) || []} />;
+      return <WaveformChart samples={stage.outputData as Sample[]} />;
     default:
       return null;
   }
@@ -50,7 +50,7 @@ export default function InteractiveDSPPipeline({
     useDSPPipeline(device, samples);
 
   const selectedStage = useMemo(() => {
-    return stages.find((s) => s.id === selectedStageId) || stages[0];
+    return stages.find((s) => s.id === selectedStageId) ?? stages[0];
   }, [stages, selectedStageId]);
 
   return (

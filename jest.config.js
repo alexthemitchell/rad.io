@@ -1,6 +1,5 @@
 /** @type {import('jest').Config} */
 module.exports = {
-  preset: "ts-jest",
   testEnvironment: "jsdom",
   testTimeout: 30000, // 30 seconds per test
   moduleNameMapper: {
@@ -78,15 +77,17 @@ module.exports = {
   coverageReporters: ["text", "lcov", "json-summary"],
   transformIgnorePatterns: ["node_modules/(?!(webfft)/)"],
   transform: {
-    "^.+\\.(ts|tsx)$": [
-      "ts-jest",
+    "^.+\\.(t|j)sx?$": [
+      "@swc/jest",
       {
-        tsconfig: {
-          module: "esnext",
+        jsc: {
+          parser: { syntax: "typescript", tsx: true },
+          transform: { react: { runtime: "automatic" } },
           target: "es2020",
         },
+        module: { type: "commonjs" },
+        sourceMaps: true,
       },
     ],
-    "^.+\\.(js|jsx|mjs)$": "babel-jest",
   },
 };

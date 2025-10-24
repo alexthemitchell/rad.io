@@ -28,6 +28,7 @@ import { performanceMonitor } from "../utils/performanceMonitor";
 
 const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
+const AUDIO_BUFFER_SIZE = 131072;
 
 function LiveMonitor(): React.JSX.Element {
   const location = useLocation();
@@ -82,7 +83,6 @@ function LiveMonitor(): React.JSX.Element {
   const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const audioSampleBufferRef = useRef<Sample[]>([]);
-  const AUDIO_BUFFER_SIZE = 131072;
 
   // Live region for screen reader announcements
   const { announce, liveRegion: LiveRegion } = useLiveRegion();
@@ -194,13 +194,7 @@ function LiveMonitor(): React.JSX.Element {
         }
       }
     },
-    [
-      isAudioPlaying,
-      signalType,
-      getDemodType,
-      playAudioBuffer,
-      AUDIO_BUFFER_SIZE,
-    ],
+    [isAudioPlaying, signalType, getDemodType, playAudioBuffer],
   );
 
   const handleToggleAudio = useCallback(() => {
@@ -318,7 +312,7 @@ function LiveMonitor(): React.JSX.Element {
       sampleBufferRef.current = trimmed;
       latestChunkRef.current = chunk.slice();
 
-      processAudioChunk(chunk).catch((error: unknown) => {
+      processAudioChunk(chunk).catch((error) => {
         console.error("Audio processing error:", error);
       });
 

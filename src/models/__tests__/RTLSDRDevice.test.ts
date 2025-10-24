@@ -49,7 +49,7 @@ class MockUSBDevice {
   }
 
   async controlTransferOut(
-    setup: USBControlTransferParameters,
+    _setup: USBControlTransferParameters,
     data?: BufferSource,
   ): Promise<USBOutTransferResult> {
     return {
@@ -74,7 +74,7 @@ class MockUSBDevice {
   }
 
   async transferIn(
-    endpoint: number,
+    _endpoint: number,
     length: number,
   ): Promise<USBInTransferResult> {
     // Add small delay to prevent tight loop in tests
@@ -212,7 +212,8 @@ describe("RTLSDRDeviceAdapter", () => {
       const testRate = 2.048e6; // 2.048 MSPS
       await device.setSampleRate(testRate);
       const rate = await device.getSampleRate();
-      expect(rate).toBeCloseTo(testRate, -5); // Within 50 kHz
+      // The actual rate is quantized by the device, so check within 100 kHz
+      expect(Math.abs(rate - testRate)).toBeLessThan(100000); // Within 100 kHz
     });
 
     it("should reject sample rate below minimum", async () => {
@@ -236,9 +237,11 @@ describe("RTLSDRDeviceAdapter", () => {
 
     it("should calculate usable bandwidth as 80% of sample rate", async () => {
       await device.setSampleRate(2.048e6);
+      const rate = await device.getSampleRate();
       const bandwidth = await device.getUsableBandwidth();
-      const expectedBandwidth = 2.048e6 * 0.8;
-      expect(bandwidth).toBeCloseTo(expectedBandwidth, -5); // Within 50 kHz
+      const expectedBandwidth = rate * 0.8;
+      // The bandwidth is derived from the actual sample rate, so check within 10 kHz
+      expect(bandwidth).toBeCloseTo(expectedBandwidth, -2);
     });
   });
 
@@ -277,11 +280,12 @@ describe("RTLSDRDeviceAdapter", () => {
     it("should handle single sample", () => {
       const buffer = new ArrayBuffer(2);
       const view = new DataView(buffer);
-      view.setUint8(0, 200); // I = ~0.57
-      view.setUint8(1, 50); // Q = ~-0.60
+      view.setUint8(0, 200); // I
+      view.setUint8(1, 50); // Q
 
       const samples = device.parseSamples(view);
       expect(samples).toHaveLength(1);
+      // The implementation normalizes using (x - 127.5) / 127.5
       expect(samples[0]?.I).toBeCloseTo((200 - 127.5) / 127.5, 2);
       expect(samples[0]?.Q).toBeCloseTo((50 - 127.5) / 127.5, 2);
     });

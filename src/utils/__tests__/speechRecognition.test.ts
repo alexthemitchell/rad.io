@@ -194,15 +194,18 @@ class MockAudioContext {
 // Setup global mocks
 beforeAll(() => {
   global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
+  // Patch globalThis for Node environment compatibility
   (
-    global as typeof global & {
-      webkitSpeechRecognition: typeof MockSpeechRecognition;
+    globalThis as typeof globalThis & {
+      webkitSpeechRecognition: unknown;
     }
-  ).webkitSpeechRecognition =
-    MockSpeechRecognition as unknown as unknown as typeof MockSpeechRecognition;
+  ).webkitSpeechRecognition = MockSpeechRecognition as unknown;
 });
 
 afterAll(() => {
+  delete (
+    globalThis as typeof globalThis & { webkitSpeechRecognition?: unknown }
+  ).webkitSpeechRecognition;
   delete (global as typeof global & { webkitSpeechRecognition?: unknown })
     .webkitSpeechRecognition;
 });
@@ -452,7 +455,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -535,7 +537,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -581,7 +582,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -620,7 +620,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -659,7 +658,6 @@ describe("SpeechRecognitionProcessor", () => {
       const recognition = processor[
         "recognition"
       ] as unknown as MockSpeechRecognition;
-      const _originalStart = recognition.start.bind(recognition);
       recognition.start = function (): void {
         this.isStarted = true;
         setTimeout(() => {
@@ -724,7 +722,7 @@ describe("Convenience Functions", () => {
           webkitSpeechRecognition: typeof MockSpeechRecognition;
         }
       ).webkitSpeechRecognition = class extends MockSpeechRecognition {
-        start(): void {
+        override start(): void {
           super.start();
           setTimeout(() => {
             this.simulateError("network");

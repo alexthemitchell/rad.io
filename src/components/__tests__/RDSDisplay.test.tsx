@@ -2,7 +2,6 @@
  * Tests for RDS Display Component
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { RDSDisplay, RDSDisplayCompact } from "../RDSDisplay";

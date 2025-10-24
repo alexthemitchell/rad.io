@@ -10,8 +10,19 @@ module.exports = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: "ts-loader",
-        exclude: [/node_modules/, /__tests__/, /\.test\./],
+        use: {
+          loader: "swc-loader",
+        },
+        exclude: [
+          /node_modules/,
+          /__tests__/,
+          /\.test\./,
+          /\.spec\./,
+          /jest\.setup/,
+          /jest\.config/,
+          /playwright\.config/,
+          /\/e2e\//,
+        ],
       },
       {
         test: /\.css$/,

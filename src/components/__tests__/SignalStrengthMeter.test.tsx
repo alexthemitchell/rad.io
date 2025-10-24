@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import SignalStrengthMeter from "../SignalStrengthMeter";
-import { Sample, calculateSignalStrength } from "../../utils/dsp";
+import { calculateSignalStrength } from "../../utils/dsp";
+import type { Sample } from "../../utils/dsp";
 
 describe("SignalStrengthMeter", () => {
   const createSamples = (count: number, amplitude = 0.5): Sample[] => {

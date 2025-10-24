@@ -235,7 +235,10 @@ export function symbolsToBits(symbols: number[]): number[] {
  *
  * Returns the index where sync pattern was found, or -1 if not found
  */
-export function detectFrameSync(bits: number[], threshold = 0.8): number {
+export function detectFrameSync(
+  bits: number[],
+  threshold = 0.8,
+): number {
   const syncLength = P25_SYNC_PATTERN.length;
   const minMatches = Math.floor(syncLength * threshold);
 
