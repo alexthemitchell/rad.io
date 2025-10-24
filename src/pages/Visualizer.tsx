@@ -19,6 +19,9 @@ import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
+import SpeechTranscription, {
+  type TranscriptionMode,
+} from "../components/SpeechTranscription";
 import TalkgroupScanner, {
   type Talkgroup,
 } from "../components/TalkgroupScanner";
@@ -75,6 +78,12 @@ function Visualizer(): React.JSX.Element {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioVolume, setAudioVolume] = useState(0.5);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
+
+  // Speech recognition state
+  const [transcriptionMode, setTranscriptionMode] =
+    useState<TranscriptionMode>("off");
+  const [transcriptionLanguage, setTranscriptionLanguage] =
+    useState<string>("en-US");
 
   // RDS state
   const [rdsData, setRdsData] = useState<RDSStationData | null>(null);
@@ -276,6 +285,36 @@ function Visualizer(): React.JSX.Element {
       setLiveRegionMessage(newState ? "Audio muted" : "Audio unmuted");
       return newState;
     });
+  }, []);
+
+  // Speech transcription handlers
+  const handleTranscriptionModeChange = useCallback(
+    (mode: TranscriptionMode) => {
+      setTranscriptionMode(mode);
+      if (mode !== "off") {
+        setLiveRegionMessage(`Speech transcription ${mode} mode enabled`);
+      } else {
+        setLiveRegionMessage("Speech transcription disabled");
+      }
+    },
+    [],
+  );
+
+  const handleTranscriptionLanguageChange = useCallback((lang: string) => {
+    setTranscriptionLanguage(lang);
+  }, []);
+
+  const handleTranscriptionStart = useCallback(() => {
+    setLiveRegionMessage("Speech recognition started");
+  }, []);
+
+  const handleTranscriptionStop = useCallback(() => {
+    setLiveRegionMessage("Speech recognition stopped");
+  }, []);
+
+  const handleTranscriptionError = useCallback((error: Error) => {
+    console.error("Speech transcription error:", error);
+    setLiveRegionMessage(`Transcription error: ${error.message}`);
   }, []);
 
   // Device reset handler
@@ -1020,6 +1059,23 @@ function Visualizer(): React.JSX.Element {
             onTogglePlay={handleToggleAudio}
             onVolumeChange={handleVolumeChange}
             onToggleMute={handleToggleMute}
+          />
+        </Card>
+
+        <Card
+          title="Speech Recognition"
+          subtitle="Transcribe audio using Web Speech API"
+        >
+          <SpeechTranscription
+            mode={transcriptionMode}
+            isAvailable={isAudioPlaying}
+            signalType={signalType}
+            language={transcriptionLanguage}
+            onModeChange={handleTranscriptionModeChange}
+            onLanguageChange={handleTranscriptionLanguageChange}
+            onStart={handleTranscriptionStart}
+            onStop={handleTranscriptionStop}
+            onError={handleTranscriptionError}
           />
         </Card>
 
