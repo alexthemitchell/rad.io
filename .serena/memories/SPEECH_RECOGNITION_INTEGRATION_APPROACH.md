@@ -19,12 +19,14 @@
 ### Practical Approaches for SDR Audio Transcription
 
 #### Approach 1: Loopback Audio (Recommended for User Testing)
+
 - Play demodulated audio through speakers
 - User captures with microphone using Web Speech API
 - Pros: Works with Web API, tests full pipeline
 - Cons: Requires external audio routing, quality loss, not fully automated
 
 #### Approach 2: UI Pattern - Manual Activation
+
 **This is the most practical browser-native solution:**
 
 ```typescript
@@ -36,12 +38,14 @@
 ```
 
 **Benefits:**
+
 - Works within Web Speech API constraints
 - Clear UX: user controls when transcription happens
 - Properly shows real-world limitation
 - No need for server-side APIs
 
 #### Approach 3: Display-Only Implementation
+
 **Focus on demonstrating the technology:**
 
 ```typescript
@@ -55,6 +59,7 @@
 ### Recommended Implementation for rad.io
 
 Given that rad.io is:
+
 - Educational SDR visualization tool
 - Browser-based (no server)
 - Real-time audio processing
@@ -89,13 +94,16 @@ Given that rad.io is:
 ### Implementation Files
 
 **New Components:**
+
 - `src/components/SpeechTranscription.tsx` - UI for displaying transcripts
 - `src/hooks/useSpeechRecognition.ts` - React hook wrapping SpeechRecognitionProcessor
 
 **Integration Point:**
+
 - `src/pages/Visualizer.tsx` - Add transcription card alongside visualizations
 
 **No Changes Needed:**
+
 - `src/utils/speechRecognition.ts` - Already implements Web Speech API correctly
 - Test suite - Already comprehensive for API usage
 
@@ -103,8 +111,10 @@ Given that rad.io is:
 
 ```typescript
 // In Visualizer.tsx
-const [transcriptionMode, setTranscriptionMode] = useState<'off' | 'demo' | 'manual'>('off');
-const [transcript, setTranscript] = useState('');
+const [transcriptionMode, setTranscriptionMode] = useState<
+  "off" | "demo" | "manual"
+>("off");
+const [transcript, setTranscript] = useState("");
 
 // Mode A: Demo with synthesis
 const runDemoTranscription = async () => {
@@ -117,7 +127,7 @@ const runDemoTranscription = async () => {
 // Mode B: Manual microphone transcription
 const startManualTranscription = async () => {
   recognizer.setCallbacks({
-    onResult: (result) => setTranscript(result.alternatives[0].transcript)
+    onResult: (result) => setTranscript(result.alternatives[0].transcript),
   });
   await recognizer.start(); // Uses getUserMedia
 };
@@ -126,11 +136,13 @@ const startManualTranscription = async () => {
 ### Testing Strategy
 
 **E2E Tests Already Exist:**
+
 - 31 tests in `speechEndToEnd.test.ts`
 - Full round-trip TTS → STT validation
 - Multiple languages, edge cases, performance
 
 **New UI Tests:**
+
 - Component rendering
 - Mode switching
 - Error states
@@ -142,7 +154,7 @@ const startManualTranscription = async () => {
 
 ```
 "Web Speech Recognition uses your microphone.
- 
+
 For transcribing radio audio:
 - Option 1: Enable system audio loopback (advanced)
 - Option 2: Speak what you hear into the microphone
@@ -152,6 +164,7 @@ For transcribing radio audio:
 ## Summary
 
 Web Speech API cannot directly transcribe SDR demodulated audio due to browser security model. Best implementation:
+
 1. Create polished UI component
 2. Support microphone-based manual transcription
 3. Add demo mode using Speech Synthesis

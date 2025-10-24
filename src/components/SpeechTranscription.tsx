@@ -162,8 +162,11 @@ export default function SpeechTranscription({
     }
     return (
       window.SpeechRecognition ??
-      (window as Window & { webkitSpeechRecognition?: typeof SpeechRecognition })
-        .webkitSpeechRecognition
+      (
+        window as Window & {
+          webkitSpeechRecognition?: typeof SpeechRecognition;
+        }
+      ).webkitSpeechRecognition
     );
   }, []);
 
@@ -258,9 +261,7 @@ export default function SpeechTranscription({
   const startDemo = useCallback(() => {
     if (!isSpeechSupported()) {
       if (onError) {
-        onError(
-          new Error("Speech Synthesis not supported in this browser"),
-        );
+        onError(new Error("Speech Synthesis not supported in this browser"));
       }
       return;
     }
@@ -309,9 +310,7 @@ export default function SpeechTranscription({
     const recognition = initRecognition();
     if (!recognition) {
       if (onError) {
-        onError(
-          new Error("Speech Recognition not supported in this browser"),
-        );
+        onError(new Error("Speech Recognition not supported in this browser"));
       }
       return;
     }
@@ -324,7 +323,9 @@ export default function SpeechTranscription({
       console.error("Failed to start recognition:", error);
       if (onError) {
         onError(
-          error instanceof Error ? error : new Error("Failed to start recognition"),
+          error instanceof Error
+            ? error
+            : new Error("Failed to start recognition"),
         );
       }
     }
@@ -473,8 +474,8 @@ export default function SpeechTranscription({
           )}
           {mode === "manual" && !isRecognizing && (
             <p className="info-message">
-              Starting microphone-based transcription... Please allow
-              microphone access when prompted.
+              Starting microphone-based transcription... Please allow microphone
+              access when prompted.
             </p>
           )}
           {mode === "manual" && isRecognizing && (
@@ -490,8 +491,8 @@ export default function SpeechTranscription({
           <div className="educational-note">
             <strong>Note:</strong> Web Speech API uses your microphone for
             input. To transcribe radio audio: (1) Enable system audio loopback
-            (advanced), (2) Speak what you hear, or (3) Use demo mode to see
-            how it works.
+            (advanced), (2) Speak what you hear, or (3) Use demo mode to see how
+            it works.
           </div>
         )}
       </div>
@@ -516,8 +517,13 @@ export default function SpeechTranscription({
             className={`transcript-entry ${entry.isFinal ? "final" : "interim"}`}
           >
             <div className="transcript-header">
-              <span className="timestamp">{formatTimestamp(entry.timestamp)}</span>
-              <span className="confidence" title={`Confidence: ${formatConfidence(entry.confidence)}`}>
+              <span className="timestamp">
+                {formatTimestamp(entry.timestamp)}
+              </span>
+              <span
+                className="confidence"
+                title={`Confidence: ${formatConfidence(entry.confidence)}`}
+              >
                 {formatConfidence(entry.confidence)}
               </span>
               <span className="language">{entry.lang}</span>
