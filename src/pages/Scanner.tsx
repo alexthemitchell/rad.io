@@ -5,7 +5,9 @@ import FrequencyScanner from "../components/FrequencyScanner";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
-import TalkgroupScanner, { type Talkgroup } from "../components/TalkgroupScanner";
+import TalkgroupScanner, {
+  type Talkgroup,
+} from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";

@@ -5,7 +5,11 @@ import {
   WebGPULineRenderer,
   WebGPUTextureRenderer,
 } from "../webgpu";
-import type { PointData, LineData, TextureData } from "../../types/visualization";
+import type {
+  PointData,
+  LineData,
+  TextureData,
+} from "../../types/visualization";
 
 // Mock WebGPU API
 const mockGPU = {
@@ -202,9 +206,18 @@ describe("WebGPU Utilities", () => {
       const pointData: PointData = {
         positions: new Float32Array([0, 0, 0.5, 0.5, -0.5, -0.5]),
         colors: new Float32Array([
-          1, 0, 0, 1, // Red
-          0, 1, 0, 1, // Green
-          0, 0, 1, 1, // Blue
+          1,
+          0,
+          0,
+          1, // Red
+          0,
+          1,
+          0,
+          1, // Green
+          0,
+          0,
+          1,
+          1, // Blue
         ]),
         pointSize: 5.0,
       };
@@ -258,9 +271,7 @@ describe("WebGPU Utilities", () => {
       await renderer.initialize(canvas);
 
       const lineData: LineData = {
-        positions: new Float32Array([
-          -1, 0, -0.5, 0.5, 0, 0, 0.5, 0.5, 1, 0,
-        ]),
+        positions: new Float32Array([-1, 0, -0.5, 0.5, 0, 0, 0.5, 0.5, 1, 0]),
         color: [1, 0, 0, 1],
         lineWidth: 2.0,
       };

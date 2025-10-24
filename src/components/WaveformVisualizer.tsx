@@ -106,7 +106,7 @@ export default function WaveformVisualizer({
 
           const renderer = new webgpu.WebGPULineRenderer();
           const initialized = await renderer.initialize(canvas);
-          
+
           if (initialized) {
             // Calculate waveform data
             const { amplitude } = calculateWaveform(samples);

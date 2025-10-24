@@ -373,7 +373,10 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
     this.pointCount = pointData.positions.length / 2;
 
     // Update or create vertex buffer
-    if (!this.vertexBuffer || this.vertexBuffer.size < pointData.positions.byteLength) {
+    if (
+      !this.vertexBuffer ||
+      this.vertexBuffer.size < pointData.positions.byteLength
+    ) {
       this.vertexBuffer?.destroy();
       this.vertexBuffer = createBuffer(
         this.device,
@@ -386,7 +389,10 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
 
     // Update or create color buffer
     if (pointData.colors) {
-      if (!this.colorBuffer || this.colorBuffer.size < pointData.colors.byteLength) {
+      if (
+        !this.colorBuffer ||
+        this.colorBuffer.size < pointData.colors.byteLength
+      ) {
         this.colorBuffer?.destroy();
         this.colorBuffer = createBuffer(
           this.device,
@@ -437,7 +443,9 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
   }
 
   isReady(): boolean {
-    return this.device !== null && this.context !== null && this.pipeline !== null;
+    return (
+      this.device !== null && this.context !== null && this.pipeline !== null
+    );
   }
 }
 
@@ -539,7 +547,13 @@ export class WebGPULineRenderer implements IVisualizationRenderer {
   }
 
   render(data: unknown): boolean {
-    if (!this.device || !this.context || !this.pipeline || !this.bindGroup || !this.uniformBuffer) {
+    if (
+      !this.device ||
+      !this.context ||
+      !this.pipeline ||
+      !this.bindGroup ||
+      !this.uniformBuffer
+    ) {
       return false;
     }
 
@@ -552,10 +566,17 @@ export class WebGPULineRenderer implements IVisualizationRenderer {
 
     // Update uniform buffer with color
     const color = lineData.color ?? [0.39, 0.86, 1.0, 0.9];
-    this.device.queue.writeBuffer(this.uniformBuffer, 0, new Float32Array(color));
+    this.device.queue.writeBuffer(
+      this.uniformBuffer,
+      0,
+      new Float32Array(color),
+    );
 
     // Update or create vertex buffer
-    if (!this.vertexBuffer || this.vertexBuffer.size < lineData.positions.byteLength) {
+    if (
+      !this.vertexBuffer ||
+      this.vertexBuffer.size < lineData.positions.byteLength
+    ) {
       this.vertexBuffer?.destroy();
       this.vertexBuffer = createBuffer(
         this.device,
@@ -701,7 +722,11 @@ export class WebGPUTextureRenderer implements IVisualizationRenderer {
     }
 
     const textureData = data as TextureData;
-    if (!textureData.data || textureData.width === 0 || textureData.height === 0) {
+    if (
+      !textureData.data ||
+      textureData.width === 0 ||
+      textureData.height === 0
+    ) {
       return false;
     }
 
@@ -712,7 +737,11 @@ export class WebGPUTextureRenderer implements IVisualizationRenderer {
       this.textureHeight !== textureData.height
     ) {
       this.texture?.destroy();
-      this.texture = createTexture(this.device, textureData.width, textureData.height);
+      this.texture = createTexture(
+        this.device,
+        textureData.width,
+        textureData.height,
+      );
       this.textureWidth = textureData.width;
       this.textureHeight = textureData.height;
 
@@ -780,6 +809,8 @@ export class WebGPUTextureRenderer implements IVisualizationRenderer {
   }
 
   isReady(): boolean {
-    return this.device !== null && this.context !== null && this.pipeline !== null;
+    return (
+      this.device !== null && this.context !== null && this.pipeline !== null
+    );
   }
 }

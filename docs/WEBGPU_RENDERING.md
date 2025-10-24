@@ -13,12 +13,14 @@ The visualization system uses a progressive enhancement approach with four rende
 **Browsers**: Chrome 113+, Edge 113+
 
 **Advantages**:
+
 - Modern GPU API with explicit resource management
 - Lower CPU overhead compared to WebGL
 - Better compute shader support for future DSP offloading
 - Improved memory management
 
-**Implementation**: 
+**Implementation**:
+
 - `WebGPUPointRenderer` for IQ Constellation scatter plots
 - `WebGPULineRenderer` for Waveform line plots
 - `WebGPUTextureRenderer` for Spectrogram heatmaps
@@ -28,11 +30,13 @@ The visualization system uses a progressive enhancement approach with four rende
 **Browsers**: All modern browsers, IE11+
 
 **Advantages**:
+
 - Mature API with broad browser support
 - Hardware-accelerated rendering
 - Proven performance characteristics
 
 **Implementation**:
+
 - Current production rendering path
 - Comprehensive shader support
 - Buffer and texture management
@@ -42,6 +46,7 @@ The visualization system uses a progressive enhancement approach with four rende
 **Browsers**: Chrome 69+, Edge 79+, Firefox 44+
 
 **Advantages**:
+
 - Offloads rendering to background thread
 - Keeps main thread responsive
 - Good for CPU-bound rendering
@@ -51,6 +56,7 @@ The visualization system uses a progressive enhancement approach with four rende
 **Browsers**: Universal support
 
 **Advantages**:
+
 - Works everywhere
 - Simple API
 - No special requirements
@@ -80,6 +86,7 @@ interface IVisualizationRenderer {
 ### Shaders (WGSL)
 
 **Points** (IQ Constellation):
+
 ```wgsl
 // Vertex shader with position and color attributes
 // Point primitive topology with per-vertex coloring
@@ -87,6 +94,7 @@ interface IVisualizationRenderer {
 ```
 
 **Lines** (Waveform):
+
 ```wgsl
 // Vertex shader with position attribute
 // Fragment shader with uniform color
@@ -94,6 +102,7 @@ interface IVisualizationRenderer {
 ```
 
 **Texture** (Spectrogram):
+
 ```wgsl
 // Fullscreen quad vertex shader
 // Fragment shader with texture sampling
@@ -136,12 +145,14 @@ renderer.cleanup();
 **Implementation**: 256-color perceptually uniform lookup table
 
 **Key Colors**:
+
 - Dark purple (68, 1, 84) → Low power
 - Blue → Cyan-green → Yellow-green (121, 209, 81) → High power
 
 **Usage**: Maps normalized power values [0, 1] to RGBA colors
 
 **Benefits**:
+
 - Perceptually uniform color transitions
 - Colorblind-friendly
 - Excellent for scientific visualization
@@ -171,12 +182,12 @@ renderer.cleanup();
 
 ## Browser Support Matrix
 
-| Renderer | Chrome | Edge | Firefox | Safari |
-|----------|--------|------|---------|--------|
-| WebGPU | 113+ | 113+ | 🚧 Flag | 🚧 TP |
-| WebGL | ✅ | ✅ | ✅ | ✅ |
-| Offscreen | 69+ | 79+ | 44+ | ❌ |
-| Canvas 2D | ✅ | ✅ | ✅ | ✅ |
+| Renderer  | Chrome | Edge | Firefox | Safari |
+| --------- | ------ | ---- | ------- | ------ |
+| WebGPU    | 113+   | 113+ | 🚧 Flag | 🚧 TP  |
+| WebGL     | ✅     | ✅   | ✅      | ✅     |
+| Offscreen | 69+    | 79+  | 44+     | ❌     |
+| Canvas 2D | ✅     | ✅   | ✅      | ✅     |
 
 Legend: ✅ Supported, 🚧 Experimental, ❌ Not supported, TP = Technology Preview
 
@@ -187,6 +198,7 @@ Legend: ✅ Supported, 🚧 Experimental, ❌ Not supported, TP = Technology Pre
 **Location**: `src/utils/__tests__/webgpu.test.ts`
 
 **Coverage**:
+
 - WebGPU availability detection
 - Viridis LUT validation (color accuracy, endpoints)
 - All three renderers (initialization, rendering, cleanup)
@@ -199,6 +211,7 @@ Legend: ✅ Supported, 🚧 Experimental, ❌ Not supported, TP = Technology Pre
 **Location**: `src/components/__tests__/Accessibility.test.tsx`
 
 **Coverage**:
+
 - Component rendering with WebGPU
 - Fallback to WebGL/Canvas when WebGPU unavailable
 - Canvas dimension handling

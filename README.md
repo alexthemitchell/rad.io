@@ -35,6 +35,7 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Keyboard Navigation**: Accessible controls for precision signal analysis
 
 **Modern GPU Acceleration**:
+
 - **WebGPU Rendering**: Modern GPU API for maximum performance (Chrome 113+, Edge 113+)
 - **WebGL Fallback**: Wide browser support with hardware acceleration
 - **Progressive Enhancement**: Graceful degradation to Canvas 2D for older browsers

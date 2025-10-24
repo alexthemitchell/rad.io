@@ -171,7 +171,7 @@ export default function Spectrogram({
 
           const renderer = new webgpu.WebGPUTextureRenderer();
           const initialized = await renderer.initialize(canvas);
-          
+
           if (initialized) {
             const bins = Math.max(
               1,

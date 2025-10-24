@@ -50,32 +50,32 @@ Models (Device Logic) → Hooks (React Integration) → Views (Components)
 
 \`\`\`
 src/
-├── models/              # Device implementations
-│   ├── SDRDevice.ts            # Universal interface (ISDRDevice)
-│   ├── HackRFOne.ts            # HackRF implementation
-│   ├── HackRFOneAdapter.ts     # ISDRDevice adapter
-│   ├── RTLSDRDevice.ts         # RTL-SDR implementation
-│   ├── templates/              # Device templates
-│   └── __tests__/              # Device tests
-├── hooks/               # React hooks
-│   ├── useUSBDevice.ts         # Generic WebUSB hook
-│   ├── useHackRFDevice.ts      # HackRF-specific hook
-│   ├── useSDR.ts               # Universal SDR hook
-│   └── useVisualizationInteraction.ts
-├── components/          # UI components
-│   ├── IQConstellation.tsx     # IQ diagram visualization
-│   ├── Spectrogram.tsx         # Frequency spectrum
-│   ├── WaveformVisualizer.tsx  # Time-domain waveform
-│   ├── RadioControls.tsx       # Device controls
-│   └── __tests__/              # Component tests
-├── utils/               # Utility functions
-│   ├── dsp.ts                  # DSP algorithms
-│   ├── webgl.ts                # WebGL utilities
-│   └── __tests__/              # Utility tests
-├── pages/               # Top-level pages
-│   └── Visualizer.tsx          # Main application
-└── workers/             # Web Workers
-    └── visualization.worker.ts
+├── models/ # Device implementations
+│ ├── SDRDevice.ts # Universal interface (ISDRDevice)
+│ ├── HackRFOne.ts # HackRF implementation
+│ ├── HackRFOneAdapter.ts # ISDRDevice adapter
+│ ├── RTLSDRDevice.ts # RTL-SDR implementation
+│ ├── templates/ # Device templates
+│ └── **tests**/ # Device tests
+├── hooks/ # React hooks
+│ ├── useUSBDevice.ts # Generic WebUSB hook
+│ ├── useHackRFDevice.ts # HackRF-specific hook
+│ ├── useSDR.ts # Universal SDR hook
+│ └── useVisualizationInteraction.ts
+├── components/ # UI components
+│ ├── IQConstellation.tsx # IQ diagram visualization
+│ ├── Spectrogram.tsx # Frequency spectrum
+│ ├── WaveformVisualizer.tsx # Time-domain waveform
+│ ├── RadioControls.tsx # Device controls
+│ └── **tests**/ # Component tests
+├── utils/ # Utility functions
+│ ├── dsp.ts # DSP algorithms
+│ ├── webgl.ts # WebGL utilities
+│ └── **tests**/ # Utility tests
+├── pages/ # Top-level pages
+│ └── Visualizer.tsx # Main application
+└── workers/ # Web Workers
+└── visualization.worker.ts
 \`\`\`
 
 ## Device Integration Framework
@@ -85,4 +85,3 @@ src/
 All SDR devices **must** implement the \`ISDRDevice\` interface defined in \`src/models/SDRDevice.ts\`. This ensures consistent behavior and enables plug-and-play device support.
 
 See \`docs/DEVICE_INTEGRATION.md\` for a step-by-step guide to adding new devices.
-

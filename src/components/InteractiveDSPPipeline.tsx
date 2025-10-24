@@ -105,7 +105,9 @@ export default function InteractiveDSPPipeline({
                   exportStageDataAsCSV(
                     selectedStage.id,
                     Array.isArray(selectedStage.outputData)
-                      ? (selectedStage.outputData as Array<Record<string, unknown>>)
+                      ? (selectedStage.outputData as Array<
+                          Record<string, unknown>
+                        >)
                       : [],
                   ),
                 )
@@ -121,7 +123,9 @@ export default function InteractiveDSPPipeline({
                   exportStageDataAsJSON(
                     selectedStage.id,
                     Array.isArray(selectedStage.outputData)
-                      ? (selectedStage.outputData as Array<Record<string, unknown>>)
+                      ? (selectedStage.outputData as Array<
+                          Record<string, unknown>
+                        >)
                       : [],
                   ),
                 )
@@ -135,10 +139,7 @@ export default function InteractiveDSPPipeline({
               onClick={() => {
                 const canvas = document.querySelector("canvas");
                 if (canvas) {
-                  savePNGFromCanvas(
-                    canvas,
-                    `${selectedStage.id}.png`,
-                  );
+                  savePNGFromCanvas(canvas, `${selectedStage.id}.png`);
                 }
               }}
             >

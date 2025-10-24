@@ -21,8 +21,9 @@ interface IVisualizationRenderer {
 ```
 
 **Data Types**:
+
 - `PointData` - Scatter plot data (positions, colors, pointSize)
-- `LineData` - Line plot data (positions, color, lineWidth)  
+- `LineData` - Line plot data (positions, color, lineWidth)
 - `TextureData` - Heatmap data (RGBA data, width, height)
 - `RendererConfig` - Configuration (width, height, DPR)
 
@@ -47,16 +48,19 @@ interface IVisualizationRenderer {
 ### Renderer Classes
 
 **WebGPUPointRenderer** - IQ Constellation scatter plots
+
 - Point primitive topology
 - Per-point color via vertex attribute
 - Alpha blending for density visualization
 
 **WebGPULineRenderer** - Waveform line plots
+
 - Line-strip topology
 - Uniform color binding
 - Vertex-only data
 
 **WebGPUTextureRenderer** - Spectrogram heatmaps
+
 - Fullscreen quad (4 vertices, triangle-strip)
 - Texture sampler with nearest filtering
 - Dynamic texture updates
@@ -66,17 +70,20 @@ interface IVisualizationRenderer {
 ### Type Safety
 
 WebGPU types require explicit casting for enums:
+
 ```typescript
-format: "float32x2" as GPUVertexFormat
-loadOp: "clear" as GPULoadOp
+format: "float32x2" as GPUVertexFormat;
+loadOp: "clear" as GPULoadOp;
 ```
 
 Arrays must be explicitly typed:
+
 ```typescript
 buffers: [...] as GPUVertexBufferLayout[]
 ```
 
 Buffer data requires GPUAllowSharedBufferSource cast:
+
 ```typescript
 device.queue.writeBuffer(buffer, 0, data as GPUAllowSharedBufferSource);
 ```
@@ -86,11 +93,12 @@ device.queue.writeBuffer(buffer, 0, data as GPUAllowSharedBufferSource);
 Must use `canvas.getContext("webgpu")` not `"2d"` or `"webgl"`.
 
 Context configuration:
+
 ```typescript
 context.configure({
   device,
   format: navigator.gpu.getPreferredCanvasFormat(),
-  alphaMode: "opaque"
+  alphaMode: "opaque",
 });
 ```
 
@@ -104,8 +112,9 @@ context.configure({
 ### Shader Module Pattern
 
 Combine vertex + fragment shaders in single string:
+
 ```typescript
-code: VERTEX_SHADER + "\n" + FRAGMENT_SHADER
+code: VERTEX_SHADER + "\n" + FRAGMENT_SHADER;
 ```
 
 Separate entry points (`entryPoint: "main"`) for each stage.
@@ -128,6 +137,7 @@ device.queue.submit([encoder.finish()]);
 ## Viridis Colormap
 
 9 key colors interpolated to 256-point LUT:
+
 - Dark purple (68,1,84) → Blue → Cyan-green → Yellow-green (121,209,81)
 - Perceptually uniform for power spectral density
 - Same as IITM research implementation
@@ -137,6 +147,7 @@ device.queue.submit([encoder.finish()]);
 **Location**: `src/utils/__tests__/webgpu.test.ts`
 
 23 tests covering:
+
 - WebGPU availability detection
 - Viridis LUT validation (RGBA values, endpoints)
 - All three renderers (initialize, render, cleanup, error handling)
@@ -147,6 +158,7 @@ device.queue.submit([encoder.finish()]);
 ## Dependencies
 
 **@webgpu/types** (0.1.66): TypeScript definitions for WebGPU API
+
 - Installed as devDependency
 - Reference via `/// <reference types="@webgpu/types" />`
 - Provides GPUDevice, GPUBuffer, GPUTexture, etc.
@@ -156,6 +168,7 @@ device.queue.submit([encoder.finish()]);
 ## Browser Support
 
 WebGPU available in:
+
 - Chrome 113+ (May 2023)
 - Edge 113+ (May 2023)
 - Firefox behind flag (experimental)
@@ -166,12 +179,14 @@ Graceful fallback required for unsupported browsers.
 ## Integration Strategy (Pending)
 
 Fallback chain order:
+
 1. **WebGPU** (primary, modern browsers)
 2. **WebGL** (current implementation, wide support)
 3. **OffscreenCanvas + Worker** (secondary)
 4. **2D Canvas** (tertiary, main thread)
 
 Components to update:
+
 - `src/components/IQConstellation.tsx` - Add WebGPU renderer
 - `src/components/WaveformVisualizer.tsx` - Add WebGPU renderer
 - `src/components/Spectrogram.tsx` - Add WebGPU renderer
@@ -179,12 +194,14 @@ Components to update:
 ## Performance Considerations
 
 **Advantages over WebGL**:
+
 - Modern API design (explicit resource management)
 - Better compute shader support
 - Improved memory management
 - Lower CPU overhead
 
 **Optimization**:
+
 - Reuse buffers when size unchanged
 - Batch updates with `writeBuffer()`
 - Use async initialization pattern

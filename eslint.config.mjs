@@ -84,7 +84,7 @@ export default defineConfig([
       "@typescript-eslint/switch-exhaustiveness-check": "error",
       "@typescript-eslint/no-unnecessary-condition": "warn", // Changed to warn - can have false positives
       "@typescript-eslint/consistent-type-imports": [
-        "warn",  // Changed to warn to not break existing code
+        "warn", // Changed to warn to not break existing code
         {
           prefer: "type-imports",
           fixStyle: "inline-type-imports",
@@ -95,7 +95,7 @@ export default defineConfig([
       "@typescript-eslint/restrict-template-expressions": [
         "error",
         {
-          allowNumber: true,  // Allow numbers in template literals
+          allowNumber: true, // Allow numbers in template literals
           allowBoolean: true,
         },
       ],

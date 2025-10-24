@@ -115,7 +115,7 @@ export default function IQConstellation({
 
           const renderer = new webgpu.WebGPUPointRenderer();
           const initialized = await renderer.initialize(canvas);
-          
+
           if (initialized) {
             // Build positions in NDC [-1,1] using min/max
             const iValues = samples.map((s) => s.I);
@@ -149,7 +149,7 @@ export default function IQConstellation({
                       i % Math.ceil(samples.length / MAX_DENSITY_SAMPLES) === 0,
                   )
                 : samples;
-            
+
             for (const s of densitySamples) {
               const gi = Math.round(s.I / gridSize) * gridSize;
               const gq = Math.round(s.Q / gridSize) * gridSize;

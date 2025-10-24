@@ -348,10 +348,7 @@ function Analysis(): React.JSX.Element {
           )}
         </Card>
 
-        <InteractiveDSPPipeline
-          device={device}
-          samples={samples}
-        />
+        <InteractiveDSPPipeline device={device} samples={samples} />
 
         <PerformanceMetrics currentFPS={currentFPS} />
       </main>
