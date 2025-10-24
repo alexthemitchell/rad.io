@@ -297,6 +297,8 @@ function Visualizer(): React.JSX.Element {
         setLiveRegionMessage("Speech transcription disabled");
       }
     },
+    // setLiveRegionMessage is a stable setState function from React
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -306,15 +308,21 @@ function Visualizer(): React.JSX.Element {
 
   const handleTranscriptionStart = useCallback(() => {
     setLiveRegionMessage("Speech recognition started");
+    // setLiveRegionMessage is a stable setState function from React
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTranscriptionStop = useCallback(() => {
     setLiveRegionMessage("Speech recognition stopped");
+    // setLiveRegionMessage is a stable setState function from React
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTranscriptionError = useCallback((error: Error) => {
     console.error("Speech transcription error:", error);
     setLiveRegionMessage(`Transcription error: ${error.message}`);
+    // setLiveRegionMessage is a stable setState function from React
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Device reset handler

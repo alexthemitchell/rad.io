@@ -67,6 +67,8 @@ export type TranscriptionMode = "off" | "demo" | "manual";
  * Transcript entry with metadata
  */
 export interface TranscriptEntry {
+  /** Unique identifier */
+  id: number;
   /** Transcribed text */
   text: string;
   /** Confidence score (0-1) */
@@ -140,6 +142,7 @@ export default function SpeechTranscription({
   const [currentInterim, setCurrentInterim] = useState("");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
+  const transcriptIdCounterRef = useRef<number>(0);
 
   /**
    * Check if Web Speech API is supported
@@ -154,9 +157,8 @@ export default function SpeechTranscription({
   /**
    * Get SpeechRecognition constructor
    */
-  const getSpeechRecognition = useCallback(():
-    | typeof SpeechRecognition
-    | undefined => {
+  type SpeechRecognitionConstructor = typeof SpeechRecognition | undefined;
+  const getSpeechRecognition = useCallback((): SpeechRecognitionConstructor => {
     if (typeof window === "undefined") {
       return undefined;
     }
@@ -228,6 +230,7 @@ export default function SpeechTranscription({
 
         if (result.isFinal) {
           newTranscripts.push({
+            id: transcriptIdCounterRef.current++,
             text: transcript,
             confidence,
             isFinal: true,
@@ -284,6 +287,7 @@ export default function SpeechTranscription({
       setTranscripts((prev) => [
         ...prev,
         {
+          id: transcriptIdCounterRef.current++,
           text: `[DEMO MODE] ${demoPhrase}`,
           confidence: 1.0,
           isFinal: true,
@@ -372,7 +376,8 @@ export default function SpeechTranscription({
    * Auto-scroll to latest transcript
    */
   useEffect(() => {
-    if (transcriptEndRef.current && transcriptEndRef.current.scrollIntoView) {
+    // Check for scrollIntoView support (not available in test environment)
+    if (transcriptEndRef.current?.scrollIntoView) {
       transcriptEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [transcripts, currentInterim]);
@@ -511,9 +516,9 @@ export default function SpeechTranscription({
           </div>
         )}
 
-        {transcripts.map((entry, index) => (
+        {transcripts.map((entry) => (
           <div
-            key={`${entry.timestamp}-${index}`}
+            key={entry.id}
             className={`transcript-entry ${entry.isFinal ? "final" : "interim"}`}
           >
             <div className="transcript-header">
