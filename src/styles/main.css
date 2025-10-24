@@ -565,6 +565,16 @@ body {
   color: #78350f;
 }
 
+.educational-note a {
+  color: #1e40af;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.educational-note a:hover {
+  color: #1e3a8a;
+}
+
 .transcripts-display {
   max-height: 400px;
   overflow-y: auto;

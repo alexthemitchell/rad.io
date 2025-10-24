@@ -496,8 +496,15 @@ export default function SpeechTranscription({
           <div className="educational-note">
             <strong>Note:</strong> Web Speech API uses your microphone for
             input. To transcribe radio audio: (1) Enable system audio loopback
-            (advanced), (2) Speak what you hear, or (3) Use demo mode to see how
-            it works.
+            (advanced) -{" "}
+            <a
+              href="https://github.com/alexthemitchell/rad.io/blob/main/docs/SYSTEM_AUDIO_LOOPBACK.md"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              see guide
+            </a>
+            , (2) Speak what you hear, or (3) Use demo mode to see how it works.
           </div>
         )}
       </div>
