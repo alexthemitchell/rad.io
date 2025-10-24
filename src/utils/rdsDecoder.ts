@@ -89,8 +89,8 @@ export class RDSDecoder {
   private currentGroupBlocks: RDSBlock[] = [];
 
   // RDS data buffers
-  private psBuffer: string[] = new Array(8).fill("");
-  private rtBuffer: string[] = new Array(64).fill("");
+  private psBuffer: string[] = new Array<string>(8).fill("");
+  private rtBuffer: string[] = new Array<string>(64).fill("");
 
   // TMC data storage
   private tmcMessages = new Map<number, TMCMessage>();
@@ -141,8 +141,9 @@ export class RDSDecoder {
       const sin = Math.sin(this.phase);
 
       // Quadrature mixing
-      const iComponent = samples[i]! * cos;
-      const qComponent = samples[i]! * sin;
+      const sample = samples[i] ?? 0;
+      const iComponent = sample * cos;
+      const qComponent = sample * sin;
 
       // Phase error detection
       const phaseError = Math.atan2(qComponent, iComponent);
@@ -171,8 +172,14 @@ export class RDSDecoder {
     const bits: number[] = [];
     let bitAccumulator = 0;
 
+    // Using traditional for loop to avoid TypeScript iteration issues with TypedArrays
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of -- TypedArray iteration has type inference issues
     for (let i = 0; i < signal.length; i++) {
-      bitAccumulator += signal[i]!;
+      const sample = signal[i];
+      if (sample === undefined) {
+        continue;
+      }
+      bitAccumulator += sample;
 
       // Check if we've accumulated enough samples for one bit
       this.bitPhase++;
@@ -277,11 +284,11 @@ export class RDSDecoder {
     let checkword = 0;
 
     for (let i = 0; i < 16; i++) {
-      data = (data << 1) | (bits[i] || 0);
+      data = (data << 1) | (bits[i] ?? 0);
     }
 
     for (let i = 16; i < 26; i++) {
-      checkword = (checkword << 1) | (bits[i] || 0);
+      checkword = (checkword << 1) | (bits[i] ?? 0);
     }
 
     return {
@@ -335,8 +342,11 @@ export class RDSDecoder {
       this.currentGroupBlocks.push(block);
 
       // Store group type and version for later use
-      this.currentGroupBlocks[1]!.groupType = groupType;
-      this.currentGroupBlocks[1]!.groupVersion = version;
+      const lastBlock = this.currentGroupBlocks[1];
+      if (lastBlock) {
+        lastBlock.groupType = groupType;
+        lastBlock.groupVersion = version;
+      }
     } else if (block.offsetWord === "C" || block.offsetWord === "C'") {
       // this.blockPosition = 3;
       this.currentGroupBlocks.push(block);
@@ -365,11 +375,20 @@ export class RDSDecoder {
     this.stats.validGroups++;
 
     // Extract group type and version from Block B
-    const blockB = this.currentGroupBlocks[1]!;
-    const groupType = blockB.groupType || 0;
-    const version = (blockB.groupVersion || "A") as "A" | "B";
+    const blockB = this.currentGroupBlocks[1];
+    if (!blockB) {
+      return;
+    }
+
+    const groupType = blockB.groupType ?? 0;
+    const version = (blockB.groupVersion ?? "A") as "A" | "B";
 
     // Create RDS group structure
+    const block0 = this.currentGroupBlocks[0];
+    if (!block0) {
+      return;
+    }
+
     const group: RDSGroup = {
       blocks: this.currentGroupBlocks as [
         RDSBlock,
@@ -379,7 +398,7 @@ export class RDSDecoder {
       ],
       groupType: this.getGroupTypeName(groupType, version),
       version: version,
-      pi: this.currentGroupBlocks[0]!.data,
+      pi: block0.data,
       pty: (blockB.data >> 5) & 0x1f,
       tp: Boolean((blockB.data >> 10) & 0x1),
       ta: Boolean((blockB.data >> 4) & 0x1),
@@ -469,8 +488,9 @@ export class RDSDecoder {
 
     const index = segmentAddress * chars.length;
     for (let i = 0; i < chars.length; i++) {
-      if (chars[i] !== "\r") {
-        this.rtBuffer[index + i] = chars[i]!;
+      const char = chars[i];
+      if (char !== undefined && char !== "\r") {
+        this.rtBuffer[index + i] = char;
       } else {
         // Carriage return marks end of text
         this.stationData.rt = this.rtBuffer.slice(0, index + i).join("");
@@ -536,21 +556,24 @@ export class RDSDecoder {
         (locationCode << 16) | (eventCode << 3) | (continuityIndex & 0x7);
 
       // Calculate expiration time based on duration
+      // Note: Duration is currently always NO_DURATION (see comment above)
+      // When multi-group support is added, this logic will handle actual durations
       const now = Date.now();
       let expiresAt: number | null = null;
-      if (duration !== TMCDuration.NO_DURATION) {
-        // Map TMCDuration enum to actual duration in milliseconds
-        const durationToMs: Record<TMCDuration, number> = {
-          [TMCDuration.NO_DURATION]: 0,
-          [TMCDuration.MINUTES_15]: 15 * 60 * 1000,
-          [TMCDuration.MINUTES_30]: 30 * 60 * 1000,
-          [TMCDuration.HOUR_1]: 60 * 60 * 1000,
-          [TMCDuration.HOURS_2]: 2 * 60 * 60 * 1000,
-          [TMCDuration.HOURS_3_TO_4]: 3.5 * 60 * 60 * 1000,
-          [TMCDuration.HOURS_4_TO_8]: 6 * 60 * 60 * 1000,
-          [TMCDuration.LONGER_THAN_8_HOURS]: 12 * 60 * 60 * 1000,
-        };
-        expiresAt = now + (durationToMs[duration] ?? 0);
+      // Duration calculation moved to Map-based lookup
+      const durationToMs: Record<TMCDuration, number> = {
+        [TMCDuration.NO_DURATION]: 0,
+        [TMCDuration.MINUTES_15]: 15 * 60 * 1000,
+        [TMCDuration.MINUTES_30]: 30 * 60 * 1000,
+        [TMCDuration.HOUR_1]: 60 * 60 * 1000,
+        [TMCDuration.HOURS_2]: 2 * 60 * 60 * 1000,
+        [TMCDuration.HOURS_3_TO_4]: 3.5 * 60 * 60 * 1000,
+        [TMCDuration.HOURS_4_TO_8]: 6 * 60 * 60 * 1000,
+        [TMCDuration.LONGER_THAN_8_HOURS]: 12 * 60 * 60 * 1000,
+      };
+      const durationMs = durationToMs[duration];
+      if (durationMs > 0) {
+        expiresAt = now + durationMs;
       }
 
       // Check if this message already exists
@@ -669,8 +692,8 @@ export class RDSDecoder {
     this.blockBuffer = [];
     // this.blockPosition = 0;
     this.currentGroupBlocks = [];
-    this.psBuffer = new Array(8).fill("");
-    this.rtBuffer = new Array(64).fill("");
+    this.psBuffer = new Array<string>(8).fill("");
+    this.rtBuffer = new Array<string>(64).fill("");
   }
 }
 

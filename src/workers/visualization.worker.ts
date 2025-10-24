@@ -65,16 +65,18 @@ function setup(
   width = w;
   height = h;
   dpr = devicePixelRatio;
-  ctx = offscreen.getContext("2d", {
-    alpha: false,
-  })!;
-  if (!ctx) {
+  const context: OffscreenCanvasRenderingContext2D | null =
+    offscreen.getContext("2d", {
+      alpha: false,
+    });
+  if (!context) {
     postMessage({
       type: "error",
       message: "Could not get 2D context in worker",
     });
     return;
   }
+  ctx = context;
   // Canvas dimensions are already set on main thread before transfer
   // Just need to apply scaling for logical coordinates
   const ctxReset = ctx as { reset?: () => void };
@@ -149,7 +151,7 @@ function drawConstellation(samples: Sample[], transform?: ViewTransform): void {
     const gi = Math.round(s.I / gridSize) * gridSize;
     const gq = Math.round(s.Q / gridSize) * gridSize;
     const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
-    densityMap.set(key, (densityMap.get(key) || 0) + 1);
+    densityMap.set(key, (densityMap.get(key) ?? 0) + 1);
   });
   const maxDensity = Math.max(...Array.from(densityMap.values()), 1);
 
@@ -157,7 +159,7 @@ function drawConstellation(samples: Sample[], transform?: ViewTransform): void {
     const gi = Math.round(sample.I / gridSize) * gridSize;
     const gq = Math.round(sample.Q / gridSize) * gridSize;
     const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
-    const density = (densityMap.get(key) || 1) / maxDensity;
+    const density = (densityMap.get(key) ?? 1) / maxDensity;
     return { sample, density };
   });
   samplesWithDensity.sort((a, b) => a.density - b.density);
@@ -206,9 +208,6 @@ function drawSpectrogram(
   let gmin = Infinity;
   let gmax = -Infinity;
   for (const row of fftData) {
-    if (!row) {
-      continue;
-    }
     for (let b = freqMinLocal; b < freqMaxLocal && b < row.length; b++) {
       const v = row[b];
       if (typeof v === "number" && isFinite(v)) {
@@ -299,7 +298,10 @@ function drawWaveform(samples: WaveformSample[]): void {
   c.beginPath();
   for (let i = 0; i < amps.length; i += step) {
     const x = margin.left + (i / amps.length) * chartWidth;
-    const amp = amps[i]!;
+    const amp = amps[i];
+    if (amp === undefined) {
+      continue;
+    }
     const y =
       margin.top +
       chartHeight -
@@ -356,26 +358,25 @@ self.onmessage = (
         return;
       }
       if (vizType === "constellation") {
-        drawConstellation(msg.data.samples || [], msg.data.transform);
+        drawConstellation(msg.data.samples ?? [], msg.data.transform);
       } else if (vizType === "spectrogram") {
         drawSpectrogram(
-          msg.data.fftData || [],
+          msg.data.fftData ?? [],
           msg.data.freqMin ?? freqMin,
           msg.data.freqMax ?? freqMax,
         );
       } else if (vizType === "waveform") {
-        drawWaveform(msg.data.samples || []);
+        drawWaveform(msg.data.samples ?? []);
       }
       return;
     }
 
-    if (msg.type === "dispose") {
-      // let GC collect
-      offscreen = null;
-      ctx = null;
-      vizType = null;
-      close();
-    }
+    // msg.type === "dispose" at this point (exhaustive check)
+    // let GC collect
+    offscreen = null;
+    ctx = null;
+    vizType = null;
+    close();
   } catch (e) {
     postMessage({ type: "error", message: (e as Error).message });
   }

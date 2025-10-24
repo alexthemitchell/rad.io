@@ -175,7 +175,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
     const result = await benchmarkFFT(size, size, 5);
     results.push(result);
     console.error(
-      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) || "N/A"}x\n`,
+      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) ?? "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) ?? "N/A"}x\n`,
     );
   }
 
@@ -186,7 +186,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
     const result = await benchmarkWaveform(size, 5);
     results.push(result);
     console.error(
-      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) || "N/A"}x\n`,
+      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) ?? "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) ?? "N/A"}x\n`,
     );
   }
 
@@ -207,7 +207,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
     );
     results.push(result);
     console.error(
-      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) || "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) || "N/A"}x\n`,
+      `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) ?? "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) ?? "N/A"}x\n`,
     );
   }
 

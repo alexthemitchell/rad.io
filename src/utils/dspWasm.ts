@@ -43,13 +43,17 @@ let wasmModule: WasmDSPModule | null = null;
 let wasmLoading: Promise<WasmDSPModule | null> | null = null;
 let wasmSupported = false;
 
+// Dynamic import wrapper - necessary for WebAssembly module loading
 const dynamicImportModule: (specifier: string) => Promise<unknown> =
   typeof Function === "function"
-    ? (new Function("specifier", "return import(specifier);") as (
+    ? // eslint-disable-next-line @typescript-eslint/no-implied-eval -- Required for dynamic imports
+      (new Function("specifier", "return import(specifier);") as (
         specifier: string,
       ) => Promise<unknown>)
     : async (): Promise<unknown> => {
-        throw new Error("Dynamic import is not supported in this environment");
+        return Promise.reject(
+          new Error("Dynamic import is not supported in this environment"),
+        );
       };
 
 /**

@@ -85,6 +85,7 @@ function RecordingControls({
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
+      const target = event.target;
       if (!file) {
         return;
       }
@@ -106,12 +107,22 @@ function RecordingControls({
         alert(
           `Failed to load recording: ${error instanceof Error ? error.message : "Unknown error"}`,
         );
+      } finally {
+        // Reset input so the same file can be selected again
+        if (target instanceof HTMLInputElement) {
+          target.value = "";
+        }
       }
-
-      // Reset input so the same file can be selected again
-      event.target.value = "";
     },
     [onLoadRecording],
+  );
+
+  // Wrapper to avoid no-misused-promises
+  const handleFileSelectWrapper = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      void handleFileSelect(event);
+    },
+    [handleFileSelect],
   );
 
   // Handle save button click
@@ -208,7 +219,7 @@ function RecordingControls({
             <input
               type="file"
               accept=".iq,.json"
-              onChange={handleFileSelect}
+              onChange={handleFileSelectWrapper}
               style={{ display: "none" }}
               aria-label="Load recording file"
             />

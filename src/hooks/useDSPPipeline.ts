@@ -163,7 +163,10 @@ export function useDSPPipeline(
           if (s.id !== stageId) {
             return s;
           }
-          const original = initialStages.find((st) => st.id === stageId)!;
+          const original = initialStages.find((st) => st.id === stageId);
+          if (!original) {
+            return s;
+          }
           return { ...original };
         }),
       );
@@ -256,14 +259,14 @@ export function useDSPPipeline(
               ...s,
               inputData: iqResult.output,
               outputData: demodResult.output,
-              metrics: (demodResult.metrics as StageMetrics) ?? {},
+              metrics: demodResult.metrics as StageMetrics,
             };
           case "audio-output":
             return {
               ...s,
               inputData: demodResult.output,
               outputData: audioResult.output,
-              metrics: (audioResult.metrics as StageMetrics) ?? {},
+              metrics: audioResult.metrics as StageMetrics,
             };
           default:
             return s;

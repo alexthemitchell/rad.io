@@ -83,8 +83,13 @@ export function useVisualizationInteraction(
         return null;
       }
       const coords = Array.from(pointers.values());
-      const dx = coords[0]!.x - coords[1]!.x;
-      const dy = coords[0]!.y - coords[1]!.y;
+      const coord0 = coords[0];
+      const coord1 = coords[1];
+      if (!coord0 || !coord1) {
+        return null;
+      }
+      const dx = coord0.x - coord1.x;
+      const dy = coord0.y - coord1.y;
       return Math.sqrt(dx * dx + dy * dy);
     },
     [],

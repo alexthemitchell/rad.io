@@ -39,12 +39,18 @@ function getTrigTables(fftSize: number): {
     // Limit cache size to prevent memory growth
     // Keep only the 10 most recently used sizes
     if (trigCache.size > 10) {
-      const firstKey = trigCache.keys().next().value!;
-      trigCache.delete(firstKey);
+      const firstKey = trigCache.keys().next().value;
+      if (firstKey !== undefined) {
+        trigCache.delete(firstKey);
+      }
     }
   }
 
-  return trigCache.get(fftSize)!;
+  const cached = trigCache.get(fftSize);
+  if (!cached) {
+    throw new Error(`Trig cache miss for fftSize ${fftSize}`);
+  }
+  return cached;
 }
 
 /**
@@ -63,8 +69,8 @@ export function calculateFFT(samples: Sample[], fftSize: number): Float32Array {
 
   // Fill buffer with sample data
   for (let i = 0; i < Math.min(samples.length, fftSize); i++) {
-    iChannel[i] = samples[i]?.I || 0;
-    qChannel[i] = samples[i]?.Q || 0;
+    iChannel[i] = samples[i]?.I ?? 0;
+    qChannel[i] = samples[i]?.Q ?? 0;
   }
 
   // Create analyser node for FFT
@@ -84,7 +90,7 @@ export function calculateFFT(samples: Sample[], fftSize: number): Float32Array {
 
   // Process the audio to get FFT data
   return new Promise<Float32Array>((resolve) => {
-    audioContext.startRendering().then(() => {
+    void audioContext.startRendering().then(() => {
       analyser.getFloatFrequencyData(frequencyData);
 
       // Shift FFT to center zero frequency
@@ -145,8 +151,8 @@ export function calculateFFTSync(
         // angle = (-2 * Math.PI * k * n) / fftSize = k * (-2π/N) * n
         // We have cos/sin for k, need to multiply by n via angle addition
         const baseAngle = (k * n) % fftSize;
-        const cos = cosTable[baseAngle]!;
-        const sin = sinTable[baseAngle]!;
+        const cos = cosTable[baseAngle] ?? 0;
+        const sin = sinTable[baseAngle] ?? 0;
 
         // Complex multiplication: (I + jQ) * (cos + j*sin)
         realSum += sample.I * cos - sample.Q * sin;
@@ -229,11 +235,10 @@ export function calculateSpectrogram(
 /**
  * Convert raw IQ samples to Sample objects
  */
-export function convertToSamples(rawSamples: Array<[number, number]>): Sample[] {
+export function convertToSamples(
+  rawSamples: Array<[number, number]>,
+): Sample[] {
   return rawSamples.map(([i, q]) => {
-    if (i === undefined || q === undefined) {
-      throw new Error("invalid sample");
-    }
     return { I: i, Q: q };
   });
 }
@@ -300,11 +305,7 @@ export function calculateSignalStrength(samples: Sample[]): number {
 
   // Calculate RMS (Root Mean Square) power
   let sumSquares = 0;
-  for (let i = 0; i < samples.length; i++) {
-    const sample = samples[i];
-    if (!sample) {
-      continue;
-    }
+  for (const sample of samples) {
     // Power is magnitude squared: I^2 + Q^2
     sumSquares += sample.I * sample.I + sample.Q * sample.Q;
   }

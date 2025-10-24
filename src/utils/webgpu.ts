@@ -158,16 +158,23 @@ export function getViridisLUT(): Uint8Array {
     let r: number, g: number, b: number;
 
     if (idx >= keyColors.length - 1) {
-      const lastColor = keyColors[keyColors.length - 1]!;
-      r = lastColor[0]!;
-      g = lastColor[1]!;
-      b = lastColor[2]!;
+      const lastColor = keyColors[keyColors.length - 1];
+      // Default to black if color array doesn't have all 3 components
+      r = lastColor?.[0] ?? 0;
+      g = lastColor?.[1] ?? 0;
+      b = lastColor?.[2] ?? 0;
     } else {
-      const c0 = keyColors[idx]!;
-      const c1 = keyColors[idx + 1]!;
-      r = c0[0]! + (c1[0]! - c0[0]!) * frac;
-      g = c0[1]! + (c1[1]! - c0[1]!) * frac;
-      b = c0[2]! + (c1[2]! - c0[2]!) * frac;
+      const c0 = keyColors[idx];
+      const c1 = keyColors[idx + 1];
+      const c0r = c0?.[0] ?? 0;
+      const c0g = c0?.[1] ?? 0;
+      const c0b = c0?.[2] ?? 0;
+      const c1r = c1?.[0] ?? 0;
+      const c1g = c1?.[1] ?? 0;
+      const c1b = c1?.[2] ?? 0;
+      r = c0r + (c1r - c0r) * frac;
+      g = c0g + (c1g - c0g) * frac;
+      b = c0b + (c1b - c0b) * frac;
     }
 
     lut[i * 4 + 0] = Math.round(r);
@@ -366,7 +373,7 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
     }
 
     const pointData = data as PointData;
-    if (!pointData.positions || pointData.positions.length === 0) {
+    if (pointData.positions.length === 0) {
       return false;
     }
 
@@ -558,7 +565,7 @@ export class WebGPULineRenderer implements IVisualizationRenderer {
     }
 
     const lineData = data as LineData;
-    if (!lineData.positions || lineData.positions.length === 0) {
+    if (lineData.positions.length === 0) {
       return false;
     }
 
@@ -722,11 +729,7 @@ export class WebGPUTextureRenderer implements IVisualizationRenderer {
     }
 
     const textureData = data as TextureData;
-    if (
-      !textureData.data ||
-      textureData.width === 0 ||
-      textureData.height === 0
-    ) {
+    if (textureData.width === 0 || textureData.height === 0) {
       return false;
     }
 

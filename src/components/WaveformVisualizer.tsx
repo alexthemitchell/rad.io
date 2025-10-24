@@ -3,6 +3,7 @@ import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 import { calculateWaveform, type Sample } from "../utils/dsp";
+import type { GL } from "../utils/webgl";
 import type { ReactElement } from "react";
 
 type WaveformVisualizerProps = {
@@ -28,7 +29,7 @@ export default function WaveformVisualizer({
 
   // WebGL state
   const glStateRef = useRef<{
-    gl: import("../utils/webgl").GL | null;
+    gl: GL | null;
     program: WebGLProgram | null;
     vbo: WebGLBuffer | null;
   }>({ gl: null, program: null, vbo: null });
@@ -127,7 +128,7 @@ export default function WaveformVisualizer({
             const positions = new Float32Array(amplitude.length * 2);
             for (let i = 0; i < amplitude.length; i++) {
               const x = -1 + (2 * i) / (amplitude.length - 1);
-              const amp = amplitude[i]!;
+              const amp = amplitude[i] ?? 0;
               const y = -1 + (2 * (amp - displayMin)) / displayRange;
               positions[i * 2 + 0] = x;
               positions[i * 2 + 1] = y;
@@ -186,7 +187,7 @@ export default function WaveformVisualizer({
           const positions = new Float32Array(amplitude.length * 2);
           for (let i = 0; i < amplitude.length; i++) {
             const x = -1 + (2 * i) / (amplitude.length - 1);
-            const amp = amplitude[i]!;
+            const amp = amplitude[i] ?? 0;
             const y = -1 + (2 * (amp - displayMin)) / displayRange;
             positions[i * 2 + 0] = x;
             positions[i * 2 + 1] = y;
@@ -263,7 +264,7 @@ void main() {
                 viz?: string;
                 renderTimeMs?: number;
               };
-              if (d?.type === "metrics") {
+              if (d.type === "metrics") {
                 console.warn(
                   `[viz worker] ${d.viz} render ${d.renderTimeMs?.toFixed(2)}ms`,
                 );
@@ -375,7 +376,7 @@ void main() {
       const step = Math.max(1, Math.floor(amplitude.length / maxPoints));
       for (let i = 0; i < amplitude.length; i += step) {
         const x = margin.left + (i / amplitude.length) * chartWidth;
-        const amp = amplitude[i]!;
+        const amp = amplitude[i] ?? 0;
         const y =
           margin.top +
           chartHeight -

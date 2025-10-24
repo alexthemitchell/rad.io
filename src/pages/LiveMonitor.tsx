@@ -103,8 +103,8 @@ function LiveMonitor(): React.JSX.Element {
     audioProcessorRef.current = new AudioStreamProcessor(2048000);
 
     return (): void => {
-      audioProcessorRef.current?.cleanup();
-      audioContextRef.current?.close();
+      void audioProcessorRef.current?.cleanup();
+      void audioContextRef.current?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -161,7 +161,7 @@ function LiveMonitor(): React.JSX.Element {
   );
 
   const processAudioChunk = useCallback(
-    async (chunk: Sample[]): Promise<void> => {
+    (chunk: Sample[]): void => {
       if (!isAudioPlaying || !audioProcessorRef.current) {
         return;
       }
@@ -178,7 +178,7 @@ function LiveMonitor(): React.JSX.Element {
 
         try {
           const demodType = getDemodType(signalType);
-          const result = await audioProcessorRef.current.extractAudio(
+          const result = audioProcessorRef.current.extractAudio(
             samplesToProcess,
             demodType,
             {
@@ -290,7 +290,7 @@ function LiveMonitor(): React.JSX.Element {
 
   const handleSampleChunk = useCallback(
     (chunk: Sample[]): void => {
-      if (!chunk || chunk.length === 0) {
+      if (chunk.length === 0) {
         console.warn("handleSampleChunk: received empty chunk");
         return;
       }
@@ -312,9 +312,7 @@ function LiveMonitor(): React.JSX.Element {
       sampleBufferRef.current = trimmed;
       latestChunkRef.current = chunk.slice();
 
-      processAudioChunk(chunk).catch((error) => {
-        console.error("Audio processing error:", error);
-      });
+      processAudioChunk(chunk);
 
       performanceMonitor.measure("pipeline-processing", markName);
 
@@ -348,12 +346,12 @@ function LiveMonitor(): React.JSX.Element {
 
       const receivePromise = activeDevice
         .receive((data) => {
-          console.warn("Received data, byteLength:", data?.byteLength || 0);
+          console.warn("Received data, byteLength:", data.byteLength);
           const parsed = activeDevice.parseSamples(data) as Sample[];
-          console.warn("Parsed samples count:", parsed?.length || 0);
+          console.warn("Parsed samples count:", parsed.length);
           handleSampleChunk(parsed);
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error(err);
           const error = err instanceof Error ? err : new Error(String(err));
           setDeviceError(error);
@@ -586,7 +584,9 @@ function LiveMonitor(): React.JSX.Element {
             <PresetStations
               signalType={signalType}
               currentFrequency={frequency}
-              onStationSelect={handleSetFrequency}
+              onStationSelect={(freq) => {
+                void handleSetFrequency(freq);
+              }}
             />
           )}
         </Card>

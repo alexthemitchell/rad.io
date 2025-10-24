@@ -46,7 +46,7 @@ export function RDSDisplay({
   }, [rdsData?.rt]);
 
   // No RDS data available
-  if (!rdsData || rdsData.pi === null) {
+  if (rdsData?.pi === null || rdsData?.pi === undefined) {
     return (
       <div className={`rds-display rds-no-data ${className}`}>
         <div className="rds-status">
@@ -196,7 +196,7 @@ export function RDSDisplayCompact({
 }: {
   rdsData: RDSStationData | null;
 }): ReactElement {
-  if (!rdsData || rdsData.pi === null) {
+  if (rdsData?.pi === null || rdsData?.pi === undefined) {
     return (
       <div className="rds-display-compact rds-no-data">
         <span className="rds-icon">📻</span>

@@ -182,7 +182,7 @@ export class RTLSDRDevice {
   }
 
   async getFrequency(): Promise<number> {
-    return this.frequency;
+    return Promise.resolve(this.frequency);
   }
 
   async setSampleRate(sampleRateHz: number): Promise<void> {
@@ -214,7 +214,7 @@ export class RTLSDRDevice {
   }
 
   async getSampleRate(): Promise<number> {
-    return this.sampleRate;
+    return Promise.resolve(this.sampleRate);
   }
 
   async setGain(gainDb: number): Promise<void> {
@@ -248,7 +248,7 @@ export class RTLSDRDevice {
     try {
       let consecutiveErrors = 0;
 
-      while (this.streaming && !this.closing) {
+      while ((this.streaming as boolean) && !this.closing) {
         try {
           const result = await this.device.transferIn(
             this.ENDPOINT_IN,
@@ -279,6 +279,7 @@ export class RTLSDRDevice {
   async stopRx(): Promise<void> {
     this.streaming = false;
     console.debug("RTL-SDR streaming stopped");
+    return Promise.resolve();
   }
 
   isReceiving(): boolean {

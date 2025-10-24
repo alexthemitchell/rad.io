@@ -185,9 +185,6 @@ export function createEmptyRDSData(): RDSStationData {
  * PI code encodes country and station identification
  */
 export function formatPICode(pi: number): string {
-  if (pi === null || pi === undefined) {
-    return "----";
-  }
   return pi.toString(16).toUpperCase().padStart(4, "0");
 }
 

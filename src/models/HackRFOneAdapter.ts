@@ -31,14 +31,14 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   async getDeviceInfo(): Promise<SDRDeviceInfo> {
-    return {
+    return Promise.resolve({
       type: SDRDeviceType.HACKRF_ONE,
       vendorId: 0x1d50,
       productId: 0x6089,
       serialNumber: "Unknown", // HackRF doesn't expose serial via WebUSB easily
       firmwareVersion: "Unknown",
       hardwareRevision: "HackRF One",
-    };
+    });
   }
 
   getCapabilities(): SDRCapabilities {
@@ -70,8 +70,9 @@ export class HackRFOneAdapter implements ISDRDevice {
   isOpen(): boolean {
     // Access the private usbDevice through type assertion
     // This is safe because we control the HackRFOne implementation
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.device as any).usbDevice?.opened ?? false;
+    const opened = (this.device as unknown as { usbDevice?: USBDevice })
+      .usbDevice?.opened;
+    return opened ?? false;
   }
 
   async setFrequency(frequencyHz: number): Promise<void> {
@@ -80,7 +81,7 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   async getFrequency(): Promise<number> {
-    return this.currentFrequency;
+    return Promise.resolve(this.currentFrequency);
   }
 
   async setSampleRate(sampleRateHz: number): Promise<void> {
@@ -89,19 +90,20 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   async getSampleRate(): Promise<number> {
-    return this.currentSampleRate;
+    return Promise.resolve(this.currentSampleRate);
   }
 
   async getUsableBandwidth(): Promise<number> {
     // HackRF has ~80% usable bandwidth due to anti-aliasing filter rolloff
     // For conservative estimate, return 80% of sample rate
     // This ensures we don't try to detect signals at the very edges
-    return this.currentSampleRate * 0.8;
+    return Promise.resolve(this.currentSampleRate * 0.8);
   }
 
   async setLNAGain(gainDb: number): Promise<void> {
     // Validate gain is in 8 dB steps (0, 8, 16, 24, 32, 40)
     const validGains = [0, 8, 16, 24, 32, 40];
+    let adjustedGain = gainDb;
     if (!validGains.includes(gainDb)) {
       const nearest = validGains.reduce((prev, curr) =>
         Math.abs(curr - gainDb) < Math.abs(prev - gainDb) ? curr : prev,
@@ -112,9 +114,9 @@ export class HackRFOneAdapter implements ISDRDevice {
         validGains,
         reason: "HackRF requires 8 dB steps",
       });
-      gainDb = nearest;
+      adjustedGain = nearest;
     }
-    await this.device.setLNAGain(gainDb);
+    await this.device.setLNAGain(adjustedGain);
   }
 
   async setAmpEnable(enabled: boolean): Promise<void> {
@@ -123,9 +125,10 @@ export class HackRFOneAdapter implements ISDRDevice {
 
   async setBandwidth(bandwidthHz: number): Promise<void> {
     const capabilities = this.getCapabilities();
-    const supportedBandwidths = capabilities.supportedBandwidths || [];
+    const supportedBandwidths = capabilities.supportedBandwidths ?? [];
 
     // Validate bandwidth is supported
+    let adjustedBandwidth = bandwidthHz;
     if (
       supportedBandwidths.length > 0 &&
       !supportedBandwidths.includes(bandwidthHz)
@@ -146,15 +149,15 @@ export class HackRFOneAdapter implements ISDRDevice {
           ),
         },
       );
-      bandwidthHz = nearest;
+      adjustedBandwidth = nearest;
     }
 
-    this.currentBandwidth = bandwidthHz;
-    await this.device.setBandwidth(bandwidthHz);
+    this.currentBandwidth = adjustedBandwidth;
+    await this.device.setBandwidth(adjustedBandwidth);
   }
 
   async getBandwidth(): Promise<number> {
-    return this.currentBandwidth;
+    return Promise.resolve(this.currentBandwidth);
   }
 
   async receive(
@@ -184,9 +187,7 @@ export class HackRFOneAdapter implements ISDRDevice {
 
     // Wrap the callback to convert DataView to IQ samples
     await this.device.receive((data: DataView) => {
-      if (callback) {
-        callback(data);
-      }
+      callback(data);
     });
 
     this.isReceivingFlag = false;
@@ -194,7 +195,8 @@ export class HackRFOneAdapter implements ISDRDevice {
 
   async stopRx(): Promise<void> {
     this.isReceivingFlag = false;
-    await this.device.stopRx();
+    this.device.stopRx();
+    return Promise.resolve();
   }
 
   isReceiving(): boolean {

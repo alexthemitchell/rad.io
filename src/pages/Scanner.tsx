@@ -86,7 +86,7 @@ function Scanner(): React.JSX.Element {
   const handleTuneToSignal = useCallback(
     (frequency: number) => {
       // Navigate to Live Monitor page with frequency in state
-      navigate("/", { state: { frequency, signalType } });
+      void navigate("/", { state: { frequency, signalType } });
     },
     [navigate, signalType],
   );
@@ -117,13 +117,15 @@ function Scanner(): React.JSX.Element {
             currentFrequency={scanner.currentFrequency}
             activeSignals={scanner.activeSignals}
             progress={scanner.progress}
-            onStartScan={scanner.startScan}
+            onStartScan={() => {
+              void scanner.startScan();
+            }}
             onPauseScan={scanner.pauseScan}
             onResumeScan={scanner.resumeScan}
             onStopScan={scanner.stopScan}
             onConfigChange={scanner.updateConfig}
             onClearSignals={scanner.clearSignals}
-            deviceAvailable={device !== undefined && device.isOpen()}
+            deviceAvailable={device?.isOpen() ?? false}
             onTuneToSignal={handleTuneToSignal}
           />
         ) : (

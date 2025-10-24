@@ -178,7 +178,7 @@ export class HackRFOne {
 
     if (!this.usbDevice.configuration) {
       const configValue =
-        this.usbDevice.configurations?.[0]?.configurationValue ?? 1;
+        this.usbDevice.configurations[0]?.configurationValue ?? 1;
       await this.usbDevice.selectConfiguration(configValue);
     }
 
@@ -272,13 +272,16 @@ export class HackRFOne {
   }
 
   private async acquireLock(): Promise<() => void> {
-    let release: () => void;
+    let release: (() => void) | undefined;
     const previousLock = this.transferMutex;
     this.transferMutex = new Promise<void>((resolve) => {
       release = resolve;
     });
     await previousLock;
-    return release!;
+    if (release === undefined) {
+      throw new Error("Failed to initialize release function");
+    }
+    return release;
   }
 
   // New helper function to introduce a delay
@@ -307,13 +310,8 @@ export class HackRFOne {
         index,
       };
       let attempts = 3;
-      let lastError: Error | unknown;
+      let lastError: unknown;
       while (attempts > 0) {
-        if (this.closing || !this.usbDevice.opened) {
-          throw new Error(
-            "Device is closing or closed during retry. Aborting controlTransferOut.",
-          );
-        }
         try {
           const result = await this.usbDevice.controlTransferOut(options, data);
           // Allow device state to settle
@@ -467,7 +465,7 @@ export class HackRFOne {
     const TIMEOUT_MS = 5000; // 5 second timeout
     const MAX_CONSECUTIVE_TIMEOUTS = 3;
 
-    while (this.streaming) {
+    while (this.streaming as boolean) {
       try {
         iterationCount++;
         if (isDev && iterationCount <= 5) {
@@ -494,7 +492,7 @@ export class HackRFOne {
           console.warn("HackRFOne.receive: USB transfer completed", {
             iteration: iterationCount,
             status: result.status,
-            byteLength: result.data?.byteLength || 0,
+            byteLength: result.data?.byteLength ?? 0,
             hasData: Boolean(result.data),
           });
         }
@@ -532,7 +530,7 @@ export class HackRFOne {
             });
           }
           break;
-        } else if (error.message?.includes("timeout")) {
+        } else if (error.message.includes("timeout")) {
           consecutiveTimeouts++;
           console.warn("HackRFOne.receive: USB transfer timeout", {
             consecutiveCount: consecutiveTimeouts,
@@ -624,7 +622,7 @@ export class HackRFOne {
   }
 
   // New method to stop reception
-  async stopRx(): Promise<void> {
+  stopRx(): void {
     this.streaming = false;
   }
 

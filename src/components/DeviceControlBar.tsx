@@ -91,7 +91,7 @@ export function DeviceControlBar({
         {!device && (
           <button
             className="btn btn-primary"
-            onClick={handleConnect}
+            onClick={() => void handleConnect()}
             disabled={isInitializing || isCheckingPaired}
             title={
               isInitializing
@@ -113,7 +113,7 @@ export function DeviceControlBar({
         {device && !listening && (
           <button
             className="btn btn-success"
-            onClick={handleStartReception}
+            onClick={() => void handleStartReception()}
             disabled={isInitializing}
             title="Start receiving IQ samples from the SDR device. Visualizations will update with live data."
             aria-label="Start receiving radio signals"
@@ -125,7 +125,7 @@ export function DeviceControlBar({
         {device && listening && (
           <button
             className="btn btn-danger"
-            onClick={handleStopReception}
+            onClick={() => void handleStopReception()}
             title="Stop receiving IQ samples and pause visualizations. Device remains connected."
             aria-label="Stop receiving radio signals"
           >

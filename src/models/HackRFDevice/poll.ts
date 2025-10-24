@@ -5,7 +5,7 @@ export const defaultStreamOptions: StreamOptions = {
   transferBufferSize: 262144,
 };
 
-export type PollCallback = (x: Int8Array) => undefined | void | false;
+export type PollCallback = (x: Int8Array) => undefined | false;
 export type PollReceiveCallback = PollCallback;
 export type PollTransmitCallback = PollCallback;
 
@@ -16,7 +16,8 @@ export async function poll(
   callback: PollCallback,
   { transferCount = 4, transferBufferSize = 262144 }: StreamOptions = {},
 ): Promise<void> {
-  new Promise<void>((resolve, reject) => {
+  await setup();
+  return new Promise<void>((resolve, reject) => {
     const isOut = endpoint.direction === "out";
 
     const pendingTransfers = new Set<
@@ -66,7 +67,13 @@ export async function poll(
     const doSettle = (): void => {
       if (settled && pendingTransfers.size === 0) {
         if (rejected) {
-          reject(reason);
+          const error =
+            reason instanceof Error
+              ? reason
+              : new Error(
+                  typeof reason === "string" ? reason : "Unknown error in poll",
+                );
+          reject(error);
         } else {
           resolve();
         }
@@ -75,7 +82,7 @@ export async function poll(
 
     // allocate / fill buffers
     const tasks: Array<() => void> = [];
-    for (let i = 0; !settled && i < transferCount; i++) {
+    for (let i = 0; i < transferCount; i++) {
       const buffer = Buffer.alloc(transferBufferSize);
       const array = new Int8Array(
         buffer.buffer,

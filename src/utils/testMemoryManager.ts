@@ -18,7 +18,7 @@ class SampleBufferPool {
    * Get a sample array from the pool or create a new one
    */
   get(size: number): Sample[] {
-    const pool = this.pools.get(size) || [];
+    const pool = this.pools.get(size) ?? [];
     const buffer = pool.pop();
 
     if (buffer) {
@@ -38,7 +38,7 @@ class SampleBufferPool {
    */
   release(buffer: Sample[]): void {
     const size = buffer.length;
-    const pool = this.pools.get(size) || [];
+    const pool = this.pools.get(size) ?? [];
 
     if (pool.length < this.maxPoolSize) {
       pool.push(buffer);
@@ -105,7 +105,7 @@ export function generateSamplesChunked(
     for (let i = 0; i < chunkLength; i++) {
       chunkSamples[i] = generator(start + i);
     }
-    chunks.push(chunkSamples);
+    chunks.push(chunkSamples as Sample[]);
   }
 
   return chunks.flat();
@@ -147,39 +147,31 @@ export class TestMemoryMonitor {
   private peakMemory = 0;
 
   start(): void {
-    if (typeof process !== "undefined" && process.memoryUsage) {
-      this.startMemory = process.memoryUsage().heapUsed;
-      this.peakMemory = this.startMemory;
-    }
+    this.startMemory = process.memoryUsage().heapUsed;
+    this.peakMemory = this.startMemory;
   }
 
   checkpoint(label?: string): void {
-    if (typeof process !== "undefined" && process.memoryUsage) {
-      const currentMemory = process.memoryUsage().heapUsed;
-      this.peakMemory = Math.max(this.peakMemory, currentMemory);
+    const currentMemory = process.memoryUsage().heapUsed;
+    this.peakMemory = Math.max(this.peakMemory, currentMemory);
 
-      const delta = currentMemory - this.startMemory;
-      const deltaMB = (delta / 1024 / 1024).toFixed(2);
+    const delta = currentMemory - this.startMemory;
+    const deltaMB = (delta / 1024 / 1024).toFixed(2);
 
-      if (label) {
-        console.warn(`[Memory] ${label}: ${deltaMB} MB delta`);
-      }
+    if (label) {
+      console.warn(`[Memory] ${label}: ${deltaMB} MB delta`);
     }
   }
 
   report(): { deltaBytes: number; deltaMB: number; peakMB: number } {
-    if (typeof process !== "undefined" && process.memoryUsage) {
-      const currentMemory = process.memoryUsage().heapUsed;
-      const delta = currentMemory - this.startMemory;
-      const peakDelta = this.peakMemory - this.startMemory;
+    const currentMemory = process.memoryUsage().heapUsed;
+    const delta = currentMemory - this.startMemory;
+    const peakDelta = this.peakMemory - this.startMemory;
 
-      return {
-        deltaBytes: delta,
-        deltaMB: parseFloat((delta / 1024 / 1024).toFixed(2)),
-        peakMB: parseFloat((peakDelta / 1024 / 1024).toFixed(2)),
-      };
-    }
-
-    return { deltaBytes: 0, deltaMB: 0, peakMB: 0 };
+    return {
+      deltaBytes: delta,
+      deltaMB: parseFloat((delta / 1024 / 1024).toFixed(2)),
+      peakMB: parseFloat((peakDelta / 1024 / 1024).toFixed(2)),
+    };
   }
 }

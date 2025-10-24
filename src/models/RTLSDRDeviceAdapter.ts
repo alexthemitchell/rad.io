@@ -58,14 +58,14 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
         break;
     }
 
-    return {
+    return Promise.resolve({
       type: SDRDeviceType.RTLSDR,
       vendorId: 0x0bda,
       productId: 0x2838,
       serialNumber: undefined, // RTL-SDR doesn't easily expose serial via WebUSB
       firmwareVersion: undefined,
       hardwareRevision: `RTL2832U + ${tunerName}`,
-    };
+    });
   }
 
   getCapabilities(): SDRCapabilities {
@@ -137,6 +137,7 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
   async setVGAGain?(_gainDb: number): Promise<void> {
     // No-op for RTL-SDR
     console.debug("RTL-SDR does not support separate VGA gain control");
+    return Promise.resolve();
   }
 
   async setAmpEnable(enabled: boolean): Promise<void> {
@@ -149,6 +150,7 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
   async setBandwidth?(_bandwidthHz: number): Promise<void> {
     // No-op for RTL-SDR - bandwidth is determined by sample rate
     console.debug("RTL-SDR bandwidth is determined by sample rate");
+    return Promise.resolve();
   }
 
   async receive(
@@ -161,9 +163,13 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
       const view = new DataView(buffer);
 
       for (let i = 0; i < samples.length; i++) {
+        const sample = samples[i];
+        if (sample === undefined) {
+          continue;
+        }
         // Convert ±1.0 float back to uint8 with 127 offset
-        const I = Math.floor(samples[i]!.I * 128.0 + 127);
-        const Q = Math.floor(samples[i]!.Q * 128.0 + 127);
+        const I = Math.floor(sample.I * 128.0 + 127);
+        const Q = Math.floor(sample.Q * 128.0 + 127);
         view.setUint8(i * 2, Math.max(0, Math.min(255, I)));
         view.setUint8(i * 2 + 1, Math.max(0, Math.min(255, Q)));
       }

@@ -7,12 +7,21 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 import pluginImport from "eslint-plugin-import";
 import json from "@eslint/json";
 import markdown from "@eslint/markdown";
-import { defineConfig } from "eslint/config";
+import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
+  // Global ignores - applied to all files
+  globalIgnores([
+    "dist/**",
+    "node_modules/**",
+    "build/**",
+    "coverage/**",
+    "src/models/templates/**",
+  ]),
+
+  // Ignore test files from main linting
   {
     ignores: [
-      "src/models/templates/**",
       "**/__tests__/**",
       "**/*.test.{ts,tsx}",
       "e2e/**",
@@ -21,14 +30,32 @@ export default defineConfig([
     ],
   },
 
+  // Base JavaScript configuration
   {
-    files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
-    plugins: { js },
-    extends: ["js/recommended"],
-  },
-  {
-    files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    name: "rad.io/js-base",
+    files: ["**/*.{js,mjs,cjs,jsx}"],
+    ...js.configs.recommended,
     languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+    linterOptions: {
+      reportUnusedDisableDirectives: "error",
+      reportUnusedInlineConfigs: "error",
+    },
+  },
+
+  // TypeScript configuration
+  {
+    name: "rad.io/typescript-base",
+    files: ["**/*.{ts,mts,cts,tsx}"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
       globals: {
         ...globals.browser,
         ...globals.node,
@@ -37,20 +64,68 @@ export default defineConfig([
         project: "./tsconfig.json",
       },
     },
+    linterOptions: {
+      reportUnusedDisableDirectives: "error",
+      reportUnusedInlineConfigs: "error",
+    },
   },
-  ...tseslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
-  ...tseslint.configs.strict,
-  ...tseslint.configs.strictTypeChecked,
-  ...tseslint.configs.stylistic,
-  ...tseslint.configs.stylisticTypeChecked,
-  pluginReact.configs.flat.recommended,
-  jsxA11y.flatConfigs.recommended,
+
+  // TypeScript ESLint recommended configurations
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: ["**/*.{ts,mts,cts,tsx}"],
+  })),
+  ...tseslint.configs.recommendedTypeChecked.map((config) => ({
+    ...config,
+    files: ["**/*.{ts,mts,cts,tsx}"],
+  })),
+  ...tseslint.configs.strict.map((config) => ({
+    ...config,
+    files: ["**/*.{ts,mts,cts,tsx}"],
+  })),
+  ...tseslint.configs.strictTypeChecked.map((config) => ({
+    ...config,
+    files: ["**/*.{ts,mts,cts,tsx}"],
+  })),
+  ...tseslint.configs.stylistic.map((config) => ({
+    ...config,
+    files: ["**/*.{ts,mts,cts,tsx}"],
+  })),
+  ...tseslint.configs.stylisticTypeChecked.map((config) => ({
+    ...config,
+    files: ["**/*.{ts,mts,cts,tsx}"],
+  })),
+
+  // React configuration
   {
+    name: "rad.io/react",
+    files: ["**/*.{jsx,tsx}"],
+    ...pluginReact.configs.flat.recommended,
+  },
+
+  // JSX Accessibility configuration
+  {
+    name: "rad.io/jsx-a11y",
+    files: ["**/*.{jsx,tsx}"],
+    ...jsxA11y.flatConfigs.recommended,
+  },
+
+  // Custom rules configuration
+  {
+    name: "rad.io/custom-rules",
     files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     plugins: {
       "react-hooks": pluginReactHooks,
       import: pluginImport,
+    },
+    settings: {
+      react: {
+        version: "detect",
+      },
+      "import/resolver": {
+        typescript: true,
+        node: true,
+      },
     },
     rules: {
       // React rules
@@ -72,48 +147,48 @@ export default defineConfig([
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/explicit-function-return-type": "error",
       "@typescript-eslint/explicit-module-boundary-types": "error",
-      "@typescript-eslint/use-unknown-in-catch-callback-variable": "warn", // Downgraded - minor type safety issue
-      "@typescript-eslint/no-unsafe-assignment": "warn", // Downgraded - common with dynamic data
-      "@typescript-eslint/no-unsafe-member-access": "warn", // Downgraded - common with dynamic data
-      "@typescript-eslint/no-unsafe-return": "warn", // Downgraded - adapter patterns
-      "@typescript-eslint/no-unsafe-argument": "warn", // Downgraded - adapter patterns
-      "@typescript-eslint/no-unsafe-enum-comparison": "warn", // Downgraded - numeric enum patterns
-      "@typescript-eslint/no-redundant-type-constituents": "warn", // Downgraded - union type edge cases
-      "@typescript-eslint/no-unnecessary-type-parameters": "warn", // Downgraded - generic patterns
-      "@typescript-eslint/no-invalid-void-type": "warn", // Downgraded - callback patterns
-      "@typescript-eslint/no-confusing-void-expression": "warn", // Downgraded - terse code style
-      "@typescript-eslint/prefer-promise-reject-errors": "warn", // Downgraded - error handling patterns
-      "@typescript-eslint/restrict-template-expressions": "warn", // Downgraded - string formatting
-      "@typescript-eslint/restrict-plus-operands": "warn", // Downgraded - arithmetic patterns
-      "@typescript-eslint/no-implied-eval": "warn", // Downgraded - dynamic code patterns
-      "@typescript-eslint/no-deprecated": "warn", // Downgraded - legacy API usage
+      "@typescript-eslint/use-unknown-in-catch-callback-variable": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-argument": "error",
+      "@typescript-eslint/no-unsafe-enum-comparison": "error",
+      "@typescript-eslint/no-redundant-type-constituents": "error",
+      "@typescript-eslint/no-unnecessary-type-parameters": "error",
+      "@typescript-eslint/no-invalid-void-type": "error",
+      "@typescript-eslint/no-confusing-void-expression": "error",
+      "@typescript-eslint/prefer-promise-reject-errors": "error",
+      "@typescript-eslint/restrict-template-expressions": "error",
+      "@typescript-eslint/restrict-plus-operands": "error",
+      "@typescript-eslint/no-implied-eval": "error",
+      "@typescript-eslint/no-deprecated": "error",
 
       // TypeScript rules - Type Safety
-      "@typescript-eslint/no-floating-promises": "warn", // Downgraded to warn - many fire-and-forget patterns
+      "@typescript-eslint/no-floating-promises": "error",
       "@typescript-eslint/await-thenable": "error",
-      "@typescript-eslint/no-misused-promises": "warn", // Downgraded to warn - event handlers
+      "@typescript-eslint/no-misused-promises": "error",
       "@typescript-eslint/promise-function-async": "error",
       "@typescript-eslint/require-array-sort-compare": "error",
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
-      "@typescript-eslint/require-await": "warn", // Downgraded to warn - async signatures needed for interface compliance
+      "@typescript-eslint/require-await": "error",
 
       // TypeScript rules - Modern JavaScript Features
-      "@typescript-eslint/prefer-nullish-coalescing": "warn",
-      "@typescript-eslint/prefer-optional-chain": "warn",
-      "@typescript-eslint/prefer-reduce-type-parameter": "warn",
-      "@typescript-eslint/prefer-for-of": "warn",
+      "@typescript-eslint/prefer-nullish-coalescing": "error",
+      "@typescript-eslint/prefer-optional-chain": "error",
+      "@typescript-eslint/prefer-reduce-type-parameter": "error",
+      "@typescript-eslint/prefer-for-of": "error",
 
       // TypeScript rules - Code Quality
       "@typescript-eslint/switch-exhaustiveness-check": "error",
-      "@typescript-eslint/no-unnecessary-condition": "warn", // Changed to warn - can have false positives
+      "@typescript-eslint/no-unnecessary-condition": "error",
       "@typescript-eslint/consistent-type-imports": [
-        "warn", // Changed to warn to not break existing code
+        "error",
         {
           prefer: "type-imports",
           fixStyle: "inline-type-imports",
         },
       ],
-      "@typescript-eslint/array-type": ["warn", { default: "array-simple" }],
+      "@typescript-eslint/array-type": ["error", { default: "array-simple" }],
       "@typescript-eslint/consistent-type-definitions": "off", // Allow both type and interface
       "@typescript-eslint/restrict-template-expressions": [
         "error",
@@ -122,7 +197,7 @@ export default defineConfig([
           allowBoolean: true,
         },
       ],
-      "@typescript-eslint/no-non-null-assertion": "warn", // Warn instead of error
+      "@typescript-eslint/no-non-null-assertion": "error",
       "@typescript-eslint/no-confusing-void-expression": [
         "error",
         {
@@ -203,6 +278,33 @@ export default defineConfig([
       "import/no-cycle": "error",
       "import/no-duplicates": "error",
 
+      // General code quality rules
+      "no-console": [
+        "error",
+        { allow: ["trace", "debug", "info", "warn", "error"] },
+      ],
+      "no-debugger": "error",
+      "prefer-const": "error",
+      "no-var": "error",
+      eqeqeq: ["error", "always"],
+      curly: ["error", "all"],
+      "no-implicit-coercion": "error",
+      "no-param-reassign": [
+        "error",
+        {
+          props: true,
+          ignorePropertyModificationsFor: ["ref", "refs", "state"],
+        },
+      ],
+      "default-case-last": "error",
+    },
+  },
+
+  // JSX Accessibility rules override - only for JSX/TSX files
+  {
+    name: "rad.io/jsx-a11y-overrides",
+    files: ["**/*.{jsx,tsx}"],
+    rules: {
       // Accessibility rules - enforce best practices
       "jsx-a11y/alt-text": "error",
       "jsx-a11y/anchor-has-content": "error",
@@ -230,56 +332,28 @@ export default defineConfig([
       "jsx-a11y/role-supports-aria-props": "error",
       "jsx-a11y/scope": "error",
       "jsx-a11y/tabindex-no-positive": "error",
+    },
+  },
 
-      // General code quality rules
-      "no-console": [
-        "error",
-        { allow: ["trace", "debug", "info", "warn", "error"] },
-      ],
-      "no-debugger": "warn",
-      "prefer-const": "error",
-      "no-var": "error",
-      eqeqeq: ["error", "always"],
-      curly: ["error", "all"],
-      "no-implicit-coercion": "error",
-      "no-param-reassign": [
-        "warn", // Downgraded - common pattern in DSP code
-        {
-          props: true,
-          ignorePropertyModificationsFor: ["ref", "refs", "state"],
-        },
-      ],
-      "default-case-last": "error",
-    },
-    settings: {
-      react: {
-        version: "detect",
-      },
-      "import/resolver": {
-        typescript: true,
-        node: true,
-      },
-    },
-  },
-  {
-    ignores: ["dist/**", "node_modules/**", "**/*.md"],
-  },
-  {
+  // JSON files configuration
+  ...[json.configs.recommended].flat().map((config) => ({
+    ...config,
+    name: "rad.io/json",
     files: ["**/*.json"],
-    plugins: { json },
-    language: "json/json",
-    extends: ["json/recommended"],
-  },
-  {
+  })),
+
+  // JSONC files configuration
+  ...[json.configs.recommended].flat().map((config) => ({
+    ...config,
+    name: "rad.io/jsonc",
     files: ["**/*.jsonc"],
-    plugins: { json },
     language: "json/jsonc",
-    extends: ["json/recommended"],
-  },
-  {
+  })),
+
+  // Markdown files configuration
+  ...[markdown.configs.recommended].flat().map((config) => ({
+    ...config,
+    name: "rad.io/markdown",
     files: ["**/*.md"],
-    plugins: { markdown },
-    language: "markdown/gfm",
-    extends: ["markdown/recommended"],
-  },
+  })),
 ]);

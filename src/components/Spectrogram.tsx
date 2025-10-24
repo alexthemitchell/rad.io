@@ -3,6 +3,7 @@ import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 import { performanceMonitor } from "../utils/performanceMonitor";
+import type { GL } from "../utils/webgl";
 import type { ReactElement } from "react";
 
 type SpectrogramProps = {
@@ -53,7 +54,7 @@ export default function Spectrogram({
 
   // WebGL resources
   const glStateRef = useRef<{
-    gl: import("../utils/webgl").GL | null;
+    gl: GL | null;
     isWebGL2: boolean;
     program: WebGLProgram | null;
     quadVBO: WebGLBuffer | null;
@@ -131,8 +132,8 @@ export default function Spectrogram({
     let maxPowerBin = 0;
     displayData.forEach((row) => {
       for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
-        const value = row[bin]!;
-        if (isFinite(value) && value > maxPower) {
+        const value = row[bin];
+        if (value !== undefined && isFinite(value) && value > maxPower) {
           maxPower = value;
           maxPowerBin = bin;
         }
@@ -179,7 +180,7 @@ export default function Spectrogram({
           if (initialized) {
             const bins = Math.max(
               1,
-              Math.min(displayData[0]?.length || 0, freqMax - freqMin),
+              Math.min(displayData[0]?.length ?? 0, freqMax - freqMin),
             );
             const frames = displayData.length;
 
@@ -188,8 +189,8 @@ export default function Spectrogram({
             let gmax = -Infinity;
             for (const row of displayData) {
               for (let b = freqMin; b < freqMax && b < row.length; b++) {
-                const v = row[b]!;
-                if (isFinite(v)) {
+                const v = row[b];
+                if (v !== undefined && isFinite(v)) {
                   if (v < gmin) {
                     gmin = v;
                   }
@@ -210,8 +211,8 @@ export default function Spectrogram({
             const allPowers: number[] = [];
             for (const row of displayData) {
               for (let b = freqMin; b < freqMax && b < row.length; b++) {
-                const v = row[b]!;
-                if (isFinite(v)) {
+                const v = row[b];
+                if (v !== undefined && isFinite(v)) {
                   allPowers.push(v);
                 }
               }
@@ -220,9 +221,11 @@ export default function Spectrogram({
             let adaptiveThreshold = 0.05;
             if (allPowers.length > 0) {
               allPowers.sort((a, b) => a - b);
-              const p10 = allPowers[Math.floor(allPowers.length * 0.1)]!;
-              const dataSpread = (p10 - gmin) / Math.max(1e-9, gmax - gmin);
-              adaptiveThreshold = Math.max(0.05, Math.min(0.2, dataSpread));
+              const p10 = allPowers[Math.floor(allPowers.length * 0.1)];
+              if (p10 !== undefined) {
+                const dataSpread = (p10 - gmin) / Math.max(1e-9, gmax - gmin);
+                adaptiveThreshold = Math.max(0.05, Math.min(0.2, dataSpread));
+              }
             }
 
             const effMin = gmin + (gmax - gmin) * adaptiveThreshold;
@@ -234,10 +237,13 @@ export default function Spectrogram({
             const lut = webgpu.getViridisLUT();
             const rgba = new Uint8Array(texW * texH * 4);
             for (let x = 0; x < texW; x++) {
-              const row = displayData[x]!;
+              const row = displayData[x];
+              if (!row) {
+                continue;
+              }
               for (let y = 0; y < texH; y++) {
                 const bin = freqMin + y;
-                const v = row && bin < row.length ? row[bin]! : 0;
+                const v = bin < row.length ? (row[bin] ?? 0) : 0;
                 const norm = Math.max(0, Math.min(1, (v - effMin) / range));
                 const idx = (norm * 255) | 0;
                 const base = (x + y * texW) * 4;
@@ -288,7 +294,7 @@ export default function Spectrogram({
         if (gl) {
           const bins = Math.max(
             1,
-            Math.min(displayData[0]?.length || 0, freqMax - freqMin),
+            Math.min(displayData[0]?.length ?? 0, freqMax - freqMin),
           );
           const frames = displayData.length;
 
@@ -297,8 +303,8 @@ export default function Spectrogram({
           let gmax = -Infinity;
           for (const row of displayData) {
             for (let b = freqMin; b < freqMax && b < row.length; b++) {
-              const v = row[b]!;
-              if (isFinite(v)) {
+              const v = row[b];
+              if (v !== undefined && isFinite(v)) {
                 if (v < gmin) {
                   gmin = v;
                 }
@@ -321,8 +327,8 @@ export default function Spectrogram({
           const allPowers: number[] = [];
           for (const row of displayData) {
             for (let b = freqMin; b < freqMax && b < row.length; b++) {
-              const v = row[b]!;
-              if (isFinite(v)) {
+              const v = row[b];
+              if (v !== undefined && isFinite(v)) {
                 allPowers.push(v);
               }
             }
@@ -333,11 +339,13 @@ export default function Spectrogram({
           let adaptiveThreshold = 0.05; // Default 5% fallback
           if (allPowers.length > 0) {
             allPowers.sort((a, b) => a - b);
-            const p10 = allPowers[Math.floor(allPowers.length * 0.1)]!;
-            // Normalize threshold based on data distribution
-            const dataSpread = (p10 - gmin) / Math.max(1e-9, gmax - gmin);
-            // Clamp between 5% and 20% for stability
-            adaptiveThreshold = Math.max(0.05, Math.min(0.2, dataSpread));
+            const p10 = allPowers[Math.floor(allPowers.length * 0.1)];
+            if (p10 !== undefined) {
+              // Normalize threshold based on data distribution
+              const dataSpread = (p10 - gmin) / Math.max(1e-9, gmax - gmin);
+              // Clamp between 5% and 20% for stability
+              adaptiveThreshold = Math.max(0.05, Math.min(0.2, dataSpread));
+            }
           }
 
           const effMin = gmin + (gmax - gmin) * adaptiveThreshold;
@@ -349,10 +357,13 @@ export default function Spectrogram({
           const lut = webgl.viridisLUT256();
           const rgba = new Uint8Array(texW * texH * 4);
           for (let x = 0; x < texW; x++) {
-            const row = displayData[x]!;
+            const row = displayData[x];
+            if (!row) {
+              continue;
+            }
             for (let y = 0; y < texH; y++) {
               const bin = freqMin + y;
-              const v = row && bin < row.length ? row[bin]! : 0;
+              const v = bin < row.length ? (row[bin] ?? 0) : 0;
               const norm = Math.max(0, Math.min(1, (v - effMin) / range));
               const idx = (norm * 255) | 0;
               const base = (x + y * texW) * 4;
@@ -454,20 +465,18 @@ export default function Spectrogram({
             const worker = new Worker(workerUrl);
             workerRef.current = worker;
             const w = workerRef.current;
-            if (w) {
-              w.onmessage = (ev): void => {
-                const d = ev.data as unknown as {
-                  type?: string;
-                  viz?: string;
-                  renderTimeMs?: number;
-                };
-                if (d?.type === "metrics") {
-                  console.warn(
-                    `[viz worker] ${d.viz} render ${d.renderTimeMs?.toFixed(2)}ms`,
-                  );
-                }
+            w.onmessage = (ev): void => {
+              const d = ev.data as unknown as {
+                type?: string;
+                viz?: string;
+                renderTimeMs?: number;
               };
-            }
+              if (d.type === "metrics") {
+                console.warn(
+                  `[viz worker] ${d.viz} render ${d.renderTimeMs?.toFixed(2)}ms`,
+                );
+              }
+            };
           } catch (e) {
             console.error("Could not create visualization worker", e);
             workerRef.current = null;
@@ -563,8 +572,8 @@ export default function Spectrogram({
 
       displayData.forEach((row) => {
         for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
-          const value = row[bin]!;
-          if (isFinite(value)) {
+          const value = row[bin];
+          if (value !== undefined && isFinite(value)) {
             globalMin = Math.min(globalMin, value);
             globalMax = Math.max(globalMax, value);
           }
@@ -579,8 +588,8 @@ export default function Spectrogram({
         const x = margin.left + frameIdx * frameWidth;
 
         for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
-          const value = row[bin]!;
-          if (!isFinite(value)) {
+          const value = row[bin];
+          if (value === undefined || !isFinite(value)) {
             continue;
           }
 

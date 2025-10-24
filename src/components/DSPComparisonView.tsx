@@ -13,14 +13,15 @@ function renderVis(
   data: Sample[] | Float32Array | null,
   stageId: DSPPipelineStage["id"],
 ): React.JSX.Element | null {
+  const samples = (data as Sample[] | null) ?? [];
   switch (stageId) {
     case "rf-input":
     case "tuner":
-      return <WaveformChart samples={(data as Sample[]) || []} />;
+      return <WaveformChart samples={samples} />;
     case "iq-sampling":
-      return <IQConstellation samples={(data as Sample[]) || []} />;
+      return <IQConstellation samples={samples} />;
     case "fft":
-      return <FFTChart samples={(data as Sample[]) || []} />;
+      return <FFTChart samples={samples} />;
     case "demodulation":
     case "audio-output":
       // No visualization for these stages yet

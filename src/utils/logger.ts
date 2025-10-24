@@ -39,7 +39,9 @@ class Logger {
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = {
       minLevel:
-        process.env['NODE_ENV'] === "development" ? LogLevel.DEBUG : LogLevel.INFO,
+        process.env["NODE_ENV"] === "development"
+          ? LogLevel.DEBUG
+          : LogLevel.INFO,
       enabledCategories: undefined, // undefined means all enabled
       includeTimestamp: true,
       includeStackTrace: false,
@@ -170,7 +172,7 @@ class Logger {
    */
   error(
     message: string,
-    error?: Error | unknown,
+    error?: unknown,
     context?: LogContext,
     category?: LogCategory,
   ): void {
@@ -227,7 +229,7 @@ class CategoryLogger {
     this.parent.warn(message, context, this.category);
   }
 
-  error(message: string, error?: Error | unknown, context?: LogContext): void {
+  error(message: string, error?: unknown, context?: LogContext): void {
     this.parent.error(message, error, context, this.category);
   }
 }
@@ -270,7 +272,7 @@ export class OperationLogger {
     });
   }
 
-  failure(error: Error | unknown, endContext?: LogContext): void {
+  failure(error: unknown, endContext?: LogContext): void {
     const duration = performance.now() - this.startTime;
     this.categoryLogger.error(`${this.operationName} failed`, error, {
       ...endContext,

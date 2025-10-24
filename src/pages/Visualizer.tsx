@@ -120,8 +120,8 @@ function Visualizer(): React.JSX.Element {
     audioProcessorRef.current = new AudioStreamProcessor(2048000);
 
     return (): void => {
-      audioProcessorRef.current?.cleanup();
-      audioContextRef.current?.close();
+      void audioProcessorRef.current?.cleanup();
+      void audioContextRef.current?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -177,7 +177,7 @@ function Visualizer(): React.JSX.Element {
         source.start();
       } catch (error) {
         console.error("Visualizer: Audio playback failed", error, {
-          audioContextState: audioContext?.state,
+          audioContextState: audioContext.state,
           resultChannels: result.channels,
           resultSampleRate: result.sampleRate,
           resultDataLength: result.audioData.length,
@@ -190,7 +190,7 @@ function Visualizer(): React.JSX.Element {
 
   // Process audio from sample chunks
   const processAudioChunk = useCallback(
-    async (chunk: Sample[]): Promise<void> => {
+    (chunk: Sample[]): void => {
       if (!isAudioPlaying || !audioProcessorRef.current) {
         return;
       }
@@ -209,7 +209,7 @@ function Visualizer(): React.JSX.Element {
 
         try {
           const demodType = getDemodType(signalType);
-          const result = await audioProcessorRef.current.extractAudio(
+          const result = audioProcessorRef.current.extractAudio(
             samplesToProcess,
             demodType,
             {
@@ -309,7 +309,7 @@ function Visualizer(): React.JSX.Element {
 
   // Debug: log when an error occurs that should expose reset UI
   useEffect(() => {
-    if (deviceError && deviceError.message.includes("Device not responding")) {
+    if (deviceError?.message.includes("Device not responding")) {
       console.warn(
         "Visualizer: deviceError requires reset UI; handler present?",
         typeof handleResetDevice === "function",
@@ -390,11 +390,9 @@ function Visualizer(): React.JSX.Element {
 
   const handleSampleChunk = useCallback(
     (chunk: Sample[]): void => {
-      if (!chunk || chunk.length === 0) {
+      if (chunk.length === 0) {
         console.warn("Visualizer: Received empty sample chunk", {
           chunkType: typeof chunk,
-          isNull: chunk === null,
-          isUndefined: chunk === undefined,
         });
         return;
       }
@@ -443,9 +441,7 @@ function Visualizer(): React.JSX.Element {
       latestChunkRef.current = chunk.slice();
 
       // Process audio if enabled
-      processAudioChunk(chunk).catch((error) => {
-        console.error("Audio processing error:", error);
-      });
+      processAudioChunk(chunk);
 
       // Update frequency scanner with amplitude data
       if (scanner.state === "scanning") {
@@ -509,20 +505,20 @@ function Visualizer(): React.JSX.Element {
       const receivePromise = activeDevice
         .receive((data) => {
           console.debug("Visualizer: Received raw data from device", {
-            byteLength: data?.byteLength || 0,
+            byteLength: data.byteLength,
             hasData: Boolean(data),
           });
           const parsed = activeDevice.parseSamples(data) as Sample[];
           console.debug("Visualizer: Parsed samples from raw data", {
-            sampleCount: parsed?.length || 0,
+            sampleCount: parsed.length,
             bytesPerSample:
-              data?.byteLength && parsed?.length
+              data.byteLength && parsed.length
                 ? (data.byteLength / parsed.length).toFixed(2)
                 : "N/A",
           });
           handleSampleChunk(parsed);
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error("Visualizer: Device streaming failed", err, {
             errorType: err instanceof Error ? err.name : typeof err,
             errorMessage: err instanceof Error ? err.message : String(err),
@@ -1002,7 +998,9 @@ function Visualizer(): React.JSX.Element {
             <PresetStations
               signalType={signalType}
               currentFrequency={frequency}
-              onStationSelect={handleSetFrequency}
+              onStationSelect={(freq) => {
+                void handleSetFrequency(freq);
+              }}
             />
           )}
         </Card>
@@ -1065,13 +1063,15 @@ function Visualizer(): React.JSX.Element {
             currentFrequency={scanner.currentFrequency}
             activeSignals={scanner.activeSignals}
             progress={scanner.progress}
-            onStartScan={scanner.startScan}
+            onStartScan={() => {
+              void scanner.startScan();
+            }}
             onPauseScan={scanner.pauseScan}
             onResumeScan={scanner.resumeScan}
             onStopScan={scanner.stopScan}
             onConfigChange={scanner.updateConfig}
             onClearSignals={scanner.clearSignals}
-            deviceAvailable={device !== undefined && device.isOpen()}
+            deviceAvailable={device?.isOpen() ?? false}
           />
         )}
 

@@ -85,10 +85,9 @@ function Analysis(): React.JSX.Element {
 
   const handleSampleChunk = useCallback(
     (chunk: Sample[]): void => {
-      if (!chunk || chunk.length === 0) {
+      if (chunk.length === 0) {
         console.warn("Analysis: Received empty sample chunk", {
           chunkType: typeof chunk,
-          isNull: chunk === null,
         });
         return;
       }
@@ -163,15 +162,15 @@ function Analysis(): React.JSX.Element {
       const receivePromise = activeDevice
         .receive((data) => {
           console.debug("Analysis: Received raw data from device", {
-            byteLength: data?.byteLength || 0,
+            byteLength: data.byteLength,
           });
           const parsed = activeDevice.parseSamples(data) as Sample[];
           console.debug("Analysis: Parsed samples from raw data", {
-            sampleCount: parsed?.length || 0,
+            sampleCount: parsed.length,
           });
           handleSampleChunk(parsed);
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error("Analysis: Device streaming failed", err, {
             errorType: err instanceof Error ? err.name : typeof err,
           });

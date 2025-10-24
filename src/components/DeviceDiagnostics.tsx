@@ -6,7 +6,7 @@ interface DeviceDiagnosticsProps {
   isListening: boolean;
   frequency?: number;
   error?: Error | null;
-  onResetDevice?: () => void;
+  onResetDevice?: () => void | Promise<void>;
   isResetting?: boolean;
 }
 
@@ -169,7 +169,9 @@ export function DeviceDiagnostics({
           </p>
           <button
             className="btn btn-primary"
-            onClick={onResetDevice}
+            onClick={
+              onResetDevice ? (): void => void onResetDevice() : undefined
+            }
             disabled={!onResetDevice || Boolean(isResetting)}
             style={{ marginTop: "10px" }}
             title={

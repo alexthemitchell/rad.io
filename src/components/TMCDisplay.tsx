@@ -10,7 +10,11 @@
  */
 
 import { type ReactElement } from "react";
-import { getSeverityColor, TMCEventSeverity } from "../models/TMCData";
+import {
+  getSeverityColor,
+  TMCEventSeverity,
+  TMCDirection,
+} from "../models/TMCData";
 import type { TMCMessage, TMCDecoderStats } from "../models/TMCData";
 
 interface TMCDisplayProps {
@@ -28,7 +32,7 @@ export function TMCDisplay({
   className = "",
 }: TMCDisplayProps): ReactElement {
   // No TMC data available
-  if (!messages || messages.length === 0) {
+  if (messages.length === 0) {
     return (
       <div className={`tmc-display tmc-no-data ${className}`}>
         <div className="tmc-status">
@@ -142,9 +146,9 @@ export function TMCDisplay({
               <div className="tmc-detail-item">
                 <span className="tmc-detail-label">Direction:</span>
                 <span className="tmc-detail-value">
-                  {message.direction === 0
+                  {message.direction === TMCDirection.POSITIVE
                     ? "Positive"
-                    : message.direction === 1
+                    : message.direction === TMCDirection.NEGATIVE
                       ? "Negative"
                       : "Both"}
                 </span>
@@ -205,7 +209,7 @@ export function TMCDisplayCompact({
   messages: TMCMessage[];
   className?: string;
 }): ReactElement {
-  if (!messages || messages.length === 0) {
+  if (messages.length === 0) {
     return (
       <div className={`tmc-display-compact tmc-no-data ${className}`}>
         <span className="tmc-icon">🚦</span>
@@ -215,7 +219,15 @@ export function TMCDisplayCompact({
   }
 
   // Show only the most severe message
-  const topMessage = messages[0]!;
+  const topMessage = messages[0];
+  if (!topMessage) {
+    return (
+      <div className={`tmc-display-compact tmc-no-data ${className}`}>
+        <span className="tmc-icon">🚦</span>
+        <span className="tmc-text">No Traffic</span>
+      </div>
+    );
+  }
 
   return (
     <div

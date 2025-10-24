@@ -93,7 +93,7 @@ export function useFrequencyScanner(
   const dwellResolveRef = useRef<(() => void) | null>(null);
   const samplesRef = useRef<number[]>([]);
   const iqSamplesRef = useRef<IQSample[]>([]);
-  const isScanningRef = useRef(false);
+  const isScanningRef = useRef<boolean>(false);
   const receivePromiseRef = useRef<Promise<void> | null>(null);
   const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
 
@@ -112,9 +112,9 @@ export function useFrequencyScanner(
     if (receivePromiseRef.current) {
       try {
         await receivePromiseRef.current;
-      } catch (error) {
+      } catch (error: unknown) {
         if (error instanceof Error) {
-          const msg = error.message ?? "";
+          const msg = error.message;
           if (
             error.name !== "AbortError" &&
             !msg.includes("Device is closing or closed")
@@ -253,13 +253,14 @@ export function useFrequencyScanner(
 
         let maxPower = -Infinity;
         let minPower = Infinity;
-        for (let i = 0; i < powerSpectrum.length; i++) {
-          const value = powerSpectrum[i]!;
-          if (value > maxPower) {
-            maxPower = value;
-          }
-          if (value < minPower) {
-            minPower = value;
+        for (const value of powerSpectrum) {
+          if (typeof value === "number") {
+            if (value > maxPower) {
+              maxPower = value;
+            }
+            if (value < minPower) {
+              minPower = value;
+            }
           }
         }
 
@@ -300,15 +301,13 @@ export function useFrequencyScanner(
           if (isFM && config.enableRDS && iqSamplesRef.current.length > 0) {
             try {
               // Initialize audio processor if not already created
-              if (!audioProcessorRef.current) {
-                audioProcessorRef.current = new AudioStreamProcessor(
-                  sampleRate,
-                );
-              }
+              audioProcessorRef.current ??= new AudioStreamProcessor(
+                sampleRate,
+              );
 
               // Process a batch of IQ samples for RDS extraction
               const sampleBatch = iqSamplesRef.current.slice(0, 50000);
-              const result = await audioProcessorRef.current.extractAudio(
+              const result = audioProcessorRef.current.extractAudio(
                 sampleBatch,
                 DemodulationType.FM,
                 {
@@ -433,10 +432,11 @@ export function useFrequencyScanner(
       let currentStep = 0;
 
       // Scan each frequency chunk
+      // Loop through frequency range in chunks
       for (
         let centerFreq = startFrequency + usableBandwidth / 2;
         centerFreq <= endFrequency - usableBandwidth / 2 &&
-        isScanningRef.current;
+        (isScanningRef.current as boolean);
         centerFreq += stepSize
       ) {
         await scanFrequencyChunk(centerFreq, sampleRate);
@@ -446,7 +446,7 @@ export function useFrequencyScanner(
       }
 
       // Scan complete
-      if (isScanningRef.current) {
+      if (isScanningRef.current as boolean) {
         setState("idle");
         isScanningRef.current = false;
         setCurrentFrequency(null);
@@ -493,7 +493,7 @@ export function useFrequencyScanner(
     // to avoid blocking the UI thread and to keep startScan() resolving
     // immediately (tests rely on this). Handle rejection to avoid unhandled
     // promise rejections.
-    void performScan().catch((err) => {
+    void performScan().catch((err: unknown) => {
       console.error("Error during performScan():", err);
       // Fail-safe: reset scanning state if the scan pipeline unexpectedly rejects
       setState("idle");
@@ -527,7 +527,7 @@ export function useFrequencyScanner(
       setState("scanning");
       isScanningRef.current = true;
       // Resume scan without awaiting to avoid blocking; catch errors for safety
-      void performScan().catch((err) => {
+      void performScan().catch((err: unknown) => {
         console.error("Error during performScan() on resume:", err);
         setState("idle");
         isScanningRef.current = false;

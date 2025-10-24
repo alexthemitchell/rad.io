@@ -53,7 +53,7 @@ export function useIntersectionObserver(
     [options.root, options.rootMargin, options.threshold],
   );
 
-  useEffect((): (() => void) | void => {
+  useEffect((): (() => void) | undefined => {
     // If IntersectionObserver isn't supported, treat the element as visible
     // and skip setting up an observer.
     if (!isSupported) {

@@ -97,7 +97,8 @@ function calculatePhase(sample: Sample): number {
 /**
  * Normalize phase difference to [-π, π]
  */
-function normalizePhase(phase: number): number {
+function normalizePhase(inputPhase: number): number {
+  let phase = inputPhase;
   while (phase > Math.PI) {
     phase -= 2 * Math.PI;
   }
@@ -206,10 +207,13 @@ export function extractTDMASlots(symbols: number[]): {
 
   // TDMA alternates: even indices = slot 1, odd indices = slot 2
   for (let i = 0; i < symbols.length; i++) {
-    if (i % 2 === 0) {
-      slot1.push(symbols[i]!);
-    } else {
-      slot2.push(symbols[i]!);
+    const symbol = symbols[i];
+    if (symbol !== undefined) {
+      if (i % 2 === 0) {
+        slot1.push(symbol);
+      } else {
+        slot2.push(symbol);
+      }
     }
   }
 
@@ -235,10 +239,7 @@ export function symbolsToBits(symbols: number[]): number[] {
  *
  * Returns the index where sync pattern was found, or -1 if not found
  */
-export function detectFrameSync(
-  bits: number[],
-  threshold = 0.8,
-): number {
+export function detectFrameSync(bits: number[], threshold = 0.8): number {
   const syncLength = P25_SYNC_PATTERN.length;
   const minMatches = Math.floor(syncLength * threshold);
 
@@ -310,11 +311,9 @@ export function calculateSignalQuality(
     const actualDiffPhase = normalizePhase(currPhase - prevPhase);
     const idealPhase = idealPhases[symbol as P25Symbol];
 
-    if (idealPhase !== undefined) {
-      const error = Math.abs(normalizePhase(actualDiffPhase - idealPhase));
-      totalError += error;
-      count++;
-    }
+    const error = Math.abs(normalizePhase(actualDiffPhase - idealPhase));
+    totalError += error;
+    count++;
   }
 
   if (count === 0) {

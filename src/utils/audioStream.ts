@@ -280,11 +280,11 @@ export class AudioStreamProcessor {
    * source.start();
    * ```
    */
-  async extractAudio(
+  extractAudio(
     samples: IQSample[],
     demodType: DemodulationType,
     config: AudioOutputConfig = {},
-  ): Promise<AudioStreamResult> {
+  ): AudioStreamResult {
     const {
       sampleRate = 48000,
       channels = 1,
@@ -330,7 +330,7 @@ export class AudioStreamProcessor {
       // No demodulation - just convert I/Q to mono by taking I channel
       audioSamples = new Float32Array(samples.length);
       for (let i = 0; i < samples.length; i++) {
-        audioSamples[i] = samples[i]?.I || 0;
+        audioSamples[i] = samples[i]?.I ?? 0;
       }
     }
 
@@ -408,8 +408,11 @@ export class AudioStreamProcessor {
       const endIdx = Math.min(samples.length - 1, i + filterSize);
 
       for (let j = startIdx; j <= endIdx; j++) {
-        sum += samples[j]!;
-        count++;
+        const sample = samples[j];
+        if (sample !== undefined) {
+          sum += sample;
+          count++;
+        }
       }
 
       filtered[i] = sum / count;
@@ -426,7 +429,9 @@ export class AudioStreamProcessor {
       const frac = sourceIndex - index0;
 
       // Linear interpolation on filtered samples
-      decimated[i] = filtered[index0]! * (1 - frac) + filtered[index1]! * frac;
+      const val0 = filtered[index0] ?? 0;
+      const val1 = filtered[index1] ?? 0;
+      decimated[i] = val0 * (1 - frac) + val1 * frac;
     }
 
     return decimated;
@@ -487,7 +492,7 @@ export async function extractAudioStream(
   config: AudioOutputConfig = {},
 ): Promise<AudioStreamResult> {
   const processor = new AudioStreamProcessor(sdrSampleRate);
-  const result = await processor.extractAudio(samples, demodType, config);
+  const result = processor.extractAudio(samples, demodType, config);
   await processor.cleanup();
   return result;
 }
@@ -528,9 +533,9 @@ export function createAudioStreamCallback(
   demodType: DemodulationType,
   onAudio: (result: AudioStreamResult) => void,
   config: AudioOutputConfig = {},
-): (samples: IQSample[]) => Promise<void> {
-  return async (samples: IQSample[]) => {
-    const result = await processor.extractAudio(samples, demodType, config);
+): (samples: IQSample[]) => void {
+  return (samples: IQSample[]) => {
+    const result = processor.extractAudio(samples, demodType, config);
     onAudio(result);
   };
 }

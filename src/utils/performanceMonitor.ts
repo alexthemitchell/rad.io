@@ -123,14 +123,15 @@ class PerformanceMonitor {
 
     try {
       // If no end mark, measure from start mark to now
-      if (!endMark) {
+      let finalEndMark = endMark;
+      if (!finalEndMark) {
         const uniqueSuffix = Date.now();
         const endMarkName = `${name}-end-${uniqueSuffix}`;
         performance.mark(endMarkName);
-        endMark = endMarkName;
+        finalEndMark = endMarkName;
       }
 
-      performance.measure(name, startMark, endMark);
+      performance.measure(name, startMark, finalEndMark);
 
       // Get the measurement
       const measures = performance.getEntriesByName(name, "measure");
@@ -149,12 +150,14 @@ class PerformanceMonitor {
         if (!this.metrics.has(category)) {
           this.metrics.set(category, []);
         }
-        this.metrics.get(category)!.push(metric);
+        const categoryMetrics = this.metrics.get(category);
+        if (categoryMetrics) {
+          categoryMetrics.push(metric);
 
-        // Keep only last 100 measurements per category
-        const categoryMetrics = this.metrics.get(category)!;
-        if (categoryMetrics.length > 100) {
-          categoryMetrics.shift();
+          // Keep only last 100 measurements per category
+          if (categoryMetrics.length > 100) {
+            categoryMetrics.shift();
+          }
         }
       }
     } catch {
@@ -188,7 +191,7 @@ class PerformanceMonitor {
    * Get metrics for a specific category
    */
   getMetrics(category: string): PerformanceMetrics[] {
-    return this.metrics.get(category) || [];
+    return this.metrics.get(category) ?? [];
   }
 
   /**
@@ -252,29 +255,48 @@ class PerformanceMonitor {
     const durations = metrics.map((m) => m.duration).sort((a, b) => a - b);
     const sum = durations.reduce((acc, d) => acc + d, 0);
 
+    const firstDuration = durations[0];
+    const lastDuration = durations[durations.length - 1];
+    const p50Index = Math.min(
+      Math.max(Math.ceil(durations.length * 0.5) - 1, 0),
+      durations.length - 1,
+    );
+    const p95Index = Math.min(
+      Math.max(Math.ceil(durations.length * 0.95) - 1, 0),
+      durations.length - 1,
+    );
+    const p99Index = Math.min(
+      Math.max(Math.ceil(durations.length * 0.99) - 1, 0),
+      durations.length - 1,
+    );
+
+    if (
+      firstDuration === undefined ||
+      lastDuration === undefined ||
+      durations[p50Index] === undefined ||
+      durations[p95Index] === undefined ||
+      durations[p99Index] === undefined
+    ) {
+      // Shouldn't happen but guard against it
+      return {
+        count: 0,
+        avg: 0,
+        min: 0,
+        max: 0,
+        p50: 0,
+        p95: 0,
+        p99: 0,
+      };
+    }
+
     return {
       count: metrics.length,
       avg: sum / metrics.length,
-      min: durations[0]!,
-      max: durations[durations.length - 1]!,
-      p50: durations[
-        Math.min(
-          Math.max(Math.ceil(durations.length * 0.5) - 1, 0),
-          durations.length - 1,
-        )
-      ]!,
-      p95: durations[
-        Math.min(
-          Math.max(Math.ceil(durations.length * 0.95) - 1, 0),
-          durations.length - 1,
-        )
-      ]!,
-      p99: durations[
-        Math.min(
-          Math.max(Math.ceil(durations.length * 0.99) - 1, 0),
-          durations.length - 1,
-        )
-      ]!,
+      min: firstDuration,
+      max: lastDuration,
+      p50: durations[p50Index],
+      p95: durations[p95Index],
+      p99: durations[p99Index],
     };
   }
 

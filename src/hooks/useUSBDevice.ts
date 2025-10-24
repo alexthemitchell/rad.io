@@ -79,7 +79,7 @@ export const useUSBDevice = (
    */
   useEffect(() => {
     // Check for paired devices on mount
-    checkPairedDevices();
+    void checkPairedDevices();
 
     const handleConnect = (event: USBConnectionEvent): void => {
       const connectedDevice = event.device;

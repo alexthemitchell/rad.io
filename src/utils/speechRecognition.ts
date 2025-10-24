@@ -330,7 +330,8 @@ export class SpeechRecognitionProcessor {
 
         const alternatives: SpeechRecognitionTranscriptAlternative[] = [];
 
-        // Extract all alternatives
+        // Extract all alternatives - using index access since SpeechRecognitionResult is array-like but not iterable
+        // eslint-disable-next-line @typescript-eslint/prefer-for-of -- SpeechRecognitionResult is array-like but not iterable
         for (let j = 0; j < result.length; j++) {
           const alt = result[j];
           if (!alt) {
@@ -509,7 +510,7 @@ export class SpeechRecognitionProcessor {
    * await recognizer.start();
    * ```
    */
-  async start(): Promise<void> {
+  start(): void {
     if (!this.recognition) {
       throw new Error("SpeechRecognition not initialized");
     }
@@ -617,7 +618,10 @@ export async function recognizeSpeech(
     processor.setCallbacks({
       onResult: (result) => {
         if (result.isFinal && result.alternatives.length > 0) {
-          transcription = result.alternatives[0]!.transcript;
+          const firstAlt = result.alternatives[0];
+          if (firstAlt) {
+            transcription = firstAlt.transcript;
+          }
         }
       },
       onEnd: () => {
@@ -678,8 +682,10 @@ export function createSpeechRecognitionCallback(
   processor.setCallbacks({
     onResult: (result) => {
       if (result.alternatives.length > 0) {
-        const alt = result.alternatives[0]!;
-        onTranscript(alt.transcript, alt.confidence, result.isFinal);
+        const alt = result.alternatives[0];
+        if (alt) {
+          onTranscript(alt.transcript, alt.confidence, result.isFinal);
+        }
       }
     },
   });

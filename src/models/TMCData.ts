@@ -268,7 +268,7 @@ export function getEventInfo(eventCode: number): {
   severity: TMCEventSeverity;
 } {
   return (
-    TMC_EVENT_CODES[eventCode] || {
+    TMC_EVENT_CODES[eventCode] ?? {
       text: `Unknown event (${eventCode})`,
       category: TMCEventCategory.OTHER,
       severity: TMCEventSeverity.NONE,

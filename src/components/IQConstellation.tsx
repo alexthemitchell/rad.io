@@ -3,6 +3,7 @@ import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 import { performanceMonitor } from "../utils/performanceMonitor";
+import type { GL } from "../utils/webgl";
 import type { ReactElement } from "react";
 
 type Sample = {
@@ -34,7 +35,7 @@ export default function IQConstellation({
 
   // WebGL state
   const glStateRef = useRef<{
-    gl: import("../utils/webgl").GL | null;
+    gl: GL | null;
     program: WebGLProgram | null;
     vbo: WebGLBuffer | null;
     colorVBO: WebGLBuffer | null;
@@ -133,7 +134,10 @@ export default function IQConstellation({
 
             const positions = new Float32Array(samples.length * 2);
             for (let i = 0; i < samples.length; i++) {
-              const s = samples[i]!;
+              const s = samples[i];
+              if (!s) {
+                continue;
+              }
               positions[i * 2 + 0] = sI * s.I + oI;
               positions[i * 2 + 1] = sQ * s.Q + oQ;
             }
@@ -154,17 +158,20 @@ export default function IQConstellation({
               const gi = Math.round(s.I / gridSize) * gridSize;
               const gq = Math.round(s.Q / gridSize) * gridSize;
               const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
-              densityMap.set(key, (densityMap.get(key) || 0) + 1);
+              densityMap.set(key, (densityMap.get(key) ?? 0) + 1);
             }
             const maxDensity = Math.max(...Array.from(densityMap.values()), 1);
 
             const colors = new Float32Array(samples.length * 4);
             for (let i = 0; i < samples.length; i++) {
-              const s = samples[i]!;
+              const s = samples[i];
+              if (!s) {
+                continue;
+              }
               const gi = Math.round(s.I / gridSize) * gridSize;
               const gq = Math.round(s.Q / gridSize) * gridSize;
               const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
-              const dens = (densityMap.get(key) || 1) / maxDensity;
+              const dens = (densityMap.get(key) ?? 1) / maxDensity;
               const alpha = Math.min(1, 0.4 + dens * 0.8);
               colors[i * 4 + 0] = 0.31; // r ~ 80/255
               colors[i * 4 + 1] = 0.78; // g ~ 200/255
@@ -235,7 +242,10 @@ export default function IQConstellation({
 
           const positions = new Float32Array(samples.length * 2);
           for (let i = 0; i < samples.length; i++) {
-            const s = samples[i]!;
+            const s = samples[i];
+            if (!s) {
+              continue;
+            }
             positions[i * 2 + 0] = sI * s.I + oI;
             positions[i * 2 + 1] = sQ * s.Q + oQ;
           }
@@ -248,18 +258,21 @@ export default function IQConstellation({
             const gi = Math.round(s.I / gridSize) * gridSize;
             const gq = Math.round(s.Q / gridSize) * gridSize;
             const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
-            densityMap.set(key, (densityMap.get(key) || 0) + 1);
+            densityMap.set(key, (densityMap.get(key) ?? 0) + 1);
           }
           const maxDensity = Math.max(...Array.from(densityMap.values()), 1);
 
           // But use full sample set for rendering colors
           const colors = new Float32Array(samples.length * 4);
           for (let i = 0; i < samples.length; i++) {
-            const s = samples[i]!;
+            const s = samples[i];
+            if (!s) {
+              continue;
+            }
             const gi = Math.round(s.I / gridSize) * gridSize;
             const gq = Math.round(s.Q / gridSize) * gridSize;
             const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
-            const dens = (densityMap.get(key) || 1) / maxDensity;
+            const dens = (densityMap.get(key) ?? 1) / maxDensity;
             const alpha = Math.min(1, 0.4 + dens * 0.8);
             colors[i * 4 + 0] = 0.31; // r ~ 80/255
             colors[i * 4 + 1] = 0.78; // g ~ 200/255
@@ -366,12 +379,12 @@ void main() {
           }
           if (workerRef.current) {
             workerRef.current.onmessage = (ev): void => {
-              const d = ev.data as unknown as {
+              const d = ev.data as {
                 type?: string;
                 viz?: string;
                 renderTimeMs?: number;
               };
-              if (d?.type === "metrics") {
+              if (d.type === "metrics") {
                 console.debug("IQConstellation: Worker render metrics", {
                   visualization: d.viz,
                   renderTimeMs: d.renderTimeMs?.toFixed(2),
@@ -488,11 +501,7 @@ void main() {
           chartHeight;
 
       ctx.fillStyle = "rgba(100,200,255,0.6)";
-      for (let k = 0; k < samples.length; k++) {
-        const s = samples[k];
-        if (!s) {
-          continue;
-        }
+      for (const s of samples) {
         const x = scaleI(s.I);
         const y = scaleQ(s.Q);
         ctx.beginPath();

@@ -28,7 +28,7 @@ export function getGL(canvas: HTMLCanvasElement): {
     antialias: false,
     preserveDrawingBuffer: false,
     desynchronized: true as unknown as boolean,
-  }) ||
+  }) ??
     canvas.getContext("experimental-webgl", {
       alpha: false,
       antialias: false,
@@ -42,11 +42,14 @@ export function createShader(
   type: number,
   source: string,
 ): WebGLShader {
-  const shader = gl.createShader(type)!;
+  const shader = gl.createShader(type);
+  if (!shader) {
+    throw new Error("Failed to create WebGL shader (context lost?)");
+  }
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    const msg = gl.getShaderInfoLog(shader) || "Unknown shader compile error";
+    const msg = gl.getShaderInfoLog(shader) ?? "Unknown shader compile error";
     gl.deleteShader(shader);
     throw new Error(msg);
   }
@@ -60,12 +63,21 @@ export function createProgram(
 ): WebGLProgram {
   const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
   const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
-  const prog = gl.createProgram();
+  const prog = gl.createProgram() as WebGLProgram | null;
+  if (prog === null) {
+    gl.deleteShader(vs);
+    gl.deleteShader(fs);
+    throw new Error("Failed to create WebGL program (context lost?)");
+  }
   gl.attachShader(prog, vs);
   gl.attachShader(prog, fs);
   gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-    const msg = gl.getProgramInfoLog(prog) || "Unknown program link error";
+  // getProgramParameter can return GLboolean (number) or boolean depending on the parameter
+  // For LINK_STATUS, it returns GLboolean (0 or 1), but TypeScript types it as any
+  // We cast to boolean to satisfy type checking
+  const linkStatus = Boolean(gl.getProgramParameter(prog, gl.LINK_STATUS));
+  if (!linkStatus) {
+    const msg = gl.getProgramInfoLog(prog) ?? "Unknown program link error";
     gl.deleteProgram(prog);
     gl.deleteShader(vs);
     gl.deleteShader(fs);
@@ -83,7 +95,10 @@ export function createTextureRGBA(
   height: number,
   data: Uint8Array | null,
 ): WebGLTexture {
-  const tex = gl.createTexture();
+  const tex = gl.createTexture() as WebGLTexture | null;
+  if (!tex) {
+    throw new Error("Failed to create WebGL texture (context lost?)");
+  }
   gl.bindTexture(gl.TEXTURE_2D, tex);
   // Use nearest to avoid blurring small pixels
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -176,8 +191,13 @@ export function viridisLUT256(): Uint8Array {
     const i0 = Math.floor(x);
     const i1 = Math.min(stops.length - 1, i0 + 1);
     const f = x - i0;
-    const [r0, g0, b0] = stops[i0]!;
-    const [r1, g1, b1] = stops[i1]!;
+    const stop0 = stops[i0];
+    const stop1 = stops[i1];
+    if (!stop0 || !stop1) {
+      throw new Error("Invalid colormap stop index");
+    }
+    const [r0, g0, b0] = stop0;
+    const [r1, g1, b1] = stop1;
     const r = Math.round(r0 + (r1 - r0) * f);
     const g = Math.round(g0 + (g1 - g0) * f);
     const b = Math.round(b0 + (b1 - b0) * f);

@@ -24,9 +24,11 @@ export class CancellablePromise<T> extends Promise<T> {
       reject: (reason?: unknown) => void,
     ) => () => void,
   ) {
-    let cancel: () => void;
+    let cancel: () => void = function () {
+      // Empty function placeholder
+    };
     super((resolve, reject) => (cancel = executor(resolve, reject)));
-    this._cancel = cancel!;
+    this._cancel = cancel;
   }
 
   /**
@@ -58,7 +60,8 @@ export function computeBasebandFilterBwRoundDownLt(
   checkU32(bandwidthHz);
   let idx: number;
   for (idx = 0; idx < max2837Ft.length; idx++) {
-    if (max2837Ft[idx]! >= bandwidthHz) {
+    const entry = max2837Ft[idx];
+    if (entry !== undefined && entry >= bandwidthHz) {
       break;
     }
   }
@@ -78,12 +81,14 @@ export function computeBasebandFilterBw(
   checkU32(bandwidthHz);
   let idx: number;
   for (idx = 0; idx < max2837Ft.length; idx++) {
-    if (max2837Ft[idx]! >= bandwidthHz) {
+    const entry = max2837Ft[idx];
+    if (entry !== undefined && entry >= bandwidthHz) {
       break;
     }
   }
   // Round down (if no equal to first entry) and if > bandwidthHz
-  if (max2837Ft[idx]! >= bandwidthHz) {
+  const selectedEntry = max2837Ft[idx];
+  if (selectedEntry !== undefined && selectedEntry >= bandwidthHz) {
     idx = Math.max(idx - 1, 0);
   }
   return max2837Ft[idx];
@@ -168,9 +173,17 @@ function chooseDivider(n: number): number {
   const n1 = BigInt(1),
     mask = (n1 << BigInt(52)) - n1;
 
-  const e = Number(f64toU(n)! >> BigInt(52)) - 1023;
+  const nBits = f64toU(n);
+  if (nBits === undefined) {
+    return 1; // Fallback
+  }
+  const e = Number(nBits >> BigInt(52)) - 1023;
   const fracN = 1 + n - Math.floor(n);
-  const frac = f64toU(fracN)! & mask;
+  const fracBits = f64toU(fracN);
+  if (fracBits === undefined) {
+    return 1; // Fallback
+  }
+  const frac = fracBits & mask;
 
   const round = (x: bigint): bigint => (x + (n1 << BigInt(51))) & ~mask;
   const roundError = (x: bigint): number => Math.abs(Number(x - round(x)));
