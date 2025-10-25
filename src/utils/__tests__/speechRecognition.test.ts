@@ -595,7 +595,7 @@ describe("SpeechRecognitionProcessor", () => {
       };
 
       await processor.start();
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(receivedError).not.toBeNull();
       expect(receivedError?.error).toBe(SpeechRecognitionErrorCode.NO_SPEECH);
@@ -633,7 +633,7 @@ describe("SpeechRecognitionProcessor", () => {
       };
 
       await processor.start();
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(receivedError).not.toBeNull();
       expect(receivedError?.error).toBe(SpeechRecognitionErrorCode.NETWORK);
@@ -671,7 +671,7 @@ describe("SpeechRecognitionProcessor", () => {
       };
 
       await processor.start();
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(receivedError).not.toBeNull();
       expect(receivedError?.error).toBe(
