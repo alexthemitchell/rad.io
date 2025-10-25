@@ -54,22 +54,20 @@ class DSPPerformanceMonitor {
       };
     }
 
+    // Calculate average once to avoid duplicate reduce operations
+    const avgTime = this.metrics.reduce((a, b) => a + b, 0) / this.metrics.length;
+    
     return {
-      avgProcessingTime:
-        this.metrics.reduce((a, b) => a + b, 0) / this.metrics.length,
+      avgProcessingTime: avgTime,
       maxProcessingTime: Math.max(...this.metrics),
       minProcessingTime: Math.min(...this.metrics),
-      throughput: this.calculateThroughput(),
+      throughput: this.calculateThroughput(avgTime),
       queueDepth: this.queueDepthValue,
       totalOperations: this.totalOps,
     };
   }
 
-  private calculateThroughput(): number {
-    if (this.metrics.length === 0) {
-      return 0;
-    }
-    const avgTime = this.metrics.reduce((a, b) => a + b, 0) / this.metrics.length;
+  private calculateThroughput(avgTime: number): number {
     // Convert to operations per second
     return avgTime > 0 ? 1000 / avgTime : 0;
   }

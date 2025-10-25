@@ -122,7 +122,11 @@ export class PriorityQueue<T extends { priority: number }> {
         swapIndex = leftIndex;
       }
 
-      const compareItem = swapIndex === -1 ? item : (leftChild as T);
+      const compareItem = swapIndex === -1 ? item : leftChild;
+      if (compareItem === undefined) {
+        break;
+      }
+      
       if (
         rightIndex < length &&
         rightChild &&

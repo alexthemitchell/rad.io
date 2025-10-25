@@ -20,11 +20,6 @@ interface FFTResponse {
   error?: string;
 }
 
-interface IQSample {
-  I: number;
-  Q: number;
-}
-
 // FFT context cache
 const fftContexts = new Map<number, { cosTable: Float32Array; sinTable: Float32Array }>();
 
@@ -53,37 +48,31 @@ function computeFFT(samples: Float32Array, fftSize: number): { magnitude: Float3
   const magnitude = new Float32Array(fftSize);
   const phase = new Float32Array(fftSize);
   
-  // Convert Float32Array to IQ samples (assume interleaved I,Q format)
-  const iqSamples: IQSample[] = [];
-  for (let i = 0; i < samples.length; i += 2) {
-    iqSamples.push({
-      I: samples[i] ?? 0,
-      Q: samples[i + 1] ?? 0,
-    });
-  }
-  
   const { cosTable, sinTable } = getTrigTables(fftSize);
   
-  // Perform DFT
+  // Perform DFT - operate directly on Float32Array (interleaved I,Q format)
   const realPart = new Float32Array(fftSize);
   const imagPart = new Float32Array(fftSize);
+  
+  // Calculate sample count once (avoid repeated computation)
+  const samplePairs = Math.floor(samples.length / 2);
+  const sampleCount = Math.min(samplePairs, fftSize);
   
   for (let k = 0; k < fftSize; k++) {
     let realSum = 0;
     let imagSum = 0;
     
-    for (let n = 0; n < Math.min(iqSamples.length, fftSize); n++) {
-      const sample = iqSamples[n];
-      if (!sample) {
-        continue;
-      }
+    for (let n = 0; n < sampleCount; n++) {
+      // Access samples directly without intermediate allocation
+      const I = samples[n * 2] ?? 0;
+      const Q = samples[n * 2 + 1] ?? 0;
       
       const baseAngle = (k * n) % fftSize;
       const cos = cosTable[baseAngle] ?? 0;
       const sin = sinTable[baseAngle] ?? 0;
       
-      realSum += sample.I * cos - sample.Q * sin;
-      imagSum += sample.I * sin + sample.Q * cos;
+      realSum += I * cos - Q * sin;
+      imagSum += I * sin + Q * cos;
     }
     
     realPart[k] = realSum;

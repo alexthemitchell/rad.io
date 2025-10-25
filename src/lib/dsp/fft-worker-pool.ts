@@ -157,12 +157,14 @@ class FFTWorkerPool {
     console.error("FFT Worker error:", error);
   }
 
+  private idCounter = 0;
+
   /**
-   * Generate unique task ID
+   * Generate unique task ID using counter for guaranteed uniqueness
    * @returns Unique identifier string
    */
   private generateId(): string {
-    return `fft-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    return `fft-${Date.now()}-${this.idCounter++}`;
   }
 
   /**

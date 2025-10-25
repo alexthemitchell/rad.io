@@ -66,10 +66,11 @@ export async function scanBand(
         const samples = await device.captureSamples(2048);
 
         // Compute FFT with priority based on scan order
+        // Higher priority for earlier frequencies (scan order preserved)
         const fft = await fftWorkerPool.computeFFT(
           samples,
           device.config.sampleRate,
-          index, // Priority = order in scan
+          frequencies.length - index,
         );
 
         // Calculate peak power
