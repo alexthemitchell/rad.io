@@ -142,7 +142,7 @@ export class ScanManager {
   /**
    * Run a scan with the configured strategy
    */
-  /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-condition */
+  /* eslint-disable @typescript-eslint/no-unnecessary-condition */
   private async runScan(
     scanId: string,
     config: ScanConfig,
@@ -205,7 +205,7 @@ export class ScanManager {
       }
     }
   }
-  /* eslint-enable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-condition */
+  /* eslint-enable @typescript-eslint/no-unnecessary-condition */
 
   /**
    * Create scanner based on strategy

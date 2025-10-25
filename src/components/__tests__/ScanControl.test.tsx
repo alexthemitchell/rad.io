@@ -2,10 +2,8 @@
  * ScanControl Tests
  */
 
-import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { ScanControl } from "../ScanControl";
-import type { ScanConfig } from "../../lib/scanning/types";
 
 describe("ScanControl", () => {
   const defaultProps = {

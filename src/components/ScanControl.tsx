@@ -3,9 +3,9 @@
  * UI for configuring and controlling frequency scans
  */
 
-import type { ReactElement } from "react";
 import { useState } from "react";
 import type { ScanConfig, ScanStrategy } from "../lib/scanning/types";
+import type { ReactElement } from "react";
 import "./ScanControl.css";
 
 export interface ScanControlProps {

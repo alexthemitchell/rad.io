@@ -21,7 +21,7 @@ jest.mock("../../dsp/fft-worker-pool", () => ({
 // Mock LinearScanner
 jest.mock("../linear-scanner", () => ({
   LinearScanner: jest.fn().mockImplementation(() => ({
-    scan: jest.fn().mockImplementation(async (device, config, onProgress, signal) => {
+    scan: jest.fn().mockImplementation(async (device, config) => {
       // Simulate calling setFrequency
       if (device.setFrequency) {
         await device.setFrequency(config.startFreq);

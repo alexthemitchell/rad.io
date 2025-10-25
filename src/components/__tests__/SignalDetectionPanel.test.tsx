@@ -2,7 +2,6 @@
  * SignalDetectionPanel Tests
  */
 
-import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SignalDetectionPanel } from "../SignalDetectionPanel";
 import type { ClassifiedSignal } from "../../lib/detection";
@@ -113,7 +112,7 @@ describe("SignalDetectionPanel", () => {
   it("should display signal details", () => {
     render(
       <SignalDetectionPanel
-        signals={[mockSignals[0]]}
+        signals={[mockSignals[0]!]}
         noiseFloor={-80}
       />
     );
@@ -129,7 +128,7 @@ describe("SignalDetectionPanel", () => {
     
     render(
       <SignalDetectionPanel
-        signals={[mockSignals[0]]}
+        signals={[mockSignals[0]!]}
         noiseFloor={-80}
         onTuneToSignal={onTuneToSignal}
       />
@@ -144,7 +143,7 @@ describe("SignalDetectionPanel", () => {
   it("should not make signals clickable without onTuneToSignal", () => {
     render(
       <SignalDetectionPanel
-        signals={[mockSignals[0]]}
+        signals={[mockSignals[0]!]}
         noiseFloor={-80}
       />
     );
@@ -200,11 +199,11 @@ describe("SignalDetectionPanel", () => {
   it("should format frequencies correctly", () => {
     const signals: ClassifiedSignal[] = [
       {
-        ...mockSignals[0],
+        ...mockSignals[0]!,
         frequency: 1_000_000, // 1 MHz
       },
       {
-        ...mockSignals[0],
+        ...mockSignals[0]!,
         frequency: 500_000, // 500 kHz
       },
     ];
@@ -223,7 +222,7 @@ describe("SignalDetectionPanel", () => {
   it("should show tune hint when onTuneToSignal provided", () => {
     render(
       <SignalDetectionPanel
-        signals={[mockSignals[0]]}
+        signals={[mockSignals[0]!]}
         noiseFloor={-80}
         onTuneToSignal={() => {}}
       />
