@@ -35,7 +35,6 @@ function Settings(): React.JSX.Element {
   return (
     <main
       className="page-container"
-      role="main"
       aria-labelledby="settings-heading"
     >
       <h2 id="settings-heading">Settings</h2>
