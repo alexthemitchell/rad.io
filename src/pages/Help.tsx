@@ -86,7 +86,7 @@ function Help(): React.JSX.Element {
 
           {/* TODO: Add interactive onboarding tutorial */}
           {/* TODO: Add screenshots/animations */}
-          {/* TODO: Add &ldquo;First Time&rdquo; checklist */}
+          {/* TODO: Add "First Time" checklist */}
         </section>
       )}
 
@@ -247,7 +247,7 @@ function Help(): React.JSX.Element {
 
           {/* TODO: Load release notes from external source */}
           {/* TODO: Add version comparison */}
-          {/* TODO: Add &ldquo;What&apos;s New&rdquo; highlights */}
+          {/* TODO: Add “What's New” highlights */}
         </section>
       )}
 
