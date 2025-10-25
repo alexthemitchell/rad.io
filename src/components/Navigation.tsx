@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 /**
  * Main navigation component for primary workspaces
@@ -21,6 +21,8 @@ import { NavLink } from "react-router-dom";
  * - Screen reader labels
  */
 function Navigation(): React.JSX.Element {
+  const navigate = useNavigate();
+
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent): void => {
       // Only handle keyboard shortcuts if not in an input field
@@ -33,22 +35,22 @@ function Navigation(): React.JSX.Element {
 
       switch (event.key) {
         case "1":
-          window.location.hash = "#/monitor";
+          void navigate("/monitor");
           break;
         case "2":
-          window.location.hash = "#/scanner";
+          void navigate("/scanner");
           break;
         case "3":
-          window.location.hash = "#/decode";
+          void navigate("/decode");
           break;
         case "4":
-          window.location.hash = "#/analysis";
+          void navigate("/analysis");
           break;
         case "5":
-          window.location.hash = "#/recordings";
+          void navigate("/recordings");
           break;
         case "?":
-          window.location.hash = "#/help";
+          void navigate("/help");
           break;
         default:
           break;
@@ -59,7 +61,7 @@ function Navigation(): React.JSX.Element {
     return (): void => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, []);
+  }, [navigate]);
 
   return (
     <nav className="main-nav" role="navigation" aria-label="Main navigation">
