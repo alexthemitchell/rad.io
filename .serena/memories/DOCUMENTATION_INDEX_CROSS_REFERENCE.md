@@ -70,7 +70,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 **Quick Reference:**
 - `glossary.md` - SDR terminology (260+ terms)
 - `formula-reference.md` - Key equations
-- `keyboard-shortcuts.md` - Application controls (NOTE: File missing, create if needed)
+- `keyboard-shortcuts.md` - Application controls
 
 ## Key Concept Mappings
 
