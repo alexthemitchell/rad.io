@@ -9,6 +9,7 @@
 This report provides a comprehensive verification of all visualization components (IQConstellation, Spectrogram, WaveformVisualizer) for compliance with Architecture Decision Records (ADRs), best practices, test coverage, and fallback strategies.
 
 **Key Findings**:
+
 - ✅ All visualizations implement proper fallback chain (WebGPU → WebGL → OffscreenCanvas+Worker → Canvas 2D)
 - ✅ All 706 tests passing, including 26 comprehensive SDR-realistic signal tests
 - ✅ Accessibility features present (ARIA labels, keyboard navigation, semantic HTML)
@@ -24,12 +25,14 @@ This report provides a comprehensive verification of all visualization component
 **Status**: ⚠️ **PARTIAL COMPLIANCE**
 
 **ADR Requirements**:
+
 - WebGL2 as primary renderer
 - WebGPU as progressive enhancement
 - 60 FPS at 8192 bins
 - Graceful degradation to WebGL 1.0
 
 **Current Implementation**:
+
 - ✅ Multi-tier fallback chain: WebGPU → WebGL (2/1) → OffscreenCanvas+Worker → Canvas 2D
 - ✅ WebGPU support via `src/utils/webgpu.ts` with three renderer classes
 - ✅ WebGL utilities in `src/utils/webgl.ts` with shader compilation helpers
@@ -41,6 +44,7 @@ This report provides a comprehensive verification of all visualization component
 The implementation goes beyond ADR-0015 by providing MORE fallback options than specified. While the ADR specifies WebGL2 as primary, the actual implementation tries WebGPU first (future-proofing), then WebGL, then worker-based rendering, and finally Canvas 2D. This provides better compatibility across browsers at the cost of slightly deviating from the strict ADR specification.
 
 **Performance Validation**:
+
 - ✅ All tests pass without performance issues
 - ✅ Build succeeds (5.41 MiB total assets)
 - ✅ Lint clean
@@ -52,6 +56,7 @@ The implementation goes beyond ADR-0015 by providing MORE fallback options than 
 **Status**: ✅ **COMPLIANT**
 
 **Requirements Met**:
+
 - ✅ WebGL2 utilities implemented (`src/utils/webgl.ts`)
 - ✅ WebGPU utilities implemented (`src/utils/webgpu.ts`)
 - ✅ Viridis colormap LUT functions available
@@ -59,6 +64,7 @@ The implementation goes beyond ADR-0015 by providing MORE fallback options than 
 - ✅ Fallback chain to WebGL 1.0 and Canvas 2D
 
 **Key Features**:
+
 1. **WebGL Context Creation**: Prefers WebGL2, falls back to WebGL1, handles experimental-webgl
 2. **Shader Compilation**: Error handling with detailed messages
 3. **Texture Management**: RGBA textures with proper parameters (NEAREST, CLAMP_TO_EDGE)
@@ -92,6 +98,7 @@ The implementation goes beyond ADR-0015 by providing MORE fallback options than 
    - Accessible descriptions for Spectrogram: Similar pattern expected
 
 **Examples**:
+
 ```typescript
 // IQConstellation.tsx (lines 44-62)
 const accessibleDescription = useMemo((): string => {
@@ -121,12 +128,14 @@ const accessibleDescription = useMemo((): string => {
 **Purpose**: Renders I/Q constellation diagram for signal modulation visualization
 
 **Fallback Chain**:
+
 1. **WebGPU** (lines 89-189): Uses `WebGPUPointRenderer` with density-based alpha
 2. **WebGL** (lines 193-338): Uses `gl.POINTS` with custom shaders
 3. **OffscreenCanvas + Worker** (lines 343-435): Transfers canvas to worker thread
 4. **Canvas 2D** (lines 439-516): Main thread rendering with arc drawing
 
 **Key Features**:
+
 - ✅ Density-based alpha calculation (0.4-1.0 range) for overlapping points
 - ✅ Adaptive downsampling for density calculation (max 8192 samples)
 - ✅ Proper NDC transformation with 10% padding
@@ -137,12 +146,14 @@ const accessibleDescription = useMemo((): string => {
 - ✅ Accessibility description with sample statistics
 
 **Performance Optimizations**:
+
 - Downsampling for large datasets (>8192 samples use sampling)
 - Spatial binning for density calculation (gridSize: 0.003)
 - Typed arrays (Float32Array) for vertex data
 - GPU buffer reuse via `glStateRef`
 
 **Test Coverage**:
+
 - Component coverage: 52.97% statements, 35.65% branches, 74.07% functions
 - Tests in `IQConstellation.test.tsx` (204 lines)
 - Tests in `VisualizationSDRData.test.tsx` (includes FM, AM, QPSK, noise scenarios)
@@ -152,12 +163,14 @@ const accessibleDescription = useMemo((): string => {
 **Purpose**: Renders time-frequency spectrogram with Viridis colormap
 
 **Fallback Chain**:
+
 1. **WebGPU** (lines 103-244): Uses `WebGPUTextureRenderer` with texture-based heatmap
 2. **WebGL** (lines 248-463): Uses texture mapping with fullscreen quad
 3. **OffscreenCanvas + Worker** (lines 467-560): Worker-based rendering
 4. **Canvas 2D** (lines 564-619): ImageData-based heatmap rendering
 
 **Key Features**:
+
 - ✅ Viridis colormap (9 key colors → 256-point LUT)
 - ✅ Dynamic range compression (5% threshold)
 - ✅ Texture caching (avoids recreation on same size)
@@ -168,12 +181,14 @@ const accessibleDescription = useMemo((): string => {
 - ✅ Visibility optimization
 
 **Performance Optimizations**:
+
 - Texture reuse when dimensions unchanged
 - GPU-side colormap application via shader
 - Rolling buffer for waterfall mode (max 100 frames default)
 - Efficient texture updates via `texSubImage2D`
 
 **Test Coverage**:
+
 - Component coverage: 53.52% statements, 42.6% branches, 74.07% functions
 - Tests in `Spectrogram.test.tsx` (333 lines, 21 tests)
 - Comprehensive tests for waterfall mode, mode switching, buffer management
@@ -183,12 +198,14 @@ const accessibleDescription = useMemo((): string => {
 **Purpose**: Renders time-domain amplitude waveform
 
 **Fallback Chain**:
+
 1. **WebGPU** (lines 100-163): Uses `WebGPULineRenderer`
 2. **WebGL** (lines 167-264): Uses `gl.LINE_STRIP` with custom shaders
 3. **OffscreenCanvas + Worker** (lines 268-350): Worker-based rendering
 4. **Canvas 2D** (lines 354-413): Main thread line drawing
 
 **Key Features**:
+
 - ✅ Adaptive amplitude scaling with 10% padding
 - ✅ NDC mapping for WebGL rendering
 - ✅ Line width control (2.0 pixels)
@@ -198,11 +215,13 @@ const accessibleDescription = useMemo((): string => {
 - ✅ Accessibility description with amplitude statistics
 
 **Performance Optimizations**:
+
 - Adaptive downsampling for large datasets
 - Efficient line rendering via `gl.LINE_STRIP`
 - Minimal vertex data (2 floats per point)
 
 **Test Coverage**:
+
 - Component coverage: ⚠️ **3.27% statements** (LOW)
 - No dedicated test file found
 - Only tested as part of `VisualizationSDRData.test.tsx`
@@ -250,6 +269,7 @@ Tests:       706 passed, 706 total
 ### Test Coverage Gaps
 
 **Missing Test Scenarios**:
+
 1. ❌ WebGL context loss handling
 2. ❌ Worker creation failure
 3. ❌ Canvas transfer failure
@@ -262,11 +282,13 @@ Tests:       706 passed, 706 total
 10. ❌ Explicit 60 FPS performance benchmarks
 
 **Low Coverage Components**:
+
 - ⚠️ WaveformVisualizer: 3.27% statement coverage
   - Recommendation: Add dedicated test file
   - Should mirror IQConstellation.test.tsx structure
 
 **Untested Fallback Paths**:
+
 - Worker creation fallback (try-catch in lines ~363-387 of IQConstellation)
 - Canvas transfer failure scenarios
 - WebGL context loss recovery
@@ -277,6 +299,7 @@ Tests:       706 passed, 706 total
 ### From SERENA_MEMORY_BEST_PRACTICES
 
 ✅ **Synchronous Canvas Sizing** (CRITICAL):
+
 ```typescript
 // All components follow this pattern (before async import)
 const dpr = window.devicePixelRatio || 1;
@@ -287,6 +310,7 @@ canvas.style.height = `${height}px`;
 ```
 
 ✅ **Async Import Pattern**:
+
 ```typescript
 const run = async (): Promise<void> => {
   const webgpu = await import("../utils/webgpu");
@@ -296,6 +320,7 @@ void run(); // Invoke immediately
 ```
 
 ✅ **Resource Lifecycle**:
+
 ```typescript
 useEffect((): (() => void) => {
   const st = glStateRef.current; // Capture before return
@@ -307,11 +332,13 @@ useEffect((): (() => void) => {
 ```
 
 ✅ **DPR Variable Scoping**:
+
 - Declared once at outer scope
 - No redeclaration in fallback branches
 - Reused across all rendering paths
 
 ✅ **Fallback Chain Implementation**:
+
 ```typescript
 try {
   // WebGPU attempt
@@ -340,16 +367,19 @@ const ctx = canvas.getContext("2d");
 ### From WEBGL_VISUALIZATION_ARCHITECTURE Memory
 
 ✅ **Viridis Colormap**:
+
 - 9 key stops → 256-point LUT via linear interpolation
 - Used in Spectrogram component
 - Perceptually uniform for power spectral density
 
 ✅ **IQ Constellation Patterns**:
+
 - Density-based alpha: CPU grid binning (cell size 0.003) → alpha (0.4-1.0)
 - Color: rgba(80, 200, 255, density-based-alpha)
 - Blending enabled with SRC_ALPHA, ONE_MINUS_SRC_ALPHA
 
 ✅ **WebGL Context Options**:
+
 ```typescript
 {
   alpha: false,
@@ -363,17 +393,20 @@ const ctx = canvas.getContext("2d");
 ### Current Implementation
 
 ✅ **Try-Catch Blocks**:
+
 - All async import() calls wrapped in try-catch
 - WebGL/WebGPU initialization errors caught
 - Worker creation errors caught
 - Detailed error logging with context
 
 ✅ **Graceful Degradation**:
+
 - Each fallback attempt is independent
 - Failures logged with console.warn (not console.error to avoid breaking)
 - Component continues to render with lower-tier fallback
 
 ✅ **Error Context**:
+
 ```typescript
 console.warn(
   "IQConstellation: WebGL rendering failed, falling back to worker/2D",
@@ -389,16 +422,19 @@ console.warn(
 ### Missing Error Handling (Recommendations)
 
 ❌ **WebGL Context Loss**:
+
 - No `webglcontextlost` event listener
 - No `webglcontextrestored` event listener
 - Recommendation: Add context loss detection and recovery
 
 ❌ **GPU Memory Exhaustion**:
+
 - No explicit memory limit checks
 - No texture size validation against MAX_TEXTURE_SIZE
 - Recommendation: Query `gl.getParameter(gl.MAX_TEXTURE_SIZE)` before allocation
 
 ❌ **Worker Termination**:
+
 - Worker terminated on cleanup but no error recovery
 - Recommendation: Implement worker health check and restart mechanism
 
@@ -407,6 +443,7 @@ console.warn(
 ### Current Optimizations
 
 ✅ **Visibility Detection**:
+
 ```typescript
 const isPageVisible = usePageVisibility();
 const isElementVisible = useIntersectionObserver(internalCanvasRef, {
@@ -419,14 +456,19 @@ if (!continueInBackground && (!isPageVisible || !isElementVisible)) {
 ```
 
 ✅ **Adaptive Downsampling**:
+
 ```typescript
 const MAX_DENSITY_SAMPLES = 8192;
-const densitySamples = samples.length > MAX_DENSITY_SAMPLES
-  ? samples.filter((_, i) => i % Math.ceil(samples.length / MAX_DENSITY_SAMPLES) === 0)
-  : samples;
+const densitySamples =
+  samples.length > MAX_DENSITY_SAMPLES
+    ? samples.filter(
+        (_, i) => i % Math.ceil(samples.length / MAX_DENSITY_SAMPLES) === 0,
+      )
+    : samples;
 ```
 
 ✅ **GPU Buffer Reuse**:
+
 ```typescript
 if (!glStateRef.current.program) {
   // Create once
@@ -438,13 +480,10 @@ gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
 ```
 
 ✅ **Texture Caching**:
+
 ```typescript
 const lastSize = glStateRef.current.lastTextureSize;
-if (
-  lastSize &&
-  lastSize.w === texW &&
-  lastSize.h === texH
-) {
+if (lastSize && lastSize.w === texW && lastSize.h === texH) {
   // Reuse texture, just update data
   webgl.updateTextureRGBA(gl, tex, texW, texH, rgbaData);
 } else {
@@ -452,23 +491,31 @@ if (
   if (glStateRef.current.texture) {
     gl.deleteTexture(glStateRef.current.texture);
   }
-  glStateRef.current.texture = webgl.createTextureRGBA(gl, texW, texH, rgbaData);
+  glStateRef.current.texture = webgl.createTextureRGBA(
+    gl,
+    texW,
+    texH,
+    rgbaData,
+  );
 }
 ```
 
 ### Missing Performance Metrics
 
 ❌ **No FPS Monitoring**:
+
 - No explicit frame rate measurement
 - No performance.mark/measure in production builds
 - Recommendation: Add FPS counter component (dev mode only)
 
 ❌ **No GPU Memory Tracking**:
+
 - No WEBGL_debug_renderer_info usage
 - No memory usage estimation
 - Recommendation: Query renderer info and log on initialization
 
 ❌ **No 60 FPS Benchmark Tests**:
+
 - ADR-0015 specifies 60 FPS @ 8192 bins
 - No automated performance tests
 - Recommendation: Add performance benchmark suite
@@ -535,6 +582,7 @@ if (
 **Overall Compliance Score**: 85/100
 
 ### Strengths
+
 - ✅ Excellent fallback chain implementation (4 tiers)
 - ✅ Comprehensive test suite (706 tests passing)
 - ✅ Proper resource lifecycle management
@@ -544,6 +592,7 @@ if (
 - ✅ All quality gates passing (lint, type-check, build, tests)
 
 ### Areas for Improvement
+
 - ⚠️ WaveformVisualizer test coverage very low (3.27%)
 - ⚠️ Missing context loss handling
 - ⚠️ Missing fallback scenario tests

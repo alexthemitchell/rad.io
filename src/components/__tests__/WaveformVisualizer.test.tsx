@@ -242,9 +242,7 @@ describe("WaveformVisualizer", () => {
     });
 
     // Change dimensions
-    rerender(
-      <WaveformVisualizer samples={samples} width={800} height={600} />,
-    );
+    rerender(<WaveformVisualizer samples={samples} width={800} height={600} />);
 
     canvas = container.querySelector("canvas");
     expect(canvas).toHaveStyle({
