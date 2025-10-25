@@ -1,5 +1,25 @@
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
+
+// Mock the DeviceContext to avoid requiring a real provider in tests
+jest.mock("../../contexts/DeviceContext", () => ({
+  DeviceProvider: ({ children }: any) => <>{children}</>,
+  useDevice: jest.fn(() => ({
+    device: null,
+    initialize: jest.fn(),
+    cleanup: jest.fn(),
+    isCheckingPaired: false,
+  })),
+  useDeviceContext: jest.fn(() => ({
+    devices: new Map(),
+    primaryDevice: undefined,
+    isCheckingPaired: false,
+    requestDevice: jest.fn(),
+    closeDevice: jest.fn(),
+    closeAllDevices: jest.fn(),
+  })),
+}));
+
 import Monitor from "../Monitor";
 
 describe("Monitor", () => {
