@@ -44,7 +44,7 @@ component_management:
         target: auto
         branches:
           - "!main"
-  
+
   individual_components:
     # UI Layer - User-facing components
     - component_id: ui_components
@@ -56,7 +56,7 @@ component_management:
           target: 70%
         - type: patch
           target: 75%
-    
+
     - component_id: ui_pages
       name: "Pages"
       paths:
@@ -66,7 +66,7 @@ component_management:
           target: 60%
         - type: patch
           target: 70%
-    
+
     - component_id: ui_panels
       name: "Panels"
       paths:
@@ -76,7 +76,7 @@ component_management:
           target: 65%
         - type: patch
           target: 70%
-    
+
     # Integration Layer - React hooks
     - component_id: hooks
       name: "React Hooks"
@@ -87,7 +87,7 @@ component_management:
           target: 75%
         - type: patch
           target: 80%
-    
+
     # Device Layer - Hardware interface
     - component_id: device_models
       name: "Device Models"
@@ -98,7 +98,7 @@ component_management:
           target: 80%
         - type: patch
           target: 85%
-    
+
     # DSP Layer - Signal processing
     - component_id: dsp_core
       name: "DSP Core"
@@ -109,7 +109,7 @@ component_management:
           target: 85%
         - type: patch
           target: 90%
-    
+
     - component_id: dsp_utils
       name: "DSP Utilities"
       paths:
@@ -122,7 +122,7 @@ component_management:
           target: 70%
         - type: patch
           target: 80%
-    
+
     # Signal Analysis
     - component_id: signal_detection
       name: "Signal Detection"
@@ -133,7 +133,7 @@ component_management:
           target: 80%
         - type: patch
           target: 85%
-    
+
     - component_id: signal_scanning
       name: "Signal Scanning"
       paths:
@@ -143,7 +143,7 @@ component_management:
           target: 75%
         - type: patch
           target: 80%
-    
+
     - component_id: signal_measurement
       name: "Signal Measurement"
       paths:
@@ -153,7 +153,7 @@ component_management:
           target: 80%
         - type: patch
           target: 85%
-    
+
     # Decoders
     - component_id: decoders
       name: "Signal Decoders"
@@ -165,7 +165,7 @@ component_management:
           target: 57%
         - type: patch
           target: 70%
-    
+
     # Audio Processing
     - component_id: audio_processing
       name: "Audio Processing"
@@ -176,7 +176,7 @@ component_management:
           target: 93%
         - type: patch
           target: 95%
-    
+
     # Recording & Playback
     - component_id: recording
       name: "Recording & Playback"
@@ -187,7 +187,7 @@ component_management:
           target: 77%
         - type: patch
           target: 85%
-    
+
     # Speech Recognition
     - component_id: speech_recognition
       name: "Speech Recognition"
@@ -198,7 +198,7 @@ component_management:
           target: 78%
         - type: patch
           target: 85%
-    
+
     # Rendering & Visualization
     - component_id: rendering
       name: "Rendering Engine"
@@ -209,7 +209,7 @@ component_management:
           target: 70%
         - type: patch
           target: 80%
-    
+
     - component_id: visualization_webgl
       name: "WebGL Visualization"
       paths:
@@ -219,7 +219,7 @@ component_management:
           target: 75%
         - type: patch
           target: 80%
-    
+
     - component_id: visualization_webgpu
       name: "WebGPU Visualization"
       paths:
@@ -229,7 +229,7 @@ component_management:
           target: 70%
         - type: patch
           target: 80%
-    
+
     # Worker Management
     - component_id: workers
       name: "Web Workers"
@@ -240,7 +240,7 @@ component_management:
           target: 75%
         - type: patch
           target: 80%
-    
+
     # Utilities & Infrastructure
     - component_id: monitoring
       name: "Monitoring & Metrics"
@@ -252,7 +252,7 @@ component_management:
           target: 70%
         - type: patch
           target: 75%
-    
+
     - component_id: utils_core
       name: "Core Utilities"
       paths:
@@ -264,7 +264,7 @@ component_management:
           target: 65%
         - type: patch
           target: 75%
-    
+
     - component_id: test_infrastructure
       name: "Test Infrastructure"
       paths:
