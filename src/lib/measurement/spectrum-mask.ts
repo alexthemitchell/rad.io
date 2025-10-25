@@ -3,11 +3,7 @@
  * Implements regulatory compliance mask testing
  */
 
-import type {
-  SpectrumMask,
-  MaskTestResult,
-  MaskPoint,
-} from "./types";
+import type { SpectrumMask, MaskTestResult, MaskPoint } from "./types";
 
 /**
  * Tests spectrum against regulatory masks
@@ -64,7 +60,9 @@ export class SpectrumMaskTester {
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
       const power = spectrum[i];
-      if (freq === undefined || power === undefined) {continue;}
+      if (freq === undefined || power === undefined) {
+        continue;
+      }
 
       const offset = freq - carrierFrequency;
       const limit = this.interpolateMaskLimit(mask.points, offset);
@@ -113,20 +111,17 @@ export class SpectrumMaskTester {
     }
 
     // If offset is after last point, use last point's limit
-    if (
-      frequencyOffset >=
-      (points[points.length - 1]?.frequencyOffset ?? 0)
-    ) {
-      return (
-        points[points.length - 1]?.powerLimit ?? Infinity
-      );
+    if (frequencyOffset >= (points[points.length - 1]?.frequencyOffset ?? 0)) {
+      return points[points.length - 1]?.powerLimit ?? Infinity;
     }
 
     // Find surrounding points and interpolate
     for (let i = 0; i < points.length - 1; i++) {
       const point1 = points[i];
       const point2 = points[i + 1];
-      if (!point1 || !point2) {continue;}
+      if (!point1 || !point2) {
+        continue;
+      }
 
       if (
         frequencyOffset >= point1.frequencyOffset &&
@@ -137,8 +132,7 @@ export class SpectrumMaskTester {
           (frequencyOffset - point1.frequencyOffset) /
           (point2.frequencyOffset - point1.frequencyOffset);
         return (
-          point1.powerLimit +
-          ratio * (point2.powerLimit - point1.powerLimit)
+          point1.powerLimit + ratio * (point2.powerLimit - point1.powerLimit)
         );
       }
     }
@@ -161,8 +155,7 @@ export class SpectrumMaskTester {
     this.defineMask({
       id: "fcc-part15-classb",
       name: "FCC Part 15 Class B",
-      description:
-        "Unintentional radiators, residential use",
+      description: "Unintentional radiators, residential use",
       centerFrequency: 0,
       points: [
         { frequencyOffset: -10_000, powerLimit: -40 }, // -10 kHz

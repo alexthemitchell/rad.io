@@ -187,14 +187,8 @@ describe("SpectrumMaskTester", () => {
 
       tester.defineMask(mask);
 
-      const spectrum = new Float32Array([
-        -70, -5, -70,
-      ]); // Violation at index 1 (center): -5 dBc vs -10 dBc limit
-      const frequencies = new Float32Array([
-        100e6 - 10e3,
-        100e6,
-        100e6 + 10e3,
-      ]);
+      const spectrum = new Float32Array([-70, -5, -70]); // Violation at index 1 (center): -5 dBc vs -10 dBc limit
+      const frequencies = new Float32Array([100e6 - 10e3, 100e6, 100e6 + 10e3]);
 
       const result = tester.testMask(
         "test-mask",
@@ -218,13 +212,7 @@ describe("SpectrumMaskTester", () => {
       const frequencies = new Float32Array(10);
 
       expect(() =>
-        tester.testMask(
-          "nonexistent",
-          spectrum,
-          frequencies,
-          100e6,
-          0,
-        ),
+        tester.testMask("nonexistent", spectrum, frequencies, 100e6, 0),
       ).toThrow();
     });
 
@@ -277,9 +265,7 @@ describe("SpectrumMaskTester", () => {
 
       tester.defineMask(mask);
 
-      const spectrum = new Float32Array([
-        -70, -50, -45, -50, -70,
-      ]);
+      const spectrum = new Float32Array([-70, -50, -45, -50, -70]);
       const frequencies = new Float32Array([
         100e6 - 10e3,
         100e6 - 5e3, // Midpoint: should interpolate to -40 dBc

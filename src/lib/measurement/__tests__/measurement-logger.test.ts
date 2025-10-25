@@ -108,9 +108,7 @@ describe("MeasurementLogger", () => {
       expect(entries).toHaveLength(3);
 
       // Should be sorted descending (newest first)
-      expect(entries[0]?.timestamp).toBeGreaterThan(
-        entries[1]?.timestamp ?? 0,
-      );
+      expect(entries[0]?.timestamp).toBeGreaterThan(entries[1]?.timestamp ?? 0);
     });
 
     it("should return empty array when no entries", () => {
@@ -139,12 +137,10 @@ describe("MeasurementLogger", () => {
         data: {},
       });
 
-      const markerEntries =
-        logger.getEntriesByType("marker");
+      const markerEntries = logger.getEntriesByType("marker");
       expect(markerEntries).toHaveLength(2);
 
-      const powerEntries =
-        logger.getEntriesByType("channel_power");
+      const powerEntries = logger.getEntriesByType("channel_power");
       expect(powerEntries).toHaveLength(1);
     });
   });
@@ -175,8 +171,7 @@ describe("MeasurementLogger", () => {
       const testEntries = logger.getEntriesByTag("test");
       expect(testEntries).toHaveLength(2);
 
-      const importantEntries =
-        logger.getEntriesByTag("important");
+      const importantEntries = logger.getEntriesByTag("important");
       expect(importantEntries).toHaveLength(1);
     });
   });
@@ -203,10 +198,7 @@ describe("MeasurementLogger", () => {
         data: {},
       });
 
-      const entries = logger.getEntriesInRange(
-        now - 2000,
-        now,
-      );
+      const entries = logger.getEntriesInRange(now - 2000, now);
       expect(entries).toHaveLength(2);
     });
   });
@@ -241,10 +233,7 @@ describe("MeasurementLogger", () => {
         data: {},
       });
 
-      const entries = logger.getEntriesByFrequency(
-        100e6,
-        1000,
-      ); // 1 kHz tolerance
+      const entries = logger.getEntriesByFrequency(100e6, 1000); // 1 kHz tolerance
       expect(entries).toHaveLength(2); // First two entries
     });
 
@@ -342,10 +331,7 @@ describe("MeasurementLogger", () => {
       });
 
       const entries = logger.getAllEntries();
-      const stats = logger.calculateStatistics(
-        entries,
-        "signal.snr",
-      );
+      const stats = logger.calculateStatistics(entries, "signal.snr");
 
       expect(stats).not.toBeNull();
       expect(stats?.min).toBe(20);

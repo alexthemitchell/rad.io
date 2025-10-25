@@ -26,12 +26,7 @@ describe("SignalQualityAnalyzer", () => {
         spectrum[i] = -40; // Signal 30 dB above noise
       }
 
-      const snr = analyzer.calculateSNR(
-        spectrum,
-        100e6,
-        500e3,
-        frequencies,
-      );
+      const snr = analyzer.calculateSNR(spectrum, 100e6, 500e3, frequencies);
 
       expect(snr).toBeGreaterThan(20);
       expect(snr).toBeLessThan(40);
@@ -51,12 +46,7 @@ describe("SignalQualityAnalyzer", () => {
         spectrum[i] = -55;
       }
 
-      const snr = analyzer.calculateSNR(
-        spectrum,
-        100.5e6,
-        100e3,
-        frequencies,
-      );
+      const snr = analyzer.calculateSNR(spectrum, 100.5e6, 100e3, frequencies);
 
       expect(snr).toBeGreaterThan(0);
       expect(snr).toBeLessThan(10);
@@ -81,11 +71,7 @@ describe("SignalQualityAnalyzer", () => {
       spectrum[300] = -50; // 3rd harmonic
       spectrum[400] = -60; // 4th harmonic
 
-      const thd = analyzer.calculateTHD(
-        spectrum,
-        1e6,
-        frequencies,
-      );
+      const thd = analyzer.calculateTHD(spectrum, 1e6, frequencies);
 
       expect(thd).toBeGreaterThan(0);
       expect(thd).toBeLessThan(100);
@@ -103,11 +89,7 @@ describe("SignalQualityAnalyzer", () => {
       // Only fundamental
       spectrum[100] = -20;
 
-      const thd = analyzer.calculateTHD(
-        spectrum,
-        1e6,
-        frequencies,
-      );
+      const thd = analyzer.calculateTHD(spectrum, 1e6, frequencies);
 
       expect(thd).toBeLessThan(10); // Very low THD
     });
@@ -156,9 +138,7 @@ describe("SignalQualityAnalyzer", () => {
         { I: 0, Q: 1 },
       ];
 
-      expect(() =>
-        analyzer.calculateEVM(received, reference),
-      ).toThrow();
+      expect(() => analyzer.calculateEVM(received, reference)).toThrow();
     });
   });
 

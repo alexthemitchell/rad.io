@@ -3,10 +3,7 @@
  * Implements power integration and occupied bandwidth calculation
  */
 
-import type {
-  ChannelPowerResult,
-  MeasurementConfig,
-} from "./types";
+import type { ChannelPowerResult, MeasurementConfig } from "./types";
 
 /**
  * Measures channel power and occupied bandwidth
@@ -19,15 +16,13 @@ export class ChannelPowerMeasurement {
       maxMarkers: config?.maxMarkers ?? 8,
       markerTrackPeak: config?.markerTrackPeak ?? false,
       integrationMethod: config?.integrationMethod ?? "trapezoidal",
-      occupiedBandwidthThreshold:
-        config?.occupiedBandwidthThreshold ?? 0.99,
+      occupiedBandwidthThreshold: config?.occupiedBandwidthThreshold ?? 0.99,
       noiseFloorSamples: config?.noiseFloorSamples ?? 1000,
       harmonicCount: config?.harmonicCount ?? 5,
       averagingEnabled: config?.averagingEnabled ?? true,
       averagingCount: config?.averagingCount ?? 10,
       averagingMode: config?.averagingMode ?? "exponential",
-      applyFrequencyCalibration:
-        config?.applyFrequencyCalibration ?? true,
+      applyFrequencyCalibration: config?.applyFrequencyCalibration ?? true,
       applyPowerCalibration: config?.applyPowerCalibration ?? true,
       applyIQCalibration: config?.applyIQCalibration ?? true,
     };
@@ -61,7 +56,9 @@ export class ChannelPowerMeasurement {
     let peakPower = -Infinity;
     for (let i = startIdx; i <= endIdx; i++) {
       const powerDb = spectrum[i];
-      if (powerDb === undefined) {continue;}
+      if (powerDb === undefined) {
+        continue;
+      }
 
       const linear = Math.pow(10, powerDb / 10);
       linearPower.push(linear);
@@ -83,8 +80,7 @@ export class ChannelPowerMeasurement {
     const totalPower = 10 * Math.log10(totalLinearPower + 1e-20);
 
     // Calculate average power
-    const avgLinearPower =
-      totalLinearPower / (endIdx - startIdx + 1);
+    const avgLinearPower = totalLinearPower / (endIdx - startIdx + 1);
     const averagePower = 10 * Math.log10(avgLinearPower + 1e-20);
 
     // Calculate occupied bandwidth
@@ -168,7 +164,9 @@ export class ChannelPowerMeasurement {
 
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) {continue;}
+      if (freq === undefined) {
+        continue;
+      }
 
       if (startIdx === -1 && freq >= startFreq) {
         startIdx = i;
@@ -230,11 +228,15 @@ export class ChannelPowerMeasurement {
     for (let i = 0; i < linearPower.length - 1; i++) {
       const freq1 = frequencies[startIdx + i];
       const freq2 = frequencies[startIdx + i + 1];
-      if (freq1 === undefined || freq2 === undefined) {continue;}
+      if (freq1 === undefined || freq2 === undefined) {
+        continue;
+      }
 
       const power1 = linearPower[i];
       const power2 = linearPower[i + 1];
-      if (power1 === undefined || power2 === undefined) {continue;}
+      if (power1 === undefined || power2 === undefined) {
+        continue;
+      }
 
       const width = freq2 - freq1;
       sum += ((power1 + power2) / 2) * width;
@@ -259,10 +261,13 @@ export class ChannelPowerMeasurement {
     let obwEndIdx = startIdx;
 
     // Find start of occupied bandwidth (0.5% threshold)
-    const lowerThreshold = totalPower * (1 - this.config.occupiedBandwidthThreshold) / 2;
+    const lowerThreshold =
+      (totalPower * (1 - this.config.occupiedBandwidthThreshold)) / 2;
     for (let i = 0; i < linearPower.length; i++) {
       const power = linearPower[i];
-      if (power === undefined) {continue;}
+      if (power === undefined) {
+        continue;
+      }
       cumulativePower += power;
       if (cumulativePower >= lowerThreshold) {
         obwStartIdx = startIdx + i;
@@ -272,10 +277,13 @@ export class ChannelPowerMeasurement {
 
     // Find end of occupied bandwidth (99.5% threshold)
     cumulativePower = 0;
-    const upperThreshold = totalPower * (1 - (1 - this.config.occupiedBandwidthThreshold) / 2);
+    const upperThreshold =
+      totalPower * (1 - (1 - this.config.occupiedBandwidthThreshold) / 2);
     for (let i = 0; i < linearPower.length; i++) {
       const power = linearPower[i];
-      if (power === undefined) {continue;}
+      if (power === undefined) {
+        continue;
+      }
       cumulativePower += power;
       if (cumulativePower >= upperThreshold) {
         obwEndIdx = startIdx + i;
@@ -306,11 +314,11 @@ export class ChannelPowerMeasurement {
     const probability: number[] = [];
 
     for (let i = 0; i < numBins; i++) {
-      const idx = Math.floor(
-        (i / numBins) * sortedPowers.length,
-      );
+      const idx = Math.floor((i / numBins) * sortedPowers.length);
       const power = sortedPowers[idx];
-      if (power === undefined) {continue;}
+      if (power === undefined) {
+        continue;
+      }
 
       threshold.push(power);
       probability.push(i / numBins);

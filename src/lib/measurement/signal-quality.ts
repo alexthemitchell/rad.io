@@ -3,10 +3,7 @@
  * Implements SNR, SINAD, THD, and EVM calculations
  */
 
-import type {
-  SignalQualityMetrics,
-  MeasurementConfig,
-} from "./types";
+import type { SignalQualityMetrics, MeasurementConfig } from "./types";
 
 /**
  * Calculates various signal quality metrics
@@ -19,15 +16,13 @@ export class SignalQualityAnalyzer {
       maxMarkers: config?.maxMarkers ?? 8,
       markerTrackPeak: config?.markerTrackPeak ?? false,
       integrationMethod: config?.integrationMethod ?? "trapezoidal",
-      occupiedBandwidthThreshold:
-        config?.occupiedBandwidthThreshold ?? 0.99,
+      occupiedBandwidthThreshold: config?.occupiedBandwidthThreshold ?? 0.99,
       noiseFloorSamples: config?.noiseFloorSamples ?? 1000,
       harmonicCount: config?.harmonicCount ?? 5,
       averagingEnabled: config?.averagingEnabled ?? true,
       averagingCount: config?.averagingCount ?? 10,
       averagingMode: config?.averagingMode ?? "exponential",
-      applyFrequencyCalibration:
-        config?.applyFrequencyCalibration ?? true,
+      applyFrequencyCalibration: config?.applyFrequencyCalibration ?? true,
       applyPowerCalibration: config?.applyPowerCalibration ?? true,
       applyIQCalibration: config?.applyIQCalibration ?? true,
     };
@@ -88,20 +83,18 @@ export class SignalQualityAnalyzer {
     const fundamentalBandwidth = 3; // bins
 
     for (let i = 0; i < spectrum.length; i++) {
-      if (
-        Math.abs(i - fundamentalBin) <= fundamentalBandwidth
-      ) {
+      if (Math.abs(i - fundamentalBin) <= fundamentalBandwidth) {
         continue; // Skip fundamental
       }
       const power = spectrum[i];
-      if (power === undefined) {continue;}
+      if (power === undefined) {
+        continue;
+      }
       noiseDistortionPower += Math.pow(10, power / 10);
     }
 
     // SINAD in dB
-    const sinad =
-      10 *
-      Math.log10(totalPower / (noiseDistortionPower + 1e-20));
+    const sinad = 10 * Math.log10(totalPower / (noiseDistortionPower + 1e-20));
 
     return sinad;
   }
@@ -157,7 +150,9 @@ export class SignalQualityAnalyzer {
     for (let i = 0; i < receivedIQ.length; i++) {
       const rx = receivedIQ[i];
       const ref = referenceIQ[i];
-      if (!rx || !ref) {continue;}
+      if (!rx || !ref) {
+        continue;
+      }
 
       const errorI = rx.I - ref.I;
       const errorQ = rx.Q - ref.Q;
@@ -170,9 +165,7 @@ export class SignalQualityAnalyzer {
     }
 
     // EVM in %
-    const evm = Math.sqrt(
-      errorPowerSum / (referencePowerSum + 1e-20),
-    );
+    const evm = Math.sqrt(errorPowerSum / (referencePowerSum + 1e-20));
     return evm * 100;
   }
 
@@ -209,11 +202,7 @@ export class SignalQualityAnalyzer {
 
     let thd: number | undefined;
     try {
-      thd = this.calculateTHD(
-        spectrum,
-        signalFrequency,
-        frequencies,
-      );
+      thd = this.calculateTHD(spectrum, signalFrequency, frequencies);
     } catch {
       thd = undefined;
     }
@@ -243,11 +232,15 @@ export class SignalQualityAnalyzer {
 
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) {continue;}
+      if (freq === undefined) {
+        continue;
+      }
 
       if (freq >= startFreq && freq <= endFreq) {
         const powerDb = spectrum[i];
-        if (powerDb === undefined) {continue;}
+        if (powerDb === undefined) {
+          continue;
+        }
         totalLinearPower += Math.pow(10, powerDb / 10);
         count++;
       }
@@ -276,7 +269,9 @@ export class SignalQualityAnalyzer {
 
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) {continue;}
+      if (freq === undefined) {
+        continue;
+      }
 
       if (freq < excludeStart || freq > excludeEnd) {
         const power = spectrum[i];
@@ -296,8 +291,7 @@ export class SignalQualityAnalyzer {
 
     // Use median for robust noise estimation
     noiseSamples.sort((a, b) => a - b);
-    const median =
-      noiseSamples[Math.floor(noiseSamples.length / 2)] ?? 0;
+    const median = noiseSamples[Math.floor(noiseSamples.length / 2)] ?? 0;
 
     return 10 * Math.log10(median + 1e-20);
   }
@@ -315,7 +309,9 @@ export class SignalQualityAnalyzer {
 
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) {continue;}
+      if (freq === undefined) {
+        continue;
+      }
 
       const diff = Math.abs(freq - targetFrequency);
       if (diff < minDiff) {

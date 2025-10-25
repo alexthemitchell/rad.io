@@ -22,11 +22,7 @@ describe("FrequencyMarkerManager", () => {
     });
 
     it("should add marker with custom label and color", () => {
-      const marker = manager.addMarker(
-        100e6,
-        "Test Marker",
-        "#FF0000",
-      );
+      const marker = manager.addMarker(100e6, "Test Marker", "#FF0000");
 
       expect(marker.label).toBe("Test Marker");
       expect(marker.color).toBe("#FF0000");
@@ -71,10 +67,7 @@ describe("FrequencyMarkerManager", () => {
   describe("updateMarkerFrequency", () => {
     it("should update marker frequency", () => {
       const marker = manager.addMarker(100e6);
-      const updated = manager.updateMarkerFrequency(
-        marker.id,
-        200e6,
-      );
+      const updated = manager.updateMarkerFrequency(marker.id, 200e6);
 
       expect(updated).toBe(true);
       const retrievedMarker = manager.getMarker(marker.id);
@@ -82,10 +75,7 @@ describe("FrequencyMarkerManager", () => {
     });
 
     it("should return false for non-existent marker", () => {
-      const updated = manager.updateMarkerFrequency(
-        "nonexistent",
-        100e6,
-      );
+      const updated = manager.updateMarkerFrequency("nonexistent", 100e6);
       expect(updated).toBe(false);
     });
   });
@@ -153,9 +143,7 @@ describe("FrequencyMarkerManager", () => {
     it("should move marker to peak frequency", () => {
       const marker = manager.addMarker(100e6);
 
-      const spectrum = new Float32Array([
-        -50, -45, -30, -60, -70,
-      ]);
+      const spectrum = new Float32Array([-50, -45, -30, -60, -70]);
       const frequencies = new Float32Array([
         99.9e6, 99.95e6, 100e6, 100.05e6, 100.1e6,
       ]);
@@ -177,9 +165,7 @@ describe("FrequencyMarkerManager", () => {
       const marker = manager.addMarker(100e6);
 
       const spectrum = new Float32Array([-50, -45, -40]);
-      const frequencies = new Float32Array([
-        200e6, 200.1e6, 200.2e6,
-      ]);
+      const frequencies = new Float32Array([200e6, 200.1e6, 200.2e6]);
 
       const tracked = manager.trackPeakInRange(
         marker.id,
@@ -230,9 +216,7 @@ describe("FrequencyMarkerManager", () => {
       const marker2 = manager.addMarker(200e6);
 
       const spectrum = new Float32Array([-40, -30, -50]);
-      const frequencies = new Float32Array([
-        100e6, 150e6, 200e6,
-      ]);
+      const frequencies = new Float32Array([100e6, 150e6, 200e6]);
 
       manager.updateMarkersFromSpectrum(spectrum, frequencies);
 
@@ -269,25 +253,17 @@ describe("FrequencyMarkerManager", () => {
   describe("setMarkerLabel", () => {
     it("should update marker label", () => {
       const marker = manager.addMarker(100e6);
-      const updated = manager.setMarkerLabel(
-        marker.id,
-        "New Label",
-      );
+      const updated = manager.setMarkerLabel(marker.id, "New Label");
 
       expect(updated).toBe(true);
-      expect(manager.getMarker(marker.id)?.label).toBe(
-        "New Label",
-      );
+      expect(manager.getMarker(marker.id)?.label).toBe("New Label");
     });
   });
 
   describe("setMarkerColor", () => {
     it("should update marker color", () => {
       const marker = manager.addMarker(100e6);
-      const updated = manager.setMarkerColor(
-        marker.id,
-        "#00FF00",
-      );
+      const updated = manager.setMarkerColor(marker.id, "#00FF00");
 
       expect(updated).toBe(true);
       expect(manager.getMarker(marker.id)?.color).toBe("#00FF00");

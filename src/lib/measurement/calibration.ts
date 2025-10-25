@@ -46,10 +46,10 @@ export class CalibrationManager {
   ): void {
     let profile = this.profiles.get(deviceId);
     profile ??= {
-        deviceId,
-        lastUpdated: Date.now(),
-        version: 1,
-      };
+      deviceId,
+      lastUpdated: Date.now(),
+      version: 1,
+    };
 
     profile.frequency = calibration;
     this.setProfile({ ...profile, version: profile.version + 1 });
@@ -58,16 +58,13 @@ export class CalibrationManager {
   /**
    * Set power calibration for a device
    */
-  setPowerCalibration(
-    deviceId: string,
-    calibration: PowerCalibration,
-  ): void {
+  setPowerCalibration(deviceId: string, calibration: PowerCalibration): void {
     let profile = this.profiles.get(deviceId);
     profile ??= {
-        deviceId,
-        lastUpdated: Date.now(),
-        version: 1,
-      };
+      deviceId,
+      lastUpdated: Date.now(),
+      version: 1,
+    };
 
     profile.power = calibration;
     this.setProfile({ ...profile, version: profile.version + 1 });
@@ -76,16 +73,13 @@ export class CalibrationManager {
   /**
    * Set IQ calibration for a device
    */
-  setIQCalibration(
-    deviceId: string,
-    calibration: IQCalibration,
-  ): void {
+  setIQCalibration(deviceId: string, calibration: IQCalibration): void {
     let profile = this.profiles.get(deviceId);
     profile ??= {
-        deviceId,
-        lastUpdated: Date.now(),
-        version: 1,
-      };
+      deviceId,
+      lastUpdated: Date.now(),
+      version: 1,
+    };
 
     profile.iq = calibration;
     this.setProfile({ ...profile, version: profile.version + 1 });
@@ -150,8 +144,7 @@ export class CalibrationManager {
       return iqSamples;
     }
 
-    const { dcOffsetI, dcOffsetQ, gainImbalance, phaseImbalance } =
-      profile.iq;
+    const { dcOffsetI, dcOffsetQ, gainImbalance, phaseImbalance } = profile.iq;
 
     // Convert phase to radians
     const phaseRad = (phaseImbalance * Math.PI) / 180;
@@ -243,26 +236,21 @@ export class CalibrationManager {
   ): void {
     const profile = this.profiles.get(deviceId);
     if (!profile?.power) {
-      throw new Error(
-        "No power calibration exists for this device",
-      );
+      throw new Error("No power calibration exists for this device");
     }
 
     profile.power.calibrationPoints ??= [];
 
     // Remove existing point at this frequency
-    profile.power.calibrationPoints =
-      profile.power.calibrationPoints.filter(
-        (p) => p.frequency !== frequency,
-      );
+    profile.power.calibrationPoints = profile.power.calibrationPoints.filter(
+      (p) => p.frequency !== frequency,
+    );
 
     // Add new point
     profile.power.calibrationPoints.push({ frequency, offsetDb });
 
     // Sort by frequency
-    profile.power.calibrationPoints.sort(
-      (a, b) => a.frequency - b.frequency,
-    );
+    profile.power.calibrationPoints.sort((a, b) => a.frequency - b.frequency);
 
     this.setProfile({ ...profile, version: profile.version + 1 });
   }
@@ -286,29 +274,23 @@ export class CalibrationManager {
       frequency >=
       (calibrationPoints[calibrationPoints.length - 1]?.frequency ?? 0)
     ) {
-      return (
-        calibrationPoints[calibrationPoints.length - 1]?.offsetDb ?? 0
-      );
+      return calibrationPoints[calibrationPoints.length - 1]?.offsetDb ?? 0;
     }
 
     // Find surrounding points
     for (let i = 0; i < calibrationPoints.length - 1; i++) {
       const point1 = calibrationPoints[i];
       const point2 = calibrationPoints[i + 1];
-      if (!point1 || !point2) {continue;}
+      if (!point1 || !point2) {
+        continue;
+      }
 
-      if (
-        frequency >= point1.frequency &&
-        frequency <= point2.frequency
-      ) {
+      if (frequency >= point1.frequency && frequency <= point2.frequency) {
         // Linear interpolation
         const ratio =
           (frequency - point1.frequency) /
           (point2.frequency - point1.frequency);
-        return (
-          point1.offsetDb +
-          ratio * (point2.offsetDb - point1.offsetDb)
-        );
+        return point1.offsetDb + ratio * (point2.offsetDb - point1.offsetDb);
       }
     }
 
@@ -345,11 +327,7 @@ export class CalibrationManager {
    * Export profiles to JSON
    */
   exportProfiles(): string {
-    return JSON.stringify(
-      Array.from(this.profiles.values()),
-      null,
-      2,
-    );
+    return JSON.stringify(Array.from(this.profiles.values()), null, 2);
   }
 
   /**
@@ -373,9 +351,7 @@ export class CalibrationManager {
    */
   private saveToStorage(): void {
     try {
-      const data = JSON.stringify(
-        Array.from(this.profiles.values()),
-      );
+      const data = JSON.stringify(Array.from(this.profiles.values()));
       localStorage.setItem(this.storageKey, data);
     } catch (error) {
       console.error("Failed to save calibration profiles:", error);
@@ -395,10 +371,7 @@ export class CalibrationManager {
         }
       }
     } catch (error) {
-      console.error(
-        "Failed to load calibration profiles:",
-        error,
-      );
+      console.error("Failed to load calibration profiles:", error);
     }
   }
 

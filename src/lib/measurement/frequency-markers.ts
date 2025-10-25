@@ -3,11 +3,7 @@
  * Implements marker placement, tracking, and delta measurements
  */
 
-import type {
-  FrequencyMarker,
-  MarkerDelta,
-  MeasurementConfig,
-} from "./types";
+import type { FrequencyMarker, MarkerDelta, MeasurementConfig } from "./types";
 
 /**
  * Manages frequency markers on spectrum displays
@@ -22,15 +18,13 @@ export class FrequencyMarkerManager {
       maxMarkers: config?.maxMarkers ?? 8,
       markerTrackPeak: config?.markerTrackPeak ?? false,
       integrationMethod: config?.integrationMethod ?? "trapezoidal",
-      occupiedBandwidthThreshold:
-        config?.occupiedBandwidthThreshold ?? 0.99,
+      occupiedBandwidthThreshold: config?.occupiedBandwidthThreshold ?? 0.99,
       noiseFloorSamples: config?.noiseFloorSamples ?? 1000,
       harmonicCount: config?.harmonicCount ?? 5,
       averagingEnabled: config?.averagingEnabled ?? true,
       averagingCount: config?.averagingCount ?? 10,
       averagingMode: config?.averagingMode ?? "exponential",
-      applyFrequencyCalibration:
-        config?.applyFrequencyCalibration ?? true,
+      applyFrequencyCalibration: config?.applyFrequencyCalibration ?? true,
       applyPowerCalibration: config?.applyPowerCalibration ?? true,
       applyIQCalibration: config?.applyIQCalibration ?? true,
     };
@@ -150,7 +144,9 @@ export class FrequencyMarkerManager {
     // Binary search for start index
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) {continue;}
+      if (freq === undefined) {
+        continue;
+      }
       if (freq >= startFreq) {
         startIdx = i;
         break;
@@ -160,7 +156,9 @@ export class FrequencyMarkerManager {
     // Binary search for end index
     for (let i = frequencies.length - 1; i >= 0; i--) {
       const freq = frequencies[i];
-      if (freq === undefined) {continue;}
+      if (freq === undefined) {
+        continue;
+      }
       if (freq <= endFreq) {
         endIdx = i;
         break;
@@ -237,7 +235,9 @@ export class FrequencyMarkerManager {
     frequencies: Float32Array,
   ): void {
     for (const marker of this.markers.values()) {
-      if (!marker.active) {continue;}
+      if (!marker.active) {
+        continue;
+      }
 
       // Find closest frequency bin
       let closestIdx = 0;
@@ -245,7 +245,9 @@ export class FrequencyMarkerManager {
 
       for (let i = 0; i < frequencies.length; i++) {
         const freq = frequencies[i];
-        if (freq === undefined) {continue;}
+        if (freq === undefined) {
+          continue;
+        }
         const diff = Math.abs(freq - marker.frequency);
         if (diff < minDiff) {
           minDiff = diff;

@@ -18,7 +18,7 @@ describe("ChannelPowerMeasurement", () => {
       const frequencies = new Float32Array(1000);
 
       for (let i = 0; i < 1000; i++) {
-        frequencies[i] = 95e6 + (i * 10e3); // 95-105 MHz
+        frequencies[i] = 95e6 + i * 10e3; // 95-105 MHz
         spectrum[i] = -60; // Noise floor
       }
 
@@ -41,9 +41,7 @@ describe("ChannelPowerMeasurement", () => {
     });
 
     it("should calculate average power", () => {
-      const spectrum = new Float32Array([
-        -40, -30, -20, -30, -40,
-      ]);
+      const spectrum = new Float32Array([-40, -30, -20, -30, -40]);
       const frequencies = new Float32Array([
         100e6, 100.01e6, 100.02e6, 100.03e6, 100.04e6,
       ]);
@@ -87,9 +85,7 @@ describe("ChannelPowerMeasurement", () => {
 
     it("should throw error for invalid frequency range", () => {
       const spectrum = new Float32Array([10, 20, 30]);
-      const frequencies = new Float32Array([
-        100e6, 101e6, 102e6,
-      ]);
+      const frequencies = new Float32Array([100e6, 101e6, 102e6]);
 
       expect(() =>
         measurement.measureChannelPower(
@@ -160,9 +156,7 @@ describe("ChannelPowerMeasurement", () => {
         200e3,
       );
 
-      expect(
-        Math.abs(result.lowerACPR - result.upperACPR),
-      ).toBeLessThan(5);
+      expect(Math.abs(result.lowerACPR - result.upperACPR)).toBeLessThan(5);
     });
   });
 
@@ -173,8 +167,10 @@ describe("ChannelPowerMeasurement", () => {
         spectrum[i] = -60 + Math.random() * 40;
       }
 
-      const { threshold, probability } =
-        measurement.calculateCCDF(spectrum, 50);
+      const { threshold, probability } = measurement.calculateCCDF(
+        spectrum,
+        50,
+      );
 
       expect(threshold).toHaveLength(50);
       expect(probability).toHaveLength(50);
@@ -201,8 +197,7 @@ describe("ChannelPowerMeasurement", () => {
     it("should handle small spectrum arrays", () => {
       const spectrum = new Float32Array([-20, -30, -40, -50]);
 
-      const { threshold, probability } =
-        measurement.calculateCCDF(spectrum, 4);
+      const { threshold, probability } = measurement.calculateCCDF(spectrum, 4);
 
       expect(threshold.length).toBeGreaterThan(0);
       expect(probability.length).toBeGreaterThan(0);

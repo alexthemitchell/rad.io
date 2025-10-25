@@ -23,12 +23,11 @@ describe("CalibrationManager", () => {
 
   describe("frequency calibration", () => {
     it("should calculate frequency calibration from reference", () => {
-      const calibration =
-        manager.calculateFrequencyCalibration(
-          "device1",
-          10e6, // WWV reference
-          10.0005e6, // Measured 50 Hz error
-        );
+      const calibration = manager.calculateFrequencyCalibration(
+        "device1",
+        10e6, // WWV reference
+        10.0005e6, // Measured 50 Hz error
+      );
 
       expect(calibration.ppmOffset).toBeCloseTo(50, 0);
       expect(calibration.referenceFrequency).toBe(10e6);
@@ -46,20 +45,14 @@ describe("CalibrationManager", () => {
 
       manager.setFrequencyCalibration("device1", calibration);
 
-      const corrected = manager.applyFrequencyCalibration(
-        "device1",
-        100e6,
-      );
+      const corrected = manager.applyFrequencyCalibration("device1", 100e6);
 
       // At 100 MHz, 50 ppm = 5 kHz
       expect(corrected).toBeCloseTo(100e6 - 5e3, -2);
     });
 
     it("should return original frequency if no calibration", () => {
-      const frequency = manager.applyFrequencyCalibration(
-        "device1",
-        100e6,
-      );
+      const frequency = manager.applyFrequencyCalibration("device1", 100e6);
       expect(frequency).toBe(100e6);
     });
   });
@@ -87,10 +80,7 @@ describe("CalibrationManager", () => {
 
       manager.setPowerCalibration("device1", calibration);
 
-      const corrected = manager.applyPowerCalibration(
-        "device1",
-        -30,
-      );
+      const corrected = manager.applyPowerCalibration("device1", -30);
 
       expect(corrected).toBe(-25);
     });
@@ -110,11 +100,7 @@ describe("CalibrationManager", () => {
       manager.setPowerCalibration("device1", calibration);
 
       // Test at 100 MHz (midpoint between 50 and 150)
-      const corrected = manager.applyPowerCalibration(
-        "device1",
-        -30,
-        100e6,
-      );
+      const corrected = manager.applyPowerCalibration("device1", -30, 100e6);
 
       // Should interpolate between 3 and 7 dB = 5 dB
       // Total correction = 5 (base) + 5 (interpolated) = 10 dB
@@ -134,9 +120,7 @@ describe("CalibrationManager", () => {
       manager.addPowerCalibrationPoint("device1", 150e6, 7);
 
       const profile = manager.getProfile("device1");
-      expect(
-        profile?.power?.calibrationPoints,
-      ).toHaveLength(2);
+      expect(profile?.power?.calibrationPoints).toHaveLength(2);
     });
   });
 
@@ -158,10 +142,7 @@ describe("CalibrationManager", () => {
         { I: 0.1, Q: 1.05 },
       ];
 
-      const corrected = manager.applyIQCalibration(
-        "device1",
-        samples,
-      );
+      const corrected = manager.applyIQCalibration("device1", samples);
 
       expect(corrected).toHaveLength(2);
       // DC offset removed: I: 1.1 - 0.1 = 1.0, Q: 0.95 - (-0.05) = 1.0
@@ -176,10 +157,7 @@ describe("CalibrationManager", () => {
         { I: 0, Q: 1 },
       ];
 
-      const result = manager.applyIQCalibration(
-        "device1",
-        samples,
-      );
+      const result = manager.applyIQCalibration("device1", samples);
 
       expect(result).toEqual(samples);
     });
@@ -333,8 +311,7 @@ describe("CalibrationManager", () => {
     });
 
     it("should return true for non-existent device", () => {
-      const expired =
-        manager.isCalibrationExpired("nonexistent");
+      const expired = manager.isCalibrationExpired("nonexistent");
       expect(expired).toBe(true);
     });
   });
