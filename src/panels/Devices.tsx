@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { useLiveRegion } from "../hooks/useLiveRegion";
+import { formatFrequency, formatSampleRate } from "../utils/frequency";
 
 /**
  * Devices panel/page for WebUSB SDR management
@@ -92,29 +93,6 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
     announce("Device disconnected");
   };
 
-  const formatFrequency = (freqHz: number | null): string => {
-    if (!freqHz) {
-      return "--";
-    }
-    if (freqHz >= 1e9) {
-      return `${(freqHz / 1e9).toFixed(6)} GHz`;
-    }
-    if (freqHz >= 1e6) {
-      return `${(freqHz / 1e6).toFixed(3)} MHz`;
-    }
-    if (freqHz >= 1e3) {
-      return `${(freqHz / 1e3).toFixed(1)} kHz`;
-    }
-    return `${freqHz.toFixed(0)} Hz`;
-  };
-
-  const formatSampleRate = (rate: number | null): string => {
-    if (!rate) {
-      return "--";
-    }
-    return `${(rate / 1e6).toFixed(2)} MSPS`;
-  };
-
   const containerClass = isPanel ? "panel-container" : "page-container";
 
   return (
@@ -187,10 +165,10 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
             <h3>Current Settings</h3>
             <dl className="device-settings">
               <dt>Frequency:</dt>
-              <dd>{formatFrequency(frequency)}</dd>
+              <dd>{frequency ? formatFrequency(frequency) : "--"}</dd>
 
               <dt>Sample Rate:</dt>
-              <dd>{formatSampleRate(sampleRate)}</dd>
+              <dd>{sampleRate ? formatSampleRate(sampleRate) : "--"}</dd>
             </dl>
 
             <p>

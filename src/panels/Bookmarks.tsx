@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveRegion } from "../hooks/useLiveRegion";
-import { generateBookmarkId } from "../utils";
+import { formatFrequency, generateBookmarkId } from "../utils/frequency";
 
 /**
  * Bookmarks panel/page for frequency management
@@ -88,19 +88,6 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
         formatFrequency(b.frequency).toLowerCase().includes(query),
     );
   }, [bookmarks, searchQuery]);
-
-  const formatFrequency = (freqHz: number): string => {
-    if (freqHz >= 1e9) {
-      return `${(freqHz / 1e9).toFixed(6)} GHz`;
-    }
-    if (freqHz >= 1e6) {
-      return `${(freqHz / 1e6).toFixed(3)} MHz`;
-    }
-    if (freqHz >= 1e3) {
-      return `${(freqHz / 1e3).toFixed(1)} kHz`;
-    }
-    return `${freqHz.toFixed(0)} Hz`;
-  };
 
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);

@@ -19,35 +19,37 @@ describe("Recordings", () => {
       </BrowserRouter>,
     );
     expect(
-      screen.getByRole("heading", { name: /recordings/i }),
+      screen.getByRole("heading", { name: /recordings/i, level: 2 }),
     ).toBeInTheDocument();
   });
 
-  it("shows recording library section", () => {
+  it("shows recordings list section", () => {
     render(
       <BrowserRouter>
         <Recordings />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/recording library/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/recordings list/i)).toBeInTheDocument();
   });
 
-  it("shows playback controls section", () => {
+  it("shows playback section", () => {
     render(
       <BrowserRouter>
         <Recordings />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/playback controls/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/recording playback/i)).toBeInTheDocument();
   });
 
-  it("shows recording info section", () => {
+  it("shows list controls section", () => {
     render(
       <BrowserRouter>
         <Recordings />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/recording information/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/recording list controls/i),
+    ).toBeInTheDocument();
   });
 
   it("shows storage info section", () => {
