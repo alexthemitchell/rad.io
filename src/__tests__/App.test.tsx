@@ -11,6 +11,25 @@ jest.mock("../utils/dspWasm", () => ({
   preloadWasmModule: jest.fn(),
 }));
 
+// Mock the global shell components
+jest.mock("../components/TopAppBar", () => {
+  return function TopAppBar() {
+    return <div data-testid="top-app-bar">Top App Bar</div>;
+  };
+});
+
+jest.mock("../components/StatusFooter", () => {
+  return function StatusFooter() {
+    return <div data-testid="status-footer">Status Footer</div>;
+  };
+});
+
+jest.mock("../components/FrequencyDisplay", () => {
+  return function FrequencyDisplay() {
+    return <div data-testid="frequency-display">Frequency Display</div>;
+  };
+});
+
 // Mock the page components to avoid their dependencies
 jest.mock("../pages/Monitor", () => {
   return function Monitor() {

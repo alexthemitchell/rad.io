@@ -8,7 +8,7 @@ Security fixes are applied to the latest main branch. We do not provide patches 
 
 ## Reporting a Vulnerability
 
-- Please report vulnerabilities via GitHub Security Advisories (preferred) or by email at REPLACE_ME_EMAIL.
+- Please report vulnerabilities via GitHub Security Advisories (preferred) or by contacting @alexthemitchell
 - Provide a detailed description of the issue, steps to reproduce, affected versions, and any known mitigations.
 - Please do not open public issues for security reports.
 

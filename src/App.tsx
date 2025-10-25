@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import FrequencyDisplay from "./components/FrequencyDisplay";
 import Navigation from "./components/Navigation";
+import StatusFooter from "./components/StatusFooter";
+import TopAppBar from "./components/TopAppBar";
 import Analysis from "./pages/Analysis";
 import Calibration from "./pages/Calibration";
 import Decode from "./pages/Decode";
@@ -23,13 +26,24 @@ function App(): React.JSX.Element {
 
   return (
     <Router>
-      <div>
+      <div className="app-shell">
+        {/* Global top bar with connection status and quick actions */}
+        <TopAppBar />
+
+        {/* Main header with title and navigation */}
         <header className="header" role="banner">
-          <h1>rad.io</h1>
-          <p>Software-Defined Radio Visualizer</p>
+          <div className="header-content">
+            <div className="header-title">
+              <h1>rad.io</h1>
+              <p>Software-Defined Radio Visualizer</p>
+            </div>
+            {/* Always-visible frequency display */}
+            <FrequencyDisplay />
+          </div>
           <Navigation />
         </header>
 
+        {/* Main content area for pages */}
         <Routes>
           {/* Primary workspaces */}
           <Route path="/" element={<Monitor />} />
@@ -58,6 +72,9 @@ function App(): React.JSX.Element {
           {/* Help and documentation */}
           <Route path="/help" element={<Help />} />
         </Routes>
+
+        {/* Global footer with system metrics */}
+        <StatusFooter />
       </div>
     </Router>
   );
