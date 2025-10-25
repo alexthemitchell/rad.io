@@ -1,7 +1,7 @@
 /**
  * Band Scanning Utilities
  * Implements ADR-0012: Parallel FFT Worker Pool
- * 
+ *
  * Provides batch processing capabilities for frequency band scanning
  */
 
@@ -50,7 +50,9 @@ export async function scanBand(
     frequencies.push(freq);
   }
 
-  console.info(`Scanning ${frequencies.length} frequencies from ${startFreq} to ${endFreq} Hz`);
+  console.info(
+    `Scanning ${frequencies.length} frequencies from ${startFreq} to ${endFreq} Hz`,
+  );
 
   // Process all frequencies in parallel
   const results = await Promise.all(

@@ -1,7 +1,7 @@
 /**
  * Worker-based DSP Integration Tests
  * Tests API contracts and integration of ADR-0002 and ADR-0012 worker pools
- * 
+ *
  * Note: Actual worker functionality should be tested with browser-based E2E tests (Playwright).
  * These tests verify the API shape and documentation.
  */

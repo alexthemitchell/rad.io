@@ -1,7 +1,7 @@
 /**
  * DSP Worker Pool Implementation
  * Implements ADR-0002: Web Worker DSP Architecture
- * 
+ *
  * Manages a pool of Web Workers for parallel DSP processing
  */
 
@@ -23,10 +23,9 @@ class DSPWorkerPool {
     // Create worker pool
     for (let i = 0; i < poolSize; i++) {
       try {
-        const worker = new Worker(
-          new URL("./dsp-worker.ts", import.meta.url),
-          { type: "module" },
-        );
+        const worker = new Worker(new URL("./dsp-worker.ts", import.meta.url), {
+          type: "module",
+        });
 
         worker.onmessage = (e: MessageEvent<DSPResponse>): void =>
           this.handleWorkerMessage(e.data);
@@ -38,7 +37,9 @@ class DSPWorkerPool {
       }
     }
 
-    console.info(`DSP Worker Pool initialized with ${this.workers.length} workers`);
+    console.info(
+      `DSP Worker Pool initialized with ${this.workers.length} workers`,
+    );
   }
 
   /**
