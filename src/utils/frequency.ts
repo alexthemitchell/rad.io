@@ -35,11 +35,5 @@ export function formatSampleRate(rate: number): string {
   return `${rate.toFixed(0)} SPS`;
 }
 
-/**
- * Generate a unique bookmark ID
- * Uses crypto.randomUUID() for best uniqueness
- * @returns Unique bookmark ID
- */
-export function generateBookmarkId(): string {
-  return `bm-${crypto.randomUUID()}`;
-}
+// Re-export robust ID generator from id.ts to avoid duplication
+export { generateBookmarkId } from "./id";

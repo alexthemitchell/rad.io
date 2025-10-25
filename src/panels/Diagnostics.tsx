@@ -45,11 +45,9 @@ function Diagnostics({ isPanel = false }: DiagnosticsProps): React.JSX.Element {
     // Simulate GPU detection
     const gpuModes = ["WebGPU", "WebGL2", "Canvas2D"];
     const randomMode = gpuModes[Math.floor(Math.random() * gpuModes.length)];
-    // Array indexing always returns a value for a non-empty array
-    // TypeScript requires the check anyway due to strict null checking
-    if (randomMode !== undefined) {
-      setGpuMode(randomMode);
-    }
+    // Non-empty array indexing always yields a string; use nullish coalescing
+    // to satisfy the type system and document the intended fallback.
+    setGpuMode(randomMode ?? "Software");
 
     return (): void => {
       clearInterval(fpsInterval);
