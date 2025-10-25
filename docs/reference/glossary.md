@@ -373,24 +373,28 @@
 ## Units Reference
 
 ### Frequency
+
 - **Hz**: Hertz (cycles per second)
 - **kHz**: 1,000 Hz
-- **MHz**: 1,000,000 Hz  
+- **MHz**: 1,000,000 Hz
 - **GHz**: 1,000,000,000 Hz
 
 ### Power
+
 - **W**: Watt
 - **mW**: Milliwatt (0.001 W)
 - **dBm**: Decibels relative to 1 milliwatt
 - **dBW**: Decibels relative to 1 watt
 
 ### Data Rate
+
 - **bps**: Bits per second
 - **baud**: Symbols per second
 - **kbps**: 1,000 bps
 - **Mbps**: 1,000,000 bps
 
 ### Sample Rate
+
 - **S/s**: Samples per second
 - **kS/s**: 1,000 samples per second
 - **MS/s**: 1,000,000 samples per second

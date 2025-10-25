@@ -17,6 +17,7 @@ Transform any modern web browser into a professional signal analysis workstation
 **Complex Application** (advanced functionality, multi-device coordination)
 
 This represents a sophisticated real-time signal processing system requiring:
+
 - WebGPU-accelerated DSP pipeline with compute shaders for FFT/filtering
 - Multi-threaded architecture using Web Workers for parallel demodulation chains
 - SharedArrayBuffer-based zero-copy data paths for minimal latency
@@ -29,6 +30,7 @@ This represents a sophisticated real-time signal processing system requiring:
 ## Essential Features
 
 ### 1. Multi-Device SDR Management
+
 **Functionality**: Discover, connect, and coordinate multiple RTL-SDR and HackRF devices via WebUSB with independent or synchronized operation modes
 **Purpose**: Enable wideband monitoring by frequency-stitching multiple receivers or comparing signals across different hardware
 **Trigger**: User opens device manager and selects available USB SDR devices
@@ -36,6 +38,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: Supports 4+ simultaneous devices, <5ms synchronization skew between devices, automatic reconnection on USB suspend/resume, per-device configuration persistence
 
 ### 2. Adaptive Spectrum Analyzer
+
 **Functionality**: GPU-accelerated power spectral density with configurable FFT sizes (256-262144), window functions (Hamming, Blackman-Harris, Kaiser), averaging modes (exponential, linear, peak-hold), and zoom levels
 **Purpose**: Primary tool for signal discovery, spectral occupancy analysis, interference identification, and precise frequency measurement
 **Trigger**: Automatic upon device connection
@@ -43,6 +46,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: 60 FPS at 8192 bins, zoom to 10 Hz spans without artifacts, ±0.3dB amplitude accuracy, resolution bandwidth indicators, calibrated frequency markers with ppm-accurate readouts
 
 ### 3. Multi-Layer Waterfall Display
+
 **Functionality**: GPU-accelerated time-frequency heatmap with selectable palettes (Viridis, Plasma, Inferno, Turbo, Classic RF), independent zoom axes, time markers, and overlay annotations
 **Purpose**: Reveal temporal signal patterns, identify bursty transmissions, measure duty cycles, and document spectral activity over extended periods
 **Trigger**: Enabled alongside spectrum (default) or as fullscreen view
@@ -50,6 +54,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: Smooth 60 FPS with 4096 bins, configurable history (1 min to 24 hours with compression), accurate UTC timestamps, click-to-tune from historical data, bandwidth cursors showing occupied spectrum
 
 ### 4. Multi-Channel Demodulator
+
 **Functionality**: Independent VFO receivers supporting AM (envelope, synchronous), FM (narrow/wide with de-emphasis), SSB (USB/LSB/CW with AGC modes), and digital modes (RTTY, PSK31, MFSK, SSTV) with automatic frequency/phase tracking
 **Purpose**: Simultaneously monitor multiple signals within receiver bandwidth while maintaining independent audio outputs and decoding streams
 **Trigger**: User places VFO marker on spectrum or recalls bookmark
@@ -57,6 +62,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: 8+ simultaneous VFOs within bandwidth, <150ms click-to-audio latency, independent filter shapes (brick-wall, Gaussian, raised-cosine), per-VFO recording, automatic notch filtering
 
 ### 5. Advanced Measurement Suite
+
 **Functionality**: Frequency markers with delta measurements, channel power integration (CCDF), occupied bandwidth (99%), adjacent channel power ratio (ACPR), signal-to-noise ratio (SNR/SINAD), modulation quality (EVM), and spectral mask compliance
 **Purpose**: Provide quantitative analysis for professional applications including transmitter testing, spectrum management, and regulatory compliance
 **Trigger**: User enables measurement tools and places markers/regions
@@ -64,6 +70,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: ±1 Hz frequency accuracy (with calibration), 0.2dB power accuracy, automated peak/valley finding, comparison measurements between two signals, statistical distributions for time-varying signals
 
 ### 6. Intelligent Recording System
+
 **Functionality**: Record raw IQ samples or demodulated audio with intelligent triggers (signal detection, schedule, manual), metadata tagging, and format conversion (WAV, FLAC for audio; SigMF-compliant for IQ)
 **Purpose**: Enable forensic analysis, signal library building, compliance documentation, and offline processing workflows
 **Trigger**: Manual start, threshold-based auto-trigger, scheduled recordings, or external API
@@ -71,6 +78,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: Handles 20GB+ recordings with quota management, SigMF compliance for interchange, pre-trigger buffer (5-30s), simultaneous IQ and audio recording, automatic segmentation for long captures, geolocation tagging
 
 ### 7. Frequency Database & Bookmarks
+
 **Functionality**: Hierarchical bookmark system with import/export (CSV, RadioReference format), tag-based organization, signal type classification, and visual spectrum overlays
 **Purpose**: Rapid access to known frequencies, band planning aids, and collaborative signal databases
 **Trigger**: Bookmark creation from tuned frequency or bulk import
@@ -78,6 +86,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: 10,000+ bookmark capacity, full-text search <100ms, hierarchical folders (Amateur/Broadcast/Aviation/etc.), schedule awareness (active times), community database sync (optional)
 
 ### 8. Adaptive Scanner
+
 **Functionality**: Frequency scanning with multiple modes (sequential, memory, band scope), configurable dwell times, auto-store of active signals, and priority channel monitoring
 **Purpose**: Automated spectrum surveillance, signal discovery, and activity monitoring across wide frequency ranges
 **Trigger**: User configures scan list and starts scanner
@@ -85,6 +94,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: <50ms hop time between channels, adaptive dwell (longer on active frequencies), parallel scan (background FFT while monitoring), exportable activity logs with waterfall snippets, CTCSS/DCS decoding for squelch
 
 ### 9. Interactive Signal Decoder
+
 **Functionality**: Real-time decoding of digital communication modes including RTTY (radioteletype), PSK31/63/125 (phase shift keying), and SSTV (slow-scan television) with mode-specific configuration and output handling
 **Purpose**: Decode and display text transmissions and images from digital modes without external software, enabling monitoring of ham radio digital communications, weather FAX, and SSTV contests
 **Trigger**: User selects Decoder tab and chooses digital mode (RTTY/PSK31/SSTV)
@@ -92,6 +102,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: Accurate RTTY decoding at 45.45 and 50 baud with 170/850 Hz shift, PSK31 varicode decoding with AFC, SSTV image reception for Martin M1/M2, Scottie S1/S2, and Robot 36 modes, <200ms decode latency, text output with copy/save, progressive SSTV image rendering with completion percentage
 
 ### 10. Signal Analysis Tools
+
 **Functionality**: Constellation diagram, eye pattern, vector diagram, spectrogram zoom, phase noise measurement, and time-domain oscilloscope view
 **Purpose**: Deep-dive analysis for digital modulation characterization, transmitter evaluation, and propagation studies
 **Trigger**: User opens analysis panel and selects visualization
@@ -99,6 +110,7 @@ This represents a sophisticated real-time signal processing system requiring:
 **Success Criteria**: Real-time updates (30+ FPS), freeze/persistence modes, automatic symbol rate estimation, EVM calculation for QAM/PSK, export as image with annotations
 
 ### 11. Calibration & Correction
+
 **Functionality**: Frequency offset calibration (using known beacons), IQ imbalance correction, DC offset removal, gain flatness calibration, and PPM drift tracking
 **Purpose**: Ensure measurement accuracy across temperature variations, hardware tolerances, and aging effects
 **Trigger**: User initiates calibration wizard or applies corrections from profile
@@ -131,7 +143,7 @@ The interface should embody the precision and authority of professional RF test 
 The dark background scheme serves multiple purposes: maximize dynamic range for signal visualization, reduce blue light emission for extended sessions, emphasize accent colors for active elements, and create visual separation between UI chrome and signal content. Colors are chosen in perceptually uniform OKLCH space to ensure consistent contrast ratios across the interface.
 
 - **Primary Color**: Electric Blue `oklch(0.55 0.18 240)` - High visibility for primary actions and active controls, suggests precision and technical authority, stands out against dark backgrounds without overwhelming
-- **Secondary Colors**: 
+- **Secondary Colors**:
   - Gunmetal `oklch(0.32 0.015 240)` for secondary panels and inactive controls
   - Deep Slate `oklch(0.22 0.02 240)` for nested panels and recessed elements
 - **Accent Color**: Cyan `oklch(0.78 0.14 195)` - Maximum visibility for tuning cursors, active VFOs, frequency markers, and critical alerts; maintains distinctiveness from primary blue
@@ -159,6 +171,7 @@ Typography must support both dense numeric displays (requiring monospace for sta
 - **Documentation**: System UI stack (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`) for help panels and long-form content to maximize reading comfort
 
 **Typographic Hierarchy**:
+
 - H1 (Panel Titles): Inter SemiBold/20px/tight tracking (-0.015em)/uppercase for major sections
 - H2 (Section Headers): Inter Medium/15px/normal tracking/mixed case
 - H3 (Parameter Groups): Inter Medium/12px/wide tracking (0.03em)/uppercase/muted color
@@ -175,6 +188,7 @@ Motion should communicate system state and guide attention without interfering w
 **Contextual Appropriateness**: Real-time signal visualizations run at display refresh rate (60+ Hz) via GPU, UI transitions are minimal and fast (≤200ms), numeric values update instantly without easing (precision requires immediate feedback), errors use brief attention-grabbing motions.
 
 **Purposeful Meaning**:
+
 - Spectrum/waterfall rendering: Continuous GPU-driven updates at 60 FPS (or display native refresh), no artificial smoothing
 - VFO tuning: Immediate frequency update with <16ms cursor tracking, no lag or interpolation
 - Panel expand/collapse: 180ms ease-out with content fade for spatial continuity
@@ -185,6 +199,7 @@ Motion should communicate system state and guide attention without interfering w
 - Connection status: 300ms fade between states (connecting → connected → error)
 
 **Hierarchy of Movement**:
+
 1. Signal visualization (highest priority, never dropped, GPU-accelerated)
 2. Frequency tuning feedback (user-triggered, <16ms response, never skipped)
 3. Audio level meters (high priority, 30 FPS minimum)
@@ -192,6 +207,7 @@ Motion should communicate system state and guide attention without interfering w
 5. Decorative effects (lowest priority, disabled on low-end hardware)
 
 **Animation Timing**:
+
 - Instant: Numeric value updates, frequency changes, mode switches
 - Fast (80-120ms): Error shakes, tooltips, dropdowns
 - Medium (150-200ms): Panel animations, modal dialogs
@@ -201,6 +217,7 @@ Motion should communicate system state and guide attention without interfering w
 ## Component Selection
 
 **Components** (shadcn v4 with custom RF-specific additions):
+
 - **Slider**: Custom dual-purpose component—linear for volume/squelch (0-100%), logarithmic for gain (-10 to +40 dB), frequency for coarse tuning; visual value tooltip, keyboard nav (arrows for fine, Shift+arrow for coarse), touch-drag support
 - **Select**: Mode selection (AM/FM/SSB/etc.), FFT size, window function, color palette—shadcn Select with icons, keyboard shortcuts (M for mode, W for window)
 - **Tabs**: Major view switching (Spectrum/Waterfall/Constellation/Tools)—shadcn Tabs with keyboard shortcuts (1-4), persistent state
@@ -220,6 +237,7 @@ Motion should communicate system state and guide attention without interfering w
 - **Command**: Quick action palette (Cmd/Ctrl+K)—shadcn Command for power users
 
 **Custom Components** (specialized RF/DSP UIs):
+
 - **SpectrumCanvas**: WebGL2/WebGPU renderer with pan/zoom, click-to-tune, marker placement, anti-aliased grid, frequency/power axes
 - **WaterfallCanvas**: GPU-accelerated scrolling texture with colormap shaders, time axis, click-to-tune from history
 - **VFOControl**: Rotary encoder simulation with click-drag tuning, scroll wheel, digit-by-digit entry, frequency memory, RIT/XIT offsets
@@ -232,25 +250,27 @@ Motion should communicate system state and guide attention without interfering w
 - **DeviceCard**: Rich device info display showing model, serial, firmware, sample rate, temperature, buffer health
 
 **States** (all interactive elements):
-- **Buttons**: 
+
+- **Buttons**:
   - Default: Subtle border, icon + text, proper padding
   - Hover: Brightness +8%, border color shift, 100ms transition
   - Active: Inset shadow, brightness -5%, scale 0.98
   - Disabled: 40% opacity, no pointer events, no hover effect
   - Loading: Spinner replaces icon, text dims, disabled state
-- **Inputs**: 
+- **Inputs**:
   - Default: Muted border, placeholder text at 60% opacity
   - Focus: Accent border with 2px ring, remove placeholder
   - Error: Destructive border, 80ms shake, error message below
   - Success: Brief (500ms) green border flash
   - Disabled: Background at 50% opacity, no caret
-- **Canvas/Visualizations**: 
+- **Canvas/Visualizations**:
   - Idle: Dim border, reduced update rate (15 FPS)
   - Active: Accent border, full refresh rate (60 FPS)
   - Processing: Subtle pulse on border (1s cycle)
   - Error: Destructive border, error overlay with retry option
 
 **Icon Selection** (Phosphor Icons, primarily Regular weight):
+
 - **Device/Source**: Radio, RadioButton, Usb, HardDrives, CircleWavyCheck
 - **Visualizations**: Waveform (spectrum), Rows (waterfall), CircuitCircle (constellation), Eye (eye diagram)
 - **Tuning/Control**: Target, Crosshair, MagnifyingGlass, SlidersHorizontal, FadersHorizontal
@@ -264,6 +284,7 @@ Motion should communicate system state and guide attention without interfering w
 - **Actions**: Plus, Minus, X, Check, ArrowClockwise (refresh), Copy, Trash
 
 **Spacing System** (Tailwind scale):
+
 - Canvas margins: 0 (full bleed within container)
 - Panel padding: `p-4` (16px) for outer, `p-3` (12px) for nested
 - Control groups: `gap-3` (12px) between related controls
@@ -281,6 +302,7 @@ Primary target is desktop/laptop with sufficient compute for real-time DSP, but 
 - **Mobile (≤767px)**: Single column, spectrum dominates, controls in bottom sheet, tap-to-tune only, disable GPU-heavy features
 
 Mobile-specific adaptations:
+
 - Stack spectrum above controls in single column
 - Waterfall hidden by default, accessible via fullscreen modal
 - VFO control simplified to tap-frequency-input (no drag tuning)

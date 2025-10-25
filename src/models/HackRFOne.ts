@@ -5,6 +5,14 @@ const UINT32_MAX = 0xffffffff;
 const MHZ_IN_HZ = 1_000_000;
 const MAX_SAMPLE_RATE_DIVIDER = 32;
 
+// HackRF One frequency range (per specifications)
+const MIN_FREQUENCY_HZ = 1_000_000; // 1 MHz
+const MAX_FREQUENCY_HZ = 6_000_000_000; // 6 GHz
+
+// HackRF One sample rate range
+const MIN_SAMPLE_RATE = 2_000_000; // 2 MSPS
+const MAX_SAMPLE_RATE = 20_000_000; // 20 MSPS
+
 function assertFiniteNonNegative(value: number, label: string): void {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`${label} must be a non-negative finite number`);
@@ -344,6 +352,14 @@ export class HackRFOne {
    * @param frequency Center Frequency, in Hertz
    */
   async setFrequency(frequency: number): Promise<void> {
+    // Validate frequency is within HackRF One's supported range
+    if (frequency < MIN_FREQUENCY_HZ || frequency > MAX_FREQUENCY_HZ) {
+      throw new Error(
+        `Frequency ${frequency / 1e6} MHz out of range. ` +
+          `HackRF One supports ${MIN_FREQUENCY_HZ / 1e6} MHz to ${MAX_FREQUENCY_HZ / 1e6} MHz`,
+      );
+    }
+
     const { mhz, hz } = splitFrequencyComponents(frequency);
     const payload = createUint32LEBuffer([mhz, hz]);
     await this.controlTransferOut({
@@ -391,6 +407,14 @@ export class HackRFOne {
 
   // New method to set the sample rate (in Hz)
   async setSampleRate(sampleRate: number): Promise<void> {
+    // Validate sample rate is within HackRF One's supported range
+    if (sampleRate < MIN_SAMPLE_RATE || sampleRate > MAX_SAMPLE_RATE) {
+      throw new Error(
+        `Sample rate ${sampleRate / 1e6} MSPS out of range. ` +
+          `HackRF One supports ${MIN_SAMPLE_RATE / 1e6} to ${MAX_SAMPLE_RATE / 1e6} MSPS`,
+      );
+    }
+
     const { freqHz, divider } = computeSampleRateParams(sampleRate);
     const payload = createUint32LEBuffer([freqHz, divider]);
     await this.controlTransferOut({

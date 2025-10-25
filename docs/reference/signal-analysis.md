@@ -11,16 +11,19 @@ Signal analysis is the process of examining radio signals to identify type, cont
 The waterfall display is your primary tool for signal identification.
 
 #### Continuous Carriers
+
 **Appearance**: Vertical line, constant color
 **Examples**: Beacons, carriers, local oscillators
 **Analysis**: Check for drift, modulation
 
 #### AM Broadcasting
+
 **Appearance**: Thick vertical bar with symmetrical sidebands
 **Bandwidth**: ~10 kHz
 **Features**: Carrier visible even with no audio
 
 #### SSB Voice
+
 **Appearance**: Asymmetric "smear" on one side of frequency
 **Bandwidth**: ~2.7 kHz
 **Features**: No carrier spike, one-sided
@@ -28,43 +31,51 @@ The waterfall display is your primary tool for signal identification.
 **LSB**: Energy below center frequency
 
 #### FM Voice (NFM)
+
 **Appearance**: Wide vertical streak when transmitting, disappears when silent
 **Bandwidth**: ~12.5-16 kHz
 **Features**: Captures quieter signals (capture effect)
 
 #### FM Broadcast (WFM)
+
 **Appearance**: Very wide signal, ~200 kHz
 **Features**: May see stereo pilot tone at 19 kHz offset
 
 #### CW (Morse Code)
+
 **Appearance**: Very narrow vertical line, turning on/off in patterns
 **Bandwidth**: <500 Hz
 **Features**: Extremely narrow, periodic keying
 
 #### RTTY
+
 **Appearance**: Two parallel vertical lines
 **Spacing**: Typically 170 Hz, 425 Hz, or 850 Hz
 **Features**: Marks and spaces, constant when transmitting
 
 #### PSK31
+
 **Appearance**: Single narrow carrier, constant amplitude
 **Bandwidth**: ~60 Hz
 **Features**: Very narrow, looks like weak carrier
 **Pattern**: Phase changes not visible in waterfall
 
 #### FT8
+
 **Appearance**: Short bursts (15 seconds), multiple tones
 **Timing**: Synchronized to 15-second intervals (:00, :15, :30, :45)
 **Bandwidth**: ~50 Hz per signal
 **Features**: Multiple stations visible simultaneously
 
 #### SSTV
+
 **Appearance**: Diagonal lines sweeping across frequency range
 **Pattern**: Repeating scan lines
 **Bandwidth**: ~3 kHz
 **Duration**: 30-120 seconds per image
 
 #### Digital Voice (DMR, D-STAR)
+
 **Appearance**: Steady signal when transmitting, blocky pattern
 **Features**: Digital artifacts, no traditional audio
 
@@ -73,11 +84,13 @@ The waterfall display is your primary tool for signal identification.
 ### Reading the Spectrum Display
 
 **Noise Floor**: Baseline level across spectrum
+
 - Flat = good
 - Sloped = filter response or AGC issues
 - Spiky = interference
 
 **Peak Detection**: Find signals above noise floor
+
 - Height = signal strength
 - Width = bandwidth
 - Shape = filter characteristics
@@ -87,17 +100,20 @@ The waterfall display is your primary tool for signal identification.
 ### Measuring Signal Parameters
 
 #### Center Frequency
+
 1. Zoom in on signal
 2. Find peak in spectrum
 3. Read frequency at peak
 4. For SSB: carrier is outside visible spectrum
 
 #### Bandwidth
+
 1. Note frequencies at -3 dB points (half power)
 2. Calculate difference
 3. Compare to expected values
 
 #### Signal Strength
+
 - **Absolute**: Read dBFS or dBm value
 - **Relative**: Compare to noise floor (SNR)
 - **S-units**: S9 = -73 dBm (HF) or -93 dBm (VHF)
@@ -106,34 +122,38 @@ The waterfall display is your primary tool for signal identification.
 
 ### Choosing the Right Mode
 
-| If you hear... | Try mode... |
-|----------------|-------------|
-| Clear voice, local station | FM (NFM) |
-| Voice with background noise | AM |
-| Distorted/unintelligible voice | SSB (USB or LSB) |
-| Musical tones | Data mode (decode needed) |
-| Rhythmic beeps | CW (Morse code) |
-| Nothing but carrier visible | Wrong mode or no modulation |
+| If you hear...                 | Try mode...                 |
+| ------------------------------ | --------------------------- |
+| Clear voice, local station     | FM (NFM)                    |
+| Voice with background noise    | AM                          |
+| Distorted/unintelligible voice | SSB (USB or LSB)            |
+| Musical tones                  | Data mode (decode needed)   |
+| Rhythmic beeps                 | CW (Morse code)             |
+| Nothing but carrier visible    | Wrong mode or no modulation |
 
 ### Mode-Specific Tuning
 
 #### AM
+
 - Center on carrier spike
 - Adjust bandwidth to 8-10 kHz
 - Enable AGC
 
 #### SSB
+
 - Tune until voice sounds natural (not Donald Duck or deep)
 - USB: tune slightly low, bring up
 - LSB: tune slightly high, bring down
 - Critical: within ±50 Hz for intelligibility
 
 #### FM
+
 - Center on signal
 - Squelch eliminates noise between transmissions
 - Should be clear or silent (no static)
 
 #### CW
+
 - Adjust BFO for comfortable tone (400-800 Hz)
 - Very narrow filter (100-500 Hz)
 - Practice reading Morse code
@@ -143,21 +163,25 @@ The waterfall display is your primary tool for signal identification.
 ### Audio Quality Indicators
 
 **Excellent**:
+
 - Clear, no noise
 - Full frequency response
 - No distortion
 
 **Good**:
+
 - Minor background noise
 - Mostly clear
 - Occasional fading
 
 **Fair**:
+
 - Significant noise
 - Readable but requires attention
 - Frequent fading
 
 **Poor**:
+
 - Barely readable
 - High noise
 - Severe fading or distortion
@@ -165,12 +189,14 @@ The waterfall display is your primary tool for signal identification.
 ### Digital Mode Success
 
 **FT8/Digital Modes**:
+
 - Check SNR values in software
 - -10 dB or better = good
 - -20 dB or better = excellent
 - Below -24 dB = may fail to decode
 
 **SSTV**:
+
 - Clean diagonal lines
 - No noise bands
 - Sync pulses clear
@@ -178,33 +204,41 @@ The waterfall display is your primary tool for signal identification.
 ### Interference Identification
 
 #### Continuous Interference
+
 **Pattern**: Always present, same location
-**Sources**: 
+**Sources**:
+
 - Local electronics (computers, power supplies)
 - Power lines (harmonics of 50/60 Hz)
 - LED lights
 
 **Solutions**:
+
 - Turn off local devices
 - Use filters
 - Change antenna location
 
 #### Intermittent Interference
+
 **Pattern**: Comes and goes
 **Sources**:
+
 - Household appliances
 - Motors
 - Light dimmers
 
 **Solutions**:
+
 - Identify timing pattern
 - Locate source
 - Add filtering at source
 
 #### Co-channel Interference
+
 **Pattern**: Two signals on same frequency
 **Result**: Heterodyne tone, distortion
 **Solutions**:
+
 - Choose stronger signal (FM capture effect)
 - Narrow filter (SSB/CW)
 - Change frequency
@@ -214,12 +248,14 @@ The waterfall display is your primary tool for signal identification.
 ### Band Conditions
 
 #### Indicators of Good Propagation
+
 - Strong distant signals
 - Many active stations
 - Low noise floor
 - Clear signals
 
 #### Indicators of Poor Propagation
+
 - Only local signals
 - High noise
 - Empty band
@@ -228,25 +264,29 @@ The waterfall display is your primary tool for signal identification.
 ### Time of Day Effects
 
 **HF Bands**:
+
 - **40m/80m**: Best at night, absorbed during day
 - **20m**: Good day and night, best for DX
 - **15m/10m**: Daytime only (solar activity dependent)
 
 **VHF/UHF**: Generally line-of-sight
+
 - **Tropo**: Extended range during weather inversions
 - **Sporadic E**: Sudden long-distance propagation on 6m/2m
 
 ### Using Beacons
 
 **What**: Automated transmitters for propagation testing
-**Frequencies**: 
+**Frequencies**:
+
 - 14.100 MHz (20m)
-- 18.110 MHz (17m)  
+- 18.110 MHz (17m)
 - 21.150 MHz (15m)
 - 24.930 MHz (12m)
 - 28.200 MHz (10m)
 
 **How to use**:
+
 1. Listen for beacons
 2. Note locations heard
 3. Assess band openings
@@ -257,11 +297,13 @@ The waterfall display is your primary tool for signal identification.
 ### Signal Direction Finding
 
 **Single Station**:
+
 - Rotate directional antenna
 - Note strongest signal direction
 - Requires calibrated setup
 
 **Multiple Stations** (TDoA):
+
 - Compare arrival times
 - Triangulate position
 - Requires synchronized receivers
@@ -269,11 +311,13 @@ The waterfall display is your primary tool for signal identification.
 ### Modulation Analysis
 
 #### Spectral Shape
+
 - **Clean sidebands**: Good transmitter
 - **Splatter**: Overmodulation or poor filtering
 - **Asymmetric**: Transmitter issue
 
 #### Time Domain
+
 - **Envelope**: Shows AM modulation depth
 - **Keying**: Check rise/fall times (CW, FSK)
 - **Duty cycle**: Measure transmit/receive ratio
@@ -281,17 +325,20 @@ The waterfall display is your primary tool for signal identification.
 ### Recording for Analysis
 
 **When to Record**:
+
 - Unknown signal types
 - Brief transmissions
 - Legal documentation
 - Later detailed analysis
 
 **What to Record**:
+
 - **Audio**: WAV format, 48 kHz sampling
 - **I/Q**: Raw samples for reprocessing
 - **Metadata**: Frequency, time, mode, notes
 
 **Tools**:
+
 - SDR# record function
 - HDSDR
 - GNU Radio
@@ -301,43 +348,48 @@ The waterfall display is your primary tool for signal identification.
 ### Online Databases
 
 **SigIDWiki**: Comprehensive signal database
+
 - Search by frequency
 - Visual examples
 - Audio samples
 - Demodulation info
 
 **RadioReference**: Frequency allocations
+
 - By location
 - By service
 - Trunked systems
 
 ### Classification by Characteristics
 
-| Bandwidth | Modulation | Examples |
-|-----------|------------|----------|
-| <100 Hz | CW | Morse code, beacons |
-| ~60 Hz | PSK | PSK31, PSK63 |
-| ~50 Hz | FSK | FT8, FT4 |
-| ~500 Hz | FSK | RTTY |
-| ~2.7 kHz | SSB | Voice, SSTV |
-| ~10 kHz | AM | Broadcast, aviation |
-| ~12 kHz | NFM | Two-way radio |
-| ~200 kHz | WFM | FM broadcast |
+| Bandwidth | Modulation | Examples            |
+| --------- | ---------- | ------------------- |
+| <100 Hz   | CW         | Morse code, beacons |
+| ~60 Hz    | PSK        | PSK31, PSK63        |
+| ~50 Hz    | FSK        | FT8, FT4            |
+| ~500 Hz   | FSK        | RTTY                |
+| ~2.7 kHz  | SSB        | Voice, SSTV         |
+| ~10 kHz   | AM         | Broadcast, aviation |
+| ~12 kHz   | NFM        | Two-way radio       |
+| ~200 kHz  | WFM        | FM broadcast        |
 
 ### Unusual Signals
 
 #### Over-the-Horizon Radar
+
 **Pattern**: Rapid sweeping across wide bandwidth
 **Sound**: Woodpecker-like tapping
 **Bandwidth**: Several MHz
 **Sources**: Military surveillance
 
 #### Numbers Stations
+
 **Pattern**: Voice or data reading numbers/codes
 **Frequencies**: Various HF
 **Purpose**: Likely espionage/military
 
 #### Time Signals
+
 **Pattern**: Regular tones or ticks
 **Frequencies**: 2.5, 5, 10, 15, 20 MHz (WWV)
 **Purpose**: Time and frequency standard
@@ -345,24 +397,28 @@ The waterfall display is your primary tool for signal identification.
 ## Practical Exercises
 
 ### Exercise 1: Mode Identification
+
 1. Scan 20m band (14.000-14.350 MHz)
 2. Identify at least 5 different signal types
 3. Note frequency, bandwidth, modulation
 4. Attempt demodulation
 
 ### Exercise 2: Band Survey
+
 1. Choose time of day
 2. Scan all amateur HF bands
 3. Note which are active
 4. Correlate with expected propagation
 
 ### Exercise 3: Signal Tracking
+
 1. Find persistent signal
 2. Monitor over 24 hours
 3. Note times active
 4. Look for patterns
 
 ### Exercise 4: Interference Hunting
+
 1. Identify local interference
 2. Use process of elimination
 3. Turn off devices one by one
@@ -373,6 +429,7 @@ The waterfall display is your primary tool for signal identification.
 ### "I don't see any signals"
 
 **Check**:
+
 - Antenna connected
 - Frequency range correct
 - RF gain not too low
@@ -382,6 +439,7 @@ The waterfall display is your primary tool for signal identification.
 ### "Signals but no audio"
 
 **Check**:
+
 - Correct demodulation mode
 - Audio volume
 - Squelch not too high
@@ -391,6 +449,7 @@ The waterfall display is your primary tool for signal identification.
 ### "Distorted audio"
 
 **Check**:
+
 - RF gain (overload)
 - Audio gain
 - Correct mode selection
@@ -400,6 +459,7 @@ The waterfall display is your primary tool for signal identification.
 ### "Everything looks noisy"
 
 **Check**:
+
 - Antenna system
 - Local interference
 - Time of day / propagation

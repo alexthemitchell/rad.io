@@ -5,11 +5,13 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 ## Documentation Structure
 
 ### Architecture Decision Records (ADRs)
+
 **Location:** `docs/decisions/`
 **Status:** All 17 ADRs compliant with MADR v4 format (per ADR-REVIEW-SUMMARY.md)
 **Index:** `docs/decisions/README.md`
 
 **Core Architecture Decisions:**
+
 1. ADR-0001: Architecture Decision Records (Meta)
 2. ADR-0002: Web Worker DSP Architecture → Memory: INTERACTIVE_DSP_PIPELINE_ARCHITECTURE
 3. ADR-0003: WebGL2/WebGPU GPU Acceleration → Memory: WEBGL_VISUALIZATION_ARCHITECTURE
@@ -29,10 +31,12 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 17. ADR-0017: Comprehensive Accessibility Patterns
 
 ### Reference Documentation
+
 **Location:** `docs/reference/`
 **Index:** `docs/reference/README.md`
 
 **User Documentation:**
+
 - `sdr-basics.md` - SDR introduction, core concepts
   - Cross-ref: Memory WEBUSB_SDR_PRACTICAL_GOTCHAS
   - Citations: Nyquist theorem (Wikipedia, GeeksforGeeks)
@@ -45,6 +49,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 - `common-use-cases.md` - Practical applications
 
 **Developer Documentation:**
+
 - `dsp-fundamentals.md` - DSP theory and implementation
   - Cross-ref: Memory SDR_DSP_FOUNDATIONS
   - Code: src/utils/dsp.ts, src/utils/dspProcessing.ts
@@ -68,6 +73,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
   - Code: src/lib/audio/audio-pipeline.ts
 
 **Quick Reference:**
+
 - `glossary.md` - SDR terminology (260+ terms)
 - `formula-reference.md` - Key equations
 - `keyboard-shortcuts.md` - Application controls
@@ -75,6 +81,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 ## Key Concept Mappings
 
 ### WebUSB & Hardware Integration
+
 - **Docs:** `hardware-integration.md`
 - **ADR:** ADR-0011 (Error Handling for hardware failures)
 - **Code:** `src/models/HackRFOne.ts`, `src/models/HackRFOneAdapter.ts`
@@ -82,6 +89,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 - **Citations:** uSDR paper (rs-ojict.pubpub.org), rtlsdrjs library
 
 ### FFT & Spectrum Analysis
+
 - **Docs:** `fft-implementation.md`, `dsp-fundamentals.md`
 - **ADR:** ADR-0012 (Parallel FFT Worker Pool)
 - **Code:** `src/workers/fft-worker.ts`, `src/utils/dsp.ts`
@@ -89,6 +97,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 - **Citations:** Cooley-Tukey O(N log N), fft.js 47,511 ops/sec
 
 ### Demodulation & Audio
+
 - **Docs:** `demodulation-algorithms.md`, `audio-demodulation-pipeline.md`
 - **ADR:** ADR-0008 (Web Audio API Architecture)
 - **Code:** `src/workers/audio-worklet.js`, `src/lib/audio/audio-pipeline.ts`
@@ -96,6 +105,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 - **Citations:** Phase discriminator (Virginia Tech), AudioWorklet (MDN)
 
 ### Visualization
+
 - **Docs:** `webgl-visualization.md`
 - **ADR:** ADR-0003 (WebGL2/WebGPU), ADR-0015 (Rendering Strategy), ADR-0016 (Viridis colormap)
 - **Code:** `src/components/Spectrogram.tsx`, `src/components/FFTChart.tsx`, `src/components/IQConstellation.tsx`
@@ -103,12 +113,14 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 - **Citations:** WebGL2 97% browser support, 60 FPS targets
 
 ### IQ Data & Signal Processing
+
 - **Docs:** `dsp-fundamentals.md`, `signal-analysis.md`
 - **Code:** `src/utils/dsp.ts`
 - **Memory:** SDR_DSP_FOUNDATIONS, IQ_CONSTELLATION_DIAGNOSTICS
 - **Citations:** IQ sampling (WirelessPi, PySDR), quadrature sampling (ICO Optics)
 
 ### Window Functions
+
 - **Docs:** `fft-implementation.md`
 - **Code:** `src/utils/dsp.ts` (hannWindow, hammingWindow, blackmanWindow)
 - **Memory:** DSP_STFT_SPECTROGRAM_GUIDE
@@ -119,6 +131,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 **Total Citations Added:** 40+ academic papers, standards, and technical resources
 
 **Key Academic Sources:**
+
 - uSDR Web-based SDR (rs-ojict.pubpub.org/pub/esvkbk39)
 - ScienceDirect: "Software-defined Radios: Architecture, state-of-the-art, and challenges" (2018)
 - Virginia Tech: "All Digital FM Demodulator" thesis (2019)
@@ -127,16 +140,19 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 - Springer: "Window Functions and Spectral Leakage" chapter
 
 **Standards & Specifications:**
+
 - W3C WebUSB API (w3.org/TR/webusb/)
 - MDN Web Audio API (developer.mozilla.org)
 - MDN AudioWorklet (developer.mozilla.org/docs/Web/API/AudioWorklet)
 
 **Performance Benchmarks:**
+
 - fft.js: 47,511 ops/sec at 2048 points (Mozilla Kraken)
 - WebGL2: 60 FPS with 8192 FFT bins
 - AudioWorklet: <5ms latency
 
 **DSP Libraries & Tools:**
+
 - fft.js (github.com/indutny/fft.js) - Fastest JS FFT
 - rtlsdrjs (github.com/sandeepmistry/rtlsdrjs) - WebUSB library
 - GNU Radio AGC3 (wiki.gnuradio.org) - Reference AGC implementation
@@ -144,18 +160,21 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 ## Gaps & Future Work
 
 **Missing Documentation:**
+
 - `keyboard-shortcuts.md` - Application keyboard controls (referenced but doesn't exist)
 - Digital modes deep dive (PSK31, FT8 decoders)
 - WebAssembly SIMD optimization guide
 - Recording/playback implementation guide (partially covered in memory)
 
 **Documentation Improvements Needed:**
+
 - Add more diagrams to reference docs (signal flow, architecture)
 - Create beginner tutorials for common tasks
 - Add troubleshooting guide for common hardware issues
 - Performance benchmarking methodology
 
 **Memory-to-Doc Promotion Candidates:**
+
 - WEBUSB_STREAMING_DEBUG_GUIDE → Could become troubleshooting section
 - FILTERING_DECIMATION_PATTERNS → Could expand dsp-fundamentals.md
 - P25_PRIMER_FOR_VISUALIZER → Could become digital-modes.md section
@@ -164,6 +183,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 ## Usage Patterns
 
 **For New Contributors:**
+
 1. Start with `docs/decisions/README.md` for architecture overview
 2. Read `docs/reference/sdr-basics.md` for domain knowledge
 3. Review relevant ADRs for specific areas
@@ -171,6 +191,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 5. Use glossary.md for terminology
 
 **For Users:**
+
 1. Begin with `sdr-basics.md`
 2. Check `frequency-allocations.md` for bands of interest
 3. Use `modulation-types.md` to decode signals
@@ -178,6 +199,7 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 5. Use `common-use-cases.md` for practical applications
 
 **For Debugging:**
+
 1. Check relevant memory (e.g., WEBUSB_STREAMING_DEBUG_GUIDE)
 2. Review ADR for architectural context
 3. Search reference docs for theory
@@ -187,12 +209,14 @@ Comprehensive index of rad.io documentation with cross-references to code, memor
 ## Maintenance Notes
 
 **Documentation Review Cycle:**
+
 - ADRs: Review when making architectural changes
 - Reference docs: Update with each major feature
 - Memories: Keep concise, update when patterns change
 - Citations: Verify links quarterly, update dead links
 
 **Quality Standards:**
+
 - All technical claims should have citations
 - Code examples should be tested
 - Cross-references should be bidirectional

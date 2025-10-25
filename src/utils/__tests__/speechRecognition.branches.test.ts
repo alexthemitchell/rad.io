@@ -84,32 +84,57 @@ describe("speechRecognition extra branches", () => {
   });
 
   it("covers additional error code branches (not-allowed, language-not-supported)", async () => {
-    const proc = new SpeechRecognitionProcessor();
+    const seenErrors: string[] = [];
 
-    let seenErrors: string[] = [];
-    proc.setCallbacks({
-      onError: (e) => {
-        seenErrors.push(e.error);
-      },
-    });
+    // Test not-allowed error
+    {
+      const proc = new SpeechRecognitionProcessor();
+      proc.setCallbacks({
+        onError: (e) => {
+          seenErrors.push(e.error);
+        },
+      });
 
-    // Patch underlying recognition to emit different errors
-    const rec = (proc as any)["recognition"] as StdMockSpeechRecognition;
-    rec.start = function () {
-      this.isStarted = true;
-      setTimeout(() => {
-        if (this.onstart) this.onstart();
+      const rec = (proc as any)["recognition"] as StdMockSpeechRecognition;
+      rec.start = function () {
+        this.isStarted = true;
         setTimeout(() => {
-          if (this.onerror) this.onerror({ error: "not-allowed" });
+          if (this.onstart) this.onstart();
+          setTimeout(() => {
+            if (this.onerror) this.onerror({ error: "not-allowed" });
+            if (this.onend) this.onend();
+          }, 2);
+        }, 1);
+      };
+
+      await proc.recognizeFromAudioStream(makeAudio()).catch(() => void 0);
+      proc.cleanup();
+    }
+
+    // Test language-not-supported error
+    {
+      const proc = new SpeechRecognitionProcessor();
+      proc.setCallbacks({
+        onError: (e) => {
+          seenErrors.push(e.error);
+        },
+      });
+
+      const rec = (proc as any)["recognition"] as StdMockSpeechRecognition;
+      rec.start = function () {
+        this.isStarted = true;
+        setTimeout(() => {
+          if (this.onstart) this.onstart();
           setTimeout(() => {
             if (this.onerror) this.onerror({ error: "language-not-supported" });
             if (this.onend) this.onend();
           }, 2);
-        }, 2);
-      }, 1);
-    };
+        }, 1);
+      };
 
-    await proc.recognizeFromAudioStream(makeAudio()).catch(() => void 0);
+      await proc.recognizeFromAudioStream(makeAudio()).catch(() => void 0);
+      proc.cleanup();
+    }
 
     expect(seenErrors).toEqual(
       expect.arrayContaining([
@@ -117,7 +142,5 @@ describe("speechRecognition extra branches", () => {
         "language-not-supported",
       ]),
     );
-
-    proc.cleanup();
   });
 });

@@ -22,6 +22,7 @@ The main audio pipeline manager that coordinates all audio processing.
 **Location**: `src/lib/audio/audio-pipeline.ts`
 
 **Responsibilities**:
+
 - Initialize Web Audio API context
 - Create and manage AudioWorklet processor
 - Configure audio filters (bandpass, lowpass)
@@ -29,6 +30,7 @@ The main audio pipeline manager that coordinates all audio processing.
 - Manage audio analysis nodes
 
 **Key Methods**:
+
 ```typescript
 async init(): Promise<void>
 feedSamples(samples: Float32Array): void
@@ -45,6 +47,7 @@ Low-latency audio processing that runs on the audio thread.
 **Location**: `src/workers/audio-worklet.js`
 
 **Responsibilities**:
+
 - Demodulate IQ samples to audio
 - Implement demodulation algorithms (AM, FM, USB, LSB, CW)
 - Apply AGC (Automatic Gain Control)
@@ -54,6 +57,7 @@ Low-latency audio processing that runs on the audio thread.
 **Demodulation Algorithms**:
 
 #### AM (Amplitude Modulation)
+
 ```javascript
 // Extract envelope magnitude
 magnitude = sqrt(I² + Q²)
@@ -61,6 +65,7 @@ audio = magnitude - DC_offset
 ```
 
 #### FM (Frequency Modulation)
+
 ```javascript
 // Phase derivative
 phase = atan2(Q, I)
@@ -69,18 +74,21 @@ audio = phaseDiff / (2π)
 ```
 
 #### USB (Upper Sideband)
+
 ```javascript
 // Phasing method
-audio = I - Q
+audio = I - Q;
 ```
 
 #### LSB (Lower Sideband)
+
 ```javascript
 // Phasing method
-audio = I + Q
+audio = I + Q;
 ```
 
 #### CW (Continuous Wave)
+
 ```javascript
 // AM demodulation with audio tone injection
 magnitude = sqrt(I² + Q²)
@@ -94,11 +102,13 @@ Converts SDR sample rates (MHz range) to audio sample rates (48 kHz).
 **Location**: `src/lib/audio/sample-rate-converter.ts`
 
 **Algorithm**:
+
 1. Apply anti-aliasing low-pass filter
 2. Decimate to target sample rate
 3. Use windowed sinc filter for optimal response
 
 **Filter Design**:
+
 - FIR low-pass filter
 - Hamming window for sidelobe reduction
 - Cutoff at Nyquist / decimation_factor
@@ -110,6 +120,7 @@ High-level manager that coordinates the entire audio subsystem.
 **Location**: `src/lib/audio/audio-manager.ts`
 
 **Features**:
+
 - Manages AudioPipeline lifecycle
 - Handles sample rate conversion
 - Synchronizes with application state
@@ -122,18 +133,19 @@ Custom hook for integrating audio pipeline with React components.
 **Location**: `src/hooks/use-audio-pipeline.ts`
 
 **Usage**:
+
 ```typescript
 const audioPipeline = useAudioPipeline({
   enabled: true,
   sampleRate: 48000,
-  inputSampleRate: 2048000
-})
+  inputSampleRate: 2048000,
+});
 
 // Process IQ samples
-audioPipeline.processIQSamples(iqSamples)
+audioPipeline.processIQSamples(iqSamples);
 
 // Change demodulation mode
-audioPipeline.setMode('FM')
+audioPipeline.setMode("FM");
 ```
 
 ## Signal Processing Details
@@ -143,10 +155,10 @@ audioPipeline.setMode('FM')
 DC offset in IQ samples causes audio artifacts:
 
 ```javascript
-dcOffsetI = alpha * I + (1 - alpha) * prevDcOffsetI
-dcOffsetQ = alpha * Q + (1 - alpha) * prevDcOffsetQ
-I_corrected = I - dcOffsetI
-Q_corrected = Q - dcOffsetQ
+dcOffsetI = alpha * I + (1 - alpha) * prevDcOffsetI;
+dcOffsetQ = alpha * Q + (1 - alpha) * prevDcOffsetQ;
+I_corrected = I - dcOffsetI;
+Q_corrected = Q - dcOffsetQ;
 ```
 
 Where `alpha = 0.001` provides slow tracking of DC drift.
@@ -156,19 +168,20 @@ Where `alpha = 0.001` provides slow tracking of DC drift.
 AGC maintains consistent audio output levels:
 
 ```javascript
-peak = max(abs(samples))
-error = targetLevel - peak
+peak = max(abs(samples));
+error = targetLevel - peak;
 
 if (error < 0) {
-  gain -= attack * abs(error)  // Fast attack
+  gain -= attack * abs(error); // Fast attack
 } else {
-  gain += decay * error         // Slow decay
+  gain += decay * error; // Slow decay
 }
 
-output = input * gain
+output = input * gain;
 ```
 
 Parameters:
+
 - `targetLevel = 0.5` (50% of full scale)
 - `attack = 0.001` (fast response to loud signals)
 - `decay = 0.0001` (slow recovery)
@@ -204,12 +217,12 @@ for each sample {
 Different modes require different audio filtering:
 
 | Mode | Filter Type | Center Freq | Bandwidth | Q Factor |
-|------|------------|-------------|-----------|----------|
-| AM   | Bandpass   | 1000 Hz     | ~2 kHz    | 1.0      |
-| FM   | Lowpass    | 15000 Hz    | 30 kHz    | 0.707    |
-| USB  | Bandpass   | 1500 Hz     | ~600 Hz   | 5.0      |
-| LSB  | Bandpass   | 1500 Hz     | ~600 Hz   | 5.0      |
-| CW   | Bandpass   | 700 Hz      | ~140 Hz   | 10.0     |
+| ---- | ----------- | ----------- | --------- | -------- |
+| AM   | Bandpass    | 1000 Hz     | ~2 kHz    | 1.0      |
+| FM   | Lowpass     | 15000 Hz    | 30 kHz    | 0.707    |
+| USB  | Bandpass    | 1500 Hz     | ~600 Hz   | 5.0      |
+| LSB  | Bandpass    | 1500 Hz     | ~600 Hz   | 5.0      |
+| CW   | Bandpass    | 700 Hz      | ~140 Hz   | 10.0     |
 
 ## Performance Considerations
 
@@ -217,17 +230,18 @@ Different modes require different audio filtering:
 
 Total end-to-end latency target: < 100ms
 
-| Component | Typical Latency | Notes |
-|-----------|----------------|-------|
-| Sample rate conversion | ~10ms | Buffer size dependent |
-| AudioWorklet processing | ~3ms | 128 samples @ 48kHz |
-| Web Audio routing | ~5ms | Browser dependent |
-| Audio hardware | ~10-30ms | System dependent |
-| **Total** | **~30-50ms** | Within target |
+| Component               | Typical Latency | Notes                 |
+| ----------------------- | --------------- | --------------------- |
+| Sample rate conversion  | ~10ms           | Buffer size dependent |
+| AudioWorklet processing | ~3ms            | 128 samples @ 48kHz   |
+| Web Audio routing       | ~5ms            | Browser dependent     |
+| Audio hardware          | ~10-30ms        | System dependent      |
+| **Total**               | **~30-50ms**    | Within target         |
 
 ### CPU Usage
 
 Typical CPU usage on modern hardware:
+
 - Sample rate conversion: 2-3%
 - AudioWorklet demodulation: 1-2%
 - Audio filtering: <1%
@@ -242,11 +256,11 @@ Typical CPU usage on modern hardware:
 
 ## Browser Compatibility
 
-| Feature | Chrome | Firefox | Safari | Edge |
-|---------|--------|---------|--------|------|
-| Web Audio API | ✅ 66+ | ✅ 76+ | ✅ 14.1+ | ✅ 79+ |
-| AudioWorklet | ✅ 66+ | ✅ 76+ | ✅ 14.1+ | ✅ 79+ |
-| SharedArrayBuffer | ✅ 68+ | ✅ 79+ | ✅ 15.2+ | ✅ 79+ |
+| Feature           | Chrome | Firefox | Safari   | Edge   |
+| ----------------- | ------ | ------- | -------- | ------ |
+| Web Audio API     | ✅ 66+ | ✅ 76+  | ✅ 14.1+ | ✅ 79+ |
+| AudioWorklet      | ✅ 66+ | ✅ 76+  | ✅ 14.1+ | ✅ 79+ |
+| SharedArrayBuffer | ✅ 68+ | ✅ 79+  | ✅ 15.2+ | ✅ 79+ |
 
 ## Testing
 
@@ -256,9 +270,9 @@ Test demodulation algorithms with known signals:
 
 ```typescript
 // Test AM demodulation
-const carrier = generateAMSignal(1000, 0.5, 48000)
-const demodulated = demodulateAM(carrier)
-expect(demodulated).toHaveFrequency(1000)
+const carrier = generateAMSignal(1000, 0.5, 48000);
+const demodulated = demodulateAM(carrier);
+expect(demodulated).toHaveFrequency(1000);
 ```
 
 ### Integration Tests
@@ -266,14 +280,14 @@ expect(demodulated).toHaveFrequency(1000)
 Test complete audio pipeline:
 
 ```typescript
-const pipeline = new AudioPipeline()
-await pipeline.init()
+const pipeline = new AudioPipeline();
+await pipeline.init();
 
-const testSignal = generateIQSignal()
-pipeline.feedSamples(testSignal)
+const testSignal = generateIQSignal();
+pipeline.feedSamples(testSignal);
 
-const output = pipeline.getAnalyserData()
-expect(output).toBeDefined()
+const output = pipeline.getAnalyserData();
+expect(output).toBeDefined();
 ```
 
 ### Performance Tests
@@ -281,11 +295,11 @@ expect(output).toBeDefined()
 Measure latency and CPU usage:
 
 ```typescript
-const samples = new Float32Array(2048)
-const start = performance.now()
-pipeline.processIQSamples(samples)
-const latency = performance.now() - start
-expect(latency).toBeLessThan(10) // ms
+const samples = new Float32Array(2048);
+const start = performance.now();
+pipeline.processIQSamples(samples);
+const latency = performance.now() - start;
+expect(latency).toBeLessThan(10); // ms
 ```
 
 ## Troubleshooting
@@ -295,6 +309,7 @@ expect(latency).toBeLessThan(10) // ms
 **Symptoms**: AudioWorklet initialized but no sound
 
 **Possible Causes**:
+
 1. AudioContext suspended (requires user gesture)
    - Solution: Call `audioPipeline.resume()` after user interaction
 2. Volume set to zero
@@ -307,6 +322,7 @@ expect(latency).toBeLessThan(10) // ms
 **Symptoms**: Harsh, clipped, or distorted audio
 
 **Possible Causes**:
+
 1. AGC gain too high
    - Solution: Reduce input signal level or adjust AGC parameters
 2. DC offset not removed
@@ -319,6 +335,7 @@ expect(latency).toBeLessThan(10) // ms
 **Symptoms**: Intermittent silence or stuttering
 
 **Possible Causes**:
+
 1. Buffer underruns
    - Solution: Increase buffer size in AudioWorklet
 2. CPU overload
@@ -331,6 +348,7 @@ expect(latency).toBeLessThan(10) // ms
 **Symptoms**: Noticeable delay between tuning and audio change
 
 **Possible Causes**:
+
 1. Large buffer sizes
    - Solution: Reduce buffer size (trade-off with stability)
 2. Multiple sample rate conversions

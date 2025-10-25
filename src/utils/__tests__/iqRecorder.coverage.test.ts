@@ -94,6 +94,12 @@ describe("iqRecorder additional branches", () => {
       type: "application/json",
     });
 
+    // Mock arrayBuffer for File (JSDOM doesn't provide it)
+    jsonFile.arrayBuffer = async () => {
+      const encoder = new TextEncoder();
+      return encoder.encode(jsonData).buffer;
+    };
+
     const loadedJson = await loadRecordingFromFile(jsonFile);
     expect(loadedJson.metadata.sampleCount).toBe(rec.metadata.sampleCount);
 
@@ -102,6 +108,11 @@ describe("iqRecorder additional branches", () => {
     const binFile = new File([binData], "rec.iq", {
       type: "application/octet-stream",
     });
+
+    // Mock arrayBuffer for File (JSDOM doesn't provide it)
+    binFile.arrayBuffer = async () => {
+      return binData;
+    };
 
     const loadedBin = await loadRecordingFromFile(binFile);
     expect(loadedBin.samples.length).toBe(rec.samples.length);

@@ -11,12 +11,14 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: The amplitude (strength) of the carrier wave varies with the audio signal.
 
 **Characteristics**:
+
 - **Bandwidth**: ~10 kHz (±5 kHz from carrier)
 - **Audio quality**: Moderate
 - **Efficiency**: Low (carrier always present)
 - **Noise sensitivity**: Moderate to high
 
 **Common uses**:
+
 - AM broadcast radio (530-1710 kHz)
 - Aviation communication (118-137 MHz)
 - Some amateur radio
@@ -25,6 +27,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Demodulation**: Simple envelope detection
 
 **WebSDR Settings**:
+
 - Mode: AM
 - Bandwidth: 8-10 kHz
 - AGC: ON
@@ -38,11 +41,13 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Similar to AM but with suppressed carrier.
 
 **Characteristics**:
+
 - Both sidebands present
 - No carrier (or reduced carrier)
 - More efficient than AM
 
 **Common uses**:
+
 - Amateur radio experimentation
 - Some military communications
 
@@ -55,16 +60,19 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: One sideband (upper or lower) with suppressed carrier. Most efficient form of amplitude modulation.
 
 **Characteristics**:
+
 - **Bandwidth**: ~2.7 kHz
 - **Audio quality**: Excellent for voice
 - **Efficiency**: Very high
 - **Frequency accuracy required**: ±50 Hz for intelligible speech
 
 **Types**:
+
 - **USB (Upper Sideband)**: Frequencies above carrier, standard for HF >10 MHz
 - **LSB (Lower Sideband)**: Frequencies below carrier, standard for HF <10 MHz
 
 **Common uses**:
+
 - Amateur radio HF voice (3.5-30 MHz)
 - Maritime communication
 - Military/utility stations
@@ -73,6 +81,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Demodulation**: Product detector with BFO (Beat Frequency Oscillator)
 
 **WebSDR Settings**:
+
 - Mode: USB or LSB (convention-dependent)
 - Bandwidth: 2.4-3.0 kHz
 - Fine tune: Critical (±50 Hz)
@@ -88,23 +97,27 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Types**:
 
 #### NFM (Narrowband FM)
+
 - **Bandwidth**: 8-16 kHz deviation
 - **Uses**: Two-way radio, amateur repeaters, marine VHF, PMR446
 - **Deviation**: ±2.5 to ±5 kHz
 
 #### WFM (Wideband FM)
+
 - **Bandwidth**: 150-200 kHz deviation
 - **Uses**: FM broadcast (87.5-108 MHz), weather satellites (APT)
 - **Deviation**: ±75 kHz
 - **Features**: Stereo (using 38 kHz pilot tone), RDS data
 
 **Characteristics**:
+
 - **Noise immunity**: Excellent (capture effect)
 - **Audio quality**: Excellent
 - **Bandwidth**: Wide compared to AM/SSB
 - **SNR improvement**: High
 
 **Common uses**:
+
 - FM broadcast radio
 - Amateur VHF/UHF repeaters
 - Marine VHF (156-162 MHz)
@@ -114,6 +127,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Demodulation**: Frequency discriminator or PLL detector
 
 **WebSDR Settings**:
+
 - Mode: NFM or WFM (bandwidth-dependent)
 - Bandwidth: 8 kHz (NFM) or 200 kHz (WFM)
 - Squelch: Useful for NFM
@@ -127,12 +141,14 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Carrier is turned on/off in patterns (dots and dashes).
 
 **Characteristics**:
+
 - **Bandwidth**: 100-200 Hz (extremely narrow)
 - **Efficiency**: Very high
 - **SNR advantage**: Best of any mode (~10 dB better than SSB)
 - **Skill required**: Must know Morse code
 
 **Common uses**:
+
 - Amateur radio (especially weak signal work)
 - Beacons (propagation indicators)
 - Maritime communication (historical)
@@ -141,6 +157,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Demodulation**: BFO to create audible tone (typically 400-800 Hz)
 
 **WebSDR Settings**:
+
 - Mode: CW or USB/LSB with narrow filter
 - Bandwidth: 100-500 Hz
 - BFO: Adjust for comfortable pitch
@@ -156,16 +173,19 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Digital data encoded by shifting between two or more frequencies.
 
 **Variants**:
+
 - **BFSK**: Binary (2 tones)
 - **MFSK**: Multiple frequencies
 - **GFSK**: Gaussian filtered (smoother transitions)
 
 **Characteristics**:
+
 - **Simple implementation**
 - **Moderate bandwidth**
 - **Good noise immunity**
 
 **Common uses**:
+
 - **RTTY (Radioteletype)**: 45.45 baud, 170 Hz shift
 - **Packet radio**: AX.25 protocol, 1200 baud (VHF)
 - **APRS**: Position reporting, 1200 baud
@@ -176,6 +196,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Demodulation**: Frequency discrimination and bit detection
 
 **WebSDR Settings**:
+
 - Mode: USB or dedicated digital mode
 - Bandwidth: 3 kHz typical
 - Use external decoder software (fldigi, direwolf)
@@ -189,21 +210,25 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Digital data encoded by changing the phase of the carrier.
 
 **Variants**:
+
 - **BPSK**: Binary (2 phases)
 - **QPSK**: Quadrature (4 phases)
 - **8PSK**: 8 phases (higher data rate)
 
 **Characteristics**:
+
 - **Very efficient**
 - **Narrow bandwidth**
 - **Requires phase coherence**
 
 **Common protocols**:
+
 - **PSK31**: 31.25 baud, keyboard-to-keyboard chat, 60 Hz bandwidth
 - **PSK63**: 62.5 baud, faster variant
 - **PSKR**: Reporter modes for propagation
 
 **Common uses**:
+
 - Amateur radio digital communication
 - Low power experimentation
 - DX (long distance) contacts
@@ -211,6 +236,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Demodulation**: Phase detection and symbol decoding
 
 **WebSDR Settings**:
+
 - Mode: USB
 - Bandwidth: 500 Hz - 3 kHz
 - Use fldigi or similar software
@@ -224,6 +250,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: 8-tone FSK with sophisticated error correction, time-synchronized.
 
 **Characteristics**:
+
 - **Time slots**: 15-second transmit periods
 - **Bandwidth**: ~50 Hz
 - **SNR advantage**: Decodes at -21 dB (excellent weak signal)
@@ -231,6 +258,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 - **Data rate**: 6.25 baud
 
 **Common uses**:
+
 - Amateur radio weak signal work
 - DX expeditions
 - Propagation studies
@@ -241,6 +269,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Demodulation**: WSJT-X software (time-sync required)
 
 **WebSDR Settings**:
+
 - Mode: USB
 - Bandwidth: 3 kHz (to see multiple stations)
 - Record audio for WSJT-X processing
@@ -254,6 +283,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Similar to FT8 but faster (7.5 second cycles) for contests.
 
 **Characteristics**:
+
 - **Time slots**: 7.5 seconds
 - **Higher throughput than FT8**
 - **Optimized for rapid QSOs**
@@ -265,6 +295,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Beacon mode transmitting callsign, location, and power.
 
 **Characteristics**:
+
 - **Time slots**: 2-minute transmit periods
 - **SNR advantage**: -31 dB
 - **Purpose**: Propagation studies only (not QSOs)
@@ -279,16 +310,19 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Analog image transmission using FM audio tones.
 
 **Common modes**:
+
 - **Martin M1**: 114 seconds per image
 - **Scottie S1**: 110 seconds per image
 - **Robot 36**: 36 seconds per image
 
 **Characteristics**:
+
 - **Color images**: RGB scan lines
 - **Audio tones**: 1500 Hz sync, 1200-2300 Hz video
 - **Resolution**: 320x240 typically
 
 **Common uses**:
+
 - Amateur radio image sharing
 - ISS (International Space Station) periodic events
 - Special event stations
@@ -296,6 +330,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Demodulation**: MMSSTV, QSSTV, or similar software
 
 **WebSDR Settings**:
+
 - Mode: USB
 - Bandwidth: 3 kHz
 - Record audio for decoder
@@ -309,11 +344,13 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: FSK using Baudot or ASCII encoding.
 
 **Characteristics**:
+
 - **Standard**: 45.45 baud, 170 Hz shift
 - **Mark/Space**: Two tones
 - **Character encoding**: 5-bit Baudot or 7/8-bit ASCII
 
 **Common uses**:
+
 - Amateur radio contests
 - Maritime communication
 - Meteorological data (FAX)
@@ -322,6 +359,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **Demodulation**: fldigi, MMTTY
 
 **WebSDR Settings**:
+
 - Mode: USB (sometimes RTTY-specific mode)
 - Bandwidth: 500 Hz
 - External decoder software
@@ -333,6 +371,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Aircraft broadcast position, altitude, speed using PPM (Pulse Position Modulation).
 
 **Characteristics**:
+
 - **Frequency**: 1090 MHz
 - **Modulation**: PPM (pulse)
 - **Data rate**: 1 Mbit/s
@@ -353,6 +392,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Digital encoding for AM broadcast bands.
 
 **Characteristics**:
+
 - **Audio quality**: Near-FM quality
 - **Spectrum efficiency**: Better than analog AM
 - **Robustness**: Error correction
@@ -366,6 +406,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: Digital voice codecs for VHF/UHF communication.
 
 **Characteristics**:
+
 - **Voice quality**: Clear or silent (no static)
 - **Data capability**: GPS, text messaging
 - **Networking**: Internet linking
@@ -379,6 +420,7 @@ Modulation is the process of encoding information onto a carrier wave by varying
 **How it works**: AX.25 packet radio with position, weather, telemetry data.
 
 **Characteristics**:
+
 - **Frequency**: 144.390 MHz (North America), varies by region
 - **Modulation**: 1200 baud AFSK
 - **Protocol**: AX.25 frames
@@ -391,18 +433,18 @@ Modulation is the process of encoding information onto a carrier wave by varying
 
 ## Selection Guide
 
-| **Use Case** | **Mode** | **Why** |
-|--------------|----------|---------|
-| Local two-way radio | NFM | Best audio, noise immunity |
-| HF voice DX | SSB | Efficient, good audio quality |
-| Weak signal HF | FT8, CW | Best SNR performance |
-| AM broadcast listening | AM | Standard for these bands |
-| FM broadcast listening | WFM | Standard, stereo capability |
-| Digital keyboard chat | PSK31 | Narrow bandwidth, efficient |
-| Aircraft tracking | ADS-B | Standard for aviation |
-| Image sharing | SSTV | Analog image mode |
-| Marine VHF | NFM | Standard for maritime |
-| Aviation HF | USB | Standard for aeronautical |
+| **Use Case**           | **Mode** | **Why**                       |
+| ---------------------- | -------- | ----------------------------- |
+| Local two-way radio    | NFM      | Best audio, noise immunity    |
+| HF voice DX            | SSB      | Efficient, good audio quality |
+| Weak signal HF         | FT8, CW  | Best SNR performance          |
+| AM broadcast listening | AM       | Standard for these bands      |
+| FM broadcast listening | WFM      | Standard, stereo capability   |
+| Digital keyboard chat  | PSK31    | Narrow bandwidth, efficient   |
+| Aircraft tracking      | ADS-B    | Standard for aviation         |
+| Image sharing          | SSTV     | Analog image mode             |
+| Marine VHF             | NFM      | Standard for maritime         |
+| Aviation HF            | USB      | Standard for aeronautical     |
 
 ## Bandwidth Comparison
 
@@ -420,6 +462,7 @@ WFM:          [█████████████████████�
 ## Demodulation Complexity
 
 **Simple → Complex**:
+
 1. AM (envelope detection)
 2. FM (frequency discriminator)
 3. SSB (product detector + BFO)

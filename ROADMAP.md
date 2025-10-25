@@ -11,6 +11,7 @@ This roadmap outlines the strategic development plan for WebSDR Pro, transitioni
 Understanding our users is critical to building the right features in the right order.
 
 ### 1. Ham Radio Enthusiast ("The Experimenter")
+
 **Profile**: Licensed amateur radio operators exploring digital modes, DXing, and home station operation  
 **Technical Level**: Intermediate - comfortable with RF concepts, learning DSP  
 **Primary Goals**: Decode digital modes (PSK31, RTTY, SSTV), log contacts, discover propagation, monitor bands  
@@ -18,6 +19,7 @@ Understanding our users is critical to building the right features in the right 
 **Value Proposition**: Browser-based, no installation, affordable RTL-SDR support, visual learning tools
 
 ### 2. Radio Monitoring Professional ("The Analyst")
+
 **Profile**: Spectrum management, regulatory compliance, SIGINT, broadcast monitoring  
 **Technical Level**: Expert - RF engineering background, regulatory knowledge  
 **Primary Goals**: Record evidence, measure compliance, identify interference, generate reports  
@@ -25,6 +27,7 @@ Understanding our users is critical to building the right features in the right 
 **Value Proposition**: Calibrated measurements, automated logging, compliance testing, exportable data
 
 ### 3. Academic Researcher ("The Scientist")
+
 **Profile**: University researchers, graduate students studying wireless communications, SDR, propagation  
 **Technical Level**: Expert - deep signal processing knowledge, programming skills  
 **Primary Goals**: Collect datasets, prototype algorithms, teach concepts, publish findings  
@@ -32,6 +35,7 @@ Understanding our users is critical to building the right features in the right 
 **Value Proposition**: Open platform, exportable data formats (SigMF), visual DSP teaching tools, extensibility
 
 ### 4. Emergency Communications Volunteer ("The Responder")
+
 **Profile**: ARES/RACES volunteers, disaster response, public service event communications  
 **Technical Level**: Basic to Intermediate - operational focus over technical depth  
 **Primary Goals**: Monitor emergency frequencies, log activity, coordinate with teams, reliable operation  
@@ -39,6 +43,7 @@ Understanding our users is critical to building the right features in the right 
 **Value Proposition**: Reliable offline-first architecture, simple interface, bookmark quick-access, logging
 
 ### 5. Broadcast Engineering ("The Professional")
+
 **Profile**: Radio/TV station engineers, tower maintenance, transmitter optimization  
 **Technical Level**: Expert - broadcast engineering, FCC regulations, RF measurement  
 **Primary Goals**: Verify transmitter performance, measure coverage, troubleshoot interference, compliance  
@@ -50,21 +55,25 @@ Understanding our users is critical to building the right features in the right 
 ## Development Phases
 
 ### Phase 1: Foundation - Core Signal Analysis Platform
+
 **Status**: In Progress  
 **Timeline**: Iterations 1-10  
 **Goal**: Establish robust SDR platform with essential visualization and demodulation capabilities
 
 ### Phase 2: Intelligence - Automated Analysis & Discovery
+
 **Status**: Planned  
 **Timeline**: Iterations 11-20  
 **Goal**: Add automated signal detection, scanning, and intelligent processing features
 
 ### Phase 3: Professional - Measurement & Compliance Tools
+
 **Status**: Future  
 **Timeline**: Iterations 21-30  
 **Goal**: Implement research-grade measurement suite, calibration, and documentation tools
 
 ### Phase 4: Collaborative - Multi-User & Integration
+
 **Status**: Vision  
 **Timeline**: Iterations 31+  
 **Goal**: Enable collaborative monitoring, remote operation, and ecosystem integration
@@ -74,6 +83,7 @@ Understanding our users is critical to building the right features in the right 
 ## Detailed Feature Roadmap
 
 ### ✅ Iteration 1: Interactive Signal Decoder (COMPLETED)
+
 **User Personas**: Ham Radio Enthusiast, Academic Researcher  
 **Priority**: HIGH - Core differentiator for digital mode users  
 **Status**: ✅ Completed
@@ -81,6 +91,7 @@ Understanding our users is critical to building the right features in the right 
 **Value**: Enables monitoring of digital amateur radio communications without external software. Critical for ham radio operators participating in PSK31 nets, RTTY contests, and SSTV activities.
 
 **Implementation Notes**:
+
 - ✅ RTTY decoder with 45.45 and 50 baud support
 - ✅ PSK31/63/125 varicode decoder with AFC
 - ✅ SSTV image decoder (Martin, Scottie, Robot modes)
@@ -91,6 +102,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### ✅ Iteration 2: WebUSB RTL-SDR Device Integration (COMPLETED)
+
 **User Personas**: ALL - Foundation for real signal processing  
 **Priority**: CRITICAL - Transforms from demo to functional SDR  
 **Status**: ✅ Completed (Iteration 14)
@@ -98,6 +110,7 @@ Understanding our users is critical to building the right features in the right 
 **Value**: Enables actual signal reception from RTL-SDR dongles via WebUSB. Unlocks all use cases from amateur radio to professional monitoring.
 
 **Implementation Notes**:
+
 - ✅ Complete RTL-SDR device driver with full hardware control
 - ✅ WebUSB device discovery and connection
 - ✅ Frequency tuning (24-1766 MHz)
@@ -115,6 +128,7 @@ Understanding our users is critical to building the right features in the right 
 - ✅ Event-based architecture for device state changes
 
 **Technical Details**:
+
 - Location: `/src/lib/devices/rtlsdr.ts`, `/src/lib/devices/device-manager.ts`
 - WebUSB types: `/src/types/webusb.d.ts`
 - UI Component: `/src/components/DeviceConnection.tsx`
@@ -123,6 +137,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### 🔄 Iteration 3: Real-Time Spectrum Analyzer with GPU Acceleration
+
 **User Personas**: ALL - Core visualization feature  
 **Priority**: CRITICAL - Primary tool for signal discovery  
 **Estimated Effort**: Large (GPU compute pipeline)
@@ -142,7 +157,7 @@ Understanding our users is critical to building the right features in the right 
    - Magnitude and phase extraction from complex FFT output
 
 2. **Spectral Processing**
-   - Logarithmic power conversion (10 * log10(mag^2))
+   - Logarithmic power conversion (10 \* log10(mag^2))
    - Averaging modes: None, Exponential (adjustable alpha), Linear, Peak-hold
    - Dynamic range adjustment (reference level + span controls)
    - Noise floor estimation and subtraction (optional)
@@ -172,6 +187,7 @@ Understanding our users is critical to building the right features in the right 
    - Profiling instrumentation for performance monitoring
 
 **Success Criteria**:
+
 - Sustained 60 FPS with 8192 FFT bins at 2.4 MS/s sample rate
 - <16ms frame time (one frame budget at 60 Hz)
 - <100ms FFT size change latency
@@ -181,6 +197,7 @@ Understanding our users is critical to building the right features in the right 
 - Graceful degradation on integrated GPUs (reduce quality, maintain FPS)
 
 **Technical Considerations**:
+
 - Reference ADR-0015 (Visualization Rendering Strategy)
 - Use WebGPU compute shaders for FFT on supported browsers
 - Fallback to WebGL2 fragment shader FFT for compatibility
@@ -188,6 +205,7 @@ Understanding our users is critical to building the right features in the right 
 - Implement adaptive quality (reduce FFT size if GPU overloaded)
 
 **Testing Requirements**:
+
 - Verify FFT accuracy against known test signals (single tone, multi-tone)
 - Measure frame rate across device classes (high-end desktop, laptop, tablet)
 - Test zoom performance (1 GHz span to 10 Hz span transitions)
@@ -197,6 +215,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### 🔄 Iteration 4: GPU-Accelerated Waterfall Display
+
 **User Personas**: Ham Radio Enthusiast, Radio Monitoring Professional, Academic Researcher  
 **Priority**: HIGH - Critical for temporal signal analysis  
 **Estimated Effort**: Medium (Builds on spectrum analyzer)
@@ -244,6 +263,7 @@ Understanding our users is critical to building the right features in the right 
    - Configurable line rate (10, 20, 30, 60 lines/sec)
 
 **Success Criteria**:
+
 - Smooth 60 FPS scrolling with 4096 frequency bins
 - Time axis accurate to 1 second over 24-hour captures
 - Click-to-tune accurate to within 1% of bin width
@@ -252,6 +272,7 @@ Understanding our users is critical to building the right features in the right 
 - Export PNG includes accurate timestamps and frequency scale
 
 **Technical Considerations**:
+
 - Reference ADR-0016 (Viridis Colormap) for palette implementation
 - Use WebGL2 pixel buffer objects (PBO) for async texture upload
 - Consider texture compression (GPU native formats) for long captures
@@ -259,6 +280,7 @@ Understanding our users is critical to building the right features in the right 
 - Implement lazy loading for 24-hour captures (load visible region)
 
 **Testing Requirements**:
+
 - Verify timestamp accuracy over multi-hour captures
 - Test memory usage with maximum history depth
 - Validate colormap perceptual uniformity (grayscale ramp test)
@@ -268,6 +290,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### 🔄 Iteration 5: Multi-Channel Audio Demodulator (AM/FM/SSB)
+
 **User Personas**: Ham Radio Enthusiast, Emergency Communications Volunteer  
 **Priority**: HIGH - Core functionality for voice communications  
 **Estimated Effort**: Large (DSP heavy, multiple algorithms)
@@ -327,6 +350,7 @@ Understanding our users is critical to building the right features in the right 
    - Noise reduction toggle (spectral subtraction)
 
 **Success Criteria**:
+
 - Audio latency <200ms from RF to speaker (target 150ms)
 - Intelligible voice on weak signals (10 dB SINAD minimum)
 - Clean audio with no artifacts at normal signal levels
@@ -336,6 +360,7 @@ Understanding our users is critical to building the right features in the right 
 - Simultaneous demodulation of 2+ channels without CPU overload
 
 **Technical Considerations**:
+
 - Reference ADR-0008 (Web Audio API Architecture)
 - Run demodulation in Web Worker to avoid main thread blocking
 - Use ScriptProcessorNode or AudioWorklet (prefer latter if available)
@@ -343,6 +368,7 @@ Understanding our users is critical to building the right features in the right 
 - Consider fixed-point arithmetic for mobile CPU efficiency
 
 **Testing Requirements**:
+
 - Test with known signal sources (signal generator + modulation)
 - Measure audio distortion (THD) on test tones
 - Validate demodulation accuracy (modulation analyzer comparison)
@@ -353,6 +379,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### ✅ Iteration 6: VFO Control and Frequency Management (COMPLETED)
+
 **User Personas**: Ham Radio Enthusiast, Radio Monitoring Professional  
 **Priority**: HIGH - Essential for tuning operations  
 **Status**: ✅ Completed
@@ -360,6 +387,7 @@ Understanding our users is critical to building the right features in the right 
 **Value**: Enables precise frequency control like traditional transceivers. Improves efficiency for band scanning and station finding.
 
 **Implementation Notes**:
+
 - ✅ Large frequency display with click-to-edit
 - ✅ Keyboard arrow key tuning with step control
 - ✅ Selectable tuning steps (1 Hz to 1 MHz)
@@ -372,6 +400,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### ✅ Iteration 7: Bookmark System and Frequency Database (COMPLETED)
+
 **User Personas**: Ham Radio Enthusiast, Emergency Communications Volunteer, Radio Monitoring Professional  
 **Priority**: MEDIUM - Significant quality of life improvement  
 **Estimated Effort**: Medium (CRUD operations, import/export)
@@ -383,6 +412,7 @@ Understanding our users is critical to building the right features in the right 
 **Status**: ✅ Completed
 
 **Implementation Notes**:
+
 - ✅ Comprehensive bookmark data model with all metadata fields
 - ✅ Side panel with search and filter functionality
 - ✅ Create/edit bookmark dialog with full parameter support
@@ -398,6 +428,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### ✅ Iteration 8: Recording System (IQ and Audio) (COMPLETED)
+
 **User Personas**: Radio Monitoring Professional, Academic Researcher, Ham Radio Enthusiast  
 **Priority**: MEDIUM - Critical for documentation and analysis  
 **Status**: ✅ Completed (Iteration 14)
@@ -405,6 +436,7 @@ Understanding our users is critical to building the right features in the right 
 **Value**: Enables forensic analysis, signal library building, compliance documentation, and sharing interesting captures. Researchers can build datasets. Professionals can document interference.
 
 **Implementation Notes**:
+
 - ✅ RecordingManager with IndexedDB storage
 - ✅ IQ sample recording (raw complex samples)
 - ✅ Audio recording support (WAV export)
@@ -422,6 +454,7 @@ Understanding our users is critical to building the right features in the right 
 - ⚠️ SigMF archive export deferred
 
 **Technical Details**:
+
 - Location: `/src/lib/recording/recording-manager.ts`
 - UI Component: `/src/components/RecordingPanel.tsx`
 - Storage: IndexedDB with chunked writes
@@ -430,6 +463,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### 🔄 Iteration 9: Band Scanner with Activity Logging
+
 **User Personas**: Radio Monitoring Professional, Emergency Communications Volunteer, Ham Radio Enthusiast  
 **Priority**: MEDIUM - Automation feature for monitoring workflows  
 **Estimated Effort**: Medium (State machine, signal detection)
@@ -492,6 +526,7 @@ Understanding our users is critical to building the right features in the right 
    - Background scanning (scan in Web Worker, alert on detection)
 
 **Success Criteria**:
+
 - Scan speed: >10 channels/second (fast mode)
 - Detection reliability: >95% on signals above squelch
 - False positive rate: <5% (don't trigger on noise)
@@ -500,6 +535,7 @@ Understanding our users is critical to building the right features in the right 
 - Priority channels checked at least every 5 seconds
 
 **Technical Considerations**:
+
 - Reference ADR-0013 (Automatic Signal Detection System)
 - Use state machine for scan logic (idle, scanning, dwelling, paused)
 - Implement exponentially weighted moving average (EWMA) for signal detection
@@ -507,6 +543,7 @@ Understanding our users is critical to building the right features in the right 
 - Store scan state for resume after browser restart
 
 **Testing Requirements**:
+
 - Validate detection accuracy with known test signals
 - Measure scan speed (channels/sec) on reference hardware
 - Test priority channel interruption timing
@@ -516,6 +553,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### 🔄 Iteration 10: Settings Panel and Calibration
+
 **User Personas**: Radio Monitoring Professional, Academic Researcher  
 **Priority**: MEDIUM - Required for measurement accuracy  
 **Estimated Effort**: Medium (UI + validation + persistence)
@@ -592,6 +630,7 @@ Understanding our users is critical to building the right features in the right 
 **Status**: ✅ Partially Completed
 
 **Implementation Notes**:
+
 - ✅ Settings dialog with tabbed interface (Display, Radio, Advanced)
 - ✅ Display settings: Color scheme, waterfall speed, grid overlay
 - ✅ Radio settings: FFT size, AGC, Noise blanker
@@ -605,10 +644,12 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### ✅ Parallel FFT Worker Pool Implementation (COMPLETED)
+
 **Priority**: CRITICAL - Foundation for real-time processing  
 **Status**: ✅ Completed (Iteration 14)
 
 **Implementation Notes**:
+
 - ✅ FFTProcessor Web Worker with Cooley-Tukey FFT algorithm
 - ✅ Multiple window functions (Hamming, Blackman-Harris, Hann, Flat-top, Rectangular)
 - ✅ Configurable FFT sizes (512-16384 bins)
@@ -621,6 +662,7 @@ Understanding our users is critical to building the right features in the right 
 - ✅ Zero-copy transfer using Transferable objects
 
 **Technical Details**:
+
 - Location: `/src/workers/fft-worker.ts`, `/src/lib/fft/fft-manager.ts`
 - Algorithm: Cooley-Tukey radix-2 FFT
 - Performance: Target 60 FPS at 8192 bins
@@ -629,10 +671,12 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### ✅ State Management Architecture (Implemented)
+
 **Priority**: CRITICAL - Foundation for all features  
 **Status**: ✅ Completed
 
 **Implementation Notes**:
+
 - ✅ Zustand store with devtools integration
 - ✅ Store slices: Device, Radio, UI
 - ✅ Persistence integration with spark.kv
@@ -642,6 +686,7 @@ Understanding our users is critical to building the right features in the right 
 - ✅ Automatic persistence on state changes
 
 **Architecture References**:
+
 - Follows ADR-0009 (State Management Pattern)
 - Follows ADR-0005 (Storage Strategy)
 - Type definitions in `/src/store/types.ts`
@@ -651,10 +696,12 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### ✅ Enhanced Spectrum and Waterfall Visualizations (Implemented)
+
 **Priority**: HIGH - Core visualization features  
 **Status**: ✅ Partially Completed
 
 **Implementation Notes**:
+
 - ✅ Interactive spectrum view with simulated data
 - ✅ Click-to-tune functionality on spectrum
 - ✅ Grid overlay (configurable via settings)
@@ -673,6 +720,7 @@ Understanding our users is critical to building the right features in the right 
 ## Phase 2: Intelligence - Automated Analysis & Discovery
 
 ### 🔄 Iteration 11: Automatic Signal Classification
+
 **User Personas**: Radio Monitoring Professional, Academic Researcher  
 **Priority**: MEDIUM - Advanced intelligence feature  
 **Estimated Effort**: Large (ML/DSP algorithms)
@@ -709,7 +757,8 @@ Understanding our users is critical to building the right features in the right 
    - Filter by signal type
 
 **Success Criteria**:
-- >80% classification accuracy on common signals
+
+- > 80% classification accuracy on common signals
 - Classification latency <500ms per signal
 - User training improves accuracy
 - No false negatives on strong, clear signals
@@ -717,6 +766,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### 🔄 Iteration 12: Intelligent Squelch and Noise Reduction
+
 **User Personas**: Ham Radio Enthusiast, Emergency Communications Volunteer  
 **Priority**: MEDIUM - Audio quality improvement  
 **Estimated Effort**: Medium (DSP algorithms)
@@ -750,6 +800,7 @@ Understanding our users is critical to building the right features in the right 
    - Multiple simultaneous notches
 
 **Success Criteria**:
+
 - Adaptive squelch tracks noise floor within 2 dB
 - Noise reduction improves SNR by 3-6 dB
 - Speech intelligibility maintained (user testing)
@@ -758,6 +809,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### 🔄 Iteration 13: Multi-Device Coordination
+
 **User Personas**: Radio Monitoring Professional, Academic Researcher  
 **Priority**: LOW - Advanced professional feature  
 **Estimated Effort**: Large (Hardware + sync logic)
@@ -791,6 +843,7 @@ Understanding our users is critical to building the right features in the right 
    - Automatic failover if device disconnects
 
 **Success Criteria**:
+
 - Stitched spectrum displays seamlessly
 - Timestamp synchronization <5ms across devices
 - Support for 4+ simultaneous devices
@@ -799,6 +852,7 @@ Understanding our users is critical to building the right features in the right 
 ---
 
 ### 🔄 Iteration 14: Advanced Measurement Tools
+
 **User Personas**: Radio Monitoring Professional, Broadcast Engineering  
 **Priority**: MEDIUM - Professional measurement capability  
 **Estimated Effort**: Large (Precision algorithms)
@@ -840,6 +894,7 @@ Understanding our users is critical to building the right features in the right 
    - PDF report generation with plots
 
 **Success Criteria**:
+
 - Frequency accuracy ±1 Hz (with calibration)
 - Power accuracy ±0.5 dB (with calibration)
 - Measurements stable over 1-minute averaging
@@ -850,6 +905,7 @@ Understanding our users is critical to building the right features in the right 
 ## Phase 3: Professional - Measurement & Compliance Tools
 
 ### 🔄 Iteration 15-20: Reserved for Professional Features
+
 - **Iteration 15**: Direction Finding (Multi-antenna phase comparison)
 - **Iteration 16**: Time-Difference-of-Arrival (TDOA) Geolocation
 - **Iteration 17**: Protocol Decoders (ADS-B, AIS, APRS, DMR)
@@ -862,6 +918,7 @@ Understanding our users is critical to building the right features in the right 
 ## Phase 4: Collaborative - Multi-User & Integration
 
 ### 🔄 Iteration 21-30: Reserved for Collaborative Features
+
 - **Iteration 21**: Multi-User Annotation (Shared waterfall annotations)
 - **Iteration 22**: Community Signal Database (Crowdsourced bookmarks)
 - **Iteration 23**: Live Streaming (Broadcast spectrum to viewers)
@@ -874,26 +931,31 @@ Understanding our users is critical to building the right features in the right 
 ## Success Metrics by Persona
 
 ### Ham Radio Enthusiast
+
 - **Engagement**: Time spent decoding digital modes per session
 - **Feature Adoption**: Bookmark usage, decoder tab usage
 - **Satisfaction**: User surveys on ease of use vs. traditional software
 
 ### Radio Monitoring Professional
+
 - **Accuracy**: Frequency/power measurement validation against lab equipment
 - **Productivity**: Time to complete spectrum survey (before/after automation)
 - **Documentation**: Number of recordings saved, reports generated
 
 ### Academic Researcher
+
 - **Data Quality**: SigMF compliance, metadata completeness
 - **Reproducibility**: Success rate of loading others' recordings
 - **Publication**: Citations in academic papers, GitHub stars
 
 ### Emergency Communications Volunteer
+
 - **Reliability**: Uptime during simulated emergency drills
 - **Usability**: Time to tune to emergency frequency from cold start
 - **Training**: Onboarding time for new volunteers
 
 ### Broadcast Engineering
+
 - **Compliance**: Accuracy of regulatory compliance measurements
 - **Field Use**: Battery life, mobile device performance
 - **Reporting**: Quality of auto-generated compliance reports
@@ -903,6 +965,7 @@ Understanding our users is critical to building the right features in the right 
 ## Technical Debt and Maintenance
 
 ### Ongoing Maintenance Tasks (All Phases)
+
 - **Browser Compatibility**: Test and fix issues on Chrome, Firefox, Safari, Edge
 - **Performance Optimization**: Profile and optimize hot paths (FFT, rendering)
 - **Accessibility**: ARIA labels, keyboard navigation, screen reader testing
@@ -918,6 +981,7 @@ Understanding our users is critical to building the right features in the right 
 This roadmap balances immediate user value (Iterations 2-5: hardware integration, visualization, demodulation) with longer-term advanced features (Phase 2-4: automation, measurement, collaboration). Each iteration includes detailed sub-tasks to guide implementation and success criteria to validate completion.
 
 **Next Immediate Priorities**:
+
 1. **Iteration 2**: WebUSB RTL-SDR integration (transforms from demo to functional SDR)
 2. **Iteration 3**: Real-time spectrum analyzer (primary visualization)
 3. **Iteration 4**: Waterfall display (temporal analysis capability)
