@@ -30,3 +30,30 @@ export type {
   FFTResult,
   ScanResult,
 } from "./workers/types";
+
+// Measurement and Calibration (Phase 3)
+export {
+  FrequencyMarkerManager,
+  ChannelPowerMeasurement,
+  SignalQualityAnalyzer,
+  CalibrationManager,
+  SpectrumMaskTester,
+  MeasurementLogger,
+} from "./measurement";
+
+export type {
+  FrequencyMarker,
+  MarkerDelta,
+  ChannelPowerResult,
+  SignalQualityMetrics,
+  SpectrumMask,
+  MaskPoint,
+  MaskTestResult,
+  FrequencyCalibration,
+  PowerCalibration,
+  IQCalibration,
+  CalibrationProfile,
+  MeasurementLogEntry,
+  MeasurementStatistics,
+  MeasurementConfig,
+} from "./measurement";
