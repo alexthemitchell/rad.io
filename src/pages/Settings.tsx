@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 
 /**
  * Settings page with tabbed interface
@@ -133,7 +134,7 @@ function Settings(): React.JSX.Element {
           {/* TODO: Current calibration profile display */}
           {/* TODO: Last calibration date */}
           <p>Go to the Calibration page for full calibration wizard</p>
-          <a href="/calibration">Open Calibration Wizard</a>
+          <Link to="/calibration">Open Calibration Wizard</Link>
         </section>
       )}
 

@@ -12,7 +12,29 @@ The app uses `BrowserRouter` (not `HashRouter`), which means:
 ## Correct Navigation Methods
 
 ### 1. Declarative Navigation (Preferred)
-Use `<NavLink>` or `<Link>` components:
+Use `<Link>` or `<NavLink>` components for internal navigation:
+```tsx
+import { Link } from 'react-router-dom';
+
+<Link to="/calibration">Open Calibration Wizard</Link>
+```
+
+**Important:** Always use `<Link>` for internal routes, never `<a href>`:
+```tsx
+// ❌ WRONG - Causes full page reload
+<a href="/calibration">Settings</a>
+
+// ✅ CORRECT - Client-side navigation
+<Link to="/calibration">Settings</Link>
+```
+
+For external links (outside your app), use regular `<a>` tags:
+```tsx
+// ✅ External links are fine with <a>
+<a href="https://github.com/alexthemitchell/rad.io">GitHub</a>
+```
+
+Use `<NavLink>` when you need active state styling:
 ```tsx
 import { NavLink } from 'react-router-dom';
 
@@ -65,6 +87,11 @@ useEffect(() => {
 
 ## Common Mistakes to Avoid
 
+### ❌ WRONG: Using <a href> for internal routes
+```tsx
+<a href="/calibration">Settings</a> // Full page reload, breaks SPA
+```
+
 ### ❌ WRONG: Hash-based navigation
 ```tsx
 window.location.hash = '#/monitor'; // Breaks with BrowserRouter
@@ -81,9 +108,45 @@ window.location.pathname = '/monitor'; // Full page reload, loses state
 navigate('/monitor'); // ESLint error: must handle Promise
 ```
 
+### ✅ CORRECT: Use Link for internal routes
+```tsx
+import { Link } from 'react-router-dom';
+<Link to="/calibration">Settings</Link> // Client-side navigation
+```
+
 ### ✅ CORRECT: useNavigate with void
 ```tsx
 void navigate('/monitor'); // Explicitly ignores Promise
+```
+
+## Internal vs External Links
+
+### Internal Links (within your app)
+Use `<Link>` or `<NavLink>`:
+```tsx
+import { Link } from 'react-router-dom';
+
+// Pages
+<Link to="/monitor">Monitor</Link>
+<Link to="/settings">Settings</Link>
+<Link to="/calibration">Calibration</Link>
+
+// With query params
+<Link to="/monitor?frequency=100000000">Tune to 100 MHz</Link>
+```
+
+### External Links (outside your app)
+Use regular `<a>` tags:
+```tsx
+// GitHub, documentation, external sites
+<a href="https://github.com/alexthemitchell/rad.io">GitHub</a>
+<a href="https://example.com/docs">Documentation</a>
+```
+
+### Anchor Links (same page)
+Skip links for accessibility are fine with `<a>`:
+```tsx
+<a href="#main-content" className="skip-link">Skip to content</a>
 ```
 
 ## Promise Handling
@@ -136,10 +199,14 @@ expect(mockNavigate).toHaveBeenCalledWith('/monitor');
 - src/components/Navigation.tsx - Keyboard shortcuts implementation
 - src/App.tsx - Router configuration
 - src/panels/Bookmarks.tsx - Example of navigate with query params
+- src/pages/Settings.tsx - Example of Link component usage
 
 ## Lessons Learned
-1. Never use `window.location.hash` with BrowserRouter
-2. Always use `void` operator with navigate() to satisfy ESLint
-3. Include `navigate` in useEffect dependency array
-4. Check for input/textarea focus before handling keyboard shortcuts
-5. Navigation is async - handle appropriately if you need to wait
+1. Never use `<a href>` for internal routes with BrowserRouter - causes full page reloads
+2. Always use `<Link to>` for internal navigation - maintains SPA behavior
+3. External links (https://, http://) should use `<a href>` as normal
+4. Never use `window.location.hash` with BrowserRouter
+5. Always use `void` operator with navigate() to satisfy ESLint
+6. Include `navigate` in useEffect dependency array
+7. Check for input/textarea focus before handling keyboard shortcuts
+8. Navigation is async - handle appropriately if you need to wait
