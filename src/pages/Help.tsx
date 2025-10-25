@@ -86,7 +86,7 @@ function Help(): React.JSX.Element {
 
           {/* TODO: Add interactive onboarding tutorial */}
           {/* TODO: Add screenshots/animations */}
-          {/* TODO: Add &ldquo;First Time&rdquo; checklist */}
+          {/* TODO: Add "First Time" checklist */}
         </section>
       )}
 
