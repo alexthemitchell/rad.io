@@ -9,7 +9,7 @@ import SignalTypeSelector, {
 } from "../components/SignalTypeSelector";
 import Spectrogram from "../components/Spectrogram";
 import StatusBar, { RenderTier } from "../components/StatusBar";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useDevice } from "../contexts/DeviceContext";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { performanceMonitor } from "../utils/performanceMonitor";
@@ -17,7 +17,7 @@ import { performanceMonitor } from "../utils/performanceMonitor";
 export default function LiveMonitor(): React.JSX.Element {
   // Accessibility: skip link and live region
   const { announce, liveRegion: LiveRegion } = useLiveRegion();
-  const { device, initialize, isCheckingPaired } = useHackRFDevice();
+  const { device, initialize, isCheckingPaired } = useDevice();
   const [listening, setListening] = useState(false);
   const [isInitializing] = useState(false);
   const [deviceError] = useState<Error | null>(null);

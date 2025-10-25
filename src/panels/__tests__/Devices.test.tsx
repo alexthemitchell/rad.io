@@ -1,5 +1,23 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import Devices from "../Devices";
+
+// Mock the DeviceContext to avoid requiring a real provider in tests
+jest.mock("../../contexts/DeviceContext", () => ({
+  DeviceProvider: ({ children }: any) => <>{children}</>,
+  useDevice: jest.fn(() => ({
+    device: null,
+    initialize: jest.fn(),
+    cleanup: jest.fn(),
+    isCheckingPaired: false,
+  })),
+  useDeviceContext: jest.fn(() => ({
+    devices: new Map(),
+    primaryDevice: undefined,
+    isCheckingPaired: false,
+    requestDevice: jest.fn(),
+    closeDevice: jest.fn(),
+    closeAllDevices: jest.fn(),
+  })),
+}));
 
 // Mock dependencies
 jest.mock("../../hooks/useLiveRegion", () => ({
@@ -9,17 +27,18 @@ jest.mock("../../hooks/useLiveRegion", () => ({
   })),
 }));
 
-const mockInitialize = jest.fn();
-const mockCleanup = jest.fn();
-
+// Legacy hook mock retained for compatibility but not used by component anymore
 jest.mock("../../hooks/useHackRFDevice", () => ({
   useHackRFDevice: jest.fn(() => ({
     device: null,
-    initialize: mockInitialize,
-    cleanup: mockCleanup,
+    initialize: jest.fn(),
+    cleanup: jest.fn(),
     isCheckingPaired: false,
   })),
 }));
+
+// Import the component under test after mocks are in place
+const Devices = require("../Devices").default;
 
 describe("Devices", () => {
   beforeEach(() => {
@@ -51,6 +70,15 @@ describe("Devices", () => {
   });
 
   it("calls initialize when scan button is clicked", async () => {
+    const { useDevice } = require("../../contexts/DeviceContext");
+    const mockInitialize = jest.fn();
+    useDevice.mockReturnValue({
+      device: null,
+      initialize: mockInitialize,
+      cleanup: jest.fn(),
+      isCheckingPaired: false,
+    });
+
     render(<Devices />);
     const scanButton = screen.getByRole("button", {
       name: /scan for devices/i,
@@ -62,12 +90,11 @@ describe("Devices", () => {
   });
 
   it("shows checking message when isCheckingPaired is true", () => {
-    const useHackRFDevice =
-      require("../../hooks/useHackRFDevice").useHackRFDevice;
-    useHackRFDevice.mockReturnValue({
+    const { useDevice } = require("../../contexts/DeviceContext");
+    useDevice.mockReturnValue({
       device: null,
-      initialize: mockInitialize,
-      cleanup: mockCleanup,
+      initialize: jest.fn(),
+      cleanup: jest.fn(),
       isCheckingPaired: true,
     });
 

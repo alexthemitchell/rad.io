@@ -7,13 +7,19 @@
 import type { Sample } from "./dsp";
 
 // WASM module interface
-interface WasmDSPModule {
+export interface WasmDSPModule {
   calculateFFT(
     iSamples: Float32Array,
     qSamples: Float32Array,
     fftSize: number,
     output: Float32Array,
   ): void;
+  // Newer API: returns lifted Float32Array so JS receives results directly
+  calculateFFTOut?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    fftSize: number,
+  ) => Float32Array;
   calculateWaveform(
     iSamples: Float32Array,
     qSamples: Float32Array,
@@ -44,6 +50,22 @@ function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
 let wasmModule: WasmDSPModule | null = null;
 let wasmLoading: Promise<WasmDSPModule | null> | null = null;
 let wasmSupported = false;
+
+// Test-only helpers to control internal module state
+// These are no-ops in production usage but exported for unit tests to inject fakes.
+export function setWasmModuleForTest(
+  mod: WasmDSPModule | null,
+  supported = true,
+): void {
+  wasmModule = mod;
+  wasmSupported = mod !== null && supported;
+}
+
+export function resetWasmModuleForTest(): void {
+  wasmModule = null;
+  wasmLoading = null;
+  wasmSupported = false;
+}
 
 // Dynamic import wrapper - necessary for WebAssembly module loading
 const dynamicImportModule: (specifier: string) => Promise<unknown> =
@@ -93,11 +115,20 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
     return null;
   }
 
+  const makeUrl = (path: string): string => {
+    const url = new URL(path, window.location.href);
+    // In dev, add cache-busting param to ensure fresh module after rebuilds
+    if (location.hostname === "localhost") {
+      url.searchParams.set("v", String(Date.now()));
+    }
+    return url.toString();
+  };
+
   const candidateUrls = [
-    new URL("release.js", window.location.href).toString(),
-    new URL("/release.js", window.location.origin).toString(),
-    new URL("dsp.js", window.location.href).toString(),
-    new URL("/dsp.js", window.location.origin).toString(),
+    makeUrl("release.js"),
+    makeUrl("/release.js"),
+    makeUrl("dsp.js"),
+    makeUrl("/dsp.js"),
   ];
 
   const loadPromise = (async (): Promise<WasmDSPModule | null> => {
@@ -116,7 +147,34 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
           calculateSpectrogram: mod.calculateSpectrogram.bind(mod),
           allocateFloat32Array: mod.allocateFloat32Array.bind(mod),
         };
+        // Bind optional return-by-value API if present so callers can detect/use it
+        if (typeof mod.calculateFFTOut === "function") {
+          const bound: NonNullable<WasmDSPModule["calculateFFTOut"]> =
+            mod.calculateFFTOut.bind(mod);
+          wasmModule.calculateFFTOut = bound;
+        }
+
         wasmSupported = true;
+        // One-time visibility into loaded exports
+        try {
+          const hasOut =
+            typeof (wasmModule as Partial<WasmDSPModule>).calculateFFTOut ===
+            "function";
+          console.info("dspWasm: WASM module loaded", {
+            url,
+            exports: {
+              calculateFFT: typeof mod.calculateFFT === "function",
+              calculateFFTOut: hasOut,
+              calculateWaveform: typeof mod.calculateWaveform === "function",
+              calculateSpectrogram:
+                typeof mod.calculateSpectrogram === "function",
+              allocateFloat32Array:
+                typeof mod.allocateFloat32Array === "function",
+            },
+          });
+        } catch {
+          // ignore logging errors
+        }
         return wasmModule;
       } catch (error) {
         lastError = error;
@@ -154,6 +212,28 @@ export function isWasmAvailable(): boolean {
 }
 
 /**
+ * Runtime toggle to enable/disable WASM usage without changing build.
+ * Defaults to enabled. Can be overridden via localStorage key:
+ *   localStorage.setItem('radio.wasm.enabled', 'false')
+ */
+export function isWasmRuntimeEnabled(): boolean {
+  try {
+    // In non-browser environments (tests, SSR), default to enabled
+    if (typeof window === "undefined" || !("localStorage" in window)) {
+      return true;
+    }
+    const v = window.localStorage.getItem("radio.wasm.enabled");
+    if (v === null) {
+      return true;
+    }
+    // any value other than literal 'false' means enabled
+    return v !== "false";
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Calculate FFT using WASM if available
  * Converts Sample[] format to separate I/Q arrays for WASM
  */
@@ -166,9 +246,10 @@ export function calculateFFTWasm(
   }
 
   try {
-    // Separate I and Q components
-    const iSamples = new Float32Array(fftSize);
-    const qSamples = new Float32Array(fftSize);
+    // Separate I and Q components in WASM memory to ensure the WASM function
+    // can read them reliably (avoids JS↔WASM typed array copy issues).
+    const iSamples = wasmModule.allocateFloat32Array(fftSize);
+    const qSamples = wasmModule.allocateFloat32Array(fftSize);
 
     const count = Math.min(samples.length, fftSize);
     for (let i = 0; i < count; i++) {
@@ -179,12 +260,18 @@ export function calculateFFTWasm(
       }
     }
 
-    // Allocate output array in WASM memory
+    // Prefer return-by-value API if available (avoids copy-back issue)
+    if (typeof wasmModule.calculateFFTOut === "function") {
+      console.debug("dspWasm: using calculateFFTOut (return-by-value)");
+      return wasmModule.calculateFFTOut(iSamples, qSamples, fftSize);
+    }
+
+    // Fallback to output-parameter API; note that some loader versions
+    // do not copy results back to JS when passing an output array.
+    // We'll still use it and rely on higher-level sanity checks/fallbacks.
+    console.debug("dspWasm: using calculateFFT with output parameter");
     const output = wasmModule.allocateFloat32Array(fftSize);
-
-    // Call WASM function
     wasmModule.calculateFFT(iSamples, qSamples, fftSize, output);
-
     return output;
   } catch (error) {
     console.warn(
@@ -213,9 +300,9 @@ export function calculateWaveformWasm(
   try {
     const count = samples.length;
 
-    // Separate I and Q components
-    const iSamples = new Float32Array(count);
-    const qSamples = new Float32Array(count);
+    // Separate I and Q components in WASM memory
+    const iSamples = wasmModule.allocateFloat32Array(count);
+    const qSamples = wasmModule.allocateFloat32Array(count);
 
     for (let i = 0; i < count; i++) {
       const sample = samples[i];
@@ -268,8 +355,8 @@ export function calculateSpectrogramWasm(
 
     // Separate I and Q components
     const totalSamples = rowCount * fftSize;
-    const iSamples = new Float32Array(totalSamples);
-    const qSamples = new Float32Array(totalSamples);
+    const iSamples = wasmModule.allocateFloat32Array(totalSamples);
+    const qSamples = wasmModule.allocateFloat32Array(totalSamples);
 
     for (let i = 0; i < totalSamples; i++) {
       const sample = samples[i];

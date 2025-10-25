@@ -25,8 +25,8 @@ import TalkgroupScanner, {
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import WaveformChart from "../components/WaveformChart";
+import { useDevice } from "../contexts/DeviceContext";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { type RDSStationData, type RDSDecoderStats } from "../models/RDSData";
 import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
 import {
@@ -53,7 +53,7 @@ function Visualizer(): React.JSX.Element {
     initialize,
     cleanup: _cleanup,
     isCheckingPaired,
-  } = useHackRFDevice();
+  } = useDevice();
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [signalType, setSignalType] = useState<SignalType>("FM");

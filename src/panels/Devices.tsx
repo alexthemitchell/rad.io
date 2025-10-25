@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useDevice } from "../contexts/DeviceContext";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
 
@@ -29,7 +29,7 @@ interface DevicesProps {
 }
 
 function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
-  const { device, initialize, cleanup, isCheckingPaired } = useHackRFDevice();
+  const { device, initialize, cleanup, isCheckingPaired } = useDevice();
   const { announce } = useLiveRegion();
 
   const [sampleRate, setSampleRate] = useState<number | null>(null);
@@ -86,7 +86,7 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
   };
 
   const handleDisconnect = (): void => {
-    cleanup();
+    void cleanup();
     setSampleRate(null);
     setFrequency(null);
     setDeviceInfo({});

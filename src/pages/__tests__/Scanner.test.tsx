@@ -1,11 +1,34 @@
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import Scanner from "../Scanner";
+
+// Mock the DeviceContext to avoid requiring a real provider in tests
+jest.mock("../../contexts/DeviceContext", () => ({
+  DeviceProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  useDevice: jest.fn(() => ({
+    device: null,
+    initialize: jest.fn(),
+    cleanup: jest.fn(),
+    isCheckingPaired: false,
+  })),
+  useDeviceContext: jest.fn(() => ({
+    devices: new Map(),
+    primaryDevice: undefined,
+    isCheckingPaired: false,
+    requestDevice: jest.fn(),
+    closeDevice: jest.fn(),
+    closeAllDevices: jest.fn(),
+  })),
+}));
 
 // Mock the hooks
 jest.mock("../../hooks/useHackRFDevice");
 jest.mock("../../hooks/useFrequencyScanner");
 jest.mock("../../hooks/useLiveRegion");
+
+// Import the component under test after mocks are in place
+const Scanner = require("../Scanner").default;
 
 // Mock react-router-dom's useNavigate
 const mockNavigate = jest.fn();

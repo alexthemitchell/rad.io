@@ -21,6 +21,7 @@ tests/  # AssemblyScript tests (not used)
 *.swo
 *~
 .DS_Store
+.playwright-mcp/
 
 # Environment
 .env
@@ -37,10 +38,6 @@ tests/  # AssemblyScript tests (not used)
 # Logs
 logs/
 *.log
-
-# Self-assessment reports (keep structure, ignore generated reports)
-.serena/memories/assessment-*.md
-.serena/memories/index.md
 
 # AssemblyScript generated files (unused)
 index.html

@@ -5,6 +5,7 @@
 
 export {
   calculateFFT,
+  calculateFFTOut,
   calculateWaveform,
   calculateSpectrogram,
   allocateFloat32Array,

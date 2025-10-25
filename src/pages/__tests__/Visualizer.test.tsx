@@ -1,6 +1,24 @@
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import Visualizer from "../Visualizer";
+
+// Mock the DeviceContext to avoid requiring a real provider in tests
+jest.mock("../../contexts/DeviceContext", () => ({
+  DeviceProvider: ({ children }: any) => <>{children}</>,
+  useDevice: jest.fn(() => ({
+    device: undefined,
+    initialize: jest.fn(),
+    cleanup: jest.fn(),
+    isCheckingPaired: false,
+  })),
+  useDeviceContext: jest.fn(() => ({
+    devices: new Map(),
+    primaryDevice: undefined,
+    isCheckingPaired: false,
+    requestDevice: jest.fn(),
+    closeDevice: jest.fn(),
+    closeAllDevices: jest.fn(),
+  })),
+}));
 
 // Mock the hooks
 jest.mock("../../hooks/useHackRFDevice");
@@ -187,6 +205,9 @@ global.AudioContext = jest.fn().mockImplementation(() => ({
   resume: jest.fn().mockResolvedValue(undefined),
   close: jest.fn().mockResolvedValue(undefined),
 })) as any;
+
+// Import the component under test after mocks are in place
+const Visualizer = require("../Visualizer").default;
 
 describe("Visualizer", () => {
   beforeEach(() => {

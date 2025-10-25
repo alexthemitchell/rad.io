@@ -103,6 +103,27 @@ jest.mock("../panels/Diagnostics", () => {
   };
 });
 
+// Mock the DeviceContext
+jest.mock("../contexts/DeviceContext", () => ({
+  DeviceProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  useDevice: jest.fn(() => ({
+    device: null,
+    initialize: jest.fn(),
+    cleanup: jest.fn(),
+    isCheckingPaired: false,
+  })),
+  useDeviceContext: jest.fn(() => ({
+    devices: new Map(),
+    primaryDevice: undefined,
+    isCheckingPaired: false,
+    requestDevice: jest.fn(),
+    closeDevice: jest.fn(),
+    closeAllDevices: jest.fn(),
+  })),
+}));
+
 describe("App", () => {
   beforeEach(() => {
     jest.clearAllMocks();

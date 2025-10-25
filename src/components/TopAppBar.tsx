@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useDevice } from "../contexts/DeviceContext";
 
 /**
  * TopAppBar component - Global status and quick actions
@@ -12,12 +12,12 @@ import { useHackRFDevice } from "../hooks/useHackRFDevice";
  * - Quick Record toggle button
  *
  * Integrates with:
- * - useHackRFDevice hook for device state
+ * - useDevice hook for device state
  * - Device capabilities for sample rate
  * - Future: recording system for quick record
  */
 function TopAppBar(): React.JSX.Element {
-  const { device } = useHackRFDevice();
+  const { device } = useDevice();
   const [sampleRate, setSampleRate] = useState<number | null>(null);
   const [bufferHealth, setBufferHealth] = useState<number>(100);
   const [isRecording] = useState(false);

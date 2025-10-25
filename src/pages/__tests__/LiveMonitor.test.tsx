@@ -1,6 +1,24 @@
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import LiveMonitor from "../LiveMonitor";
+
+// Mock the DeviceContext to avoid requiring a real provider in tests
+jest.mock("../../contexts/DeviceContext", () => ({
+  DeviceProvider: ({ children }: any) => <>{children}</>,
+  useDevice: jest.fn(() => ({
+    device: null,
+    initialize: jest.fn(),
+    cleanup: jest.fn(),
+    isCheckingPaired: false,
+  })),
+  useDeviceContext: jest.fn(() => ({
+    devices: new Map(),
+    primaryDevice: undefined,
+    isCheckingPaired: false,
+    requestDevice: jest.fn(),
+    closeDevice: jest.fn(),
+    closeAllDevices: jest.fn(),
+  })),
+}));
 
 // Mock the hooks
 jest.mock("../../hooks/useHackRFDevice");
@@ -82,6 +100,9 @@ jest.mock("../../utils/performanceMonitor", () => ({
     getFPS: jest.fn(() => 60),
   },
 }));
+
+// Import the component under test after mocks are in place
+const LiveMonitor = require("../LiveMonitor").default;
 
 describe("LiveMonitor", () => {
   beforeEach(() => {

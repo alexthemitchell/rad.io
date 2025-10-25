@@ -1,10 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import TopAppBar from "../TopAppBar";
 
-// Mock the useHackRFDevice hook
-jest.mock("../../hooks/useHackRFDevice", () => ({
-  useHackRFDevice: jest.fn(() => ({
+// Mock the useDevice hook from DeviceContext
+jest.mock("../../contexts/DeviceContext", () => ({
+  useDevice: jest.fn(() => ({
     device: null,
+    initialize: jest.fn(),
+    cleanup: jest.fn(),
+    isCheckingPaired: false,
   })),
 }));
 

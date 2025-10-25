@@ -1,6 +1,24 @@
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import Analysis from "../Analysis";
+
+// Mock the DeviceContext to avoid requiring a real provider in tests
+jest.mock("../../contexts/DeviceContext", () => ({
+  DeviceProvider: ({ children }: any) => <>{children}</>,
+  useDevice: jest.fn(() => ({
+    device: null,
+    initialize: jest.fn(),
+    cleanup: jest.fn(),
+    isCheckingPaired: false,
+  })),
+  useDeviceContext: jest.fn(() => ({
+    devices: new Map(),
+    primaryDevice: undefined,
+    isCheckingPaired: false,
+    requestDevice: jest.fn(),
+    closeDevice: jest.fn(),
+    closeAllDevices: jest.fn(),
+  })),
+}));
 
 // Mock the hooks
 jest.mock("../../hooks/useHackRFDevice");
@@ -44,6 +62,9 @@ jest.mock("../../components/Card", () => ({
     </div>
   ),
 }));
+
+// Import the component under test after mocks are in place
+const Analysis = require("../Analysis").default;
 
 describe("Analysis", () => {
   beforeEach(() => {
@@ -131,10 +152,11 @@ describe("Analysis", () => {
   });
 
   it("shows different message when device is connected but not listening", () => {
-    const { useHackRFDevice } = require("../../hooks/useHackRFDevice");
-    useHackRFDevice.mockReturnValue({
+    const { useDevice } = require("../../contexts/DeviceContext");
+    useDevice.mockReturnValue({
       device: { isReceiving: () => false },
       initialize: jest.fn(),
+      cleanup: jest.fn(),
       isCheckingPaired: false,
     });
 

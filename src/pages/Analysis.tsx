@@ -3,7 +3,7 @@ import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useDevice } from "../contexts/DeviceContext";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { type ISDRDevice } from "../models/SDRDevice";
 import { type Sample } from "../utils/dsp";
@@ -13,7 +13,7 @@ const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
 
 function Analysis(): React.JSX.Element {
-  const { device, initialize, isCheckingPaired } = useHackRFDevice();
+  const { device, initialize, isCheckingPaired } = useDevice();
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [frequency, _setFrequency] = useState(100.3e6);

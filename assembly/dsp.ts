@@ -119,6 +119,21 @@ export function calculateFFT(
 }
 
 /**
+ * Convenience wrapper that allocates and returns the FFT magnitude (dB) array.
+ * Returning the array lets JS receive a copy automatically via the loader,
+ * avoiding the need to manually copy results back from WASM memory.
+ */
+export function calculateFFTOut(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  fftSize: i32,
+): Float32Array {
+  const out = new Float32Array(fftSize);
+  calculateFFT(iSamples, qSamples, fftSize, out);
+  return out;
+}
+
+/**
  * Calculate waveform amplitude and phase from IQ samples
  *
  * @param iSamples - I (in-phase) component samples
