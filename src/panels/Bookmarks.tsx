@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveRegion } from "../hooks/useLiveRegion";
-import { formatFrequency, generateBookmarkId } from "../utils/frequency";
+import { formatFrequency } from "../utils/frequency";
+import { generateBookmarkId } from "../utils/id";
 
 /**
  * Bookmarks panel/page for frequency management
