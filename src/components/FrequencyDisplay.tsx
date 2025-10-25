@@ -76,7 +76,7 @@ function FrequencyDisplay({
       onChange(newFreq);
       announce(`Frequency: ${formatFrequency(newFreq)}`);
     },
-    [frequency, onChange, announce],
+    [frequency, onChange, announce, formatFrequency],
   );
 
   const handleStepChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
