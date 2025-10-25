@@ -6,6 +6,7 @@
  */
 
 import type { ClassifiedSignal } from "../detection/signal-classifier";
+import type { ISDRDevice } from "../utils/device-utils";
 
 /**
  * Scan strategy types
@@ -96,7 +97,7 @@ export interface IScanner {
    * @param signal Abort signal for cancellation
    */
   scan(
-    device: any, // SDRDevice type from models
+    device: ISDRDevice,
     config: ScanConfig,
     onProgress: (result: ScanResult) => void,
     signal: AbortSignal,

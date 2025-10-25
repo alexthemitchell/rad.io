@@ -50,7 +50,7 @@ export function useScan(enableDetection = false): UseScanReturn {
 
   // Initialize scan manager
   useEffect(() => {
-    if (initRef.current) return;
+    if (initRef.current) {return;}
 
     scanManager.initialize(enableDetection).catch((error) => {
       console.error("Failed to initialize scan manager:", error);

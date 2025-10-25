@@ -106,7 +106,7 @@ export class SignalClassifier {
     // Calculate edge width and rolloff rate
     const edgeWidth = rightEdge - leftEdge;
     // Single-bin spike: likely noise/artifact, not a sharp-edged signal
-    if (edgeWidth === 0) return 0;
+    if (edgeWidth === 0) {return 0;}
 
     const rolloff = Math.abs(power) / edgeWidth;
 

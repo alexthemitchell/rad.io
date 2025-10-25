@@ -5,6 +5,11 @@
  * Coordinates scanning operations with multiple strategies
  */
 
+import { DetectionManager } from "../detection/detection-manager";
+import { getSampleRate } from "../utils/device-utils";
+import { AdaptiveScanner } from "./adaptive-scanner";
+import { LinearScanner } from "./linear-scanner";
+import { PriorityScanner } from "./priority-scanner";
 import type {
   ScanConfig,
   ScanResult,
@@ -12,11 +17,6 @@ import type {
   ScanComplete,
   IScanner,
 } from "./types";
-import { LinearScanner } from "./linear-scanner";
-import { AdaptiveScanner } from "./adaptive-scanner";
-import { PriorityScanner } from "./priority-scanner";
-import { DetectionManager } from "../detection/detection-manager";
-import { getSampleRate } from "../utils/device-utils";
 
 /**
  * Active scan state
@@ -56,7 +56,7 @@ export class ScanManager {
    * @param device SDR device
    * @returns Scan ID for tracking
    */
-  async startScan(config: ScanConfig, device: any): Promise<string> {
+  startScan(config: ScanConfig, device: ISDRDevice): string {
     const scanId = `scan-${++this.scanIdCounter}`;
     const controller = new AbortController();
 
@@ -78,7 +78,7 @@ export class ScanManager {
     this.activeScans.set(scanId, scan);
 
     // Run scan in background
-    this.runScan(scanId, config, device, controller.signal).catch((error) => {
+    this.runScan(scanId, config, device, controller.signal).catch((error: unknown) => {
       if (!controller.signal.aborted) {
         console.error("Scan error:", error);
         this.emitError(scanId, error);
@@ -145,11 +145,13 @@ export class ScanManager {
   private async runScan(
     scanId: string,
     config: ScanConfig,
-    device: any,
+    device: ISDRDevice,
     signal: AbortSignal,
   ): Promise<void> {
     const scan = this.activeScans.get(scanId);
-    if (!scan) return;
+    if (!scan) {
+      return;
+    }
 
     // Create scanner based on strategy
     const scanner = this.createScanner(config.strategy);
@@ -160,7 +162,9 @@ export class ScanManager {
         device,
         config,
         (result) => {
-          if (signal.aborted) return;
+          if (signal.aborted) {
+            return;
+          }
 
           // Store result
           scan.results.push(result);
@@ -218,7 +222,7 @@ export class ScanManager {
    */
   private emitProgress(scanId: string, result: ScanResult): void {
     const scan = this.activeScans.get(scanId);
-    if (!scan) return;
+    if (!scan) {return;}
 
     const progress: ScanProgress = {
       scanId,
@@ -239,7 +243,7 @@ export class ScanManager {
    */
   private emitComplete(scanId: string, results: ScanResult[]): void {
     const scan = this.activeScans.get(scanId);
-    if (!scan) return;
+    if (!scan) {return;}
 
     const totalTime = Date.now() - scan.startTime;
 
@@ -264,7 +268,7 @@ export class ScanManager {
   /**
    * Emit error event
    */
-  private emitError(scanId: string, error: any): void {
+  private emitError(scanId: string, error: unknown): void {
     window.dispatchEvent(
       new CustomEvent("scan:error", {
         detail: {

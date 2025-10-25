@@ -5,9 +5,9 @@
  * Sequential scanning through a frequency range
  */
 
-import type { IScanner, ScanConfig, ScanResult } from "./types";
 import { fftWorkerPool } from "../dsp/fft-worker-pool";
 import { getSampleRate } from "../utils/device-utils";
+import type { IScanner, ScanConfig, ScanResult } from "./types";
 
 /**
  * Delay utility for settling time

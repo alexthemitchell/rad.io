@@ -15,9 +15,20 @@ const noiseFloorEstimator = new NoiseFloorEstimator();
 const signalClassifier = new SignalClassifier();
 
 /**
+ * Worker message interface
+ */
+interface DetectionWorkerMessage {
+  id: string;
+  spectrum: Float32Array;
+  sampleRate: number;
+  centerFreq: number;
+  config?: DetectionConfig;
+}
+
+/**
  * Message handler for detection requests
  */
-self.onmessage = async (event) => {
+self.onmessage = (event: MessageEvent<DetectionWorkerMessage>): void => {
   const startTime = performance.now();
   const { id, spectrum, sampleRate, centerFreq, config } = event.data;
 

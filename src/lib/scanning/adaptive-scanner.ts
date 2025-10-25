@@ -5,9 +5,9 @@
  * Intelligent scanning that adapts based on detected signals
  */
 
-import type { IScanner, ScanConfig, ScanResult } from "./types";
 import { fftWorkerPool } from "../dsp/fft-worker-pool";
 import { getSampleRate } from "../utils/device-utils";
+import type { IScanner, ScanConfig, ScanResult } from "./types";
 
 /**
  * Delay utility
@@ -20,7 +20,7 @@ async function delay(ms: number): Promise<void> {
  * Adaptive scanner that learns from scan results
  */
 export class AdaptiveScanner implements IScanner {
-  private interestingFrequencies: Map<number, number> = new Map();
+  private interestingFrequencies = new Map<number, number>();
   private readonly baseSettlingTime = 50;
   private readonly maxSettlingTime = 250;
 

@@ -5,10 +5,10 @@
  * Scans priority frequencies first, then fills in the range
  */
 
-import type { IScanner, ScanConfig, ScanResult } from "./types";
-import { LinearScanner } from "./linear-scanner";
 import { fftWorkerPool } from "../dsp/fft-worker-pool";
 import { getSampleRate } from "../utils/device-utils";
+import { LinearScanner } from "./linear-scanner";
+import type { IScanner, ScanConfig, ScanResult } from "./types";
 
 /**
  * Delay utility

@@ -51,10 +51,10 @@ export function useDetection(
 
   // Initialize detection manager
   useEffect(() => {
-    if (!enableAutoDetection) return;
+    if (!enableAutoDetection) {return;}
 
     const initializeDetection = async () => {
-      if (managerRef.current) return;
+      if (managerRef.current) {return;}
 
       const manager = new DetectionManager();
       await manager.initialize();
