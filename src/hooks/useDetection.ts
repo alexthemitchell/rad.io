@@ -29,6 +29,12 @@ export interface UseDetectionReturn {
 }
 
 /**
+ * Maximum number of signals to keep in memory
+ * Prevents unbounded memory growth in long-running sessions
+ */
+const MAX_SIGNALS = 1000;
+
+/**
  * React hook for signal detection
  * @param enableAutoDetection Automatically initialize detection on mount
  * @returns Detection state and controls
@@ -54,7 +60,14 @@ export function useDetection(
       await manager.initialize();
 
       manager.onDetection((detectedSignals) => {
-        setSignals((prev) => [...prev, ...detectedSignals]);
+        setSignals((prev) => {
+          const updated = [...prev, ...detectedSignals];
+          // Keep only the most recent MAX_SIGNALS signals
+          if (updated.length > MAX_SIGNALS) {
+            return updated.slice(updated.length - MAX_SIGNALS);
+          }
+          return updated;
+        });
       });
 
       manager.onNoiseFloor((floor) => {

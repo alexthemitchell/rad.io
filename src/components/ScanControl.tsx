@@ -38,10 +38,14 @@ export function ScanControl({
   const [strategy, setStrategy] = useState<ScanStrategy>(
     initialConfig.strategy ?? "linear",
   );
+  const [validationError, setValidationError] = useState<string>("");
 
   const handleStartScan = () => {
+    // Clear previous errors
+    setValidationError("");
+
     if (startFreq >= endFreq) {
-      alert("Start frequency must be less than end frequency");
+      setValidationError("Start frequency must be less than end frequency");
       return;
     }
 
@@ -127,6 +131,12 @@ export function ScanControl({
             </select>
           </label>
         </div>
+
+        {validationError && (
+          <div className="validation-error">
+            {validationError}
+          </div>
+        )}
 
         <div className="scan-info">
           <div className="info-item">

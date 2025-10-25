@@ -16,6 +16,7 @@ import { LinearScanner } from "./linear-scanner";
 import { AdaptiveScanner } from "./adaptive-scanner";
 import { PriorityScanner } from "./priority-scanner";
 import { DetectionManager } from "../detection/detection-manager";
+import { getSampleRate } from "../utils/device-utils";
 
 /**
  * Active scan state
@@ -169,7 +170,7 @@ export class ScanManager {
           if (this.detectionManager && result.powerSpectrum) {
             this.detectionManager.detectSignals(
               result.powerSpectrum,
-              device.config?.sampleRate ?? device.sampleRate,
+              getSampleRate(device),
               result.frequency,
               {
                 thresholdDB: config.detectionThreshold,

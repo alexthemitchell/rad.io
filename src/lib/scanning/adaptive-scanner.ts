@@ -7,6 +7,7 @@
 
 import type { IScanner, ScanConfig, ScanResult } from "./types";
 import { fftWorkerPool } from "../dsp/fft-worker-pool";
+import { getSampleRate } from "../utils/device-utils";
 
 /**
  * Delay utility
@@ -76,7 +77,7 @@ export class AdaptiveScanner implements IScanner {
         // Compute FFT
         const fft = await fftWorkerPool.computeFFT(
           samples,
-          device.config?.sampleRate ?? device.sampleRate,
+          getSampleRate(device),
         );
 
         // Calculate statistics

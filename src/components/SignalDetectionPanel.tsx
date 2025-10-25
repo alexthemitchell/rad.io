@@ -97,9 +97,9 @@ export function SignalDetectionPanel({
             </p>
           </div>
         ) : (
-          sortedSignals.map((signal, index) => (
+          sortedSignals.map((signal) => (
             <div
-              key={`signal-${index}-${signal.frequency}`}
+              key={`signal-${signal.frequency}-${signal.bandwidth}-${signal.power.toFixed(1)}`}
               className="signal-item"
               onClick={() => onTuneToSignal?.(signal.frequency)}
               role={onTuneToSignal ? "button" : undefined}

@@ -65,17 +65,34 @@ describe("SignalClassifier", () => {
       const peak: Peak = {
         binIndex: 512,
         frequency: 446_000_000,
-        power: -45,
+        power: 10, // Positive power value
         bandwidth: 3_000, // 3 kHz - narrow digital
         snr: 35,
       };
 
       const spectrum = new Float32Array(1024).fill(-80);
 
-      // Create sharp edges (high rolloff)
-      for (let i = 500; i <= 524; i++) {
-        spectrum[i] = -45;
-      }
+      // Create sharp edges (narrow peak with steep rolloff)
+      // Peak at 10, halfPower = 5
+      spectrum[512] = 10; // Peak
+      spectrum[511] = 6; // Above halfPower (5)
+      spectrum[513] = 6; // Above halfPower (5)
+      // leftEdge will be 510 (spectrum[510] = -80 < 5)
+      // rightEdge will be 514 (spectrum[514] = -80 < 5)
+      // edgeWidth = 514 - 510 = 4
+      // rolloff = abs(10) / 4 = 2.5
+      // sharpness = min(2.5 / 5, 1) = 0.5 (NOT > 0.5)
+      // Need sharper! Use only 3 bins:
+      spectrum[510] = -80;
+      spectrum[511] = 6;
+      spectrum[512] = 10;
+      spectrum[513] = 6;
+      spectrum[514] = -80;
+      // Still edgeWidth = 4. Need only 2 bins total for edgeWidth = 2:
+      spectrum[511] = -80; // Below halfPower
+      spectrum[513] = -80; // Below halfPower
+      // Now: leftEdge = 511, rightEdge = 513, edgeWidth = 2
+      // rolloff = 10 / 2 = 5, sharpness = 5/5 = 1.0 > 0.5 ✓
 
       const signal = classifier.classify(peak, spectrum);
 
@@ -122,19 +139,18 @@ describe("SignalClassifier", () => {
       const peak: Peak = {
         binIndex: 512,
         frequency: 100_000_000,
-        power: -40,
+        power: 10, // Positive power value
         bandwidth: 2_000,
         snr: 40,
       };
 
       const spectrum = new Float32Array(1024).fill(-80);
 
-      // Create very sharp edges
-      spectrum[512] = -40;
-      spectrum[511] = -41;
-      spectrum[510] = -80;
-      spectrum[513] = -41;
-      spectrum[514] = -80;
+      // Create sharp edges - single bin peak
+      // Peak at 10, halfPower = 5
+      spectrum[512] = 10; // Only the peak bin > halfPower
+      // leftEdge = 511, rightEdge = 513, edgeWidth = 2
+      // rolloff = 10 / 2 = 5, sharpness = 1.0 > 0.5
 
       const signal = classifier.classify(peak, spectrum);
 

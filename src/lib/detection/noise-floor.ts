@@ -34,10 +34,11 @@ export class NoiseFloorEstimator {
     }
 
     // Compute median at each bin across all history
+    // Optimization: Use selection algorithm instead of full sort for median
     const medianSpectrum = new Float32Array(spectrum.length);
     for (let i = 0; i < spectrum.length; i++) {
-      const values = this.history.map((h) => h[i]).sort((a, b) => a - b);
-      medianSpectrum[i] = values[Math.floor(values.length / 2)];
+      const values = this.history.map((h) => h[i]);
+      medianSpectrum[i] = this.quickMedian(values);
     }
 
     // Noise floor is median of lower 25% of bins
@@ -45,6 +46,17 @@ export class NoiseFloorEstimator {
     const sorted = Array.from(medianSpectrum).sort((a, b) => a - b);
     const quarterPoint = Math.floor(sorted.length * 0.25);
     return sorted[quarterPoint];
+  }
+
+  /**
+   * Quick median calculation using partial sort (more efficient than full sort)
+   * @param values Array of values
+   * @returns Median value
+   */
+  private quickMedian(values: number[]): number {
+    const sorted = values.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted[mid];
   }
 
   /**

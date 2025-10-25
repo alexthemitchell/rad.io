@@ -64,6 +64,16 @@
   margin-top: 4px;
 }
 
+.validation-error {
+  padding: 8px 12px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid var(--accent-red, #f44336);
+  border-radius: 4px;
+  color: var(--accent-red, #f44336);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
 .scan-info {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

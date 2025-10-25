@@ -74,7 +74,9 @@ export function useScan(enableDetection = false): UseScanReturn {
       const { scanId: eventScanId, result, progress: scanProgress } = customEvent.detail;
 
       if (eventScanId === scanId) {
-        setResults((prev) => [...prev, result]);
+        if (result !== undefined) {
+          setResults((prev) => [...prev, result]);
+        }
         setProgress(scanProgress);
       }
     };

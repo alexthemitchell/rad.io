@@ -42,7 +42,13 @@ export class SignalClassifier {
     let type: SignalType = "unknown";
     let confidence = 0;
 
+    // Classification priority order (to handle overlapping bandwidth ranges):
+    // 1. Digital (1-5 kHz): Check first because it requires edge sharpness
+    // 2. AM (4-11 kHz): Has overlap with digital at 4-5 kHz
+    // 3. FM: Non-overlapping ranges for narrowband and wideband
+    
     // Digital: Often narrowband with sharp edges (check first for priority)
+    // Note: 4-5 kHz overlaps with AM, but sharp edges distinguish digital signals
     if (peak.bandwidth >= 1_000 && peak.bandwidth <= 5_000) {
       const sharpness = this.measureEdgeSharpness(peak, spectrum);
       if (sharpness > 0.5) {
@@ -52,6 +58,7 @@ export class SignalClassifier {
     }
     
     // AM: bandwidth 4-11 kHz (but not if already classified as digital)
+    // The 4-5 kHz overlap is intentional - signals without sharp edges fall through to AM
     if (type === "unknown" && peak.bandwidth >= 4_000 && peak.bandwidth < 12_000) {
       type = "am";
       confidence = 0.7;
@@ -98,7 +105,8 @@ export class SignalClassifier {
 
     // Calculate edge width and rolloff rate
     const edgeWidth = rightEdge - leftEdge;
-    if (edgeWidth === 0) return 1; // Zero width = infinitely sharp edges
+    // Single-bin spike: likely noise/artifact, not a sharp-edged signal
+    if (edgeWidth === 0) return 0;
 
     const rolloff = Math.abs(power) / edgeWidth;
 
