@@ -4,6 +4,7 @@
 
 import { LinearScanner } from "../linear-scanner";
 import type { ScanConfig } from "../types";
+import type { ISDRDevice } from "../../utils/device-utils";
 
 // Mock FFT worker pool
 jest.mock("../../dsp/fft-worker-pool", () => ({
@@ -19,7 +20,7 @@ jest.mock("../../dsp/fft-worker-pool", () => ({
 
 describe("LinearScanner", () => {
   let scanner: LinearScanner;
-  let mockDevice: any;
+  let mockDevice: ISDRDevice;
 
   beforeEach(() => {
     scanner = new LinearScanner();

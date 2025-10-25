@@ -3,7 +3,8 @@
  * UI for configuring and controlling frequency scans
  */
 
-import React, { useState } from "react";
+import type { ReactElement } from "react";
+import { useState } from "react";
 import type { ScanConfig, ScanStrategy } from "../lib/scanning/types";
 import "./ScanControl.css";
 
@@ -29,7 +30,7 @@ export function ScanControl({
   onStartScan,
   onStopScan,
   initialConfig = {},
-}: ScanControlProps): JSX.Element {
+}: ScanControlProps): ReactElement {
   const [startFreq, setStartFreq] = useState(
     initialConfig.startFreq ?? 146_000_000,
   );
@@ -61,7 +62,7 @@ export function ScanControl({
     onStartScan(config);
   };
 
-  const totalFreqs = Math.ceil((endFreq - startFreq) / step);
+  const totalFreqs = Math.floor((endFreq - startFreq) / step) + 1;
   const estimatedTime = (totalFreqs * 50) / 1000; // Rough estimate in seconds
 
   return (

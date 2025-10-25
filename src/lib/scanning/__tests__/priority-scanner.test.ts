@@ -4,6 +4,7 @@
 
 import { PriorityScanner } from "../priority-scanner";
 import type { ScanConfig } from "../types";
+import type { ISDRDevice } from "../../utils/device-utils";
 
 // Mock FFT worker pool
 jest.mock("../../dsp/fft-worker-pool", () => ({
@@ -41,7 +42,7 @@ jest.mock("../linear-scanner", () => ({
 
 describe("PriorityScanner", () => {
   let scanner: PriorityScanner;
-  let mockDevice: any;
+  let mockDevice: ISDRDevice;
 
   beforeEach(() => {
     scanner = new PriorityScanner();

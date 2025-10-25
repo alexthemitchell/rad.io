@@ -4,6 +4,7 @@
 
 import { ScanManager } from "../scan-manager";
 import type { ScanConfig } from "../types";
+import type { ISDRDevice } from "../../utils/device-utils";
 
 // Mock scanners
 jest.mock("../linear-scanner", () => ({
@@ -33,7 +34,7 @@ jest.mock("../../detection/detection-manager", () => ({
 
 describe("ScanManager", () => {
   let manager: ScanManager;
-  let mockDevice: any;
+  let mockDevice: ISDRDevice;
 
   beforeEach(() => {
     manager = new ScanManager();

@@ -11,6 +11,7 @@ import type {
   ScanProgress,
   ScanComplete,
 } from "../lib/scanning/types";
+import type { ISDRDevice } from "../lib/utils/device-utils";
 
 /**
  * Hook return type

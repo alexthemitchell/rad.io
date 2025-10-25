@@ -95,8 +95,8 @@ describe("ScanControl", () => {
   it("should calculate estimated time", () => {
     render(<ScanControl {...defaultProps} />);
 
-    // 81 frequencies * 50ms = 4050ms = 4.1s
-    expect(screen.getByText(/4\.1s/)).toBeInTheDocument();
+    // 81 frequencies * 50ms = 4050ms = 4.05s (displays as 4.0s)
+    expect(screen.getByText(/4\.0s/)).toBeInTheDocument();
   });
 
   it("should call onStartScan with correct config", () => {

@@ -21,7 +21,7 @@ export interface SignalDetectionPanelProps {
 /**
  * Display signal type with color coding
  */
-function SignalTypeBadge({ type }: { type: string }): JSX.Element {
+function SignalTypeBadge({ type }: { type: string }): ReactElement {
   const colorMap: Record<string, string> = {
     narrowbandFm: "badge-nfm",
     widebandFm: "badge-wfm",
@@ -63,7 +63,7 @@ export function SignalDetectionPanel({
   noiseFloor,
   onTuneToSignal,
   onClearSignals,
-}: SignalDetectionPanelProps): JSX.Element {
+}: SignalDetectionPanelProps): ReactElement {
   // Sort signals by SNR (strongest first)
   const sortedSignals = [...signals].sort((a, b) => b.snr - a.snr);
 
@@ -97,9 +97,9 @@ export function SignalDetectionPanel({
             </p>
           </div>
         ) : (
-          sortedSignals.map((signal) => (
+          sortedSignals.map((signal, index) => (
             <div
-              key={`signal-${signal.frequency}-${signal.bandwidth}-${signal.power.toFixed(1)}`}
+              key={`signal-${signal.frequency}-${signal.bandwidth}-${index}`}
               className="signal-item"
               onClick={() => onTuneToSignal?.(signal.frequency)}
               onKeyDown={(e) => {

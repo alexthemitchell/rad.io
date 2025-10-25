@@ -4,6 +4,7 @@
 
 import { AdaptiveScanner } from "../adaptive-scanner";
 import type { ScanConfig } from "../types";
+import type { ISDRDevice } from "../../utils/device-utils";
 
 // Mock FFT worker pool
 jest.mock("../../dsp/fft-worker-pool", () => ({
@@ -21,7 +22,7 @@ jest.mock("../../dsp/fft-worker-pool", () => ({
 
 describe("AdaptiveScanner", () => {
   let scanner: AdaptiveScanner;
-  let mockDevice: any;
+  let mockDevice: ISDRDevice;
 
   beforeEach(() => {
     scanner = new AdaptiveScanner();

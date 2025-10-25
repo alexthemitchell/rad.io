@@ -6,7 +6,7 @@
  */
 
 import { DetectionManager } from "../detection/detection-manager";
-import { getSampleRate } from "../utils/device-utils";
+import { getSampleRate, type ISDRDevice } from "../utils/device-utils";
 import { AdaptiveScanner } from "./adaptive-scanner";
 import { LinearScanner } from "./linear-scanner";
 import { PriorityScanner } from "./priority-scanner";
@@ -229,7 +229,9 @@ export class ScanManager {
    */
   private emitProgress(scanId: string, result: ScanResult): void {
     const scan = this.activeScans.get(scanId);
-    if (!scan) {return;}
+    if (!scan) {
+      return;
+    }
 
     const progress: ScanProgress = {
       scanId,
@@ -250,7 +252,9 @@ export class ScanManager {
    */
   private emitComplete(scanId: string, results: ScanResult[]): void {
     const scan = this.activeScans.get(scanId);
-    if (!scan) {return;}
+    if (!scan) {
+      return;
+    }
 
     const totalTime = Date.now() - scan.startTime;
 
