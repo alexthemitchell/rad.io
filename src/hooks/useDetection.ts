@@ -45,21 +45,25 @@ export function useDetection(
   const [signals, setSignals] = useState<ClassifiedSignal[]>([]);
   const [noiseFloor, setNoiseFloor] = useState<number>(-Infinity);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [config, setConfig] = useState<DetectionConfig>({});
+  const [_config, setConfig] = useState<DetectionConfig>({});
 
   const managerRef = useRef<DetectionManager | null>(null);
 
   // Initialize detection manager
   useEffect(() => {
-    if (!enableAutoDetection) {return;}
+    if (!enableAutoDetection) {
+      return;
+    }
 
-    const initializeDetection = async () => {
-      if (managerRef.current) {return;}
+    const initializeDetection = (): void => {
+      if (managerRef.current) {
+        return;
+      }
 
       const manager = new DetectionManager();
-      await manager.initialize();
+      manager.initialize();
 
-      manager.onDetection((detectedSignals) => {
+      manager.onDetection((detectedSignals): void => {
         setSignals((prev) => {
           const updated = [...prev, ...detectedSignals];
           // Keep only the most recent MAX_SIGNALS signals
@@ -70,7 +74,7 @@ export function useDetection(
         });
       });
 
-      manager.onNoiseFloor((floor) => {
+      manager.onNoiseFloor((floor): void => {
         setNoiseFloor(floor);
       });
 
@@ -78,11 +82,9 @@ export function useDetection(
       setIsInitialized(true);
     };
 
-    initializeDetection().catch((error) => {
-      console.error("Failed to initialize detection:", error);
-    });
+    initializeDetection();
 
-    return () => {
+    return (): void => {
       if (managerRef.current) {
         managerRef.current.destroy();
         managerRef.current = null;

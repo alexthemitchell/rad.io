@@ -6,7 +6,7 @@
  */
 
 import { fftWorkerPool } from "../dsp/fft-worker-pool";
-import { getSampleRate } from "../utils/device-utils";
+import { getSampleRate, type ISDRDevice } from "../utils/device-utils";
 import { LinearScanner } from "./linear-scanner";
 import type { IScanner, ScanConfig, ScanResult } from "./types";
 
@@ -32,7 +32,7 @@ export class PriorityScanner implements IScanner {
    * @returns Array of scan results
    */
   async scan(
-    device: any,
+    device: ISDRDevice,
     config: ScanConfig,
     onProgress: (result: ScanResult) => void,
     signal: AbortSignal,
@@ -101,7 +101,7 @@ export class PriorityScanner implements IScanner {
    * Scan a single frequency
    */
   private async scanFrequency(
-    device: any,
+    device: ISDRDevice,
     freq: number,
     settlingTime: number,
     sampleCount: number,

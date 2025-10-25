@@ -10,7 +10,7 @@ import type { ScanConfig } from "../../lib/scanning/types";
 // Mock scan manager
 jest.mock("../../lib/scanning/scan-manager", () => ({
   scanManager: {
-    initialize: jest.fn().mockResolvedValue(undefined),
+    initialize: jest.fn(),
     startScan: jest.fn(),
     stopScan: jest.fn(),
     getActiveScans: jest.fn().mockReturnValue([]),
@@ -40,7 +40,7 @@ describe("useScan", () => {
   });
 
   it("should start a scan", async () => {
-    (scanManager.startScan as jest.Mock).mockResolvedValue("scan-123");
+    (scanManager.startScan as jest.Mock).mockReturnValue("scan-123");
 
     const { result } = renderHook(() => useScan());
 
@@ -52,7 +52,7 @@ describe("useScan", () => {
     };
 
     await act(async () => {
-      await result.current.startScan(config, mockDevice);
+      result.current.startScan(config, mockDevice);
     });
 
     expect(scanManager.startScan).toHaveBeenCalledWith(config, mockDevice);
@@ -61,7 +61,7 @@ describe("useScan", () => {
   });
 
   it("should not start scan if already scanning", async () => {
-    (scanManager.startScan as jest.Mock).mockResolvedValue("scan-123");
+    (scanManager.startScan as jest.Mock).mockReturnValue("scan-123");
 
     const { result } = renderHook(() => useScan());
 
@@ -73,14 +73,14 @@ describe("useScan", () => {
     };
 
     await act(async () => {
-      await result.current.startScan(config, mockDevice);
+      result.current.startScan(config, mockDevice);
     });
 
     // Try to start another scan
     const callCount = (scanManager.startScan as jest.Mock).mock.calls.length;
 
     await act(async () => {
-      await result.current.startScan(config, mockDevice);
+      result.current.startScan(config, mockDevice);
     });
 
     // Should not have called startScan again
@@ -88,7 +88,7 @@ describe("useScan", () => {
   });
 
   it("should stop a scan", async () => {
-    (scanManager.startScan as jest.Mock).mockResolvedValue("scan-123");
+    (scanManager.startScan as jest.Mock).mockReturnValue("scan-123");
 
     const { result } = renderHook(() => useScan());
 
@@ -100,7 +100,7 @@ describe("useScan", () => {
     };
 
     await act(async () => {
-      await result.current.startScan(config, mockDevice);
+      result.current.startScan(config, mockDevice);
     });
 
     act(() => {
@@ -113,7 +113,7 @@ describe("useScan", () => {
   });
 
   it("should handle scan progress events", async () => {
-    (scanManager.startScan as jest.Mock).mockResolvedValue("scan-123");
+    (scanManager.startScan as jest.Mock).mockReturnValue("scan-123");
 
     const { result } = renderHook(() => useScan());
 
@@ -125,7 +125,7 @@ describe("useScan", () => {
     };
 
     await act(async () => {
-      await result.current.startScan(config, mockDevice);
+      result.current.startScan(config, mockDevice);
     });
 
     // Simulate progress event
@@ -157,7 +157,7 @@ describe("useScan", () => {
   });
 
   it("should handle scan complete events", async () => {
-    (scanManager.startScan as jest.Mock).mockResolvedValue("scan-123");
+    (scanManager.startScan as jest.Mock).mockReturnValue("scan-123");
 
     const { result } = renderHook(() => useScan());
 
@@ -169,7 +169,7 @@ describe("useScan", () => {
     };
 
     await act(async () => {
-      await result.current.startScan(config, mockDevice);
+      result.current.startScan(config, mockDevice);
     });
 
     // Simulate complete event
@@ -195,7 +195,7 @@ describe("useScan", () => {
 
   it("should handle scan error events", async () => {
     const consoleError = jest.spyOn(console, "error").mockImplementation();
-    (scanManager.startScan as jest.Mock).mockResolvedValue("scan-123");
+    (scanManager.startScan as jest.Mock).mockReturnValue("scan-123");
 
     const { result } = renderHook(() => useScan());
 
@@ -207,7 +207,7 @@ describe("useScan", () => {
     };
 
     await act(async () => {
-      await result.current.startScan(config, mockDevice);
+      result.current.startScan(config, mockDevice);
     });
 
     // Simulate error event

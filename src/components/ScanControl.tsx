@@ -29,7 +29,7 @@ export function ScanControl({
   onStartScan,
   onStopScan,
   initialConfig = {},
-}: ScanControlProps) {
+}: ScanControlProps): JSX.Element {
   const [startFreq, setStartFreq] = useState(
     initialConfig.startFreq ?? 146_000_000,
   );
@@ -40,7 +40,7 @@ export function ScanControl({
   );
   const [validationError, setValidationError] = useState<string>("");
 
-  const handleStartScan = () => {
+  const handleStartScan = (): void => {
     // Clear previous errors
     setValidationError("");
 

@@ -21,10 +21,10 @@ export interface SignalDetectionPanelProps {
 /**
  * Display signal type with color coding
  */
-function SignalTypeBadge({ type }: { type: string }) {
+function SignalTypeBadge({ type }: { type: string }): JSX.Element {
   const colorMap: Record<string, string> = {
-    "narrowband-fm": "badge-nfm",
-    "wideband-fm": "badge-wfm",
+    narrowbandFm: "badge-nfm",
+    widebandFm: "badge-wfm",
     am: "badge-am",
     digital: "badge-digital",
     pulsed: "badge-pulsed",
@@ -32,7 +32,7 @@ function SignalTypeBadge({ type }: { type: string }) {
   };
 
   return (
-    <span className={`signal-badge ${colorMap[type] || "badge-unknown"}`}>
+    <span className={`signal-badge ${colorMap[type] ?? "badge-unknown"}`}>
       {type.toUpperCase().replace("-", " ")}
     </span>
   );
@@ -63,7 +63,7 @@ export function SignalDetectionPanel({
   noiseFloor,
   onTuneToSignal,
   onClearSignals,
-}: SignalDetectionPanelProps) {
+}: SignalDetectionPanelProps): JSX.Element {
   // Sort signals by SNR (strongest first)
   const sortedSignals = [...signals].sort((a, b) => b.snr - a.snr);
 
@@ -102,6 +102,11 @@ export function SignalDetectionPanel({
               key={`signal-${signal.frequency}-${signal.bandwidth}-${signal.power.toFixed(1)}`}
               className="signal-item"
               onClick={() => onTuneToSignal?.(signal.frequency)}
+              onKeyDown={(e) => {
+                if ((e.key === "Enter" || e.key === " ") && onTuneToSignal) {
+                  onTuneToSignal(signal.frequency);
+                }
+              }}
               role={onTuneToSignal ? "button" : undefined}
               tabIndex={onTuneToSignal ? 0 : undefined}
             >

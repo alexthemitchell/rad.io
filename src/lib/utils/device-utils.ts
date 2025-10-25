@@ -11,8 +11,8 @@ export interface ISDRDevice {
     sampleRate?: number;
   };
   sampleRate?: number;
-  setFrequency?: (freq: number) => Promise<void>;
-  captureSamples?: (count: number) => Promise<Float32Array>;
+  setFrequency: (freq: number) => Promise<void>;
+  captureSamples: (count: number) => Promise<Float32Array>;
 }
 
 /**

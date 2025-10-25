@@ -27,7 +27,7 @@ export interface UseScanReturn {
   /** Frequencies with detected signals */
   activeFrequencies: number[];
   /** Start a new scan */
-  startScan: (config: ScanConfig, device: any) => Promise<void>;
+  startScan: (config: ScanConfig, device: ISDRDevice) => void;
   /** Stop the current scan */
   stopScan: () => void;
   /** Clear scan results */
@@ -50,15 +50,15 @@ export function useScan(enableDetection = false): UseScanReturn {
 
   // Initialize scan manager
   useEffect(() => {
-    if (initRef.current) {return;}
+    if (initRef.current) {
+      return;
+    }
 
-    scanManager.initialize(enableDetection).catch((error) => {
-      console.error("Failed to initialize scan manager:", error);
-    });
+    scanManager.initialize(enableDetection);
 
     initRef.current = true;
 
-    return () => {
+    return (): void => {
       // Clean up any active scans
       const activeScans = scanManager.getActiveScans();
       for (const id of activeScans) {
@@ -69,7 +69,7 @@ export function useScan(enableDetection = false): UseScanReturn {
 
   // Listen for scan events
   useEffect(() => {
-    const handleProgress = (event: Event) => {
+    const handleProgress = (event: Event): void => {
       const customEvent = event as CustomEvent<ScanProgress>;
       const { scanId: eventScanId, result, progress: scanProgress } = customEvent.detail;
 
@@ -81,7 +81,7 @@ export function useScan(enableDetection = false): UseScanReturn {
       }
     };
 
-    const handleComplete = (event: Event) => {
+    const handleComplete = (event: Event): void => {
       const customEvent = event as CustomEvent<ScanComplete>;
       const { scanId: eventScanId, activeFrequencies: active } = customEvent.detail;
 
@@ -92,7 +92,7 @@ export function useScan(enableDetection = false): UseScanReturn {
       }
     };
 
-    const handleError = (event: Event) => {
+    const handleError = (event: Event): void => {
       const customEvent = event as CustomEvent<{ scanId: string; error: string }>;
       const { scanId: eventScanId, error } = customEvent.detail;
 
@@ -106,14 +106,14 @@ export function useScan(enableDetection = false): UseScanReturn {
     window.addEventListener("scan:complete", handleComplete);
     window.addEventListener("scan:error", handleError);
 
-    return () => {
+    return (): void => {
       window.removeEventListener("scan:progress", handleProgress);
       window.removeEventListener("scan:complete", handleComplete);
       window.removeEventListener("scan:error", handleError);
     };
   }, [scanId]);
 
-  const startScan = useCallback(async (config: ScanConfig, device: any) => {
+  const startScan = useCallback((config: ScanConfig, device: ISDRDevice): void => {
     if (isScanning) {
       console.warn("Scan already in progress");
       return;
@@ -124,7 +124,7 @@ export function useScan(enableDetection = false): UseScanReturn {
     setActiveFrequencies([]);
     setIsScanning(true);
 
-    const id = await scanManager.startScan(config, device);
+    const id = scanManager.startScan(config, device);
     setScanId(id);
   }, [isScanning]);
 

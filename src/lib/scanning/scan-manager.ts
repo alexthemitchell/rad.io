@@ -43,10 +43,10 @@ export class ScanManager {
    * Initialize with optional detection integration
    * @param enableDetection Enable signal detection during scans
    */
-  async initialize(enableDetection = false): Promise<void> {
+  initialize(enableDetection = false): void {
     if (enableDetection) {
       this.detectionManager = new DetectionManager();
-      await this.detectionManager.initialize();
+      this.detectionManager.initialize();
     }
   }
 
@@ -142,6 +142,7 @@ export class ScanManager {
   /**
    * Run a scan with the configured strategy
    */
+  /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-condition */
   private async runScan(
     scanId: string,
     config: ScanConfig,
@@ -155,6 +156,9 @@ export class ScanManager {
 
     // Create scanner based on strategy
     const scanner = this.createScanner(config.strategy);
+    
+    // Capture device sample rate for use in callback
+    const deviceSampleRate = getSampleRate(device);
 
     try {
       // Run scan with progress tracking
@@ -171,15 +175,17 @@ export class ScanManager {
           scan.scannedFreqs++;
 
           // Detect signals if enabled
-          if (this.detectionManager && result.powerSpectrum) {
-            this.detectionManager.detectSignals(
-              result.powerSpectrum,
-              getSampleRate(device),
-              result.frequency,
-              {
-                thresholdDB: config.detectionThreshold,
-              },
-            );
+          if (this.detectionManager) {
+            if (result.powerSpectrum) {
+              this.detectionManager.detectSignals(
+                result.powerSpectrum,
+                deviceSampleRate,
+                result.frequency,
+                {
+                  thresholdDB: config.detectionThreshold,
+                },
+              );
+            }
           }
 
           // Emit progress
@@ -199,6 +205,7 @@ export class ScanManager {
       }
     }
   }
+  /* eslint-enable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-condition */
 
   /**
    * Create scanner based on strategy

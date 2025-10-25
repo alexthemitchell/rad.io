@@ -47,7 +47,7 @@ export class DetectionManager {
   /**
    * Initialize the detection worker
    */
-  async initialize(): Promise<void> {
+  initialize(): void {
     if (this.worker) {
       return;
     }
@@ -58,7 +58,7 @@ export class DetectionManager {
       { type: "module" },
     );
 
-    this.worker.onmessage = (event) => {
+    this.worker.onmessage = (event: MessageEvent<DetectionResult>): void => {
       const result: DetectionResult = event.data;
 
       if (this.onSignalsDetected) {
@@ -70,7 +70,7 @@ export class DetectionManager {
       }
     };
 
-    this.worker.onerror = (error) => {
+    this.worker.onerror = (error: ErrorEvent): void => {
       console.error("Detection worker error:", error);
     };
   }
