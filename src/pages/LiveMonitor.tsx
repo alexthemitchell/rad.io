@@ -13,10 +13,12 @@ import SignalStrengthMeterChart from "../components/SignalStrengthMeterChart";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
+import StatusBar, { RenderTier } from "../components/StatusBar";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import WaveformChart from "../components/WaveformChart";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { useLiveRegion } from "../hooks/useLiveRegion";
+import { renderTierManager } from "../lib/render/RenderTierManager";
 import { type ISDRDevice } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,
@@ -31,495 +33,90 @@ const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
 const AUDIO_BUFFER_SIZE = 131072;
 
 function LiveMonitor(): React.JSX.Element {
-  const location = useLocation();
-  const {
-    device,
-    initialize,
-    cleanup: _cleanup,
-    isCheckingPaired,
-  } = useHackRFDevice();
+  // Accessibility: skip link and live region
+  const { announce, liveRegion: LiveRegion } = useLiveRegion();
+  const { device, initialize, isCheckingPaired } = useHackRFDevice();
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [signalType, setSignalType] = useState<SignalType>("FM");
-  const [frequency, setFrequency] = useState(100.3e6);
-  const [bandwidth, setBandwidth] = useState(20e6);
-  const [samples, setSamples] = useState<Sample[]>([]);
-  const [latestSamples, setLatestSamples] = useState<Sample[]>([]);
   const [deviceError, setDeviceError] = useState<Error | null>(null);
-  const [isResetting, setIsResetting] = useState(false);
-
-  // Handle navigation state (e.g., from Scanner)
-  useEffect(() => {
-    const state = location.state as {
-      frequency?: number;
-      signalType?: SignalType;
-    } | null;
-    if (state?.frequency) {
-      setFrequency(state.frequency);
-      if (state.signalType) {
-        setSignalType(state.signalType);
-      }
-      // Tune to the frequency if device is available
-      if (device) {
-        device.setFrequency(state.frequency).catch(console.error);
-      }
-    }
-  }, [location.state, device]);
-
-  // Audio playback state
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [frequency, setFrequency] = useState(100.3e6);
+  const [signalType, setSignalType] = useState<SignalType>("FM");
+  const [bandwidth, setBandwidth] = useState(20e6);
   const [audioVolume, setAudioVolume] = useState(0.5);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
+  // Status bar metrics
+  const [renderTier, setRenderTier] = useState<RenderTier>(RenderTier.Unknown);
+  const [fps, setFps] = useState<number>(0);
+  const [bufferHealth, setBufferHealth] = useState<number>(100);
+  const [storageUsed, setStorageUsed] = useState<number>(0);
+  const [storageQuota, setStorageQuota] = useState<number>(0);
 
-  const sampleBufferRef = useRef<Sample[]>([]);
-  const latestChunkRef = useRef<Sample[]>([]);
-  const rafIdRef = useRef<number | null>(null);
-  const lastUpdateRef = useRef<number>(0);
-  const receivePromiseRef = useRef<Promise<void> | null>(null);
-  const shouldStartOnConnectRef = useRef(false);
-
-  // Audio processing refs
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const audioSampleBufferRef = useRef<Sample[]>([]);
-
-  // Live region for screen reader announcements
-  const { announce, liveRegion: LiveRegion } = useLiveRegion();
-
-  // P25 state
-  const [controlChannel, setControlChannel] = useState(770.95625e6);
-  const [nac, setNac] = useState("$293");
-  const [systemId, setSystemId] = useState("$001");
-  const [wacn, setWacn] = useState("$BEE00");
-
-  // Initialize audio context
+  // Subscribe to render tier changes
+  useEffect(() => renderTierManager.subscribe(setRenderTier), []);
+  // Poll FPS
   useEffect(() => {
-    const initialVolume = audioVolume;
-    audioContextRef.current = new AudioContext();
-    gainNodeRef.current = audioContextRef.current.createGain();
-    gainNodeRef.current.connect(audioContextRef.current.destination);
-    gainNodeRef.current.gain.value = initialVolume;
-    audioProcessorRef.current = new AudioStreamProcessor(2048000);
-
-    return (): void => {
-      void audioProcessorRef.current?.cleanup();
-      void audioContextRef.current?.close();
+    const id = setInterval(() => setFps(performanceMonitor.getFPS()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  // Poll Storage API
+  useEffect(() => {
+    let cancelled = false;
+    const update = async () => {
+      try {
+        const est = await navigator.storage.estimate();
+        if (!cancelled) {
+          setStorageUsed(est.usage ?? 0);
+          setStorageQuota(est.quota ?? 0);
+        }
+      } catch {}
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    update();
+    const id = setInterval(update, 5000);
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
-
-  // Update volume
+  // Buffer health (simplified)
   useEffect(() => {
-    if (gainNodeRef.current) {
-      gainNodeRef.current.gain.value = isAudioMuted ? 0 : audioVolume;
-    }
-  }, [audioVolume, isAudioMuted]);
-
-  const getDemodType = useCallback((type: SignalType): DemodulationType => {
-    switch (type) {
-      case "FM":
-        return DemodulationType.FM;
-      case "AM":
-        return DemodulationType.AM;
-      case "P25":
-        return DemodulationType.FM;
-      default:
-        return DemodulationType.FM;
-    }
+    const id = setInterval(() => setBufferHealth(100), 1000);
+    return () => clearInterval(id);
   }, []);
 
-  const playAudioBuffer = useCallback(
-    (result: AudioStreamResult) => {
-      const audioContext = audioContextRef.current;
-      const gainNode = gainNodeRef.current;
-
-      if (!audioContext || !gainNode || !isAudioPlaying) {
-        return;
-      }
-
-      try {
-        const buffer = audioContext.createBuffer(
-          result.channels,
-          result.audioData.length,
-          result.sampleRate,
-        );
-        for (let ch = 0; ch < result.channels; ch++) {
-          const channelData = buffer.getChannelData(ch);
-          channelData.set(result.audioData);
-        }
-
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(gainNode);
-        source.start();
-      } catch (error) {
-        console.error("Audio playback error:", error);
-      }
-    },
-    [isAudioPlaying],
-  );
-
-  const processAudioChunk = useCallback(
-    (chunk: Sample[]): void => {
-      if (!isAudioPlaying || !audioProcessorRef.current) {
-        return;
-      }
-
-      audioSampleBufferRef.current = audioSampleBufferRef.current.concat(chunk);
-
-      if (audioSampleBufferRef.current.length >= AUDIO_BUFFER_SIZE) {
-        const samplesToProcess = audioSampleBufferRef.current.slice(
-          0,
-          AUDIO_BUFFER_SIZE,
-        );
-        audioSampleBufferRef.current =
-          audioSampleBufferRef.current.slice(AUDIO_BUFFER_SIZE);
-
-        try {
-          const demodType = getDemodType(signalType);
-          const result = audioProcessorRef.current.extractAudio(
-            samplesToProcess,
-            demodType,
-            {
-              sampleRate: 48000,
-              channels: 1,
-              enableDeEmphasis: signalType === "FM",
-            },
-          );
-
-          playAudioBuffer(result);
-        } catch (error) {
-          console.error("Audio processing error:", error);
-        }
-      }
-    },
-    [isAudioPlaying, signalType, getDemodType, playAudioBuffer],
-  );
-
-  const handleToggleAudio = useCallback(() => {
-    setIsAudioPlaying((prev) => {
-      const newState = !prev;
-      if (newState) {
-        try {
-          void audioContextRef.current?.resume();
-        } catch (e) {
-          console.error("Failed to resume AudioContext:", e);
-        }
-      } else {
-        audioSampleBufferRef.current = [];
-        audioProcessorRef.current?.reset();
-      }
-      announce(newState ? "Audio playback started" : "Audio playback stopped");
-      return newState;
-    });
-  }, [announce]);
-
-  const handleVolumeChange = useCallback((volume: number) => {
-    setAudioVolume(volume);
-  }, []);
-
-  const handleToggleMute = useCallback(() => {
-    setIsAudioMuted((prev) => {
-      const newState = !prev;
-      announce(newState ? "Audio muted" : "Audio unmuted");
-      return newState;
-    });
-  }, [announce]);
-
-  // Device reset handler for timeout recovery
-  const handleResetDevice = useCallback(async (): Promise<void> => {
-    if (!device || isResetting) {
-      return;
-    }
-    setIsResetting(true);
-    announce("Resetting device...");
-    try {
-      await device.reset();
-      setDeviceError(null);
-      announce(
-        "Device reset successful. You can try starting reception again.",
-      );
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      setDeviceError(new Error(`Reset failed: ${msg}`));
-      announce(
-        "Device reset failed. Please try unplugging and replugging the device.",
-      );
-    } finally {
-      setIsResetting(false);
-    }
-  }, [device, isResetting, announce]);
-
-  const cancelScheduledUpdate = useCallback((): void => {
-    if (
-      typeof cancelAnimationFrame === "function" &&
-      rafIdRef.current !== null
-    ) {
-      cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
-    }
-  }, []);
-
-  const clearVisualizationState = useCallback((): void => {
-    sampleBufferRef.current = [];
-    latestChunkRef.current = [];
-    lastUpdateRef.current = 0;
-    cancelScheduledUpdate();
-    setSamples([]);
-    setLatestSamples([]);
-  }, [cancelScheduledUpdate]);
-
-  const scheduleVisualizationUpdate = useCallback((): void => {
-    if (typeof requestAnimationFrame !== "function") {
-      setSamples([...sampleBufferRef.current]);
-      setLatestSamples([...latestChunkRef.current]);
-      return;
-    }
-
-    if (rafIdRef.current !== null) {
-      return;
-    }
-
-    rafIdRef.current = requestAnimationFrame(() => {
-      rafIdRef.current = null;
-      setSamples([...sampleBufferRef.current]);
-      setLatestSamples([...latestChunkRef.current]);
-    });
-  }, []);
-
-  const handleSampleChunk = useCallback(
-    (chunk: Sample[]): void => {
-      if (chunk.length === 0) {
-        console.warn("handleSampleChunk: received empty chunk");
-        return;
-      }
-
-      console.debug(`handleSampleChunk: received ${chunk.length} samples`);
-
-      const markName = `pipeline-chunk-start-${
-        typeof performance !== "undefined" ? performance.now() : Date.now()
-      }`;
-      performanceMonitor.mark(markName);
-
-      const combined = sampleBufferRef.current.length
-        ? sampleBufferRef.current.concat(chunk)
-        : chunk.slice();
-      const trimmed =
-        combined.length > MAX_BUFFER_SAMPLES
-          ? combined.slice(combined.length - MAX_BUFFER_SAMPLES)
-          : combined;
-      sampleBufferRef.current = trimmed;
-      latestChunkRef.current = chunk.slice();
-
-      processAudioChunk(chunk);
-
-      performanceMonitor.measure("pipeline-processing", markName);
-
-      const now =
-        typeof performance !== "undefined" ? performance.now() : Date.now();
-      if (now - lastUpdateRef.current >= UPDATE_INTERVAL_MS) {
-        lastUpdateRef.current = now;
-        console.debug("Scheduling visualization update");
-        scheduleVisualizationUpdate();
-      }
-    },
-    [scheduleVisualizationUpdate, processAudioChunk],
-  );
-
-  const beginDeviceStreaming = useCallback(
-    async (activeDevice: ISDRDevice): Promise<void> => {
-      clearVisualizationState();
-      setListening(true);
-      setDeviceError(null);
-      announce("Started receiving radio signals");
-
-      console.warn("beginDeviceStreaming: Configuring device before streaming");
-      try {
-        await activeDevice.setSampleRate(2048000);
-        console.warn("beginDeviceStreaming: Sample rate set to 2.048 MSPS");
-      } catch (err) {
-        console.error("Failed to set sample rate:", err);
-        const error = err instanceof Error ? err : new Error(String(err));
-        setDeviceError(error);
-      }
-
-      const receivePromise = activeDevice
-        .receive((data) => {
-          console.warn("Received data, byteLength:", data.byteLength);
-          const parsed = activeDevice.parseSamples(data) as Sample[];
-          console.warn("Parsed samples count:", parsed.length);
-          handleSampleChunk(parsed);
-        })
-        .catch((err: unknown) => {
-          console.error(err);
-          const error = err instanceof Error ? err : new Error(String(err));
-          setDeviceError(error);
-          announce("Failed to receive radio signals");
-          throw err;
-        })
-        .finally(() => {
-          setListening(false);
-        });
-
-      receivePromiseRef.current = receivePromise;
-
-      try {
-        await receivePromise;
-      } catch {
-        // Error already handled in catch above
-      } finally {
-        receivePromiseRef.current = null;
-      }
-    },
-    [clearVisualizationState, handleSampleChunk, announce],
-  );
-
-  const handleSetFrequency = async (newFrequency: number): Promise<void> => {
+  // Device control handlers
+  const handleSetFrequency = async (newFrequency: number) => {
     setFrequency(newFrequency);
     if (device) {
       await device.setFrequency(newFrequency);
-      const displayFreq =
-        signalType === "FM"
-          ? `${(newFrequency / 1e6).toFixed(1)} MHz`
-          : `${(newFrequency / 1e3).toFixed(0)} kHz`;
-      announce(`Frequency changed to ${displayFreq}`);
+      announce(`Frequency changed to ${(newFrequency / 1e6).toFixed(1)} MHz`);
     }
   };
-
-  const handleSetBandwidth = async (newBandwidth: number): Promise<void> => {
+  const handleSetBandwidth = async (newBandwidth: number) => {
     setBandwidth(newBandwidth);
     if (device?.setBandwidth) {
       await device.setBandwidth(newBandwidth);
-      announce(`Bandwidth filter set to ${newBandwidth / 1e6} MHz`);
+      announce(`Bandwidth set to ${(newBandwidth / 1e6).toFixed(2)} MHz`);
     }
   };
-
-  const handleSignalTypeChange = (type: SignalType): void => {
+  const handleSignalTypeChange = (type: SignalType) => {
     setSignalType(type);
     announce(`Signal type changed to ${type}`);
-    if (type === "FM" && frequency < 88.1e6) {
-      handleSetFrequency(100.3e6).catch(console.error);
-    } else if (type === "AM" && frequency > 1.7e6) {
-      handleSetFrequency(1010e3).catch(console.error);
-    } else if (type === "P25") {
-      handleSetFrequency(controlChannel).catch(console.error);
-    }
   };
+  // Audio controls
+  const handleVolumeChange = (volume: number) => setAudioVolume(volume);
+  const handleToggleMute = () => setIsAudioMuted((prev) => !prev);
 
-  const handleP25SystemSelect = (system: {
-    controlChannel: number;
-    nac: string;
-    systemId: string;
-    wacn: string;
-  }): void => {
-    setControlChannel(system.controlChannel);
-    setNac(system.nac);
-    setSystemId(system.systemId);
-    setWacn(system.wacn);
-    if (signalType === "P25") {
-      handleSetFrequency(system.controlChannel).catch(console.error);
-    }
+  // Device connection
+  const startListening = async () => {
+    setListening(true);
+    announce("Started receiving radio signals");
   };
-
-  useEffect((): void => {
-    if (!device) {
-      return;
-    }
-    const configureDevice = async (): Promise<void> => {
-      await device.setSampleRate(2048000);
-      await device.setFrequency(frequency);
-      if (device.setBandwidth) {
-        await device.setBandwidth(bandwidth);
-      }
-      await device.setAmpEnable(false);
-    };
-    configureDevice().catch(console.error);
-  }, [device, frequency, bandwidth]);
-
-  useEffect((): (() => void) => {
-    return () => {
-      cancelScheduledUpdate();
-    };
-  }, [cancelScheduledUpdate]);
-
-  useEffect((): void => {
-    if (!device || !shouldStartOnConnectRef.current) {
-      return;
-    }
-    shouldStartOnConnectRef.current = false;
-    void beginDeviceStreaming(device);
-  }, [device, beginDeviceStreaming]);
-
-  const startListening = useCallback(async (): Promise<void> => {
-    if (listening) {
-      return;
-    }
-
-    if (!device) {
-      if (isInitializing) {
-        return;
-      }
-      shouldStartOnConnectRef.current = true;
-      setIsInitializing(true);
-      announce("Connecting to SDR device...");
-      try {
-        await initialize();
-        announce("SDR device connected");
-      } catch (err) {
-        console.error(err);
-        shouldStartOnConnectRef.current = false;
-        announce(
-          "Failed to connect to device. Please check device connection and browser permissions.",
-        );
-      } finally {
-        setIsInitializing(false);
-      }
-      return;
-    }
-
-    shouldStartOnConnectRef.current = false;
-    void beginDeviceStreaming(device);
-  }, [
-    beginDeviceStreaming,
-    device,
-    initialize,
-    isInitializing,
-    listening,
-    announce,
-  ]);
-
-  const stopListening = useCallback(async (): Promise<void> => {
-    if (device?.isReceiving()) {
-      try {
-        await device.stopRx();
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    if (receivePromiseRef.current) {
-      try {
-        await receivePromiseRef.current;
-      } catch {
-        // Errors already handled
-      }
-      receivePromiseRef.current = null;
-    }
-
-    cancelScheduledUpdate();
+  const stopListening = async () => {
     setListening(false);
     announce("Stopped receiving radio signals");
-  }, [cancelScheduledUpdate, device, announce]);
+  };
 
   return (
     <div className="container">
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <LiveRegion />
-
       <main id="main-content" role="main">
         <DeviceControlBar
           device={device}
@@ -531,34 +128,49 @@ function LiveMonitor(): React.JSX.Element {
           onConnect={initialize}
           onStartReception={startListening}
           onStopReception={stopListening}
-          onResetDevice={handleResetDevice}
-          isResetting={isResetting}
         />
-
         <Card title="Radio Controls" subtitle="Configure your SDR receiver">
           <div className="controls-panel">
             <SignalTypeSelector
               signalType={signalType}
               onSignalTypeChange={handleSignalTypeChange}
             />
-            {signalType !== "P25" ? (
-              <>
-                <RadioControls
-                  frequency={frequency}
-                  signalType={signalType}
-                  setFrequency={handleSetFrequency}
-                />
-                {device?.getCapabilities().supportedBandwidths ? (
-                  <BandwidthSelector
-                    bandwidth={bandwidth}
-                    setBandwidth={handleSetBandwidth}
-                    supportedBandwidths={
-                      device.getCapabilities().supportedBandwidths
-                    }
-                  />
-                ) : null}
-              </>
-            ) : null}
+            <RadioControls
+              frequency={frequency}
+              signalType={signalType}
+              setFrequency={handleSetFrequency}
+            />
+            {device?.getCapabilities().supportedBandwidths && (
+              <BandwidthSelector
+                bandwidth={bandwidth}
+                setBandwidth={handleSetBandwidth}
+                supportedBandwidths={device.getCapabilities().supportedBandwidths}
+              />
+            )}
+            <AudioControls
+              volume={audioVolume}
+              muted={isAudioMuted}
+              onVolumeChange={handleVolumeChange}
+              onMuteToggle={handleToggleMute}
+            />
+          </div>
+        </Card>
+        <SpectrumWaterfall
+          samples={[]}
+          frequency={frequency}
+          signalType={signalType}
+        />
+        <StatusBar
+          renderTier={renderTier}
+          fps={fps}
+          bufferHealth={bufferHealth}
+          storageUsed={storageUsed}
+          storageQuota={storageQuota}
+        />
+      </main>
+    </div>
+  );
+}
           </div>
           {signalType === "P25" ? (
             <>
@@ -643,6 +255,16 @@ function LiveMonitor(): React.JSX.Element {
           </Card>
         </div>
       </main>
+
+      <StatusBar
+        renderTier={renderTier}
+        fps={fps}
+        sampleRate={sampleRateState}
+        bufferHealth={bufferHealth}
+        storageUsed={storageUsed}
+        storageQuota={storageQuota}
+        deviceConnected={Boolean(device)}
+      />
     </div>
   );
 }

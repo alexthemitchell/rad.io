@@ -1,16 +1,8 @@
 import { useEffect, useState } from "react";
-
-/**
- * Rendering tier detected for visualization components
- */
-export enum RenderTier {
-  WebGPU = "WebGPU",
-  WebGL2 = "WebGL2",
-  WebGL1 = "WebGL1",
-  Worker = "Worker",
-  Canvas2D = "Canvas2D",
-  Unknown = "Unknown",
-}
+import { RenderTier } from "../types/rendering";
+/** Rendering tier detected for visualization components */
+// Re-export for backward compatibility with existing imports/tests
+export { RenderTier } from "../types/rendering";
 
 export interface StatusBarProps {
   /** Current rendering tier (WebGPU, WebGL2, etc.) */

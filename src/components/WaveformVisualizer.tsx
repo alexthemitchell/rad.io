@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useMemo } from "react";
 import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
+import { renderTierManager } from "../lib/render/RenderTierManager";
+import { RenderTier } from "../types/rendering";
 import { calculateWaveform, type Sample } from "../utils/dsp";
-import type { GL } from "../utils/webgl";
+import { performanceMonitor } from "../utils/performanceMonitor";
 import type { IVisualizationRenderer } from "../types/visualization";
+import type { GL } from "../utils/webgl";
 import type { ReactElement } from "react";
 
 type WaveformVisualizerProps = {
@@ -101,6 +104,8 @@ export default function WaveformVisualizer({
     canvas.style.height = `${height}px`;
 
     const run = async (): Promise<void> => {
+      const markStart = "render-waveform-start";
+      performanceMonitor.mark(markStart);
       // Try WebGPU first (modern browsers)
       try {
         const webgpu = await import("../utils/webgpu");
@@ -152,6 +157,8 @@ export default function WaveformVisualizer({
             });
 
             if (success) {
+              renderTierManager.reportSuccess(RenderTier.WebGPU);
+              performanceMonitor.measure("render-waveform", markStart);
               return;
             }
           }
@@ -239,6 +246,13 @@ void main() {
           gl.lineWidth(2.0);
           gl.drawArrays(gl.LINE_STRIP, 0, amplitude.length);
 
+          renderTierManager.reportSuccess(
+            gl instanceof WebGL2RenderingContext
+              ? RenderTier.WebGL2
+              : RenderTier.WebGL1,
+          );
+          performanceMonitor.measure("render-waveform", markStart);
+
           return;
         }
       } catch (err) {
@@ -311,6 +325,7 @@ void main() {
                 }
               ).transferControlToOffscreen();
               transferredRef.current = true;
+              renderTierManager.reportSuccess(RenderTier.Worker);
               workerRef.current.postMessage(
                 {
                   type: "init",
@@ -411,6 +426,9 @@ void main() {
 
       // Restore context state after transform
       ctx.restore();
+
+      renderTierManager.reportSuccess(RenderTier.Canvas2D);
+      performanceMonitor.measure("render-waveform", markStart);
     };
     void run();
   }, [

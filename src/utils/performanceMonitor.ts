@@ -228,6 +228,19 @@ class PerformanceMonitor {
   }
 
   /**
+   * Get estimated frames per second from the 'rendering' category.
+   * Uses average render duration: fps = 1000 / avg(ms), rounded to 1 decimal.
+   */
+  getFPS(): number {
+    const avg = this.getAverageDuration("rendering");
+    if (!avg || avg <= 0 || !isFinite(avg)) {
+      return 0;
+    }
+    const fps = 1000 / avg;
+    return Math.round(fps * 10) / 10;
+  }
+
+  /**
    * Get statistics for a category
    */
   getStats(category: string): {

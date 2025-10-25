@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
+import { renderTierManager } from "../lib/render/RenderTierManager";
+import { RenderTier } from "../types/rendering";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import type { GL } from "../utils/webgl";
 import type { WebGPUTextureRenderer } from "../utils/webgpu";
@@ -277,6 +279,7 @@ export default function Spectrogram({
             });
 
             if (success) {
+              renderTierManager.reportSuccess(RenderTier.WebGPU);
               performanceMonitor.measure("render-spectrogram", markStart);
               return;
             }
@@ -458,6 +461,9 @@ export default function Spectrogram({
 
           gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
+          renderTierManager.reportSuccess(
+            glStateRef.current.isWebGL2 ? RenderTier.WebGL2 : RenderTier.WebGL1,
+          );
           performanceMonitor.measure("render-spectrogram", markStart);
           return;
         }
@@ -525,6 +531,7 @@ export default function Spectrogram({
                 }
               ).transferControlToOffscreen();
               transferredRef.current = true;
+              renderTierManager.reportSuccess(RenderTier.Worker);
               workerRef.current.postMessage(
                 {
                   type: "init",
@@ -633,6 +640,7 @@ export default function Spectrogram({
 
       ctx.restore();
 
+      renderTierManager.reportSuccess(RenderTier.Canvas2D);
       performanceMonitor.measure("render-spectrogram", markStart);
     };
 

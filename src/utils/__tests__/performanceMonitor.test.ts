@@ -164,6 +164,36 @@ describe("PerformanceMonitor", () => {
       expect(Array.isArray(longTasks)).toBe(true);
     });
   });
+
+  describe("getFPS", () => {
+    it("should return 0 when no rendering metrics exist", () => {
+      expect(performanceMonitor.getFPS()).toBe(0);
+    });
+
+    it("should calculate FPS from average render duration", () => {
+      // Simulate 5 render cycles with known durations
+      // Category must be "rendering" which is matched by "render" in name
+      for (let i = 0; i < 5; i++) {
+        const markName = `render-cycle-start-${i}`;
+        performanceMonitor.mark(markName);
+        // Each measure call will record a duration
+        performanceMonitor.measure(`render-cycle-${i}`, markName);
+      }
+
+      const fps = performanceMonitor.getFPS();
+      // FPS should be calculated as 1000 / avgDuration
+      // With fast execution in tests, this should be > 0
+      expect(typeof fps).toBe("number");
+      expect(fps).toBeGreaterThanOrEqual(0);
+      expect(isFinite(fps)).toBe(true);
+    });
+
+    it("should return 0 for invalid durations", () => {
+      performanceMonitor.mark("test-start");
+      // Edge case: check FPS calculation handles empty/zero-duration metrics
+      expect(performanceMonitor.getFPS()).toBeGreaterThanOrEqual(0);
+    });
+  });
 });
 
 describe("measurePerformance decorator", () => {

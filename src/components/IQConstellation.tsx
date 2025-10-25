@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useMemo } from "react";
 import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
+import { renderTierManager } from "../lib/render/RenderTierManager";
+import { RenderTier } from "../types/rendering";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import type { IVisualizationRenderer } from "../types/visualization";
 import type { GL } from "../utils/webgl";
@@ -197,6 +199,7 @@ export default function IQConstellation({
             });
 
             if (success) {
+              renderTierManager.reportSuccess(RenderTier.WebGPU);
               performanceMonitor.measure("render-iq-constellation", markStart);
               return;
             }
@@ -341,6 +344,11 @@ void main() {
 
           gl.drawArrays(gl.POINTS, 0, samples.length);
 
+          renderTierManager.reportSuccess(
+            gl instanceof WebGL2RenderingContext
+              ? RenderTier.WebGL2
+              : RenderTier.WebGL1,
+          );
           performanceMonitor.measure("render-iq-constellation", markStart);
           return;
         }
@@ -435,6 +443,7 @@ void main() {
                 }
               ).transferControlToOffscreen();
               transferredRef.current = true;
+              renderTierManager.reportSuccess(RenderTier.Worker);
               workerRef.current.postMessage(
                 {
                   type: "init",
@@ -532,6 +541,7 @@ void main() {
       // Restore context state after transform
       ctx.restore();
 
+      renderTierManager.reportSuccess(RenderTier.Canvas2D);
       performanceMonitor.measure("render-iq-constellation", markStart);
     };
     // Kick off async rendering
