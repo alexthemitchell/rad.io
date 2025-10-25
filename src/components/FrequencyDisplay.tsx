@@ -154,10 +154,7 @@ function FrequencyDisplay({
     <div className="frequency-display" role="region" aria-label="VFO Control">
       <h2 className="visually-hidden">Frequency Control</h2>
 
-      <div
-        className="frequency-value"
-        style={{ fontFamily: "JetBrains Mono, monospace" }}
-      >
+      <div className="frequency-value">
         {isEditing ? (
           <input
             ref={inputRef}

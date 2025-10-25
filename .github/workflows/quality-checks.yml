@@ -83,7 +83,7 @@ jobs:
         run: npm ci
 
       - name: Check Prettier formatting
-        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,md}"
+        run: npm run format:check
 
   build:
     name: Build Application

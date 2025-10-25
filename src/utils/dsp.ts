@@ -3,7 +3,9 @@ import {
   calculateSpectrogramWasm,
   isWasmAvailable,
   isWasmRuntimeEnabled,
+  isWasmValidationEnabled,
 } from "./dspWasm";
+import { dspLogger } from "./logger";
 import { performanceMonitor } from "./performanceMonitor";
 
 export type Sample = {
@@ -125,6 +127,12 @@ export function calculateFFTSync(
     if (isWasmAvailable() && isWasmRuntimeEnabled()) {
       const wasmResult = calculateFFTWasm(samples, fftSize);
       if (wasmResult) {
+        // Optionally validate WASM output to detect degenerate results.
+        // Can be disabled in production via isWasmValidationEnabled().
+        if (!isWasmValidationEnabled()) {
+          performanceMonitor.measure("fft-wasm", markStart);
+          return wasmResult;
+        }
         // Sanity-check WASM output. In some environments a misloaded or
         // incompatible module can return a zero-filled (or constant) array,
         // which breaks downstream detection by reporting a 0 dB noise floor.
@@ -154,7 +162,7 @@ export function calculateFFTSync(
 
         // Degenerate or suspicious output detected — use JS implementation instead
         // to ensure meaningful spectra for scanning/detection.
-        console.warn(
+        dspLogger.warn(
           "calculateFFTSync: Degenerate WASM FFT output detected; falling back to JS",
           { min, max, range, length: wasmResult.length },
         );

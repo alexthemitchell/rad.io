@@ -28,20 +28,20 @@ import { NavLink, useNavigate } from "react-router-dom";
  * Primary pages (1-5): Monitor, Scanner, Decode, Analysis, Recordings
  * Additional shortcuts: ? for Help
  */
+/* eslint-disable @typescript-eslint/naming-convention */
+/**
+ * String keys represent literal keyboard inputs, not variable names.
+ * Disabling naming-convention for this object is intentional and documented.
+ */
 const KEYBOARD_SHORTCUTS: Record<string, string> = {
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
   "1": "/monitor",
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
   "2": "/scanner",
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
   "3": "/decode",
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
   "4": "/analysis",
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
   "5": "/recordings",
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
   "?": "/help",
 } as const;
+/* eslint-enable @typescript-eslint/naming-convention */
 
 function Navigation(): React.JSX.Element {
   const navigate = useNavigate();

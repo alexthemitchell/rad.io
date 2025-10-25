@@ -20,10 +20,12 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
   type ReactNode,
 } from "react";
 import { useUSBDevice } from "../hooks/useUSBDevice";
 import { HackRFOneAdapter } from "../models/HackRFOneAdapter";
+import { deviceLogger } from "../utils/logger";
 import type { ISDRDevice } from "../models/SDRDevice";
 
 /**
@@ -94,6 +96,11 @@ export function DeviceProvider({
   children: ReactNode;
 }): React.JSX.Element {
   const [devices, setDevices] = useState<Map<DeviceId, DeviceEntry>>(new Map());
+  // Keep a ref to the latest devices map to avoid stale closures in callbacks
+  const devicesRef = useRef<Map<DeviceId, DeviceEntry>>(devices);
+  useEffect(() => {
+    devicesRef.current = devices;
+  }, [devices]);
 
   // Use the existing useUSBDevice hook for device discovery
   const {
@@ -110,6 +117,11 @@ export function DeviceProvider({
   /**
    * Initialize a USB device when it's connected
    */
+  // Note on dependencies:
+  // We intentionally omit `devices` from initializeDevice dependencies and use
+  // functional state updates inside setDevices(). This avoids stale-closure
+  // bugs while preventing dependency cycles and repeated re-creations of the
+  // callback. See ADR-0011 (error handling & resilience) and SHARED_DEVICE_CONTEXT_PATTERN memory.
   const initializeDevice = useCallback(
     async (usb: USBDevice): Promise<void> => {
       const deviceId = getDeviceId(usb);
@@ -127,9 +139,7 @@ export function DeviceProvider({
         setDevices((prev) => {
           // Skip if already initialized
           if (prev.has(deviceId)) {
-            console.debug("DeviceContext: Device already initialized", {
-              deviceId,
-            });
+            deviceLogger.debug("Device already initialized", { deviceId });
             return prev;
           }
 
@@ -138,12 +148,12 @@ export function DeviceProvider({
           return next;
         });
 
-        console.debug("DeviceContext: Device initialized", {
+        deviceLogger.info("Device initialized", {
           deviceId,
           deviceInfo: await adapter.getDeviceInfo(),
         });
       } catch (err) {
-        console.error("DeviceContext: Failed to initialize device", err, {
+        deviceLogger.error("Failed to initialize device", err, {
           deviceId,
           productId: usb.productId,
           vendorId: usb.vendorId,
@@ -152,25 +162,22 @@ export function DeviceProvider({
         throw err;
       }
     },
-    [], // Remove devices dependency to prevent infinite loops
+    [], // Intentional: functional setState ensures fresh value without dependency
   );
 
   /**
    * Close and remove a device
    */
+  // Similar to initializeDevice, we use a functional update to read the current
+  // entry without depending on `devices`. This prevents re-renders from
+  // recreating the callback and avoids dependency cycles.
   const closeDevice = useCallback(
     async (deviceId: DeviceId): Promise<void> => {
-      // Use functional state update to get entry without depending on devices
-      let entry: DeviceEntry | undefined;
-      setDevices((prev) => {
-        entry = prev.get(deviceId);
-        return prev; // Return unchanged, we'll update below after async work
-      });
+      // Use ref to get the latest entry without adding dependencies
+      const entry = devicesRef.current.get(deviceId);
 
       if (!entry) {
-        console.warn("DeviceContext: Attempted to close unknown device", {
-          deviceId,
-        });
+        deviceLogger.warn("Attempted to close unknown device", { deviceId });
         return;
       }
 
@@ -181,15 +188,13 @@ export function DeviceProvider({
           next.delete(deviceId);
           return next;
         });
-        console.debug("DeviceContext: Device closed", { deviceId });
+        deviceLogger.info("Device closed", { deviceId });
       } catch (err) {
-        console.error("DeviceContext: Failed to close device", err, {
-          deviceId,
-        });
+        deviceLogger.error("Failed to close device", err, { deviceId });
         throw err;
       }
     },
-    [], // Remove devices dependency
+    [], // Intentional: devicesRef provides current state without dependency
   );
 
   /**
@@ -212,17 +217,15 @@ export function DeviceProvider({
       try {
         await entry.device.close();
       } catch (err) {
-        console.error(
-          "DeviceContext: Failed to close device during cleanup",
-          err,
-          { deviceId },
-        );
+        deviceLogger.error("Failed to close device during cleanup", err, {
+          deviceId,
+        });
       }
     });
 
     await Promise.allSettled(closePromises);
-    console.debug("DeviceContext: All devices closed");
-  }, []); // Remove devices dependency
+    deviceLogger.info("All devices closed");
+  }, []); // Intentional: closes all captured at invocation time
 
   /**
    * Initialize USB device when it becomes available

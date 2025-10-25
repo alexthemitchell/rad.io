@@ -16,6 +16,7 @@ export default defineConfig([
     "node_modules/**",
     "build/**",
     "coverage/**",
+    "assembly/**",
     "src/models/templates/**",
   ]),
 

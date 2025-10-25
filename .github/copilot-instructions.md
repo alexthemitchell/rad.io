@@ -25,6 +25,7 @@
 - **Maintain Long Term Memory**: use #oraios/serena/read_memory when thinking about how to solve problems and #oraios/serena/write_memory when you have learned something new that will be valuable for a future Agent.
 - Before writing a memory, use #oraios/serena/read_memory to find "SERENA_MEMORY_BEST_PRACTICES". Follow those best practices to add helpful long-term memories before you end your turn. You may decide to update existing memories rather than creating new ones, remove outdated memories, or choose not to write any memories at all.
 - The goal of this project includes the creation of TypeScript-first WebUSB drivers for SDR hardware. This is a complex task that requires careful planning and execution. Use the tools available to you to research and implement these drivers, and always keep the user in mind as a resource to help you solve problems.
+- If you can check the PR quality yourself before submitting, do so. Use #problems to identify any issues and fix them before creating a PR.
 
 ## Agent performance & context hygiene
 

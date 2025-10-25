@@ -5,6 +5,7 @@ import { calculateFFTSync, type Sample } from "../dsp";
 jest.mock("../dspWasm", () => ({
   isWasmAvailable: () => true,
   isWasmRuntimeEnabled: () => true,
+  isWasmValidationEnabled: () => true,
   calculateFFTWasm: (_samples: Sample[], fftSize: number) =>
     new Float32Array(fftSize),
   calculateSpectrogramWasm: jest.fn(),

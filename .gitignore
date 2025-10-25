@@ -22,6 +22,7 @@ tests/  # AssemblyScript tests (not used)
 *~
 .DS_Store
 .playwright-mcp/
+playwright-report/
 
 # Environment
 .env

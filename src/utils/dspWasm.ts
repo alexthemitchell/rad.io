@@ -4,6 +4,7 @@
  * with automatic fallback to JavaScript implementation
  */
 
+import { dspLogger } from "./logger";
 import type { Sample } from "./dsp";
 
 // WASM module interface
@@ -118,7 +119,7 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
   const makeUrl = (path: string): string => {
     const url = new URL(path, window.location.href);
     // In dev, add cache-busting param to ensure fresh module after rebuilds
-    if (location.hostname === "localhost") {
+    if (window.location.hostname === "localhost") {
       url.searchParams.set("v", String(Date.now()));
     }
     return url.toString();
@@ -160,7 +161,7 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
           const hasOut =
             typeof (wasmModule as Partial<WasmDSPModule>).calculateFFTOut ===
             "function";
-          console.info("dspWasm: WASM module loaded", {
+          dspLogger.info("WASM module loaded", {
             url,
             exports: {
               calculateFFT: typeof mod.calculateFFT === "function",
@@ -181,16 +182,11 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
       }
     }
 
-    console.warn(
-      "dspWasm: Failed to load WASM module, falling back to JavaScript",
-      lastError,
-      {
-        attemptedPaths: ["../assembly/dsp", "./wasm-build/dsp"],
-        wasmSupported: typeof WebAssembly !== "undefined",
-        errorType:
-          lastError instanceof Error ? lastError.name : typeof lastError,
-      },
-    );
+    dspLogger.warn("Failed to load WASM module, falling back to JavaScript", {
+      attemptedPaths: ["../assembly/dsp", "./wasm-build/dsp"],
+      wasmSupported: typeof WebAssembly !== "undefined",
+      errorType: lastError instanceof Error ? lastError.name : typeof lastError,
+    });
     wasmModule = null;
     wasmSupported = false;
     return null;
@@ -234,6 +230,33 @@ export function isWasmRuntimeEnabled(): boolean {
 }
 
 /**
+ * Optional runtime validation of WASM FFT outputs.
+ *
+ * The validation detects degenerate spectra (all zeros/constant or non-finite)
+ * and triggers a JS fallback to ensure meaningful results. This adds an O(N)
+ * pass over the FFT output. Enable by default in development; disable by
+ * default in production, but can be overridden at runtime via:
+ *   localStorage.setItem('radio.wasm.validate', 'true' | 'false')
+ */
+export function isWasmValidationEnabled(): boolean {
+  try {
+    // Node/test or SSR: default to enabled so tests can exercise validation
+    const isProd = process.env["NODE_ENV"] === "production";
+    if (typeof window === "undefined" || !("localStorage" in window)) {
+      return !isProd;
+    }
+    const v = window.localStorage.getItem("radio.wasm.validate");
+    if (v === null) {
+      // Default to true in dev, false in prod
+      return !isProd;
+    }
+    return v !== "false";
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Calculate FFT using WASM if available
  * Converts Sample[] format to separate I/Q arrays for WASM
  */
@@ -262,21 +285,20 @@ export function calculateFFTWasm(
 
     // Prefer return-by-value API if available (avoids copy-back issue)
     if (typeof wasmModule.calculateFFTOut === "function") {
-      console.debug("dspWasm: using calculateFFTOut (return-by-value)");
+      dspLogger.debug("Using calculateFFTOut (return-by-value)");
       return wasmModule.calculateFFTOut(iSamples, qSamples, fftSize);
     }
 
     // Fallback to output-parameter API; note that some loader versions
     // do not copy results back to JS when passing an output array.
     // We'll still use it and rely on higher-level sanity checks/fallbacks.
-    console.debug("dspWasm: using calculateFFT with output parameter");
+    dspLogger.debug("Using calculateFFT with output parameter");
     const output = wasmModule.allocateFloat32Array(fftSize);
     wasmModule.calculateFFT(iSamples, qSamples, fftSize, output);
     return output;
   } catch (error) {
-    console.warn(
-      "dspWasm: FFT calculation failed, falling back to JS implementation",
-      error,
+    dspLogger.warn(
+      "FFT calculation failed, falling back to JS implementation",
       {
         fftSize,
         inputSampleCount: samples.length,
@@ -324,9 +346,8 @@ export function calculateWaveformWasm(
     // Return the WASM-allocated arrays (they're already views of WASM memory with results)
     return { amplitude, phase };
   } catch (error) {
-    console.warn(
-      "dspWasm: Waveform calculation failed, falling back to JS implementation",
-      error,
+    dspLogger.warn(
+      "Waveform calculation failed, falling back to JS implementation",
       {
         inputLength: samples.length,
         errorType: error instanceof Error ? error.name : typeof error,
@@ -386,9 +407,8 @@ export function calculateSpectrogramWasm(
 
     return rows;
   } catch (error) {
-    console.warn(
-      "dspWasm: Spectrogram calculation failed, falling back to JS implementation",
-      error,
+    dspLogger.warn(
+      "Spectrogram calculation failed, falling back to JS implementation",
       {
         fftSize,
         inputLength: samples.length,
