@@ -93,7 +93,7 @@ describe("iqRecorder additional branches", () => {
     const jsonFile = new File([jsonData], "rec.json", {
       type: "application/json",
     });
-    
+
     // Mock arrayBuffer for File (JSDOM doesn't provide it)
     jsonFile.arrayBuffer = async () => {
       const encoder = new TextEncoder();
@@ -108,7 +108,7 @@ describe("iqRecorder additional branches", () => {
     const binFile = new File([binData], "rec.iq", {
       type: "application/octet-stream",
     });
-    
+
     // Mock arrayBuffer for File (JSDOM doesn't provide it)
     binFile.arrayBuffer = async () => {
       return binData;

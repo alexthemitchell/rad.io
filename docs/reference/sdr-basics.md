@@ -17,6 +17,7 @@ Software Defined Radio (SDR) is a radio communication system where components tr
 ### Frequency
 
 The rate at which a radio wave oscillates, measured in Hertz (Hz). Common ranges:
+
 - **kHz** (kilohertz): 1,000 Hz - Used for AM broadcast, maritime
 - **MHz** (megahertz): 1,000,000 Hz - Used for FM broadcast, amateur radio, aviation
 - **GHz** (gigahertz): 1,000,000,000 Hz - Used for satellite, WiFi, radar
@@ -24,6 +25,7 @@ The rate at which a radio wave oscillates, measured in Hertz (Hz). Common ranges
 ### Bandwidth
 
 The range of frequencies occupied by a signal. Different modes require different bandwidths:
+
 - **CW (Morse Code)**: ~100 Hz
 - **SSB (Single Sideband)**: ~2.7 kHz
 - **AM Broadcasting**: ~10 kHz
@@ -47,6 +49,7 @@ If center frequency = 100 MHz and sample rate = 2 MHz, you can see signals from 
 ### Time Domain
 
 Shows signal amplitude over time. Useful for:
+
 - Observing modulation patterns
 - Detecting interference
 - Measuring signal timing
@@ -54,6 +57,7 @@ Shows signal amplitude over time. Useful for:
 ### Frequency Domain (Spectrum)
 
 Shows signal power at different frequencies. Useful for:
+
 - Finding active signals
 - Identifying signal types
 - Measuring bandwidth
@@ -62,6 +66,7 @@ Shows signal power at different frequencies. Useful for:
 ### Waterfall Display
 
 A time-history of the spectrum, showing how frequency content changes over time. Color represents signal strength:
+
 - **Blue/Purple**: Weak or no signal (noise floor)
 - **Green/Yellow**: Moderate signal strength
 - **Red/White**: Strong signal
@@ -71,6 +76,7 @@ A time-history of the spectrum, showing how frequency content changes over time.
 ### Signal Strength
 
 Measured in dBm (decibel-milliwatts) or as S-units:
+
 - **S9**: Strong signal (-73 dBm for HF)
 - **S9+20dB**: Very strong signal
 - **S1-S3**: Weak signal
@@ -79,6 +85,7 @@ Measured in dBm (decibel-milliwatts) or as S-units:
 ### Signal-to-Noise Ratio (SNR)
 
 The ratio of signal power to noise power. Higher is better:
+
 - **>20 dB**: Excellent quality
 - **10-20 dB**: Good quality
 - **0-10 dB**: Marginal quality
@@ -93,6 +100,7 @@ The ratio between the strongest and weakest signals the SDR can handle simultane
 ### RF Gain
 
 Controls the amplification of incoming signals before digitization:
+
 - **High gain**: Better for weak signals, but risk of overload with strong signals
 - **Low gain**: Better for strong signals or crowded bands
 - **AGC (Automatic Gain Control)**: Automatically adjusts gain
@@ -104,6 +112,7 @@ Mutes audio output when signal strength falls below a threshold. Prevents listen
 ### Filter Bandwidth
 
 Determines how wide a frequency range passes through. Narrower filters:
+
 - Reject more interference
 - Improve weak signal reception
 - May cut off parts of the desired signal if too narrow
@@ -125,6 +134,7 @@ Most SDR users operate in receive-only mode, which is generally legal worldwide 
 ### Transmit Restrictions
 
 Transmitting requires:
+
 - Appropriate license for the frequency and mode
 - Type-approved equipment
 - Power limits compliance

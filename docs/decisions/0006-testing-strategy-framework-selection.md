@@ -9,6 +9,7 @@ Accepted
 A complex SDR application requires comprehensive testing at multiple levels:
 
 **Testing Requirements**:
+
 1. **Unit Tests**: DSP algorithms, utilities, data transformations
 2. **Component Tests**: React components in isolation
 3. **Integration Tests**: Worker communication, device interactions
@@ -17,6 +18,7 @@ A complex SDR application requires comprehensive testing at multiple levels:
 6. **Visual Tests**: WebGL rendering correctness
 
 **Challenges**:
+
 - Web Workers require special test setup
 - WebGL/WebGPU rendering hard to test in headless environment
 - WebUSB/WebSerial require mocked device access
@@ -26,13 +28,13 @@ A complex SDR application requires comprehensive testing at multiple levels:
 
 **Testing Framework Options**:
 
-| Framework | Type | Pros | Cons |
-|-----------|------|------|------|
-| Vitest | Unit/Integration | Fast, Vite integration, ESM | Newer |
-| Jest | Unit/Integration | Mature, widely used | Slower, CJS |
-| Playwright | E2E | Multi-browser, powerful | Heavier |
-| Cypress | E2E | DX, time-travel debug | Chromium-centric |
-| Testing Library | Component | React idioms | Requires runner |
+| Framework       | Type             | Pros                        | Cons             |
+| --------------- | ---------------- | --------------------------- | ---------------- |
+| Vitest          | Unit/Integration | Fast, Vite integration, ESM | Newer            |
+| Jest            | Unit/Integration | Mature, widely used         | Slower, CJS      |
+| Playwright      | E2E              | Multi-browser, powerful     | Heavier          |
+| Cypress         | E2E              | DX, time-travel debug       | Chromium-centric |
+| Testing Library | Component        | React idioms                | Requires runner  |
 
 ## Decision
 
@@ -43,6 +45,7 @@ We will implement a **multi-layer testing strategy** using specialized tools for
 #### Layer 1: Unit & Integration Tests - **Vitest**
 
 **Why Vitest**:
+
 - Native ESM support (matches our Vite build)
 - Fast parallel execution
 - Built-in coverage (c8)
@@ -51,6 +54,7 @@ We will implement a **multi-layer testing strategy** using specialized tools for
 - Excellent VS Code integration
 
 **Test Structure**:
+
 ```
 src/
   lib/
@@ -71,12 +75,14 @@ src/
 #### Layer 2: Component Tests - **React Testing Library**
 
 **Why React Testing Library**:
+
 - User-centric testing approach
 - Encourages accessible components
 - Works seamlessly with Vitest
 - Avoids implementation details
 
 **Example**:
+
 ```typescript
 import { render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -85,10 +91,10 @@ import { FrequencyInput } from './FrequencyInput'
 test('validates frequency input', async () => {
   const user = userEvent.setup()
   render(<FrequencyInput onChange={jest.fn()} />)
-  
+
   const input = screen.getByLabelText(/frequency/i)
   await user.type(input, '100.5')
-  
+
   expect(input).toHaveValue('100.5')
 })
 ```
@@ -96,6 +102,7 @@ test('validates frequency input', async () => {
 #### Layer 3: E2E Tests - **Playwright**
 
 **Why Playwright**:
+
 - Multi-browser testing (Chromium, Firefox, WebKit)
 - Native Web Worker support
 - Can test WebUSB with mocks
@@ -105,6 +112,7 @@ test('validates frequency input', async () => {
 - GPU access in headed mode
 
 **Test Structure**:
+
 ```
 tests/
   e2e/
@@ -120,9 +128,11 @@ tests/
 ### Testing Categories
 
 #### 1. DSP Unit Tests
+
 **Coverage Target**: 95%+
 
 Test every DSP function with:
+
 - Known input/output pairs
 - Edge cases (zeros, infinities, NaN)
 - Boundary conditions
@@ -130,81 +140,83 @@ Test every DSP function with:
 
 ```typescript
 // src/lib/dsp/fft.test.ts
-import { describe, it, expect } from 'vitest'
-import { FFT } from './fft'
+import { describe, it, expect } from "vitest";
+import { FFT } from "./fft";
 
-describe('FFT', () => {
-  it('computes FFT of sine wave correctly', () => {
-    const fft = new FFT(1024)
-    const input = generateSineWave(440, 48000, 1024)
-    const output = fft.forward(input)
-    
+describe("FFT", () => {
+  it("computes FFT of sine wave correctly", () => {
+    const fft = new FFT(1024);
+    const input = generateSineWave(440, 48000, 1024);
+    const output = fft.forward(input);
+
     // Find peak frequency
-    const peakBin = findPeakBin(output)
-    const peakFreq = (peakBin / 1024) * 48000
-    
-    expect(peakFreq).toBeCloseTo(440, 1)
-  })
-  
-  it('preserves energy (Parseval theorem)', () => {
-    const fft = new FFT(1024)
-    const input = randomNoise(1024)
-    const output = fft.forward(input)
-    
-    const timeEnergy = sumSquares(input)
-    const freqEnergy = sumSquares(output) / 1024
-    
-    expect(freqEnergy).toBeCloseTo(timeEnergy, 5)
-  })
-})
+    const peakBin = findPeakBin(output);
+    const peakFreq = (peakBin / 1024) * 48000;
+
+    expect(peakFreq).toBeCloseTo(440, 1);
+  });
+
+  it("preserves energy (Parseval theorem)", () => {
+    const fft = new FFT(1024);
+    const input = randomNoise(1024);
+    const output = fft.forward(input);
+
+    const timeEnergy = sumSquares(input);
+    const freqEnergy = sumSquares(output) / 1024;
+
+    expect(freqEnergy).toBeCloseTo(timeEnergy, 5);
+  });
+});
 ```
 
 #### 2. Worker Integration Tests
+
 **Coverage Target**: 85%+
 
 Test worker communication and processing:
 
 ```typescript
 // src/workers/dsp-worker.test.ts
-import { describe, it, expect } from 'vitest'
-import { DSPWorkerPool } from './dsp-worker-pool'
+import { describe, it, expect } from "vitest";
+import { DSPWorkerPool } from "./dsp-worker-pool";
 
-describe('DSPWorkerPool', () => {
-  it('processes FFT in worker', async () => {
-    const pool = new DSPWorkerPool(2)
-    await pool.init()
-    
-    const samples = generateTestSamples(2048)
+describe("DSPWorkerPool", () => {
+  it("processes FFT in worker", async () => {
+    const pool = new DSPWorkerPool(2);
+    await pool.init();
+
+    const samples = generateTestSamples(2048);
     const result = await pool.process({
-      type: 'fft',
+      type: "fft",
       samples,
-      sampleRate: 48000
-    })
-    
-    expect(result.type).toBe('fft')
-    expect(result.result).toHaveLength(2048)
-    expect(result.processingTime).toBeLessThan(10)
-  })
-  
-  it('handles multiple concurrent requests', async () => {
-    const pool = new DSPWorkerPool(2)
-    await pool.init()
-    
-    const requests = Array.from({ length: 10 }, (_, i) => 
+      sampleRate: 48000,
+    });
+
+    expect(result.type).toBe("fft");
+    expect(result.result).toHaveLength(2048);
+    expect(result.processingTime).toBeLessThan(10);
+  });
+
+  it("handles multiple concurrent requests", async () => {
+    const pool = new DSPWorkerPool(2);
+    await pool.init();
+
+    const requests = Array.from({ length: 10 }, (_, i) =>
       pool.process({
-        type: 'fft',
+        type: "fft",
         samples: generateTestSamples(1024),
-        sampleRate: 48000
-      })
-    )
-    
-    const results = await Promise.all(requests)
-    expect(results).toHaveLength(10)
-  })
-})
+        sampleRate: 48000,
+      }),
+    );
+
+    const results = await Promise.all(requests);
+    expect(results).toHaveLength(10);
+  });
+});
 ```
 
 #### 3. Component Tests
+
 **Coverage Target**: 80%+
 
 Test component behavior, not implementation:
@@ -221,29 +233,29 @@ describe('DeviceSelector', () => {
       { id: '1', name: 'RTL-SDR', type: 'rtlsdr' },
       { id: '2', name: 'HackRF', type: 'hackrf' }
     ]
-    
+
     render(
-      <DeviceSelector 
+      <DeviceSelector
         devices={mockDevices}
         onSelect={jest.fn()}
       />
     )
-    
+
     expect(screen.getByText('RTL-SDR')).toBeInTheDocument()
     expect(screen.getByText('HackRF')).toBeInTheDocument()
   })
-  
+
   it('emits select event on device click', async () => {
     const user = userEvent.setup()
     const handleSelect = jest.fn()
-    
+
     render(
-      <DeviceSelector 
+      <DeviceSelector
         devices={[{ id: '1', name: 'RTL-SDR', type: 'rtlsdr' }]}
         onSelect={handleSelect}
       />
     )
-    
+
     await user.click(screen.getByText('RTL-SDR'))
     expect(handleSelect).toHaveBeenCalledWith('1')
   })
@@ -251,102 +263,105 @@ describe('DeviceSelector', () => {
 ```
 
 #### 4. E2E Tests
+
 **Coverage Target**: Critical paths
 
 Test complete user workflows:
 
 ```typescript
 // tests/e2e/spectrum-analysis.spec.ts
-import { test, expect } from '@playwright/test'
+import { test, expect } from "@playwright/test";
 
-test('user can tune to frequency and see spectrum', async ({ page }) => {
-  await page.goto('/')
-  
+test("user can tune to frequency and see spectrum", async ({ page }) => {
+  await page.goto("/");
+
   // Mock WebUSB device
   await page.addInitScript(() => {
     // Inject mock device
-  })
-  
-  // Connect device
-  await page.getByRole('button', { name: /connect device/i }).click()
-  await page.getByRole('option', { name: /rtl-sdr/i }).click()
-  
-  // Tune to frequency
-  await page.getByLabel(/frequency/i).fill('100.5')
-  await page.getByLabel(/frequency/i).press('Enter')
-  
-  // Verify spectrum displays
-  const canvas = page.locator('canvas[data-testid="spectrum"]')
-  await expect(canvas).toBeVisible()
-  
-  // Verify frequency is set
-  await expect(page.getByTestId('current-frequency')).toHaveText('100.5 MHz')
-})
+  });
 
-test('waterfall scrolls smoothly', async ({ page }) => {
-  await page.goto('/')
-  
+  // Connect device
+  await page.getByRole("button", { name: /connect device/i }).click();
+  await page.getByRole("option", { name: /rtl-sdr/i }).click();
+
+  // Tune to frequency
+  await page.getByLabel(/frequency/i).fill("100.5");
+  await page.getByLabel(/frequency/i).press("Enter");
+
+  // Verify spectrum displays
+  const canvas = page.locator('canvas[data-testid="spectrum"]');
+  await expect(canvas).toBeVisible();
+
+  // Verify frequency is set
+  await expect(page.getByTestId("current-frequency")).toHaveText("100.5 MHz");
+});
+
+test("waterfall scrolls smoothly", async ({ page }) => {
+  await page.goto("/");
+
   // Start device
-  await startMockDevice(page)
-  
+  await startMockDevice(page);
+
   // Take initial screenshot
-  const waterfall = page.locator('canvas[data-testid="waterfall"]')
-  const initial = await waterfall.screenshot()
-  
+  const waterfall = page.locator('canvas[data-testid="waterfall"]');
+  const initial = await waterfall.screenshot();
+
   // Wait 1 second
-  await page.waitForTimeout(1000)
-  
+  await page.waitForTimeout(1000);
+
   // Take another screenshot
-  const after = await waterfall.screenshot()
-  
+  const after = await waterfall.screenshot();
+
   // Images should be different (waterfall scrolled)
-  expect(Buffer.compare(initial, after)).not.toBe(0)
-})
+  expect(Buffer.compare(initial, after)).not.toBe(0);
+});
 ```
 
 #### 5. Performance Tests
+
 **Coverage Target**: All DSP operations
 
 Benchmark critical operations:
 
 ```typescript
 // src/lib/dsp/benchmarks.test.ts
-import { describe, it, expect } from 'vitest'
-import { FFT } from './fft'
+import { describe, it, expect } from "vitest";
+import { FFT } from "./fft";
 
-describe('FFT Performance', () => {
-  it('processes 2048-point FFT under 5ms', () => {
-    const fft = new FFT(2048)
-    const input = generateTestSamples(2048)
-    
-    const start = performance.now()
+describe("FFT Performance", () => {
+  it("processes 2048-point FFT under 5ms", () => {
+    const fft = new FFT(2048);
+    const input = generateTestSamples(2048);
+
+    const start = performance.now();
     for (let i = 0; i < 100; i++) {
-      fft.forward(input)
+      fft.forward(input);
     }
-    const end = performance.now()
-    
-    const avgTime = (end - start) / 100
-    expect(avgTime).toBeLessThan(5)
-  })
-})
+    const end = performance.now();
+
+    const avgTime = (end - start) / 100;
+    expect(avgTime).toBeLessThan(5);
+  });
+});
 ```
 
 #### 6. Visual Regression Tests
+
 **Approach**: Screenshot comparison for WebGL renders
 
 ```typescript
 // tests/e2e/visual-regression.spec.ts
-import { test, expect } from '@playwright/test'
+import { test, expect } from "@playwright/test";
 
-test('waterfall renders correctly', async ({ page }) => {
-  await page.goto('/')
-  await setupTestData(page)
-  
-  const waterfall = page.locator('canvas[data-testid="waterfall"]')
-  await expect(waterfall).toHaveScreenshot('waterfall-baseline.png', {
-    threshold: 0.1  // 10% difference tolerance
-  })
-})
+test("waterfall renders correctly", async ({ page }) => {
+  await page.goto("/");
+  await setupTestData(page);
+
+  const waterfall = page.locator('canvas[data-testid="waterfall"]');
+  await expect(waterfall).toHaveScreenshot("waterfall-baseline.png", {
+    threshold: 0.1, // 10% difference tolerance
+  });
+});
 ```
 
 ## Consequences
@@ -380,70 +395,65 @@ test('waterfall renders correctly', async ({ page }) => {
 
 ```typescript
 // vitest.config.ts
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup.ts'],
+    environment: "jsdom",
+    setupFiles: ["./tests/setup.ts"],
     coverage: {
-      provider: 'c8',
-      reporter: ['text', 'html', 'lcov'],
-      exclude: [
-        'node_modules/',
-        'tests/',
-        '**/*.test.ts',
-        '**/*.spec.ts'
-      ]
+      provider: "c8",
+      reporter: ["text", "html", "lcov"],
+      exclude: ["node_modules/", "tests/", "**/*.test.ts", "**/*.spec.ts"],
     },
     testTimeout: 10000,
-    hookTimeout: 10000
-  }
-})
+    hookTimeout: 10000,
+  },
+});
 ```
 
 ### Playwright Configuration
 
 ```typescript
 // playwright.config.ts
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: "html",
   use: {
-    baseURL: 'http://localhost:5173',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure'
+    baseURL: "http://localhost:5173",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] }
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
     },
     {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] }
+      name: "firefox",
+      use: { ...devices["Desktop Firefox"] },
     },
     {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] }
-    }
+      name: "webkit",
+      use: { ...devices["Desktop Safari"] },
+    },
   ],
   webServer: {
-    command: 'npm run dev',
+    command: "npm run dev",
     port: 5173,
-    reuseExistingServer: !process.env.CI
-  }
-})
+    reuseExistingServer: !process.env.CI,
+  },
+});
 ```
 
 ### Test Utilities
@@ -454,41 +464,41 @@ export default defineConfig({
 export function generateSineWave(
   freq: number,
   sampleRate: number,
-  length: number
+  length: number,
 ): Float32Array {
-  const samples = new Float32Array(length)
-  const omega = (2 * Math.PI * freq) / sampleRate
+  const samples = new Float32Array(length);
+  const omega = (2 * Math.PI * freq) / sampleRate;
   for (let i = 0; i < length; i++) {
-    samples[i] = Math.sin(omega * i)
+    samples[i] = Math.sin(omega * i);
   }
-  return samples
+  return samples;
 }
 
 export function generateIQSamples(
   freq: number,
   sampleRate: number,
-  length: number
+  length: number,
 ): IQSamples {
-  const omega = (2 * Math.PI * freq) / sampleRate
-  const i = new Float32Array(length)
-  const q = new Float32Array(length)
-  
+  const omega = (2 * Math.PI * freq) / sampleRate;
+  const i = new Float32Array(length);
+  const q = new Float32Array(length);
+
   for (let n = 0; n < length; n++) {
-    i[n] = Math.cos(omega * n)
-    q[n] = Math.sin(omega * n)
+    i[n] = Math.cos(omega * n);
+    q[n] = Math.sin(omega * n);
   }
-  
-  return { i, q, sampleRate }
+
+  return { i, q, sampleRate };
 }
 
 export function expectArrayClose(
   actual: Float32Array,
   expected: Float32Array,
-  tolerance: number = 1e-5
+  tolerance: number = 1e-5,
 ): void {
-  expect(actual.length).toBe(expected.length)
+  expect(actual.length).toBe(expected.length);
   for (let i = 0; i < actual.length; i++) {
-    expect(actual[i]).toBeCloseTo(expected[i], tolerance)
+    expect(actual[i]).toBeCloseTo(expected[i], tolerance);
   }
 }
 ```
@@ -503,14 +513,14 @@ export class MockRTLSDR {
   async close() {}
   async setFrequency(freq: number) {}
   async setSampleRate(rate: number) {}
-  
+
   getSamples(): AsyncIterableIterator<IQSamples> {
     return (async function* () {
       while (true) {
-        yield generateTestSamples(2048)
-        await new Promise(r => setTimeout(r, 10))
+        yield generateTestSamples(2048);
+        await new Promise((r) => setTimeout(r, 10));
       }
-    })()
+    })();
   }
 }
 ```
@@ -534,7 +544,7 @@ jobs:
       - run: npm ci
       - run: npm run test:unit
       - run: npm run test:coverage
-      
+
   e2e:
     runs-on: ubuntu-latest
     steps:
@@ -554,46 +564,54 @@ jobs:
 
 ## Coverage Targets
 
-| Layer | Target | Critical Paths |
-|-------|--------|----------------|
-| DSP Algorithms | 95% | 100% |
-| Workers | 85% | 100% |
-| Components | 80% | 90% |
-| Integration | 75% | 90% |
-| E2E | User flows | Critical only |
+| Layer          | Target     | Critical Paths |
+| -------------- | ---------- | -------------- |
+| DSP Algorithms | 95%        | 100%           |
+| Workers        | 85%        | 100%           |
+| Components     | 80%        | 90%            |
+| Integration    | 75%        | 90%            |
+| E2E            | User flows | Critical only  |
 
 ## Alternatives Considered
 
 ### Alternative 1: Jest Instead of Vitest
+
 **Rejected**: Slower, CJS-centric, less Vite integration
 
 ### Alternative 2: Cypress Instead of Playwright
+
 **Rejected**: Limited multi-browser support, slower
 
 ### Alternative 3: No E2E Tests
+
 **Rejected**: Complex WebUSB flows need E2E validation
 
 ### Alternative 4: Enzyme for Components
+
 **Rejected**: Deprecated, Testing Library preferred
 
 ## References
 
 #### Official Documentation
-* [Vitest Documentation](https://vitest.dev/) - Official Vitest testing framework
-* [Playwright Documentation](https://playwright.dev/) - Official Playwright end-to-end testing
-* [React Testing Library](https://testing-library.com/react) - React component testing library
-* [Playwright Best Practices](https://playwright.dev/docs/best-practices) - Official testing best practices from Microsoft
+
+- [Vitest Documentation](https://vitest.dev/) - Official Vitest testing framework
+- [Playwright Documentation](https://playwright.dev/) - Official Playwright end-to-end testing
+- [React Testing Library](https://testing-library.com/react) - React component testing library
+- [Playwright Best Practices](https://playwright.dev/docs/best-practices) - Official testing best practices from Microsoft
 
 #### Technical Articles and Guides
-* "Playwright Test Best Practices for Scalability." DEV Community (2024). [Technical Guide](https://dev.to/aswani25/playwright-test-best-practices-for-scalability-4l0j) - Page Object Model, parallel execution, test organization
-* "Mastering Testing with Vitest and TypeScript." xjavascript.com (2024). [Developer Guide](https://www.xjavascript.com/blog/vitest-typescript/) - TypeScript integration and best practices
-* "Unit Testing a React Application with Vitest, MSW, and Playwright." MakePath (2024). [Integration Guide](https://makepath.com/unit-testing-a-react-application-with-vitest-msw-and-playwright/) - Combining Vitest browser mode with Playwright
-* GitHub. "Vitest Playground: A hands-on repository for learning Vitest." [Examples](https://github.com/SallamRady/vitest-playground/) - Practical testing patterns
+
+- "Playwright Test Best Practices for Scalability." DEV Community (2024). [Technical Guide](https://dev.to/aswani25/playwright-test-best-practices-for-scalability-4l0j) - Page Object Model, parallel execution, test organization
+- "Mastering Testing with Vitest and TypeScript." xjavascript.com (2024). [Developer Guide](https://www.xjavascript.com/blog/vitest-typescript/) - TypeScript integration and best practices
+- "Unit Testing a React Application with Vitest, MSW, and Playwright." MakePath (2024). [Integration Guide](https://makepath.com/unit-testing-a-react-application-with-vitest-msw-and-playwright/) - Combining Vitest browser mode with Playwright
+- GitHub. "Vitest Playground: A hands-on repository for learning Vitest." [Examples](https://github.com/SallamRady/vitest-playground/) - Practical testing patterns
 
 #### Testing Web Workers
-* "Testing Web Workers" - Web.dev - Best practices for worker testing
-* "E2E Testing Best Practices" - Playwright Blog - End-to-end testing strategies
+
+- "Testing Web Workers" - Web.dev - Best practices for worker testing
+- "E2E Testing Best Practices" - Playwright Blog - End-to-end testing strategies
 
 #### Related ADRs
-* ADR-0002: Web Worker DSP Architecture (testing workers in isolation)
-* ADR-0007: Type Safety and Validation Approach (test data validation)
+
+- ADR-0002: Web Worker DSP Architecture (testing workers in isolation)
+- ADR-0007: Type Safety and Validation Approach (test data validation)

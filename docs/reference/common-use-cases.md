@@ -9,6 +9,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 ### Broadcast Radio Reception
 
 **Shortwave Broadcasting**
+
 - **What**: Listen to international radio stations worldwide
 - **Frequencies**: 3-30 MHz (see frequency allocations)
 - **Mode**: AM, DRM (digital)
@@ -17,6 +18,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 - **Notable**: BBC World Service, Radio France International, Voice of America
 
 **FM Radio**
+
 - **What**: High-quality music and local stations
 - **Frequencies**: 87.5-108 MHz
 - **Mode**: WFM (wideband FM)
@@ -24,6 +26,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 - **Getting started**: Easiest signals to receive, great for testing SDR
 
 **AM Radio**
+
 - **What**: News, talk radio, sports
 - **Frequencies**: 530-1710 kHz
 - **Mode**: AM
@@ -33,28 +36,29 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 ### Amateur Radio Monitoring
 
 **Voice Contacts**
+
 - **HF Bands**: 80m, 40m, 20m, 17m, 15m, 12m, 10m
 - **Modes**: SSB (USB above 10 MHz, LSB below), AM, FM
 - **Listen for**: Contests, DX (long distance), nets, emergency drills
 - **Best times**: Varies by band and propagation
 
 **Digital Modes**
+
 - **FT8**: Weak signal digital communication
   - Frequencies: 3.573, 7.074, 14.074, 21.074 MHz
   - Software: WSJT-X
   - Active 24/7 worldwide
   - Great propagation indicator
-  
 - **PSK31**: Keyboard chat
   - Common around 14.070 MHz
   - Software: fldigi
-  
 - **SSTV**: Slow scan television (images)
   - Usually around 14.230 MHz
   - Software: QSSTV, MMSSTV
   - ISS sometimes transmits SSTV
 
 **Morse Code (CW)**
+
 - **Frequencies**: Lower part of each amateur band
 - **Use**: Long distance weak signal work
 - **Challenge**: Requires learning Morse code
@@ -64,13 +68,15 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 
 **What**: Amateur radio voice repeaters provide wide area coverage
 
-**Frequencies**: 
+**Frequencies**:
+
 - 2m band: 144-148 MHz (FM)
 - 70cm band: 420-450 MHz (FM)
 
 **Finding repeaters**: RepeaterBook, local club websites
 
-**Listening**: 
+**Listening**:
+
 - Simplex calling frequencies
 - CTCSS/PL tones filter access
 - Regular nets and conversations
@@ -84,6 +90,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Listen to pilots and controllers in real-time
 
 **Frequencies**: 118-137 MHz AM
+
 - **121.5 MHz**: Emergency frequency (monitor carefully)
 - **123.45 MHz**: Unofficial air-to-air (USA)
 - **Tower frequencies**: 118-119 MHz typically
@@ -91,12 +98,14 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 - **ATIS (weather)**: Often around 127 MHz
 
 **Setup**:
+
 - Mode: AM
 - Bandwidth: 8 kHz
 - Antenna: Vertical or dipole works well
 - Location: Near airport for best results
 
 **Tips**:
+
 - Find local airport frequencies online (AirNav, airport websites)
 - Busiest times: Morning and evening rush hours
 - Listen for callsigns, altitudes, headings
@@ -110,17 +119,20 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **Frequency**: 1090 MHz
 
 **Requirements**:
+
 - SDR with 1090 MHz capability (RTL-SDR with upconverter, or ADS-B specific dongle)
 - Small antenna or specialized ADS-B antenna
 - Line of sight to aircraft
 
-**Software**: 
+**Software**:
+
 - dump1090 (decoder)
 - Virtual Radar Server (visualization)
 - tar1090 (web interface)
 - Integration with FlightAware, FlightRadar24
 
 **Data received**:
+
 - Aircraft position (latitude/longitude)
 - Altitude
 - Speed and heading
@@ -128,6 +140,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 - Aircraft type
 
 **Use cases**:
+
 - Track local air traffic
 - Feed aggregators (FlightAware)
 - Weather forecasting (track weather planes)
@@ -137,6 +150,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Long-distance aviation communication
 
 **Frequencies**: 2-22 MHz USB
+
 - **8891 kHz**: Very active
 - **13306 kHz**: Volmet weather broadcasts
 
@@ -152,6 +166,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Ship-to-ship and ship-to-shore communication
 
 **Frequencies**: 156-162 MHz
+
 - **156.800 MHz**: Channel 16 - Calling and distress (monitor only)
 - **157.100 MHz**: Weather broadcasts (USA)
 
@@ -159,6 +174,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **Bandwidth**: 12.5 kHz
 
 **Use cases**:
+
 - Coast guard operations
 - Port operations
 - Weather reports
@@ -168,24 +184,28 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 
 **What**: Vessel tracking system
 
-**Frequencies**: 
+**Frequencies**:
+
 - 161.975 MHz (AIS 1)
 - 162.025 MHz (AIS 2)
 
 **Modulation**: GMSK 9600 baud
 
-**Software**: 
+**Software**:
+
 - AIS Dispatcher
 - OpenCPN
 - ShipPlotter
 
 **Data received**:
+
 - Vessel position
 - Speed and heading
 - Ship name and type
 - Destination
 
 **Use cases**:
+
 - Track maritime traffic
 - Port monitoring
 - Marine weather patterns
@@ -205,6 +225,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Receive images from polar orbiting satellites
 
 **Satellites and frequencies**:
+
 - **NOAA 15**: 137.6125 MHz
 - **NOAA 18**: 137.9125 MHz
 - **NOAA 19**: 137.1000 MHz
@@ -213,11 +234,13 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **Bandwidth**: ~40 kHz
 
 **Software**:
+
 - WXtoImg (classic, Windows)
 - SatDump (modern, cross-platform)
 - NOAA APT Decoder
 
 **Setup**:
+
 1. Track satellite passes (Orbitron, Gpredict)
 2. Use V-dipole or QFH antenna
 3. Record IQ data or audio during pass
@@ -232,7 +255,8 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: High-resolution satellite imagery
 
 **Frequencies**: ~1.7 GHz
-**Requirements**: 
+**Requirements**:
+
 - Upconverter or L-band capable SDR
 - Dish antenna
 - LNA (low noise amplifier)
@@ -253,13 +277,15 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 
 **What**: FM and SSB transponders in space
 
-**Frequencies**: 
+**Frequencies**:
+
 - Uplink: 2m or 70cm
 - Downlink: 2m or 70cm (opposite band)
 
 **Mode**: USB, FM depending on satellite
 
 **Use cases**:
+
 - Listen to QSOs through satellites
 - Hear CW beacons
 - Track passes
@@ -271,11 +297,13 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 ### ISS (International Space Station)
 
 **Frequencies**:
+
 - **145.800 MHz**: Voice downlink
 - **145.825 MHz**: Packet radio/APRS
 - **437.550 MHz**: SSTV when active
 
 **Listen for**:
+
 - Astronaut voice contacts (scheduled)
 - School contacts
 - APRS digipeater
@@ -293,11 +321,13 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **Mode**: AM, USB
 **Characteristics**: Synthesized voice reading numbers or phonetics
 
-**Notable**: 
+**Notable**:
+
 - The Buzzer (UVB-76): 4625 kHz
 - Lincolnshire Poacher: 6712 kHz (inactive)
 
-**Use cases**: 
+**Use cases**:
+
 - Historical interest
 - Signal analysis practice
 
@@ -306,6 +336,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Non-amateur HF communication
 
 **Types**:
+
 - Military communication (encrypted)
 - Diplomatic services
 - Time signals (WWV, CHU)
@@ -313,6 +344,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 - Data links (HFDL)
 
 **Use cases**:
+
 - Propagation studies
 - Learning signal types
 - Technical interest
@@ -334,6 +366,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Data downlinks from satellites
 
 **Examples**:
+
 - CubeSat beacons
 - Amateur satellites
 - Weather satellite telemetry
@@ -360,18 +393,21 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **Mode**: 1200 baud AFSK
 **Protocol**: AX.25 packet radio
 
-**Software**: 
+**Software**:
+
 - direwolf (decoder)
 - Xastir (client)
 - APRS.fi (web tracking)
 
 **See on map**:
+
 - Mobile stations (cars, hikers)
 - Weather stations
 - Digipeaters
 - Messages
 
 **Use cases**:
+
 - Track friends during events
 - Monitor weather sensors
 - Emergency communication tracking
@@ -382,7 +418,8 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 
 **What**: Numeric and alphanumeric pager messages
 
-**Frequencies**: 
+**Frequencies**:
+
 - 137-138 MHz (varies by region)
 - 152-153 MHz
 - 929-932 MHz
@@ -392,6 +429,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **Software**: PDW (Pager Decoder), multimon-ng
 
 **Use cases**:
+
 - Monitor emergency services (where legal)
 - Understand legacy infrastructure
 - Traffic monitoring
@@ -433,6 +471,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Analyze local RF environment
 
 **Use cases**:
+
 - Find interference sources
 - Study propagation
 - Optimize antenna placement
@@ -443,6 +482,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Understand signal processing
 
 **Activities**:
+
 - Write custom demodulators
 - Experiment with filters
 - Analyze modulation schemes
@@ -453,6 +493,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Decode proprietary protocols
 
 **Examples**:
+
 - Wireless sensors
 - Remote controls
 - Wireless thermometers
@@ -479,6 +520,7 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 **What**: Monitor public safety (where legal)
 
 **Types**:
+
 - Police, fire, EMS
 - Coast Guard
 - Search and rescue
@@ -491,18 +533,18 @@ SDR technology enables a wide variety of applications. This guide covers the mos
 
 ## Setup Recommendations by Use Case
 
-| Use Case | Frequency Range | Recommended Antenna | Difficulty |
-|----------|----------------|---------------------|------------|
-| FM Broadcast | 88-108 MHz | Dipole, telescopic | Easy |
-| AM Broadcast | 530-1710 kHz | Long wire | Easy |
-| HF Shortwave | 3-30 MHz | Dipole, long wire, loop | Medium |
-| Aviation VHF | 118-137 MHz | Vertical, dipole | Easy |
-| Weather Satellites | 137 MHz | V-dipole, QFH | Medium |
-| ADS-B | 1090 MHz | Collinear, specialized | Easy |
-| Marine VHF | 156-162 MHz | Vertical | Easy |
-| Amateur 2m/70cm | 144-148, 420-450 MHz | Vertical, J-pole | Easy |
-| HF Amateur | 3.5-30 MHz | Dipole, EFHW | Medium |
-| AIS | 161-162 MHz | Vertical | Medium |
+| Use Case           | Frequency Range      | Recommended Antenna     | Difficulty |
+| ------------------ | -------------------- | ----------------------- | ---------- |
+| FM Broadcast       | 88-108 MHz           | Dipole, telescopic      | Easy       |
+| AM Broadcast       | 530-1710 kHz         | Long wire               | Easy       |
+| HF Shortwave       | 3-30 MHz             | Dipole, long wire, loop | Medium     |
+| Aviation VHF       | 118-137 MHz          | Vertical, dipole        | Easy       |
+| Weather Satellites | 137 MHz              | V-dipole, QFH           | Medium     |
+| ADS-B              | 1090 MHz             | Collinear, specialized  | Easy       |
+| Marine VHF         | 156-162 MHz          | Vertical                | Easy       |
+| Amateur 2m/70cm    | 144-148, 420-450 MHz | Vertical, J-pole        | Easy       |
+| HF Amateur         | 3.5-30 MHz           | Dipole, EFHW            | Medium     |
+| AIS                | 161-162 MHz          | Vertical                | Medium     |
 
 ---
 

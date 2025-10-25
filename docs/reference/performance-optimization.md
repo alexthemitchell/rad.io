@@ -7,12 +7,14 @@ Real-time signal processing in browsers presents unique challenges. This guide c
 ## Performance Targets
 
 ### Minimum Requirements
+
 - **FFT computation**: <16ms per frame (60 FPS)
 - **Audio processing**: <2ms latency for real-time
 - **Waterfall update**: 30-60 FPS smooth scrolling
 - **UI responsiveness**: <100ms for user interactions
 
 ### Optimization Goals
+
 - Maintain 60 FPS spectrum/waterfall updates
 - Process 2+ MS/s sample rate in real-time
 - Keep CPU usage <50% on target hardware
@@ -30,14 +32,17 @@ Real-time signal processing in browsers presents unique challenges. This guide c
 
 ```javascript
 // main.js - UI thread
-const dspWorker = new Worker('dsp-worker.js');
+const dspWorker = new Worker("dsp-worker.js");
 
 // Send samples to worker
-dspWorker.postMessage({
-  type: 'process',
-  samples: audioBuffer,
-  sampleRate: 48000
-}, [audioBuffer.buffer]); // Transfer ownership
+dspWorker.postMessage(
+  {
+    type: "process",
+    samples: audioBuffer,
+    sampleRate: 48000,
+  },
+  [audioBuffer.buffer],
+); // Transfer ownership
 
 // Receive results
 dspWorker.onmessage = (e) => {
@@ -51,15 +56,18 @@ dspWorker.onmessage = (e) => {
 // dsp-worker.js - Worker thread
 self.onmessage = (e) => {
   const { type, samples, sampleRate } = e.data;
-  
-  if (type === 'process') {
+
+  if (type === "process") {
     const spectrum = computeFFT(samples);
     const audio = demodulate(samples);
-    
-    self.postMessage({
-      spectrum,
-      audio
-    }, [spectrum.buffer, audio.buffer]); // Transfer back
+
+    self.postMessage(
+      {
+        spectrum,
+        audio,
+      },
+      [spectrum.buffer, audio.buffer],
+    ); // Transfer back
   }
 };
 ```
@@ -87,10 +95,7 @@ rawSamples → fftWorker → spectrum display
 worker.postMessage({ buffer: myFloat32Array });
 
 // ✅ FAST - Transfers ownership
-worker.postMessage(
-  { buffer: myFloat32Array },
-  [myFloat32Array.buffer]
-);
+worker.postMessage({ buffer: myFloat32Array }, [myFloat32Array.buffer]);
 ```
 
 **Note**: After transfer, original is neutered (length = 0).
@@ -124,7 +129,7 @@ class FFTProcessor {
     this.fftReal = new Float32Array(size);
     this.fftImag = new Float32Array(size);
   }
-  
+
   process(input) {
     // Reuse buffers
     for (let i = 0; i < input.length; i++) {
@@ -152,22 +157,22 @@ class BufferPool {
     this.size = size;
     this.available = [];
     this.inUse = new Set();
-    
+
     for (let i = 0; i < count; i++) {
       this.available.push(new Float32Array(size));
     }
   }
-  
+
   acquire() {
     if (this.available.length === 0) {
-      console.warn('Pool exhausted');
+      console.warn("Pool exhausted");
       return new Float32Array(this.size);
     }
     const buffer = this.available.pop();
     this.inUse.add(buffer);
     return buffer;
   }
-  
+
   release(buffer) {
     this.inUse.delete(buffer);
     this.available.push(buffer);
@@ -195,6 +200,7 @@ pool.release(buffer);
 ### Library Selection
 
 **Options**:
+
 1. **fft.js**: Pure JS, fast, well-tested
 2. **kiss-fft.js**: Port of KISS FFT
 3. **dsp.js**: Full DSP suite
@@ -205,11 +211,13 @@ pool.release(buffer);
 ### FFT Size Selection
 
 **Trade-offs**:
+
 - Larger FFT = Better frequency resolution, more CPU
 - Power of 2 sizes are much faster
 - Common: 256, 512, 1024, 2048, 4096
 
 **Adaptive sizing**:
+
 ```javascript
 function selectFFTSize(sampleRate, desiredResolution) {
   const minSize = Math.ceil(sampleRate / desiredResolution);
@@ -229,22 +237,22 @@ class OverlapProcessor {
     this.buffer = new Float32Array(fftSize);
     this.position = 0;
   }
-  
+
   process(newSamples) {
     const results = [];
-    
+
     for (let i = 0; i < newSamples.length; i++) {
       this.buffer[this.position++] = newSamples[i];
-      
+
       if (this.position >= this.fftSize) {
         results.push(this.computeFFT(this.buffer));
-        
+
         // Shift buffer by hop size
         this.buffer.copyWithin(0, this.hopSize);
         this.position -= this.hopSize;
       }
     }
-    
+
     return results;
   }
 }
@@ -259,7 +267,7 @@ class WindowCache {
   constructor() {
     this.cache = new Map();
   }
-  
+
   getWindow(type, size) {
     const key = `${type}-${size}`;
     if (!this.cache.has(key)) {
@@ -267,7 +275,7 @@ class WindowCache {
     }
     return this.cache.get(key);
   }
-  
+
   computeWindow(type, size) {
     const window = new Float32Array(size);
     // ... compute window
@@ -285,31 +293,39 @@ class WindowCache {
 ```javascript
 class WebGLWaterfall {
   constructor(canvas, width, height) {
-    this.gl = canvas.getContext('webgl2');
+    this.gl = canvas.getContext("webgl2");
     this.width = width;
     this.height = height;
     this.texture = this.createTexture();
     this.setupShaders();
   }
-  
+
   updateLine(spectrumData) {
     // Scroll texture up
     this.gl.copyTexSubImage2D(
       this.gl.TEXTURE_2D,
-      0, 0, 1, 0, 0,
-      this.width, this.height - 1
+      0,
+      0,
+      1,
+      0,
+      0,
+      this.width,
+      this.height - 1,
     );
-    
+
     // Add new line at bottom
     this.gl.texSubImage2D(
       this.gl.TEXTURE_2D,
-      0, 0, 0,
-      this.width, 1,
+      0,
+      0,
+      0,
+      this.width,
+      1,
       this.gl.LUMINANCE,
       this.gl.UNSIGNED_BYTE,
-      spectrumData
+      spectrumData,
     );
-    
+
     this.render();
   }
 }
@@ -324,11 +340,15 @@ class WebGLWaterfall {
 const texture = gl.createTexture();
 gl.bindTexture(gl.TEXTURE_2D, texture);
 gl.texImage2D(
-  gl.TEXTURE_2D, 0,
+  gl.TEXTURE_2D,
+  0,
   gl.R32F,
-  spectrumLength, 1, 0,
-  gl.RED, gl.FLOAT,
-  spectrumData
+  spectrumLength,
+  1,
+  0,
+  gl.RED,
+  gl.FLOAT,
+  spectrumData,
 );
 
 // Vertex shader samples texture, renders line
@@ -356,7 +376,7 @@ analyser.connect(gain);
 gain.connect(audioContext.destination);
 
 // Configure
-filter.type = 'lowpass';
+filter.type = "lowpass";
 filter.frequency.value = 3000;
 analyser.fftSize = 2048;
 ```
@@ -367,24 +387,24 @@ analyser.fftSize = 2048;
 
 ```javascript
 // main.js
-await audioContext.audioWorklet.addModule('demodulator.js');
-const demodNode = new AudioWorkletNode(context, 'demodulator');
+await audioContext.audioWorklet.addModule("demodulator.js");
+const demodNode = new AudioWorkletNode(context, "demodulator");
 
 // demodulator.js
 class DemodulatorProcessor extends AudioWorkletProcessor {
   process(inputs, outputs, parameters) {
     const input = inputs[0][0];
     const output = outputs[0][0];
-    
+
     for (let i = 0; i < input.length; i++) {
       output[i] = this.demodulate(input[i]);
     }
-    
+
     return true;
   }
 }
 
-registerProcessor('demodulator', DemodulatorProcessor);
+registerProcessor("demodulator", DemodulatorProcessor);
 ```
 
 ### Sample Rate Conversion
@@ -396,14 +416,14 @@ async function resample(buffer, targetRate) {
   const ctx = new OfflineAudioContext(
     buffer.numberOfChannels,
     buffer.duration * targetRate,
-    targetRate
+    targetRate,
   );
-  
+
   const source = ctx.createBufferSource();
   source.buffer = buffer;
   source.connect(ctx.destination);
   source.start();
-  
+
   return await ctx.startRendering();
 }
 ```
@@ -415,24 +435,25 @@ async function resample(buffer, targetRate) {
 ```javascript
 function decimateForDisplay(data, targetPoints) {
   if (data.length <= targetPoints) return data;
-  
+
   const result = new Float32Array(targetPoints);
   const step = data.length / targetPoints;
-  
+
   for (let i = 0; i < targetPoints; i++) {
     const start = Math.floor(i * step);
     const end = Math.floor((i + 1) * step);
-    
+
     // Min-max decimation preserves peaks
-    let min = Infinity, max = -Infinity;
+    let min = Infinity,
+      max = -Infinity;
     for (let j = start; j < end; j++) {
       if (data[j] < min) min = data[j];
       if (data[j] > max) max = data[j];
     }
-    
-    result[i] = (i % 2 === 0) ? min : max;
+
+    result[i] = i % 2 === 0 ? min : max;
   }
-  
+
   return result;
 }
 ```
@@ -442,11 +463,13 @@ function decimateForDisplay(data, targetPoints) {
 ### Canvas vs WebGL
 
 **Canvas 2D**:
+
 - ✅ Simple API
 - ✅ Good for <1000 points
 - ❌ Slow for complex scenes
 
 **WebGL**:
+
 - ✅ Very fast for large data
 - ✅ GPU accelerated
 - ❌ More complex
@@ -463,7 +486,7 @@ class DisplayManager {
     this.needsUpdate = false;
     this.isAnimating = false;
   }
-  
+
   requestUpdate() {
     this.needsUpdate = true;
     if (!this.isAnimating) {
@@ -471,13 +494,13 @@ class DisplayManager {
       requestAnimationFrame(() => this.render());
     }
   }
-  
+
   render() {
     if (this.needsUpdate) {
       this.updateDisplay();
       this.needsUpdate = false;
     }
-    
+
     this.isAnimating = false;
   }
 }
@@ -490,11 +513,11 @@ class DisplayManager {
 ```javascript
 // ❌ BAD - Multiple reflows
 for (let i = 0; i < 100; i++) {
-  element.style.top = positions[i] + 'px';
+  element.style.top = positions[i] + "px";
 }
 
 // ✅ GOOD - Single update
-const updates = positions.map(p => `top: ${p}px`).join(';');
+const updates = positions.map((p) => `top: ${p}px`).join(";");
 element.style.cssText = updates;
 
 // ✅ BETTER - Use transform (GPU accelerated)
@@ -508,18 +531,19 @@ element.style.transform = `translateY(${position}px)`;
 **Measure critical paths**:
 
 ```javascript
-performance.mark('fft-start');
+performance.mark("fft-start");
 const spectrum = computeFFT(samples);
-performance.mark('fft-end');
-performance.measure('fft', 'fft-start', 'fft-end');
+performance.mark("fft-end");
+performance.measure("fft", "fft-start", "fft-end");
 
-const measure = performance.getEntriesByName('fft')[0];
+const measure = performance.getEntriesByName("fft")[0];
 console.log(`FFT took ${measure.duration.toFixed(2)}ms`);
 ```
 
 ### Chrome DevTools
 
 **Profile CPU usage**:
+
 1. Open DevTools > Performance
 2. Record during operation
 3. Look for:
@@ -530,6 +554,7 @@ console.log(`FFT took ${measure.duration.toFixed(2)}ms`);
 ### Memory Profiling
 
 **Check for leaks**:
+
 1. DevTools > Memory
 2. Take heap snapshot
 3. Compare before/after
@@ -540,11 +565,13 @@ console.log(`FFT took ${measure.duration.toFixed(2)}ms`);
 ### Mobile Devices
 
 **Considerations**:
+
 - Lower CPU/GPU power
 - Battery constraints
 - Smaller screens
 
 **Strategies**:
+
 - Reduce FFT size (512-1024)
 - Lower update rate (30 FPS)
 - Simplify visualizations
@@ -553,6 +580,7 @@ console.log(`FFT took ${measure.duration.toFixed(2)}ms`);
 ### Desktop
 
 **Take advantage of**:
+
 - Multiple cores (more workers)
 - Larger FFT sizes (4096-8192)
 - Higher resolution displays
@@ -561,6 +589,7 @@ console.log(`FFT took ${measure.duration.toFixed(2)}ms`);
 ## Common Pitfalls
 
 ### ❌ Don't: Allocate in hot loops
+
 ```javascript
 for (let i = 0; i < 1000; i++) {
   const temp = new Float32Array(1024);
@@ -569,6 +598,7 @@ for (let i = 0; i < 1000; i++) {
 ```
 
 ### ✅ Do: Reuse buffers
+
 ```javascript
 const temp = new Float32Array(1024);
 for (let i = 0; i < 1000; i++) {
@@ -577,26 +607,30 @@ for (let i = 0; i < 1000; i++) {
 ```
 
 ### ❌ Don't: Block main thread
+
 ```javascript
 const spectrum = heavyFFT(largeSamples); // Freezes UI
 updateDisplay(spectrum);
 ```
 
 ### ✅ Do: Use workers
+
 ```javascript
 worker.postMessage({ samples: largeSamples });
 worker.onmessage = (e) => updateDisplay(e.data.spectrum);
 ```
 
 ### ❌ Don't: Update every sample
+
 ```javascript
-samples.forEach(s => updateDisplay(s));
+samples.forEach((s) => updateDisplay(s));
 ```
 
 ### ✅ Do: Batch updates
+
 ```javascript
 let buffer = [];
-samples.forEach(s => {
+samples.forEach((s) => {
   buffer.push(s);
   if (buffer.length >= BATCH_SIZE) {
     updateDisplay(buffer);
@@ -613,17 +647,17 @@ samples.forEach(s => {
 class PerformanceTest {
   async runTests() {
     const sizes = [256, 512, 1024, 2048, 4096];
-    
+
     for (const size of sizes) {
       const samples = new Float32Array(size);
       const iterations = 1000;
-      
+
       const start = performance.now();
       for (let i = 0; i < iterations; i++) {
         computeFFT(samples);
       }
       const end = performance.now();
-      
+
       const avg = (end - start) / iterations;
       console.log(`FFT ${size}: ${avg.toFixed(2)}ms avg`);
     }
@@ -634,6 +668,7 @@ class PerformanceTest {
 ## Target Performance Metrics
 
 ### Acceptable Performance
+
 - FFT 2048: <5ms
 - FFT 4096: <10ms
 - Spectrum render: <16ms (60 FPS)
@@ -641,6 +676,7 @@ class PerformanceTest {
 - Total processing: <50% CPU
 
 ### Excellent Performance
+
 - FFT 2048: <2ms
 - FFT 4096: <5ms
 - Spectrum render: <8ms (120 FPS capable)
