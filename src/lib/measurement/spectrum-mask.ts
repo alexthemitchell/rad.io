@@ -13,7 +13,7 @@ import type {
  * Tests spectrum against regulatory masks
  */
 export class SpectrumMaskTester {
-  private masks: Map<string, SpectrumMask> = new Map();
+  private masks = new Map<string, SpectrumMask>();
 
   constructor() {
     this.initializeDefaultMasks();
@@ -64,7 +64,7 @@ export class SpectrumMaskTester {
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
       const power = spectrum[i];
-      if (freq === undefined || power === undefined) continue;
+      if (freq === undefined || power === undefined) {continue;}
 
       const offset = freq - carrierFrequency;
       const limit = this.interpolateMaskLimit(mask.points, offset);
@@ -126,7 +126,7 @@ export class SpectrumMaskTester {
     for (let i = 0; i < points.length - 1; i++) {
       const point1 = points[i];
       const point2 = points[i + 1];
-      if (!point1 || !point2) continue;
+      if (!point1 || !point2) {continue;}
 
       if (
         frequencyOffset >= point1.frequencyOffset &&

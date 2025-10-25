@@ -3,8 +3,8 @@ import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 import { calculateWaveform, type Sample } from "../utils/dsp";
-import type { GL } from "../utils/webgl";
 import type { IVisualizationRenderer } from "../types/visualization";
+import type { GL } from "../utils/webgl";
 import type { ReactElement } from "react";
 
 type WaveformVisualizerProps = {

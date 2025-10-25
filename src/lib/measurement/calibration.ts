@@ -14,7 +14,7 @@ import type {
  * Manages device calibration profiles
  */
 export class CalibrationManager {
-  private profiles: Map<string, CalibrationProfile> = new Map();
+  private profiles = new Map<string, CalibrationProfile>();
   private storageKey = "rad.io:calibration-profiles";
 
   constructor() {
@@ -32,8 +32,8 @@ export class CalibrationManager {
    * Create or update calibration profile
    */
   setProfile(profile: CalibrationProfile): void {
-    profile.lastUpdated = Date.now();
-    this.profiles.set(profile.deviceId, profile);
+    const updatedProfile = { ...profile, lastUpdated: Date.now() };
+    this.profiles.set(updatedProfile.deviceId, updatedProfile);
     this.saveToStorage();
   }
 
@@ -45,17 +45,14 @@ export class CalibrationManager {
     calibration: FrequencyCalibration,
   ): void {
     let profile = this.profiles.get(deviceId);
-    if (!profile) {
-      profile = {
+    profile ??= {
         deviceId,
         lastUpdated: Date.now(),
         version: 1,
       };
-    }
 
     profile.frequency = calibration;
-    profile.version++;
-    this.setProfile(profile);
+    this.setProfile({ ...profile, version: profile.version + 1 });
   }
 
   /**
@@ -66,17 +63,14 @@ export class CalibrationManager {
     calibration: PowerCalibration,
   ): void {
     let profile = this.profiles.get(deviceId);
-    if (!profile) {
-      profile = {
+    profile ??= {
         deviceId,
         lastUpdated: Date.now(),
         version: 1,
       };
-    }
 
     profile.power = calibration;
-    profile.version++;
-    this.setProfile(profile);
+    this.setProfile({ ...profile, version: profile.version + 1 });
   }
 
   /**
@@ -87,17 +81,14 @@ export class CalibrationManager {
     calibration: IQCalibration,
   ): void {
     let profile = this.profiles.get(deviceId);
-    if (!profile) {
-      profile = {
+    profile ??= {
         deviceId,
         lastUpdated: Date.now(),
         version: 1,
       };
-    }
 
     profile.iq = calibration;
-    profile.version++;
-    this.setProfile(profile);
+    this.setProfile({ ...profile, version: profile.version + 1 });
   }
 
   /**
@@ -152,8 +143,8 @@ export class CalibrationManager {
    */
   applyIQCalibration(
     deviceId: string,
-    iqSamples: { I: number; Q: number }[],
-  ): { I: number; Q: number }[] {
+    iqSamples: Array<{ I: number; Q: number }>,
+  ): Array<{ I: number; Q: number }> {
     const profile = this.profiles.get(deviceId);
     if (!profile?.iq) {
       return iqSamples;
@@ -167,7 +158,7 @@ export class CalibrationManager {
 
     return iqSamples.map((sample) => {
       // Remove DC offset
-      let I = sample.I - dcOffsetI;
+      const I = sample.I - dcOffsetI;
       let Q = sample.Q - dcOffsetQ;
 
       // Correct gain imbalance
@@ -257,9 +248,7 @@ export class CalibrationManager {
       );
     }
 
-    if (!profile.power.calibrationPoints) {
-      profile.power.calibrationPoints = [];
-    }
+    profile.power.calibrationPoints ??= [];
 
     // Remove existing point at this frequency
     profile.power.calibrationPoints =
@@ -275,8 +264,7 @@ export class CalibrationManager {
       (a, b) => a.frequency - b.frequency,
     );
 
-    profile.version++;
-    this.setProfile(profile);
+    this.setProfile({ ...profile, version: profile.version + 1 });
   }
 
   /**
@@ -307,7 +295,7 @@ export class CalibrationManager {
     for (let i = 0; i < calibrationPoints.length - 1; i++) {
       const point1 = calibrationPoints[i];
       const point2 = calibrationPoints[i + 1];
-      if (!point1 || !point2) continue;
+      if (!point1 || !point2) {continue;}
 
       if (
         frequency >= point1.frequency &&

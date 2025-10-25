@@ -12,7 +12,7 @@ import type {
  * Logs and manages measurement history
  */
 export class MeasurementLogger {
-  private entries: Map<string, MeasurementLogEntry> = new Map();
+  private entries = new Map<string, MeasurementLogEntry>();
   private maxEntries = 10000;
   private storageKey = "rad.io:measurement-log";
 
@@ -29,7 +29,7 @@ export class MeasurementLogger {
   addEntry(
     entry: Omit<MeasurementLogEntry, "id">,
   ): MeasurementLogEntry {
-    const id = `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `log-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const fullEntry: MeasurementLogEntry = {
       id,
       ...entry,
@@ -99,10 +99,10 @@ export class MeasurementLogger {
    */
   getEntriesByFrequency(
     frequency: number,
-    tolerance: number = 1000,
+    tolerance = 1000,
   ): MeasurementLogEntry[] {
     return this.getAllEntries().filter((e) => {
-      if (!e.frequency) return false;
+      if (!e.frequency) {return false;}
       return (
         Math.abs(e.frequency - frequency) <= tolerance
       );

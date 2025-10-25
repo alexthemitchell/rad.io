@@ -308,7 +308,6 @@ describe("CalibrationManager", () => {
         manager.setProfile(profile);
       }
 
-      const expired = manager.isCalibrationExpired("device1");
       // The setProfile call updates lastUpdated to now, so it won't be expired
       // Check with a shorter max age instead
       const expiredWithShortAge = manager.isCalibrationExpired(

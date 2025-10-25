@@ -121,7 +121,7 @@ describe("FrequencyMarkerManager", () => {
     it("should return only active markers", () => {
       const marker1 = manager.addMarker(100e6);
       manager.addMarker(200e6);
-      const marker3 = manager.addMarker(300e6);
+      manager.addMarker(300e6);
 
       manager.toggleMarkerActive(marker1.id);
 

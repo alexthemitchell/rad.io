@@ -79,9 +79,7 @@ export class SignalQualityAnalyzer {
 
     // Total power (signal + noise + distortion)
     let totalPower = 0;
-    for (let i = 0; i < spectrum.length; i++) {
-      const power = spectrum[i];
-      if (power === undefined) continue;
+    for (const power of spectrum) {
       totalPower += Math.pow(10, power / 10);
     }
 
@@ -96,7 +94,7 @@ export class SignalQualityAnalyzer {
         continue; // Skip fundamental
       }
       const power = spectrum[i];
-      if (power === undefined) continue;
+      if (power === undefined) {continue;}
       noiseDistortionPower += Math.pow(10, power / 10);
     }
 
@@ -146,8 +144,8 @@ export class SignalQualityAnalyzer {
    * Calculate Error Vector Magnitude (EVM) for digital modulation
    */
   calculateEVM(
-    receivedIQ: { I: number; Q: number }[],
-    referenceIQ: { I: number; Q: number }[],
+    receivedIQ: Array<{ I: number; Q: number }>,
+    referenceIQ: Array<{ I: number; Q: number }>,
   ): number {
     if (receivedIQ.length !== referenceIQ.length) {
       throw new Error("Sample arrays must have equal length");
@@ -159,7 +157,7 @@ export class SignalQualityAnalyzer {
     for (let i = 0; i < receivedIQ.length; i++) {
       const rx = receivedIQ[i];
       const ref = referenceIQ[i];
-      if (!rx || !ref) continue;
+      if (!rx || !ref) {continue;}
 
       const errorI = rx.I - ref.I;
       const errorQ = rx.Q - ref.Q;
@@ -245,11 +243,11 @@ export class SignalQualityAnalyzer {
 
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) continue;
+      if (freq === undefined) {continue;}
 
       if (freq >= startFreq && freq <= endFreq) {
         const powerDb = spectrum[i];
-        if (powerDb === undefined) continue;
+        if (powerDb === undefined) {continue;}
         totalLinearPower += Math.pow(10, powerDb / 10);
         count++;
       }
@@ -278,7 +276,7 @@ export class SignalQualityAnalyzer {
 
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) continue;
+      if (freq === undefined) {continue;}
 
       if (freq < excludeStart || freq > excludeEnd) {
         const power = spectrum[i];
@@ -317,7 +315,7 @@ export class SignalQualityAnalyzer {
 
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) continue;
+      if (freq === undefined) {continue;}
 
       const diff = Math.abs(freq - targetFrequency);
       if (diff < minDiff) {

@@ -13,7 +13,7 @@ import type {
  * Manages frequency markers on spectrum displays
  */
 export class FrequencyMarkerManager {
-  private markers: Map<string, FrequencyMarker> = new Map();
+  private markers = new Map<string, FrequencyMarker>();
   private config: Required<MeasurementConfig>;
   private nextMarkerId = 1;
 
@@ -150,7 +150,7 @@ export class FrequencyMarkerManager {
     // Binary search for start index
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) continue;
+      if (freq === undefined) {continue;}
       if (freq >= startFreq) {
         startIdx = i;
         break;
@@ -160,7 +160,7 @@ export class FrequencyMarkerManager {
     // Binary search for end index
     for (let i = frequencies.length - 1; i >= 0; i--) {
       const freq = frequencies[i];
-      if (freq === undefined) continue;
+      if (freq === undefined) {continue;}
       if (freq <= endFreq) {
         endIdx = i;
         break;
@@ -237,7 +237,7 @@ export class FrequencyMarkerManager {
     frequencies: Float32Array,
   ): void {
     for (const marker of this.markers.values()) {
-      if (!marker.active) continue;
+      if (!marker.active) {continue;}
 
       // Find closest frequency bin
       let closestIdx = 0;
@@ -245,7 +245,7 @@ export class FrequencyMarkerManager {
 
       for (let i = 0; i < frequencies.length; i++) {
         const freq = frequencies[i];
-        if (freq === undefined) continue;
+        if (freq === undefined) {continue;}
         const diff = Math.abs(freq - marker.frequency);
         if (diff < minDiff) {
           minDiff = diff;

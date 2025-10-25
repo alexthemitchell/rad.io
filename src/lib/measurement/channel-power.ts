@@ -59,18 +59,15 @@ export class ChannelPowerMeasurement {
     // Convert dB to linear power for integration
     const linearPower: number[] = [];
     let peakPower = -Infinity;
-    let peakIdx = startIdx;
-
     for (let i = startIdx; i <= endIdx; i++) {
       const powerDb = spectrum[i];
-      if (powerDb === undefined) continue;
+      if (powerDb === undefined) {continue;}
 
       const linear = Math.pow(10, powerDb / 10);
       linearPower.push(linear);
 
       if (powerDb > peakPower) {
         peakPower = powerDb;
-        peakIdx = i;
       }
     }
 
@@ -171,7 +168,7 @@ export class ChannelPowerMeasurement {
 
     for (let i = 0; i < frequencies.length; i++) {
       const freq = frequencies[i];
-      if (freq === undefined) continue;
+      if (freq === undefined) {continue;}
 
       if (startIdx === -1 && freq >= startFreq) {
         startIdx = i;
@@ -223,7 +220,7 @@ export class ChannelPowerMeasurement {
     linearPower: number[],
     frequencies: Float32Array,
     startIdx: number,
-    endIdx: number,
+    _endIdx: number,
   ): number {
     if (linearPower.length < 2) {
       return linearPower[0] ?? 0;
@@ -233,11 +230,11 @@ export class ChannelPowerMeasurement {
     for (let i = 0; i < linearPower.length - 1; i++) {
       const freq1 = frequencies[startIdx + i];
       const freq2 = frequencies[startIdx + i + 1];
-      if (freq1 === undefined || freq2 === undefined) continue;
+      if (freq1 === undefined || freq2 === undefined) {continue;}
 
       const power1 = linearPower[i];
       const power2 = linearPower[i + 1];
-      if (power1 === undefined || power2 === undefined) continue;
+      if (power1 === undefined || power2 === undefined) {continue;}
 
       const width = freq2 - freq1;
       sum += ((power1 + power2) / 2) * width;
@@ -253,22 +250,19 @@ export class ChannelPowerMeasurement {
     linearPower: number[],
     frequencies: Float32Array,
     startIdx: number,
-    endIdx: number,
+    _endIdx: number,
     totalPower: number,
   ): number {
-    const threshold =
-      totalPower * this.config.occupiedBandwidthThreshold;
-
     // Find cumulative power distribution
     let cumulativePower = 0;
     let obwStartIdx = startIdx;
-    let obwEndIdx = endIdx;
+    let obwEndIdx = startIdx;
 
     // Find start of occupied bandwidth (0.5% threshold)
     const lowerThreshold = totalPower * (1 - this.config.occupiedBandwidthThreshold) / 2;
     for (let i = 0; i < linearPower.length; i++) {
       const power = linearPower[i];
-      if (power === undefined) continue;
+      if (power === undefined) {continue;}
       cumulativePower += power;
       if (cumulativePower >= lowerThreshold) {
         obwStartIdx = startIdx + i;
@@ -281,7 +275,7 @@ export class ChannelPowerMeasurement {
     const upperThreshold = totalPower * (1 - (1 - this.config.occupiedBandwidthThreshold) / 2);
     for (let i = 0; i < linearPower.length; i++) {
       const power = linearPower[i];
-      if (power === undefined) continue;
+      if (power === undefined) {continue;}
       cumulativePower += power;
       if (cumulativePower >= upperThreshold) {
         obwEndIdx = startIdx + i;
@@ -304,7 +298,7 @@ export class ChannelPowerMeasurement {
    */
   calculateCCDF(
     spectrum: Float32Array,
-    numBins: number = 100,
+    numBins = 100,
   ): { threshold: number[]; probability: number[] } {
     const sortedPowers = Array.from(spectrum).sort((a, b) => b - a);
 
@@ -316,7 +310,7 @@ export class ChannelPowerMeasurement {
         (i / numBins) * sortedPowers.length,
       );
       const power = sortedPowers[idx];
-      if (power === undefined) continue;
+      if (power === undefined) {continue;}
 
       threshold.push(power);
       probability.push(i / numBins);
