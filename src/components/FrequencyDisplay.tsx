@@ -54,31 +54,19 @@ function FrequencyDisplay({
   const inputRef = useRef<HTMLInputElement>(null);
   const { announce } = useLiveRegion();
 
-  const formatFrequency = (freqHz: number): string => {
-    if (freqHz >= 1e9) {
-      return `${(freqHz / 1e9).toFixed(6)} GHz`;
-    }
-    if (freqHz >= 1e6) {
-      return `${(freqHz / 1e6).toFixed(3)} MHz`;
-    }
-    if (freqHz >= 1e3) {
-      return `${(freqHz / 1e3).toFixed(1)} kHz`;
-    }
-    return `${freqHz.toFixed(0)} Hz`;
-  };
-
-  const handleTune = useCallback(
-    (delta: number): void => {
-      if (!onChange) {
-        return;
-      }
-      const newFreq = Math.max(0, frequency + delta);
-      onChange(newFreq);
-      announce(`Frequency: ${formatFrequency(newFreq)}`);
-    },
-    [frequency, onChange, announce, formatFrequency],
-  );
-
+// Format frequency as string with units
+function formatFrequency(freqHz: number): string {
+  if (freqHz >= 1e9) {
+    return `${(freqHz / 1e9).toFixed(6)} GHz`;
+  }
+  if (freqHz >= 1e6) {
+    return `${(freqHz / 1e6).toFixed(3)} MHz`;
+  }
+  if (freqHz >= 1e3) {
+    return `${(freqHz / 1e3).toFixed(1)} kHz`;
+  }
+  return `${freqHz.toFixed(0)} Hz`;
+}
   const handleStepChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
     const newStep = parseInt(e.target.value, 10);
     setStepSize(newStep);
