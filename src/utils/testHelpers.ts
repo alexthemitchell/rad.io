@@ -87,8 +87,8 @@ export function createMockCanvasContext(): CanvasRenderingContext2D {
 }
 
 /**
- * Safely modifies window.devicePixelRatio for testing and ensures cleanup
- * This function is simplified - use try-finally in tests for proper cleanup
+ * Sets window.devicePixelRatio for testing purposes.
+ * This function only sets the value; callers must use try-finally with restoreDevicePixelRatio for proper cleanup.
  * @param ratio The DPR value to set
  */
 export function setDevicePixelRatio(ratio: number): void {
