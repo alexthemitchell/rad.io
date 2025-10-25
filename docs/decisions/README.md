@@ -2,6 +2,19 @@
 
 This directory contains Architecture Decision Records (ADRs) for the SDR Explorer web application.
 
+## Implementation Compliance
+
+📊 **[View ADR Implementation Compliance Report](../ADR-COMPLIANCE-REPORT.md)**
+
+**Quick Status** (as of 2025-10-25):
+
+- ✅ 7 ADRs fully implemented
+- ⚠️ 2 ADRs partially implemented
+- ❌ 2 ADRs not yet implemented (future architecture)
+- ⚠️ 6 ADRs need verification
+
+All ADRs are MADR v4 compliant with comprehensive research citations.
+
 ## What are ADRs?
 
 Architecture Decision Records document significant architectural decisions made during the development of this project. Each ADR captures the context, decision, and consequences of a choice, serving as historical record and onboarding material.

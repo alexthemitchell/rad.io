@@ -53,9 +53,27 @@ describe("p25decoder extra branches", () => {
     it("finds sync pattern in middle of bits array", () => {
       // P25 sync pattern: [1,0,1,0,1,1,1,1,0,0,1,0]
       const bits = [
-        0, 0, 0, 0, 0, // Noise
-        1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, // Sync pattern at index 5
-        1, 1, 1, 1, // More data
+        0,
+        0,
+        0,
+        0,
+        0, // Noise
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0, // Sync pattern at index 5
+        1,
+        1,
+        1,
+        1, // More data
       ];
       const result = detectFrameSync(bits, 0.8);
       expect(result).toBe(5);

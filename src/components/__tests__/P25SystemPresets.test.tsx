@@ -31,9 +31,13 @@ describe("P25SystemPresets", () => {
       />,
     );
 
-    expect(screen.getByText("Example County Public Safety")).toBeInTheDocument();
+    expect(
+      screen.getByText("Example County Public Safety"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Example City Police")).toBeInTheDocument();
-    expect(screen.getByText("Example State Highway Patrol")).toBeInTheDocument();
+    expect(
+      screen.getByText("Example State Highway Patrol"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Example Regional Fire")).toBeInTheDocument();
   });
 
@@ -87,8 +91,9 @@ describe("P25SystemPresets", () => {
     const activeButtons = container.querySelectorAll(".active");
     expect(activeButtons).toHaveLength(1);
 
-    const activeButton = screen.getByText("Example County Public Safety")
-      .parentElement;
+    const activeButton = screen.getByText(
+      "Example County Public Safety",
+    ).parentElement;
     expect(activeButton).toHaveClass("active");
   });
 
@@ -100,11 +105,14 @@ describe("P25SystemPresets", () => {
       />,
     );
 
-    const activeButton = screen.getByText("Example County Public Safety")
-      .parentElement;
+    const activeButton = screen.getByText(
+      "Example County Public Safety",
+    ).parentElement;
     expect(activeButton).toHaveAttribute("aria-pressed", "true");
 
-    const inactiveButton = screen.getByText("Example City Police").parentElement;
+    const inactiveButton = screen.getByText(
+      "Example City Police",
+    ).parentElement;
     expect(inactiveButton).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -116,9 +124,7 @@ describe("P25SystemPresets", () => {
       />,
     );
 
-    expect(
-      screen.getByText(/These are example systems/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/These are example systems/)).toBeInTheDocument();
     expect(
       screen.getByText(/Configure your local P25 system details/),
     ).toBeInTheDocument();
@@ -145,8 +151,9 @@ describe("P25SystemPresets", () => {
       />,
     );
 
-    const firstButton = screen.getByText("Example County Public Safety")
-      .parentElement;
+    const firstButton = screen.getByText(
+      "Example County Public Safety",
+    ).parentElement;
     const title = firstButton?.getAttribute("title") || "";
 
     // Verify title includes key system information
@@ -166,8 +173,9 @@ describe("P25SystemPresets", () => {
       />,
     );
 
-    const activeButton = screen.getByText("Example County Public Safety")
-      .parentElement;
+    const activeButton = screen.getByText(
+      "Example County Public Safety",
+    ).parentElement;
     const title = activeButton?.getAttribute("title") || "";
 
     expect(title).toContain("(Currently configured)");
@@ -181,7 +189,9 @@ describe("P25SystemPresets", () => {
       />,
     );
 
-    const inactiveButton = screen.getByText("Example City Police").parentElement;
+    const inactiveButton = screen.getByText(
+      "Example City Police",
+    ).parentElement;
     const title = inactiveButton?.getAttribute("title") || "";
 
     expect(title).not.toContain("(Currently configured)");
