@@ -11,7 +11,7 @@ References
 - ROADMAP.md (personas, phases)
 - ARCHITECTURE.md (MVH structure, tech stack)
 - ACCESSIBILITY.md, ADR‑0017 (WCAG AA patterns)
-- ADR‑0003 (WebGL2/WebGPU), ADR‑0015 (Visualization), ADR‑0016 (Viridis), ADR‑0012 (FFT worker pool)
+- ADR‑0003 (WebGL2/WebGPU), ADR‑0015 (Visualization), ADR‑0019 (Viridis), ADR‑0012 (FFT worker pool)
 
 ---
 

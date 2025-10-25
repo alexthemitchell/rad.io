@@ -234,3 +234,303 @@ describe("measurePerformance decorator", () => {
     expect(() => errorFn()).toThrow("Test error");
   });
 });
+
+// Additional robust tests with explicit Performance API stubs to drive branches
+describe("performanceMonitor robust behavior", () => {
+  beforeEach(() => {
+    performanceMonitor.clear();
+    performanceMonitor.setEnabled(true);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    performanceMonitor.clear();
+  });
+
+  it("no-ops when disabled (no marks or metrics)", () => {
+    const perf = globalThis.performance as any;
+    const original = {
+      mark: perf.mark,
+      measure: perf.measure,
+      getEntriesByName: perf.getEntriesByName,
+    } as any;
+    const markSpy = jest.fn();
+    perf.mark = markSpy;
+    perf.measure = jest.fn();
+    perf.getEntriesByName = jest.fn().mockReturnValue([]);
+
+    performanceMonitor.setEnabled(false);
+    performanceMonitor.mark("disabled-start");
+    performanceMonitor.measure("render", "disabled-start");
+
+    expect(markSpy).not.toHaveBeenCalled();
+    expect(performanceMonitor.getMetrics("rendering")).toHaveLength(0);
+
+    // restore
+    perf.mark = original.mark;
+    perf.measure = original.measure;
+    perf.getEntriesByName = original.getEntriesByName;
+  });
+
+  it("records measures and categorizes into rendering and fft", () => {
+    const perf = globalThis.performance as any;
+    const original = {
+      mark: perf.mark,
+      measure: perf.measure,
+      getEntriesByName: perf.getEntriesByName,
+    } as any;
+    perf.mark = jest.fn();
+    perf.measure = jest.fn();
+    const getEntriesSpy = jest
+      .fn()
+      .mockReturnValueOnce([
+        {
+          name: "render-loop",
+          duration: 16.7,
+          startTime: 100,
+          entryType: "measure",
+        },
+      ])
+      .mockReturnValueOnce([
+        {
+          name: "fft-pass",
+          duration: 5.2,
+          startTime: 200,
+          entryType: "measure",
+        },
+      ]);
+    perf.getEntriesByName = getEntriesSpy;
+
+    performanceMonitor.mark("render-start");
+    performanceMonitor.measure("render-loop", "render-start");
+    performanceMonitor.mark("fft-start");
+    performanceMonitor.measure("fft-pass", "fft-start");
+
+    expect(getEntriesSpy).toHaveBeenCalledTimes(2);
+    expect(performanceMonitor.getMetrics("rendering")).toHaveLength(1);
+    expect(performanceMonitor.getMetrics("fft")).toHaveLength(1);
+
+    // restore
+    perf.mark = original.mark;
+    perf.measure = original.measure;
+    perf.getEntriesByName = original.getEntriesByName;
+  });
+
+  it("auto-creates an end mark when none is provided", () => {
+    const perf = globalThis.performance as any;
+    const original = {
+      mark: perf.mark,
+      measure: perf.measure,
+      getEntriesByName: perf.getEntriesByName,
+    } as any;
+    const markSpy = jest.fn();
+    perf.mark = markSpy;
+    perf.measure = jest.fn();
+    perf.getEntriesByName = jest
+      .fn()
+      .mockReturnValue([
+        {
+          name: "render-pass",
+          duration: 20,
+          startTime: 50,
+          entryType: "measure",
+        },
+      ]);
+    jest.spyOn(Date, "now").mockReturnValue(9999);
+
+    performanceMonitor.mark("render-start");
+    performanceMonitor.measure("render-pass", "render-start");
+
+    expect(markSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/render-pass-end-9999/),
+    );
+    expect(performanceMonitor.getMetrics("rendering")).toHaveLength(1);
+
+    // restore
+    perf.mark = original.mark;
+    perf.measure = original.measure;
+    perf.getEntriesByName = original.getEntriesByName;
+  });
+
+  it("computes average duration and FPS for rendering", () => {
+    const perf = globalThis.performance as any;
+    const original = {
+      mark: perf.mark,
+      measure: perf.measure,
+      getEntriesByName: perf.getEntriesByName,
+    } as any;
+    perf.mark = jest.fn();
+    perf.measure = jest.fn();
+    perf.getEntriesByName = jest
+      .fn()
+      .mockReturnValueOnce([
+        { name: "render", duration: 20, startTime: 0, entryType: "measure" },
+      ])
+      .mockReturnValueOnce([
+        { name: "render", duration: 25, startTime: 0, entryType: "measure" },
+      ]);
+
+    performanceMonitor.mark("render-start-1");
+    performanceMonitor.measure("render", "render-start-1");
+    performanceMonitor.mark("render-start-2");
+    performanceMonitor.measure("render", "render-start-2");
+
+    expect(performanceMonitor.getAverageDuration("rendering")).toBeCloseTo(
+      22.5,
+      3,
+    );
+    expect(performanceMonitor.getFPS()).toBeCloseTo(44.4, 1);
+
+    // restore
+    perf.mark = original.mark;
+    perf.measure = original.measure;
+    perf.getEntriesByName = original.getEntriesByName;
+  });
+
+  it("getStats calculates min/max/percentiles", () => {
+    const perf = globalThis.performance as any;
+    const durations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const original = {
+      mark: perf.mark,
+      measure: perf.measure,
+      getEntriesByName: perf.getEntriesByName,
+    } as any;
+    perf.mark = jest.fn();
+    perf.measure = jest.fn();
+    perf.getEntriesByName = jest
+      .fn()
+      .mockImplementation(() => [
+        {
+          name: "render",
+          duration: durations.shift()!,
+          startTime: 0,
+          entryType: "measure",
+        },
+      ]);
+
+    for (let i = 0; i < 10; i++) {
+      performanceMonitor.mark(`render-start-${i}`);
+      performanceMonitor.measure("render", `render-start-${i}`);
+    }
+    const stats = performanceMonitor.getStats("rendering");
+    expect(stats.count).toBe(10);
+    expect(stats.min).toBe(1);
+    expect(stats.max).toBe(10);
+    expect(stats.p50).toBe(5);
+    expect(stats.p95).toBe(10);
+    expect(stats.p99).toBe(10);
+
+    // restore
+    perf.mark = original.mark;
+    perf.measure = original.measure;
+    perf.getEntriesByName = original.getEntriesByName;
+  });
+
+  it("clear() empties metrics and calls performance clear methods", () => {
+    const perf = globalThis.performance as any;
+    const original = {
+      mark: perf.mark,
+      measure: perf.measure,
+      getEntriesByName: perf.getEntriesByName,
+      clearMarks: perf.clearMarks,
+      clearMeasures: perf.clearMeasures,
+    } as any;
+    perf.mark = jest.fn();
+    perf.measure = jest.fn();
+    perf.getEntriesByName = jest
+      .fn()
+      .mockReturnValue([
+        { name: "render", duration: 10, startTime: 0, entryType: "measure" },
+      ]);
+    const clearMarksSpy = (perf.clearMarks = jest.fn());
+    const clearMeasuresSpy = (perf.clearMeasures = jest.fn());
+
+    performanceMonitor.mark("render-start");
+    performanceMonitor.measure("render", "render-start");
+    expect(performanceMonitor.getMetrics("rendering")).toHaveLength(1);
+    performanceMonitor.clear();
+    expect(performanceMonitor.getMetrics("rendering")).toHaveLength(0);
+    expect(clearMarksSpy).toHaveBeenCalled();
+    expect(clearMeasuresSpy).toHaveBeenCalled();
+
+    // restore
+    perf.mark = original.mark;
+    perf.measure = original.measure;
+    perf.getEntriesByName = original.getEntriesByName;
+    perf.clearMarks = original.clearMarks;
+    perf.clearMeasures = original.clearMeasures;
+  });
+
+  it("exportMetrics serializes category stats", () => {
+    const perf = globalThis.performance as any;
+    const original = {
+      mark: perf.mark,
+      measure: perf.measure,
+      getEntriesByName: perf.getEntriesByName,
+    } as any;
+    perf.mark = jest.fn();
+    perf.measure = jest.fn();
+    perf.getEntriesByName = jest
+      .fn()
+      .mockReturnValue([
+        { name: "pipeline", duration: 42, startTime: 0, entryType: "measure" },
+      ]);
+
+    performanceMonitor.mark("pipeline-start");
+    performanceMonitor.measure("pipeline", "pipeline-start");
+
+    const json = performanceMonitor.exportMetrics();
+    const obj = JSON.parse(json);
+    expect(obj.total.count).toBe(1);
+
+    // restore
+    perf.mark = original.mark;
+    perf.measure = original.measure;
+    perf.getEntriesByName = original.getEntriesByName;
+  });
+
+  it("logSummary logs grouped output when stats exist", () => {
+    const perf = globalThis.performance as any;
+    const original = {
+      mark: perf.mark,
+      measure: perf.measure,
+      getEntriesByName: perf.getEntriesByName,
+    } as any;
+    perf.mark = jest.fn();
+    perf.measure = jest.fn();
+    perf.getEntriesByName = jest
+      .fn()
+      .mockReturnValueOnce([
+        { name: "render", duration: 18, startTime: 0, entryType: "measure" },
+      ])
+      .mockReturnValueOnce([
+        { name: "render", duration: 22, startTime: 0, entryType: "measure" },
+      ]);
+
+    const group = jest
+      .spyOn(console, "group")
+      .mockImplementation(() => undefined as any);
+    const log = jest
+      .spyOn(console, "log")
+      .mockImplementation(() => undefined as any);
+    const groupEnd = jest
+      .spyOn(console, "groupEnd")
+      .mockImplementation(() => undefined as any);
+
+    performanceMonitor.mark("render-start-1");
+    performanceMonitor.measure("render", "render-start-1");
+    performanceMonitor.mark("render-start-2");
+    performanceMonitor.measure("render", "render-start-2");
+
+    performanceMonitor.logSummary();
+
+    expect(group).toHaveBeenCalledWith("Performance Summary");
+    expect(log).toHaveBeenCalled();
+    expect(groupEnd).toHaveBeenCalled();
+
+    // restore
+    perf.mark = original.mark;
+    perf.measure = original.measure;
+    perf.getEntriesByName = original.getEntriesByName;
+  });
+});

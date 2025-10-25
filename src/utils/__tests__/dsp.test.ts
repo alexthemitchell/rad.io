@@ -8,6 +8,7 @@ import {
   detectSpectralPeaks,
   estimateNoiseFloor,
   calculateFFTSync,
+  calculateSignalStrength,
 } from "../dsp";
 
 /**
@@ -821,6 +822,49 @@ describe("DSP Utilities", () => {
 
         expect(peaks.length).toBe(0);
       });
+    });
+  });
+
+  describe("calculateSignalStrength", () => {
+    it("should calculate RMS power for signal", () => {
+      // Create samples with known amplitude
+      const amplitude = 0.5;
+      const samples = generateSineWave(0.1, amplitude, 100);
+
+      const strength = calculateSignalStrength(samples);
+
+      // Signal strength should be negative dBm
+      expect(strength).toBeLessThan(0);
+      expect(strength).toBeGreaterThan(-100);
+    });
+
+    it("should return -100 dBm for empty samples", () => {
+      const strength = calculateSignalStrength([]);
+      expect(strength).toBe(-100);
+    });
+
+    it("should handle zero-amplitude signal", () => {
+      const samples = Array.from({ length: 100 }, () => ({ I: 0, Q: 0 }));
+      const strength = calculateSignalStrength(samples);
+
+      // Zero amplitude should give very low signal strength
+      expect(strength).toBeLessThan(-50);
+    });
+
+    it("should handle strong signals", () => {
+      const samples = generateSineWave(0.1, 1.0, 100);
+      const strength = calculateSignalStrength(samples);
+
+      // Maximum amplitude (1.0) should give higher signal strength
+      expect(strength).toBeGreaterThan(-10);
+    });
+
+    it("should handle weak signals", () => {
+      const samples = generateSineWave(0.1, 0.01, 100);
+      const strength = calculateSignalStrength(samples);
+
+      // Very small amplitude should give low signal strength
+      expect(strength).toBeLessThan(-30);
     });
   });
 });
