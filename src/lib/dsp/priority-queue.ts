@@ -22,7 +22,9 @@ export class PriorityQueue<T extends { priority: number }> {
    * @returns Highest priority item or undefined if empty
    */
   dequeue(): T | undefined {
-    if (this.isEmpty()) return undefined;
+    if (this.isEmpty()) {
+      return undefined;
+    }
 
     const result = this.heap[0];
     const end = this.heap.pop();
@@ -70,17 +72,24 @@ export class PriorityQueue<T extends { priority: number }> {
    * Move an item up the heap to maintain heap property
    * @param index Index of item to bubble up
    */
-  private bubbleUp(index: number): void {
-    const item = this.heap[index];
-    if (!item) return;
+  private bubbleUp(idx: number): void {
+    const item = this.heap[idx];
+    if (!item) {
+      return;
+    }
 
+    let index = idx;
     while (index > 0) {
       const parentIndex = Math.floor((index - 1) / 2);
       const parent = this.heap[parentIndex];
-      if (!parent) break;
+      if (!parent) {
+        break;
+      }
 
       // Higher priority values go to the top
-      if (item.priority <= parent.priority) break;
+      if (item.priority <= parent.priority) {
+        break;
+      }
 
       this.heap[index] = parent;
       index = parentIndex;
@@ -90,13 +99,17 @@ export class PriorityQueue<T extends { priority: number }> {
 
   /**
    * Move an item down the heap to maintain heap property
-   * @param index Index of item to bubble down
+   * @param idx Index of item to bubble down
    */
-  private bubbleDown(index: number): void {
+  private bubbleDown(idx: number): void {
     const length = this.heap.length;
-    const item = this.heap[index];
-    if (!item) return;
+    const item = this.heap[idx];
+    if (!item) {
+      return;
+    }
 
+    let index = idx;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
       const leftIndex = 2 * index + 1;
       const rightIndex = 2 * index + 2;
@@ -109,21 +122,25 @@ export class PriorityQueue<T extends { priority: number }> {
         swapIndex = leftIndex;
       }
 
+      const compareItem = swapIndex === -1 ? item : (leftChild as T);
       if (
         rightIndex < length &&
         rightChild &&
-        rightChild.priority >
-          (swapIndex === -1 ? item : leftChild!).priority
+        rightChild.priority > compareItem.priority
       ) {
         swapIndex = rightIndex;
       }
 
-      if (swapIndex === -1) break;
+      if (swapIndex === -1) {
+        break;
+      }
 
-      const swapItem = this.heap[swapIndex];
-      if (!swapItem) break;
+      const itemToSwap = this.heap[swapIndex];
+      if (!itemToSwap) {
+        break;
+      }
 
-      this.heap[index] = swapItem;
+      this.heap[index] = itemToSwap;
       index = swapIndex;
     }
 

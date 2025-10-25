@@ -20,7 +20,7 @@ interface FFTResponse {
   error?: string;
 }
 
-interface Sample {
+interface IQSample {
   I: number;
   Q: number;
 }
@@ -29,20 +29,23 @@ interface Sample {
 const fftContexts = new Map<number, { cosTable: Float32Array; sinTable: Float32Array }>();
 
 function getTrigTables(size: number): { cosTable: Float32Array; sinTable: Float32Array } {
-  if (!fftContexts.has(size)) {
-    const cosTable = new Float32Array(size);
-    const sinTable = new Float32Array(size);
-    
-    for (let i = 0; i < size; i++) {
-      const angle = (-2 * Math.PI * i) / size;
-      cosTable[i] = Math.cos(angle);
-      sinTable[i] = Math.sin(angle);
-    }
-    
-    fftContexts.set(size, { cosTable, sinTable });
+  const cached = fftContexts.get(size);
+  if (cached) {
+    return cached;
   }
   
-  return fftContexts.get(size)!;
+  const cosTable = new Float32Array(size);
+  const sinTable = new Float32Array(size);
+  
+  for (let i = 0; i < size; i++) {
+    const angle = (-2 * Math.PI * i) / size;
+    cosTable[i] = Math.cos(angle);
+    sinTable[i] = Math.sin(angle);
+  }
+  
+  const tables = { cosTable, sinTable };
+  fftContexts.set(size, tables);
+  return tables;
 }
 
 function computeFFT(samples: Float32Array, fftSize: number): { magnitude: Float32Array; phase: Float32Array } {
@@ -51,7 +54,7 @@ function computeFFT(samples: Float32Array, fftSize: number): { magnitude: Float3
   const phase = new Float32Array(fftSize);
   
   // Convert Float32Array to IQ samples (assume interleaved I,Q format)
-  const iqSamples: Sample[] = [];
+  const iqSamples: IQSample[] = [];
   for (let i = 0; i < samples.length; i += 2) {
     iqSamples.push({
       I: samples[i] ?? 0,
@@ -71,7 +74,9 @@ function computeFFT(samples: Float32Array, fftSize: number): { magnitude: Float3
     
     for (let n = 0; n < Math.min(iqSamples.length, fftSize); n++) {
       const sample = iqSamples[n];
-      if (!sample) continue;
+      if (!sample) {
+        continue;
+      }
       
       const baseAngle = (k * n) % fftSize;
       const cos = cosTable[baseAngle] ?? 0;
@@ -103,9 +108,9 @@ function computeFFT(samples: Float32Array, fftSize: number): { magnitude: Float3
 }
 
 // Worker message handler
-self.onmessage = (event: MessageEvent<FFTMessage>) => {
+self.onmessage = (event: MessageEvent<FFTMessage>): void => {
   const startTime = performance.now();
-  const { id, samples, sampleRate, fftSize = 2048 } = event.data;
+  const { id, samples, fftSize = 2048 } = event.data;
   
   try {
     const result = computeFFT(samples, fftSize);
@@ -119,7 +124,7 @@ self.onmessage = (event: MessageEvent<FFTMessage>) => {
     };
     
     // Transfer magnitude and phase buffers back
-    self.postMessage(response, [result.magnitude.buffer, result.phase.buffer]);
+    self.postMessage(response, { transfer: [result.magnitude.buffer, result.phase.buffer] });
   } catch (error) {
     const response: FFTResponse = {
       id,

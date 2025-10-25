@@ -5,8 +5,8 @@
  * Manages a pool of Web Workers for parallel DSP processing
  */
 
-import { DSPMessage, DSPResponse } from "./types";
 import { dspMetrics } from "../monitoring/dsp-metrics";
+import type { DSPMessage, DSPResponse } from "./types";
 
 class DSPWorkerPool {
   private workers: Worker[] = [];
@@ -28,9 +28,9 @@ class DSPWorkerPool {
           { type: "module" },
         );
 
-        worker.onmessage = (e: MessageEvent<DSPResponse>) =>
+        worker.onmessage = (e: MessageEvent<DSPResponse>): void =>
           this.handleWorkerMessage(e.data);
-        worker.onerror = (e: ErrorEvent) => this.handleWorkerError(e);
+        worker.onerror = (e: ErrorEvent): void => this.handleWorkerError(e);
 
         this.workers.push(worker);
       } catch (error) {
@@ -38,7 +38,7 @@ class DSPWorkerPool {
       }
     }
 
-    console.log(`DSP Worker Pool initialized with ${this.workers.length} workers`);
+    console.info(`DSP Worker Pool initialized with ${this.workers.length} workers`);
   }
 
   /**
@@ -70,6 +70,9 @@ class DSPWorkerPool {
    */
   private getNextWorker(): Worker {
     const worker = this.workers[this.nextWorkerIndex];
+    if (!worker) {
+      throw new Error("No workers available");
+    }
     this.nextWorkerIndex = (this.nextWorkerIndex + 1) % this.workers.length;
     return worker;
   }
@@ -105,7 +108,7 @@ class DSPWorkerPool {
     this.workers.forEach((worker) => worker.terminate());
     this.workers = [];
     this.pendingTasks.clear();
-    console.log("DSP Worker Pool terminated");
+    console.info("DSP Worker Pool terminated");
   }
 
   /**

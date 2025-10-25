@@ -5,18 +5,19 @@
  * Manages parallel FFT workers with priority-based scheduling and work-stealing
  */
 
-import { FFTTask, FFTResult } from "../workers/types";
 import { PriorityQueue } from "./priority-queue";
+import type { FFTTask, FFTResult } from "../workers/types";
 
 class FFTWorkerPool {
   private workers: Worker[] = [];
   private taskQueue: PriorityQueue<FFTTask>;
-  private workerLoad: Map<Worker, number> = new Map();
+  private workerLoad = new Map<Worker, number>();
   private pendingTasks = new Map<string, FFTTask>();
 
-  constructor(size: number = navigator.hardwareConcurrency || 4) {
-    this.taskQueue = new PriorityQueue<FFTTask>();
-    this.initialize(size);
+  constructor(size?: number) {
+    const poolSize = size ?? (navigator.hardwareConcurrency || 4);
+    this.taskQueue = new PriorityQueue();
+    this.initialize(poolSize);
   }
 
   private initialize(size: number): void {
@@ -27,8 +28,8 @@ class FFTWorkerPool {
           { type: "module" },
         );
 
-        worker.onmessage = (e) => this.handleResult(worker, e.data);
-        worker.onerror = (e) => this.handleError(e);
+        worker.onmessage = (e: MessageEvent): void => this.handleResult(worker, e.data as FFTResult & { id: string });
+        worker.onerror = (e: ErrorEvent): void => this.handleError(e);
 
         this.workers.push(worker);
         this.workerLoad.set(worker, 0);
@@ -37,7 +38,7 @@ class FFTWorkerPool {
       }
     }
 
-    console.log(`FFT Worker Pool initialized with ${this.workers.length} workers`);
+    console.info(`FFT Worker Pool initialized with ${this.workers.length} workers`);
   }
 
   /**
@@ -51,8 +52,7 @@ class FFTWorkerPool {
   async computeFFT(
     samples: Float32Array,
     sampleRate: number,
-    priority: number = 0,
-    fftSize: number = 2048,
+    priority = 0,
   ): Promise<FFTResult> {
     return new Promise((resolve, reject) => {
       const id = this.generateId();
@@ -76,12 +76,16 @@ class FFTWorkerPool {
    * Schedule the next task to the least loaded worker
    */
   private scheduleNext(): void {
-    if (this.taskQueue.isEmpty()) return;
+    if (this.taskQueue.isEmpty()) {
+      return;
+    }
 
     const worker = this.getLeastLoadedWorker();
     const task = this.taskQueue.dequeue();
 
-    if (!task) return;
+    if (!task) {
+      return;
+    }
 
     // Transfer samples to worker
     worker.postMessage(
@@ -93,7 +97,7 @@ class FFTWorkerPool {
       [task.samples.buffer],
     );
 
-    this.workerLoad.set(worker, (this.workerLoad.get(worker) || 0) + 1);
+    this.workerLoad.set(worker, (this.workerLoad.get(worker) ?? 0) + 1);
   }
 
   /**
@@ -103,6 +107,10 @@ class FFTWorkerPool {
   private getLeastLoadedWorker(): Worker {
     let minLoad = Infinity;
     let leastLoaded = this.workers[0];
+
+    if (!leastLoaded) {
+      throw new Error("No workers available");
+    }
 
     for (const [worker, load] of this.workerLoad.entries()) {
       if (load < minLoad) {
@@ -123,7 +131,7 @@ class FFTWorkerPool {
     // Decrement worker load
     this.workerLoad.set(
       worker,
-      Math.max(0, (this.workerLoad.get(worker) || 0) - 1),
+      Math.max(0, (this.workerLoad.get(worker) ?? 0) - 1),
     );
 
     // Resolve the task
@@ -154,7 +162,7 @@ class FFTWorkerPool {
    * @returns Unique identifier string
    */
   private generateId(): string {
-    return `fft-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `fft-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
   }
 
   /**
@@ -182,7 +190,7 @@ class FFTWorkerPool {
     this.workerLoad.clear();
     this.taskQueue.clear();
     this.pendingTasks.clear();
-    console.log("FFT Worker Pool terminated");
+    console.info("FFT Worker Pool terminated");
   }
 }
 

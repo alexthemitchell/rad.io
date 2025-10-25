@@ -8,7 +8,7 @@ export interface DSPMessage {
   type: "fft" | "demod" | "filter" | "detect";
   samples: Float32Array;
   sampleRate: number;
-  params: Record<string, any>;
+  params: Record<string, unknown>;
 }
 
 export interface DSPResponse {

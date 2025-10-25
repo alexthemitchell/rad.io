@@ -5,12 +5,12 @@
  * This worker handles intensive DSP operations to prevent blocking the main thread
  */
 
-import { DSPMessage, DSPResponse } from "./types";
+import type { DSPMessage, DSPResponse } from "./types";
 
 // Import DSP functions (will be available in worker context)
 // We'll use a manual DFT implementation since we can't easily use OfflineAudioContext in workers
 
-interface Sample {
+interface IQSample {
   I: number;
   Q: number;
 }
@@ -19,20 +19,23 @@ interface Sample {
 const fftContexts = new Map<number, { cosTable: Float32Array; sinTable: Float32Array }>();
 
 function getTrigTables(size: number): { cosTable: Float32Array; sinTable: Float32Array } {
-  if (!fftContexts.has(size)) {
-    const cosTable = new Float32Array(size);
-    const sinTable = new Float32Array(size);
-    
-    for (let i = 0; i < size; i++) {
-      const angle = (-2 * Math.PI * i) / size;
-      cosTable[i] = Math.cos(angle);
-      sinTable[i] = Math.sin(angle);
-    }
-    
-    fftContexts.set(size, { cosTable, sinTable });
+  const cached = fftContexts.get(size);
+  if (cached) {
+    return cached;
   }
   
-  return fftContexts.get(size)!;
+  const cosTable = new Float32Array(size);
+  const sinTable = new Float32Array(size);
+  
+  for (let i = 0; i < size; i++) {
+    const angle = (-2 * Math.PI * i) / size;
+    cosTable[i] = Math.cos(angle);
+    sinTable[i] = Math.sin(angle);
+  }
+  
+  const tables = { cosTable, sinTable };
+  fftContexts.set(size, tables);
+  return tables;
 }
 
 function computeFFT(samples: Float32Array, fftSize: number): Float32Array {
@@ -40,7 +43,7 @@ function computeFFT(samples: Float32Array, fftSize: number): Float32Array {
   const output = new Float32Array(fftSize);
   
   // Convert Float32Array to IQ samples (assume interleaved I,Q format)
-  const iqSamples: Sample[] = [];
+  const iqSamples: IQSample[] = [];
   for (let i = 0; i < samples.length; i += 2) {
     iqSamples.push({
       I: samples[i] ?? 0,
@@ -57,7 +60,9 @@ function computeFFT(samples: Float32Array, fftSize: number): Float32Array {
     
     for (let n = 0; n < Math.min(iqSamples.length, fftSize); n++) {
       const sample = iqSamples[n];
-      if (!sample) continue;
+      if (!sample) {
+        continue;
+      }
       
       const baseAngle = (k * n) % fftSize;
       const cos = cosTable[baseAngle] ?? 0;
@@ -83,7 +88,7 @@ function computeFFT(samples: Float32Array, fftSize: number): Float32Array {
 function demodulate(
   samples: Float32Array,
   mode: "am" | "fm" | "usb" | "lsb",
-  sampleRate: number,
+  _sampleRate: number,
 ): Float32Array {
   // Basic demodulation implementation
   const output = new Float32Array(samples.length / 2);
@@ -108,21 +113,28 @@ function demodulate(
         let diff = phase - prevPhase;
         
         // Unwrap phase
-        if (diff > Math.PI) diff -= 2 * Math.PI;
-        if (diff < -Math.PI) diff += 2 * Math.PI;
+        if (diff > Math.PI) {
+          diff -= 2 * Math.PI;
+        }
+        if (diff < -Math.PI) {
+          diff += 2 * Math.PI;
+        }
         
         output[i / 2] = diff;
         prevPhase = phase;
       }
       break;
     }
-    default:
+    case "usb":
+    case "lsb": {
       // For USB/LSB, simple envelope for now
       for (let i = 0; i < samples.length; i += 2) {
         const I = samples[i] ?? 0;
         const Q = samples[i + 1] ?? 0;
         output[i / 2] = Math.sqrt(I * I + Q * Q);
       }
+      break;
+    }
   }
   
   return output;
@@ -130,7 +142,7 @@ function demodulate(
 
 function applyFilter(
   samples: Float32Array,
-  filterType: string,
+  _filterType: string,
   cutoff: number,
   sampleRate: number,
 ): Float32Array {
@@ -138,17 +150,22 @@ function applyFilter(
   const output = new Float32Array(samples.length);
   const alpha = cutoff / (cutoff + sampleRate);
   
-  output[0] = samples[0] ?? 0;
+  const firstSample = samples[0];
+  output[0] = firstSample !== undefined ? firstSample : 0;
   for (let i = 1; i < samples.length; i++) {
-    output[i] = alpha * (samples[i] ?? 0) + (1 - alpha) * output[i - 1];
+    const sample = samples[i];
+    const prevSample = output[i - 1];
+    if (sample !== undefined && prevSample !== undefined) {
+      output[i] = alpha * sample + (1 - alpha) * prevSample;
+    }
   }
   
   return output;
 }
 
-function detectSignals(samples: Float32Array, threshold: number): object {
+function detectSignals(samples: Float32Array, threshold: number): { peaks: Array<{ index: number; value: number }>; count: number } {
   // Signal detection: find peaks above threshold
-  const peaks: { index: number; value: number }[] = [];
+  const peaks: Array<{ index: number; value: number }> = [];
   
   for (let i = 1; i < samples.length - 1; i++) {
     const prev = samples[i - 1] ?? 0;
@@ -164,37 +181,61 @@ function detectSignals(samples: Float32Array, threshold: number): object {
 }
 
 // Worker message handler
-self.onmessage = (event: MessageEvent<DSPMessage>) => {
+self.onmessage = (event: MessageEvent<DSPMessage>): void => {
   const startTime = performance.now();
   const { id, type, samples, sampleRate, params } = event.data;
   
-  let result: Float32Array | object;
-  let transferables: Transferable[] = [];
+  let result: Float32Array | { peaks: Array<{ index: number; value: number }>; count: number };
+  const transferables: Transferable[] = [];
   
   try {
     switch (type) {
-      case "fft":
-        result = computeFFT(samples, params.fftSize as number);
-        transferables = [result.buffer];
+      case "fft": {
+        const fftSizeParam = params["fftSize"];
+        if (typeof fftSizeParam !== "number") {
+          throw new Error("fftSize parameter must be a number");
+        }
+        result = computeFFT(samples, fftSizeParam);
+        transferables.push(result.buffer);
         break;
-      case "demod":
-        result = demodulate(samples, params.mode as "am" | "fm" | "usb" | "lsb", sampleRate);
-        transferables = [result.buffer];
+      }
+      case "demod": {
+        const modeParam = params["mode"];
+        if (typeof modeParam !== "string" || !["am", "fm", "usb", "lsb"].includes(modeParam)) {
+          throw new Error("mode parameter must be one of: am, fm, usb, lsb");
+        }
+        result = demodulate(samples, modeParam as "am" | "fm" | "usb" | "lsb", sampleRate);
+        transferables.push(result.buffer);
         break;
-      case "filter":
+      }
+      case "filter": {
+        const filterTypeParam = params["filterType"];
+        const cutoffParam = params["cutoff"];
+        if (typeof filterTypeParam !== "string") {
+          throw new Error("filterType parameter must be a string");
+        }
+        if (typeof cutoffParam !== "number") {
+          throw new Error("cutoff parameter must be a number");
+        }
         result = applyFilter(
           samples,
-          params.filterType as string,
-          params.cutoff as number,
+          filterTypeParam,
+          cutoffParam,
           sampleRate,
         );
-        transferables = [result.buffer];
+        transferables.push(result.buffer);
         break;
-      case "detect":
-        result = detectSignals(samples, params.threshold as number);
+      }
+      case "detect": {
+        const thresholdParam = params["threshold"];
+        if (typeof thresholdParam !== "number") {
+          throw new Error("threshold parameter must be a number");
+        }
+        result = detectSignals(samples, thresholdParam);
         break;
+      }
       default:
-        throw new Error(`Unknown operation: ${type}`);
+        throw new Error(`Unknown operation: ${String(type)}`);
     }
     
     const processingTime = performance.now() - startTime;
@@ -206,7 +247,7 @@ self.onmessage = (event: MessageEvent<DSPMessage>) => {
       processingTime,
     };
     
-    self.postMessage(response, transferables);
+    self.postMessage(response, { transfer: transferables });
   } catch (error) {
     const response: DSPResponse = {
       id,

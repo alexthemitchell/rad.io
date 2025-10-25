@@ -12,8 +12,8 @@ class ArrayBufferPool {
    * @returns ArrayBuffer from pool or newly allocated
    */
   acquire(size: number): ArrayBuffer {
-    const pool = this.pools.get(size) || [];
-    return pool.pop() || new ArrayBuffer(size);
+    const pool = this.pools.get(size) ?? [];
+    return pool.pop() ?? new ArrayBuffer(size);
   }
 
   /**

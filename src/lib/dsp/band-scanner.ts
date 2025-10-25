@@ -6,7 +6,7 @@
  */
 
 import { fftWorkerPool } from "./fft-worker-pool";
-import { ScanResult } from "../workers/types";
+import type { ScanResult } from "../workers/types";
 
 // Type definitions for SDR device interface
 type FrequencyHz = number;
@@ -23,8 +23,10 @@ interface SDRDevice {
  * Delay utility for settling time
  * @param ms Milliseconds to delay
  */
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 /**
@@ -45,10 +47,10 @@ export async function scanBand(
 
   // Generate frequency list
   for (let freq = startFreq; freq <= endFreq; freq += step) {
-    frequencies.push(freq as FrequencyHz);
+    frequencies.push(freq);
   }
 
-  console.log(`Scanning ${frequencies.length} frequencies from ${startFreq} to ${endFreq} Hz`);
+  console.info(`Scanning ${frequencies.length} frequencies from ${startFreq} to ${endFreq} Hz`);
 
   // Process all frequencies in parallel
   const results = await Promise.all(
@@ -100,7 +102,7 @@ export async function scanBand(
  */
 export function findActiveSignals(
   results: ScanResult[],
-  threshold: number = -60,
+  threshold = -60,
 ): Array<{ frequency: number; power: number }> {
   return results
     .filter((result) => result.peakPower > threshold)

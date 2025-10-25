@@ -3,7 +3,7 @@
  * Tests for ADR-0002: Web Worker DSP Architecture
  */
 
-import { dspMetrics, DSPMetrics } from "../dsp-metrics";
+import { dspMetrics } from "../dsp-metrics";
 
 describe("DSPPerformanceMonitor", () => {
   beforeEach(() => {

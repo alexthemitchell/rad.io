@@ -66,7 +66,9 @@ class DSPPerformanceMonitor {
   }
 
   private calculateThroughput(): number {
-    if (this.metrics.length === 0) return 0;
+    if (this.metrics.length === 0) {
+      return 0;
+    }
     const avgTime = this.metrics.reduce((a, b) => a + b, 0) / this.metrics.length;
     // Convert to operations per second
     return avgTime > 0 ? 1000 / avgTime : 0;
