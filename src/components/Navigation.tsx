@@ -35,21 +35,27 @@ function Navigation(): React.JSX.Element {
 
       switch (event.key) {
         case "1":
+          event.preventDefault();
           void navigate("/monitor");
           break;
         case "2":
+          event.preventDefault();
           void navigate("/scanner");
           break;
         case "3":
+          event.preventDefault();
           void navigate("/decode");
           break;
         case "4":
+          event.preventDefault();
           void navigate("/analysis");
           break;
         case "5":
+          event.preventDefault();
           void navigate("/recordings");
           break;
         case "?":
+          event.preventDefault();
           void navigate("/help");
           break;
         default:
