@@ -97,14 +97,14 @@ function FrequencyDisplay({
         </button>
 
         {/* TODO: Step size selector */}
-        <select aria-label="Tuning step size" disabled>
-          <option>1 Hz</option>
-          <option>10 Hz</option>
-          <option>100 Hz</option>
-          <option selected>1 kHz</option>
-          <option>10 kHz</option>
-          <option>100 kHz</option>
-          <option>1 MHz</option>
+        <select aria-label="Tuning step size" disabled defaultValue="1kHz">
+          <option value="1Hz">1 Hz</option>
+          <option value="10Hz">10 Hz</option>
+          <option value="100Hz">100 Hz</option>
+          <option value="1kHz">1 kHz</option>
+          <option value="10kHz">10 kHz</option>
+          <option value="100kHz">100 kHz</option>
+          <option value="1MHz">1 MHz</option>
         </select>
       </div>
 
