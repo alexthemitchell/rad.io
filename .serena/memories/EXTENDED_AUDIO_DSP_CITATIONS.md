@@ -71,7 +71,7 @@ else:
 - Eliminates JavaScript GC pauses
 
 **Performance Characteristics:**
-- Latency: <5ms typical (128 samples @ 48kHz = 2.67ms)
+- Latency: <5ms typical (includes processing overhead; theoretical buffer latency is 2.67ms for 128 samples @ 48kHz)
 - Runs on dedicated audio rendering thread
 - Message passing via MessagePort
 - Browser support: Chrome 66+, Firefox 76+, Safari 14.1+
