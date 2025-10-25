@@ -78,12 +78,14 @@ export class ScanManager {
     this.activeScans.set(scanId, scan);
 
     // Run scan in background
-    this.runScan(scanId, config, device, controller.signal).catch((error: unknown) => {
-      if (!controller.signal.aborted) {
-        console.error("Scan error:", error);
-        this.emitError(scanId, error);
-      }
-    });
+    this.runScan(scanId, config, device, controller.signal).catch(
+      (error: unknown) => {
+        if (!controller.signal.aborted) {
+          console.error("Scan error:", error);
+          this.emitError(scanId, error);
+        }
+      },
+    );
 
     return scanId;
   }
@@ -156,7 +158,7 @@ export class ScanManager {
 
     // Create scanner based on strategy
     const scanner = this.createScanner(config.strategy);
-    
+
     // Capture device sample rate for use in callback
     const deviceSampleRate = getSampleRate(device);
 

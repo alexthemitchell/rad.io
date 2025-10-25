@@ -1,7 +1,7 @@
 /**
  * FFT Worker Pool Implementation
  * Implements ADR-0012: Parallel FFT Worker Pool
- * 
+ *
  * Manages parallel FFT workers with priority-based scheduling and work-stealing
  */
 
@@ -28,7 +28,8 @@ class FFTWorkerPool {
           { type: "module" },
         );
 
-        worker.onmessage = (e: MessageEvent): void => this.handleResult(worker, e.data as FFTResult & { id: string });
+        worker.onmessage = (e: MessageEvent): void =>
+          this.handleResult(worker, e.data as FFTResult & { id: string });
         worker.onerror = (e: ErrorEvent): void => this.handleError(e);
 
         this.workers.push(worker);
@@ -38,7 +39,9 @@ class FFTWorkerPool {
       }
     }
 
-    console.info(`FFT Worker Pool initialized with ${this.workers.length} workers`);
+    console.info(
+      `FFT Worker Pool initialized with ${this.workers.length} workers`,
+    );
   }
 
   /**
@@ -127,7 +130,10 @@ class FFTWorkerPool {
    * @param worker Worker that completed the task
    * @param result FFT computation result
    */
-  private handleResult(worker: Worker, result: FFTResult & { id: string }): void {
+  private handleResult(
+    worker: Worker,
+    result: FFTResult & { id: string },
+  ): void {
     // Decrement worker load
     this.workerLoad.set(
       worker,

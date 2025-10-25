@@ -84,7 +84,9 @@ describe("useScan", () => {
     });
 
     // Should not have called startScan again
-    expect((scanManager.startScan as jest.Mock).mock.calls.length).toBe(callCount);
+    expect((scanManager.startScan as jest.Mock).mock.calls.length).toBe(
+      callCount,
+    );
   });
 
   it("should stop a scan", async () => {
@@ -189,7 +191,9 @@ describe("useScan", () => {
     await waitFor(() => {
       expect(result.current.isScanning).toBe(false);
       expect(result.current.progress).toBe(100);
-      expect(result.current.activeFrequencies).toEqual([146_000_000, 146_050_000]);
+      expect(result.current.activeFrequencies).toEqual([
+        146_000_000, 146_050_000,
+      ]);
     });
   });
 
@@ -262,7 +266,10 @@ describe("useScan", () => {
   });
 
   it("should cleanup active scans on unmount", () => {
-    (scanManager.getActiveScans as jest.Mock).mockReturnValue(["scan-123", "scan-456"]);
+    (scanManager.getActiveScans as jest.Mock).mockReturnValue([
+      "scan-123",
+      "scan-456",
+    ]);
 
     const { unmount } = renderHook(() => useScan());
 

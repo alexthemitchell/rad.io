@@ -38,7 +38,7 @@ describe("ScanManager", () => {
 
   beforeEach(() => {
     manager = new ScanManager();
-    
+
     mockDevice = {
       setFrequency: jest.fn().mockResolvedValue(undefined),
       captureSamples: jest.fn().mockResolvedValue(new Float32Array(2048)),
@@ -67,7 +67,7 @@ describe("ScanManager", () => {
   describe("startScan", () => {
     it("should start a scan and return scan ID", async () => {
       await manager.initialize();
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -76,9 +76,9 @@ describe("ScanManager", () => {
       };
 
       const scanId = await manager.startScan(config, mockDevice);
-      
+
       expect(scanId).toMatch(/^scan-\d+$/);
-      
+
       // Scan runs in background, so check it was started
       const activeScans = manager.getActiveScans();
       expect(activeScans.length).toBeGreaterThanOrEqual(0); // May finish quickly
@@ -86,7 +86,7 @@ describe("ScanManager", () => {
 
     it("should calculate total frequencies correctly", async () => {
       await manager.initialize();
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -95,14 +95,14 @@ describe("ScanManager", () => {
       };
 
       await manager.startScan(config, mockDevice);
-      
+
       // 146.000, 146.025, 146.050, 146.075, 146.100 = 5 frequencies
       // This is verified internally in the scan manager
     });
 
     it("should generate unique scan IDs", async () => {
       await manager.initialize();
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -112,7 +112,7 @@ describe("ScanManager", () => {
 
       const scanId1 = await manager.startScan(config, mockDevice);
       const scanId2 = await manager.startScan(config, mockDevice);
-      
+
       expect(scanId1).not.toBe(scanId2);
     });
   });
@@ -120,13 +120,13 @@ describe("ScanManager", () => {
   describe("stopScan", () => {
     it("should stop an active scan", async () => {
       await manager.initialize();
-      
+
       // Mock scanner to not complete immediately
       const { LinearScanner } = require("../linear-scanner");
       LinearScanner.mockImplementation(() => ({
         scan: jest.fn().mockImplementation(() => new Promise(() => {})), // Never resolves
       }));
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -135,25 +135,25 @@ describe("ScanManager", () => {
       };
 
       const scanId = await manager.startScan(config, mockDevice);
-      
+
       // Wait a bit for scan to start
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       expect(manager.isScanning(scanId)).toBe(true);
-      
+
       manager.stopScan(scanId);
-      
+
       expect(manager.isScanning(scanId)).toBe(false);
     });
 
     it("should handle stopping non-existent scan", () => {
       const consoleSpy = jest.spyOn(console, "info").mockImplementation();
-      
+
       manager.stopScan("non-existent-scan");
-      
+
       // Should not throw error
       expect(consoleSpy).not.toHaveBeenCalled();
-      
+
       consoleSpy.mockRestore();
     });
   });
@@ -173,13 +173,13 @@ describe("ScanManager", () => {
 
     it("should return active scan IDs", async () => {
       await manager.initialize();
-      
+
       // Mock scanner to not complete immediately
       const { LinearScanner } = require("../linear-scanner");
       LinearScanner.mockImplementation(() => ({
         scan: jest.fn().mockImplementation(() => new Promise(() => {})), // Never resolves
       }));
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -188,10 +188,10 @@ describe("ScanManager", () => {
       };
 
       const scanId = await manager.startScan(config, mockDevice);
-      
+
       // Wait a bit for scan to start
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       const activeScans = manager.getActiveScans();
       expect(activeScans).toContain(scanId);
     });
@@ -204,13 +204,13 @@ describe("ScanManager", () => {
 
     it("should return true for active scan", async () => {
       await manager.initialize();
-      
+
       // Mock scanner to not complete immediately
       const { LinearScanner } = require("../linear-scanner");
       LinearScanner.mockImplementation(() => ({
         scan: jest.fn().mockImplementation(() => new Promise(() => {})), // Never resolves
       }));
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -219,10 +219,10 @@ describe("ScanManager", () => {
       };
 
       const scanId = await manager.startScan(config, mockDevice);
-      
+
       // Wait a bit for scan to start
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       expect(manager.isScanning(scanId)).toBe(true);
     });
   });
@@ -230,7 +230,7 @@ describe("ScanManager", () => {
   describe("destroy", () => {
     it("should stop all active scans", async () => {
       await manager.initialize();
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -240,9 +240,9 @@ describe("ScanManager", () => {
 
       const scanId1 = await manager.startScan(config, mockDevice);
       const scanId2 = await manager.startScan(config, mockDevice);
-      
+
       manager.destroy();
-      
+
       expect(manager.isScanning(scanId1)).toBe(false);
       expect(manager.isScanning(scanId2)).toBe(false);
     });
@@ -255,7 +255,7 @@ describe("ScanManager", () => {
   describe("scanner selection", () => {
     it("should use linear scanner for linear strategy", async () => {
       await manager.initialize();
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -264,7 +264,7 @@ describe("ScanManager", () => {
       };
 
       await manager.startScan(config, mockDevice);
-      
+
       // LinearScanner should be instantiated
       const { LinearScanner } = require("../linear-scanner");
       expect(LinearScanner).toHaveBeenCalled();
@@ -272,7 +272,7 @@ describe("ScanManager", () => {
 
     it("should use adaptive scanner for adaptive strategy", async () => {
       await manager.initialize();
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -281,7 +281,7 @@ describe("ScanManager", () => {
       };
 
       await manager.startScan(config, mockDevice);
-      
+
       // AdaptiveScanner should be instantiated
       const { AdaptiveScanner } = require("../adaptive-scanner");
       expect(AdaptiveScanner).toHaveBeenCalled();
@@ -289,7 +289,7 @@ describe("ScanManager", () => {
 
     it("should use priority scanner for priority strategy", async () => {
       await manager.initialize();
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -298,7 +298,7 @@ describe("ScanManager", () => {
       };
 
       await manager.startScan(config, mockDevice);
-      
+
       // PriorityScanner should be instantiated
       const { PriorityScanner } = require("../priority-scanner");
       expect(PriorityScanner).toHaveBeenCalled();
@@ -306,9 +306,9 @@ describe("ScanManager", () => {
 
     it("should default to linear scanner for unknown strategy", async () => {
       await manager.initialize();
-      
+
       const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
-      
+
       const config: ScanConfig = {
         startFreq: 146_000_000,
         endFreq: 146_100_000,
@@ -317,11 +317,11 @@ describe("ScanManager", () => {
       };
 
       await manager.startScan(config, mockDevice);
-      
+
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("Unknown strategy"),
       );
-      
+
       consoleSpy.mockRestore();
     });
   });

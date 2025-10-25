@@ -21,7 +21,9 @@ describe("ScanControl", () => {
     render(<ScanControl {...defaultProps} />);
 
     expect(screen.getByText(/frequency scanner/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /start scan/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /start scan/i }),
+    ).toBeInTheDocument();
   });
 
   it("should display initial frequency values", () => {
@@ -99,7 +101,7 @@ describe("ScanControl", () => {
 
   it("should call onStartScan with correct config", () => {
     const onStartScan = jest.fn();
-    
+
     render(<ScanControl {...defaultProps} onStartScan={onStartScan} />);
 
     const startButton = screen.getByRole("button", { name: /start scan/i });
@@ -113,7 +115,7 @@ describe("ScanControl", () => {
         strategy: "linear",
         settlingTime: 50,
         sampleCount: 2048,
-      })
+      }),
     );
   });
 
@@ -126,12 +128,14 @@ describe("ScanControl", () => {
     const startButton = screen.getByRole("button", { name: /start scan/i });
     fireEvent.click(startButton);
 
-    expect(screen.getByText(/start frequency must be less than end frequency/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/start frequency must be less than end frequency/i),
+    ).toBeInTheDocument();
   });
 
   it("should not call onStartScan with invalid range", () => {
     const onStartScan = jest.fn();
-    
+
     render(<ScanControl {...defaultProps} onStartScan={onStartScan} />);
 
     const startFreqInput = screen.getByLabelText(/start frequency/i);
@@ -149,17 +153,21 @@ describe("ScanControl", () => {
     // Create error
     const startFreqInput = screen.getByLabelText(/start frequency/i);
     fireEvent.change(startFreqInput, { target: { value: "150000000" } });
-    
+
     const startButton = screen.getByRole("button", { name: /start scan/i });
     fireEvent.click(startButton);
-    
-    expect(screen.getByText(/start frequency must be less than end frequency/i)).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/start frequency must be less than end frequency/i),
+    ).toBeInTheDocument();
 
     // Fix and try again
     fireEvent.change(startFreqInput, { target: { value: "146000000" } });
     fireEvent.click(startButton);
 
-    expect(screen.queryByText(/start frequency must be less than end frequency/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/start frequency must be less than end frequency/i),
+    ).not.toBeInTheDocument();
   });
 
   it("should show progress bar when scanning", () => {
@@ -171,14 +179,24 @@ describe("ScanControl", () => {
   it("should show stop button when scanning", () => {
     render(<ScanControl {...defaultProps} isScanning={true} />);
 
-    expect(screen.getByRole("button", { name: /stop scan/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /start scan/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /stop scan/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /start scan/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("should call onStopScan when stop button clicked", () => {
     const onStopScan = jest.fn();
-    
-    render(<ScanControl {...defaultProps} isScanning={true} onStopScan={onStopScan} />);
+
+    render(
+      <ScanControl
+        {...defaultProps}
+        isScanning={true}
+        onStopScan={onStopScan}
+      />,
+    );
 
     const stopButton = screen.getByRole("button", { name: /stop scan/i });
     fireEvent.click(stopButton);
@@ -204,7 +222,7 @@ describe("ScanControl", () => {
     render(<ScanControl {...defaultProps} />);
 
     const strategySelect = screen.getByLabelText(/scan strategy/i);
-    
+
     expect(strategySelect).toContainHTML("Linear");
     expect(strategySelect).toContainHTML("Adaptive");
     expect(strategySelect).toContainHTML("Priority");

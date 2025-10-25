@@ -72,7 +72,11 @@ export function useScan(enableDetection = false): UseScanReturn {
   useEffect(() => {
     const handleProgress = (event: Event): void => {
       const customEvent = event as CustomEvent<ScanProgress>;
-      const { scanId: eventScanId, result, progress: scanProgress } = customEvent.detail;
+      const {
+        scanId: eventScanId,
+        result,
+        progress: scanProgress,
+      } = customEvent.detail;
 
       if (eventScanId === scanId) {
         if (result !== undefined) {
@@ -84,7 +88,8 @@ export function useScan(enableDetection = false): UseScanReturn {
 
     const handleComplete = (event: Event): void => {
       const customEvent = event as CustomEvent<ScanComplete>;
-      const { scanId: eventScanId, activeFrequencies: active } = customEvent.detail;
+      const { scanId: eventScanId, activeFrequencies: active } =
+        customEvent.detail;
 
       if (eventScanId === scanId) {
         setIsScanning(false);
@@ -94,7 +99,10 @@ export function useScan(enableDetection = false): UseScanReturn {
     };
 
     const handleError = (event: Event): void => {
-      const customEvent = event as CustomEvent<{ scanId: string; error: string }>;
+      const customEvent = event as CustomEvent<{
+        scanId: string;
+        error: string;
+      }>;
       const { scanId: eventScanId, error } = customEvent.detail;
 
       if (eventScanId === scanId) {
@@ -114,20 +122,23 @@ export function useScan(enableDetection = false): UseScanReturn {
     };
   }, [scanId]);
 
-  const startScan = useCallback((config: ScanConfig, device: ISDRDevice): void => {
-    if (isScanning) {
-      console.warn("Scan already in progress");
-      return;
-    }
+  const startScan = useCallback(
+    (config: ScanConfig, device: ISDRDevice): void => {
+      if (isScanning) {
+        console.warn("Scan already in progress");
+        return;
+      }
 
-    setResults([]);
-    setProgress(0);
-    setActiveFrequencies([]);
-    setIsScanning(true);
+      setResults([]);
+      setProgress(0);
+      setActiveFrequencies([]);
+      setIsScanning(true);
 
-    const id = scanManager.startScan(config, device);
-    setScanId(id);
-  }, [isScanning]);
+      const id = scanManager.startScan(config, device);
+      setScanId(id);
+    },
+    [isScanning],
+  );
 
   const stopScan = useCallback(() => {
     if (scanId) {

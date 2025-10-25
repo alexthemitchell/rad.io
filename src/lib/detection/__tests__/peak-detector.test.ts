@@ -26,13 +26,18 @@ describe("PeakDetector", () => {
         spectrum[i] = -60; // 20 dB above noise floor
       }
 
-      const peaks = detector.detect(spectrum, noiseFloor, sampleRate, centerFreq);
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
 
       expect(peaks.length).toBe(1);
-      expect(peaks[0].binIndex).toBeGreaterThanOrEqual(45);
-      expect(peaks[0].binIndex).toBeLessThanOrEqual(55);
-      expect(peaks[0].power).toBeCloseTo(-60, 1);
-      expect(peaks[0].snr).toBeCloseTo(20, 1);
+      expect(peaks[0]!.binIndex).toBeGreaterThanOrEqual(45);
+      expect(peaks[0]!.binIndex).toBeLessThanOrEqual(55);
+      expect(peaks[0]!.power).toBeCloseTo(-60, 1);
+      expect(peaks[0]!.snr).toBeCloseTo(20, 1);
     });
 
     it("should detect multiple peaks", () => {
@@ -49,12 +54,17 @@ describe("PeakDetector", () => {
       for (let i = 300; i <= 320; i++) spectrum[i] = -55;
       for (let i = 700; i <= 730; i++) spectrum[i] = -50;
 
-      const peaks = detector.detect(spectrum, noiseFloor, sampleRate, centerFreq);
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
 
       expect(peaks.length).toBe(3);
-      expect(peaks[0].snr).toBeCloseTo(20, 1);
-      expect(peaks[1].snr).toBeCloseTo(25, 1);
-      expect(peaks[2].snr).toBeCloseTo(30, 1);
+      expect(peaks[0]!.snr).toBeCloseTo(20, 1);
+      expect(peaks[1]!.snr).toBeCloseTo(25, 1);
+      expect(peaks[2]!.snr).toBeCloseTo(30, 1);
     });
 
     it("should not detect signals below threshold", () => {
@@ -71,7 +81,12 @@ describe("PeakDetector", () => {
         spectrum[i] = -75;
       }
 
-      const peaks = detector.detect(spectrum, noiseFloor, sampleRate, centerFreq);
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
 
       expect(peaks.length).toBe(0);
     });
@@ -88,7 +103,12 @@ describe("PeakDetector", () => {
       // Add a narrow peak (< 50 kHz)
       for (let i = 500; i <= 510; i++) spectrum[i] = -60;
 
-      const peaks = detector.detect(spectrum, noiseFloor, sampleRate, centerFreq);
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
 
       // Should be filtered out due to bandwidth
       expect(peaks.length).toBe(0);
@@ -106,7 +126,12 @@ describe("PeakDetector", () => {
       // Add a wide peak (> 50 kHz)
       for (let i = 400; i <= 600; i++) spectrum[i] = -60;
 
-      const peaks = detector.detect(spectrum, noiseFloor, sampleRate, centerFreq);
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
 
       // Should be filtered out due to bandwidth
       expect(peaks.length).toBe(0);
@@ -123,11 +148,16 @@ describe("PeakDetector", () => {
       // Add peak at center (bin 512)
       for (let i = 500; i <= 524; i++) spectrum[i] = -60;
 
-      const peaks = detector.detect(spectrum, noiseFloor, sampleRate, centerFreq);
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
 
       expect(peaks.length).toBe(1);
       // Peak at center should be close to centerFreq (within 100 kHz due to bin resolution)
-      expect(peaks[0].frequency).toBeCloseTo(centerFreq, -5);
+      expect(peaks[0]!.frequency).toBeCloseTo(centerFreq, -5);
     });
 
     it("should calculate bandwidth correctly", () => {
@@ -142,10 +172,15 @@ describe("PeakDetector", () => {
       // Bandwidth = (50 / 1000) * 2_000_000 = 100 kHz
       for (let i = 475; i <= 525; i++) spectrum[i] = -60;
 
-      const peaks = detector.detect(spectrum, noiseFloor, sampleRate, centerFreq);
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
 
       expect(peaks.length).toBe(1);
-      expect(peaks[0].bandwidth).toBeCloseTo(100_000, -2);
+      expect(peaks[0]!.bandwidth).toBeCloseTo(100_000, -2);
     });
 
     it("should handle peak at end of spectrum", () => {
@@ -159,10 +194,15 @@ describe("PeakDetector", () => {
       // Add peak at end
       for (let i = 90; i <= 99; i++) spectrum[i] = -60;
 
-      const peaks = detector.detect(spectrum, noiseFloor, sampleRate, centerFreq);
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
 
       expect(peaks.length).toBe(1);
-      expect(peaks[0].binIndex).toBeGreaterThanOrEqual(90);
+      expect(peaks[0]!.binIndex).toBeGreaterThanOrEqual(90);
     });
   });
 });

@@ -116,10 +116,7 @@ export class PriorityScanner implements IScanner {
     const samples = await device.captureSamples(sampleCount);
 
     // Compute FFT
-    const fft = await fftWorkerPool.computeFFT(
-      samples,
-      getSampleRate(device),
-    );
+    const fft = await fftWorkerPool.computeFFT(samples, getSampleRate(device));
 
     // Calculate statistics
     const peakPower = Math.max(...Array.from(fft.magnitude));

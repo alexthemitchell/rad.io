@@ -1,11 +1,13 @@
 # Worker Pool Architecture Implementation
 
 ## Purpose
+
 Documents the implementation of ADR-0002 (Web Worker DSP Architecture) and ADR-0012 (Parallel FFT Worker Pool) completed October 2025.
 
 ## Implementation Summary
 
 ### Core Locations
+
 - **Worker Pools**: `src/lib/workers/` - DSP and FFT worker pool managers
 - **DSP Utilities**: `src/lib/dsp/` - Priority queue, FFT pool, band scanner
 - **Supporting**: `src/lib/utils/buffer-pool.ts`, `src/lib/monitoring/dsp-metrics.ts`
@@ -15,17 +17,20 @@ Documents the implementation of ADR-0002 (Web Worker DSP Architecture) and ADR-0
 ### Key Architectural Patterns
 
 **Worker Pool Pattern**:
+
 - Round-robin scheduling in DSPWorkerPool
 - Least-loaded selection in FFTWorkerPool
 - Transferable objects for zero-copy (`postMessage(msg, { transfer: [...] })`)
 - Error isolation (worker crashes don't affect main thread)
 
 **Priority Queue**:
+
 - Binary heap-based max-heap
 - Used in FFTWorkerPool for task scheduling
 - Higher priority values processed first
 
 **Type Safety Considerations**:
+
 - Workers use `IQSample` interface (not `Sample` to avoid conflicts with existing types)
 - Params accessed with bracket notation for index signatures: `params["fftSize"]`
 - Always check array bounds before access to satisfy strict null checks
@@ -33,6 +38,7 @@ Documents the implementation of ADR-0002 (Web Worker DSP Architecture) and ADR-0
 ### Common Pitfalls
 
 **Worker postMessage Syntax**:
+
 ```typescript
 // ❌ Wrong (causes TS errors)
 self.postMessage(response, transferables);
@@ -42,6 +48,7 @@ self.postMessage(response, { transfer: transferables });
 ```
 
 **Parameter Access in Workers**:
+
 ```typescript
 // ❌ Causes TS4111 error
 const size = params.fftSize;
@@ -55,6 +62,7 @@ const size = sizeParam;
 ```
 
 **Lint Considerations**:
+
 - `while (true)` triggers unnecessary-condition error; add `// eslint-disable-next-line` if needed
 - Use `console.info()` instead of `console.log()` in libraries
 - Prefer nullish coalescing (`??`) over logical OR (`||`)
@@ -65,27 +73,28 @@ To use the implemented workers:
 
 ```typescript
 // DSP Worker Pool
-import { dspWorkerPool } from '@/lib';
+import { dspWorkerPool } from "@/lib";
 const result = await dspWorkerPool.process({
   id: ulid(),
-  type: 'fft',
+  type: "fft",
   samples,
   sampleRate: 2400000,
-  params: { fftSize: 2048 }
+  params: { fftSize: 2048 },
 });
 
 // FFT Worker Pool (with priority)
-import { fftWorkerPool } from '@/lib';
+import { fftWorkerPool } from "@/lib";
 const fft = await fftWorkerPool.computeFFT(samples, sampleRate, priority);
 
 // Band Scanning
-import { scanBand } from '@/lib';
+import { scanBand } from "@/lib";
 const results = await scanBand(device, 88e6, 108e6, 2e6);
 ```
 
 ### Performance Characteristics
 
 Based on implementation:
+
 - Worker pool size: 2-4 workers based on `navigator.hardwareConcurrency`
 - Message overhead: ~1-2ms per operation (as per ADR specs)
 - FFT caching: Trig tables cached per FFT size
@@ -94,11 +103,13 @@ Based on implementation:
 ### Testing Strategy
 
 **Pattern Used**:
+
 - Unit tests for data structures (priority queue, buffer pool)
 - Integration tests for metrics collection
 - Workers themselves not directly unit tested (run in separate context)
 
 **Coverage Targets Achieved**:
+
 - Priority Queue: 98% lines, 84% branches
 - Buffer Pool: 94% lines, 80% branches
 - DSP Metrics: 96% lines, 80% branches
@@ -113,6 +124,7 @@ Based on implementation:
 ### Future Enhancements
 
 When integrating:
+
 1. Replace `calculateFFTSync()` calls with `dspWorkerPool.process()` or `fftWorkerPool.computeFFT()`
 2. Add performance benchmarks comparing worker vs main thread
 3. Consider implementing `fft.js` library in workers for better performance
@@ -121,6 +133,7 @@ When integrating:
 ## Quality Status
 
 **All Quality Gates Passing** (as of completion):
+
 - ✅ 798 tests passing (40 new tests added)
 - ✅ ESLint clean
 - ✅ TypeScript strict mode

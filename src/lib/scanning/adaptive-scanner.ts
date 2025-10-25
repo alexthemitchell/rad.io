@@ -160,11 +160,7 @@ export class AdaptiveScanner implements IScanner {
   /**
    * Update interest level for a frequency
    */
-  private updateInterest(
-    freq: number,
-    power: number,
-    threshold: number,
-  ): void {
+  private updateInterest(freq: number, power: number, threshold: number): void {
     if (power > threshold) {
       // Normalize power above threshold to [0, 1]
       const normalized = Math.min((power - threshold) / 30, 1);

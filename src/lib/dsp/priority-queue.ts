@@ -1,7 +1,7 @@
 /**
  * Priority Queue Implementation
  * Implements ADR-0012: Parallel FFT Worker Pool
- * 
+ *
  * Binary heap-based priority queue for task scheduling
  */
 
@@ -118,7 +118,11 @@ export class PriorityQueue<T extends { priority: number }> {
       const leftChild = this.heap[leftIndex];
       const rightChild = this.heap[rightIndex];
 
-      if (leftIndex < length && leftChild && leftChild.priority > item.priority) {
+      if (
+        leftIndex < length &&
+        leftChild &&
+        leftChild.priority > item.priority
+      ) {
         swapIndex = leftIndex;
       }
 
@@ -126,7 +130,7 @@ export class PriorityQueue<T extends { priority: number }> {
       if (compareItem === undefined) {
         break;
       }
-      
+
       if (
         rightIndex < length &&
         rightChild &&

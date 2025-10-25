@@ -82,7 +82,7 @@ describe("useDetection", () => {
       },
     ];
 
-    detectionCallback?.(mockSignals);
+    detectionCallback!(mockSignals);
 
     await waitFor(() => {
       expect(result.current.signals).toEqual(mockSignals);
@@ -103,7 +103,7 @@ describe("useDetection", () => {
     });
 
     // Simulate noise floor update
-    noiseFloorCallback?.(-75);
+    noiseFloorCallback!(-75);
 
     await waitFor(() => {
       expect(result.current.noiseFloor).toBe(-75);
@@ -124,7 +124,7 @@ describe("useDetection", () => {
     });
 
     // First detection
-    detectionCallback?.([
+    detectionCallback!([
       {
         binIndex: 100,
         frequency: 146_000_000,
@@ -141,7 +141,7 @@ describe("useDetection", () => {
     });
 
     // Second detection
-    detectionCallback?.([
+    detectionCallback!([
       {
         binIndex: 200,
         frequency: 146_500_000,
@@ -172,7 +172,7 @@ describe("useDetection", () => {
     });
 
     // Add signals
-    detectionCallback?.([
+    detectionCallback!([
       {
         binIndex: 100,
         frequency: 146_000_000,

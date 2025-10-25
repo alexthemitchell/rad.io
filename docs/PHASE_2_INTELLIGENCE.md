@@ -11,6 +11,7 @@ Phase 2 adds intelligent automated analysis capabilities to WebSDR Pro, enabling
 The signal detection system automatically identifies and classifies signals in real-time:
 
 **Supported Signal Types:**
+
 - **Narrowband FM (NFM)**: 12-30 kHz bandwidth - typical for 2-way radio, amateur repeaters
 - **Wideband FM (WFM)**: 150-250 kHz bandwidth - FM broadcast radio stations
 - **AM**: 4-11 kHz bandwidth - AM broadcast stations
@@ -18,6 +19,7 @@ The signal detection system automatically identifies and classifies signals in r
 - **Unknown**: Signals that don't match known patterns
 
 **Detection Features:**
+
 - Automatic noise floor tracking (adapts to changing conditions)
 - Configurable detection threshold (dB above noise floor)
 - Bandwidth validation (filters spurious detections)
@@ -29,12 +31,14 @@ The signal detection system automatically identifies and classifies signals in r
 Three intelligent scanning strategies for different use cases:
 
 #### 1. Linear Scanner (Sequential)
+
 - Scans frequencies in order from start to end
 - Predictable and straightforward
 - Best for initial band surveys
 - Example: Scan 146.000 - 148.000 MHz in 25 kHz steps
 
 #### 2. Adaptive Scanner (Learning)
+
 - Learns from signal activity during scanning
 - Adds finer resolution steps around active frequencies
 - Variable dwell times (spends more time on active frequencies)
@@ -42,12 +46,14 @@ Three intelligent scanning strategies for different use cases:
 - Example: Quickly scans quiet frequencies, lingers on active ones
 
 #### 3. Priority Scanner (Bookmarks First)
+
 - Scans bookmarked frequencies before filling in the range
 - Ensures critical channels are checked regularly
 - Best for emergency monitoring and known channel surveillance
 - Example: Check NOAA weather channels, then scan full band
 
 **Scan Features:**
+
 - Real-time progress tracking
 - Configurable step size and settling time
 - Automatic signal detection during scans (optional)
@@ -73,6 +79,7 @@ The Signal Detection Panel displays all automatically detected signals:
 5. **Clear signals** button removes all detected signals from the list
 
 **Color Coding:**
+
 - 🔵 Blue: Narrowband FM
 - 🟢 Green: Wideband FM
 - 🟠 Orange: AM
@@ -112,6 +119,7 @@ Configure and run frequency scans:
 ### Amateur Radio (Ham Radio Enthusiast)
 
 **Band Activity Survey:**
+
 ```
 1. Open Scanner page
 2. Set: 146.000 MHz → 148.000 MHz, 25 kHz steps
@@ -122,6 +130,7 @@ Configure and run frequency scans:
 ```
 
 **Finding Active Repeaters:**
+
 ```
 1. Strategy: Adaptive
 2. Scan 2-meter band (146-148 MHz)
@@ -132,6 +141,7 @@ Configure and run frequency scans:
 ### Emergency Communications (ARES/RACES)
 
 **Monitoring Emergency Nets:**
+
 ```
 1. Add emergency frequencies to bookmarks
 2. Strategy: Priority
@@ -143,6 +153,7 @@ Configure and run frequency scans:
 ### Spectrum Analysis (Professional)
 
 **Interference Identification:**
+
 ```
 1. Strategy: Linear with detection enabled
 2. Small step size (5-10 kHz) for precision
@@ -152,6 +163,7 @@ Configure and run frequency scans:
 ```
 
 **Spectrum Occupancy Study:**
+
 ```
 1. Scan multiple bands over time
 2. Adaptive strategy to find all active frequencies
@@ -162,6 +174,7 @@ Configure and run frequency scans:
 ### Research (Academic)
 
 **Signal Library Building:**
+
 ```
 1. Enable detection during normal monitoring
 2. Signals automatically classified and logged
@@ -200,12 +213,14 @@ Configure and run frequency scans:
 ## Performance
 
 ### Detection
+
 - **Latency**: <50ms per spectrum analysis
 - **Accuracy**: >95% for SNR >10dB signals
 - **False Positives**: <5% with proper threshold
 - **Non-blocking**: Runs in Web Worker (background thread)
 
 ### Scanning
+
 - **Linear**: 10-20 frequencies/second
 - **Adaptive**: 15-30 frequencies/second (variable)
 - **2-meter band** (146-148 MHz, 25 kHz steps): ~2-4 seconds
@@ -214,12 +229,14 @@ Configure and run frequency scans:
 ## Tips & Best Practices
 
 ### For Best Detection Accuracy:
+
 1. Ensure proper antenna connection
 2. Adjust gain for optimal SNR (not too high/low)
 3. Use appropriate detection threshold (10-15 dB typical)
 4. Allow noise floor to stabilize (100 spectra)
 
 ### For Efficient Scanning:
+
 1. Start with Linear scan to understand band activity
 2. Use Adaptive for detailed exploration of active areas
 3. Use Priority for monitoring known important frequencies
@@ -229,6 +246,7 @@ Configure and run frequency scans:
    - AM: 9-10 kHz steps
 
 ### For Emergency Monitoring:
+
 1. Add emergency frequencies to bookmarks
 2. Use Priority scanner
 3. Enable detection for automatic alerts
@@ -238,24 +256,28 @@ Configure and run frequency scans:
 ## Troubleshooting
 
 **No signals detected:**
+
 - Check antenna connection
 - Verify device is receiving
 - Lower detection threshold
 - Ensure frequency range has activity
 
 **Too many false detections:**
+
 - Increase detection threshold
 - Check for interference
 - Adjust min/max bandwidth filters
 - Verify noise floor is stable
 
 **Scan too slow:**
+
 - Increase step size
 - Reduce settling time (if hardware supports)
 - Use Linear strategy (faster than Adaptive)
 - Reduce sample count (trade accuracy for speed)
 
 **Classification errors:**
+
 - Some signals may not fit standard patterns
 - Confidence score indicates reliability
 - Manual verification recommended
@@ -264,6 +286,7 @@ Configure and run frequency scans:
 ## Future Enhancements
 
 Planned improvements for Phase 2:
+
 - Machine learning for improved classification
 - Additional signal types (OFDM, spread spectrum)
 - Automatic recording on detection
@@ -283,6 +306,7 @@ Planned improvements for Phase 2:
 ## Support
 
 For questions, bug reports, or feature requests related to signal detection and scanning, please:
+
 1. Check existing GitHub issues
 2. Review ADR documentation
 3. Open a new issue with:
@@ -293,4 +317,4 @@ For questions, bug reports, or feature requests related to signal detection and 
 
 ---
 
-*Phase 2 Intelligence features empower users to discover and analyze signals automatically, transforming WebSDR Pro from a passive receiver into an active intelligent monitoring platform.*
+_Phase 2 Intelligence features empower users to discover and analyze signals automatically, transforming WebSDR Pro from a passive receiver into an active intelligent monitoring platform._

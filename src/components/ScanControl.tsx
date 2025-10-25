@@ -134,9 +134,7 @@ export function ScanControl({
         </div>
 
         {validationError && (
-          <div className="validation-error">
-            {validationError}
-          </div>
+          <div className="validation-error">{validationError}</div>
         )}
 
         <div className="scan-info">

@@ -68,12 +68,7 @@ describe("LinearScanner", () => {
 
       const controller = new AbortController();
 
-      await scanner.scan(
-        mockDevice,
-        config,
-        () => {},
-        controller.signal,
-      );
+      await scanner.scan(mockDevice, config, () => {}, controller.signal);
 
       expect(mockDevice.setFrequency).toHaveBeenCalledWith(100_000_000);
       expect(mockDevice.setFrequency).toHaveBeenCalledWith(100_025_000);
@@ -169,12 +164,7 @@ describe("LinearScanner", () => {
       const controller = new AbortController();
       const startTime = Date.now();
 
-      await scanner.scan(
-        mockDevice,
-        config,
-        () => {},
-        controller.signal,
-      );
+      await scanner.scan(mockDevice, config, () => {}, controller.signal);
 
       const elapsed = Date.now() - startTime;
 
@@ -223,12 +213,7 @@ describe("LinearScanner", () => {
 
       const controller = new AbortController();
 
-      await scanner.scan(
-        mockDevice,
-        config,
-        () => {},
-        controller.signal,
-      );
+      await scanner.scan(mockDevice, config, () => {}, controller.signal);
 
       expect(mockDevice.captureSamples).toHaveBeenCalledWith(4096);
     });

@@ -5,10 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DetectionManager } from "../lib/detection/detection-manager";
-import type {
-  ClassifiedSignal,
-  DetectionConfig,
-} from "../lib/detection";
+import type { ClassifiedSignal, DetectionConfig } from "../lib/detection";
 
 /**
  * Hook return type
@@ -39,9 +36,7 @@ const MAX_SIGNALS = 1000;
  * @param enableAutoDetection Automatically initialize detection on mount
  * @returns Detection state and controls
  */
-export function useDetection(
-  enableAutoDetection = false,
-): UseDetectionReturn {
+export function useDetection(enableAutoDetection = false): UseDetectionReturn {
   const [signals, setSignals] = useState<ClassifiedSignal[]>([]);
   const [noiseFloor, setNoiseFloor] = useState<number>(-Infinity);
   const [isInitialized, setIsInitialized] = useState(false);

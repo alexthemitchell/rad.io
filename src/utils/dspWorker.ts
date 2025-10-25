@@ -31,7 +31,7 @@ function samplesToFloat32Array(samples: Sample[]): Float32Array {
 /**
  * Calculate FFT using worker pool (non-blocking)
  * Preferred over calculateFFTSync for large datasets or when UI responsiveness is critical
- * 
+ *
  * @param samples Array of IQ samples
  * @param fftSize FFT size (power of 2)
  * @param priority Optional priority (higher = more urgent)
@@ -43,20 +43,20 @@ export async function calculateFFTWorker(
   priority = 0,
 ): Promise<Float32Array> {
   const float32Samples = samplesToFloat32Array(samples);
-  
+
   const result = await fftWorkerPool.computeFFT(
     float32Samples,
     48000, // Sample rate (not used in computation, but required by interface)
     priority,
   );
-  
+
   return result.magnitude;
 }
 
 /**
  * Calculate FFT using DSP worker pool (general purpose)
  * Alternative to calculateFFTWorker with different worker pool
- * 
+ *
  * @param samples Array of IQ samples
  * @param fftSize FFT size (power of 2)
  * @returns Promise resolving to power spectrum in dB
@@ -66,7 +66,7 @@ export async function calculateFFTWorkerDSP(
   fftSize: number,
 ): Promise<Float32Array> {
   const float32Samples = samplesToFloat32Array(samples);
-  
+
   const response = await dspWorkerPool.process({
     id: generateId(),
     type: "fft",
@@ -74,13 +74,13 @@ export async function calculateFFTWorkerDSP(
     sampleRate: 48000,
     params: { fftSize },
   });
-  
+
   return response.result as Float32Array;
 }
 
 /**
  * Demodulate signal using worker pool (non-blocking)
- * 
+ *
  * @param samples Array of IQ samples
  * @param mode Demodulation mode
  * @param sampleRate Sample rate in Hz
@@ -92,7 +92,7 @@ export async function demodulateWorker(
   sampleRate: number,
 ): Promise<Float32Array> {
   const float32Samples = samplesToFloat32Array(samples);
-  
+
   const response = await dspWorkerPool.process({
     id: generateId(),
     type: "demod",
@@ -100,13 +100,13 @@ export async function demodulateWorker(
     sampleRate,
     params: { mode },
   });
-  
+
   return response.result as Float32Array;
 }
 
 /**
  * Apply filter using worker pool (non-blocking)
- * 
+ *
  * @param samples Array of IQ samples
  * @param filterType Filter type
  * @param cutoff Cutoff frequency in Hz
@@ -120,7 +120,7 @@ export async function applyFilterWorker(
   sampleRate: number,
 ): Promise<Float32Array> {
   const float32Samples = samplesToFloat32Array(samples);
-  
+
   const response = await dspWorkerPool.process({
     id: generateId(),
     type: "filter",
@@ -128,13 +128,13 @@ export async function applyFilterWorker(
     sampleRate,
     params: { filterType, cutoff },
   });
-  
+
   return response.result as Float32Array;
 }
 
 /**
  * Detect signals using worker pool (non-blocking)
- * 
+ *
  * @param samples Array of IQ samples
  * @param threshold Detection threshold in dB
  * @returns Promise resolving to detected peaks
@@ -144,7 +144,7 @@ export async function detectSignalsWorker(
   threshold: number,
 ): Promise<{ peaks: Array<{ index: number; value: number }>; count: number }> {
   const float32Samples = samplesToFloat32Array(samples);
-  
+
   const response = await dspWorkerPool.process({
     id: generateId(),
     type: "detect",
@@ -152,14 +152,17 @@ export async function detectSignalsWorker(
     sampleRate: 48000,
     params: { threshold },
   });
-  
-  return response.result as { peaks: Array<{ index: number; value: number }>; count: number };
+
+  return response.result as {
+    peaks: Array<{ index: number; value: number }>;
+    count: number;
+  };
 }
 
 /**
  * Calculate spectrogram using worker pool (non-blocking)
  * Processes multiple FFT frames in parallel
- * 
+ *
  * @param samples Array of IQ samples
  * @param fftSize FFT size
  * @param hopSize Hop size between frames
@@ -172,16 +175,16 @@ export async function calculateSpectrogramWorker(
 ): Promise<Float32Array[]> {
   const numFrames = Math.floor((samples.length - fftSize) / hopSize) + 1;
   const frames: Array<Promise<Float32Array>> = [];
-  
+
   for (let i = 0; i < numFrames; i++) {
     const start = i * hopSize;
     const end = start + fftSize;
     const frameSamples = samples.slice(start, end);
-    
+
     // Process frames with priority based on position (earlier frames first)
     frames.push(calculateFFTWorker(frameSamples, fftSize, numFrames - i));
   }
-  
+
   return Promise.all(frames);
 }
 
@@ -200,4 +203,8 @@ export { fftWorkerPool } from "../lib/dsp/fft-worker-pool";
 /**
  * Export band scanning utilities
  */
-export { scanBand, findActiveSignals, batchScanRanges } from "../lib/dsp/band-scanner";
+export {
+  scanBand,
+  findActiveSignals,
+  batchScanRanges,
+} from "../lib/dsp/band-scanner";

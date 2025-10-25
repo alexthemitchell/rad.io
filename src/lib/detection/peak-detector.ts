@@ -35,11 +35,7 @@ export class PeakDetector {
    * @param minBandwidth Minimum signal bandwidth in Hz (default: 1000)
    * @param maxBandwidth Maximum signal bandwidth in Hz (default: 1000000)
    */
-  constructor(
-    thresholdDB = 10,
-    minBandwidth = 1000,
-    maxBandwidth = 1_000_000,
-  ) {
+  constructor(thresholdDB = 10, minBandwidth = 1000, maxBandwidth = 1_000_000) {
     this.thresholdDB = thresholdDB;
     this.minBandwidth = minBandwidth;
     this.maxBandwidth = maxBandwidth;
@@ -68,7 +64,8 @@ export class PeakDetector {
     let peakMaxBin = 0;
 
     for (let i = 0; i < spectrum.length; i++) {
-      const power = spectrum[i];
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const power = spectrum[i]!;
 
       if (power > threshold) {
         if (!inPeak) {

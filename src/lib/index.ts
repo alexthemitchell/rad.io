@@ -12,7 +12,11 @@ export { PriorityQueue } from "./dsp/priority-queue";
 
 // Utilities
 export { bufferPool } from "./utils/buffer-pool";
-export { scanBand, findActiveSignals, batchScanRanges } from "./dsp/band-scanner";
+export {
+  scanBand,
+  findActiveSignals,
+  batchScanRanges,
+} from "./dsp/band-scanner";
 
 // Monitoring
 export { dspMetrics } from "./monitoring/dsp-metrics";

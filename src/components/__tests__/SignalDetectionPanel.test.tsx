@@ -38,45 +38,25 @@ describe("SignalDetectionPanel", () => {
   ];
 
   it("should render with no signals", () => {
-    render(
-      <SignalDetectionPanel
-        signals={[]}
-        noiseFloor={-80}
-      />
-    );
+    render(<SignalDetectionPanel signals={[]} noiseFloor={-80} />);
 
     expect(screen.getByText(/no signals detected/i)).toBeInTheDocument();
   });
 
   it("should display noise floor", () => {
-    render(
-      <SignalDetectionPanel
-        signals={[]}
-        noiseFloor={-75.5}
-      />
-    );
+    render(<SignalDetectionPanel signals={[]} noiseFloor={-75.5} />);
 
     expect(screen.getByText(/noise floor: -75\.5 dB/i)).toBeInTheDocument();
   });
 
   it("should display signal count", () => {
-    render(
-      <SignalDetectionPanel
-        signals={mockSignals}
-        noiseFloor={-80}
-      />
-    );
+    render(<SignalDetectionPanel signals={mockSignals} noiseFloor={-80} />);
 
     expect(screen.getByText(/3 signals/i)).toBeInTheDocument();
   });
 
   it("should render all signals", () => {
-    render(
-      <SignalDetectionPanel
-        signals={mockSignals}
-        noiseFloor={-80}
-      />
-    );
+    render(<SignalDetectionPanel signals={mockSignals} noiseFloor={-80} />);
 
     expect(screen.getByText(/146\.000 MHz/)).toBeInTheDocument();
     expect(screen.getByText(/146\.500 MHz/)).toBeInTheDocument();
@@ -84,12 +64,7 @@ describe("SignalDetectionPanel", () => {
   });
 
   it("should sort signals by SNR descending", () => {
-    render(
-      <SignalDetectionPanel
-        signals={mockSignals}
-        noiseFloor={-80}
-      />
-    );
+    render(<SignalDetectionPanel signals={mockSignals} noiseFloor={-80} />);
 
     const frequencies = screen.getAllByText(/MHz/);
     // First should be highest SNR (146.500 MHz with SNR 35)
@@ -97,12 +72,7 @@ describe("SignalDetectionPanel", () => {
   });
 
   it("should display signal type badges", () => {
-    render(
-      <SignalDetectionPanel
-        signals={mockSignals}
-        noiseFloor={-80}
-      />
-    );
+    render(<SignalDetectionPanel signals={mockSignals} noiseFloor={-80} />);
 
     expect(screen.getByText(/NARROWBAND FM/)).toBeInTheDocument();
     expect(screen.getByText(/WIDEBAND FM/)).toBeInTheDocument();
@@ -111,10 +81,7 @@ describe("SignalDetectionPanel", () => {
 
   it("should display signal details", () => {
     render(
-      <SignalDetectionPanel
-        signals={[mockSignals[0]!]}
-        noiseFloor={-80}
-      />
+      <SignalDetectionPanel signals={[mockSignals[0]!]} noiseFloor={-80} />,
     );
 
     expect(screen.getByText(/-50\.0 dB/)).toBeInTheDocument(); // Power
@@ -125,13 +92,13 @@ describe("SignalDetectionPanel", () => {
 
   it("should call onTuneToSignal when signal clicked", () => {
     const onTuneToSignal = jest.fn();
-    
+
     render(
       <SignalDetectionPanel
         signals={[mockSignals[0]!]}
         noiseFloor={-80}
         onTuneToSignal={onTuneToSignal}
-      />
+      />,
     );
 
     const signalItem = screen.getByRole("button");
@@ -142,10 +109,7 @@ describe("SignalDetectionPanel", () => {
 
   it("should not make signals clickable without onTuneToSignal", () => {
     render(
-      <SignalDetectionPanel
-        signals={[mockSignals[0]!]}
-        noiseFloor={-80}
-      />
+      <SignalDetectionPanel signals={[mockSignals[0]!]} noiseFloor={-80} />,
     );
 
     const signalItems = screen.queryAllByRole("button");
@@ -154,13 +118,13 @@ describe("SignalDetectionPanel", () => {
 
   it("should call onClearSignals when clear button clicked", () => {
     const onClearSignals = jest.fn();
-    
+
     render(
       <SignalDetectionPanel
         signals={mockSignals}
         noiseFloor={-80}
         onClearSignals={onClearSignals}
-      />
+      />,
     );
 
     const clearButton = screen.getByRole("button", { name: /clear/i });
@@ -171,13 +135,13 @@ describe("SignalDetectionPanel", () => {
 
   it("should disable clear button when no signals", () => {
     const onClearSignals = jest.fn();
-    
+
     render(
       <SignalDetectionPanel
         signals={[]}
         noiseFloor={-80}
         onClearSignals={onClearSignals}
-      />
+      />,
     );
 
     const clearButton = screen.getByRole("button", { name: /clear/i });
@@ -185,12 +149,7 @@ describe("SignalDetectionPanel", () => {
   });
 
   it("should not show clear button without onClearSignals", () => {
-    render(
-      <SignalDetectionPanel
-        signals={mockSignals}
-        noiseFloor={-80}
-      />
-    );
+    render(<SignalDetectionPanel signals={mockSignals} noiseFloor={-80} />);
 
     const clearButton = screen.queryByRole("button", { name: /clear/i });
     expect(clearButton).not.toBeInTheDocument();
@@ -208,12 +167,7 @@ describe("SignalDetectionPanel", () => {
       },
     ];
 
-    render(
-      <SignalDetectionPanel
-        signals={signals}
-        noiseFloor={-80}
-      />
-    );
+    render(<SignalDetectionPanel signals={signals} noiseFloor={-80} />);
 
     expect(screen.getByText(/1\.000 MHz/)).toBeInTheDocument();
     expect(screen.getByText(/500\.0 kHz/)).toBeInTheDocument();
@@ -225,7 +179,7 @@ describe("SignalDetectionPanel", () => {
         signals={[mockSignals[0]!]}
         noiseFloor={-80}
         onTuneToSignal={() => {}}
-      />
+      />,
     );
 
     expect(screen.getByText(/click to tune/i)).toBeInTheDocument();

@@ -37,7 +37,8 @@ export class NoiseFloorEstimator {
     // Optimization: Use selection algorithm instead of full sort for median
     const medianSpectrum = new Float32Array(spectrum.length);
     for (let i = 0; i < spectrum.length; i++) {
-      const values = this.history.map((h) => h[i]);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const values = this.history.map((h) => h[i]!);
       medianSpectrum[i] = this.quickMedian(values);
     }
 
@@ -45,7 +46,8 @@ export class NoiseFloorEstimator {
     // This excludes signals and focuses on pure noise
     const sorted = Array.from(medianSpectrum).sort((a, b) => a - b);
     const quarterPoint = Math.floor(sorted.length * 0.25);
-    return sorted[quarterPoint];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return sorted[quarterPoint]!;
   }
 
   /**
@@ -56,7 +58,8 @@ export class NoiseFloorEstimator {
   private quickMedian(values: number[]): number {
     const sorted = values.slice().sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
-    return sorted[mid];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return sorted[mid]!;
   }
 
   /**

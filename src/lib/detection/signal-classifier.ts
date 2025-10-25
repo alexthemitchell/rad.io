@@ -46,7 +46,7 @@ export class SignalClassifier {
     // 1. Digital (1-5 kHz): Check first because it requires edge sharpness
     // 2. AM (4-11 kHz): Has overlap with digital at 4-5 kHz
     // 3. FM: Non-overlapping ranges for narrowband and wideband
-    
+
     // Digital: Often narrowband with sharp edges (check first for priority)
     // Note: 4-5 kHz overlaps with AM, but sharp edges distinguish digital signals
     if (peak.bandwidth >= 1_000 && peak.bandwidth <= 5_000) {
@@ -56,19 +56,31 @@ export class SignalClassifier {
         confidence = 0.6;
       }
     }
-    
+
     // AM: bandwidth 4-11 kHz (but not if already classified as digital)
     // The 4-5 kHz overlap is intentional - signals without sharp edges fall through to AM
-    if (type === "unknown" && peak.bandwidth >= 4_000 && peak.bandwidth < 12_000) {
+    if (
+      type === "unknown" &&
+      peak.bandwidth >= 4_000 &&
+      peak.bandwidth < 12_000
+    ) {
       type = "am";
       confidence = 0.7;
     }
-    
+
     // FM: bandwidth ~12-30 kHz (narrowband) or ~150-250 kHz (wideband)
-    if (type === "unknown" && peak.bandwidth >= 12_000 && peak.bandwidth <= 30_000) {
+    if (
+      type === "unknown" &&
+      peak.bandwidth >= 12_000 &&
+      peak.bandwidth <= 30_000
+    ) {
       type = "narrowband-fm";
       confidence = 0.8;
-    } else if (type === "unknown" && peak.bandwidth >= 150_000 && peak.bandwidth <= 250_000) {
+    } else if (
+      type === "unknown" &&
+      peak.bandwidth >= 150_000 &&
+      peak.bandwidth <= 250_000
+    ) {
       type = "wideband-fm";
       confidence = 0.9;
     }
@@ -88,25 +100,33 @@ export class SignalClassifier {
    */
   private measureEdgeSharpness(peak: Peak, spectrum: Float32Array): number {
     const binIndex = peak.binIndex;
-    const power = spectrum[binIndex];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const power = spectrum[binIndex]!;
     const halfPower = power * 0.5;
 
     // Find left edge (where power drops below half)
     let leftEdge = binIndex;
-    while (leftEdge > 0 && spectrum[leftEdge] > halfPower) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    while (leftEdge > 0 && spectrum[leftEdge]! > halfPower) {
       leftEdge--;
     }
 
     // Find right edge (where power drops below half)
     let rightEdge = binIndex;
-    while (rightEdge < spectrum.length - 1 && spectrum[rightEdge] > halfPower) {
+    while (
+      rightEdge < spectrum.length - 1 &&
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      spectrum[rightEdge]! > halfPower
+    ) {
       rightEdge++;
     }
 
     // Calculate edge width and rolloff rate
     const edgeWidth = rightEdge - leftEdge;
     // Single-bin spike: likely noise/artifact, not a sharp-edged signal
-    if (edgeWidth === 0) {return 0;}
+    if (edgeWidth === 0) {
+      return 0;
+    }
 
     const rolloff = Math.abs(power) / edgeWidth;
 

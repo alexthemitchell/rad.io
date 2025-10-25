@@ -55,8 +55,9 @@ class DSPPerformanceMonitor {
     }
 
     // Calculate average once to avoid duplicate reduce operations
-    const avgTime = this.metrics.reduce((a, b) => a + b, 0) / this.metrics.length;
-    
+    const avgTime =
+      this.metrics.reduce((a, b) => a + b, 0) / this.metrics.length;
+
     return {
       avgProcessingTime: avgTime,
       maxProcessingTime: Math.max(...this.metrics),

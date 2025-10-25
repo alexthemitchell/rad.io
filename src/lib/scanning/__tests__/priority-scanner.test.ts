@@ -26,7 +26,7 @@ jest.mock("../linear-scanner", () => ({
       if (device.setFrequency) {
         await device.setFrequency(config.startFreq);
       }
-      
+
       return [
         {
           frequency: 146_025_000,
@@ -79,7 +79,7 @@ describe("PriorityScanner", () => {
       // Should have scanned priority frequencies first
       expect(mockDevice.setFrequency).toHaveBeenCalledWith(146_000_000);
       expect(mockDevice.setFrequency).toHaveBeenCalledWith(146_050_000);
-      
+
       // Should have at least 2 results (priority frequencies)
       expect(results.length).toBeGreaterThanOrEqual(2);
     });
@@ -119,12 +119,7 @@ describe("PriorityScanner", () => {
 
       const controller = new AbortController();
 
-      await scanner.scan(
-        mockDevice,
-        config,
-        () => {},
-        controller.signal,
-      );
+      await scanner.scan(mockDevice, config, () => {}, controller.signal);
 
       // Should still complete scan using linear scanner
       expect(mockDevice.setFrequency).toHaveBeenCalled();
@@ -140,12 +135,7 @@ describe("PriorityScanner", () => {
 
       const controller = new AbortController();
 
-      await scanner.scan(
-        mockDevice,
-        config,
-        () => {},
-        controller.signal,
-      );
+      await scanner.scan(mockDevice, config, () => {}, controller.signal);
 
       // Should complete without errors
       expect(mockDevice.setFrequency).toHaveBeenCalled();
@@ -210,10 +200,10 @@ describe("PriorityScanner", () => {
 
       // Should have logged error
       expect(consoleErrorSpy).toHaveBeenCalled();
-      
+
       // Should still complete with successful scans
       expect(results.length).toBeGreaterThan(0);
-      
+
       consoleErrorSpy.mockRestore();
     });
 
@@ -237,7 +227,7 @@ describe("PriorityScanner", () => {
       );
 
       // Check that 146_000_000 appears only once
-      const freq146M = results.filter(r => r.frequency === 146_000_000);
+      const freq146M = results.filter((r) => r.frequency === 146_000_000);
       expect(freq146M.length).toBe(1);
     });
 
@@ -255,18 +245,13 @@ describe("PriorityScanner", () => {
       const controller = new AbortController();
       const startTime = Date.now();
 
-      await scanner.scan(
-        mockDevice,
-        config,
-        () => {},
-        controller.signal,
-      );
+      await scanner.scan(mockDevice, config, () => {}, controller.signal);
 
       const elapsed = Date.now() - startTime;
-      
+
       // Should take at least the settling time
       expect(elapsed).toBeGreaterThanOrEqual(100);
-      
+
       // Should use custom sample count
       expect(mockDevice.captureSamples).toHaveBeenCalledWith(4096);
     });

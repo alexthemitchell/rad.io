@@ -124,12 +124,7 @@ describe("AdaptiveScanner", () => {
       const controller = new AbortController();
       const startTime = Date.now();
 
-      await scanner.scan(
-        mockDevice,
-        config,
-        () => {},
-        controller.signal,
-      );
+      await scanner.scan(mockDevice, config, () => {}, controller.signal);
 
       const elapsed = Date.now() - startTime;
 
@@ -212,12 +207,7 @@ describe("AdaptiveScanner", () => {
       const controller = new AbortController();
 
       // First scan learns interests
-      await scanner.scan(
-        mockDevice,
-        config,
-        () => {},
-        controller.signal,
-      );
+      await scanner.scan(mockDevice, config, () => {}, controller.signal);
 
       // Reset
       scanner.reset();

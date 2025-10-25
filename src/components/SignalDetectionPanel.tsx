@@ -3,8 +3,8 @@
  * Displays detected signals with classification information
  */
 
-import React from "react";
 import type { ClassifiedSignal } from "../lib/detection";
+import type { ReactElement } from "react";
 import "./SignalDetectionPanel.css";
 
 export interface SignalDetectionPanelProps {

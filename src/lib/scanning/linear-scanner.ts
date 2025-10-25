@@ -40,7 +40,11 @@ export class LinearScanner implements IScanner {
 
     // Generate frequency list
     const frequencies: number[] = [];
-    for (let freq = config.startFreq; freq <= config.endFreq; freq += config.step) {
+    for (
+      let freq = config.startFreq;
+      freq <= config.endFreq;
+      freq += config.step
+    ) {
       frequencies.push(freq);
     }
 
