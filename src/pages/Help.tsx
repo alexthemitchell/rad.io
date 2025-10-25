@@ -247,7 +247,7 @@ function Help(): React.JSX.Element {
 
           {/* TODO: Load release notes from external source */}
           {/* TODO: Add version comparison */}
-          {/* TODO: Add &ldquo;What&apos;s New&rdquo; highlights */}
+          {/* TODO: Add “What's New” highlights */}
         </section>
       )}
 
