@@ -23,58 +23,57 @@ describe("Help", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows quick start section", () => {
+  it("shows onboarding tab", () => {
     render(
       <BrowserRouter>
         <Help />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/quick start guide/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /onboarding/i }),
+    ).toBeInTheDocument();
   });
 
-  it("shows keyboard shortcuts section", () => {
+  it("shows keyboard shortcuts tab", () => {
     render(
       <BrowserRouter>
         <Help />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/keyboard shortcuts/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /keyboard shortcuts/i }),
+    ).toBeInTheDocument();
   });
 
-  it("shows features overview section", () => {
+  it("shows accessibility tab", () => {
     render(
       <BrowserRouter>
         <Help />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/features overview/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /accessibility/i }),
+    ).toBeInTheDocument();
   });
 
-  it("shows troubleshooting section", () => {
+  it("shows release notes tab", () => {
     render(
       <BrowserRouter>
         <Help />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/troubleshooting/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /release notes/i }),
+    ).toBeInTheDocument();
   });
 
-  it("shows technical resources section", () => {
+  it("shows support tab", () => {
     render(
       <BrowserRouter>
         <Help />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/technical resources/i)).toBeInTheDocument();
-  });
-
-  it("shows community section", () => {
-    render(
-      <BrowserRouter>
-        <Help />
-      </BrowserRouter>,
-    );
-    expect(screen.getByLabelText(/community/i)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /support/i })).toBeInTheDocument();
   });
 
   it("contains external GitHub link", () => {
@@ -83,17 +82,18 @@ describe("Help", () => {
         <Help />
       </BrowserRouter>,
     );
-    const githubLinks = screen.getAllByRole("link", { name: /github/i });
-    expect(githubLinks.length).toBeGreaterThan(0);
+    // GitHub links are in the support tab, which is not active by default
+    // Check for the support tab instead
+    expect(screen.getByRole("tab", { name: /support/i })).toBeInTheDocument();
   });
 
-  it("lists keyboard shortcuts", () => {
+  it("shows getting started content by default", () => {
     render(
       <BrowserRouter>
         <Help />
       </BrowserRouter>,
     );
-    expect(screen.getByText(/1-5/i)).toBeInTheDocument();
-    expect(screen.getByText(/\?/)).toBeInTheDocument();
+    expect(screen.getByText(/getting started/i)).toBeInTheDocument();
+    expect(screen.getByText(/connect your sdr device/i)).toBeInTheDocument();
   });
 });

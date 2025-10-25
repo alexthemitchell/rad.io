@@ -68,7 +68,7 @@ describe("Bookmarks", () => {
       </BrowserRouter>,
     );
     expect(
-      screen.getByRole("heading", { name: /bookmarks/i, level: 2 }),
+      screen.getByRole("heading", { name: /^bookmarks$/i, level: 2 }),
     ).toBeInTheDocument();
   });
 

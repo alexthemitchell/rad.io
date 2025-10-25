@@ -118,7 +118,7 @@ function Decode(): React.JSX.Element {
             <input
               type="checkbox"
               checked={afcEnabled}
-              onChange={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLInputElement>): void => {
                 setAfcEnabled(e.target.checked);
                 announce(`AFC ${e.target.checked ? "enabled" : "disabled"}`);
               }}
@@ -132,7 +132,7 @@ function Decode(): React.JSX.Element {
               <input
                 type="checkbox"
                 checked={varicodeEnabled}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>): void => {
                   setVaricodeEnabled(e.target.checked);
                   announce(
                     `Varicode ${e.target.checked ? "enabled" : "disabled"}`,

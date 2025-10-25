@@ -39,7 +39,7 @@ describe("Devices", () => {
   it("displays heading", () => {
     render(<Devices />);
     expect(
-      screen.getByRole("heading", { name: /devices/i, level: 2 }),
+      screen.getByRole("heading", { name: /^devices$/i, level: 2 }),
     ).toBeInTheDocument();
   });
 

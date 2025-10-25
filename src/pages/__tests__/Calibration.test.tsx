@@ -19,49 +19,60 @@ describe("Calibration", () => {
       </BrowserRouter>,
     );
     expect(
-      screen.getByRole("heading", { name: /calibration wizard/i }),
+      screen.getByRole("heading", { name: /device calibration/i, level: 2 }),
     ).toBeInTheDocument();
   });
 
-  it("shows wizard step indicator", () => {
+  it("shows introduction section", () => {
     render(
       <BrowserRouter>
         <Calibration />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/calibration steps/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/introduction/i)).toBeInTheDocument();
   });
 
-  it("shows step 1 by default", () => {
+  it("shows device selection section", () => {
     render(
       <BrowserRouter>
         <Calibration />
       </BrowserRouter>,
     );
     expect(
-      screen.getByRole("heading", { name: /frequency reference/i }),
+      screen.getByRole("heading", { name: /step 1: select device/i }),
     ).toBeInTheDocument();
   });
 
-  it("shows all navigation buttons", () => {
+  it("shows calibration type section", () => {
     render(
       <BrowserRouter>
         <Calibration />
       </BrowserRouter>,
     );
     expect(
-      screen.getByRole("button", { name: /previous/i }),
+      screen.getByRole("heading", { name: /step 2: calibration type/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /next/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
   });
 
-  it("disables previous button on first step", () => {
+  it("shows calibration procedure section", () => {
     render(
       <BrowserRouter>
         <Calibration />
       </BrowserRouter>,
     );
-    expect(screen.getByRole("button", { name: /previous/i })).toBeDisabled();
+    expect(
+      screen.getByRole("heading", { name: /step 3: calibration procedure/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows validation section", () => {
+    render(
+      <BrowserRouter>
+        <Calibration />
+      </BrowserRouter>,
+    );
+    expect(
+      screen.getByRole("heading", { name: /step 4: validation/i }),
+    ).toBeInTheDocument();
   });
 });

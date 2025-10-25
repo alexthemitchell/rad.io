@@ -45,7 +45,9 @@ function Diagnostics({ isPanel = false }: DiagnosticsProps): React.JSX.Element {
     // Simulate GPU detection
     const gpuModes = ["WebGPU", "WebGL2", "Canvas2D"];
     const randomMode = gpuModes[Math.floor(Math.random() * gpuModes.length)];
-    if (randomMode) {
+    // Array indexing always returns a value for a non-empty array
+    // TypeScript requires the check anyway due to strict null checking
+    if (randomMode !== undefined) {
       setGpuMode(randomMode);
     }
 

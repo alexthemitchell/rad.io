@@ -185,6 +185,7 @@ global.AudioContext = jest.fn().mockImplementation(() => ({
   createBuffer: jest.fn(),
   destination: {},
   resume: jest.fn().mockResolvedValue(undefined),
+  close: jest.fn().mockResolvedValue(undefined),
 })) as any;
 
 describe("Visualizer", () => {

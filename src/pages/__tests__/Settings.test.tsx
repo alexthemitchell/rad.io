@@ -19,7 +19,7 @@ describe("Settings", () => {
       </BrowserRouter>,
     );
     expect(
-      screen.getByRole("heading", { name: /settings/i, level: 2 }),
+      screen.getByRole("heading", { name: /^settings$/i, level: 2 }),
     ).toBeInTheDocument();
   });
 

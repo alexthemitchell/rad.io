@@ -19,7 +19,7 @@ describe("Recordings", () => {
       </BrowserRouter>,
     );
     expect(
-      screen.getByRole("heading", { name: /recordings/i, level: 2 }),
+      screen.getByRole("heading", { name: /^recordings library$/i, level: 2 }),
     ).toBeInTheDocument();
   });
 
@@ -29,7 +29,7 @@ describe("Recordings", () => {
         <Recordings />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/recordings list/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^recordings list$/i)).toBeInTheDocument();
   });
 
   it("shows playback section", () => {
@@ -38,7 +38,7 @@ describe("Recordings", () => {
         <Recordings />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/recording playback/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^recording playback$/i)).toBeInTheDocument();
   });
 
   it("shows list controls section", () => {
@@ -48,7 +48,7 @@ describe("Recordings", () => {
       </BrowserRouter>,
     );
     expect(
-      screen.getByLabelText(/recording list controls/i),
+      screen.getByLabelText(/^recording list controls$/i),
     ).toBeInTheDocument();
   });
 
@@ -58,6 +58,6 @@ describe("Recordings", () => {
         <Recordings />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/storage information/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^storage information$/i)).toBeInTheDocument();
   });
 });
