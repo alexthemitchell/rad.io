@@ -1,0 +1,213 @@
+/**
+ * Signal Detection Panel Styles
+ */
+
+.signal-detection-panel {
+  background: var(--panel-background, #1a1a1a);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 16px;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  margin-bottom: 16px;
+}
+
+.panel-header h3 {
+  margin: 0 0 8px 0;
+  color: var(--text-primary, #ffffff);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.panel-stats {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--text-secondary, #888);
+}
+
+.noise-floor {
+  color: var(--accent-cyan, #00bcd4);
+}
+
+.signal-count {
+  color: var(--text-secondary, #888);
+}
+
+.clear-button {
+  padding: 4px 12px;
+  background: var(--button-background, #333);
+  border: 1px solid var(--border-color, #555);
+  border-radius: 4px;
+  color: var(--text-primary, #ffffff);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.clear-button:hover:not(:disabled) {
+  background: var(--button-hover, #444);
+  border-color: var(--border-hover, #666);
+}
+
+.clear-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.signals-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.no-signals {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-secondary, #888);
+}
+
+.no-signals p {
+  margin: 8px 0;
+}
+
+.no-signals .hint {
+  font-size: 13px;
+  color: var(--text-tertiary, #666);
+}
+
+.signal-item {
+  background: var(--item-background, #252525);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.signal-item:hover {
+  background: var(--item-hover, #2a2a2a);
+  border-color: var(--border-hover, #444);
+  transform: translateX(4px);
+}
+
+.signal-item:focus {
+  outline: 2px solid var(--accent-cyan, #00bcd4);
+  outline-offset: 2px;
+}
+
+.signal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.signal-frequency {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent-cyan, #00bcd4);
+  font-family: "Courier New", monospace;
+}
+
+.signal-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-nfm {
+  background: #2196f3;
+  color: white;
+}
+
+.badge-wfm {
+  background: #4caf50;
+  color: white;
+}
+
+.badge-am {
+  background: #ff9800;
+  color: white;
+}
+
+.badge-digital {
+  background: #9c27b0;
+  color: white;
+}
+
+.badge-pulsed {
+  background: #f44336;
+  color: white;
+}
+
+.badge-unknown {
+  background: #757575;
+  color: white;
+}
+
+.signal-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.detail-row .label {
+  color: var(--text-secondary, #888);
+}
+
+.detail-row .value {
+  color: var(--text-primary, #ffffff);
+  font-family: "Courier New", monospace;
+}
+
+.signal-action {
+  text-align: right;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color, #333);
+}
+
+.tune-hint {
+  font-size: 12px;
+  color: var(--accent-cyan, #00bcd4);
+  opacity: 0.7;
+}
+
+.signal-item:hover .tune-hint {
+  opacity: 1;
+}
+
+/* Scrollbar styling */
+.signals-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.signals-list::-webkit-scrollbar-track {
+  background: var(--scrollbar-track, #1a1a1a);
+  border-radius: 4px;
+}
+
+.signals-list::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, #444);
+  border-radius: 4px;
+}
+
+.signals-list::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover, #555);
+}

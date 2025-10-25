@@ -1,0 +1,165 @@
+/**
+ * Scan Control Styles
+ */
+
+.scan-control {
+  background: var(--panel-background, #1a1a1a);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.scan-control h3 {
+  margin: 0 0 16px 0;
+  color: var(--text-primary, #ffffff);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.scan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-row label {
+  color: var(--text-secondary, #888);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-row input[type="number"],
+.form-row select {
+  padding: 8px 12px;
+  background: var(--input-background, #252525);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 4px;
+  color: var(--text-primary, #ffffff);
+  font-size: 14px;
+  font-family: "Courier New", monospace;
+}
+
+.form-row input[type="number"]:focus,
+.form-row select:focus {
+  outline: 2px solid var(--accent-cyan, #00bcd4);
+  outline-offset: 2px;
+}
+
+.form-row input[type="number"]:disabled,
+.form-row select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.freq-display {
+  font-size: 13px;
+  color: var(--accent-cyan, #00bcd4);
+  font-family: "Courier New", monospace;
+  margin-top: 4px;
+}
+
+.scan-info {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 12px;
+  background: var(--info-background, #252525);
+  border-radius: 4px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.info-item .label {
+  color: var(--text-secondary, #888);
+}
+
+.info-item .value {
+  color: var(--text-primary, #ffffff);
+  font-weight: 600;
+  font-family: "Courier New", monospace;
+}
+
+.progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--progress-background, #252525);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--accent-cyan, #00bcd4),
+    var(--accent-blue, #2196f3)
+  );
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-cyan, #00bcd4);
+  font-family: "Courier New", monospace;
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+}
+
+.start-button,
+.stop-button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.start-button {
+  background: var(--accent-cyan, #00bcd4);
+  color: white;
+}
+
+.start-button:hover {
+  background: var(--accent-cyan-hover, #00acc1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 188, 212, 0.3);
+}
+
+.stop-button {
+  background: var(--accent-red, #f44336);
+  color: white;
+}
+
+.stop-button:hover {
+  background: var(--accent-red-hover, #e53935);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+}
+
+.start-button:active,
+.stop-button:active {
+  transform: translateY(0);
+}
