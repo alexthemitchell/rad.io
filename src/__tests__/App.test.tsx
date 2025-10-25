@@ -12,9 +12,9 @@ jest.mock("../utils/dspWasm", () => ({
 }));
 
 // Mock the page components to avoid their dependencies
-jest.mock("../pages/LiveMonitor", () => {
-  return function LiveMonitor() {
-    return <div data-testid="live-monitor">Live Monitor Page</div>;
+jest.mock("../pages/Monitor", () => {
+  return function Monitor() {
+    return <div data-testid="monitor">Monitor Page</div>;
   };
 });
 
@@ -27,6 +27,60 @@ jest.mock("../pages/Scanner", () => {
 jest.mock("../pages/Analysis", () => {
   return function Analysis() {
     return <div data-testid="analysis">Analysis Page</div>;
+  };
+});
+
+jest.mock("../pages/Decode", () => {
+  return function Decode() {
+    return <div data-testid="decode">Decode Page</div>;
+  };
+});
+
+jest.mock("../pages/Recordings", () => {
+  return function Recordings() {
+    return <div data-testid="recordings">Recordings Page</div>;
+  };
+});
+
+jest.mock("../pages/Settings", () => {
+  return function Settings() {
+    return <div data-testid="settings">Settings Page</div>;
+  };
+});
+
+jest.mock("../pages/Calibration", () => {
+  return function Calibration() {
+    return <div data-testid="calibration">Calibration Page</div>;
+  };
+});
+
+jest.mock("../pages/Help", () => {
+  return function Help() {
+    return <div data-testid="help">Help Page</div>;
+  };
+});
+
+jest.mock("../panels/Bookmarks", () => {
+  return function Bookmarks() {
+    return <div data-testid="bookmarks">Bookmarks Panel</div>;
+  };
+});
+
+jest.mock("../panels/Devices", () => {
+  return function Devices() {
+    return <div data-testid="devices">Devices Panel</div>;
+  };
+});
+
+jest.mock("../panels/Measurements", () => {
+  return function Measurements() {
+    return <div data-testid="measurements">Measurements Panel</div>;
+  };
+});
+
+jest.mock("../panels/Diagnostics", () => {
+  return function Diagnostics() {
+    return <div data-testid="diagnostics">Diagnostics Panel</div>;
   };
 });
 
@@ -54,9 +108,9 @@ describe("App", () => {
     expect(dspWasm.preloadWasmModule).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the LiveMonitor page by default (root route)", () => {
+  it("renders the Monitor page by default (root route)", () => {
     render(<App />);
-    expect(screen.getByTestId("live-monitor")).toBeInTheDocument();
+    expect(screen.getByTestId("monitor")).toBeInTheDocument();
   });
 
   it("has accessible header with banner role", () => {
