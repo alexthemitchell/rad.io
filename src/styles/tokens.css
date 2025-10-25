@@ -1,0 +1,134 @@
+:root {
+  /* Typography */
+  --rad-font-ui:
+    Inter, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell,
+    "Helvetica Neue", Arial, sans-serif;
+  --rad-font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  /* Spacing scale (px) */
+  --rad-space-1: 2px;
+  --rad-space-2: 4px;
+  --rad-space-3: 8px;
+  --rad-space-4: 12px;
+  --rad-space-5: 16px;
+  --rad-space-6: 24px;
+  --rad-space-7: 32px;
+  --rad-space-8: 48px;
+
+  /* Radius */
+  --rad-radius-1: 2px;
+  --rad-radius-2: 4px;
+  --rad-radius-3: 6px;
+  --rad-radius-4: 8px;
+  --rad-radius-5: 12px;
+
+  /* Z-index */
+  --rad-z-overlay: 1000;
+  --rad-z-modal: 1100;
+  --rad-z-toast: 1200;
+
+  /* Shadows (elevation) */
+  --rad-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --rad-shadow-2: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --rad-shadow-3: 0 10px 15px rgba(0, 0, 0, 0.2), 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark theme (default) */
+:root,
+.theme-dark {
+  /* Core palette in OKLCH */
+  --rad-bg: oklch(0.12 0.01 240);
+  --rad-bg-elev-1: oklch(0.18 0.015 240);
+  --rad-bg-elev-2: oklch(0.22 0.02 240);
+  --rad-surface: oklch(0.18 0.015 240);
+  --rad-surface-2: oklch(0.22 0.02 240);
+
+  --rad-fg: oklch(0.9 0.005 240);
+  --rad-fg-muted: oklch(0.62 0.01 240);
+
+  --rad-primary: oklch(0.55 0.18 240); /* Electric Blue */
+  --rad-primary-foreground: oklch(0.98 0 0);
+
+  --rad-accent: oklch(0.78 0.14 195); /* Cyan for tuning */
+  --rad-accent-foreground: oklch(0.12 0.01 240);
+
+  --rad-success: oklch(0.68 0.15 145);
+  --rad-success-foreground: oklch(0.12 0.01 240);
+
+  --rad-warning: oklch(0.75 0.15 75);
+  --rad-warning-foreground: oklch(0.12 0.01 240);
+
+  --rad-danger: oklch(0.6 0.2 25);
+  --rad-danger-foreground: oklch(0.98 0 0);
+
+  --rad-border: oklch(0.28 0.015 240);
+  --rad-ring: oklch(0.78 0.14 195);
+
+  /* Visualization defaults */
+  --rad-grid: oklch(0.35 0.02 240);
+  --rad-grid-subtle: oklch(0.28 0.015 240);
+}
+
+/* Light theme (placeholder for future) */
+.theme-light {
+  --rad-bg: oklch(0.98 0 0);
+  --rad-bg-elev-1: oklch(0.96 0.005 240);
+  --rad-bg-elev-2: oklch(0.92 0.01 240);
+
+  --rad-fg: oklch(0.12 0.01 240);
+  --rad-fg-muted: oklch(0.4 0.01 240);
+
+  --rad-primary: oklch(0.55 0.18 240);
+  --rad-primary-foreground: oklch(0.98 0 0);
+
+  --rad-accent: oklch(0.65 0.14 195);
+  --rad-accent-foreground: oklch(0.12 0.01 240);
+
+  --rad-success: oklch(0.58 0.15 145);
+  --rad-success-foreground: oklch(0.12 0.01 240);
+
+  --rad-warning: oklch(0.7 0.15 75);
+  --rad-warning-foreground: oklch(0.12 0.01 240);
+
+  --rad-danger: oklch(0.55 0.2 25);
+  --rad-danger-foreground: oklch(0.98 0 0);
+
+  --rad-border: oklch(0.86 0.01 240);
+  --rad-ring: oklch(0.55 0.18 240);
+}
+
+/* Utility classes (non-invasive) - not used by current UI */
+.rad-bg {
+  background-color: var(--rad-bg);
+}
+.rad-surface {
+  background-color: var(--rad-surface);
+}
+.rad-text {
+  color: var(--rad-fg);
+}
+.rad-border {
+  border-color: var(--rad-border);
+}
+.rad-ring:focus-visible {
+  outline: 3px solid var(--rad-ring);
+  outline-offset: 2px;
+}
+.rad-primary {
+  background-color: var(--rad-primary);
+  color: var(--rad-primary-foreground);
+}
+.rad-accent {
+  background-color: var(--rad-accent);
+  color: var(--rad-accent-foreground);
+}
+
+/* Font utilities */
+.rad-font-ui {
+  font-family: var(--rad-font-ui);
+}
+.rad-font-mono {
+  font-family: var(--rad-font-mono);
+}

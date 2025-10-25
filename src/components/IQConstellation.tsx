@@ -3,6 +3,7 @@ import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 import { performanceMonitor } from "../utils/performanceMonitor";
+import type { IVisualizationRenderer } from "../types/visualization";
 import type { GL } from "../utils/webgl";
 import type { ReactElement } from "react";
 
@@ -32,6 +33,10 @@ export default function IQConstellation({
   const workerRef = useRef<Worker | null>(null);
   // Track whether this canvas element has been transferred to OffscreenCanvas
   const transferredRef = useRef<boolean>(false);
+
+  // WebGPU state (memoize renderer to avoid re-initializing every frame)
+  const webgpuRendererRef = useRef<IVisualizationRenderer | null>(null);
+  const webgpuAttemptedRef = useRef<boolean>(false);
 
   // WebGL state
   const glStateRef = useRef<{
@@ -114,10 +119,16 @@ export default function IQConstellation({
           canvas.width = pixelW;
           canvas.height = pixelH;
 
-          const renderer = new webgpu.WebGPUPointRenderer();
-          const initialized = await renderer.initialize(canvas);
+          if (!webgpuRendererRef.current && !webgpuAttemptedRef.current) {
+            webgpuAttemptedRef.current = true;
+            const r = new webgpu.WebGPUPointRenderer();
+            const inited = await r.initialize(canvas);
+            if (inited) {
+              webgpuRendererRef.current = r;
+            }
+          }
 
-          if (initialized) {
+          if (webgpuRendererRef.current?.isReady()) {
             // Build positions in NDC [-1,1] using min/max
             const iValues = samples.map((s) => s.I);
             const qValues = samples.map((s) => s.Q);
@@ -179,7 +190,7 @@ export default function IQConstellation({
               colors[i * 4 + 3] = alpha;
             }
 
-            const success = renderer.render({
+            const success = webgpuRendererRef.current.render({
               positions,
               colors,
               pointSize: Math.max(2, Math.round(2 * dpr)),
@@ -397,7 +408,16 @@ void main() {
         if (workerRef.current) {
           // Only transfer once; never call getContext on a transferred canvas
           if (!transferredRef.current) {
+            // Check if canvas already has a rendering context
+            // (WebGPU/WebGL may have tried and failed above)
+            const hasContext =
+              canvas.getContext("2d") !== null ||
+              canvas.getContext("webgl") !== null ||
+              canvas.getContext("webgl2") !== null ||
+              canvas.getContext("webgpu") !== null;
+
             const canTransfer =
+              !hasContext &&
               typeof (
                 canvas as HTMLCanvasElement & {
                   transferControlToOffscreen?: () => OffscreenCanvas;
@@ -531,6 +551,16 @@ void main() {
     // Capture ref value to satisfy exhaustive-deps
     const st = glStateRef.current;
     return () => {
+      // WebGPU cleanup
+      if (webgpuRendererRef.current) {
+        try {
+          webgpuRendererRef.current.cleanup();
+        } catch {
+          // ignore cleanup errors
+        }
+        webgpuRendererRef.current = null;
+      }
+
       // GL cleanup
       try {
         if (st.gl && st.vbo) {

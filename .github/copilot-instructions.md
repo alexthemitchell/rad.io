@@ -4,6 +4,8 @@
 
 **When considering PR comments, always address each comment individually. If you disagree with a comment, explain your reasoning clearly and respectfully. In some cases, you will be responding to yourself; this is expected, and it is fair to disagree with yourself.**
 
+** Fix issues you find, even if they seem unrelated to your current task. **
+
 ## Tools
 
 - **It is incredibly important to use the tools available to you when implementing your solutions.**
@@ -62,16 +64,6 @@ Follow these practices to keep your context lean and optimize execution:
 - write/update memory (concise, durable, linked to code)
 
 Security & privacy: Never store secrets in memories; prefer repo paths and commit SHAs over external links that can drift.
-
-## Documentation & Resources
-
-### External References
-
-- **IQ Constellation**: https://www.mathworks.com/help/comm/ref/constellationdiagram.html
-- **Viridis Colormap**: https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html
-- **WebUSB API**: MDN Web Docs - https://developer.mozilla.org/en-US/docs/Web/API/USB
-- **HackRF One Reference Implementation**: https://github.com/greatscottgadgets/hackrf/blob/master/host/libhackrf/src/hackrf.c
-- **Wireless Lab IIT-M**: https://varun19299.github.io/ID4100-Wireless-Lab-IITM/
 
 **Quality Standards:**
 

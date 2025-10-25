@@ -4,6 +4,7 @@ import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 import { calculateWaveform, type Sample } from "../utils/dsp";
 import type { GL } from "../utils/webgl";
+import type { IVisualizationRenderer } from "../types/visualization";
 import type { ReactElement } from "react";
 
 type WaveformVisualizerProps = {
@@ -26,6 +27,10 @@ export default function WaveformVisualizer({
   const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
+
+  // WebGPU state (reuse renderer across renders)
+  const webgpuRendererRef = useRef<IVisualizationRenderer | null>(null);
+  const webgpuAttemptedRef = useRef<boolean>(false);
 
   // WebGL state
   const glStateRef = useRef<{
@@ -105,10 +110,16 @@ export default function WaveformVisualizer({
           canvas.width = pixelW;
           canvas.height = pixelH;
 
-          const renderer = new webgpu.WebGPULineRenderer();
-          const initialized = await renderer.initialize(canvas);
+          if (!webgpuRendererRef.current && !webgpuAttemptedRef.current) {
+            webgpuAttemptedRef.current = true;
+            const r = new webgpu.WebGPULineRenderer();
+            const inited = await r.initialize(canvas);
+            if (inited) {
+              webgpuRendererRef.current = r;
+            }
+          }
 
-          if (initialized) {
+          if (webgpuRendererRef.current?.isReady()) {
             // Calculate waveform data
             const { amplitude } = calculateWaveform(samples);
             if (amplitude.length === 0) {
@@ -134,7 +145,7 @@ export default function WaveformVisualizer({
               positions[i * 2 + 1] = y;
             }
 
-            const success = renderer.render({
+            const success = webgpuRendererRef.current.render({
               positions,
               color: [0.39, 0.86, 1.0, 0.9], // rgba(100,220,255,0.9)
               lineWidth: 2.0,
@@ -275,7 +286,16 @@ void main() {
 
         if (workerRef.current) {
           if (!transferredRef.current) {
+            // Check if canvas already has a rendering context
+            // (WebGPU/WebGL may have tried and failed above)
+            const hasContext =
+              canvas.getContext("2d") !== null ||
+              canvas.getContext("webgl") !== null ||
+              canvas.getContext("webgl2") !== null ||
+              canvas.getContext("webgpu") !== null;
+
             const canTransfer =
+              !hasContext &&
               typeof (
                 canvas as HTMLCanvasElement & {
                   transferControlToOffscreen?: () => OffscreenCanvas;
@@ -407,6 +427,16 @@ void main() {
   useEffect((): (() => void) => {
     const st = glStateRef.current;
     return () => {
+      // WebGPU cleanup
+      if (webgpuRendererRef.current) {
+        try {
+          webgpuRendererRef.current.cleanup();
+        } catch {
+          // ignore cleanup errors
+        }
+        webgpuRendererRef.current = null;
+      }
+
       // GL cleanup
       try {
         if (st.gl && st.vbo) {

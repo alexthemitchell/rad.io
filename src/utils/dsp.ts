@@ -1,6 +1,5 @@
 import {
   calculateFFTWasm,
-  calculateWaveformWasm,
   calculateSpectrogramWasm,
   isWasmAvailable,
 } from "./dspWasm";
@@ -261,14 +260,14 @@ export function calculateWaveform(samples: Sample[]): {
   performanceMonitor.mark(markStart);
 
   try {
-    // Try WASM first if available
-    if (isWasmAvailable()) {
-      const wasmResult = calculateWaveformWasm(samples);
-      if (wasmResult) {
-        performanceMonitor.measure("waveform-wasm", markStart);
-        return wasmResult;
-      }
-    }
+    // TEMPORARILY DISABLED: WASM has issues with output array handling
+    // The AssemblyScript glue code copies output arrays into WASM memory
+    // but doesn't copy the results back to JavaScript, resulting in zeros.
+    // This needs to be fixed by either:
+    // 1. Modifying the WASM functions to return arrays instead of taking them as params
+    // 2. Using a different AssemblyScript compilation mode
+    // 3. Manually copying results back after WASM execution
+    // For now, using JavaScript implementation which is still quite fast.
 
     // Fallback to JavaScript implementation
     const amplitude = new Float32Array(samples.length);

@@ -201,7 +201,7 @@ struct VertexOutput {
 }
 
 @vertex
-fn main(input: VertexInput) -> VertexOutput {
+fn vs_main(input: VertexInput) -> VertexOutput {
   var output: VertexOutput;
   output.position = vec4f(input.position, 0.0, 1.0);
   output.color = input.color;
@@ -211,7 +211,7 @@ fn main(input: VertexInput) -> VertexOutput {
 
 export const POINT_FRAGMENT_SHADER = `
 @fragment
-fn main(@location(0) color: vec4f) -> @location(0) vec4f {
+fn fs_main(@location(0) color: vec4f) -> @location(0) vec4f {
   return color;
 }
 `;
@@ -229,7 +229,7 @@ struct VertexOutput {
 }
 
 @vertex
-fn main(input: VertexInput) -> VertexOutput {
+fn vs_main(input: VertexInput) -> VertexOutput {
   var output: VertexOutput;
   output.position = vec4f(input.position, 0.0, 1.0);
   return output;
@@ -244,7 +244,7 @@ struct Uniforms {
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 
 @fragment
-fn main() -> @location(0) vec4f {
+fn fs_main() -> @location(0) vec4f {
   return uniforms.color;
 }
 `;
@@ -259,7 +259,7 @@ struct VertexOutput {
 }
 
 @vertex
-fn main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
+fn vs_main(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   var output: VertexOutput;
   
   // Fullscreen quad
@@ -278,7 +278,7 @@ export const TEXTURE_FRAGMENT_SHADER = `
 @group(0) @binding(1) var textureData: texture_2d<f32>;
 
 @fragment
-fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
+fn fs_main(@location(0) uv: vec2f) -> @location(0) vec4f {
   return textureSample(textureData, textureSampler, uv);
 }
 `;
@@ -316,7 +316,7 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
       layout: "auto",
       vertex: {
         module: shaderModule,
-        entryPoint: "main",
+        entryPoint: "vs_main",
         buffers: [
           {
             arrayStride: 8, // 2 floats (x, y)
@@ -342,7 +342,7 @@ export class WebGPUPointRenderer implements IVisualizationRenderer {
       },
       fragment: {
         module: shaderModule,
-        entryPoint: "main",
+        entryPoint: "fs_main",
         targets: [
           {
             format: navigator.gpu.getPreferredCanvasFormat(),
@@ -511,7 +511,7 @@ export class WebGPULineRenderer implements IVisualizationRenderer {
       layout: pipelineLayout,
       vertex: {
         module: shaderModule,
-        entryPoint: "main",
+        entryPoint: "vs_main",
         buffers: [
           {
             arrayStride: 8, // 2 floats (x, y)
@@ -527,7 +527,7 @@ export class WebGPULineRenderer implements IVisualizationRenderer {
       },
       fragment: {
         module: shaderModule,
-        entryPoint: "main",
+        entryPoint: "fs_main",
         targets: [
           {
             format: navigator.gpu.getPreferredCanvasFormat(),
@@ -704,11 +704,11 @@ export class WebGPUTextureRenderer implements IVisualizationRenderer {
       layout: pipelineLayout,
       vertex: {
         module: shaderModule,
-        entryPoint: "main",
+        entryPoint: "vs_main",
       },
       fragment: {
         module: shaderModule,
-        entryPoint: "main",
+        entryPoint: "fs_main",
         targets: [
           {
             format: navigator.gpu.getPreferredCanvasFormat(),

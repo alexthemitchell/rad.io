@@ -4,6 +4,7 @@ import { usePageVisibility } from "../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import type { GL } from "../utils/webgl";
+import type { WebGPUTextureRenderer } from "../utils/webgpu";
 import type { ReactElement } from "react";
 
 type SpectrogramProps = {
@@ -42,6 +43,10 @@ export default function Spectrogram({
   const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const transferredRef = useRef<boolean>(false);
+
+  // WebGPU memoized renderer
+  const webgpuRendererRef = useRef<WebGPUTextureRenderer | null>(null);
+  const webgpuInitAttemptedRef = useRef<boolean>(false);
 
   // Waterfall mode: maintain a rolling buffer of frames using state
   const [waterfallBuffer, setWaterfallBuffer] = useState<Float32Array[]>([]);
@@ -174,10 +179,20 @@ export default function Spectrogram({
           canvas.width = pixelW;
           canvas.height = pixelH;
 
-          const renderer = new webgpu.WebGPUTextureRenderer();
-          const initialized = await renderer.initialize(canvas);
+          if (!webgpuInitAttemptedRef.current) {
+            webgpuInitAttemptedRef.current = true;
+            try {
+              const renderer = new webgpu.WebGPUTextureRenderer();
+              const initialized = await renderer.initialize(canvas);
+              if (initialized) {
+                webgpuRendererRef.current = renderer;
+              }
+            } catch {
+              // ignore init errors; will fall back
+            }
+          }
 
-          if (initialized) {
+          if (webgpuRendererRef.current?.isReady()) {
             const bins = Math.max(
               1,
               Math.min(displayData[0]?.length ?? 0, freqMax - freqMin),
@@ -255,7 +270,7 @@ export default function Spectrogram({
               }
             }
 
-            const success = renderer.render({
+            const success = webgpuRendererRef.current.render({
               data: rgba,
               width: texW,
               height: texH,
@@ -485,7 +500,16 @@ export default function Spectrogram({
 
         if (workerRef.current) {
           if (!transferredRef.current) {
+            // Check if canvas already has a rendering context
+            // (WebGPU/WebGL may have tried and failed above)
+            const hasContext =
+              canvas.getContext("2d") !== null ||
+              canvas.getContext("webgl") !== null ||
+              canvas.getContext("webgl2") !== null ||
+              canvas.getContext("webgpu") !== null;
+
             const canTransfer =
+              !hasContext &&
               typeof (
                 canvas as HTMLCanvasElement & {
                   transferControlToOffscreen?: () => OffscreenCanvas;
@@ -643,6 +667,14 @@ export default function Spectrogram({
         workerRef.current = null;
       }
       transferredRef.current = false;
+
+      // WebGPU cleanup
+      try {
+        webgpuRendererRef.current?.cleanup();
+      } catch {
+        // ignore cleanup errors
+      }
+      webgpuRendererRef.current = null;
 
       // GL cleanup
       try {

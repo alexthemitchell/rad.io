@@ -28,13 +28,15 @@ interface WasmDSPModule {
     output: Float32Array,
     rowCount: number,
   ): void;
+  allocateFloat32Array(size: number): Float32Array;
 }
 
 function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
   return (
     typeof mod.calculateFFT === "function" &&
     typeof mod.calculateWaveform === "function" &&
-    typeof mod.calculateSpectrogram === "function"
+    typeof mod.calculateSpectrogram === "function" &&
+    typeof mod.allocateFloat32Array === "function"
   );
 }
 
@@ -112,6 +114,7 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
           calculateFFT: mod.calculateFFT.bind(mod),
           calculateWaveform: mod.calculateWaveform.bind(mod),
           calculateSpectrogram: mod.calculateSpectrogram.bind(mod),
+          allocateFloat32Array: mod.allocateFloat32Array.bind(mod),
         };
         wasmSupported = true;
         return wasmModule;
@@ -176,8 +179,8 @@ export function calculateFFTWasm(
       }
     }
 
-    // Allocate output
-    const output = new Float32Array(fftSize);
+    // Allocate output array in WASM memory
+    const output = wasmModule.allocateFloat32Array(fftSize);
 
     // Call WASM function
     wasmModule.calculateFFT(iSamples, qSamples, fftSize, output);
@@ -222,13 +225,16 @@ export function calculateWaveformWasm(
       }
     }
 
-    // Allocate outputs
-    const amplitude = new Float32Array(count);
-    const phase = new Float32Array(count);
+    // Allocate output arrays in WASM memory
+    // This ensures the WASM function can write to them and we get the results back
+    const amplitude = wasmModule.allocateFloat32Array(count);
+    const phase = wasmModule.allocateFloat32Array(count);
 
     // Call WASM function
+    // The function modifies amplitude and phase arrays in WASM memory
     wasmModule.calculateWaveform(iSamples, qSamples, amplitude, phase, count);
 
+    // Return the WASM-allocated arrays (they're already views of WASM memory with results)
     return { amplitude, phase };
   } catch (error) {
     console.warn(
@@ -273,8 +279,8 @@ export function calculateSpectrogramWasm(
       }
     }
 
-    // Allocate output (flat array for all rows)
-    const output = new Float32Array(rowCount * fftSize);
+    // Allocate output array in WASM memory
+    const output = wasmModule.allocateFloat32Array(rowCount * fftSize);
 
     // Call WASM function
     wasmModule.calculateSpectrogram(
