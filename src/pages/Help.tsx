@@ -32,35 +32,35 @@ function Help(): React.JSX.Element {
         <div className="tabs" role="tablist">
           <button
             role="tab"
-            aria-selected={activeSection === "onboarding"}
+            aria-selected={activeSection === "onboarding" ? "true" : "false"}
             onClick={() => setActiveSection("onboarding")}
           >
             Onboarding
           </button>
           <button
             role="tab"
-            aria-selected={activeSection === "keyboard"}
+            aria-selected={activeSection === "keyboard" ? "true" : "false"}
             onClick={() => setActiveSection("keyboard")}
           >
             Keyboard Shortcuts
           </button>
           <button
             role="tab"
-            aria-selected={activeSection === "accessibility"}
+            aria-selected={activeSection === "accessibility" ? "true" : "false"}
             onClick={() => setActiveSection("accessibility")}
           >
             Accessibility
           </button>
           <button
             role="tab"
-            aria-selected={activeSection === "releases"}
+            aria-selected={activeSection === "releases" ? "true" : "false"}
             onClick={() => setActiveSection("releases")}
           >
             Release Notes
           </button>
           <button
             role="tab"
-            aria-selected={activeSection === "support"}
+            aria-selected={activeSection === "support" ? "true" : "false"}
             onClick={() => setActiveSection("support")}
           >
             Support

@@ -44,6 +44,20 @@ const STEP_SIZES = [
   { label: "1 MHz", value: 1000000 },
 ];
 
+// Move pure formatter outside the component so its identity is stable
+function formatFrequency(freqHz: number): string {
+  if (freqHz >= 1e9) {
+    return `${(freqHz / 1e9).toFixed(6)} GHz`;
+  }
+  if (freqHz >= 1e6) {
+    return `${(freqHz / 1e6).toFixed(3)} MHz`;
+  }
+  if (freqHz >= 1e3) {
+    return `${(freqHz / 1e3).toFixed(1)} kHz`;
+  }
+  return `${freqHz.toFixed(0)} Hz`;
+}
+
 function FrequencyDisplay({
   frequency = 0,
   onChange,
@@ -54,19 +68,6 @@ function FrequencyDisplay({
   const inputRef = useRef<HTMLInputElement>(null);
   const { announce } = useLiveRegion();
 
-  const formatFrequency = (freqHz: number): string => {
-    if (freqHz >= 1e9) {
-      return `${(freqHz / 1e9).toFixed(6)} GHz`;
-    }
-    if (freqHz >= 1e6) {
-      return `${(freqHz / 1e6).toFixed(3)} MHz`;
-    }
-    if (freqHz >= 1e3) {
-      return `${(freqHz / 1e3).toFixed(1)} kHz`;
-    }
-    return `${freqHz.toFixed(0)} Hz`;
-  };
-
   const handleTune = useCallback(
     (delta: number): void => {
       if (!onChange) {
@@ -76,7 +77,7 @@ function FrequencyDisplay({
       onChange(newFreq);
       announce(`Frequency: ${formatFrequency(newFreq)}`);
     },
-    [frequency, onChange, announce, formatFrequency],
+    [frequency, onChange, announce],
   );
 
   const handleStepChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {

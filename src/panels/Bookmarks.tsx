@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveRegion } from "../hooks/useLiveRegion";
+import { generateBookmarkId } from "../utils";
 
 /**
  * Bookmarks panel/page for frequency management
@@ -177,7 +178,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     } else {
       // Add new
       const newBookmark: Bookmark = {
-        id: `bm-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+        id: generateBookmarkId(),
         frequency: freqHz,
         name: formData.name.trim(),
         tags,

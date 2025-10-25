@@ -66,7 +66,7 @@ export default function InteractiveDSPPipeline({
             key={stage.id}
             data-stage={stage.id}
             role="tab"
-            aria-selected={selectedStageId === stage.id}
+            aria-selected={selectedStageId === stage.id ? "true" : "false"}
             className={selectedStageId === stage.id ? "btn btn-primary" : "btn"}
             onClick={() => selectStage(stage.id)}
             style={{ marginRight: 8 }}

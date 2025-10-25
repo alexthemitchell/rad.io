@@ -20,6 +20,29 @@ import { NavLink, useNavigate } from "react-router-dom";
  * - Clear active state
  * - Screen reader labels
  */
+
+/**
+ * Keyboard shortcut mappings for navigation
+ * Maps keyboard keys to their corresponding routes
+ *
+ * Primary pages (1-5): Monitor, Scanner, Decode, Analysis, Recordings
+ * Additional shortcuts: ? for Help
+ */
+const KEYBOARD_SHORTCUTS: Record<string, string> = {
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
+  "1": "/monitor",
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
+  "2": "/scanner",
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
+  "3": "/decode",
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
+  "4": "/analysis",
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
+  "5": "/recordings",
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- Keys represent literal keyboard inputs
+  "?": "/help",
+} as const;
+
 function Navigation(): React.JSX.Element {
   const navigate = useNavigate();
 
@@ -33,33 +56,10 @@ function Navigation(): React.JSX.Element {
         return;
       }
 
-      switch (event.key) {
-        case "1":
-          event.preventDefault();
-          void navigate("/monitor");
-          break;
-        case "2":
-          event.preventDefault();
-          void navigate("/scanner");
-          break;
-        case "3":
-          event.preventDefault();
-          void navigate("/decode");
-          break;
-        case "4":
-          event.preventDefault();
-          void navigate("/analysis");
-          break;
-        case "5":
-          event.preventDefault();
-          void navigate("/recordings");
-          break;
-        case "?":
-          event.preventDefault();
-          void navigate("/help");
-          break;
-        default:
-          break;
+      const route = KEYBOARD_SHORTCUTS[event.key];
+      if (route !== undefined) {
+        event.preventDefault();
+        void navigate(route);
       }
     };
 

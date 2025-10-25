@@ -84,7 +84,10 @@ describe("FrequencyDisplay", () => {
 
   it("displays default frequency when no frequency prop", () => {
     render(<FrequencyDisplay onChange={mockOnChange} />);
-    expect(screen.getByText(/0 Hz/i)).toBeInTheDocument();
+    const freqDisplay = screen.getByRole("button", {
+      name: /current frequency: 0 Hz/i,
+    });
+    expect(freqDisplay).toBeInTheDocument();
   });
 
   it("frequency display is clickable to edit", () => {

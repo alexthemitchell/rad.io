@@ -33,17 +33,14 @@ function Settings(): React.JSX.Element {
   >("display");
 
   return (
-    <main
-      className="page-container"
-      aria-labelledby="settings-heading"
-    >
+    <main className="page-container" aria-labelledby="settings-heading">
       <h2 id="settings-heading">Settings</h2>
 
       <nav aria-label="Settings tabs">
         <div className="tabs" role="tablist">
           <button
             role="tab"
-            aria-selected={activeTab === "display"}
+            aria-selected={activeTab === "display" ? "true" : "false"}
             aria-controls="display-panel"
             onClick={() => setActiveTab("display")}
           >
@@ -51,7 +48,7 @@ function Settings(): React.JSX.Element {
           </button>
           <button
             role="tab"
-            aria-selected={activeTab === "radio"}
+            aria-selected={activeTab === "radio" ? "true" : "false"}
             aria-controls="radio-panel"
             onClick={() => setActiveTab("radio")}
           >
@@ -59,7 +56,7 @@ function Settings(): React.JSX.Element {
           </button>
           <button
             role="tab"
-            aria-selected={activeTab === "audio"}
+            aria-selected={activeTab === "audio" ? "true" : "false"}
             aria-controls="audio-panel"
             onClick={() => setActiveTab("audio")}
           >
@@ -67,7 +64,7 @@ function Settings(): React.JSX.Element {
           </button>
           <button
             role="tab"
-            aria-selected={activeTab === "calibration"}
+            aria-selected={activeTab === "calibration" ? "true" : "false"}
             aria-controls="calibration-panel"
             onClick={() => setActiveTab("calibration")}
           >
@@ -75,7 +72,7 @@ function Settings(): React.JSX.Element {
           </button>
           <button
             role="tab"
-            aria-selected={activeTab === "advanced"}
+            aria-selected={activeTab === "advanced" ? "true" : "false"}
             aria-controls="advanced-panel"
             onClick={() => setActiveTab("advanced")}
           >
