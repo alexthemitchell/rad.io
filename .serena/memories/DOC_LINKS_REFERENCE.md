@@ -3,6 +3,7 @@
 Canonical reference docs. Prefer linking to these docs rather than copying theory or citations into memories.
 
 docs/reference/
+
 - `README.md`
 - `antenna-theory.md`
 - `audio-demodulation-pipeline.md`
@@ -22,4 +23,5 @@ docs/reference/
 - `webgl-visualization.md`
 
 Notes
+
 - If deeper theory or citations are needed, add them to the docs rather than to memories.

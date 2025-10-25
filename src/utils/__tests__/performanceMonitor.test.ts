@@ -326,16 +326,14 @@ describe("performanceMonitor robust behavior", () => {
     const markSpy = jest.fn();
     perf.mark = markSpy;
     perf.measure = jest.fn();
-    perf.getEntriesByName = jest
-      .fn()
-      .mockReturnValue([
-        {
-          name: "render-pass",
-          duration: 20,
-          startTime: 50,
-          entryType: "measure",
-        },
-      ]);
+    perf.getEntriesByName = jest.fn().mockReturnValue([
+      {
+        name: "render-pass",
+        duration: 20,
+        startTime: 50,
+        entryType: "measure",
+      },
+    ]);
     jest.spyOn(Date, "now").mockReturnValue(9999);
 
     performanceMonitor.mark("render-start");
@@ -397,16 +395,14 @@ describe("performanceMonitor robust behavior", () => {
     } as any;
     perf.mark = jest.fn();
     perf.measure = jest.fn();
-    perf.getEntriesByName = jest
-      .fn()
-      .mockImplementation(() => [
-        {
-          name: "render",
-          duration: durations.shift()!,
-          startTime: 0,
-          entryType: "measure",
-        },
-      ]);
+    perf.getEntriesByName = jest.fn().mockImplementation(() => [
+      {
+        name: "render",
+        duration: durations.shift()!,
+        startTime: 0,
+        entryType: "measure",
+      },
+    ]);
 
     for (let i = 0; i < 10; i++) {
       performanceMonitor.mark(`render-start-${i}`);

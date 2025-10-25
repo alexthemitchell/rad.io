@@ -96,7 +96,8 @@ body {
   text-decoration: none;
   border-radius: var(--rad-radius-4);
   font-weight: 500;
-  transition: all var(--rad-transition-medium, 200ms) var(--rad-ease-standard, ease);
+  transition: all var(--rad-transition-medium, 200ms)
+    var(--rad-ease-standard, ease);
   border: 2px solid transparent;
 }
 
@@ -144,7 +145,8 @@ body {
 .card-header-collapsible {
   cursor: pointer;
   user-select: none;
-  transition: background-color var(--rad-transition-medium, 200ms) var(--rad-ease-standard, ease);
+  transition: background-color var(--rad-transition-medium, 200ms)
+    var(--rad-ease-standard, ease);
   margin: -1.5rem;
   padding: 1.5rem;
   border-radius: var(--rad-radius-5);
@@ -192,7 +194,8 @@ body {
   border: none;
   border-radius: var(--rad-radius-4);
   cursor: pointer;
-  transition: all var(--rad-transition-medium, 200ms) var(--rad-ease-standard, ease);
+  transition: all var(--rad-transition-medium, 200ms)
+    var(--rad-ease-standard, ease);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;

@@ -3,6 +3,7 @@
 Canonical list of Architecture Decision Records. Refer to these files directly; do not duplicate content in memories.
 
 docs/decisions/
+
 - `0001-architecture-decision-records.md`
 - `0002-web-worker-dsp-architecture.md`
 - `0003-webgl2-webgpu-gpu-acceleration.md`
@@ -24,5 +25,6 @@ docs/decisions/
 - `0019-viridis-colormap-waterfall-visualization.md`
 
 Notes
+
 - Use ADRs for authoritative architectural context.
 - If a memory references an ADR, prefer a one-line note + link to the ADR.
