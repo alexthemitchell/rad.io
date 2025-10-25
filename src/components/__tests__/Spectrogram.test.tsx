@@ -1,5 +1,6 @@
 import { render } from "@testing-library/react";
 import Spectrogram from "../Spectrogram";
+import { createMockCanvasContext } from "../../utils/testHelpers";
 
 describe("Spectrogram", () => {
   const createFFTData = (rows: number, bins: number): Float32Array[] => {
@@ -15,50 +16,9 @@ describe("Spectrogram", () => {
 
   beforeEach(() => {
     // Mock canvas context
-    HTMLCanvasElement.prototype.getContext = jest.fn(() => {
-      const mockContext = {
-        fillRect: jest.fn(),
-        strokeRect: jest.fn(),
-        clearRect: jest.fn(),
-        getImageData: jest.fn(),
-        putImageData: jest.fn(),
-        createImageData: jest.fn(),
-        setTransform: jest.fn(),
-        resetTransform: jest.fn(),
-        drawImage: jest.fn(),
-        save: jest.fn(),
-        fillStyle: "",
-        restore: jest.fn(),
-        beginPath: jest.fn(),
-        moveTo: jest.fn(),
-        lineTo: jest.fn(),
-        closePath: jest.fn(),
-        stroke: jest.fn(),
-        translate: jest.fn(),
-        scale: jest.fn(),
-        rotate: jest.fn(),
-        arc: jest.fn(),
-        fill: jest.fn(),
-        measureText: jest.fn(() => ({ width: 0 })),
-        transform: jest.fn(),
-        rect: jest.fn(),
-        clip: jest.fn(),
-        createLinearGradient: jest.fn(() => ({
-          addColorStop: jest.fn(),
-        })),
-        createRadialGradient: jest.fn(() => ({
-          addColorStop: jest.fn(),
-        })),
-        fillText: jest.fn(),
-        strokeText: jest.fn(),
-        strokeStyle: "",
-        lineWidth: 0,
-        font: "",
-        textAlign: "",
-        textBaseline: "",
-      };
-      return mockContext as unknown as CanvasRenderingContext2D;
-    }) as jest.Mock;
+    HTMLCanvasElement.prototype.getContext = jest.fn(() =>
+      createMockCanvasContext(),
+    ) as jest.Mock;
   });
 
   it("should render canvas element", () => {
