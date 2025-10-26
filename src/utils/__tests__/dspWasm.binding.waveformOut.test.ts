@@ -37,6 +37,9 @@ describe("dspWasm waveform binding (return-by-value)", () => {
       calculateWaveform: () => undefined,
       calculateWaveformOut,
       calculateSpectrogram: () => undefined,
+      applyHannWindow: () => {},
+      applyHammingWindow: () => {},
+      applyBlackmanWindow: () => {},
     };
 
     setWasmModuleForTest(fake, true);

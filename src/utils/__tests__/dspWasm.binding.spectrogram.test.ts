@@ -46,6 +46,9 @@ describe("dspWasm spectrogram binding (return-by-value)", () => {
       calculateSpectrogram:
         calculateSpectrogramLegacy as unknown as WasmDSPModule["calculateSpectrogram"],
       calculateSpectrogramOut,
+      applyHannWindow: () => {},
+      applyHammingWindow: () => {},
+      applyBlackmanWindow: () => {},
     };
 
     setWasmModuleForTest(fake, true);

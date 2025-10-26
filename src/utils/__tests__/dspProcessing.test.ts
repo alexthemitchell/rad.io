@@ -313,7 +313,10 @@ describe("Scaling", () => {
     });
 
     it("should handle zero-magnitude signal", () => {
-      const zeros: Sample[] = Array(10).fill({ I: 0, Q: 0 });
+      const zeros: Sample[] = Array.from({ length: 10 }, () => ({
+        I: 0,
+        Q: 0,
+      }));
       const scaled = applyScaling(zeros, "normalize");
       expect(scaled).toEqual(zeros);
     });

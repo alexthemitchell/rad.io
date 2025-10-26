@@ -232,7 +232,11 @@ export function decimate(samples: Sample[], factor: number): Sample[] {
 
     for (let j = startIdx; j <= endIdx; j++) {
       const sample = samples[j];
-      if (sample) {
+      if (
+        sample &&
+        typeof sample.I === "number" &&
+        typeof sample.Q === "number"
+      ) {
         sumI += sample.I;
         sumQ += sample.Q;
         count++;
@@ -456,6 +460,11 @@ export function composePipeline<TOut>(
     params?: unknown;
   }>,
 ): PipelineStageResult<TOut> {
+  // Validate pipeline before processing
+  if (transforms.length === 0) {
+    throw new Error("Pipeline must have at least one transform");
+  }
+
   let current: unknown = input;
   const results: Array<PipelineStageResult<unknown>> = [];
 
@@ -474,11 +483,9 @@ export function composePipeline<TOut>(
     current = output;
   }
 
-  const finalResult = results[results.length - 1];
-  if (!finalResult) {
-    throw new Error("Pipeline must have at least one transform");
-  }
-
+  // Safe to access last element since we validated length > 0 at start
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const finalResult = results[results.length - 1]!;
   return finalResult as PipelineStageResult<TOut>;
 }
 
@@ -543,8 +550,8 @@ export function createVisualizationPipeline(config: {
           const scaled = new Float32Array(data.length);
           const offset = config.scaleFactor ?? 0;
           for (let i = 0; i < data.length; i++) {
-            const val = data[i];
-            if (val !== undefined) {
+            const val = data[i] ?? 0;
+            if (!isNaN(val)) {
               scaled[i] = val + offset;
             }
           }
