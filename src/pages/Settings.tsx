@@ -150,10 +150,10 @@ function Settings(): React.JSX.Element {
       )}
 
       <section aria-label="Actions">
-        <button aria-disabled="true" disabled title="Not implemented yet">
+        <button disabled title="Not implemented yet">
           Save Settings
         </button>
-        <button aria-disabled="true" disabled title="Not implemented yet">
+        <button disabled title="Not implemented yet">
           Reset to Defaults
         </button>
         {/* TODO: Export/import settings profile (future) */}

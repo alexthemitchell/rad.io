@@ -18,6 +18,11 @@ export type Sample = {
 // validation fails; prefer a single warning per session.
 let spectrogramWasmDegenerateWarned = false;
 
+// Heuristic threshold (in dB) used to detect degenerate FFT outputs
+// from WASM paths (e.g., constant/zero arrays). Any realistic spectrum
+// should exhibit a dynamic range comfortably above this value.
+export const VALIDATION_RANGE_THRESHOLD_DB = 1e-3;
+
 /**
  * Reset the spectrogram WASM degenerate warning flag.
  * Call this after a successful WASM reload or validation.
@@ -169,10 +174,15 @@ export function calculateFFTSync(
         const range = max - min;
         // Accept WASM result only if it looks non-degenerate.
         // Rationale: A very small dynamic range indicates constant/zero output.
-        // We use > 1e-3 dB as an inexpensive, conservative heuristic threshold.
+        // We use > VALIDATION_RANGE_THRESHOLD_DB (≈1e-3 dB) as an inexpensive,
+        // conservative heuristic threshold.
         // This is orders of magnitude below any visually meaningful spectrum
         // variation and avoids false negatives while catching zero/constant arrays.
-        if (allFinite && wasmResult.length === fftSize && range > 1e-3) {
+        if (
+          allFinite &&
+          wasmResult.length === fftSize &&
+          range > VALIDATION_RANGE_THRESHOLD_DB
+        ) {
           performanceMonitor.measure("fft-wasm", markStart);
           return wasmResult;
         }
@@ -299,9 +309,13 @@ export function calculateSpectrogram(
 
         const range = max - min;
         // Require a minimal dynamic range to guard against constant/zero rows.
-        // See note above: 1e-3 dB threshold chosen as a conservative heuristic
+        // See note above: VALIDATION_RANGE_THRESHOLD_DB chosen as a conservative heuristic
         // to detect degenerate outputs while avoiding measurable spectra.
-        if (allFinite && correctShape && range > 1e-3) {
+        if (
+          allFinite &&
+          correctShape &&
+          range > VALIDATION_RANGE_THRESHOLD_DB
+        ) {
           // Successful validation — clear warning suppression flag
           spectrogramWasmDegenerateWarned = false;
           performanceMonitor.measure("spectrogram-wasm", markStart);
@@ -405,7 +419,7 @@ function attemptRowWiseWasmFFT(
   }
   const gRange = gMax - gMin;
   // Same conservative heuristic threshold as above.
-  return ok && gRange > 1e-3 ? rows : null;
+  return ok && gRange > VALIDATION_RANGE_THRESHOLD_DB ? rows : null;
 }
 
 /**

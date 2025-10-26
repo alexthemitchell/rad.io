@@ -127,7 +127,7 @@ describe("Settings", () => {
     expect(radioTab).toHaveAttribute("aria-selected", "false");
   });
 
-  it("disables Save/Reset actions with aria-disabled", () => {
+  it("disables Save/Reset actions", () => {
     render(
       <BrowserRouter>
         <Settings />
@@ -137,7 +137,5 @@ describe("Settings", () => {
     const reset = screen.getByRole("button", { name: /reset to defaults/i });
     expect(save).toBeDisabled();
     expect(reset).toBeDisabled();
-    expect(save).toHaveAttribute("aria-disabled", "true");
-    expect(reset).toHaveAttribute("aria-disabled", "true");
   });
 });

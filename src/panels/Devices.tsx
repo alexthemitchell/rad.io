@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useDevice } from "../contexts/DeviceContext";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
+import { extractUSBDevice } from "../utils/usb";
 
 /**
  * Devices panel/page for WebUSB SDR management
@@ -28,23 +29,7 @@ interface DevicesProps {
   isPanel?: boolean; // True when rendered as a side panel, false for full-page route
 }
 
-// Adapter-level typing: certain device adapters may expose the underlying
-// WebUSB device as a `device` property. Provide a narrow type and a guard
-// to avoid complex runtime shape checks in the UI component.
-type HasUSBDevice = { device: USBDevice };
-function isDeviceAdapterWithUSBDevice(x: unknown): x is HasUSBDevice {
-  if (!x || typeof x !== "object") {
-    return false;
-  }
-  const rec = x as { device?: unknown };
-  const d = rec.device as USBDevice | undefined;
-  return (
-    Boolean(d) &&
-    typeof d === "object" &&
-    typeof d.vendorId === "number" &&
-    typeof d.productId === "number"
-  );
-}
+// WebUSB adapter extraction lives in src/utils/usb.ts
 
 function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
   const { device, initialize, cleanup, isCheckingPaired } = useDevice();
@@ -74,11 +59,9 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
         setFrequency(freq);
 
         // Get device info (on the underlying USB device) if exposed by adapter
-        const usbDevice: USBDevice | undefined = isDeviceAdapterWithUSBDevice(
+        const usbDevice: USBDevice | undefined = extractUSBDevice(
           device as unknown,
-        )
-          ? (device as unknown as HasUSBDevice).device
-          : undefined;
+        );
         if (usbDevice) {
           setDeviceInfo({
             productName: usbDevice.productName ?? undefined,
