@@ -27,7 +27,7 @@ export default defineConfig({
   /* Reporter to use */
   // Include GitHub reporter for richer annotations in CI
   reporter: [
-    ["html", { outputFolder: "playwright-report" }],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
     ["list"],
     ["github"],
   ],
@@ -63,29 +63,14 @@ export default defineConfig({
   },
 
   /* Configure projects to separate mock vs real tests */
-  projects: (() => {
-    const baseProject = {
+  projects: [
+    {
       name: "mock-chromium",
       use: { ...devices["Desktop Chrome"] },
-      // Run everything except @real tests
+      // Skip the @real test marker (WebUSB not supported in Playwright)
       grepInvert: /@real/,
-    } as const;
-
-    // Only add the real device project when explicitly enabled to avoid spinning
-    // up an extra Chrome instance that does no work but consumes memory.
-    if (process.env["E2E_REAL_HACKRF"] === "1") {
-      return [
-        baseProject,
-        {
-          name: "real-chromium",
-          use: { ...devices["Desktop Chrome"] },
-          grep: /@real/,
-        },
-      ];
-    }
-
-    return [baseProject];
-  })(),
+    },
+  ],
 
   /* Run your local dev server before starting the tests */
   webServer: {

@@ -1,14 +1,11 @@
 # End-to-End Testing Guide (Playwright)
 
-This app supports two E2E paths:
-
-- Mock SDR device (CI-friendly) — no hardware required
-- Real HackRF device (opt-in) — uses previously paired WebUSB device
+This app supports E2E testing with **mock SDR devices only**. Real hardware testing with HackRF must be done manually.
 
 ## Quick start
 
 - Dev server: uses HTTPS on https://localhost:8080
-- Run all E2E tests (CI path by default):
+- Run all E2E tests (CI path):
 
 ```bash
 # Run from VS Code task "E2E tests" or:
@@ -17,26 +14,21 @@ npm run test:e2e
 
 The mock SDR test navigates with `?mockSdr=1` so the app injects a `MockSDRDevice` that produces realistic IQ data for the visualizers.
 
-## Real HackRF tests (local opt‑in)
+## Why No Real HackRF E2E Tests?
 
-Requirements:
+**WebUSB API cannot be automated with Playwright.** This is a fundamental limitation:
 
-- Chrome/Edge with WebUSB enabled (default)
-- HackRF One connected and previously paired on https://localhost:8080 (use the Connect Device button once)
+1. **User gestures required** - WebUSB device pairing requires manual user selection from a browser dialog
+2. **Sandboxed environment** - Playwright's automation context blocks native hardware APIs
+3. **Security restrictions** - Browser automation tools cannot access USB devices for security reasons
 
-Run:
+### Real Hardware Testing
 
-```powershell
-# Run Playwright with env flag (PowerShell)
-$env:E2E_REAL_HACKRF = "1"; npm run test:e2e
-# Remove the env var afterwards if desired
-Remove-Item Env:\E2E_REAL_HACKRF
-```
+For testing with actual HackRF devices, see:
 
-Notes:
-
-- Tests rely on previously paired devices to avoid the chooser dialog (`navigator.usb.getDevices()` path). See `WEBUSB_AUTO_CONNECT` memory.
-- If Start is disabled, wait a bit longer for auto-connect or click the Connect button manually and re-run.
+- **Manual testing checklist**: `e2e/monitor-real-manual.md`
+- **Integration tests**: `src/hooks/__tests__/useUSBDevice.test.ts` (mocked WebUSB)
+- **Playwright MCP tools**: Semi-automated browser control (requires user interaction for device pairing)
 
 Resource management:
 
