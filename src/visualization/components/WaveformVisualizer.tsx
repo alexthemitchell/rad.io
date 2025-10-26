@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useMemo } from "react";
-import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
-import { usePageVisibility } from "../hooks/usePageVisibility";
-import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
-import { renderTierManager } from "../lib/render/RenderTierManager";
-import { RenderTier } from "../types/rendering";
-import { calculateWaveform, type Sample } from "../utils/dsp";
-import { performanceMonitor } from "../utils/performanceMonitor";
-import type { IVisualizationRenderer } from "../types/visualization";
-import type { GL } from "../utils/webgl";
+import { useIntersectionObserver } from "../../hooks/useIntersectionObserver";
+import { usePageVisibility } from "../../hooks/usePageVisibility";
+import { useVisualizationInteraction } from "../../hooks/useVisualizationInteraction";
+import { renderTierManager } from "../../lib/render/RenderTierManager";
+import { RenderTier } from "../../types/rendering";
+import { calculateWaveform, type Sample } from "../../utils/dsp";
+import { performanceMonitor } from "../../utils/performanceMonitor";
+import type { IVisualizationRenderer } from "../../types/visualization";
+import type { GL } from "../../utils/webgl";
 import type { ReactElement } from "react";
 
-type WaveformVisualizerProps = {
+export type WaveformVisualizerProps = {
   samples: Sample[];
   width?: number;
   height?: number;
@@ -108,7 +108,7 @@ export default function WaveformVisualizer({
       performanceMonitor.mark(markStart);
       // Try WebGPU first (modern browsers)
       try {
-        const webgpu = await import("../utils/webgpu");
+        const webgpu = await import("../../utils/webgpu");
         if (webgpu.isWebGPUSupported()) {
           const pixelW = Math.max(1, Math.floor(width * dpr));
           const pixelH = Math.max(1, Math.floor(height * dpr));
@@ -172,7 +172,7 @@ export default function WaveformVisualizer({
 
       // Try WebGL next
       try {
-        const webgl = await import("../utils/webgl");
+        const webgl = await import("../../utils/webgl");
         const pixelW = Math.max(1, Math.floor(width * dpr));
         const pixelH = Math.max(1, Math.floor(height * dpr));
         canvas.width = pixelW;

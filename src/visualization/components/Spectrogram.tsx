@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
-import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
-import { usePageVisibility } from "../hooks/usePageVisibility";
-import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
-import { renderTierManager } from "../lib/render/RenderTierManager";
-import { RenderTier } from "../types/rendering";
-import { performanceMonitor } from "../utils/performanceMonitor";
-import type { GL } from "../utils/webgl";
-import type { WebGPUTextureRenderer } from "../utils/webgpu";
+import { useIntersectionObserver } from "../../hooks/useIntersectionObserver";
+import { usePageVisibility } from "../../hooks/usePageVisibility";
+import { useVisualizationInteraction } from "../../hooks/useVisualizationInteraction";
+import { renderTierManager } from "../../lib/render/RenderTierManager";
+import { RenderTier } from "../../types/rendering";
+import { performanceMonitor } from "../../utils/performanceMonitor";
+import type { GL } from "../../utils/webgl";
+import type { WebGPUTextureRenderer } from "../../utils/webgpu";
 import type { ReactElement } from "react";
 
-type SpectrogramProps = {
+export type SpectrogramProps = {
   fftData: Float32Array[];
   width?: number;
   height?: number;
@@ -174,7 +174,7 @@ export default function Spectrogram({
 
       // Try WebGPU first (modern browsers)
       try {
-        const webgpu = await import("../utils/webgpu");
+        const webgpu = await import("../../utils/webgpu");
         if (webgpu.isWebGPUSupported()) {
           const pixelW = Math.max(1, Math.floor(width * dpr));
           const pixelH = Math.max(1, Math.floor(height * dpr));
@@ -294,7 +294,7 @@ export default function Spectrogram({
 
       // Try WebGL next for high-performance rendering
       try {
-        const webgl = await import("../utils/webgl");
+        const webgl = await import("../../utils/webgl");
         const pixelW = Math.max(1, Math.floor(width * dpr));
         const pixelH = Math.max(1, Math.floor(height * dpr));
         canvas.width = pixelW;

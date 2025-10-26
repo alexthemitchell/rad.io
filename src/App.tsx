@@ -4,6 +4,7 @@ import Navigation from "./components/Navigation";
 import Analysis from "./pages/Analysis";
 import LiveMonitor from "./pages/LiveMonitor";
 import Scanner from "./pages/Scanner";
+import VisualizationDemo from "./pages/VisualizationDemo";
 import { preloadWasmModule } from "./utils/dspWasm";
 
 function App(): React.JSX.Element {
@@ -25,6 +26,7 @@ function App(): React.JSX.Element {
           <Route path="/" element={<LiveMonitor />} />
           <Route path="/scanner" element={<Scanner />} />
           <Route path="/analysis" element={<Analysis />} />
+          <Route path="/demo" element={<VisualizationDemo />} />
         </Routes>
       </div>
     </Router>

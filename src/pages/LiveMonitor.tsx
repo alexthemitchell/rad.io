@@ -7,12 +7,12 @@ import RadioControls from "../components/RadioControls";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
-import Spectrogram from "../components/Spectrogram";
 import StatusBar, { RenderTier } from "../components/StatusBar";
 import { useHackRFDevice } from "../hackrf";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { performanceMonitor } from "../utils/performanceMonitor";
+import Spectrogram from "../visualization/components/Spectrogram";
 
 export default function LiveMonitor(): React.JSX.Element {
   // Accessibility: skip link and live region

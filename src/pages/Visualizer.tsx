@@ -3,7 +3,6 @@ import AudioControls from "../components/AudioControls";
 import BandwidthSelector from "../components/BandwidthSelector";
 import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
-import FFTChart from "../components/FFTChart";
 import FrequencyScanner from "../components/FrequencyScanner";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import P25SystemPresets from "../components/P25SystemPresets";
@@ -27,14 +26,11 @@ import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import WaveformChart from "../components/WaveformChart";
 import { useHackRFDevice } from "../hackrf";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
-import { type RDSStationData, type RDSDecoderStats } from "../models/RDSData";
-import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
 import {
   AudioStreamProcessor,
   DemodulationType,
   type AudioStreamResult,
 } from "../utils/audioStream";
-import { type Sample } from "../utils/dsp";
 import {
   IQRecorder,
   IQPlayback,
@@ -42,6 +38,10 @@ import {
   type IQRecording,
 } from "../utils/iqRecorder";
 import { performanceMonitor } from "../utils/performanceMonitor";
+import FFTChart from "../visualization/components/FFTChart";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
+import type { ISDRDevice, IQSample } from "../models/SDRDevice";
+import type { Sample } from "../utils/dsp";
 import "../styles/main.css";
 
 const MAX_BUFFER_SAMPLES = 32768;

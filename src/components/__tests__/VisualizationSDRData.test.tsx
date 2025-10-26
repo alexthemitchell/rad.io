@@ -7,9 +7,9 @@
  */
 
 import { render } from "@testing-library/react";
-import IQConstellation from "../IQConstellation";
-import Spectrogram from "../Spectrogram";
-import WaveformVisualizer from "../WaveformVisualizer";
+import IQConstellation from "../../visualization/components/IQConstellation";
+import Spectrogram from "../../visualization/components/Spectrogram";
+import WaveformVisualizer from "../../visualization/components/WaveformVisualizer";
 import { calculateSpectrogramRow, calculateWaveform } from "../../utils/dsp";
 import type { Sample } from "../../utils/dsp";
 import {
