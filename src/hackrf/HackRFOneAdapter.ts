@@ -264,6 +264,16 @@ export class HackRFOneAdapter implements ISDRDevice {
     await this.device.reset();
   }
 
+  /**
+   * Fast recovery with automatic reconfiguration
+   * Performs device reset and restores all configuration automatically.
+   * Unlike reset(), this maintains the initialized state since configuration is restored.
+   */
+  async fastRecovery(): Promise<void> {
+    await this.device.fastRecovery();
+    // Keep isInitialized=true since fastRecovery restores all configuration
+  }
+
   // Expose the underlying HackRFOne instance for advanced use
   getUnderlyingDevice(): HackRFOne {
     return this.device;
