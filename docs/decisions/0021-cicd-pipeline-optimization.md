@@ -186,7 +186,7 @@ Added build caching to deploy-pages workflow:
    - Parallel execution: lint, format, type-check run simultaneously
 
 2. **Production-optimized builds**: Production deployments now use minified, code-split bundles
-   - Bundle size reduced from 5.9 MB (dev) to 589 KB (prod) - 90% reduction
+   - Bundle size reduced from 5.9 MB (dev) to 628 KB (prod) - 89% reduction
    - React vendors: 181 KB separate chunk
    - Vendors: 37.9 KB separate chunk
    - Main: 367 KB separate chunk

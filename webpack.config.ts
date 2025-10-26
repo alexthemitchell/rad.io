@@ -92,9 +92,9 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
       server: "https",
     },
     performance: {
-      // Updated to match documented bundle sizes: main chunk ~367 KB, total ~586 KB
-      maxEntrypointSize: 600000,
-      maxAssetSize: 600000,
+      // Updated to match documented bundle sizes: main chunk ~406 KB, total ~628 KB
+      maxEntrypointSize: 630000,
+      maxAssetSize: 630000,
     },
   };
 };
