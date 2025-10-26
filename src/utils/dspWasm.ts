@@ -29,6 +29,21 @@ interface WasmDSPModule {
     rowCount: number,
   ): void;
   allocateFloat32Array(size: number): Float32Array;
+  applyHannWindow(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ): void;
+  applyHammingWindow(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ): void;
+  applyBlackmanWindow(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ): void;
 }
 
 function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
@@ -309,6 +324,101 @@ export function calculateSpectrogramWasm(
       },
     );
     return null;
+  }
+}
+
+
+/**
+ * Apply Hann window using WASM if available
+ * Modifies samples in-place for efficiency
+ */
+export function applyHannWindowWasm(samples: Sample[]): boolean {
+  if (!wasmModule || samples.length === 0) {
+    return false;
+  }
+
+  try {
+    // Separate I and Q components
+    const iSamples = new Float32Array(samples.length);
+    const qSamples = new Float32Array(samples.length);
+
+    for (let i = 0; i < samples.length; i++) {
+      iSamples[i] = samples[i]?.I ?? 0;
+      qSamples[i] = samples[i]?.Q ?? 0;
+    }
+
+    // Apply window in WASM
+    wasmModule.applyHannWindow(iSamples, qSamples, samples.length);
+
+    // Copy back to samples
+    for (let i = 0; i < samples.length; i++) {
+      samples[i] = { I: iSamples[i]!, Q: qSamples[i]! };
+    }
+
+    return true;
+  } catch (error) {
+    console.warn("dspWasm: Hann window failed", error);
+    return false;
+  }
+}
+
+/**
+ * Apply Hamming window using WASM if available
+ */
+export function applyHammingWindowWasm(samples: Sample[]): boolean {
+  if (!wasmModule || samples.length === 0) {
+    return false;
+  }
+
+  try {
+    const iSamples = new Float32Array(samples.length);
+    const qSamples = new Float32Array(samples.length);
+
+    for (let i = 0; i < samples.length; i++) {
+      iSamples[i] = samples[i]?.I ?? 0;
+      qSamples[i] = samples[i]?.Q ?? 0;
+    }
+
+    wasmModule.applyHammingWindow(iSamples, qSamples, samples.length);
+
+    for (let i = 0; i < samples.length; i++) {
+      samples[i] = { I: iSamples[i]!, Q: qSamples[i]! };
+    }
+
+    return true;
+  } catch (error) {
+    console.warn("dspWasm: Hamming window failed", error);
+    return false;
+  }
+}
+
+/**
+ * Apply Blackman window using WASM if available
+ */
+export function applyBlackmanWindowWasm(samples: Sample[]): boolean {
+  if (!wasmModule || samples.length === 0) {
+    return false;
+  }
+
+  try {
+    const iSamples = new Float32Array(samples.length);
+    const qSamples = new Float32Array(samples.length);
+
+    for (let i = 0; i < samples.length; i++) {
+      iSamples[i] = samples[i]?.I ?? 0;
+      qSamples[i] = samples[i]?.Q ?? 0;
+    }
+
+    wasmModule.applyBlackmanWindow(iSamples, qSamples, samples.length);
+
+    for (let i = 0; i < samples.length; i++) {
+      samples[i] = { I: iSamples[i]!, Q: qSamples[i]! };
+    }
+
+    return true;
+  } catch (error) {
+    console.warn("dspWasm: Blackman window failed", error);
+    return false;
   }
 }
 

@@ -8,4 +8,7 @@ export {
   calculateWaveform,
   calculateSpectrogram,
   allocateFloat32Array,
+  applyHannWindow,
+  applyHammingWindow,
+  applyBlackmanWindow,
 } from "./dsp";
