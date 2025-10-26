@@ -57,15 +57,25 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
 
         // Get device info (these are on the underlying USB device)
         let usbDevice: USBDevice | undefined;
-        const devContainer = device as unknown as { device?: unknown };
+        // Some device adapters may expose the underlying WebUSB device via a `device` field.
+        // Probe it safely and validate the shape at runtime without unsafe double-casts.
+        let maybe: unknown;
+        const anyDev = device as unknown as { device?: unknown };
+        if ("device" in anyDev) {
+          maybe = anyDev.device;
+        }
         const isUSBDeviceLike = (obj: unknown): obj is USBDevice => {
           if (!obj || typeof obj !== "object") {
             return false;
           }
           const rec = obj as Record<string, unknown>;
-          return "productId" in rec && "vendorId" in rec;
+          return (
+            "productId" in rec &&
+            typeof rec["productId"] === "number" &&
+            "vendorId" in rec &&
+            typeof rec["vendorId"] === "number"
+          );
         };
-        const maybe = devContainer.device;
         if (isUSBDeviceLike(maybe)) {
           usbDevice = maybe;
         }

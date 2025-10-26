@@ -35,7 +35,7 @@ function EmptyState({
         <p style={{ margin: 0, marginBottom: "8px", fontWeight: 500 }}>
           {title}
         </p>
-        <p style={{ margin: 0, fontSize: "14px", opacity: 0.7 }}>{message}</p>
+        <p style={{ margin: 0, fontSize: "14px" }}>{message}</p>
       </div>
     </div>
   );

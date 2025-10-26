@@ -6,6 +6,7 @@ import { calculateSpectrogram, type Sample } from "../dsp";
 jest.mock("../dspWasm", () => ({
   isWasmAvailable: () => true,
   isWasmRuntimeEnabled: () => true,
+  isWasmValidationEnabled: () => true,
   // Ensure calculateFFTWasm exists so calculateFFTSync can safely fall back to JS when it returns null
   calculateFFTWasm: () => null,
   // Return constant rows with correct shape to emulate degenerate output

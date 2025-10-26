@@ -33,22 +33,20 @@ function App(): React.JSX.Element {
             Skip to main content
           </a>
 
-          {/* Global live region for announcements (visually hidden) */}
-          <div
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-            className="visually-hidden"
-          />
+          {/* Global live region for announcements (visually hidden).
+              Use aria-live without role to avoid duplicate 'status' landmarks.
+          */}
+          <div aria-live="polite" aria-atomic="true" className="visually-hidden" />
 
           {/* Global top bar with connection status and quick actions */}
-          <TopAppBar />
+          <TopAppBar asBanner={false} />
 
           {/* Main header with title and navigation */}
           <header className="header" role="banner">
             <div className="header-content">
-              {/* Maintain accessible document title without visual clutter */}
+              {/* Maintain accessible document title and subtitle */}
               <h1 className="visually-hidden">rad.io</h1>
+              <p className="visually-hidden">Software-Defined Radio Visualizer</p>
               {/* Always-visible frequency display */}
               <FrequencyDisplay />
             </div>

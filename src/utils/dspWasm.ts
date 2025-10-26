@@ -60,6 +60,30 @@ function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
   );
 }
 
+/**
+ * Build a summary of WASM module export presence for logging/diagnostics.
+ */
+function getWasmModuleExportStatus(mod: Partial<WasmDSPModule>): {
+  calculateFFT: boolean;
+  calculateFFTOut: boolean;
+  calculateWaveform: boolean;
+  calculateWaveformOut: boolean;
+  calculateSpectrogram: boolean;
+  calculateSpectrogramOut: boolean;
+  allocateFloat32Array: boolean;
+} {
+  return {
+    calculateFFT: typeof mod.calculateFFT === "function",
+    calculateFFTOut: typeof mod.calculateFFTOut === "function",
+    calculateWaveform: typeof mod.calculateWaveform === "function",
+    calculateWaveformOut: typeof mod.calculateWaveformOut === "function",
+    calculateSpectrogram: typeof mod.calculateSpectrogram === "function",
+    calculateSpectrogramOut:
+      typeof mod.calculateSpectrogramOut === "function",
+    allocateFloat32Array: typeof mod.allocateFloat32Array === "function",
+  };
+}
+
 // Module state
 let wasmModule: WasmDSPModule | null = null;
 let wasmLoading: Promise<WasmDSPModule | null> | null = null;
@@ -131,12 +155,24 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
 
   const makeUrl = (path: string): string => {
     const url = new URL(path, window.location.href);
-    // In dev, add cache-busting param to ensure fresh module after rebuilds
+    // In dev, add a stable cache-busting param for the browser session to avoid
+    // re-downloading on every reload while still ensuring fresh loads across rebuilds.
     const host = window.location.hostname;
     const isLocalhost =
       host === "localhost" || host === "127.0.0.1" || host === "::1";
     if (isLocalhost) {
-      url.searchParams.set("v", String(Date.now()));
+      try {
+        const key = "radio.devBuildTs";
+        const existing = window.sessionStorage.getItem(key);
+        const stamp = existing ?? String(Date.now());
+        if (!existing) {
+          window.sessionStorage.setItem(key, stamp);
+        }
+        url.searchParams.set("v", stamp);
+      } catch {
+        // Fallback to per-load cache bust if sessionStorage unavailable
+        url.searchParams.set("v", String(Date.now()));
+      }
     }
     return url.toString();
   };
@@ -186,27 +222,9 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
         wasmSupported = true;
         // One-time visibility into loaded exports
         try {
-          const hasOut =
-            typeof (wasmModule as Partial<WasmDSPModule>).calculateFFTOut ===
-            "function";
-          const hasSpecOut =
-            typeof (wasmModule as Partial<WasmDSPModule>)
-              .calculateSpectrogramOut === "function";
           dspLogger.info("WASM module loaded", {
             url,
-            exports: {
-              calculateFFT: typeof mod.calculateFFT === "function",
-              calculateFFTOut: hasOut,
-              calculateWaveform: typeof mod.calculateWaveform === "function",
-              calculateWaveformOut:
-                typeof (mod as Partial<WasmDSPModule>).calculateWaveformOut ===
-                "function",
-              calculateSpectrogram:
-                typeof mod.calculateSpectrogram === "function",
-              calculateSpectrogramOut: hasSpecOut,
-              allocateFloat32Array:
-                typeof mod.allocateFloat32Array === "function",
-            },
+            exports: getWasmModuleExportStatus(mod),
           });
         } catch {
           // ignore logging errors

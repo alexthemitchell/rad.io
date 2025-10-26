@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { generateBookmarkId } from "../utils/id";
 
-// Temporary simulation values for SNR/SINAD calculations
-// TODO: Replace with real calculations from signal processing
-const SIMULATED_SNR_BASE = 15; // dB - base SNR for simulation
-const SIMULATED_SNR_VARIANCE = 10; // dB - random variance for simulation
-const SIMULATED_SINAD_BASE = 12; // dB - base SINAD for simulation
-const SIMULATED_SINAD_VARIANCE = 8; // dB - random variance for simulation
+// TODO(rad.io): Temporary simulation values for SNR/SINAD calculations.
+// Move to signal processing module and replace with real calculations.
+// See ADR-0003 for GPU Acceleration and ADR-0015 for Visualization.
+const SIMULATION_CONFIG = {
+  SNR_BASE: 15, // dB - base SNR for simulation
+  SNR_VARIANCE: 10, // dB - random variance for simulation
+  SINAD_BASE: 12, // dB - base SINAD for simulation
+  SINAD_VARIANCE: 8, // dB - random variance for simulation
+} as const;
 
 /**
  * Measurements panel/page for signal analysis tools
@@ -187,8 +190,8 @@ function Measurements({
           <strong>SNR:</strong>{" "}
           {markers.length > 0
             ? (
-                SIMULATED_SNR_BASE +
-                Math.random() * SIMULATED_SNR_VARIANCE
+                SIMULATION_CONFIG.SNR_BASE +
+                Math.random() * SIMULATION_CONFIG.SNR_VARIANCE
               ).toFixed(1)
             : "N/A"}{" "}
           dB
@@ -197,8 +200,8 @@ function Measurements({
           <strong>SINAD:</strong>{" "}
           {markers.length > 0
             ? (
-                SIMULATED_SINAD_BASE +
-                Math.random() * SIMULATED_SINAD_VARIANCE
+                SIMULATION_CONFIG.SINAD_BASE +
+                Math.random() * SIMULATION_CONFIG.SINAD_VARIANCE
               ).toFixed(1)
             : "N/A"}{" "}
           dB

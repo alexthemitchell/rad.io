@@ -22,7 +22,7 @@ let spectrogramWasmDegenerateWarned = false;
  * Reset the spectrogram WASM degenerate warning flag.
  * Call this after a successful WASM reload or validation.
  */
-export function resetSpectrogramWasmDegenerateWarning() {
+export function resetSpectrogramWasmDegenerateWarning(): void {
   spectrogramWasmDegenerateWarned = false;
 }
 
@@ -261,6 +261,12 @@ export function calculateSpectrogram(
     if (isWasmAvailable() && isWasmRuntimeEnabled()) {
       const wasmResult = calculateSpectrogramWasm(samples, fftSize);
       if (wasmResult && wasmResult.length > 0) {
+        // If validation is disabled, accept the WASM result directly to avoid O(N)
+        // verification overhead in production builds.
+        if (!isWasmValidationEnabled()) {
+          performanceMonitor.measure("spectrogram-wasm", markStart);
+          return wasmResult;
+        }
         // Validate WASM result to guard against the known "output parameter not copied back"
         // issue in some AssemblyScript loader versions (see WASM_OUTPUT_ARRAY_BUG memory).
         let min = Infinity;
@@ -308,48 +314,19 @@ export function calculateSpectrogram(
 
         // Attempt a row-wise WASM FFT using the return-by-value API (calculateFFTOut)
         // to avoid the output-parameter copy-back issue.
-        try {
-          const rowCount = Math.floor(samples.length / fftSize);
-          if (rowCount > 0) {
-            const rows: Float32Array[] = [];
-            let ok = true;
-            let gMin = Infinity;
-            let gMax = -Infinity;
-            for (let i = 0; i < rowCount; i++) {
-              const startIndex = i * fftSize;
-              const endIndex = startIndex + fftSize;
-              const rowSamples = samples.slice(startIndex, endIndex);
-              const rowFFT = calculateFFTWasm(rowSamples, fftSize);
-              if (!rowFFT || rowFFT.length !== fftSize) {
-                ok = false;
-                break;
-              }
-              // Validate row
-              for (const v of rowFFT) {
-                if (!Number.isFinite(v)) {
-                  ok = false;
-                  break;
-                }
-                if (v < gMin) {
-                  gMin = v;
-                }
-                if (v > gMax) {
-                  gMax = v;
-                }
-              }
-              if (!ok) {
-                break;
-              }
-              rows.push(rowFFT);
-            }
-            const gRange = gMax - gMin;
-            if (ok && gRange > 1e-3) {
+        if (isWasmValidationEnabled()) {
+          try {
+            const rowWise: Float32Array[] | null = attemptRowWiseWasmFFT(
+              samples,
+              fftSize,
+            );
+            if (rowWise) {
               performanceMonitor.measure("spectrogram-wasm-row", markStart);
-              return rows;
+              return rowWise;
             }
+          } catch {
+            // swallow and continue to JS fallback below
           }
-        } catch {
-          // swallow and continue to JS fallback below
         }
       }
     }
@@ -372,6 +349,54 @@ export function calculateSpectrogram(
     performanceMonitor.measure("spectrogram-error", markStart);
     throw error;
   }
+}
+
+/**
+ * Helper: Attempt a row-wise WASM FFT using calculateFFTWasm for each window.
+ * Validates rows for finiteness and minimal dynamic range to avoid degenerate output.
+ * Returns null when validation fails.
+ */
+function attemptRowWiseWasmFFT(
+  samples: Sample[],
+  fftSize: number,
+): Float32Array[] | null {
+  const rowCount = Math.floor(samples.length / fftSize);
+  if (rowCount <= 0) {
+    return null;
+  }
+
+  const rows: Float32Array[] = [];
+  let ok = true;
+  let gMin = Infinity;
+  let gMax = -Infinity;
+  for (let i = 0; i < rowCount; i++) {
+    const startIndex = i * fftSize;
+    const endIndex = startIndex + fftSize;
+    const rowSamples = samples.slice(startIndex, endIndex);
+    const rowFFT = calculateFFTWasm(rowSamples, fftSize);
+    if (!rowFFT || rowFFT.length !== fftSize) {
+      ok = false;
+      break;
+    }
+    for (const v of rowFFT) {
+      if (!Number.isFinite(v)) {
+        ok = false;
+        break;
+      }
+      if (v < gMin) {
+        gMin = v;
+      }
+      if (v > gMax) {
+        gMax = v;
+      }
+    }
+    if (!ok) {
+      break;
+    }
+    rows.push(rowFFT);
+  }
+  const gRange = gMax - gMin;
+  return ok && gRange > 1e-3 ? rows : null;
 }
 
 /**

@@ -16,7 +16,15 @@ import { useDevice } from "../contexts/DeviceContext";
  * - Device capabilities for sample rate
  * - Future: recording system for quick record
  */
-function TopAppBar(): React.JSX.Element {
+type TopAppBarProps = {
+  /**
+   * When true, render this component as the document banner landmark.
+   * In the full App shell, pass false so the page header owns the banner role.
+   */
+  asBanner?: boolean;
+};
+
+function TopAppBar({ asBanner = true }: TopAppBarProps): React.JSX.Element {
   const { device } = useDevice();
   const [sampleRate, setSampleRate] = useState<number | null>(null);
   const [bufferHealth, setBufferHealth] = useState<number>(100);
@@ -70,7 +78,11 @@ function TopAppBar(): React.JSX.Element {
   const status = getConnectionStatus();
 
   return (
-    <div className="top-app-bar" role="region" aria-label="Application status">
+    <div
+      className="top-app-bar"
+      role={asBanner ? "banner" : "region"}
+      aria-label={asBanner ? undefined : "Application status"}
+    >
       <section aria-label="Device Status" className="status-section">
         <span className="status-item">
           <span className="status-label">Device:</span>

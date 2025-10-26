@@ -70,8 +70,9 @@ function Monitor(): React.JSX.Element {
   const processorRef = useRef<AudioStreamProcessor | null>(null);
   const iqBufferRef = useRef<IQSample[]>([]);
   // Visualization buffers (ring-buffered)
-  const vizBufferRef = useRef<IQSample[]>([]);
-  const [vizSamples, setVizSamples] = useState<IQSample[]>([]);
+  // Use DSPSample typing directly to avoid unsafe casts when rendering FFTChart
+  const vizBufferRef = useRef<DSPSample[]>([]);
+  const [vizSamples, setVizSamples] = useState<DSPSample[]>([]);
   const lastVizUpdateRef = useRef<number>(0);
 
   const canStart = useMemo(
@@ -145,7 +146,8 @@ function Monitor(): React.JSX.Element {
 
           // Feed visualization ring buffer
           const vbuf = vizBufferRef.current;
-          vbuf.push(...samples);
+          // IQSample is structurally compatible with DSPSample ({I, Q})
+          vbuf.push(...(samples as DSPSample[]));
           // Trim to a reasonable window for spectrogram computation
           const maxVizSamples = fftSize * 64; // 64 frames worth of samples
           if (vbuf.length > maxVizSamples) {
@@ -267,7 +269,7 @@ function Monitor(): React.JSX.Element {
         </div>
         <div style={{ marginTop: 8 }}>
           <FFTChart
-            samples={vizSamples as unknown as DSPSample[]}
+            samples={vizSamples}
             width={900}
             height={320}
             fftSize={fftSize}

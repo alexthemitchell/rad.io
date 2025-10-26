@@ -19,6 +19,7 @@ Validation contract (degenerate-output detection)
 - If validation fails:
   - calculateFFTSync() logs once and falls back to JS.
   - calculateSpectrogram() logs once, then attempts a per-row WASM FFT using return-by-value API if available; otherwise falls back to JS.
+- Spectrogram validation and row-wise fallback are gated behind isWasmValidationEnabled() (disabled by default in prod) to avoid O(N) overhead in production.
 
 APIs and preferences
 
@@ -26,7 +27,7 @@ APIs and preferences
 
 Dev ergonomics
 
-- In dev on localhost/127.0.0.1/::1, the WASM module URL is cache-busted (query param) to avoid stale module loads after rebuilds.
+- In dev on localhost/127.0.0.1/::1, the WASM module URL is cache-busted using a session-stable token (window.sessionStorage key 'radio.devBuildTs'). This avoids stale builds while preserving caching across reloads within the same session. Fallback to Date.now() if sessionStorage is unavailable.
 
 Notes
 

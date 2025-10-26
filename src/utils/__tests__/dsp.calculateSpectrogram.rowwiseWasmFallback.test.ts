@@ -4,6 +4,7 @@ import { calculateSpectrogram, type Sample } from "../dsp";
 jest.mock("../dspWasm", () => ({
   isWasmAvailable: () => true,
   isWasmRuntimeEnabled: () => true,
+  isWasmValidationEnabled: () => true,
   // Degenerate bulk spectrogram (all zeros) to trigger row-wise fallback
   calculateSpectrogramWasm: (samples: Sample[], fftSize: number) => {
     const rows = Math.floor(samples.length / fftSize);
