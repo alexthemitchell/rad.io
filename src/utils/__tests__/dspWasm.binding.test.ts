@@ -42,8 +42,8 @@ describe("dspWasm binding & runtime behavior", () => {
       calculateFFT,
       calculateFFTOut,
       // Unused in this test
-      calculateWaveform: () => undefined,
-      calculateSpectrogram: () => undefined,
+      calculateWaveform: () => {},
+      calculateSpectrogram: () => {},
     };
 
     setWasmModuleForTest(fake, true);
