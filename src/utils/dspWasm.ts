@@ -299,7 +299,10 @@ export function isWasmRuntimeEnabled(): boolean {
 export function isWasmValidationEnabled(): boolean {
   try {
     // Node/test or SSR: default to enabled so tests can exercise validation
-    const isProd = process.env["NODE_ENV"] === "production";
+    const isProd =
+      typeof process !== "undefined" &&
+      process.env &&
+      process.env["NODE_ENV"] === "production";
     if (!hasLocalStorage()) {
       return !isProd;
     }
