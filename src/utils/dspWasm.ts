@@ -78,8 +78,7 @@ function getWasmModuleExportStatus(mod: Partial<WasmDSPModule>): {
     calculateWaveform: typeof mod.calculateWaveform === "function",
     calculateWaveformOut: typeof mod.calculateWaveformOut === "function",
     calculateSpectrogram: typeof mod.calculateSpectrogram === "function",
-    calculateSpectrogramOut:
-      typeof mod.calculateSpectrogramOut === "function",
+    calculateSpectrogramOut: typeof mod.calculateSpectrogramOut === "function",
     allocateFloat32Array: typeof mod.allocateFloat32Array === "function",
   };
 }
