@@ -1,9 +1,14 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-const path = require("path");
-const CopyPlugin = require("copy-webpack-plugin");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
+import path from "path";
+import { fileURLToPath } from "url";
+import CopyPlugin from "copy-webpack-plugin";
+import HtmlWebpackPlugin from "html-webpack-plugin";
+import type { Configuration } from "webpack";
+import "webpack-dev-server";
 
-module.exports = (env, argv) => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default (_env: unknown, argv: { mode?: string }): Configuration => {
   const isDevelopment = argv.mode === "development";
 
   return {
@@ -48,7 +53,7 @@ module.exports = (env, argv) => {
       splitChunks: {
         cacheGroups: {
           vendor: {
-            test: /[\\/]node_modules[\\/]/,
+            test: /[\\/]node_modules[\\/](?!(react|react-dom|react-router-dom)[\\/])/,
             name: "vendors",
             chunks: "all",
             priority: 10,
