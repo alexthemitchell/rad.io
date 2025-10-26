@@ -11,6 +11,8 @@
 **Consider `docs/decisions/` for architectural decision records that may inform your work.**
 **Refer to `docs/reference/` for specialized domain knowledge about SDR and related technologies.**
 
+**When reviewing memories, consider whether it is valuable information for future agents. If not, do not allow it to be committed**
+
 ## Tools
 
 - **It is incredibly important to use the tools available to you when implementing your solutions.**

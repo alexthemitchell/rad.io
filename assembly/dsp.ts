@@ -173,6 +173,26 @@ export function calculateWaveform(
   }
 }
 
+// Return-by-value variant for waveform calculation.
+// Returns a flat Float32Array of length 2*count with layout:
+//   [ amplitude[0..count-1], phase[0..count-1] ]
+export function calculateWaveformOut(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  count: i32,
+): Float32Array {
+  const amplitude = new Float32Array(count);
+  const phase = new Float32Array(count);
+  calculateWaveform(iSamples, qSamples, amplitude, phase, count);
+
+  const out = new Float32Array(count * 2);
+  for (let i = 0; i < count; i++) {
+    out[i] = amplitude[i];
+    out[count + i] = phase[i];
+  }
+  return out;
+}
+
 /**
  * Calculate multiple spectrogram rows efficiently
  * Processes multiple FFT windows in sequence
@@ -208,6 +228,18 @@ export function calculateSpectrogram(
       output[row * fftSize + i] = rowOutput[i];
     }
   }
+}
+
+// Return-by-value variant to avoid JS↔WASM output parameter copy-back issues
+export function calculateSpectrogramOut(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  fftSize: i32,
+  rowCount: i32,
+): Float32Array {
+  const out = new Float32Array(fftSize * rowCount);
+  calculateSpectrogram(iSamples, qSamples, fftSize, out, rowCount);
+  return out;
 }
 
 /**

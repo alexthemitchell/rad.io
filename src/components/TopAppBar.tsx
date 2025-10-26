@@ -70,7 +70,7 @@ function TopAppBar(): React.JSX.Element {
   const status = getConnectionStatus();
 
   return (
-    <div className="top-app-bar" role="banner" aria-label="Application status">
+    <div className="top-app-bar" role="region" aria-label="Application status">
       <section aria-label="Device Status" className="status-section">
         <span className="status-item">
           <span className="status-label">Device:</span>

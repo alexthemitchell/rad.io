@@ -17,7 +17,9 @@ test.use({
 });
 
 test.describe("Application-Wide Accessibility", () => {
-  test("home page should have no WCAG violations", async ({ page }) => {
+  test("home page should have no WCAG violations", async ({
+    page,
+  }, testInfo) => {
     await page.goto("https://localhost:8080");
 
     // Wait for app to fully load
@@ -27,6 +29,12 @@ test.describe("Application-Wide Accessibility", () => {
     const accessibilityScanResults = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
+
+    // Attach Axe results for CI artifacts
+    await testInfo.attach("axe-home.json", {
+      contentType: "application/json",
+      body: JSON.stringify(accessibilityScanResults, null, 2),
+    });
 
     // Log any violations for debugging
     if (accessibilityScanResults.violations.length > 0) {
@@ -199,7 +207,7 @@ test.describe("ARIA and Semantics", () => {
     });
   });
 
-  test("buttons should have accessible names", async ({ page }) => {
+  test("buttons should have accessible names", async ({ page }, testInfo) => {
     await page.goto("https://localhost:8080");
     await page.waitForSelector("button");
 
@@ -208,6 +216,11 @@ test.describe("ARIA and Semantics", () => {
       .include("button")
       .withTags(["wcag2a", "wcag2aa"])
       .analyze();
+
+    await testInfo.attach("axe-buttons.json", {
+      contentType: "application/json",
+      body: JSON.stringify(results, null, 2),
+    });
 
     const buttonNameViolations = results.violations.filter(
       (v) => v.id === "button-name",
@@ -272,7 +285,7 @@ test.describe("Focus Management", () => {
 test.describe("Color Contrast", () => {
   test("all text should meet WCAG AA contrast requirements", async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.goto("https://localhost:8080");
     await page.waitForSelector("button");
 
@@ -281,6 +294,11 @@ test.describe("Color Contrast", () => {
       .include("body")
       .withRules(["color-contrast"])
       .analyze();
+
+    await testInfo.attach("axe-contrast.json", {
+      contentType: "application/json",
+      body: JSON.stringify(contrastResults, null, 2),
+    });
 
     const contrastViolations = contrastResults.violations.filter(
       (v) => v.id === "color-contrast",
@@ -301,7 +319,7 @@ test.describe("Color Contrast", () => {
 });
 
 test.describe("Responsive and Zoom", () => {
-  test("should work at 200% zoom", async ({ page }) => {
+  test("should work at 200% zoom", async ({ page }, testInfo) => {
     await page.goto("https://localhost:8080");
 
     // Set zoom to 200%
@@ -317,10 +335,15 @@ test.describe("Responsive and Zoom", () => {
       .withTags(["wcag2aa"])
       .analyze();
 
+    await testInfo.attach("axe-zoom.json", {
+      contentType: "application/json",
+      body: JSON.stringify(accessibilityResults, null, 2),
+    });
+
     expect(accessibilityResults.violations).toEqual([]);
   });
 
-  test("should work on mobile viewport", async ({ page }) => {
+  test("should work on mobile viewport", async ({ page }, testInfo) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
 
@@ -331,6 +354,11 @@ test.describe("Responsive and Zoom", () => {
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2aa"])
       .analyze();
+
+    await testInfo.attach("axe-mobile.json", {
+      contentType: "application/json",
+      body: JSON.stringify(results, null, 2),
+    });
 
     expect(results.violations).toEqual([]);
   });

@@ -7,6 +7,8 @@ export {
   calculateFFT,
   calculateFFTOut,
   calculateWaveform,
+  calculateWaveformOut,
   calculateSpectrogram,
+  calculateSpectrogramOut,
   allocateFloat32Array,
 } from "./dsp";

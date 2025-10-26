@@ -25,6 +25,8 @@ import React, {
 } from "react";
 import { useUSBDevice } from "../hooks/useUSBDevice";
 import { HackRFOneAdapter } from "../models/HackRFOneAdapter";
+import { MockSDRDevice } from "../models/MockSDRDevice";
+import { shouldUseMockSDR } from "../utils/e2e";
 import { deviceLogger } from "../utils/logger";
 import type { ISDRDevice } from "../models/SDRDevice";
 
@@ -38,7 +40,7 @@ type DeviceId = string;
  */
 interface DeviceEntry {
   device: ISDRDevice;
-  usbDevice: USBDevice;
+  usbDevice?: USBDevice;
 }
 
 /**
@@ -237,6 +239,41 @@ export function DeviceProvider({
 
     void initializeDevice(usbDevice);
   }, [usbDevice, initializeDevice]);
+
+  /**
+   * E2E/CI mock mode: create a mock SDR device when flag is enabled
+   */
+  const useMock = shouldUseMockSDR();
+  useEffect(() => {
+    if (!useMock) {
+      return;
+    }
+    // Only create one mock device if none exist yet
+    if (devicesRef.current.size > 0) {
+      return;
+    }
+
+    const setupMock = async (): Promise<void> => {
+      try {
+        const mock = new MockSDRDevice();
+        await mock.open();
+        setDevices((prev) => {
+          if (prev.size > 0) {
+            return prev;
+          }
+          const next = new Map(prev);
+          next.set("mock:device", { device: mock });
+          return next;
+        });
+        deviceLogger.info("Mock SDR device initialized for E2E", {
+          reason: "shouldUseMockSDR()",
+        });
+      } catch (err) {
+        deviceLogger.error("Failed to initialize mock SDR device", err);
+      }
+    };
+    void setupMock();
+  }, [useMock]);
 
   /**
    * Cleanup all devices on unmount only

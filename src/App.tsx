@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import FrequencyDisplay from "./components/FrequencyDisplay";
 import Navigation from "./components/Navigation";
-import StatusFooter from "./components/StatusFooter";
 import TopAppBar from "./components/TopAppBar";
 import { DeviceProvider } from "./contexts/DeviceContext";
 import Analysis from "./pages/Analysis";
@@ -29,16 +28,27 @@ function App(): React.JSX.Element {
     <Router>
       <DeviceProvider>
         <div className="app-shell">
+          {/* Skip link: first focusable element for keyboard users */}
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+
+          {/* Global live region for announcements (visually hidden) */}
+          <div
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="visually-hidden"
+          />
+
           {/* Global top bar with connection status and quick actions */}
           <TopAppBar />
 
           {/* Main header with title and navigation */}
           <header className="header" role="banner">
             <div className="header-content">
-              <div className="header-title">
-                <h1>rad.io</h1>
-                <p>Software-Defined Radio Visualizer</p>
-              </div>
+              {/* Maintain accessible document title without visual clutter */}
+              <h1 className="visually-hidden">rad.io</h1>
               {/* Always-visible frequency display */}
               <FrequencyDisplay />
             </div>
@@ -75,8 +85,7 @@ function App(): React.JSX.Element {
             <Route path="/help" element={<Help />} />
           </Routes>
 
-          {/* Global footer with system metrics */}
-          <StatusFooter />
+          {/* Footer intentionally minimal to keep focus on primary tasks */}
         </div>
       </DeviceProvider>
     </Router>

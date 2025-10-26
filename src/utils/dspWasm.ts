@@ -28,6 +28,12 @@ export interface WasmDSPModule {
     phase: Float32Array,
     count: number,
   ): void;
+  // Newer API: returns flat Float32Array [amplitude..., phase...]
+  calculateWaveformOut?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    count: number,
+  ) => Float32Array;
   calculateSpectrogram(
     iSamples: Float32Array,
     qSamples: Float32Array,
@@ -35,6 +41,13 @@ export interface WasmDSPModule {
     output: Float32Array,
     rowCount: number,
   ): void;
+  // Newer API: returns a flat Float32Array of length rowCount*fftSize
+  calculateSpectrogramOut?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    fftSize: number,
+    rowCount: number,
+  ) => Float32Array;
   allocateFloat32Array(size: number): Float32Array;
 }
 
@@ -154,6 +167,18 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
             mod.calculateFFTOut.bind(mod);
           wasmModule.calculateFFTOut = bound;
         }
+        {
+          const calc = (mod as Partial<WasmDSPModule>).calculateWaveformOut;
+          if (typeof calc === "function") {
+            wasmModule.calculateWaveformOut = calc.bind(mod as object);
+          }
+        }
+        {
+          const calc = (mod as Partial<WasmDSPModule>).calculateSpectrogramOut;
+          if (typeof calc === "function") {
+            wasmModule.calculateSpectrogramOut = calc.bind(mod as object);
+          }
+        }
 
         wasmSupported = true;
         // One-time visibility into loaded exports
@@ -161,14 +186,21 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
           const hasOut =
             typeof (wasmModule as Partial<WasmDSPModule>).calculateFFTOut ===
             "function";
+          const hasSpecOut =
+            typeof (wasmModule as Partial<WasmDSPModule>)
+              .calculateSpectrogramOut === "function";
           dspLogger.info("WASM module loaded", {
             url,
             exports: {
               calculateFFT: typeof mod.calculateFFT === "function",
               calculateFFTOut: hasOut,
               calculateWaveform: typeof mod.calculateWaveform === "function",
+              calculateWaveformOut:
+                typeof (mod as Partial<WasmDSPModule>).calculateWaveformOut ===
+                "function",
               calculateSpectrogram:
                 typeof mod.calculateSpectrogram === "function",
+              calculateSpectrogramOut: hasSpecOut,
               allocateFloat32Array:
                 typeof mod.allocateFloat32Array === "function",
             },
@@ -334,16 +366,20 @@ export function calculateWaveformWasm(
       }
     }
 
-    // Allocate output arrays in WASM memory
-    // This ensures the WASM function can write to them and we get the results back
+    // Prefer return-by-value if available
+    if (typeof wasmModule.calculateWaveformOut === "function") {
+      dspLogger.debug("Using calculateWaveformOut (return-by-value)");
+      const flat = wasmModule.calculateWaveformOut(iSamples, qSamples, count);
+      // Split into amplitude and phase views
+      const amplitude = flat.subarray(0, count);
+      const phase = flat.subarray(count, count * 2);
+      return { amplitude, phase };
+    }
+
+    // Legacy path: allocate output arrays and let WASM fill them
     const amplitude = wasmModule.allocateFloat32Array(count);
     const phase = wasmModule.allocateFloat32Array(count);
-
-    // Call WASM function
-    // The function modifies amplitude and phase arrays in WASM memory
     wasmModule.calculateWaveform(iSamples, qSamples, amplitude, phase, count);
-
-    // Return the WASM-allocated arrays (they're already views of WASM memory with results)
     return { amplitude, phase };
   } catch (error) {
     dspLogger.warn(
@@ -387,10 +423,25 @@ export function calculateSpectrogramWasm(
       }
     }
 
-    // Allocate output array in WASM memory
-    const output = wasmModule.allocateFloat32Array(rowCount * fftSize);
+    // Prefer return-by-value API if available to avoid copy-back issue
+    if (typeof wasmModule.calculateSpectrogramOut === "function") {
+      dspLogger.debug("Using calculateSpectrogramOut (return-by-value)");
+      const flat = wasmModule.calculateSpectrogramOut(
+        iSamples,
+        qSamples,
+        fftSize,
+        rowCount,
+      );
+      const rows: Float32Array[] = [];
+      for (let row = 0; row < rowCount; row++) {
+        rows.push(flat.slice(row * fftSize, (row + 1) * fftSize));
+      }
+      return rows;
+    }
 
-    // Call WASM function
+    // Allocate output array in WASM memory and call legacy API
+    dspLogger.debug("Using calculateSpectrogram with output parameter");
+    const output = wasmModule.allocateFloat32Array(rowCount * fftSize);
     wasmModule.calculateSpectrogram(
       iSamples,
       qSamples,
@@ -399,12 +450,10 @@ export function calculateSpectrogramWasm(
       rowCount,
     );
 
-    // Convert flat array to array of rows
     const rows: Float32Array[] = [];
     for (let row = 0; row < rowCount; row++) {
       rows.push(output.slice(row * fftSize, (row + 1) * fftSize));
     }
-
     return rows;
   } catch (error) {
     dspLogger.warn(

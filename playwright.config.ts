@@ -23,7 +23,12 @@ export default defineConfig({
   workers: process.env["CI"] ? 1 : undefined,
 
   /* Reporter to use */
-  reporter: [["html", { outputFolder: "playwright-report" }], ["list"]],
+  // Include GitHub reporter for richer annotations in CI
+  reporter: [
+    ["html", { outputFolder: "playwright-report" }],
+    ["list"],
+    ["github"],
+  ],
 
   /* Shared settings for all the projects below */
   use: {
@@ -40,11 +45,19 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
   },
 
-  /* Configure projects for major browsers */
+  /* Configure projects to separate mock vs real tests */
   projects: [
     {
-      name: "chromium",
+      name: "mock-chromium",
       use: { ...devices["Desktop Chrome"] },
+      // Run everything except @real tests
+      grepInvert: /@real/,
+    },
+    {
+      name: "real-chromium",
+      use: { ...devices["Desktop Chrome"] },
+      // Only run tests tagged @real (these are also env-gated inside the test)
+      grep: /@real/,
     },
   ],
 
