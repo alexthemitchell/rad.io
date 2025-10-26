@@ -366,6 +366,16 @@ export class HackRFOne {
       data: payload,
     });
     this.lastFrequency = frequency;
+
+    const isDev = process.env["NODE_ENV"] === "development";
+    if (isDev) {
+      console.debug("HackRFOne.setFrequency: Frequency configured", {
+        frequency,
+        frequencyMHz: (frequency / 1e6).toFixed(3),
+        mhz,
+        hz,
+      });
+    }
   }
 
   async setAmpEnable(enabled: boolean): Promise<void> {
@@ -421,6 +431,16 @@ export class HackRFOne {
       data: payload,
     });
     this.lastSampleRate = sampleRate;
+
+    const isDev = process.env["NODE_ENV"] === "development";
+    if (isDev) {
+      console.debug("HackRFOne.setSampleRate: Sample rate configured", {
+        sampleRate,
+        sampleRateMSPS: (sampleRate / 1e6).toFixed(3),
+        freqHz,
+        divider,
+      });
+    }
   }
 
   /**
@@ -461,6 +481,14 @@ export class HackRFOne {
     }
     if (this.closing) {
       throw new Error("Device is closing");
+    }
+    // CRITICAL: Validate that sample rate has been set before streaming
+    // Without sample rate, transferIn() will hang indefinitely
+    if (this.lastSampleRate === null) {
+      throw new Error(
+        "Sample rate not configured. HackRF requires setSampleRate() to be called before receive(). " +
+          "Without sample rate, the device will not stream data and transferIn() will hang.",
+      );
     }
     // Additional health checks can be added here
   }
