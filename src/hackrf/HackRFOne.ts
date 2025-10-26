@@ -172,6 +172,29 @@ export class HackRFOne {
     this.usbDevice = usbDevice;
   }
 
+  /**
+   * Opens the HackRF device and prepares it for communication.
+   *
+   * This method:
+   * 1. Opens the USB device connection
+   * 2. Selects the appropriate USB configuration
+   * 3. Finds and claims the bulk IN streaming interface
+   * 4. Identifies the bulk IN endpoint for receiving IQ data
+   *
+   * After calling open(), you MUST configure the sample rate before streaming:
+   * ```typescript
+   * await device.open();
+   * await device.setSampleRate(20_000_000);  // REQUIRED before receive()
+   * await device.setFrequency(100_000_000);
+   * await device.receive(callback);
+   * ```
+   *
+   * @throws {Error} If no suitable streaming interface or bulk IN endpoint is found
+   * @throws {Error} If the device is already closing
+   *
+   * @see {@link setSampleRate} - MUST be called before streaming
+   * @see {@link receive} - Start streaming after configuration
+   */
   async open(): Promise<void> {
     this.closing = false;
 
@@ -415,6 +438,33 @@ export class HackRFOne {
   }
 
   // New method to set the sample rate (in Hz)
+  /**
+   * Sets the sample rate for the HackRF device.
+   *
+   * **CRITICAL**: This MUST be called before streaming data. HackRF devices will hang
+   * indefinitely during `transferIn()` if sample rate is not configured.
+   *
+   * **Recommended minimum**: 8 MHz (8,000,000 Hz) to avoid aliasing due to analog
+   * filter limitations (MAX2837 baseband filter, MAX5864 ADC/DAC).
+   *
+   * @param sampleRate - Sample rate in Hz (e.g., 20000000 for 20 MSPS)
+   *
+   * @throws {Error} If sample rate is outside supported range (1.75-28 MHz)
+   *
+   * @example
+   * ```typescript
+   * // Recommended default (20 MSPS)
+   * await device.setSampleRate(20_000_000);
+   *
+   * // Minimum recommended (8 MSPS)
+   * await device.setSampleRate(8_000_000);
+   *
+   * // For lower effective rates, use software decimation after capture
+   * ```
+   *
+   * @see {@link https://hackrf.readthedocs.io/en/latest/sampling_rate.html} Sample rate documentation
+   * @see {@link receive} - Must call setSampleRate before receive
+   */
   async setSampleRate(sampleRate: number): Promise<void> {
     // Validate sample rate is within HackRF One's supported range
     if (sampleRate < MIN_SAMPLE_RATE || sampleRate > MAX_SAMPLE_RATE) {
@@ -560,6 +610,52 @@ export class HackRFOne {
   }
 
   // New method to start reception with an optional data callback
+  /**
+   * Starts receiving IQ samples from the HackRF device.
+   *
+   * **Prerequisites**:
+   * - Device must be open (call `open()` first)
+   * - Sample rate MUST be configured (call `setSampleRate()` first)
+   * - Frequency should be set (call `setFrequency()` first)
+   *
+   * This method:
+   * 1. Validates device health (open, not closing, sample rate set)
+   * 2. Sets transceiver mode to RECEIVE
+   * 3. Enters streaming loop with timeout protection (5s per transfer)
+   * 4. Calls callback with received IQ data (Int8 format, interleaved I/Q)
+   * 5. Attempts automatic recovery after 3 consecutive timeouts
+   *
+   * **Timeout Protection**: If USB transfers hang (device not responding),
+   * automatic recovery attempts reset and reconfiguration after 3 failures.
+   *
+   * **To stop streaming**: Call `stopRx()` from another context.
+   *
+   * @param callback - Optional callback invoked with each received data chunk.
+   *                   Data is Int8Array in DataView, interleaved I/Q samples.
+   *                   Call `parseSamples()` to convert to IQSample[] format.
+   *
+   * @throws {Error} If device is not open
+   * @throws {Error} If device is closing
+   * @throws {Error} If sample rate not configured (critical requirement)
+   * @throws {Error} If automatic recovery fails after timeouts
+   *
+   * @example
+   * ```typescript
+   * await device.open();
+   * await device.setSampleRate(20_000_000);  // REQUIRED!
+   * await device.setFrequency(100_000_000);
+   *
+   * await device.receive((data) => {
+   *   const samples = parseSamples(data);  // Convert to IQSample[]
+   *   processSamples(samples);
+   * });
+   * ```
+   *
+   * @see {@link setSampleRate} - MUST be called before receive
+   * @see {@link stopRx} - Stop streaming
+   * @see {@link validateDeviceHealth} - Health checks performed
+   * @see {@link fastRecovery} - Automatic recovery after timeouts
+   */
   async receive(callback?: (data: DataView) => void): Promise<void> {
     // Validate device health before streaming
     this.validateDeviceHealth();

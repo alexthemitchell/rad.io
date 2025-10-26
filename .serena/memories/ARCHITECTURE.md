@@ -385,6 +385,24 @@ Interface: 0
 Endpoint (RX): 1 (bulk in)
 ```
 
+**Critical Initialization Pattern**:
+
+```typescript
+// MUST configure in this order before streaming:
+await device.setSampleRate(20_000_000); // 1. Sample rate first (CRITICAL)
+await device.setFrequency(freq); // 2. Center frequency
+await device.setBandwidth(bw); // 3. Bandwidth (optional)
+await device.setLNAGain(gain); // 4. Gain (optional)
+await device.setAmpEnable(enable); // 5. Amplifier (optional)
+await device.receive(callback); // 6. Start streaming (sets RX mode)
+```
+
+**Why Order Matters**:
+
+- Sample rate MUST be set first - device hangs without it
+- Other settings may depend on sample rate
+- Matches libhackrf C reference implementation
+
 **Control Transfer Commands**:
 
 ```typescript
@@ -429,6 +447,50 @@ const result = await device.transferIn(endpoint, bufferSize);
 2. **Mutex Locking**: Prevent concurrent control transfers
 3. **Retry Logic**: Handle `InvalidStateError` with delays
 4. **Cleanup**: Proper shutdown sequence (stop RX → set OFF → UI enable)
+5. **Timeout Protection**: 5s timeout on transferIn() to prevent hangs
+6. **Automatic Recovery**: After 3 consecutive timeouts, attempt device reset
+7. **Health Validation**: Check device state before configuration changes
+
+**Configuration State Tracking**:
+
+Device maintains last-known configuration for recovery:
+
+- `lastSampleRate`: For restoring after reset
+- `lastFrequency`: Current tuning
+- `lastBandwidth`: Filter setting
+- `lastLNAGain`: Amplification level
+- `lastAmpEnabled`: Amplifier state
+
+**Device Health APIs**:
+
+```typescript
+// Check configuration status
+device.getConfigurationStatus(): {
+  isOpen: boolean;
+  isStreaming: boolean;
+  sampleRate: number | null;
+  frequency: number | null;
+  // ... other settings
+  isConfigured: boolean;  // true if sample rate set
+}
+
+// Validate ready for streaming
+device.validateReadyForStreaming(): {
+  ready: boolean;
+  issues: string[];  // Specific problems if not ready
+}
+
+// Manual recovery
+await device.fastRecovery();  // Reset with config restore
+await device.reset();          // Full reset (requires reconfig)
+```
+
+**See Also**:
+
+- Memory: HACKRF_DEVICE_INITIALIZATION_BUG_FIX (initialization requirements)
+- Memory: HACKRF_PROTECTIVE_MEASURES_IMPLEMENTATION (timeout/recovery)
+- Memory: HACKRF_ERROR_HANDLING_ENHANCEMENT_2025 (health APIs)
+- Doc: docs/reference/hackrf-troubleshooting.md (user-facing guide)
 
 ---
 
