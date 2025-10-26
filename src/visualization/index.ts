@@ -16,3 +16,9 @@ export type {
 // Implementations
 export { SimulatedSource } from "./SimulatedSource";
 export type { SimulatedSourceConfig } from "./SimulatedSource";
+
+// Visualization Components
+export { default as IQConstellation } from "./components/IQConstellation";
+export { default as Spectrogram } from "./components/Spectrogram";
+export { default as WaveformVisualizer } from "./components/WaveformVisualizer";
+export { default as FFTChart } from "./components/FFTChart";
