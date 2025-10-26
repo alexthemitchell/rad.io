@@ -33,5 +33,5 @@ export function extractUSBDevice(x: unknown): USBDevice | undefined {
  */
 export function formatUsbId(vendorId: number, productId: number): string {
   const toHex4 = (n: number): string => n.toString(16).padStart(4, "0");
-  return `${toHex4(vendorId)}:${toHex4(productId)}`.toLowerCase();
+  return `${toHex4(vendorId)}:${toHex4(productId)}`;
 }
