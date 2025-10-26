@@ -411,7 +411,7 @@ describe("calcSampleRate", () => {
   });
 
   it("should return divider of 1 for simple rates", () => {
-    const [freq, div] = calcSampleRate(20000000);
+    const [_freq, div] = calcSampleRate(20000000);
     expect(div).toBeGreaterThanOrEqual(1);
     expect(div).toBeLessThanOrEqual(31);
   });

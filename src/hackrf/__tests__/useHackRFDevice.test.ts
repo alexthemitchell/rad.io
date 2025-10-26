@@ -34,7 +34,7 @@ describe("useHackRFDevice", () => {
       selectConfiguration: jest.fn().mockResolvedValue(undefined),
       claimInterface: jest.fn().mockResolvedValue(undefined),
       releaseInterface: jest.fn().mockResolvedValue(undefined),
-    };
+    } as Partial<USBDevice> as USBDevice;
 
     // Create mock adapter instance with all required ISDRDevice methods
     mockAdapterInstance = {
@@ -133,10 +133,14 @@ describe("useHackRFDevice", () => {
     });
 
     it("should open device if not already opened", async () => {
-      mockUSBDevice.opened = false;
+      // Create a new mock with opened = false
+      const unopenedDevice = {
+        ...mockUSBDevice,
+        opened: false,
+      } as Partial<USBDevice> as USBDevice;
 
       mockUseUSBDevice.mockReturnValue({
-        device: mockUSBDevice as USBDevice,
+        device: unopenedDevice,
         requestDevice: jest.fn(),
         isCheckingPaired: false,
       });
@@ -151,10 +155,14 @@ describe("useHackRFDevice", () => {
     });
 
     it("should not open device if already opened", async () => {
-      mockUSBDevice.opened = true;
+      // Create a new mock with opened = true
+      const openedDevice = {
+        ...mockUSBDevice,
+        opened: true,
+      } as Partial<USBDevice> as USBDevice;
 
       mockUseUSBDevice.mockReturnValue({
-        device: mockUSBDevice as USBDevice,
+        device: openedDevice,
         requestDevice: jest.fn(),
         isCheckingPaired: false,
       });
@@ -172,10 +180,15 @@ describe("useHackRFDevice", () => {
       mockAdapterInstance.open.mockRejectedValueOnce(
         new Error("Failed to open device"),
       );
-      mockUSBDevice.opened = false;
+      
+      // Create a new mock with opened = false
+      const unopenedDevice = {
+        ...mockUSBDevice,
+        opened: false,
+      } as Partial<USBDevice> as USBDevice;
 
       mockUseUSBDevice.mockReturnValue({
-        device: mockUSBDevice as USBDevice,
+        device: unopenedDevice,
         requestDevice: jest.fn(),
         isCheckingPaired: false,
       });
@@ -338,7 +351,8 @@ describe("useHackRFDevice", () => {
         expect(result.current.device).toBeDefined();
       });
 
-      const firstDevice = result.current.device;
+      // Device reference should exist but will be new instance
+      expect(result.current.device).toBeDefined();
 
       // Create new USB device (simulating disconnect/reconnect)
       const newMockUSBDevice: Partial<USBDevice> = {
@@ -414,13 +428,13 @@ describe("useHackRFDevice", () => {
       const { result, rerender } = renderHook(() => useHackRFDevice());
 
       const firstInitialize = result.current.initialize;
-      const firstCleanup = result.current.cleanup;
 
       rerender();
 
       // initialize comes from useUSBDevice, should be the same reference
       expect(result.current.initialize).toBe(firstInitialize);
       // cleanup depends on device, may change when device changes
+      // (not testing cleanup stability as it depends on device state)
     });
   });
 

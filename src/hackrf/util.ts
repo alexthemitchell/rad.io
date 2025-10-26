@@ -50,9 +50,22 @@ export const max2837Ft = [
 ];
 
 /**
- * Compute nearest freq for bw filter (manual filter)
+ * Compute nearest baseband filter bandwidth by rounding down
  *
- * Return final bw round down and less than expected bw.
+ * Finds the nearest MAX2837 filter bandwidth that is less than or equal to
+ * the requested bandwidth. This is used for manual filter selection to ensure
+ * the filter doesn't exceed the requested bandwidth.
+ *
+ * @param bandwidthHz - Desired bandwidth in Hz (must be valid uint32)
+ * @returns Selected bandwidth from MAX2837 filter table, or undefined if invalid
+ * @throws {HackrfError} If bandwidthHz is not a valid uint32 value
+ *
+ * @example
+ * ```typescript
+ * // Request 4 MHz bandwidth, gets 3.5 MHz (rounds down)
+ * const bw = computeBasebandFilterBwRoundDownLt(4_000_000);
+ * console.log(bw); // 3500000
+ * ```
  */
 export function computeBasebandFilterBwRoundDownLt(
   bandwidthHz: number,
@@ -71,9 +84,22 @@ export function computeBasebandFilterBwRoundDownLt(
 }
 
 /**
- * Compute best default value depending on sample rate (auto filter)
+ * Compute optimal baseband filter bandwidth for automatic filter selection
  *
- * Return final bw
+ * Selects the best MAX2837 filter bandwidth based on the requested bandwidth.
+ * Uses intelligent rounding to balance between signal capture and filtering.
+ * This is the recommended function for automatic filter configuration.
+ *
+ * @param bandwidthHz - Desired bandwidth in Hz (must be valid uint32)
+ * @returns Optimal bandwidth from MAX2837 filter table, or undefined if invalid
+ * @throws {HackrfError} If bandwidthHz is not a valid uint32 value
+ *
+ * @example
+ * ```typescript
+ * // Request 5 MHz bandwidth, gets 3.5 MHz (auto-selected)
+ * const bw = computeBasebandFilterBw(5_000_000);
+ * console.log(bw); // 3500000
+ * ```
  */
 export function computeBasebandFilterBw(
   bandwidthHz: number,
@@ -105,6 +131,21 @@ export class HackrfError extends Error {
   }
 }
 
+/**
+ * Validate that a number is a valid unsigned 32-bit integer
+ *
+ * @param x - Number to validate
+ * @returns The input value if valid
+ * @throws {HackrfError} If value is not a valid uint32 (negative, fractional, or > 2^32-1)
+ *
+ * @example
+ * ```typescript
+ * checkU32(100);        // OK: returns 100
+ * checkU32(0xFFFFFFFF); // OK: returns 4294967295
+ * checkU32(-1);         // Throws HackrfError
+ * checkU32(2**33);      // Throws HackrfError
+ * ```
+ */
 export function checkU32(x: number): number {
   if (x >>> 0 === x) {
     return x;
@@ -112,8 +153,18 @@ export function checkU32(x: number): number {
   throw new HackrfError(ErrorCode.INVALID_PARAM);
 }
 
-// We do it with & because this also makes sure the passed
-// number is a valid int32. bits must be <= 31
+/**
+ * Create a validator function for n-bit unsigned integers
+ *
+ * Uses bitwise operations to efficiently validate that a number fits within
+ * the specified bit range. The mask operation also ensures the value is a
+ * valid int32.
+ *
+ * @param bits - Number of bits (must be <= 31)
+ * @returns Validator function that checks if a number fits in the specified bits
+ *
+ * @internal
+ */
 export const bitChecker =
   (bits: number) =>
   (x: number): number => {
@@ -123,22 +174,78 @@ export const bitChecker =
     }
     throw new HackrfError(ErrorCode.INVALID_PARAM);
   };
+
+/**
+ * Validate unsigned 8-bit integer (0-255)
+ * @throws {HackrfError} If value exceeds uint8 range
+ */
 export const checkU8 = bitChecker(8);
+
+/**
+ * Validate unsigned 16-bit integer (0-65535)
+ * @throws {HackrfError} If value exceeds uint16 range
+ */
 export const checkU16 = bitChecker(16);
 
+/**
+ * Validate MAX2837 register address (5-bit: 0-31)
+ * @throws {HackrfError} If value exceeds 5-bit range
+ */
 export const checkMax2837Reg = bitChecker(5);
+
+/**
+ * Validate MAX2837 register value (10-bit: 0-1023)
+ * @throws {HackrfError} If value exceeds 10-bit range
+ */
 export const checkMax2837Value = bitChecker(10);
+
+/**
+ * Validate Si5351C register address (8-bit: 0-255)
+ * @throws {HackrfError} If value exceeds 8-bit range
+ */
 export const checkSi5351cReg = bitChecker(8);
+
+/**
+ * Validate Si5351C register value (8-bit: 0-255)
+ * @throws {HackrfError} If value exceeds 8-bit range
+ */
 export const checkSi5351cValue = bitChecker(8);
+
+/**
+ * Validate RFFC5071 register address (must be < 31)
+ *
+ * @param x - Register address to validate
+ * @returns The input value if valid
+ * @throws {HackrfError} If value is >= 31
+ */
 export function checkRffc5071Reg(x: number): number {
   if (checkU32(x) < 31) {
     return x;
   }
   throw new HackrfError(ErrorCode.INVALID_PARAM);
 }
+
+/**
+ * Validate RFFC5071 register value (16-bit: 0-65535)
+ * @throws {HackrfError} If value exceeds 16-bit range
+ */
 export const checkRffc5071Value = bitChecker(16);
+
+/**
+ * Validate SPI flash memory address (20-bit: 0-1048575)
+ * @throws {HackrfError} If value exceeds 20-bit range
+ */
 export const checkSpiflashAddress = bitChecker(20);
 
+/**
+ * Create a validator function for values within a specific range
+ *
+ * @param min - Minimum allowed value (inclusive)
+ * @param max - Maximum allowed value (inclusive)
+ * @returns Validator function that checks if a number is within the range
+ *
+ * @internal
+ */
 export const rangeChecker =
   (min: number, max: number) =>
   (x: number): number => {
@@ -147,14 +254,52 @@ export const rangeChecker =
     }
     throw new HackrfError(ErrorCode.INVALID_PARAM);
   };
+
+/**
+ * Validate baseband filter bandwidth (1.75 MHz - 28 MHz)
+ * @throws {HackrfError} If value is outside valid range
+ */
 export const checkBasebandFilterBw = rangeChecker(
   BASEBAND_FILTER_BW_MIN,
   BASEBAND_FILTER_BW_MAX,
 );
+
+/**
+ * Validate local oscillator frequency (84.375 MHz - 5.4 GHz)
+ * @throws {HackrfError} If value is outside valid range
+ */
 export const checkLoFreq = rangeChecker(LO_FREQ_HZ_MIN, LO_FREQ_HZ_MAX);
+
+/**
+ * Validate RF frequency (0 Hz - 7.25 GHz)
+ * @throws {HackrfError} If value is outside valid range
+ */
 export const checkFreq = rangeChecker(FREQ_HZ_MIN, FREQ_HZ_MAX);
+
+/**
+ * Validate intermediate frequency (2.15 GHz - 2.75 GHz)
+ * @throws {HackrfError} If value is outside valid range
+ */
 export const checkIFreq = rangeChecker(IF_HZ_MIN, IF_HZ_MAX);
 
+/**
+ * Validate that a DataView has sufficient length
+ *
+ * Used to verify USB transfer responses contain the expected amount of data
+ * before attempting to read from them.
+ *
+ * @param view - DataView to validate
+ * @param minLength - Minimum required length in bytes
+ * @returns The input DataView if valid
+ * @throws {HackrfError} If DataView is shorter than minLength
+ *
+ * @example
+ * ```typescript
+ * const response = await device.transferIn(...);
+ * const view = checkInLength(response.data, 4);
+ * const value = view.getUint32(0, true);
+ * ```
+ */
 export function checkInLength(view: DataView, minLength: number): DataView {
   if (view.byteLength >= minLength) {
     return view;
@@ -196,6 +341,28 @@ function chooseDivider(n: number): number {
   return 1;
 }
 
+/**
+ * Calculate optimal sample rate parameters for HackRF device
+ *
+ * Computes the best frequency and divider combination to achieve a target
+ * sample rate with minimal rounding error. The HackRF uses a programmable
+ * clock divider to achieve various sample rates from a base frequency.
+ *
+ * @param freqHz - Target sample rate in Hz
+ * @returns Tuple of [frequency, divider] where actual_rate = frequency / divider
+ *
+ * @example
+ * ```typescript
+ * // Calculate parameters for 20 MSPS
+ * const [freq, div] = calcSampleRate(20_000_000);
+ * console.log(`Base frequency: ${freq} Hz, Divider: ${div}`);
+ * console.log(`Actual rate: ${freq / div} Hz`);
+ * ```
+ *
+ * @remarks
+ * The divider ranges from 1 to 31, and the algorithm selects the combination
+ * that minimizes rounding error when achieving the target sample rate.
+ */
 export function calcSampleRate(freqHz: number): [number, number] {
   const divider = chooseDivider(freqHz);
   return [Math.round(freqHz * divider), divider];
