@@ -126,21 +126,45 @@ const dynamicImportModule: (specifier: string) => Promise<unknown> =
  * cache-busting param so reloads within the same session reuse the same asset.
  */
 function isLocalDevelopment(host: string): boolean {
-  return host === "localhost" || host === "127.0.0.1" || host === "::1";
-}
-
-function makeUrl(path: string): string {
-  const url = new URL(path, window.location.href);
-  const host = window.location.hostname;
-  const isLocalhost = isLocalDevelopment(host);
+  // Guard for non-browser environments
+  const hasWindow =
+    typeof window !== "undefined" &&
+    typeof window.location === "object" &&
+    typeof window.location.href === "string";
+  let url: URL;
+  let host: string;
+  if (hasWindow) {
+    url = new URL(path, window.location.href);
+    host = window.location.hostname;
+  } else {
+    // Fallback: use relative to root, and "localhost" as host
+    url = new URL(path, "http://localhost/");
+    host = "localhost";
+  }
+  const isLocalhost =
+    host === "localhost" || host === "127.0.0.1" || host === "::1";
   if (isLocalhost) {
     try {
       const key = "radio.devBuildTs";
-      const existing = window.sessionStorage.getItem(key);
-      const buildTs = existing ?? String(Date.now());
-      if (!existing) {
-        window.sessionStorage.setItem(key, buildTs);
+      // Only use sessionStorage if available
+      const hasSessionStorage =
+        hasWindow &&
+        typeof window.sessionStorage === "object" &&
+        typeof window.sessionStorage.getItem === "function";
+      let buildTs: string;
+      if (hasSessionStorage) {
+        const existing = window.sessionStorage.getItem(key);
+        buildTs = existing ?? String(Date.now());
+        if (!existing) {
+          window.sessionStorage.setItem(key, buildTs);
+        }
+      } else {
+        // Fallback to per-load cache bust if sessionStorage unavailable
+        buildTs = String(Date.now());
       }
+      url.searchParams.set("v", buildTs);
+    } catch {
+      // Fallback to per-load cache bust if sessionStorage throws
       url.searchParams.set("v", buildTs);
     } catch {
       // Fallback to per-load cache bust if sessionStorage unavailable
