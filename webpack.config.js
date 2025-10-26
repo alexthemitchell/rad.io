@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = (env, argv) => {
   const isDevelopment = argv.mode === "development";
@@ -62,6 +63,12 @@ module.exports = (env, argv) => {
       },
     },
     plugins: [
+      new HtmlWebpackPlugin({
+        title: "rad.io",
+        template: "./src/index.html",
+        inject: "body",
+        scriptLoading: "defer",
+      }),
       new CopyPlugin({
         patterns: [
           { from: "build/release.wasm", to: "release.wasm" },

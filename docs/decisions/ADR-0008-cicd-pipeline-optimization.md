@@ -88,11 +88,11 @@ Updated job dependencies to run independent jobs in parallel:
 
 ```yaml
 jobs:
-  setup: { }
+  setup: {}
   build-wasm:
     needs: setup
   lint:
-    needs: setup  # Runs in parallel with format, type-check, test
+    needs: setup # Runs in parallel with format, type-check, test
   format:
     needs: setup
   type-check:
@@ -125,8 +125,12 @@ module.exports = (env, argv) => {
     optimization: {
       splitChunks: {
         cacheGroups: {
-          react: { /* 181 KB chunk */ },
-          vendor: { /* 37.9 KB chunk */ },
+          react: {
+            /* 181 KB chunk */
+          },
+          vendor: {
+            /* 37.9 KB chunk */
+          },
         },
       },
     },
@@ -209,14 +213,14 @@ Added build caching to deploy-pages workflow:
 
 Based on the optimizations:
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Dependency installation | 5x (~150-300s) | 1x + cache restore (~30s) | 80-90% faster |
-| WASM build | 2x (~3.6s) | 1x + cache (~2s) | 45% faster |
-| Webpack build | Dev mode | Production mode | 90% smaller bundle |
-| Playwright setup | Full install (~180s) | Cache restore (~10s) | 95% faster |
-| Job parallelism | Sequential | Parallel | 3-5x concurrent jobs |
-| Total pipeline | ~90-120s | ~35-60s | 40-60% faster |
+| Metric                  | Before               | After                     | Improvement          |
+| ----------------------- | -------------------- | ------------------------- | -------------------- |
+| Dependency installation | 5x (~150-300s)       | 1x + cache restore (~30s) | 80-90% faster        |
+| WASM build              | 2x (~3.6s)           | 1x + cache (~2s)          | 45% faster           |
+| Webpack build           | Dev mode             | Production mode           | 90% smaller bundle   |
+| Playwright setup        | Full install (~180s) | Cache restore (~10s)      | 95% faster           |
+| Job parallelism         | Sequential           | Parallel                  | 3-5x concurrent jobs |
+| Total pipeline          | ~90-120s             | ~35-60s                   | 40-60% faster        |
 
 ## Implementation Notes
 
