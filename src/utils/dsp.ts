@@ -334,21 +334,21 @@ export function calculateSpectrogram(
 
         // Attempt a row-wise WASM FFT using the return-by-value API (calculateFFTOut)
         // to avoid the output-parameter copy-back issue.
-        if (isWasmValidationEnabled()) {
-          try {
-            const rowWise: Float32Array[] | null = attemptRowWiseWasmFFT(
-              samples,
-              fftSize,
-            );
-            if (rowWise) {
-              // Successful row-wise WASM path — clear warning suppression flag
-              spectrogramWasmDegenerateWarned = false;
-              performanceMonitor.measure("spectrogram-wasm-row", markStart);
-              return rowWise;
-            }
-          } catch {
-            // swallow and continue to JS fallback below
+        // This fallback is always attempted after degenerate WASM output,
+        // regardless of validation preference, to maximize WASM usage.
+        try {
+          const rowWise: Float32Array[] | null = attemptRowWiseWasmFFT(
+            samples,
+            fftSize,
+          );
+          if (rowWise) {
+            // Successful row-wise WASM path — clear warning suppression flag
+            spectrogramWasmDegenerateWarned = false;
+            performanceMonitor.measure("spectrogram-wasm-row", markStart);
+            return rowWise;
           }
+        } catch {
+          // swallow and continue to JS fallback below
         }
       }
     }
