@@ -1,9 +1,9 @@
 import { render } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { BrowserRouter } from "react-router-dom";
-import IQConstellation from "../IQConstellation";
-import Spectrogram from "../Spectrogram";
-import WaveformVisualizer from "../WaveformVisualizer";
+import IQConstellation from "../../visualization/components/IQConstellation";
+import Spectrogram from "../../visualization/components/Spectrogram";
+import WaveformVisualizer from "../../visualization/components/WaveformVisualizer";
 import RadioControls from "../RadioControls";
 import SignalTypeSelector from "../SignalTypeSelector";
 import PresetStations from "../PresetStations";

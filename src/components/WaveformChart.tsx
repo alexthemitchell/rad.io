@@ -1,6 +1,6 @@
-import { type Sample } from "../utils/dsp";
+import WaveformVisualizer from "../visualization/components/WaveformVisualizer";
 import EmptyState from "./EmptyState";
-import WaveformVisualizer from "./WaveformVisualizer";
+import type { Sample } from "../utils/dsp";
 
 type WaveformChartProps = {
   samples?: Sample[];
