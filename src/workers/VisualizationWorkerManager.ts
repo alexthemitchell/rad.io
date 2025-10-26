@@ -54,7 +54,8 @@ export type WorkerCapabilities = {
  */
 export class VisualizationWorkerManager {
   private worker: Worker | null = null;
-  private canvas: HTMLCanvasElement | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private _canvas: HTMLCanvasElement | null = null;
   private transferred = false;
   private nextFrameId = 0;
   private capabilities: WorkerCapabilities | null = null;
@@ -103,7 +104,7 @@ export class VisualizationWorkerManager {
       return false;
     }
 
-    this.canvas = canvas;
+    this._canvas = canvas;
 
     // Check if canvas can be transferred
     const hasContext =
@@ -294,7 +295,7 @@ export class VisualizationWorkerManager {
     }
 
     this.transferred = false;
-    this.canvas = null;
+    this._canvas = null;
     this.capabilities = null;
     this.onMetricsCallback = null;
     this.onErrorCallback = null;
