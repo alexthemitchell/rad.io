@@ -9,8 +9,8 @@ import TalkgroupScanner, {
   type Talkgroup,
 } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
+import { useHackRFDevice } from "../hooks";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 
 function Scanner(): React.JSX.Element {

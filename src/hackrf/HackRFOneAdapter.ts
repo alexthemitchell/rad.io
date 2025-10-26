@@ -6,7 +6,6 @@
  * compatibility with the visualization and control components.
  */
 
-import { HackRFOne } from "./HackRFOne";
 import {
   type ISDRDevice,
   type IQSample,
@@ -17,7 +16,8 @@ import {
   type SDRStreamConfig,
   type DeviceMemoryInfo,
   convertInt8ToIQ,
-} from "./SDRDevice";
+} from "../models/SDRDevice";
+import { HackRFOne } from "./HackRFOne";
 
 export class HackRFOneAdapter implements ISDRDevice {
   private device: HackRFOne;
