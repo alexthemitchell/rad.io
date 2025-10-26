@@ -175,7 +175,9 @@ export default function VisualizationDemo(): ReactElement {
         </div>
       </div>
 
-      <div style={{ marginTop: "40px", padding: "20px", background: "#f8f9fa" }}>
+      <div
+        style={{ marginTop: "40px", padding: "20px", background: "#f8f9fa" }}
+      >
         <h2>Architecture Notes</h2>
         <ul style={{ fontSize: "14px", lineHeight: "1.6" }}>
           <li>

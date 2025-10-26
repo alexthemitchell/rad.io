@@ -191,8 +191,7 @@ export class SimulatedSource implements DataSource {
         for (let i = 0; i < count; i++) {
           const t = this.phase / sampleRate;
           const modulatingSignal = Math.sin(2 * Math.PI * modulationFreq * t);
-          const instantFreq =
-            carrierFreq + modulationIndex * modulatingSignal;
+          const instantFreq = carrierFreq + modulationIndex * modulatingSignal;
           const phase = 2 * Math.PI * instantFreq * t;
 
           samples.push({

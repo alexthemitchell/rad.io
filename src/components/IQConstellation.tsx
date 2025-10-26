@@ -3,4 +3,7 @@
  * @deprecated Import from 'src/visualization' instead
  */
 export { default } from "../visualization/components/IQConstellation";
-export type { IQConstellationProps, Sample } from "../visualization/components/IQConstellation";
+export type {
+  IQConstellationProps,
+  Sample,
+} from "../visualization/components/IQConstellation";
