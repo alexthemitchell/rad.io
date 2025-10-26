@@ -87,7 +87,14 @@ export function computeBasebandFilterBwRoundDownLt(
  * Compute optimal baseband filter bandwidth for automatic filter selection
  *
  * Selects the best MAX2837 filter bandwidth based on the requested bandwidth.
- * Uses intelligent rounding to balance between signal capture and filtering.
+ * Uses "intelligent rounding": if the next-higher available filter bandwidth exists and
+ * is greater than or equal to the requested bandwidth, the function rounds down to the
+ * next-lower available value. Otherwise, it uses the matching value. This approach helps
+ * avoid excessive filtering and balances signal capture with noise rejection.
+ *
+ * This differs from {@link computeBasebandFilterBwRoundDownLt}, which always rounds down
+ * to the nearest lower or equal filter bandwidth, regardless of the available options.
+ *
  * This is the recommended function for automatic filter configuration.
  *
  * @param bandwidthHz - Desired bandwidth in Hz (must be valid uint32)
