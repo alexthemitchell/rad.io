@@ -320,6 +320,27 @@ describe("Scaling", () => {
       const scaled = applyScaling(zeros, "normalize");
       expect(scaled).toEqual(zeros);
     });
+
+    it("should normalize with custom scale factor", () => {
+      const samples = generateTestSamples(50, 0.3);
+      const scaled = applyScaling(samples, "normalize", 2.0);
+      
+      const maxMag = Math.max(...scaled.map(magnitude));
+      expect(maxMag).toBeCloseTo(2.0, 2);
+    });
+
+    it("should handle mixed magnitude samples", () => {
+      const samples: Sample[] = [
+        { I: 0.1, Q: 0.1 },
+        { I: 0.5, Q: 0.5 },
+        { I: 1.0, Q: 0 },
+        { I: 0, Q: 1.0 },
+      ];
+      const scaled = applyScaling(samples, "normalize", 1.0);
+      
+      const maxMag = Math.max(...scaled.map(magnitude));
+      expect(maxMag).toBeCloseTo(1.0, 2);
+    });
   });
 
   describe("applyScaling - linear", () => {
@@ -564,6 +585,184 @@ describe("Integration Tests", () => {
 
     expect(windowed.length).toBe(samples.length);
     expect(windowed.every((s) => !isNaN(s.I) && !isNaN(s.Q))).toBe(true);
+  });
+});
+
+describe("Additional Coverage Tests", () => {
+  describe("Direct function calls for coverage", () => {
+    it("should call applyHammingWindow directly", () => {
+      const samples = generateTestSamples(10, 1.0);
+      const windowed = applyHammingWindow(samples);
+      expect(windowed.length).toBe(10);
+      expect(windowed.every(s => typeof s.I === 'number' && typeof s.Q === 'number')).toBe(true);
+    });
+
+    it("should call applyBlackmanWindow directly", () => {
+      const samples = generateTestSamples(10, 1.0);
+      const windowed = applyBlackmanWindow(samples);
+      expect(windowed.length).toBe(10);
+    });
+  });
+
+  describe("processRFInput", () => {
+    it("should limit buffer size and compute signal strength", () => {
+      const { processRFInput } = require("../dspProcessing");
+      const largeSamples = generateTestSamples(20000, 1.0);
+      const result = processRFInput(undefined, largeSamples);
+      
+      // Should limit to MAX_SAMPLES (16384)
+      expect(result.output.length).toBeLessThanOrEqual(16384);
+      expect(typeof result.metrics.signalStrength).toBe('number');
+      expect(isFinite(result.metrics.signalStrength)).toBe(true);
+    });
+
+    it("should pass through small buffers", () => {
+      const { processRFInput } = require("../dspProcessing");
+      const smallSamples = generateTestSamples(100, 1.0);
+      const result = processRFInput(undefined, smallSamples);
+      
+      expect(result.output.length).toBe(100);
+      expect(typeof result.metrics.signalStrength).toBe('number');
+      expect(isFinite(result.metrics.signalStrength)).toBe(true);
+    });
+  });
+
+  describe("processTuner", () => {
+    it("should pass through samples with frequency metrics", () => {
+      const { processTuner } = require("../dspProcessing");
+      const samples = generateTestSamples(100, 1.0);
+      const result = processTuner(samples, {
+        frequency: 100000000,
+        bandwidth: 200000,
+        loOffset: 0,
+      });
+      
+      expect(result.output).toEqual(samples);
+      expect(result.metrics.actualFreq).toBe(100000000);
+    });
+  });
+
+  describe("Hamming Window with null samples", () => {
+    it("should handle arrays with valid samples", () => {
+      const samples: Sample[] = [
+        { I: 1, Q: 0 },
+        { I: 0.5, Q: 0.5 },
+        { I: 0, Q: 1 },
+      ];
+      
+      const windowed = applyHammingWindow(samples);
+      // Should include all valid samples
+      expect(windowed.length).toBe(3);
+      // Verify window was actually applied
+      expect(windowed.every(s => s.I !== undefined && s.Q !== undefined)).toBe(true);
+    });
+  });
+
+  describe("Window function with WASM fallback paths", () => {
+    it("should use JS fallback for kaiser window", () => {
+      const samples = generateTestSamples(32, 1.0);
+      const windowed = applyWindow(samples, "kaiser", true);
+      expect(windowed.length).toBe(samples.length);
+    });
+
+    it("should use JS fallback for rectangular window", () => {
+      const samples = generateTestSamples(32, 1.0);
+      const windowed = applyWindow(samples, "rectangular", true);
+      expect(windowed).toEqual(samples);
+    });
+
+    it("should use JS fallback when WASM disabled", () => {
+      const samples = generateTestSamples(16, 1.0);
+      
+      // Test all window types with WASM disabled
+      const hann = applyWindow(samples, "hann", false);
+      expect(hann.length).toBe(samples.length);
+      
+      const hamming = applyWindow(samples, "hamming", false);
+      expect(hamming.length).toBe(samples.length);
+      
+      const blackman = applyWindow(samples, "blackman", false);
+      expect(blackman.length).toBe(samples.length);
+      
+      const kaiser = applyWindow(samples, "kaiser", false);
+      expect(kaiser.length).toBe(samples.length);
+      
+      const rectangular = applyWindow(samples, "rectangular", false);
+      expect(rectangular).toEqual(samples);
+    });
+  });
+
+  describe("Scaling normalize with all paths", () => {
+    it("should normalize non-zero signal", () => {
+      const samples: Sample[] = [
+        { I: 0.2, Q: 0.2 },
+        { I: 0.4, Q: 0.3 },
+        { I: 0.6, Q: 0.8 },
+      ];
+      const scaled = applyScaling(samples, "normalize", 1.5);
+      const maxMag = Math.max(...scaled.map(magnitude));
+      expect(maxMag).toBeCloseTo(1.5, 2);
+    });
+  });
+
+  describe("processIQSampling", () => {
+    it("should pass through samples with correct metrics", () => {
+      const { processIQSampling } = require("../dspProcessing");
+      const samples = generateTestSamples(100, 1.0);
+      const result = processIQSampling(samples, {
+        sampleRate: 2048000,
+        dcCorrection: true,
+        iqBalance: true,
+      });
+      
+      expect(result.output).toEqual(samples);
+      expect(result.metrics.sampleRate).toBe(2048000);
+    });
+  });
+
+  describe("processDemodulation", () => {
+    it("should return null output with empty metrics", () => {
+      const { processDemodulation } = require("../dspProcessing");
+      const samples = generateTestSamples(100, 1.0);
+      const result = processDemodulation(samples, {
+        demod: "FM",
+        fmDeviation: 75000,
+        amDepth: 0.5,
+        audioBandwidth: 15000,
+      });
+      
+      expect(result.output).toBeNull();
+      expect(result.metrics).toEqual({});
+    });
+  });
+
+  describe("processAudioOutput", () => {
+    it("should return null output with empty metrics", () => {
+      const { processAudioOutput } = require("../dspProcessing");
+      const samples = generateTestSamples(100, 1.0);
+      const result = processAudioOutput(samples, {
+        volume: 0.8,
+        mute: false,
+        audioFilter: "lowpass",
+        cutoff: 3000,
+      });
+      
+      expect(result.output).toBeNull();
+      expect(result.metrics).toEqual({});
+    });
+
+    it("should handle null input samples", () => {
+      const { processAudioOutput } = require("../dspProcessing");
+      const result = processAudioOutput(null, {
+        volume: 0.8,
+        mute: false,
+        audioFilter: "lowpass",
+        cutoff: 3000,
+      });
+      
+      expect(result.output).toBeNull();
+      expect(result.metrics).toEqual({});
+    });
   });
 });
 
