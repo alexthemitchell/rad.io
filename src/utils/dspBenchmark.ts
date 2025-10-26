@@ -168,26 +168,27 @@ export async function benchmarkSpectrogram(
 export async function benchmarkWindowing(
   sampleCount: number,
   windowType: "hann" | "hamming" | "blackman",
-  iterations: number = 10,
+  iterations = 10,
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 ): Promise<BenchmarkResult> {
   const samples = generateSineWave(1000, 1.0, sampleCount);
 
   // Benchmark JavaScript
   let jsDuration = 0;
   if (windowType === "hann") {
-    const { applyHannWindow } = await import("./dspProcessing");
+    const module = await import("./dspProcessing");
     jsDuration = measureTime(() => {
-      applyHannWindow(samples);
+      module.applyHannWindow(samples);
     }, iterations);
   } else if (windowType === "hamming") {
-    const { applyHammingWindow } = await import("./dspProcessing");
+    const module = await import("./dspProcessing");
     jsDuration = measureTime(() => {
-      applyHammingWindow(samples);
+      module.applyHammingWindow(samples);
     }, iterations);
   } else {
-    const { applyBlackmanWindow } = await import("./dspProcessing");
+    const module = await import("./dspProcessing");
     jsDuration = measureTime(() => {
-      applyBlackmanWindow(samples);
+      module.applyBlackmanWindow(samples);
     }, iterations);
   }
 
@@ -226,13 +227,13 @@ export async function benchmarkWindowing(
  */
 export async function benchmarkAGC(
   sampleCount: number,
-  iterations: number = 10,
+  iterations = 10,
 ): Promise<BenchmarkResult> {
   const samples = generateSineWave(1000, 0.5, sampleCount);
-  const { applyAGC } = await import("./dspProcessing");
+  const module = await import("./dspProcessing");
 
   const jsDuration = measureTime(() => {
-    applyAGC(samples);
+    module.applyAGC(samples);
   }, iterations);
 
   return {
@@ -250,13 +251,13 @@ export async function benchmarkAGC(
 export async function benchmarkDecimation(
   sampleCount: number,
   factor: number,
-  iterations: number = 10,
+  iterations = 10,
 ): Promise<BenchmarkResult> {
   const samples = generateSineWave(1000, 1.0, sampleCount);
-  const { decimate } = await import("./dspProcessing");
+  const module = await import("./dspProcessing");
 
   const jsDuration = measureTime(() => {
-    decimate(samples, factor);
+    module.decimate(samples, factor);
   }, iterations);
 
   return {

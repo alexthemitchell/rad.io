@@ -1,12 +1,12 @@
 import { calculateSignalStrength, calculateFFTSync } from "./dsp";
-import type { Sample } from "./dsp";
-import type { ISDRDevice } from "../models/SDRDevice";
 import {
   isWasmAvailable,
   applyHannWindowWasm,
   applyHammingWindowWasm,
   applyBlackmanWindowWasm,
 } from "./dspWasm";
+import type { Sample } from "./dsp";
+import type { ISDRDevice } from "../models/SDRDevice";
 
 /**
  * Windowing Functions for DSP
@@ -31,8 +31,11 @@ export function applyHannWindow(samples: Sample[]): Sample[] {
   const N = samples.length;
   const windowed: Sample[] = [];
   for (let n = 0; n < N; n++) {
-    const w = 0.5 * (1 - Math.cos((2 * Math.PI * n) / (N - 1)));
-    windowed.push({ I: samples[n]!.I * w, Q: samples[n]!.Q * w });
+    const sample = samples[n];
+    if (sample) {
+      const w = 0.5 * (1 - Math.cos((2 * Math.PI * n) / (N - 1)));
+      windowed.push({ I: sample.I * w, Q: sample.Q * w });
+    }
   }
   return windowed;
 }
@@ -45,8 +48,11 @@ export function applyHammingWindow(samples: Sample[]): Sample[] {
   const N = samples.length;
   const windowed: Sample[] = [];
   for (let n = 0; n < N; n++) {
-    const w = 0.54 - 0.46 * Math.cos((2 * Math.PI * n) / (N - 1));
-    windowed.push({ I: samples[n]!.I * w, Q: samples[n]!.Q * w });
+    const sample = samples[n];
+    if (sample) {
+      const w = 0.54 - 0.46 * Math.cos((2 * Math.PI * n) / (N - 1));
+      windowed.push({ I: sample.I * w, Q: sample.Q * w });
+    }
   }
   return windowed;
 }
@@ -59,11 +65,14 @@ export function applyBlackmanWindow(samples: Sample[]): Sample[] {
   const N = samples.length;
   const windowed: Sample[] = [];
   for (let n = 0; n < N; n++) {
-    const w =
-      0.42 -
-      0.5 * Math.cos((2 * Math.PI * n) / (N - 1)) +
-      0.08 * Math.cos((4 * Math.PI * n) / (N - 1));
-    windowed.push({ I: samples[n]!.I * w, Q: samples[n]!.Q * w });
+    const sample = samples[n];
+    if (sample) {
+      const w =
+        0.42 -
+        0.5 * Math.cos((2 * Math.PI * n) / (N - 1)) +
+        0.08 * Math.cos((4 * Math.PI * n) / (N - 1));
+      windowed.push({ I: sample.I * w, Q: sample.Q * w });
+    }
   }
   return windowed;
 }
@@ -72,7 +81,7 @@ export function applyBlackmanWindow(samples: Sample[]): Sample[] {
  * Apply Kaiser window (adjustable sidelobe level)
  * Simplified Kaiser window with beta=5 for general purpose use
  */
-export function applyKaiserWindow(samples: Sample[], beta: number = 5): Sample[] {
+export function applyKaiserWindow(samples: Sample[], beta = 5): Sample[] {
   const N = samples.length;
   const windowed: Sample[] = [];
   
@@ -83,7 +92,7 @@ export function applyKaiserWindow(samples: Sample[], beta: number = 5): Sample[]
     for (let k = 1; k < 50; k++) {
       term *= (x * x) / (4 * k * k);
       sum += term;
-      if (term < 1e-10) break;
+      if (term < 1e-10) {break;}
     }
     return sum;
   };
@@ -92,9 +101,12 @@ export function applyKaiserWindow(samples: Sample[], beta: number = 5): Sample[]
   
   for (let n = 0; n < N; n++) {
     const alpha = (N - 1) / 2;
-    const arg = beta * Math.sqrt(1 - Math.pow((n - alpha) / alpha, 2));
-    const w = besselI0(arg) / denominator;
-    windowed.push({ I: samples[n]!.I * w, Q: samples[n]!.Q * w });
+    const sample = samples[n];
+    if (sample) {
+      const arg = beta * Math.sqrt(1 - Math.pow((n - alpha) / alpha, 2));
+      const w = besselI0(arg) / denominator;
+      windowed.push({ I: sample.I * w, Q: sample.Q * w });
+    }
   }
   return windowed;
 }
@@ -106,7 +118,7 @@ export function applyKaiserWindow(samples: Sample[], beta: number = 5): Sample[]
 export function applyWindow(
   samples: Sample[],
   windowType: WindowFunction,
-  useWasm: boolean = true,
+  useWasm = true,
 ): Sample[] {
   // Try WASM first if requested and available
   if (useWasm && isWasmAvailable()) {
@@ -123,6 +135,10 @@ export function applyWindow(
         break;
       case "blackman":
         success = applyBlackmanWindowWasm(copy);
+        break;
+      case "rectangular":
+      case "kaiser":
+        // Not available in WASM, will use JS fallback
         break;
     }
     
@@ -154,26 +170,28 @@ export function applyWindow(
  */
 export function applyAGC(
   samples: Sample[],
-  targetLevel: number = 0.7,
-  attackRate: number = 0.01,
-  releaseRate: number = 0.001,
+  targetLevel = 0.7,
+  attackRate = 0.01,
+  releaseRate = 0.001,
 ): Sample[] {
-  if (samples.length === 0) return samples;
+  if (samples.length === 0) {return samples;}
   
   const output: Sample[] = [];
   let gain = 1.0;
   
   for (const sample of samples) {
     // Calculate sample magnitude
-    const magnitude = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);
+    const sampleMagnitude = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);
     
     // Adjust gain based on difference from target
-    const error = targetLevel - magnitude * gain;
+    const error = targetLevel - sampleMagnitude * gain;
     const rate = error > 0 ? releaseRate : attackRate;
     gain += error * rate;
     
     // Clamp gain to reasonable limits
-    gain = Math.max(0.01, Math.min(10.0, gain));
+    const minGain = 0.01;
+    const maxGain = 10.0;
+    gain = Math.max(minGain, Math.min(maxGain, gain));
     
     // Apply gain
     output.push({
@@ -193,7 +211,7 @@ export function decimate(
   samples: Sample[],
   factor: number,
 ): Sample[] {
-  if (factor <= 1 || samples.length === 0) return samples;
+  if (factor <= 1 || samples.length === 0) {return samples;}
   
   // Step 1: Anti-aliasing low-pass filter using moving average
   const filterSize = Math.max(1, Math.ceil(factor / 2));
@@ -208,9 +226,12 @@ export function decimate(
     const endIdx = Math.min(samples.length - 1, i + filterSize);
     
     for (let j = startIdx; j <= endIdx; j++) {
-      sumI += samples[j]!.I;
-      sumQ += samples[j]!.Q;
-      count++;
+      const sample = samples[j];
+      if (sample) {
+        sumI += sample.I;
+        sumQ += sample.Q;
+        count++;
+      }
     }
     
     filtered.push({ I: sumI / count, Q: sumQ / count });
@@ -219,7 +240,10 @@ export function decimate(
   // Step 2: Downsample by taking every Mth sample
   const decimated: Sample[] = [];
   for (let i = 0; i < filtered.length; i += factor) {
-    decimated.push(filtered[i]!);
+    const sample = filtered[i];
+    if (sample) {
+      decimated.push(sample);
+    }
   }
   
   return decimated;
@@ -236,9 +260,9 @@ export type ScalingMode = "none" | "normalize" | "linear" | "dB";
 export function applyScaling(
   samples: Sample[],
   mode: ScalingMode,
-  scaleFactor: number = 1.0,
+  scaleFactor = 1.0,
 ): Sample[] {
-  if (mode === "none") return samples;
+  if (mode === "none") {return samples;}
   
   if (mode === "normalize") {
     // Find maximum magnitude
@@ -248,7 +272,7 @@ export function applyScaling(
       maxMag = Math.max(maxMag, mag);
     }
     
-    if (maxMag === 0) return samples;
+    if (maxMag === 0) {return samples;}
     
     const scale = scaleFactor / maxMag;
     return samples.map((s) => ({ I: s.I * scale, Q: s.Q * scale }));
@@ -258,13 +282,10 @@ export function applyScaling(
     return samples.map((s) => ({ I: s.I * scaleFactor, Q: s.Q * scaleFactor }));
   }
   
-  if (mode === "dB") {
-    // Convert dB to linear scale (dB = 20 * log10(linear))
-    const linearScale = Math.pow(10, scaleFactor / 20);
-    return samples.map((s) => ({ I: s.I * linearScale, Q: s.Q * linearScale }));
-  }
-  
-  return samples;
+  // mode === "dB"
+  // Convert dB to linear scale (dB = 20 * log10(linear))
+  const linearScale = Math.pow(10, scaleFactor / 20);
+  return samples.map((s) => ({ I: s.I * linearScale, Q: s.Q * linearScale }));
 }
 
 export function processRFInput(
@@ -415,8 +436,8 @@ export interface PipelineStageResult<T> {
  * Compose multiple transforms into a processing pipeline
  * Each stage processes the output of the previous stage
  */
-export function composePipeline<TIn, TOut>(
-  input: TIn,
+export function composePipeline<TOut>(
+  input: unknown,
   transforms: Array<{
     name: string;
     fn: (data: unknown, params?: unknown) => unknown;
@@ -424,7 +445,7 @@ export function composePipeline<TIn, TOut>(
   }>,
 ): PipelineStageResult<TOut> {
   let current: unknown = input;
-  const results: PipelineStageResult<unknown>[] = [];
+  const results: Array<PipelineStageResult<unknown>> = [];
   
   for (const transform of transforms) {
     const startTime = performance.now();
@@ -473,9 +494,10 @@ export function createVisualizationPipeline(config: {
   
   // Optional decimation
   if (config.decimationFactor && config.decimationFactor > 1) {
+    const factor = config.decimationFactor;
     pipeline.push({
       name: "decimation",
-      fn: (data) => decimate(data as Sample[], config.decimationFactor!),
+      fn: (data) => decimate(data as Sample[], factor),
     });
   }
   
@@ -507,8 +529,12 @@ export function createVisualizationPipeline(config: {
         // For FFT output (Float32Array), apply dB scaling if needed
         if (config.scalingMode === "dB" && data instanceof Float32Array) {
           const scaled = new Float32Array(data.length);
+          const offset = config.scaleFactor ?? 0;
           for (let i = 0; i < data.length; i++) {
-            scaled[i] = data[i]! + (config.scaleFactor ?? 0);
+            const val = data[i];
+            if (val !== undefined) {
+              scaled[i] = val + offset;
+            }
           }
           return scaled;
         }

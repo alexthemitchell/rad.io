@@ -350,9 +350,14 @@ export function applyHannWindowWasm(samples: Sample[]): boolean {
     // Apply window in WASM
     wasmModule.applyHannWindow(iSamples, qSamples, samples.length);
 
-    // Copy back to samples
+    // Copy back to samples (modifying in place is intentional)
     for (let i = 0; i < samples.length; i++) {
-      samples[i] = { I: iSamples[i]!, Q: qSamples[i]! };
+      const iVal = iSamples[i];
+      const qVal = qSamples[i];
+      if (iVal !== undefined && qVal !== undefined) {
+        // eslint-disable-next-line no-param-reassign
+        samples[i] = { I: iVal, Q: qVal };
+      }
     }
 
     return true;
@@ -382,7 +387,12 @@ export function applyHammingWindowWasm(samples: Sample[]): boolean {
     wasmModule.applyHammingWindow(iSamples, qSamples, samples.length);
 
     for (let i = 0; i < samples.length; i++) {
-      samples[i] = { I: iSamples[i]!, Q: qSamples[i]! };
+      const iVal = iSamples[i];
+      const qVal = qSamples[i];
+      if (iVal !== undefined && qVal !== undefined) {
+        // eslint-disable-next-line no-param-reassign
+        samples[i] = { I: iVal, Q: qVal };
+      }
     }
 
     return true;
@@ -412,7 +422,12 @@ export function applyBlackmanWindowWasm(samples: Sample[]): boolean {
     wasmModule.applyBlackmanWindow(iSamples, qSamples, samples.length);
 
     for (let i = 0; i < samples.length; i++) {
-      samples[i] = { I: iSamples[i]!, Q: qSamples[i]! };
+      const iVal = iSamples[i];
+      const qVal = qSamples[i];
+      if (iVal !== undefined && qVal !== undefined) {
+        // eslint-disable-next-line no-param-reassign
+        samples[i] = { I: iVal, Q: qVal };
+      }
     }
 
     return true;
