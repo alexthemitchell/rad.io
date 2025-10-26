@@ -584,7 +584,7 @@ function processFrame(): void {
     rendering = false;
     // Process next frame if available
     if (renderQueue.length > 0) {
-      setTimeout(processNextFrame, 0);
+      setTimeout(processFrame, 0);
     }
   }
 }
