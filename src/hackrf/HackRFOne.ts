@@ -525,7 +525,7 @@ export class HackRFOne {
 
   /**
    * Validate that device is ready for streaming
-   * Checks all critical prerequisites before starting reception
+   * Checks all critical prerequisites before starting reception.
    * 
    * @returns Object with validation result and detailed issues if any
    */
