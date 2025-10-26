@@ -79,21 +79,32 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newBookmarks));
   };
 
-  // Filter and search bookmarks
+  // Precompute searchable text for each bookmark
+  const searchableBookmarks = useMemo(() => {
+    return bookmarks.map((b) => ({
+      bookmark: b,
+      searchText: [
+        b.name,
+        ...b.tags,
+        b.notes,
+        formatFrequency(b.frequency),
+      ]
+        .join(" ")
+        .toLowerCase(),
+    }));
+  }, [bookmarks]);
+
+  // Filter and search bookmarks using precomputed searchText
   const filteredBookmarks = useMemo(() => {
     if (!searchQuery) {
+      // Return original bookmarks array for compatibility
       return bookmarks;
     }
-
     const query = searchQuery.toLowerCase();
-    return bookmarks.filter(
-      (b) =>
-        b.name.toLowerCase().includes(query) ||
-        b.tags.some((t) => t.toLowerCase().includes(query)) ||
-        b.notes.toLowerCase().includes(query) ||
-        formatFrequency(b.frequency).toLowerCase().includes(query),
-    );
-  }, [bookmarks, searchQuery]);
+    return searchableBookmarks
+      .filter((sb) => sb.searchText.includes(query))
+      .map((sb) => sb.bookmark);
+  }, [searchableBookmarks, bookmarks, searchQuery]);
 
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
