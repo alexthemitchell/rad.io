@@ -131,13 +131,16 @@ function makeUrl(path: string): string {
     typeof window.location === "object" &&
     typeof window.location.href === "string";
 
-  // Extract base location object
-  const baseLocation = hasWindow
-    ? window.location
-    : { href: "http://localhost/", hostname: "localhost" };
+  // Use a string base URL for the URL constructor
+  const baseHref = hasWindow && typeof window.location.href === "string"
+    ? window.location.href
+    : "http://localhost/";
+  const host =
+    hasWindow && typeof window.location.hostname === "string"
+      ? window.location.hostname
+      : "localhost";
 
-  const url = new URL(path, baseLocation.href);
-  const host = baseLocation.hostname;
+  const url = new URL(path, baseHref);
   const isLocalhost =
     host === "localhost" || host === "127.0.0.1" || host === "::1";
   if (isLocalhost) {
