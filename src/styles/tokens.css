@@ -1,6 +1,8 @@
 :root {
-  /* Enable native form control theming and correct default contrast in both themes */
-  /* Note: Dark theme is the default (applied at :root). Light theme is supported via .theme-light/[data-theme="light"]. */
+  /* Enable native browser theming for both dark and light color schemes.
+     Dark theme is the default (applied at :root), but this declaration allows
+     the browser to style form controls and other native elements according to
+     the user's preferred color scheme. Light theme is supported via .theme-light/[data-theme="light"]. */
   color-scheme: dark light;
   /* Typography */
   --rad-font-ui:
