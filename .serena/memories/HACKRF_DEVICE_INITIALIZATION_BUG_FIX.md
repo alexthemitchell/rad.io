@@ -5,6 +5,7 @@
 **Primary Requirement**: HackRF devices **MUST** have sample rate configured before streaming data. WebUSB `transferIn()` hangs indefinitely without it.
 
 **Recommended Configuration Order**:
+
 1. Sample rate (≥8 MHz recommended, 20 MHz default)
 2. Center frequency (1 MHz - 6 GHz)
 3. Bandwidth (≥1.75 MHz, matched to sample rate)
@@ -20,14 +21,14 @@ await device.selectConfiguration(1);
 await device.claimInterface(0);
 
 // 2. Configure BEFORE streaming (CRITICAL)
-await device.setSampleRate(20_000_000);    // 20 MSPS
-await device.setFrequency(100_000_000);    // 100 MHz
-await device.setBandwidth(20_000_000);     // 20 MHz (optional)
-await device.setLNAGain(16);               // 16 dB (optional)
-await device.setAmpEnable(false);          // disabled (optional)
+await device.setSampleRate(20_000_000); // 20 MSPS
+await device.setFrequency(100_000_000); // 100 MHz
+await device.setBandwidth(20_000_000); // 20 MHz (optional)
+await device.setLNAGain(16); // 16 dB (optional)
+await device.setAmpEnable(false); // disabled (optional)
 
 // 3. Start streaming
-await device.receive(callback);  // Sets transceiver mode to RECEIVE
+await device.receive(callback); // Sets transceiver mode to RECEIVE
 ```
 
 ## libhackrf C Reference (Canonical Order)
@@ -48,6 +49,7 @@ hackrf_start_rx(device, callback);      // Start streaming
 ## Sample Rate Best Practices
 
 **Minimum Recommended**: 8 MHz (not hardware minimum)
+
 - Below 8 MHz causes aliasing due to MAX2837 analog filter limitations (1.75 MHz min bandwidth)
 - MAX5864 ADC/DAC not optimized for lower rates
 
@@ -60,18 +62,22 @@ hackrf_start_rx(device, callback);      // Start streaming
 ## Common Hardware Failure Modes
 
 ### 1. Device Not Responding (transferIn hangs)
+
 - **Cause**: Sample rate not set
 - **Solution**: Always call `setSampleRate()` before `receive()`
 
 ### 2. Aliasing/Poor Signal Quality
+
 - **Cause**: Sample rate too low (<8 MHz)
 - **Solution**: Use ≥8 MHz, perform software decimation if lower rate needed
 
 ### 3. USB Bandwidth Exceeded
+
 - **Cause**: Sample rate too high for USB link
 - **Solution**: HackRF One max 20 MSPS over USB 2.0
 
 ### 4. Device Needs Physical Reset
+
 - **Symptoms**: Commands fail, device unresponsive
 - **Solution**: Unplug/replug USB or press reset button
 
@@ -94,6 +100,7 @@ hackrf_clock -a
 ```
 
 **Firmware Update**:
+
 ```bash
 # Download latest from https://github.com/greatscottgadgets/hackrf/releases
 hackrf_spiflash -w hackrf_one_usb.bin

@@ -83,14 +83,14 @@ await device.selectConfiguration(1);
 await device.claimInterface(0);
 
 // 2. Configure device (sample rate FIRST!)
-await device.setSampleRate(20_000_000);  // 20 MSPS - CRITICAL!
-await device.setFrequency(100_000_000);  // 100 MHz
-await device.setBandwidth(20_000_000);   // 20 MHz (optional)
-await device.setLNAGain(16);             // 16 dB (optional)
-await device.setAmpEnable(false);        // Disabled (optional)
+await device.setSampleRate(20_000_000); // 20 MSPS - CRITICAL!
+await device.setFrequency(100_000_000); // 100 MHz
+await device.setBandwidth(20_000_000); // 20 MHz (optional)
+await device.setLNAGain(16); // 16 dB (optional)
+await device.setAmpEnable(false); // Disabled (optional)
 
 // 3. Start streaming
-await device.receive(callback);  // Sets transceiver to RECEIVE mode
+await device.receive(callback); // Sets transceiver to RECEIVE mode
 ```
 
 ### Why Sample Rate First?
@@ -103,6 +103,7 @@ await device.receive(callback);  // Sets transceiver to RECEIVE mode
 ### Sample Rate Guidelines
 
 **Recommended Minimum**: 8 MHz (8,000,000 Hz)
+
 - Below 8 MHz may cause aliasing due to analog filter limitations
 - MAX2837 baseband filter minimum: 1.75 MHz
 - MAX5864 ADC/DAC not optimized for rates below 8 MHz
@@ -542,6 +543,7 @@ This allows seamless reconfiguration after reset.
 **Units**: Hz (e.g., 20000000 for 20 MHz)
 
 **Common Values**:
+
 - 20 MHz (20,000,000) - Standard for general use
 - 10 MHz (10,000,000) - Lower bandwidth applications
 - 8 MHz (8,000,000) - Minimum recommended
@@ -552,6 +554,7 @@ This allows seamless reconfiguration after reset.
 **Units**: Hz (e.g., 100000000 for 100 MHz)
 
 **Example Bands**:
+
 - FM Radio: 88 MHz - 108 MHz
 - Aviation: 108 MHz - 137 MHz
 - Amateur 2m: 144 MHz - 148 MHz
@@ -586,6 +589,7 @@ Start with 16 dB and adjust based on signal strength.
 ## Diagnostic Commands Reference
 
 ### hackrf_info
+
 **Purpose**: Display device information  
 **Output**: Serial number, firmware version, board ID, part ID
 
@@ -594,6 +598,7 @@ hackrf_info
 ```
 
 **Example Output**:
+
 ```
 Found HackRF
 Index: 0
@@ -604,8 +609,10 @@ Part ID Number: 0xa000cb3c 0x005e4759
 ```
 
 ### hackrf_transfer
+
 **Purpose**: Test TX/RX data path  
 **Common Options**:
+
 - `-r filename`: Receive to file
 - `-t filename`: Transmit from file
 - `-f freq_hz`: Center frequency
@@ -624,8 +631,10 @@ hackrf_transfer -t test.bin -f 100000000 -s 10000000 -x 47
 ```
 
 ### hackrf_sweep
+
 **Purpose**: Spectrum analyzer / frequency sweep  
 **Common Options**:
+
 - `-f freq_min:freq_max`: Frequency range in MHz
 - `-w bin_width`: FFT bin width
 - `-N num_sweeps`: Number of sweeps
@@ -639,6 +648,7 @@ hackrf_sweep -f 1:6000 -w 1000000
 ```
 
 ### hackrf_debug
+
 **Purpose**: Read/write chip registers (advanced)
 
 ```bash
@@ -650,6 +660,7 @@ hackrf_debug -w address value
 ```
 
 ### hackrf_clock
+
 **Purpose**: View/configure clock settings
 
 ```bash
@@ -662,6 +673,7 @@ hackrf_clock -e  # External
 ```
 
 ### hackrf_spiflash
+
 **Purpose**: Firmware update/verification
 
 ```bash
