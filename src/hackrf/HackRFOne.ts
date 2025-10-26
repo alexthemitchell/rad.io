@@ -369,7 +369,7 @@ export class HackRFOne {
 
     const isDev = process.env["NODE_ENV"] === "development";
     if (isDev) {
-      console.warn("HackRFOne.setFrequency: Frequency configured", {
+      console.debug("HackRFOne.setFrequency: Frequency configured", {
         frequency,
         frequencyMHz: (frequency / 1e6).toFixed(3),
         mhz,
