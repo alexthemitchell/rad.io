@@ -49,8 +49,8 @@ export function generateBookmarkId(cryptoImpl?: CryptoLike): string {
   // Using base36 reduces length while preserving entropy.
   const time = Date.now().toString(36);
   const rand = Math.random().toString(36).slice(2, 10); // ~41 bits
-  idCounter = (idCounter + 1) & 0xffff; // 16-bit counter with wraparound
-  const cnt = idCounter.toString(36).padStart(2, "0");
+  idCounter = (idCounter + 1) & 0xffffffff; // 32-bit counter with wraparound
+  const cnt = idCounter.toString(36).padStart(7, "0"); // pad for up to 32-bit value in base36
   return `bm-${time}-${rand}-${cnt}`;
 }
 
