@@ -46,23 +46,15 @@ jobs:
 
       - name: Run tests with coverage
         run: npm test -- --coverage
-        env:
-          # Hardware tests are skipped in CI (no physical HackRF device)
-          # Hardware tests run conditionally when HACKRF_HARDWARE_TESTS=true
-          # See src/hackrf/__tests__/README.md for hardware test documentation
-          HACKRF_HARDWARE_TESTS: false
 
       - name: Check coverage thresholds
         run: |
           echo "Coverage thresholds enforced via jest.config.js"
           echo "Thresholds:"
-          echo "  - Global: 38% statements, 35% branches, 39% functions, 38% lines"
-          echo "  - HackRF: 72%+ statements, 53%+ branches, 94%+ functions"
-          echo "  - DSP utilities: ≥70% coverage"
+          echo "  - Global: 45% statements, 39% branches, 46% functions, 45% lines"
+          echo "  - DSP utilities: ≥95% coverage"
+          echo "  - Device models: ≥90% coverage"
           echo "  - Core utilities: ≥75-95% coverage"
-          echo ""
-          echo "Note: Hardware-gated tests (HackRF physical device) are skipped in CI"
-          echo "      Run locally with: HACKRF_HARDWARE_TESTS=true npm test"
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
