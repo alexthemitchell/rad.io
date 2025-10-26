@@ -1,4 +1,3 @@
-//// filepath: c:\Users\Owner\dev\rad.io\src\models\HackRFOne.ts
 import { TransceiverMode } from "./constants";
 
 const UINT32_MAX = 0xffffffff;

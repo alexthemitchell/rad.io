@@ -3,7 +3,6 @@
  * Provides centralized exports for all React hooks
  */
 
-// useHackRFDevice moved to src/hackrf/hooks/
 export { useHackRFDevice } from "../hackrf";
 export { default as useSDR } from "./useSDR";
 export { default as useSpeaker } from "./useSpeaker";

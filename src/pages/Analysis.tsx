@@ -3,7 +3,7 @@ import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
-import { useHackRFDevice } from "../hooks";
+import { useHackRFDevice } from "../hackrf";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { type ISDRDevice } from "../models/SDRDevice";
 import { type Sample } from "../utils/dsp";

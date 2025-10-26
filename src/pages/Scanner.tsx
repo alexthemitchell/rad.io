@@ -9,7 +9,7 @@ import TalkgroupScanner, {
   type Talkgroup,
 } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
-import { useHackRFDevice } from "../hooks";
+import { useHackRFDevice } from "../hackrf";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 
