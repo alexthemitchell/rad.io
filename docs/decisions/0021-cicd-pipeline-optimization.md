@@ -1,4 +1,4 @@
-# ADR-0008: CI/CD Pipeline Optimization
+# ADR-0021: CI/CD Pipeline Optimization
 
 **Status:** Accepted  
 **Date:** 2025-10-26  

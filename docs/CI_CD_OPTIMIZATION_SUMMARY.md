@@ -161,7 +161,7 @@ To track the effectiveness of these optimizations:
 ## Testing & Validation
 
 All changes have been validated:
-- ✅ 1487 tests pass with coverage
+- ✅ All tests pass with coverage
 - ✅ ESLint passes
 - ✅ Prettier formatting correct
 - ✅ TypeScript compilation successful
@@ -171,7 +171,7 @@ All changes have been validated:
 
 ## References
 
-- [ADR-0008: CI/CD Pipeline Optimization](./decisions/ADR-0008-cicd-pipeline-optimization.md)
+- [ADR-0021: CI/CD Pipeline Optimization](./decisions/0021-cicd-pipeline-optimization.md)
 - [GitHub Actions Cache Documentation](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows)
 - [Webpack Production Guide](https://webpack.js.org/guides/production/)
 - [Playwright CI Guide](https://playwright.dev/docs/ci)
