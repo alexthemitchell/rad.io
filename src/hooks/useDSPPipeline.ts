@@ -6,6 +6,7 @@ import {
   processFFT,
   processDemodulation,
   processAudioOutput,
+  type WindowFunction,
 } from "../utils/dspProcessing";
 import type { ISDRDevice } from "../models/SDRDevice";
 import type { Sample } from "../utils/dsp";
@@ -199,7 +200,7 @@ export function useDSPPipeline(
     // Stage 4: FFT
     const fftParams = (initialStages[3]?.parameters ?? {}) as {
       fftSize: number;
-      window: string;
+      window: WindowFunction;
       overlap: number;
       wasm: boolean;
     };
