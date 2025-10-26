@@ -143,8 +143,7 @@ export class CanvasWaterfall implements Renderer {
 
         // Map to color using LUT (guaranteed non-null after initialization)
         const colorIdx = Math.floor(t * 255) * 3;
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-        const lut = this.colorLUT as Uint8Array;
+        const lut = this.colorLUT;
         const r = lut[colorIdx] ?? 0;
         const g = lut[colorIdx + 1] ?? 0;
         const b = lut[colorIdx + 2] ?? 0;
