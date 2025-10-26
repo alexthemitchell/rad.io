@@ -2,11 +2,8 @@
  * Tests for frequency utility functions
  */
 
-import {
-  formatFrequency,
-  formatSampleRate,
-  generateBookmarkId,
-} from "../frequency";
+import { formatFrequency, formatSampleRate } from "../frequency";
+import { generateBookmarkId } from "../id";
 
 describe("frequency utilities", () => {
   describe("formatFrequency", () => {
