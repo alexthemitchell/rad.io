@@ -137,7 +137,7 @@ describe("DataSource Integration with Visualizations", () => {
       await new Promise<void>((resolve) => {
         void source.startStreaming((samples) => {
           allSamples.push(...samples);
-          
+
           // When we've received all samples, stop
           if (allSamples.length >= recording.samples.length) {
             void source.stopStreaming().then(resolve);
