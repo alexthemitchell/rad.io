@@ -155,7 +155,8 @@ export default function RenderersDemo(): ReactElement {
           <div style={{ fontSize: "14px", color: "#666" }}>
             <p>
               Sample Rate: {(metadata.sampleRate / 1e6).toFixed(2)} MHz |
-              Pattern: {metadata.pattern} | Streaming: {isStreaming ? "Yes" : "No"}
+              Pattern: {metadata.pattern} | Streaming:{" "}
+              {isStreaming ? "Yes" : "No"}
             </p>
           </div>
         )}
@@ -200,7 +201,13 @@ export default function RenderersDemo(): ReactElement {
         </p>
       </div>
 
-      <div style={{ marginTop: "40px", borderTop: "1px solid #ccc", paddingTop: "20px" }}>
+      <div
+        style={{
+          marginTop: "40px",
+          borderTop: "1px solid #ccc",
+          paddingTop: "20px",
+        }}
+      >
         <h2>Architecture Notes</h2>
         <ul style={{ fontSize: "14px", lineHeight: "1.6" }}>
           <li>

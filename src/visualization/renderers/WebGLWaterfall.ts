@@ -79,15 +79,16 @@ export class WebGLWaterfall implements Renderer {
       this.isWebGL2 = true;
     } else {
       // Fallback to WebGL1
-      gl = (canvas.getContext("webgl", {
-        alpha: false,
-        antialias: false,
-        desynchronized: true,
-      }) ??
+      gl =
+        canvas.getContext("webgl", {
+          alpha: false,
+          antialias: false,
+          desynchronized: true,
+        }) ??
         canvas.getContext("experimental-webgl", {
           alpha: false,
           antialias: false,
-        }));
+        });
     }
 
     if (!gl) {
@@ -119,10 +120,7 @@ export class WebGLWaterfall implements Renderer {
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error(
-        "WebGL program link error:",
-        gl.getProgramInfoLog(program),
-      );
+      console.error("WebGL program link error:", gl.getProgramInfoLog(program));
       return false;
     }
 

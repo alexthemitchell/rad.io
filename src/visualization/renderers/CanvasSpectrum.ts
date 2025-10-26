@@ -131,8 +131,7 @@ export class CanvasSpectrum implements Renderer {
         continue;
       }
 
-      const x =
-        margin.left + ((i - freqMin) / binCount) * chartWidth;
+      const x = margin.left + ((i - freqMin) / binCount) * chartWidth;
       const normalized = (mag - effectiveMin) / Math.max(1e-9, magRange);
       const y = margin.top + chartHeight - normalized * chartHeight;
 
@@ -194,11 +193,7 @@ export class CanvasSpectrum implements Renderer {
     ctx.font = "16px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillText(
-      `Spectrum (bins ${freqMin}-${freqMax})`,
-      this.width / 2,
-      10,
-    );
+    ctx.fillText(`Spectrum (bins ${freqMin}-${freqMax})`, this.width / 2, 10);
 
     ctx.restore();
     return true;

@@ -55,15 +55,16 @@ export class WebGLSpectrum implements Renderer {
     // Using if-statement pattern for clarity over ??= operator
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!gl) {
-      gl = (canvas.getContext("webgl", {
-        alpha: false,
-        antialias: false,
-        desynchronized: true,
-      }) ??
+      gl =
+        canvas.getContext("webgl", {
+          alpha: false,
+          antialias: false,
+          desynchronized: true,
+        }) ??
         canvas.getContext("experimental-webgl", {
           alpha: false,
           antialias: false,
-        }));
+        });
     }
 
     if (!gl) {
@@ -95,10 +96,7 @@ export class WebGLSpectrum implements Renderer {
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error(
-        "WebGL program link error:",
-        gl.getProgramInfoLog(program),
-      );
+      console.error("WebGL program link error:", gl.getProgramInfoLog(program));
       return false;
     }
 
