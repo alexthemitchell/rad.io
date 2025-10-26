@@ -79,14 +79,31 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newBookmarks));
   };
 
-  // Precompute searchable text for each bookmark
+  // Precompute searchable text for each bookmark, memoizing per-bookmark to avoid redundant formatting
+  import { useRef } from "react";
+  const prevSearchTextMapRef = useRef<Map<string, {searchText: string, bookmark: Bookmark}>>(new Map());
   const searchableBookmarks = useMemo(() => {
-    return bookmarks.map((b) => ({
-      bookmark: b,
-      searchText: [b.name, ...b.tags, b.notes, formatFrequency(b.frequency)]
-        .join(" ")
-        .toLowerCase(),
-    }));
+    const newMap = new Map<string, {searchText: string, bookmark: Bookmark}>();
+    for (const b of bookmarks) {
+      const prev = prevSearchTextMapRef.current.get(b.id);
+      // Only recompute if relevant fields changed
+      if (
+        prev &&
+        prev.bookmark.name === b.name &&
+        prev.bookmark.notes === b.notes &&
+        prev.bookmark.frequency === b.frequency &&
+        JSON.stringify(prev.bookmark.tags) === JSON.stringify(b.tags)
+      ) {
+        newMap.set(b.id, prev);
+      } else {
+        const searchText = [b.name, ...b.tags, b.notes, formatFrequency(b.frequency)]
+          .join(" ")
+          .toLowerCase();
+        newMap.set(b.id, {searchText, bookmark: b});
+      }
+    }
+    prevSearchTextMapRef.current = newMap;
+    return Array.from(newMap.values());
   }, [bookmarks]);
 
   // Filter and search bookmarks using precomputed searchText
