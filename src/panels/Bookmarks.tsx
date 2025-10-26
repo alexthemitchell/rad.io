@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { formatFrequency } from "../utils/frequency";
@@ -80,10 +80,14 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   };
 
   // Precompute searchable text for each bookmark, memoizing per-bookmark to avoid redundant formatting
-  import { useRef } from "react";
-  const prevSearchTextMapRef = useRef<Map<string, {searchText: string, bookmark: Bookmark}>>(new Map());
+  const prevSearchTextMapRef = useRef<
+    Map<string, { searchText: string; bookmark: Bookmark }>
+  >(new Map());
   const searchableBookmarks = useMemo(() => {
-    const newMap = new Map<string, {searchText: string, bookmark: Bookmark}>();
+    const newMap = new Map<
+      string,
+      { searchText: string; bookmark: Bookmark }
+    >();
     for (const b of bookmarks) {
       const prev = prevSearchTextMapRef.current.get(b.id);
       // Only recompute if relevant fields changed
@@ -96,10 +100,15 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
       ) {
         newMap.set(b.id, prev);
       } else {
-        const searchText = [b.name, ...b.tags, b.notes, formatFrequency(b.frequency)]
+        const searchText = [
+          b.name,
+          ...b.tags,
+          b.notes,
+          formatFrequency(b.frequency),
+        ]
           .join(" ")
           .toLowerCase();
-        newMap.set(b.id, {searchText, bookmark: b});
+        newMap.set(b.id, { searchText, bookmark: b });
       }
     }
     prevSearchTextMapRef.current = newMap;
