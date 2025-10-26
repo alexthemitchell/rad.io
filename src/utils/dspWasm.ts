@@ -230,23 +230,18 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
           calculateSpectrogram: mod.calculateSpectrogram.bind(mod),
           allocateFloat32Array: mod.allocateFloat32Array.bind(mod),
         };
-        // Bind optional return-by-value API if present so callers can detect/use it
-        if (typeof mod.calculateFFTOut === "function") {
-          const bound: NonNullable<WasmDSPModule["calculateFFTOut"]> =
-            mod.calculateFFTOut.bind(mod);
-          wasmModule.calculateFFTOut = bound;
+        // Bind optional return-by-value APIs if present so callers can detect/use them
+        const b1 = buildOptionalBinding(mod, "calculateFFTOut");
+        if (b1) {
+          Object.assign(wasmModule, b1);
         }
-        {
-          const calc = (mod as Partial<WasmDSPModule>).calculateWaveformOut;
-          if (typeof calc === "function") {
-            wasmModule.calculateWaveformOut = calc.bind(mod);
-          }
+        const b2 = buildOptionalBinding(mod, "calculateWaveformOut");
+        if (b2) {
+          Object.assign(wasmModule, b2);
         }
-        {
-          const calc = (mod as Partial<WasmDSPModule>).calculateSpectrogramOut;
-          if (typeof calc === "function") {
-            wasmModule.calculateSpectrogramOut = calc.bind(mod);
-          }
+        const b3 = buildOptionalBinding(mod, "calculateSpectrogramOut");
+        if (b3) {
+          Object.assign(wasmModule, b3);
         }
 
         wasmSupported = true;
@@ -281,6 +276,24 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
   });
 
   return wasmLoading;
+}
+
+/**
+ * Helper to bind an optional method from the dynamically imported module to the
+ * strongly-typed wasmModule wrapper. Reduces duplication when wiring optional
+ * return-by-value APIs such as calculateFFTOut/calculateWaveformOut/…
+ */
+function buildOptionalBinding(
+  mod: Partial<WasmDSPModule>,
+  key: keyof WasmDSPModule,
+): Partial<WasmDSPModule> | null {
+  const anyMod = mod as Record<string, unknown>;
+  const fn = anyMod[key as string];
+  if (typeof fn === "function") {
+    const bound = (fn as (...args: unknown[]) => unknown).bind(mod);
+    return { [key]: bound } as Partial<WasmDSPModule>;
+  }
+  return null;
 }
 
 /**
