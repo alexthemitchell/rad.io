@@ -288,6 +288,42 @@ export function validateSampleRate(
  * Utility function to convert 8-bit signed samples to IQ format
  * Common for many SDR devices including HackRF
  */
+/**
+ * Convert HackRF Int8 sample format to normalized IQ samples
+ *
+ * HackRF devices output interleaved I/Q samples as signed 8-bit integers.
+ * This function converts them to the standard IQSample format with normalized
+ * floating-point values in the range [-1.0, 1.0].
+ *
+ * **Sample Format:**
+ * - Input: Int8 array with interleaved I/Q values [I0, Q0, I1, Q1, ...]
+ * - Output: Array of {I, Q} objects with normalized float values
+ * - Normalization: value / 128.0 maps [-128, 127] → [-1.0, 0.9921875]
+ *
+ * @param data - Raw sample data from HackRF device (Int8 format)
+ * @returns Array of normalized IQ sample pairs
+ *
+ * @example
+ * ```typescript
+ * // Process data from HackRF
+ * await hackrf.receive((dataView) => {
+ *   const samples = convertInt8ToIQ(dataView);
+ *   samples.forEach(sample => {
+ *     // sample.I and sample.Q are in range [-1.0, 1.0]
+ *     const magnitude = Math.sqrt(sample.I ** 2 + sample.Q ** 2);
+ *     const phase = Math.atan2(sample.Q, sample.I);
+ *   });
+ * });
+ * ```
+ *
+ * @remarks
+ * Each pair of consecutive bytes represents one complex sample:
+ * - Byte 0: In-phase (I) component
+ * - Byte 1: Quadrature (Q) component
+ *
+ * The function processes 2 bytes per sample, so a 4KB transfer contains
+ * approximately 2048 IQ samples.
+ */
 export function convertInt8ToIQ(data: DataView): IQSample[] {
   const samples: IQSample[] = [];
   const length = data.byteLength;
@@ -302,8 +338,33 @@ export function convertInt8ToIQ(data: DataView): IQSample[] {
 }
 
 /**
- * Utility function to convert 8-bit unsigned samples to IQ format
- * Common for RTL-SDR devices
+ * Convert RTL-SDR Uint8 sample format to normalized IQ samples
+ *
+ * RTL-SDR devices output interleaved I/Q samples as unsigned 8-bit integers
+ * with a DC offset of 127 (127.5 ideally). This function converts them to the
+ * standard IQSample format with normalized floating-point values.
+ *
+ * **Sample Format:**
+ * - Input: Uint8 array with interleaved I/Q values [I0, Q0, I1, Q1, ...]
+ * - DC offset: 127.5 (127 in practice)
+ * - Output: Array of {I, Q} objects with normalized float values
+ * - Normalization: (value - 127.5) / 127.5 maps [0, 255] → [-1.0, 1.0]
+ *
+ * @param data - Raw sample data from RTL-SDR device (Uint8 format)
+ * @returns Array of normalized IQ sample pairs
+ *
+ * @example
+ * ```typescript
+ * // Process data from RTL-SDR
+ * await rtlsdr.receive((dataView) => {
+ *   const samples = convertUint8ToIQ(dataView);
+ *   // Process samples...
+ * });
+ * ```
+ *
+ * @remarks
+ * Common for RTL-SDR devices which use unsigned 8-bit samples with a DC
+ * offset rather than signed samples.
  */
 export function convertUint8ToIQ(data: DataView): IQSample[] {
   const samples: IQSample[] = [];
