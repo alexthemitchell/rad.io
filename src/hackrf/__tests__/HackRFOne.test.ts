@@ -292,4 +292,68 @@ describe("HackRFOne control formatting", () => {
       undefined,
     );
   });
+
+  it("logs configuration in development mode for setSampleRate", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+    const originalEnv = process.env["NODE_ENV"];
+    const consoleSpy = jest.spyOn(console, "debug").mockImplementation();
+
+    try {
+      process.env["NODE_ENV"] = "development";
+      await hackRF.setSampleRate(10_000_000);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("setSampleRate"),
+        expect.objectContaining({
+          sampleRate: 10_000_000,
+          sampleRateMSPS: "10.000",
+        }),
+      );
+    } finally {
+      process.env["NODE_ENV"] = originalEnv;
+      consoleSpy.mockRestore();
+    }
+  });
+
+  it("logs configuration in development mode for setFrequency", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+    const originalEnv = process.env["NODE_ENV"];
+    const consoleSpy = jest.spyOn(console, "debug").mockImplementation();
+
+    try {
+      process.env["NODE_ENV"] = "development";
+      await hackRF.setFrequency(100_000_000);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("setFrequency"),
+        expect.objectContaining({
+          frequency: 100_000_000,
+          frequencyMHz: "100.000",
+        }),
+      );
+    } finally {
+      process.env["NODE_ENV"] = originalEnv;
+      consoleSpy.mockRestore();
+    }
+  });
+
+  it("does not log in non-development mode", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+    const originalEnv = process.env["NODE_ENV"];
+    const consoleSpy = jest.spyOn(console, "debug").mockImplementation();
+
+    try {
+      process.env["NODE_ENV"] = "production";
+      await hackRF.setSampleRate(10_000_000);
+      await hackRF.setFrequency(100_000_000);
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+    } finally {
+      process.env["NODE_ENV"] = originalEnv;
+      consoleSpy.mockRestore();
+    }
+  });
 });

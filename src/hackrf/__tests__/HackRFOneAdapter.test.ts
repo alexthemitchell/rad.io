@@ -131,6 +131,69 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       expect(freqIndex).toBeGreaterThan(-1);
       expect(sampleRateIndex).toBeLessThan(freqIndex);
     });
+
+    it("applies all configuration options in receive()", async () => {
+      const device = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+      const appliedSettings: string[] = [];
+
+      // Mock controlTransferIn for LNA gain
+      (device.controlTransferIn as jest.Mock).mockResolvedValue({
+        data: new DataView(new Uint8Array([1]).buffer),
+        status: "ok",
+      } as USBInTransferResult);
+
+      // Track what gets called
+      const controlTransferOut = device.controlTransferOut as jest.Mock;
+      controlTransferOut.mockImplementation(
+        async (options: USBControlTransferParameters) => {
+          if (options.request === 6) appliedSettings.push("SAMPLE_RATE");
+          if (options.request === 16) appliedSettings.push("FREQ");
+          if (options.request === 7) appliedSettings.push("BANDWIDTH");
+          if (options.request === 17) appliedSettings.push("AMP");
+          return {} as USBOutTransferResult;
+        },
+      );
+
+      const controlTransferIn = device.controlTransferIn as jest.Mock;
+      controlTransferIn.mockImplementation(
+        async (options: USBControlTransferParameters) => {
+          if (options.request === 19) appliedSettings.push("LNA_GAIN");
+          return {
+            data: new DataView(new Uint8Array([1]).buffer),
+            status: "ok",
+          } as USBInTransferResult;
+        },
+      );
+
+      // Call receive with full config
+      try {
+        await adapter.receive(
+          () => {
+            /* no-op */
+          },
+          {
+            sampleRate: 10_000_000,
+            centerFrequency: 100_000_000,
+            bandwidth: 8_000_000,
+            lnaGain: 24,
+            ampEnabled: true,
+          },
+        );
+      } catch {
+        // Expected to fail, but settings should be applied
+      }
+
+      // Verify all settings were applied
+      expect(appliedSettings).toContain("SAMPLE_RATE");
+      expect(appliedSettings).toContain("FREQ");
+      expect(appliedSettings).toContain("BANDWIDTH");
+      expect(appliedSettings).toContain("LNA_GAIN");
+      expect(appliedSettings).toContain("AMP");
+
+      // Verify sample rate came first
+      expect(appliedSettings.indexOf("SAMPLE_RATE")).toBe(0);
+    });
   });
 
   describe("device capabilities", () => {
