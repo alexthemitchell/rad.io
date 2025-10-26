@@ -5,7 +5,7 @@
 
 import type { Renderer, WaterfallData } from "./types";
 
-// Viridis colormap control points (9 stops)
+// Viridis colormap control points (11 stops)
 const VIRIDIS_STOPS: ReadonlyArray<readonly [number, number, number]> = [
   [68, 1, 84],
   [72, 35, 116],

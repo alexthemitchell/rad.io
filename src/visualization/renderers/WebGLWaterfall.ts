@@ -31,7 +31,7 @@ void main() {
 `;
 
 // Viridis colormap (11 control points)
-const VIRIDIS_STOPS = [
+const VIRIDIS_STOPS: ReadonlyArray<readonly [number, number, number]> = [
   [68, 1, 84],
   [72, 35, 116],
   [64, 67, 135],
@@ -398,9 +398,9 @@ export class WebGLWaterfall implements Renderer {
       const c0 = VIRIDIS_STOPS[idx] ?? [0, 0, 0];
       const c1 = VIRIDIS_STOPS[Math.min(idx + 1, numStops - 1)] ?? [0, 0, 0];
 
-      lut[i * 3 + 0] = Math.round((c0[0] ?? 0) + ((c1[0] ?? 0) - (c0[0] ?? 0)) * frac);
-      lut[i * 3 + 1] = Math.round((c0[1] ?? 0) + ((c1[1] ?? 0) - (c0[1] ?? 0)) * frac);
-      lut[i * 3 + 2] = Math.round((c0[2] ?? 0) + ((c1[2] ?? 0) - (c0[2] ?? 0)) * frac);
+      lut[i * 3 + 0] = Math.round(c0[0] + (c1[0] - c0[0]) * frac);
+      lut[i * 3 + 1] = Math.round(c0[1] + (c1[1] - c0[1]) * frac);
+      lut[i * 3 + 2] = Math.round(c0[2] + (c1[2] - c0[2]) * frac);
     }
 
     this.colorLUT = lut;
