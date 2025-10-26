@@ -373,25 +373,6 @@ export class HackRFOne {
    *
    * @param frequency Center Frequency, in Hertz
    */
-  /**
-   * Sets the center frequency for the HackRF device.
-   *
-   * @param frequency - Center frequency in Hz (e.g., 100000000 for 100 MHz)
-   *
-   * @throws {Error} If frequency is outside valid range (1 MHz - 6 GHz)
-   *
-   * @example
-   * ```typescript
-   * // FM radio
-   * await device.setFrequency(100_000_000);  // 100 MHz
-   *
-   * // GPS L1
-   * await device.setFrequency(1_575_420_000);  // 1575.42 MHz
-   *
-   * // WiFi 2.4 GHz
-   * await device.setFrequency(2_450_000_000);  // 2.45 GHz
-   * ```
-   */
   async setFrequency(frequency: number): Promise<void> {
     // Validate frequency is within HackRF One's supported range
     if (frequency < MIN_FREQUENCY_HZ || frequency > MAX_FREQUENCY_HZ) {
@@ -568,30 +549,6 @@ export class HackRFOne {
    *
    * @returns Object containing current device configuration state
    */
-  /**
-   * Gets the current device configuration status.
-   *
-   * @returns Object containing:
-   * - `isOpen`: USB device connection state
-   * - `isStreaming`: Currently receiving data
-   * - `isClosing`: Shutdown in progress
-   * - `sampleRate`: Configured sample rate (null if not set)
-   * - `frequency`: Configured center frequency (null if not set)
-   * - `bandwidth`: Configured baseband bandwidth (null if not set)
-   * - `lnaGain`: LNA gain setting (null if not set)
-   * - `ampEnabled`: Amplifier enable state
-   * - `isConfigured`: True if sample rate is set (ready for streaming)
-   *
-   * @example
-   * ```typescript
-   * const status = device.getConfigurationStatus();
-   * console.log('Sample Rate:', status.sampleRate / 1e6, 'MSPS');
-   * console.log('Frequency:', status.frequency / 1e6, 'MHz');
-   * console.log('Ready:', status.isConfigured);
-   * ```
-   *
-   * @see {@link validateReadyForStreaming} - Check if ready to stream
-   */
   getConfigurationStatus(): {
     isOpen: boolean;
     isStreaming: boolean;
@@ -621,30 +578,6 @@ export class HackRFOne {
    * Checks all critical prerequisites before starting reception.
    *
    * @returns Object with validation result and detailed issues if any
-   */
-  /**
-   * Validates that the device is ready for streaming.
-   *
-   * Checks:
-   * - Device is open
-   * - Device is not closing
-   * - Sample rate is configured (CRITICAL)
-   * - Device is not already streaming
-   *
-   * @returns Object with `ready` boolean and `issues` array
-   *
-   * @example
-   * ```typescript
-   * const validation = device.validateReadyForStreaming();
-   * if (!validation.ready) {
-   *   console.error('Cannot stream:', validation.issues);
-   *   // Handle issues...
-   * } else {
-   *   await device.receive(callback);
-   * }
-   * ```
-   *
-   * @see {@link getConfigurationStatus} - Get full device configuration state
    */
   validateReadyForStreaming(): {
     ready: boolean;
@@ -978,43 +911,6 @@ export class HackRFOne {
    *   // Fall back to physical reset
    * }
    * ```
-   */
-  /**
-   * Performs fast device recovery with automatic state restoration.
-   *
-   * This method:
-   * 1. Sends USB reset command to device
-   * 2. Waits 150ms for device stabilization
-   * 3. Restores all previous configuration:
-   *    - Sample rate
-   *    - Frequency
-   *    - Bandwidth
-   *    - LNA gain
-   *    - Amplifier state
-   * 4. Sets transceiver mode to RECEIVE
-   *
-   * **Automatic Recovery**: Called automatically after 3 consecutive timeout failures
-   * during streaming to attempt device recovery without user intervention.
-   *
-   * **Manual Recovery**: Can be called manually when device becomes unresponsive.
-   *
-   * @throws {Error} If reset command fails
-   * @throws {Error} If configuration restoration fails
-   *
-   * @example
-   * ```typescript
-   * // Manual recovery attempt
-   * try {
-   *   await device.fastRecovery();
-   *   console.log('Recovery successful');
-   * } catch (error) {
-   *   // Fall back to physical reset (unplug/replug)
-   *   console.error('Recovery failed:', error);
-   * }
-   * ```
-   *
-   * @see {@link reset} - Full reset without state restoration
-   * @see {@link receive} - Calls this automatically on timeout
    */
   async fastRecovery(): Promise<void> {
     const isDev = process.env["NODE_ENV"] === "development";
