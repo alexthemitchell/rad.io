@@ -10,8 +10,10 @@ import Decode from "./pages/Decode";
 import Help from "./pages/Help";
 import Monitor from "./pages/Monitor";
 import Recordings from "./pages/Recordings";
+import RenderersDemo from "./pages/RenderersDemo";
 import Scanner from "./pages/Scanner";
 import Settings from "./pages/Settings";
+import VisualizationDemo from "./pages/VisualizationDemo";
 import Bookmarks from "./panels/Bookmarks";
 import Devices from "./panels/Devices";
 import Diagnostics from "./panels/Diagnostics";
@@ -87,6 +89,10 @@ function App(): React.JSX.Element {
 
             {/* Help and documentation */}
             <Route path="/help" element={<Help />} />
+
+            {/* Demo pages */}
+            <Route path="/demo" element={<VisualizationDemo />} />
+            <Route path="/renderers-demo" element={<RenderersDemo />} />
           </Routes>
 
           {/* Footer intentionally minimal to keep focus on primary tasks */}
