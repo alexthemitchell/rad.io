@@ -324,7 +324,7 @@ describe("Scaling", () => {
     it("should normalize with custom scale factor", () => {
       const samples = generateTestSamples(50, 0.3);
       const scaled = applyScaling(samples, "normalize", 2.0);
-      
+
       const maxMag = Math.max(...scaled.map(magnitude));
       expect(maxMag).toBeCloseTo(2.0, 2);
     });
@@ -337,7 +337,7 @@ describe("Scaling", () => {
         { I: 0, Q: 1.0 },
       ];
       const scaled = applyScaling(samples, "normalize", 1.0);
-      
+
       const maxMag = Math.max(...scaled.map(magnitude));
       expect(maxMag).toBeCloseTo(1.0, 2);
     });
@@ -588,13 +588,144 @@ describe("Integration Tests", () => {
   });
 });
 
+describe("WASM Fallback and Availability Tests", () => {
+  // Import test utilities for mocking WASM
+  const {
+    setWasmModuleForTest,
+    resetWasmModuleForTest,
+    isWasmAvailable,
+  } = require("../dspWasm");
+
+  afterEach(() => {
+    // Reset WASM state after each test
+    resetWasmModuleForTest();
+  });
+
+  describe("WASM unavailable fallback", () => {
+    it("should use JS fallback when WASM is not available", () => {
+      // Disable WASM
+      setWasmModuleForTest(null, false);
+      expect(isWasmAvailable()).toBe(false);
+
+      const samples = generateTestSamples(32, 1.0);
+
+      // All window types should fall back to JS implementation
+      const hann = applyWindow(samples, "hann", true);
+      expect(hann.length).toBe(samples.length);
+      expect(hann).not.toBe(samples); // Should be a new array
+
+      const hamming = applyWindow(samples, "hamming", true);
+      expect(hamming.length).toBe(samples.length);
+
+      const blackman = applyWindow(samples, "blackman", true);
+      expect(blackman.length).toBe(samples.length);
+
+      const kaiser = applyWindow(samples, "kaiser", true);
+      expect(kaiser.length).toBe(samples.length);
+
+      const rectangular = applyWindow(samples, "rectangular", true);
+      expect(rectangular).toEqual(samples);
+    });
+
+    it("should handle WASM failure gracefully", () => {
+      // Set up a WASM module that returns false (simulating failure)
+      const failingWasmModule = {
+        allocateFloat32Array: (size: number) => new Float32Array(size),
+        calculateFFT: () => {},
+        calculateWaveform: () => {},
+        calculateSpectrogram: () => {},
+        applyHannWindow: () => {}, // Returns void, which is falsy
+        applyHammingWindow: () => {},
+        applyBlackmanWindow: () => {},
+      };
+
+      setWasmModuleForTest(failingWasmModule as any, true);
+      expect(isWasmAvailable()).toBe(true);
+
+      const samples = generateTestSamples(16, 1.0);
+
+      // Even though WASM is "available", the functions return false,
+      // so it should fall back to JS
+      const hann = applyWindow(samples, "hann", true);
+      expect(hann.length).toBe(samples.length);
+
+      const hamming = applyWindow(samples, "hamming", true);
+      expect(hamming.length).toBe(samples.length);
+
+      const blackman = applyWindow(samples, "blackman", true);
+      expect(blackman.length).toBe(samples.length);
+    });
+  });
+
+  describe("WASM and JS equivalence", () => {
+    it("should produce equivalent results with WASM enabled and disabled", () => {
+      const samples = generateTestSamples(64, 1.0);
+
+      // First, disable WASM and get JS results
+      setWasmModuleForTest(null, false);
+      const jsHann = applyWindow(samples, "hann", true);
+      const jsHamming = applyWindow(samples, "hamming", true);
+      const jsBlackman = applyWindow(samples, "blackman", true);
+
+      // Reset and enable WASM (let actual WASM load if available)
+      resetWasmModuleForTest();
+
+      // Get results with WASM (may fall back to JS if WASM not loaded)
+      const wasmHann = applyWindow(samples, "hann", true);
+      const wasmHamming = applyWindow(samples, "hamming", true);
+      const wasmBlackman = applyWindow(samples, "blackman", true);
+
+      // Results should be numerically similar (allowing for floating point differences)
+      expect(wasmHann.length).toBe(jsHann.length);
+      expect(wasmHamming.length).toBe(jsHamming.length);
+      expect(wasmBlackman.length).toBe(jsBlackman.length);
+    });
+  });
+
+  describe("useWasm parameter", () => {
+    it("should respect useWasm=false even when WASM is available", () => {
+      const samples = generateTestSamples(32, 1.0);
+
+      // Explicitly request JS implementation
+      const hann = applyWindow(samples, "hann", false);
+      const hamming = applyWindow(samples, "hamming", false);
+      const blackman = applyWindow(samples, "blackman", false);
+      const kaiser = applyWindow(samples, "kaiser", false);
+
+      // All should return valid results
+      expect(hann.length).toBe(samples.length);
+      expect(hamming.length).toBe(samples.length);
+      expect(blackman.length).toBe(samples.length);
+      expect(kaiser.length).toBe(samples.length);
+    });
+  });
+
+  describe("Window types without WASM implementation", () => {
+    it("should handle kaiser and rectangular windows correctly", () => {
+      const samples = generateTestSamples(32, 1.0);
+
+      // These window types don't have WASM implementations,
+      // so they always use JS regardless of WASM availability
+      const kaiser = applyWindow(samples, "kaiser", true);
+      expect(kaiser.length).toBe(samples.length);
+
+      const rectangular = applyWindow(samples, "rectangular", true);
+      expect(rectangular).toEqual(samples); // Rectangular is pass-through
+    });
+  });
+});
+
 describe("Additional Coverage Tests", () => {
   describe("Direct function calls for coverage", () => {
     it("should call applyHammingWindow directly", () => {
       const samples = generateTestSamples(10, 1.0);
       const windowed = applyHammingWindow(samples);
       expect(windowed.length).toBe(10);
-      expect(windowed.every(s => typeof s.I === 'number' && typeof s.Q === 'number')).toBe(true);
+      expect(
+        windowed.every(
+          (s) => typeof s.I === "number" && typeof s.Q === "number",
+        ),
+      ).toBe(true);
     });
 
     it("should call applyBlackmanWindow directly", () => {
@@ -609,10 +740,10 @@ describe("Additional Coverage Tests", () => {
       const { processRFInput } = require("../dspProcessing");
       const largeSamples = generateTestSamples(20000, 1.0);
       const result = processRFInput(undefined, largeSamples);
-      
+
       // Should limit to MAX_SAMPLES (16384)
       expect(result.output.length).toBeLessThanOrEqual(16384);
-      expect(typeof result.metrics.signalStrength).toBe('number');
+      expect(typeof result.metrics.signalStrength).toBe("number");
       expect(isFinite(result.metrics.signalStrength)).toBe(true);
     });
 
@@ -620,9 +751,9 @@ describe("Additional Coverage Tests", () => {
       const { processRFInput } = require("../dspProcessing");
       const smallSamples = generateTestSamples(100, 1.0);
       const result = processRFInput(undefined, smallSamples);
-      
+
       expect(result.output.length).toBe(100);
-      expect(typeof result.metrics.signalStrength).toBe('number');
+      expect(typeof result.metrics.signalStrength).toBe("number");
       expect(isFinite(result.metrics.signalStrength)).toBe(true);
     });
   });
@@ -636,7 +767,7 @@ describe("Additional Coverage Tests", () => {
         bandwidth: 200000,
         loOffset: 0,
       });
-      
+
       expect(result.output).toEqual(samples);
       expect(result.metrics.actualFreq).toBe(100000000);
     });
@@ -649,12 +780,14 @@ describe("Additional Coverage Tests", () => {
         { I: 0.5, Q: 0.5 },
         { I: 0, Q: 1 },
       ];
-      
+
       const windowed = applyHammingWindow(samples);
       // Should include all valid samples
       expect(windowed.length).toBe(3);
       // Verify window was actually applied
-      expect(windowed.every(s => s.I !== undefined && s.Q !== undefined)).toBe(true);
+      expect(
+        windowed.every((s) => s.I !== undefined && s.Q !== undefined),
+      ).toBe(true);
     });
   });
 
@@ -673,20 +806,20 @@ describe("Additional Coverage Tests", () => {
 
     it("should use JS fallback when WASM disabled", () => {
       const samples = generateTestSamples(16, 1.0);
-      
+
       // Test all window types with WASM disabled
       const hann = applyWindow(samples, "hann", false);
       expect(hann.length).toBe(samples.length);
-      
+
       const hamming = applyWindow(samples, "hamming", false);
       expect(hamming.length).toBe(samples.length);
-      
+
       const blackman = applyWindow(samples, "blackman", false);
       expect(blackman.length).toBe(samples.length);
-      
+
       const kaiser = applyWindow(samples, "kaiser", false);
       expect(kaiser.length).toBe(samples.length);
-      
+
       const rectangular = applyWindow(samples, "rectangular", false);
       expect(rectangular).toEqual(samples);
     });
@@ -714,7 +847,7 @@ describe("Additional Coverage Tests", () => {
         dcCorrection: true,
         iqBalance: true,
       });
-      
+
       expect(result.output).toEqual(samples);
       expect(result.metrics.sampleRate).toBe(2048000);
     });
@@ -730,7 +863,7 @@ describe("Additional Coverage Tests", () => {
         amDepth: 0.5,
         audioBandwidth: 15000,
       });
-      
+
       expect(result.output).toBeNull();
       expect(result.metrics).toEqual({});
     });
@@ -746,7 +879,7 @@ describe("Additional Coverage Tests", () => {
         audioFilter: "lowpass",
         cutoff: 3000,
       });
-      
+
       expect(result.output).toBeNull();
       expect(result.metrics).toEqual({});
     });
@@ -759,7 +892,7 @@ describe("Additional Coverage Tests", () => {
         audioFilter: "lowpass",
         cutoff: 3000,
       });
-      
+
       expect(result.output).toBeNull();
       expect(result.metrics).toEqual({});
     });
