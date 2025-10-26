@@ -114,7 +114,9 @@
 
     /* Completeness */
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
-    "skipLibCheck": true /* Skip type checking all .d.ts files. */
+    "skipLibCheck": true /* Skip type checking all .d.ts files. */,
+    // Silence deprecation warnings from dependencies/configs (e.g., baseUrl) until TS 7 migration
+    "ignoreDeprecations": "6.0"
   },
   "exclude": [
     "node_modules",

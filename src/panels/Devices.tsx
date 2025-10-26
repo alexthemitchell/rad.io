@@ -150,7 +150,9 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
               {deviceInfo.vendorId && deviceInfo.productId && (
                 <>
                   <dt>USB ID:</dt>
-                  <dd>{formatUsbId(deviceInfo.vendorId, deviceInfo.productId)}</dd>
+                  <dd>
+                    {formatUsbId(deviceInfo.vendorId, deviceInfo.productId)}
+                  </dd>
                 </>
               )}
 

@@ -300,11 +300,15 @@ export function isWasmAvailable(): boolean {
  */
 export function isWasmRuntimeEnabled(): boolean {
   try {
-    // In non-browser environments (tests, SSR), hasLocalStorage() returns false; default to enabled
-    if (!hasLocalStorage()) {
-      return true;
+    // Attempt to read from localStorage when available; default to enabled otherwise
+    let v: string | null = null;
+    if (typeof window !== "undefined" && "localStorage" in window) {
+      try {
+        v = window.localStorage.getItem("radio.wasm.enabled");
+      } catch {
+        v = null;
+      }
     }
-    const v = window.localStorage.getItem("radio.wasm.enabled");
     if (v === null) {
       return true;
     }
@@ -329,12 +333,16 @@ export function isWasmValidationEnabled(): boolean {
     // Node/test or SSR: default to enabled so tests can exercise validation
     const isProd =
       typeof process !== "undefined" &&
-      process.env &&
       process.env["NODE_ENV"] === "production";
-    if (!hasLocalStorage()) {
-      return !isProd;
+    // Attempt to read from localStorage if available; otherwise fall back to default
+    let v: string | null = null;
+    if (typeof window !== "undefined" && "localStorage" in window) {
+      try {
+        v = window.localStorage.getItem("radio.wasm.validate");
+      } catch {
+        v = null; // storage unavailable or disabled
+      }
     }
-    const v = window.localStorage.getItem("radio.wasm.validate");
     if (v === null) {
       // Default to true in dev, false in prod
       return !isProd;
@@ -345,24 +353,8 @@ export function isWasmValidationEnabled(): boolean {
   }
 }
 
-/**
- * Utility: Detect whether window.localStorage is available.
- * Guards against SSR/test environments and browser privacy modes.
- */
-function hasLocalStorage(): boolean {
-  try {
-    if (typeof window === "undefined" || !("localStorage" in window)) {
-      return false;
-    }
-    // Basic write/read test to catch disabled storage
-    const k = "__rad_io_ls_check__";
-    window.localStorage.setItem(k, "1");
-    window.localStorage.removeItem(k);
-    return true;
-  } catch {
-    return false;
-  }
-}
+// (Previously included hasLocalStorage utility removed in favor of inline guarded access
+// to localStorage to improve static analysis and avoid false-positive diagnostics.)
 
 /**
  * Calculate FFT using WASM if available
