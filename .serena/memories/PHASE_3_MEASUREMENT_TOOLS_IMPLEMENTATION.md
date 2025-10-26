@@ -63,12 +63,12 @@ All measurement types are fully typed with TypeScript interfaces for type safety
 ### Frequency Markers
 
 ```typescript
-import { FrequencyMarkerManager } from './lib/measurement';
+import { FrequencyMarkerManager } from "./lib/measurement";
 
 const markers = new FrequencyMarkerManager({ maxMarkers: 8 });
 
 // Add marker
-const m1 = markers.addMarker(100e6, 'FM Station', '#FF0000');
+const m1 = markers.addMarker(100e6, "FM Station", "#FF0000");
 
 // Track peak
 markers.trackPeakInRange(m1.id, spectrum, frequencies, 50e3);
@@ -81,15 +81,15 @@ console.log(`Δf = ${delta.frequencyDelta} Hz, ΔP = ${delta.powerDelta} dB`);
 ### Channel Power
 
 ```typescript
-import { ChannelPowerMeasurement } from './lib/measurement';
+import { ChannelPowerMeasurement } from "./lib/measurement";
 
 const channelPower = new ChannelPowerMeasurement();
 
 const result = channelPower.measureChannelPower(
   spectrum,
   frequencies,
-  100e6,    // Center frequency
-  200e3     // Bandwidth
+  100e6, // Center frequency
+  200e3, // Bandwidth
 );
 
 console.log(`Total Power: ${result.totalPower} dBFS`);
@@ -99,17 +99,17 @@ console.log(`Occupied BW: ${result.occupiedBandwidth} Hz`);
 ### Signal Quality
 
 ```typescript
-import { SignalQualityAnalyzer } from './lib/measurement';
+import { SignalQualityAnalyzer } from "./lib/measurement";
 
 const analyzer = new SignalQualityAnalyzer();
 
 const metrics = analyzer.calculateAllMetrics(
   spectrum,
   frequencies,
-  100e6,    // Signal frequency
-  200e3,    // Bandwidth
+  100e6, // Signal frequency
+  200e3, // Bandwidth
   timeDomain, // Optional for SINAD
-  sampleRate  // Optional for SINAD
+  sampleRate, // Optional for SINAD
 );
 
 console.log(`SNR: ${metrics.snr} dB`);
@@ -119,37 +119,37 @@ console.log(`THD: ${metrics.thd}%`);
 ### Calibration
 
 ```typescript
-import { CalibrationManager } from './lib/measurement';
+import { CalibrationManager } from "./lib/measurement";
 
 const cal = new CalibrationManager();
 
 // Calibrate frequency (e.g., using WWV 10 MHz)
 const freqCal = cal.calculateFrequencyCalibration(
-  'device1',
-  10e6,      // Reference (WWV)
-  10.0005e6  // Measured (50 ppm error)
+  "device1",
+  10e6, // Reference (WWV)
+  10.0005e6, // Measured (50 ppm error)
 );
-cal.setFrequencyCalibration('device1', freqCal);
+cal.setFrequencyCalibration("device1", freqCal);
 
 // Apply correction
-const corrected = cal.applyFrequencyCalibration('device1', 100e6);
+const corrected = cal.applyFrequencyCalibration("device1", 100e6);
 // Returns: 99.995 MHz (50 ppm correction at 100 MHz = 5 kHz)
 ```
 
 ### Spectrum Mask Testing
 
 ```typescript
-import { SpectrumMaskTester } from './lib/measurement';
+import { SpectrumMaskTester } from "./lib/measurement";
 
 const tester = new SpectrumMaskTester();
 
 // Use default FCC Part 15 mask
 const result = tester.testMask(
-  'fcc-part15-classb',
+  "fcc-part15-classb",
   spectrum,
   frequencies,
-  100e6,    // Carrier frequency
-  0         // Carrier power (dBc reference)
+  100e6, // Carrier frequency
+  0, // Carrier power (dBc reference)
 );
 
 console.log(`Passed: ${result.passed}`);
@@ -160,25 +160,25 @@ console.log(`Worst Margin: ${result.worstMargin} dB`);
 ### Measurement Logging
 
 ```typescript
-import { MeasurementLogger } from './lib/measurement';
+import { MeasurementLogger } from "./lib/measurement";
 
 const logger = new MeasurementLogger();
 
 // Log measurement
 logger.addEntry({
   timestamp: Date.now(),
-  measurementType: 'channel_power',
+  measurementType: "channel_power",
   frequency: 100e6,
-  tags: ['compliance', 'test-run-1'],
+  tags: ["compliance", "test-run-1"],
   data: {
     totalPower: -30,
-    occupiedBandwidth: 180e3
-  }
+    occupiedBandwidth: 180e3,
+  },
 });
 
 // Get statistics
-const entries = logger.getEntriesByTag('compliance');
-const stats = logger.calculateStatistics(entries, 'totalPower');
+const entries = logger.getEntriesByTag("compliance");
+const stats = logger.calculateStatistics(entries, "totalPower");
 console.log(`Mean Power: ${stats.mean} dBFS`);
 
 // Export
@@ -191,13 +191,14 @@ const csv = logger.exportToCSV();
 **Coverage:** 122 tests, all passing
 
 - Frequency markers: 23 tests
-- Channel power: 11 tests  
+- Channel power: 11 tests
 - Signal quality: 13 tests
 - Calibration: 23 tests
 - Spectrum mask: 25 tests
 - Measurement logger: 29 tests
 
 **Run tests:**
+
 ```bash
 npm test -- src/lib/measurement
 ```
@@ -208,18 +209,18 @@ All measurement classes accept optional `MeasurementConfig`:
 
 ```typescript
 interface MeasurementConfig {
-  maxMarkers?: number;                    // Default: 8
-  markerTrackPeak?: boolean;              // Default: false
-  integrationMethod?: 'rectangular' | 'trapezoidal'; // Default: trapezoidal
-  occupiedBandwidthThreshold?: number;    // Default: 0.99 (99%)
-  noiseFloorSamples?: number;             // Default: 1000
-  harmonicCount?: number;                 // Default: 5 (for THD)
-  averagingEnabled?: boolean;             // Default: true
-  averagingCount?: number;                // Default: 10
-  averagingMode?: 'linear' | 'exponential' | 'peak-hold'; // Default: exponential
-  applyFrequencyCalibration?: boolean;    // Default: true
-  applyPowerCalibration?: boolean;        // Default: true
-  applyIQCalibration?: boolean;           // Default: true
+  maxMarkers?: number; // Default: 8
+  markerTrackPeak?: boolean; // Default: false
+  integrationMethod?: "rectangular" | "trapezoidal"; // Default: trapezoidal
+  occupiedBandwidthThreshold?: number; // Default: 0.99 (99%)
+  noiseFloorSamples?: number; // Default: 1000
+  harmonicCount?: number; // Default: 5 (for THD)
+  averagingEnabled?: boolean; // Default: true
+  averagingCount?: number; // Default: 10
+  averagingMode?: "linear" | "exponential" | "peak-hold"; // Default: exponential
+  applyFrequencyCalibration?: boolean; // Default: true
+  applyPowerCalibration?: boolean; // Default: true
+  applyIQCalibration?: boolean; // Default: true
 }
 ```
 

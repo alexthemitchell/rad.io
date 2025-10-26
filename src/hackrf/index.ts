@@ -1,6 +1,6 @@
 /**
  * HackRF SDR Driver Module
- * 
+ *
  * Provides TypeScript-first WebUSB drivers for HackRF One SDR hardware.
  * Includes device classes, utilities, hooks, and type definitions.
  */
