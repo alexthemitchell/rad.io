@@ -7,7 +7,7 @@
  */
 
 // Minimal Crypto-like interface for testable injection
-type CryptoLike = {
+export type CryptoLike = {
   randomUUID?: () => string;
   getRandomValues?: (
     array: Uint8Array | Uint32Array,
@@ -26,8 +26,7 @@ let idCounter = 0;
  * - Error modes: none (pure function)
  */
 export function generateBookmarkId(cryptoImpl?: CryptoLike): string {
-  const c =
-    cryptoImpl ?? (globalThis as unknown as { crypto?: CryptoLike }).crypto;
+  const c = getCrypto(cryptoImpl);
 
   // Prefer standard UUID v4 if available (browser, modern Node)
   if (c?.randomUUID) {
@@ -61,4 +60,16 @@ export function generateBookmarkId(cryptoImpl?: CryptoLike): string {
 export function generateId(prefix: string, cryptoImpl?: CryptoLike): string {
   const id = generateBookmarkId(cryptoImpl).replace(/^bm-/, "");
   return `${prefix}-${id}`;
+}
+
+/**
+ * Helper to obtain a Crypto-like implementation.
+ * Prefer the provided override (for tests), otherwise use globalThis.crypto when available.
+ */
+export function getCrypto(override?: CryptoLike): CryptoLike | undefined {
+  if (override) {
+    return override;
+  }
+  const g = globalThis as unknown as { crypto?: CryptoLike };
+  return g.crypto;
 }

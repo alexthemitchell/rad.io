@@ -27,3 +27,11 @@ export function extractUSBDevice(x: unknown): USBDevice | undefined {
   }
   return undefined;
 }
+
+/**
+ * Format USB vendorId:productId pair as a lowercase 4-hex-digit string each (e.g., "1d50:6089").
+ */
+export function formatUsbId(vendorId: number, productId: number): string {
+  const toHex4 = (n: number): string => n.toString(16).padStart(4, "0");
+  return `${toHex4(vendorId)}:${toHex4(productId)}`.toLowerCase();
+}

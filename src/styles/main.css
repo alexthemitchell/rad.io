@@ -204,9 +204,9 @@ body {
 /* Respect reduced motion preferences globally without breaking visuals */
 @media (prefers-reduced-motion: reduce) {
   *:not([data-allow-motion]) {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0s !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }

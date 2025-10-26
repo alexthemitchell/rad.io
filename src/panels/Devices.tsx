@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useDevice } from "../contexts/DeviceContext";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
-import { extractUSBDevice } from "../utils/usb";
+import { extractUSBDevice, formatUsbId } from "../utils/usb";
 
 /**
  * Devices panel/page for WebUSB SDR management
@@ -150,10 +150,7 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
               {deviceInfo.vendorId && deviceInfo.productId && (
                 <>
                   <dt>USB ID:</dt>
-                  <dd>
-                    {deviceInfo.vendorId.toString(16).padStart(4, "0")}:
-                    {deviceInfo.productId.toString(16).padStart(4, "0")}
-                  </dd>
+                  <dd>{formatUsbId(deviceInfo.vendorId, deviceInfo.productId)}</dd>
                 </>
               )}
 

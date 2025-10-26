@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { generateBookmarkId } from "../utils/id";
 
-// TODO(rad.io): Temporary simulation values for SNR/SINAD calculations.
-// Move to signal processing module and replace with real calculations.
-// See ADR-0003 for GPU Acceleration and ADR-0015 for Visualization.
+// TODO(v2.0, rad.io): Temporary simulation values for SNR/SINAD calculations.
+// Move to a dedicated signal processing module and replace with real calculations.
+// See ADR-0003 (GPU Acceleration) and ADR-0015 (Visualization Rendering).
 const SIMULATION_CONFIG = {
   SNR_BASE: 15, // dB - base SNR for simulation
   SNR_VARIANCE: 10, // dB - random variance for simulation

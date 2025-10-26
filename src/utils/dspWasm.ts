@@ -125,28 +125,28 @@ const dynamicImportModule: (specifier: string) => Promise<unknown> =
  * In local development (localhost/127.0.0.1/::1), we add a stable session-scoped
  * cache-busting param so reloads within the same session reuse the same asset.
  */
-function isLocalDevelopment(host: string): boolean {
-  // Guard for non-browser environments
+function makeUrl(path: string): string {
   const hasWindow =
     typeof window !== "undefined" &&
     typeof window.location === "object" &&
     typeof window.location.href === "string";
+
   let url: URL;
   let host: string;
   if (hasWindow) {
     url = new URL(path, window.location.href);
     host = window.location.hostname;
   } else {
-    // Fallback: use relative to root, and "localhost" as host
+    // Fallback for non-browser environments (tests/SSR)
     url = new URL(path, "http://localhost/");
     host = "localhost";
   }
+
   const isLocalhost =
     host === "localhost" || host === "127.0.0.1" || host === "::1";
   if (isLocalhost) {
     try {
       const key = "radio.devBuildTs";
-      // Only use sessionStorage if available
       const hasSessionStorage =
         hasWindow &&
         typeof window.sessionStorage === "object" &&
@@ -165,12 +165,10 @@ function isLocalDevelopment(host: string): boolean {
       url.searchParams.set("v", buildTs);
     } catch {
       // Fallback to per-load cache bust if sessionStorage throws
-      url.searchParams.set("v", buildTs);
-    } catch {
-      // Fallback to per-load cache bust if sessionStorage unavailable
       url.searchParams.set("v", String(Date.now()));
     }
   }
+
   return url.toString();
 }
 

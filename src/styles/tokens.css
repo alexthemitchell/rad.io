@@ -1,6 +1,6 @@
 :root {
   /* Enable native form control theming and correct default contrast in both themes */
-  /* Prefer light first to match common user defaults; dark is supported as well */
+  /* Note: Dark theme is the default (applied at :root). Light theme is supported via .theme-light/[data-theme="light"]. */
   color-scheme: light dark;
   /* Typography */
   --rad-font-ui:
