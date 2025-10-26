@@ -190,4 +190,106 @@ describe("HackRFOne control formatting", () => {
     // Valid range
     await expect(hackRF.setFrequency(100_000_000)).resolves.toBeUndefined();
   });
+
+  it("sets bandwidth correctly", async () => {
+    const { device, controlTransferOut } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+    const bandwidth = 10_000_000; // 10 MHz
+
+    await hackRF.setBandwidth(bandwidth);
+
+    expect(controlTransferOut).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: RequestCommand.BASEBAND_FILTER_BANDWIDTH_SET,
+        value: bandwidth & 0xffff,
+        index: bandwidth >>> 16,
+      }),
+      undefined,
+    );
+  });
+
+  it("sets LNA gain correctly", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    // Mock controlTransferIn for LNA gain - must return 1 byte with non-zero value
+    (device.controlTransferIn as jest.Mock).mockResolvedValue({
+      data: new DataView(new Uint8Array([1]).buffer), // Return 1 byte with value 1
+      status: "ok",
+    } as USBInTransferResult);
+
+    await hackRF.setLNAGain(24);
+
+    expect(device.controlTransferIn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: RequestCommand.SET_LNA_GAIN,
+        index: 24,
+      }),
+      1,
+    );
+  });
+
+  it("sets amp enable correctly", async () => {
+    const { device, controlTransferOut } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    await hackRF.setAmpEnable(true);
+
+    expect(controlTransferOut).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: RequestCommand.AMP_ENABLE,
+        value: 1,
+      }),
+      undefined,
+    );
+
+    await hackRF.setAmpEnable(false);
+
+    expect(controlTransferOut).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: RequestCommand.AMP_ENABLE,
+        value: 0,
+      }),
+      undefined,
+    );
+  });
+
+  it("stops receive correctly", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    expect(() => hackRF.stopRx()).not.toThrow();
+  });
+
+  it("returns memory info", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    const memInfo = hackRF.getMemoryInfo();
+
+    expect(memInfo).toHaveProperty("totalBufferSize");
+    expect(memInfo).toHaveProperty("usedBufferSize");
+    expect(memInfo).toHaveProperty("activeBuffers");
+  });
+
+  it("clears buffers", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    expect(() => hackRF.clearBuffers()).not.toThrow();
+  });
+
+  it("resets device", async () => {
+    const { device, controlTransferOut } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    await hackRF.reset();
+
+    expect(controlTransferOut).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: RequestCommand.RESET,
+      }),
+      undefined,
+    );
+  });
 });

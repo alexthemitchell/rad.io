@@ -434,7 +434,7 @@ export class HackRFOne {
 
     const isDev = process.env["NODE_ENV"] === "development";
     if (isDev) {
-      console.warn("HackRFOne.setSampleRate: Sample rate configured", {
+      console.debug("HackRFOne.setSampleRate: Sample rate configured", {
         sampleRate,
         sampleRateMSPS: (sampleRate / 1e6).toFixed(3),
         freqHz,
