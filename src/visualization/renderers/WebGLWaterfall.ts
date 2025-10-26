@@ -104,7 +104,6 @@ export class WebGLWaterfall implements Renderer {
 
     // Link program
     const program = gl.createProgram();
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!program) {
       return false;
     }
