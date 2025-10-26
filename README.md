@@ -340,6 +340,15 @@ The DSP pipeline visualization shows the complete signal flow:
 - **Webpack**: Build tooling
 - **GitHub Actions**: CI/CD pipeline
 
+### WASM runtime and validation toggles
+
+You can enable/disable the WebAssembly DSP path and its output validation at runtime via localStorage flags (no rebuild required). This is useful for debugging and CI stability.
+
+- `radio.wasm.enabled`: set to `false` to force JavaScript fallbacks; any other value (or unset) enables WASM
+- `radio.wasm.validate`: set to `true` to enable O(N) output validation (dev default: on; prod default: off)
+
+See docs/reference/wasm-runtime-flags.md for details on behavior, validation heuristics, and dev cache-busting.
+
 ## Browser Compatibility
 
 ### Supported Browsers
