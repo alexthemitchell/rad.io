@@ -54,7 +54,7 @@ export type WorkerCapabilities = {
  */
 export class VisualizationWorkerManager {
   private worker: Worker | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   private _canvas: HTMLCanvasElement | null = null;
   private transferred = false;
   private nextFrameId = 0;
@@ -138,7 +138,7 @@ export class VisualizationWorkerManager {
       this.worker = new Worker(workerUrl);
 
       // Set up message handler
-      this.worker.onmessage = (ev: MessageEvent<WorkerMessage>) => {
+      this.worker.onmessage = (ev: MessageEvent<WorkerMessage>): void => {
         const msg = ev.data;
 
         if (msg.type === "initialized") {
@@ -166,7 +166,7 @@ export class VisualizationWorkerManager {
         }
       };
 
-      this.worker.onerror = (err) => {
+      this.worker.onerror = (err): void => {
         console.error("Worker error event:", err);
         if (this.onErrorCallback) {
           this.onErrorCallback(err.message);
@@ -176,7 +176,9 @@ export class VisualizationWorkerManager {
       // Set canvas dimensions before transfer
       const pixelW = Math.max(1, Math.floor(config.width * config.dpr));
       const pixelH = Math.max(1, Math.floor(config.height * config.dpr));
+      // eslint-disable-next-line no-param-reassign
       canvas.width = pixelW;
+      // eslint-disable-next-line no-param-reassign
       canvas.height = pixelH;
 
       // Transfer canvas to worker
@@ -238,7 +240,11 @@ export class VisualizationWorkerManager {
 
     const frameId = this.nextFrameId++;
 
-    this.worker!.postMessage({
+    if (!this.worker) {
+      throw new Error("Worker not initialized");
+    }
+
+    this.worker.postMessage({
       type: "render",
       frameId,
       data,
@@ -250,11 +256,11 @@ export class VisualizationWorkerManager {
    * @param config - New rendering configuration
    */
   resize(config: RenderConfig): void {
-    if (!this.isReady()) {
+    if (!this.isReady() || !this.worker) {
       throw new Error("Worker not initialized");
     }
 
-    this.worker!.postMessage({
+    this.worker.postMessage({
       type: "resize",
       config,
     });
@@ -281,13 +287,13 @@ export class VisualizationWorkerManager {
     if (this.worker) {
       try {
         this.worker.postMessage({ type: "dispose" });
-      } catch (err) {
+      } catch {
         // Ignore errors during cleanup
       }
 
       try {
         this.worker.terminate();
-      } catch (err) {
+      } catch {
         // Ignore errors during cleanup
       }
 

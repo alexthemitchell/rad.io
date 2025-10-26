@@ -334,7 +334,11 @@ function processNextFrame(): void {
   }
 
   isRendering = true;
-  const frame = frameQueue.shift()!;
+  const frame = frameQueue.shift();
+  if (!frame) {
+    isRendering = false;
+    return;
+  }
   const start = performance.now();
 
   try {
