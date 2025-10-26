@@ -30,6 +30,15 @@ function Navigation(): React.JSX.Element {
       >
         Analysis
       </NavLink>
+      <NavLink
+        to="/demo"
+        className={({ isActive }: { isActive: boolean }) =>
+          isActive ? "nav-link active" : "nav-link"
+        }
+        title="Visualization module demo with simulated source"
+      >
+        Demo
+      </NavLink>
     </nav>
   );
 }

@@ -3,8 +3,8 @@
  * Generates synthetic IQ samples with configurable patterns.
  */
 
-import type { Sample } from "../utils/dsp";
 import type { DataSource, DataSourceMetadata } from "./interfaces";
+import type { Sample } from "../utils/dsp";
 
 /**
  * Configuration for simulated signal generation.
@@ -42,10 +42,10 @@ const DEFAULT_CONFIG: SimulatedSourceConfig = {
  */
 export class SimulatedSource implements DataSource {
   private config: SimulatedSourceConfig;
-  private streaming: boolean = false;
+  private streaming = false;
   private intervalId: NodeJS.Timeout | null = null;
   private callback: ((samples: Sample[]) => void) | null = null;
-  private phase: number = 0;
+  private phase = 0;
 
   constructor(config: Partial<SimulatedSourceConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -53,7 +53,7 @@ export class SimulatedSource implements DataSource {
 
   async startStreaming(callback: (samples: Sample[]) => void): Promise<void> {
     if (this.streaming) {
-      return;
+      return Promise.resolve();
     }
 
     this.streaming = true;
@@ -72,6 +72,8 @@ export class SimulatedSource implements DataSource {
       );
       this.callback(samples);
     }, this.config.updateInterval);
+
+    return Promise.resolve();
   }
 
   async stopStreaming(): Promise<void> {
@@ -82,6 +84,8 @@ export class SimulatedSource implements DataSource {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
+
+    return Promise.resolve();
   }
 
   isStreaming(): boolean {
