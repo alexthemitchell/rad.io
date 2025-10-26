@@ -125,11 +125,14 @@ const dynamicImportModule: (specifier: string) => Promise<unknown> =
  * In local development (localhost/127.0.0.1/::1), we add a stable session-scoped
  * cache-busting param so reloads within the same session reuse the same asset.
  */
+function isLocalDevelopment(host: string): boolean {
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+}
+
 function makeUrl(path: string): string {
   const url = new URL(path, window.location.href);
   const host = window.location.hostname;
-  const isLocalhost =
-    host === "localhost" || host === "127.0.0.1" || host === "::1";
+  const isLocalhost = isLocalDevelopment(host);
   if (isLocalhost) {
     try {
       const key = "radio.devBuildTs";
