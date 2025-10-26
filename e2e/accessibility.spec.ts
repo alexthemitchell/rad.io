@@ -186,8 +186,16 @@ test.describe("Keyboard Navigation", () => {
 
 test.describe("ARIA and Semantics", () => {
   test("visualizations should have proper ARIA labels", async ({ page }) => {
-    await page.goto("https://localhost:8080");
-    await page.waitForSelector("canvas");
+    // Navigate to Monitor in mock mode so a visualization canvas is rendered
+    await page.goto("https://localhost:8080/monitor?mockSdr=1");
+
+    // Start reception to ensure the visualization renders a canvas element
+    const startBtn = page.getByRole("button", { name: "Start reception" });
+    await startBtn.waitFor({ state: "visible", timeout: 10000 });
+    await startBtn.click();
+
+    // Wait for canvas to appear once rendering starts
+    await page.waitForSelector("canvas", { timeout: 15000 });
 
     // Check canvas elements have role="img" and aria-label
     const canvasElements = await page.evaluate(() => {
@@ -199,7 +207,7 @@ test.describe("ARIA and Semantics", () => {
       }));
     });
 
-    // All canvases should have role="img"
+    // All canvases should have role="img" and a non-empty aria-label
     canvasElements.forEach((canvas) => {
       expect(canvas.role).toBe("img");
       expect(canvas.hasAriaLabel).toBe(true);
