@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from "react";
 import { SimulatedSource } from "../visualization";
 import IQConstellation from "../visualization/components/IQConstellation";
-import Spectrogram from "../visualization/components/Spectrogram";
+import FFTChart from "../visualization/components/FFTChart";
 import WaveformVisualizer from "../visualization/components/WaveformVisualizer";
 import type { Sample } from "../utils/dsp";
 import type { SimulatedSourceConfig } from "../visualization";
@@ -165,12 +165,13 @@ export default function VisualizationDemo(): ReactElement {
           <p style={{ fontSize: "14px", color: "#666" }}>
             Shows the frequency content over time (power spectral density)
           </p>
-          <Spectrogram
+          <FFTChart
             samples={samples}
-            sampleRate={metadata?.sampleRate ?? 2048000}
             width={750}
             height={600}
-            continueInBackground={true}
+            fftSize={1024}
+            freqMin={0}
+            freqMax={1024}
           />
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 import { calculateSpectrogram, type Sample } from "../../utils/dsp";
 import EmptyState from "../../components/EmptyState";
-import Spectrogram from "./Spectrogram";
+import { Spectrogram } from "../index";
 
 const DEFAULT_FFT_SIZE = 1024;
 const DEFAULT_FRAME_COUNT = 32;
