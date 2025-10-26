@@ -39,8 +39,8 @@ import {
 } from "../utils/iqRecorder";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import FFTChart from "../visualization/components/FFTChart";
-import type { RDSStationData, type RDSDecoderStats } from "../models/RDSData";
-import type { ISDRDevice, type IQSample } from "../models/SDRDevice";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
+import type { ISDRDevice, IQSample } from "../models/SDRDevice";
 import type { Sample } from "../utils/dsp";
 import "../styles/main.css";
 

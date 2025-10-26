@@ -164,7 +164,10 @@ export class SimulatedSource implements DataSource {
         for (let i = 0; i < count; i++) {
           const symbolIndex =
             Math.floor(this.phase / samplesPerSymbol) % symbols.length;
-          samples.push(symbols[symbolIndex]);
+          const symbol = symbols[symbolIndex];
+          if (symbol) {
+            samples.push(symbol);
+          }
           this.phase++;
         }
         break;

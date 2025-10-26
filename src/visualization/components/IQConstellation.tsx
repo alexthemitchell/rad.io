@@ -114,7 +114,7 @@ export default function IQConstellation({
 
       // Try WebGPU first (modern browsers)
       try {
-        const webgpu = await import("../utils/webgpu");
+        const webgpu = await import("../../utils/webgpu");
         if (webgpu.isWebGPUSupported()) {
           const pixelW = Math.max(1, Math.floor(width * dpr));
           const pixelH = Math.max(1, Math.floor(height * dpr));
@@ -215,7 +215,7 @@ export default function IQConstellation({
       // Try WebGL next
       try {
         // Use shared WebGL utilities
-        const webgl = await import("../utils/webgl");
+        const webgl = await import("../../utils/webgl");
         const pixelW = Math.max(1, Math.floor(width * dpr));
         const pixelH = Math.max(1, Math.floor(height * dpr));
         canvas.width = pixelW;

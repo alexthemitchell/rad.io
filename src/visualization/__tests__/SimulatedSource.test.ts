@@ -36,7 +36,7 @@ describe("SimulatedSource", () => {
       const metadata = customSource.getMetadata();
       expect(metadata.sampleRate).toBe(1000000);
       expect(metadata.centerFrequency).toBe(50000000);
-      expect(metadata.pattern).toBe("qpsk");
+      expect(metadata["pattern"]).toBe("qpsk");
     });
 
     it("should not be streaming initially", () => {
