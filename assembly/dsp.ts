@@ -47,7 +47,7 @@ class Complex {
 /**
  * Apply Hann window to I/Q samples in-place
  * Hann window: w(n) = 0.5 * (1 - cos(2π*n/(N-1)))
- * 
+ *
  * @param iSamples - I component samples (modified in-place)
  * @param qSamples - Q component samples (modified in-place)
  * @param size - Number of samples
@@ -68,7 +68,7 @@ export function applyHannWindow(
 /**
  * Apply Hamming window to I/Q samples in-place
  * Hamming window: w(n) = 0.54 - 0.46 * cos(2π*n/(N-1))
- * 
+ *
  * @param iSamples - I component samples (modified in-place)
  * @param qSamples - Q component samples (modified in-place)
  * @param size - Number of samples
@@ -89,7 +89,7 @@ export function applyHammingWindow(
 /**
  * Apply Blackman window to I/Q samples in-place
  * Blackman window: w(n) = 0.42 - 0.5*cos(2π*n/(N-1)) + 0.08*cos(4π*n/(N-1))
- * 
+ *
  * @param iSamples - I component samples (modified in-place)
  * @param qSamples - Q component samples (modified in-place)
  * @param size - Number of samples

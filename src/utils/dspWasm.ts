@@ -244,6 +244,9 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
           calculateWaveform: mod.calculateWaveform.bind(mod),
           calculateSpectrogram: mod.calculateSpectrogram.bind(mod),
           allocateFloat32Array: mod.allocateFloat32Array.bind(mod),
+          applyHannWindow: mod.applyHannWindow.bind(mod),
+          applyHammingWindow: mod.applyHammingWindow.bind(mod),
+          applyBlackmanWindow: mod.applyBlackmanWindow.bind(mod),
         };
         // Bind optional return-by-value APIs if present so callers can detect/use them
         const b1 = buildOptionalBinding(mod, "calculateFFTOut");
@@ -562,7 +565,6 @@ export function calculateSpectrogramWasm(
     return null;
   }
 }
-
 
 /**
  * Apply Hann window using WASM if available

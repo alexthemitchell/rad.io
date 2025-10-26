@@ -169,7 +169,6 @@ export async function benchmarkWindowing(
   sampleCount: number,
   windowType: "hann" | "hamming" | "blackman",
   iterations = 10,
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 ): Promise<BenchmarkResult> {
   const samples = generateSineWave(1000, 1.0, sampleCount);
 
@@ -215,7 +214,7 @@ export async function benchmarkWindowing(
 
   return {
     operation: `Window (${windowType})`,
-    sampleCount,
+    samples: sampleCount,
     jsDuration,
     wasmDuration,
     speedup: wasmDuration ? jsDuration / wasmDuration : null,
@@ -238,7 +237,7 @@ export async function benchmarkAGC(
 
   return {
     operation: "AGC",
-    sampleCount,
+    samples: sampleCount,
     jsDuration,
     wasmDuration: null, // No WASM implementation yet
     speedup: null,
@@ -262,11 +261,30 @@ export async function benchmarkDecimation(
 
   return {
     operation: `Decimation (factor: ${factor})`,
-    sampleCount,
+    samples: sampleCount,
     jsDuration,
     wasmDuration: null,
     speedup: null,
   };
+}
+
+/**
+ * Generate simple sine wave for benchmarking
+ */
+function generateSineWave(
+  frequency: number,
+  amplitude: number,
+  sampleCount: number,
+): Sample[] {
+  const samples: Sample[] = [];
+  for (let i = 0; i < sampleCount; i++) {
+    const phase = (2 * Math.PI * frequency * i) / sampleCount;
+    samples.push({
+      I: amplitude * Math.cos(phase),
+      Q: amplitude * Math.sin(phase),
+    });
+  }
+  return samples;
 }
 
 export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
@@ -288,7 +306,11 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
 
   // Windowing benchmarks
   console.error("\nWindowing Benchmarks:");
-  const windowTypes: Array<"hann" | "hamming" | "blackman"> = ["hann", "hamming", "blackman"];
+  const windowTypes: Array<"hann" | "hamming" | "blackman"> = [
+    "hann",
+    "hamming",
+    "blackman",
+  ];
   const windowSizes = [1024, 2048, 4096];
   for (const windowType of windowTypes) {
     for (const size of windowSizes) {
@@ -319,7 +341,9 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
     { samples: 10000, factor: 8 },
   ];
   for (const config of decimationConfigs) {
-    console.error(`Benchmarking Decimation (samples: ${config.samples}, factor: ${config.factor})...`);
+    console.error(
+      `Benchmarking Decimation (samples: ${config.samples}, factor: ${config.factor})...`,
+    );
     const result = await benchmarkDecimation(config.samples, config.factor, 5);
     results.push(result);
     console.error(`  JS: ${result.jsDuration.toFixed(2)}ms\n`);

@@ -38,48 +38,53 @@ Windowing reduces spectral leakage in FFT analysis by tapering the signal at the
 ### Available Windows
 
 #### Rectangular (No Window)
+
 - **Use case**: Maximum frequency resolution, known periodic signals
 - **Properties**: No sidelobe reduction
 - **Formula**: `w(n) = 1`
 
 #### Hann Window
+
 - **Use case**: General-purpose spectrum analysis, good balance
 - **Properties**: Good sidelobe rejection (-31 dB), moderate resolution
 - **Formula**: `w(n) = 0.5 * (1 - cos(2π*n/(N-1)))`
 
 ```typescript
-import { applyHannWindow } from './dspProcessing';
+import { applyHannWindow } from "./dspProcessing";
 const windowed = applyHannWindow(samples);
 ```
 
 #### Hamming Window
+
 - **Use case**: Narrower main lobe, slightly worse sidelobes than Hann
 - **Properties**: Better frequency resolution, -43 dB sidelobes
 - **Formula**: `w(n) = 0.54 - 0.46 * cos(2π*n/(N-1))`
 
 ```typescript
-import { applyHammingWindow } from './dspProcessing';
+import { applyHammingWindow } from "./dspProcessing";
 const windowed = applyHammingWindow(samples);
 ```
 
 #### Blackman Window
+
 - **Use case**: Best sidelobe suppression for clean signals
 - **Properties**: Excellent sidelobe rejection (-58 dB), wider main lobe
 - **Formula**: `w(n) = 0.42 - 0.5*cos(2π*n/(N-1)) + 0.08*cos(4π*n/(N-1))`
 
 ```typescript
-import { applyBlackmanWindow } from './dspProcessing';
+import { applyBlackmanWindow } from "./dspProcessing";
 const windowed = applyBlackmanWindow(samples);
 ```
 
 #### Kaiser Window
+
 - **Use case**: Adjustable sidelobe level via beta parameter
 - **Properties**: Configurable tradeoff between resolution and leakage
 - **Parameters**: `beta` controls window shape (3-10 typical)
 
 ```typescript
-import { applyKaiserWindow } from './dspProcessing';
-const windowed = applyKaiserWindow(samples, beta=5);
+import { applyKaiserWindow } from "./dspProcessing";
+const windowed = applyKaiserWindow(samples, (beta = 5));
 ```
 
 ### WASM Acceleration
@@ -87,10 +92,10 @@ const windowed = applyKaiserWindow(samples, beta=5);
 Windowing functions have WASM implementations for 2-5x performance improvement on large datasets:
 
 ```typescript
-import { applyWindow } from './dspProcessing';
+import { applyWindow } from "./dspProcessing";
 
 // Automatically uses WASM when available
-const windowed = applyWindow(samples, 'hann', useWasm=true);
+const windowed = applyWindow(samples, "hann", (useWasm = true));
 ```
 
 ## Automatic Gain Control (AGC)
@@ -106,13 +111,13 @@ AGC maintains consistent signal amplitude despite varying input levels.
 ### Usage
 
 ```typescript
-import { applyAGC } from './dspProcessing';
+import { applyAGC } from "./dspProcessing";
 
 const normalized = applyAGC(
-  samples, 
-  targetLevel=0.7,
-  attackRate=0.01,
-  releaseRate=0.001
+  samples,
+  (targetLevel = 0.7),
+  (attackRate = 0.01),
+  (releaseRate = 0.001),
 );
 ```
 
@@ -140,10 +145,10 @@ Reduces sample rate by integer factor with anti-aliasing filtering.
 ### Usage
 
 ```typescript
-import { decimate } from './dspProcessing';
+import { decimate } from "./dspProcessing";
 
 // Reduce sample rate by factor of 4
-const decimated = decimate(samples, factor=4);
+const decimated = decimate(samples, (factor = 4));
 // Input: 20 MSPS -> Output: 5 MSPS
 ```
 
@@ -169,26 +174,33 @@ Normalize or adjust signal amplitude for visualization and analysis.
 ### Scaling Modes
 
 #### None
+
 ```typescript
-applyScaling(samples, 'none'); // Pass-through
+applyScaling(samples, "none"); // Pass-through
 ```
 
 #### Normalize
+
 Scales to unit peak magnitude:
+
 ```typescript
-applyScaling(samples, 'normalize', targetPeak=1.0);
+applyScaling(samples, "normalize", (targetPeak = 1.0));
 ```
 
 #### Linear
+
 Direct multiplication:
+
 ```typescript
-applyScaling(samples, 'linear', scaleFactor=2.0); // 2x amplitude
+applyScaling(samples, "linear", (scaleFactor = 2.0)); // 2x amplitude
 ```
 
 #### dB
+
 Logarithmic scaling:
+
 ```typescript
-applyScaling(samples, 'dB', dBValue=6.0); // +6dB = 2x amplitude
+applyScaling(samples, "dB", (dBValue = 6.0)); // +6dB = 2x amplitude
 ```
 
 ### dB Conversion Reference
@@ -208,12 +220,12 @@ Combine processing stages into efficient, reusable pipelines.
 ### Basic Composition
 
 ```typescript
-import { composePipeline } from './dspProcessing';
+import { composePipeline } from "./dspProcessing";
 
 const pipeline = [
-  { name: 'agc', fn: (data) => applyAGC(data) },
-  { name: 'window', fn: (data) => applyWindow(data, 'hann') },
-  { name: 'fft', fn: (data) => calculateFFTSync(data, 2048) },
+  { name: "agc", fn: (data) => applyAGC(data) },
+  { name: "window", fn: (data) => applyWindow(data, "hann") },
+  { name: "fft", fn: (data) => calculateFFTSync(data, 2048) },
 ];
 
 const result = composePipeline(samples, pipeline);
@@ -225,14 +237,14 @@ const result = composePipeline(samples, pipeline);
 ### Pre-built Visualization Pipeline
 
 ```typescript
-import { createVisualizationPipeline, composePipeline } from './dspProcessing';
+import { createVisualizationPipeline, composePipeline } from "./dspProcessing";
 
 const pipeline = createVisualizationPipeline({
   fftSize: 2048,
-  windowType: 'blackman',
+  windowType: "blackman",
   agcEnabled: true,
   decimationFactor: 4,
-  scalingMode: 'normalize',
+  scalingMode: "normalize",
 });
 
 const spectrum = composePipeline(iqSamples, pipeline);
@@ -240,14 +252,14 @@ const spectrum = composePipeline(iqSamples, pipeline);
 
 ### Pipeline Configuration
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `fftSize` | number | required | FFT size (power of 2) |
-| `windowType` | WindowFunction | required | Window type |
-| `agcEnabled` | boolean | false | Enable AGC |
-| `decimationFactor` | number | undefined | Decimation factor (>=2) |
-| `scalingMode` | ScalingMode | 'none' | Scaling mode |
-| `scaleFactor` | number | 1.0 | Scaling parameter |
+| Parameter          | Type           | Default   | Description             |
+| ------------------ | -------------- | --------- | ----------------------- |
+| `fftSize`          | number         | required  | FFT size (power of 2)   |
+| `windowType`       | WindowFunction | required  | Window type             |
+| `agcEnabled`       | boolean        | false     | Enable AGC              |
+| `decimationFactor` | number         | undefined | Decimation factor (>=2) |
+| `scalingMode`      | ScalingMode    | 'none'    | Scaling mode            |
+| `scaleFactor`      | number         | 1.0       | Scaling parameter       |
 
 ## Complete Example: FM Radio Spectrum
 
@@ -256,17 +268,17 @@ import {
   createVisualizationPipeline,
   composePipeline,
   type Sample,
-} from './dspProcessing';
+} from "./dspProcessing";
 
 // 1. Capture IQ samples from SDR (20 MSPS)
 const iqSamples: Sample[] = await hackrf.receive();
 
 // 2. Create optimized pipeline
 const pipeline = createVisualizationPipeline({
-  fftSize: 4096,           // High resolution
-  windowType: 'blackman',  // Low sidelobes for clean FM signals
-  decimationFactor: 10,    // 20 MSPS -> 2 MSPS (FM broadcast band)
-  agcEnabled: true,        // Normalize varying signal strengths
+  fftSize: 4096, // High resolution
+  windowType: "blackman", // Low sidelobes for clean FM signals
+  decimationFactor: 10, // 20 MSPS -> 2 MSPS (FM broadcast band)
+  agcEnabled: true, // Normalize varying signal strengths
 });
 
 // 3. Process samples
@@ -282,23 +294,28 @@ const processingTime = result.processingTime; // Performance metric
 Typical processing times on modern hardware (Apple M1, single-threaded):
 
 ### Windowing (2048 samples)
+
 - JavaScript: ~0.15 ms
 - WASM: ~0.05 ms
 - **Speedup: 3x**
 
 ### FFT (2048 samples)
+
 - JavaScript (DFT): ~50 ms
 - JavaScript (Web Audio): ~2 ms
 - WASM (Cooley-Tukey): ~0.3 ms
 - **Speedup: ~7x** (vs Web Audio)
 
 ### AGC (10,000 samples)
+
 - JavaScript: ~0.8 ms
 
 ### Decimation (10,000 samples, factor 4)
+
 - JavaScript: ~1.2 ms
 
 ### Complete Pipeline (4096 samples)
+
 - Total: ~3-5 ms (including FFT, windowing, AGC, decimation)
 - **Frame rate**: 200-300 FPS for continuous processing
 
@@ -335,19 +352,24 @@ npm test -- src/utils/__tests__/dspProcessing.test.ts
 
 ```typescript
 // Apply specific window
-function applyHannWindow(samples: Sample[]): Sample[]
-function applyHammingWindow(samples: Sample[]): Sample[]
-function applyBlackmanWindow(samples: Sample[]): Sample[]
-function applyKaiserWindow(samples: Sample[], beta?: number): Sample[]
+function applyHannWindow(samples: Sample[]): Sample[];
+function applyHammingWindow(samples: Sample[]): Sample[];
+function applyBlackmanWindow(samples: Sample[]): Sample[];
+function applyKaiserWindow(samples: Sample[], beta?: number): Sample[];
 
 // Generic windowing (with WASM acceleration)
 function applyWindow(
-  samples: Sample[], 
+  samples: Sample[],
   windowType: WindowFunction,
-  useWasm?: boolean
-): Sample[]
+  useWasm?: boolean,
+): Sample[];
 
-type WindowFunction = 'rectangular' | 'hann' | 'hamming' | 'blackman' | 'kaiser'
+type WindowFunction =
+  | "rectangular"
+  | "hann"
+  | "hamming"
+  | "blackman"
+  | "kaiser";
 ```
 
 ### AGC
@@ -355,19 +377,16 @@ type WindowFunction = 'rectangular' | 'hann' | 'hamming' | 'blackman' | 'kaiser'
 ```typescript
 function applyAGC(
   samples: Sample[],
-  targetLevel?: number,     // default: 0.7
-  attackRate?: number,      // default: 0.01
-  releaseRate?: number      // default: 0.001
-): Sample[]
+  targetLevel?: number, // default: 0.7
+  attackRate?: number, // default: 0.01
+  releaseRate?: number, // default: 0.001
+): Sample[];
 ```
 
 ### Decimation
 
 ```typescript
-function decimate(
-  samples: Sample[],
-  factor: number
-): Sample[]
+function decimate(samples: Sample[], factor: number): Sample[];
 ```
 
 ### Scaling
@@ -376,10 +395,10 @@ function decimate(
 function applyScaling(
   samples: Sample[],
   mode: ScalingMode,
-  scaleFactor?: number      // default: 1.0
-): Sample[]
+  scaleFactor?: number, // default: 1.0
+): Sample[];
 
-type ScalingMode = 'none' | 'normalize' | 'linear' | 'dB'
+type ScalingMode = "none" | "normalize" | "linear" | "dB";
 ```
 
 ### Pipeline
@@ -391,8 +410,8 @@ function composePipeline<TIn, TOut>(
     name: string;
     fn: (data: unknown, params?: unknown) => unknown;
     params?: unknown;
-  }>
-): PipelineStageResult<TOut>
+  }>,
+): PipelineStageResult<TOut>;
 
 function createVisualizationPipeline(config: {
   fftSize: number;
@@ -401,7 +420,7 @@ function createVisualizationPipeline(config: {
   decimationFactor?: number;
   scalingMode?: ScalingMode;
   scaleFactor?: number;
-}): PipelineTransform[]
+}): PipelineTransform[];
 
 interface PipelineStageResult<T> {
   data: T;
@@ -421,7 +440,7 @@ function processFFT(
     window: WindowFunction;
     overlap: number;
     wasm: boolean;
-  }
+  },
 ): {
   output: Float32Array | null;
   metrics: {
@@ -429,7 +448,7 @@ function processFFT(
     windowType: string;
     processingTime: number;
   };
-}
+};
 ```
 
 ## Best Practices
@@ -475,18 +494,22 @@ Planned improvements to the processing pipeline:
 ## Troubleshooting
 
 ### Issue: FFT returns null
+
 **Cause**: Insufficient samples for FFT size  
 **Solution**: Ensure `samples.length >= fftSize`
 
 ### Issue: AGC not stabilizing
+
 **Cause**: Attack/release rates too slow  
 **Solution**: Increase rates or allow more samples for settling
 
 ### Issue: Decimation causes aliasing
+
 **Cause**: Signal bandwidth exceeds new Nyquist frequency  
 **Solution**: Reduce decimation factor or filter signal first
 
 ### Issue: Poor performance
+
 **Cause**: WASM not loading or not being used  
 **Solution**: Check `isWasmAvailable()` and enable WASM in pipeline config
 
