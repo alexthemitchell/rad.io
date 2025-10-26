@@ -35,7 +35,7 @@ jobs:
             node_modules
             build/
             dist/
-          key: deploy-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/**', 'assembly/**', 'webpack.config.js') }}
+          key: deploy-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/**/*.{ts,tsx,js,jsx,css}', 'assembly/**', 'webpack.config.js') }}
           restore-keys: |
             deploy-${{ runner.os }}-
 

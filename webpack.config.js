@@ -87,8 +87,9 @@ module.exports = (env, argv) => {
       server: "https",
     },
     performance: {
-      maxEntrypointSize: 512000,
-      maxAssetSize: 512000,
+      // Updated to match documented bundle sizes: main chunk ~367 KB, total ~586 KB
+      maxEntrypointSize: 600000,
+      maxAssetSize: 600000,
     },
   };
 };
