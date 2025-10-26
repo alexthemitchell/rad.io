@@ -298,7 +298,7 @@ export function validateSampleRate(
  * **Sample Format:**
  * - Input: Int8 array with interleaved I/Q values [I0, Q0, I1, Q1, ...]
  * - Output: Array of {I, Q} objects with normalized float values
- * - Normalization: value / 128.0 maps [-128, 127] → [-1.0, ~0.992]
+ * - Normalization: value / 128.0 maps [-128, 127] → [-1.0, 0.9921875]
  *
  * @param data - Raw sample data from HackRF device (Int8 format)
  * @returns Array of normalized IQ sample pairs
