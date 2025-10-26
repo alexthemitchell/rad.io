@@ -12,8 +12,9 @@ on:
       - main
 
 jobs:
-  lint:
-    name: Lint Code
+  # Shared job to install dependencies once and cache for other jobs
+  setup:
+    name: Install Dependencies
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -27,6 +28,68 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Cache node_modules
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-node-20-${{ hashFiles('package-lock.json') }}
+
+  # Build WASM once and cache for other jobs that need it
+  build-wasm:
+    name: Build WASM
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-node-20-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
+
+      - name: Build AssemblyScript WASM
+        run: npm run asbuild:release
+
+      - name: Cache WASM build
+        uses: actions/cache/save@v4
+        with:
+          path: build/
+          key: wasm-${{ runner.os }}-${{ hashFiles('assembly/**/*.ts', 'asconfig.json') }}
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-node-20-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
 
       - name: Run ESLint
         run: npm run lint
@@ -34,6 +97,7 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    needs: setup
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,10 +106,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-node-20-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
 
       - name: Run tests with coverage
         run: npm test -- --coverage
@@ -54,10 +123,10 @@ jobs:
         run: |
           echo "Coverage thresholds enforced via jest.config.js"
           echo "Thresholds:"
-          echo "  - Global: 45% statements, 39% branches, 46% functions, 45% lines"
-          echo "  - DSP utilities: ≥95% coverage"
-          echo "  - Device models: ≥90% coverage"
-          echo "  - Core utilities: ≥75-95% coverage"
+          echo "  - Global: 38% statements, 35% branches, 39% functions, 38% lines"
+          echo "  - HackRF implementation: ≥72-93% coverage"
+          echo "  - DSP utilities: ≥57-96% coverage"
+          echo "  - Core utilities: ≥77-95% coverage"
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -72,6 +141,7 @@ jobs:
   format:
     name: Check Formatting
     runs-on: ubuntu-latest
+    needs: setup
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -80,10 +150,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-node-20-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
 
       - name: Check Prettier formatting
         run: npm run format:check
@@ -91,6 +166,7 @@ jobs:
   build:
     name: Build Application
     runs-on: ubuntu-latest
+    needs: [setup, build-wasm]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -99,13 +175,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-node-20-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
 
-      - name: Build project
-        run: npm run build
+      - name: Restore WASM build cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/
+          key: wasm-${{ runner.os }}-${{ hashFiles('assembly/**/*.ts', 'asconfig.json') }}
+          fail-on-cache-miss: true
+
+      - name: Build webpack bundle
+        run: webpack --mode production
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -117,6 +205,7 @@ jobs:
   type-check:
     name: TypeScript Type Check
     runs-on: ubuntu-latest
+    needs: setup
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -125,10 +214,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Restore node_modules cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            ~/.npm
+          key: npm-${{ runner.os }}-node-20-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
 
       - name: Run TypeScript compiler check
         run: npx tsc --noEmit

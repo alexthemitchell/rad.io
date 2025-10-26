@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "description": "Professional browser-based SDR visualizer with industry-standard signal analysis and universal device support",
   "scripts": {
-    "build": "npm run asbuild:release && webpack",
+    "build": "npm run asbuild:release && webpack --mode development",
     "build:prod": "npm run asbuild:release && webpack --mode production",
-    "start": "npm run asbuild:release && webpack serve",
+    "start": "npm run asbuild:release && webpack serve --mode development",
     "dev": "npm start",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
