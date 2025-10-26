@@ -639,7 +639,6 @@ self.onmessage = (ev: MessageEvent<InitMessage | RenderMessage | ResizeMessage |
       return;
     }
     
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (msg.type === "dispose") {
       // Cleanup
       if (glContext) {
