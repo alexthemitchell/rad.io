@@ -52,7 +52,6 @@ export class WebGLSpectrum implements Renderer {
     });
 
     // Fallback to WebGL1 if WebGL2 not available
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!gl) {
       gl = (canvas.getContext("webgl", {
         alpha: false,
