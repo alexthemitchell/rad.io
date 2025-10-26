@@ -1,13 +1,13 @@
 import { useMemo, useRef } from "react";
-import { calculateSpectrogram, type Sample } from "../utils/dsp";
-import EmptyState from "./EmptyState";
-import Spectrogram from "./Spectrogram";
+import EmptyState from "../../components/EmptyState";
+import { calculateSpectrogram, type Sample } from "../../utils/dsp";
+import { Spectrogram } from "../index";
 
 const DEFAULT_FFT_SIZE = 1024;
 const DEFAULT_FRAME_COUNT = 32;
 const MIN_UPDATE_INTERVAL_MS = 100; // Throttle to max 10 updates/sec to reduce memory pressure
 
-type FFTChartProps = {
+export type FFTChartProps = {
   samples?: Sample[];
   width?: number;
   height?: number;

@@ -3,7 +3,7 @@ import IQConstellation from "../IQConstellation";
 import {
   createTestSamples,
   createMockCanvasContext,
-} from "../../utils/testHelpers";
+} from "../../../utils/testHelpers";
 
 describe("IQConstellation", () => {
   const createSamples = (count: number) => createTestSamples(count, "linear");

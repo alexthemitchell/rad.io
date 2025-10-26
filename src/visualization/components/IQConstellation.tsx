@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useRef, useMemo } from "react";
-import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
-import { usePageVisibility } from "../hooks/usePageVisibility";
-import { useVisualizationInteraction } from "../hooks/useVisualizationInteraction";
-import { renderTierManager } from "../lib/render/RenderTierManager";
-import { RenderTier } from "../types/rendering";
-import { performanceMonitor } from "../utils/performanceMonitor";
-import type { IVisualizationRenderer } from "../types/visualization";
-import type { GL } from "../utils/webgl";
+import { useIntersectionObserver } from "../../hooks/useIntersectionObserver";
+import { usePageVisibility } from "../../hooks/usePageVisibility";
+import { useVisualizationInteraction } from "../../hooks/useVisualizationInteraction";
+import { renderTierManager } from "../../lib/render/RenderTierManager";
+import { RenderTier } from "../../types/rendering";
+import { performanceMonitor } from "../../utils/performanceMonitor";
+import type { IVisualizationRenderer } from "../../types/visualization";
+import type { GL } from "../../utils/webgl";
 import type { ReactElement } from "react";
 
-type Sample = {
+export type Sample = {
   I: number;
   Q: number;
 };
 
-type IQConstellationProps = {
+export type IQConstellationProps = {
   samples: Sample[];
   width?: number;
   height?: number;
@@ -114,7 +114,7 @@ export default function IQConstellation({
 
       // Try WebGPU first (modern browsers)
       try {
-        const webgpu = await import("../utils/webgpu");
+        const webgpu = await import("../../utils/webgpu");
         if (webgpu.isWebGPUSupported()) {
           const pixelW = Math.max(1, Math.floor(width * dpr));
           const pixelH = Math.max(1, Math.floor(height * dpr));
@@ -215,7 +215,7 @@ export default function IQConstellation({
       // Try WebGL next
       try {
         // Use shared WebGL utilities
-        const webgl = await import("../utils/webgl");
+        const webgl = await import("../../utils/webgl");
         const pixelW = Math.max(1, Math.floor(width * dpr));
         const pixelH = Math.max(1, Math.floor(height * dpr));
         canvas.width = pixelW;

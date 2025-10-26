@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import FFTChart from "./FFTChart";
-import IQConstellation from "./IQConstellation";
+import FFTChart from "../visualization/components/FFTChart";
+import IQConstellation from "../visualization/components/IQConstellation";
 import WaveformChart from "./WaveformChart";
 import type { DSPPipelineStage } from "../hooks/useDSPPipeline";
 import type { Sample } from "../utils/dsp";
