@@ -129,8 +129,8 @@ export function DeviceProvider({
       const deviceId = getDeviceId(usb);
 
       try {
-  // Create adapter based on device type (temporarily use RTL-SDR adapter as generic)
-  const adapter = new RTLSDRDeviceAdapter(usb);
+        // Create adapter based on device type (temporarily use RTL-SDR adapter as generic)
+        const adapter = new RTLSDRDeviceAdapter(usb);
 
         // Open device if not already opened
         if (!usb.opened) {

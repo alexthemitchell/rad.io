@@ -46,7 +46,10 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [formErrors, setFormErrors] = useState<{ frequency?: string; name?: string }>({});
+  const [formErrors, setFormErrors] = useState<{
+    frequency?: string;
+    name?: string;
+  }>({});
   const [formData, setFormData] = useState({
     frequency: "",
     name: "",
@@ -228,7 +231,8 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
         >
           <h4 id="confirm-delete-title">Delete bookmark?</h4>
           <p id="confirm-delete-desc">
-            Are you sure you want to delete “{bookmarkToDelete.name}” at {formatFrequency(bookmarkToDelete.frequency)}?
+            Are you sure you want to delete “{bookmarkToDelete.name}” at{" "}
+            {formatFrequency(bookmarkToDelete.frequency)}?
           </p>
           <div className="confirm-actions">
             <button onClick={confirmDelete}>Delete</button>
@@ -335,7 +339,9 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
               type="text"
               value={formData.frequency}
               aria-invalid={Boolean(formErrors.frequency)}
-              aria-describedby={formErrors.frequency ? "bookmark-frequency-error" : undefined}
+              aria-describedby={
+                formErrors.frequency ? "bookmark-frequency-error" : undefined
+              }
               onChange={(e): void =>
                 setFormData({ ...formData, frequency: e.target.value })
               }
@@ -356,7 +362,9 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
               type="text"
               value={formData.name}
               aria-invalid={Boolean(formErrors.name)}
-              aria-describedby={formErrors.name ? "bookmark-name-error" : undefined}
+              aria-describedby={
+                formErrors.name ? "bookmark-name-error" : undefined
+              }
               onChange={(e): void =>
                 setFormData({ ...formData, name: e.target.value })
               }
