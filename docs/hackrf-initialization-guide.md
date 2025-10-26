@@ -7,7 +7,7 @@ This guide documents the correct initialization sequence and best practices for 
 ### Minimal Working Example
 
 ```typescript
-import { HackRFOne } from './hackrf/HackRFOne';
+import { HackRFOne } from "./hackrf/HackRFOne";
 
 // 1. Create instance from USB device
 const hackrf = new HackRFOne(usbDevice);
@@ -67,6 +67,7 @@ await hackrf.open();
 ```
 
 **What happens:**
+
 - Opens USB device if not already open
 - Selects configuration (typically config 1)
 - Finds interface with bulk IN endpoint
@@ -74,6 +75,7 @@ await hackrf.open();
 - Saves endpoint number for data streaming
 
 **Troubleshooting:**
+
 - "No interface found": Device not properly connected
 - "Interface already claimed": Another application is using the device
 
@@ -84,12 +86,14 @@ await hackrf.setSampleRate(20_000_000); // 20 MSPS
 ```
 
 **What happens:**
+
 - Validates sample rate is in range (2-20 MSPS for HackRF)
 - Calculates optimal frequency and divider parameters
 - Sends `SAMPLE_RATE_SET` command via control transfer
 - Stores value for health checks and recovery
 
 **Valid Sample Rates:**
+
 - Minimum: 2 MSPS (2,000,000 Hz)
 - Maximum: 20 MSPS (20,000,000 Hz)
 - Common: 8, 10, 16, 20 MSPS
@@ -104,12 +108,14 @@ await hackrf.setFrequency(100_000_000); // 100 MHz
 ```
 
 **What happens:**
+
 - Validates frequency is in range (1 MHz - 6 GHz)
 - Splits frequency into MHz and Hz components
 - Sends `SET_FREQ` command with both components
 - Device tunes to requested frequency
 
 **Valid Frequencies:**
+
 - Minimum: 1 MHz (1,000,000 Hz)
 - Maximum: 6 GHz (6,000,000,000 Hz)
 - Example ranges:
@@ -124,6 +130,7 @@ await hackrf.setBandwidth(20_000_000); // 20 MHz
 ```
 
 **What happens:**
+
 - Validates bandwidth is in range (1.75-28 MHz)
 - Selects nearest available bandwidth from hardware table
 - Sends `BASEBAND_FILTER_BANDWIDTH_SET` command
@@ -141,6 +148,7 @@ await hackrf.setLNAGain(16); // 16 dB
 ```
 
 **What happens:**
+
 - Validates gain is in range (0-40 dB in 8 dB steps)
 - Sends `SET_LNA_GAIN` command
 - Adjusts low-noise amplifier gain
@@ -149,6 +157,7 @@ await hackrf.setLNAGain(16); // 16 dB
 0, 8, 16, 24, 32, 40 dB
 
 **Recommendations:**
+
 - Start with 16 dB for general use
 - Increase for weak signals
 - Decrease if experiencing overload/distortion
@@ -160,10 +169,12 @@ await hackrf.setAmpEnable(false); // Usually off for receive
 ```
 
 **What happens:**
+
 - Enables or disables additional amplification stage
 - Sends `AMP_ENABLE` command with boolean value
 
 **Recommendations:**
+
 - Typically disabled (false) for receive mode
 - Enable only for very weak signals
 - Can cause overload if used with strong signals
@@ -179,6 +190,7 @@ const receivePromise = hackrf.receive((dataView) => {
 ```
 
 **What happens:**
+
 - Validates device health (open, sample rate set, not closing)
 - Sets transceiver mode to RECEIVE
 - Enters continuous streaming loop
@@ -188,6 +200,7 @@ const receivePromise = hackrf.receive((dataView) => {
 - Tracks consecutive timeouts (fails after 3)
 
 **Data Format:**
+
 - Type: Int8 array (signed 8-bit integers)
 - Layout: Interleaved I/Q pairs [I0, Q0, I1, Q1, ...]
 - Normalization: Divide by 128 to get ±1.0 range
@@ -207,11 +220,13 @@ await hackrf.close();
 ```
 
 **What happens (stopRx):**
+
 - Clears streaming flag
 - Sends transceiver OFF command
 - Allows receive loop to exit cleanly
 
 **What happens (close):**
+
 - Sets closing flag
 - Stops any ongoing streaming
 - Releases USB interface
@@ -222,6 +237,7 @@ await hackrf.close();
 ### Problem: Device Shows "Receiving" But No Data
 
 **Symptom:**
+
 - UI indicates streaming is active
 - No visualizations update
 - No errors displayed
@@ -230,6 +246,7 @@ await hackrf.close();
 Sample rate was not configured before calling `receive()`
 
 **Solution:**
+
 ```typescript
 // WRONG - sample rate missing
 await hackrf.open();
@@ -246,16 +263,19 @@ await hackrf.receive(callback); // Works!
 ### Problem: Transfer Timeouts
 
 **Symptom:**
+
 - Console shows "transferIn timeout" messages
 - Streaming stops after 3 consecutive timeouts
 
 **Possible Causes:**
+
 1. Sample rate not configured
 2. Device needs physical reset
 3. USB power issues
 4. Firmware incompatibility
 
 **Solutions:**
+
 1. Verify sample rate is set before streaming
 2. Unplug and replug USB cable
 3. Press physical reset button on device
@@ -265,6 +285,7 @@ await hackrf.receive(callback); // Works!
 ### Problem: Invalid Configuration Values
 
 **Symptom:**
+
 - Throws `HackrfError` with `INVALID_PARAM` code
 
 **Solution:**
@@ -288,9 +309,11 @@ function validateConfig(config) {
 ### Problem: Device Health Check Failures
 
 **Symptom:**
+
 - `validateReadyForStreaming()` returns issues
 
 **Check:**
+
 ```typescript
 const health = hackrf.validateReadyForStreaming();
 if (!health.ready) {
@@ -300,6 +323,7 @@ if (!health.ready) {
 ```
 
 **Common Issues:**
+
 - "Device is not open" → Call `open()` first
 - "Sample rate not configured" → Call `setSampleRate()` first
 - "Device is closing" → Don't stream during shutdown
@@ -386,7 +410,7 @@ console.log("Configured:", status.isConfigured); // true if sample rate set
 The `useHackRFDevice` hook handles initialization automatically:
 
 ```typescript
-import { useHackRFDevice } from './hackrf';
+import { useHackRFDevice } from "./hackrf";
 
 function MyComponent() {
   const { device, initialize, isCheckingPaired } = useHackRFDevice();
@@ -448,6 +472,7 @@ See `src/hackrf/__tests__/` for comprehensive test examples.
 If you encounter issues not covered here:
 
 1. Check device with native tools:
+
    ```bash
    hackrf_info
    hackrf_transfer -r /dev/null -f 100000000 -n 1000000

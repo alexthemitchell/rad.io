@@ -437,9 +437,7 @@ describe("calcSampleRate", () => {
   });
 
   it("should always return valid uint32 frequency", () => {
-    const testRates = [
-      2000000, 4000000, 8000000, 10000000, 20000000, 28000000,
-    ];
+    const testRates = [2000000, 4000000, 8000000, 10000000, 20000000, 28000000];
 
     testRates.forEach((rate) => {
       const [freq, div] = calcSampleRate(rate);

@@ -180,7 +180,7 @@ describe("useHackRFDevice", () => {
       mockAdapterInstance.open.mockRejectedValueOnce(
         new Error("Failed to open device"),
       );
-      
+
       // Create a new mock with opened = false
       const unopenedDevice = {
         ...mockUSBDevice,
