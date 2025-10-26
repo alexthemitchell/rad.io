@@ -1,6 +1,7 @@
 :root {
   /* Enable native form control theming and correct default contrast in both themes */
-  color-scheme: dark light;
+  /* Prefer light first to match common user defaults; dark is supported as well */
+  color-scheme: light dark;
   /* Typography */
   --rad-font-ui:
     Inter, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell,

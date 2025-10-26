@@ -45,6 +45,8 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<{ frequency?: string; name?: string }>({});
   const [formData, setFormData] = useState({
     frequency: "",
     name: "",
@@ -111,33 +113,38 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   };
 
   const handleDelete = (id: string): void => {
-    const bookmark = bookmarks.find((b) => b.id === id);
-    if (!bookmark) {
+    // Use accessible, inline confirmation instead of window.confirm
+    setPendingDeleteId(id);
+  };
+
+  const confirmDelete = (): void => {
+    if (!pendingDeleteId) {
       return;
     }
-
-    if (
-      !window.confirm(
-        `Delete bookmark "${bookmark.name}" at ${formatFrequency(bookmark.frequency)}?`,
-      )
-    ) {
-      return;
-    }
-
-    const newBookmarks = bookmarks.filter((b) => b.id !== id);
+    const bookmark = bookmarks.find((b) => b.id === pendingDeleteId);
+    const newBookmarks = bookmarks.filter((b) => b.id !== pendingDeleteId);
     saveBookmarks(newBookmarks);
-    announce(`Deleted bookmark: ${bookmark.name}`);
+    if (bookmark) {
+      announce(`Deleted bookmark: ${bookmark.name}`);
+    }
+    setPendingDeleteId(null);
+  };
+
+  const cancelDelete = (): void => {
+    setPendingDeleteId(null);
   };
 
   const handleSave = (): void => {
     const freqMHz = parseFloat(formData.frequency);
+    const errors: { frequency?: string; name?: string } = {};
     if (isNaN(freqMHz) || freqMHz <= 0) {
-      alert("Please enter a valid frequency in MHz");
-      return;
+      errors.frequency = "Please enter a valid positive frequency in MHz";
     }
-
     if (!formData.name.trim()) {
-      alert("Please enter a bookmark name");
+      errors.name = "Please enter a bookmark name";
+    }
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
       return;
     }
 
@@ -201,6 +208,9 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
 
   const containerClass = isPanel ? "panel-container" : "page-container";
   const showForm = isAdding || editingId !== null;
+  const bookmarkToDelete = pendingDeleteId
+    ? bookmarks.find((b) => b.id === pendingDeleteId)
+    : null;
 
   return (
     <div
@@ -208,6 +218,24 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
       role={isPanel ? "complementary" : "main"}
       aria-labelledby="bookmarks-heading"
     >
+      {pendingDeleteId && bookmarkToDelete && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="confirm-delete-title"
+          aria-describedby="confirm-delete-desc"
+          className="confirm-dialog"
+        >
+          <h4 id="confirm-delete-title">Delete bookmark?</h4>
+          <p id="confirm-delete-desc">
+            Are you sure you want to delete “{bookmarkToDelete.name}” at {formatFrequency(bookmarkToDelete.frequency)}?
+          </p>
+          <div className="confirm-actions">
+            <button onClick={confirmDelete}>Delete</button>
+            <button onClick={cancelDelete}>Cancel</button>
+          </div>
+        </div>
+      )}
       <h2 id="bookmarks-heading">Bookmarks</h2>
 
       {!showForm && (
@@ -306,12 +334,19 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
               id="bookmark-frequency"
               type="text"
               value={formData.frequency}
+              aria-invalid={Boolean(formErrors.frequency)}
+              aria-describedby={formErrors.frequency ? "bookmark-frequency-error" : undefined}
               onChange={(e): void =>
                 setFormData({ ...formData, frequency: e.target.value })
               }
               placeholder="100.500"
               aria-required="true"
             />
+            {formErrors.frequency && (
+              <div id="bookmark-frequency-error" role="alert">
+                {formErrors.frequency}
+              </div>
+            )}
           </label>
 
           <label htmlFor="bookmark-name">
@@ -320,12 +355,19 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
               id="bookmark-name"
               type="text"
               value={formData.name}
+              aria-invalid={Boolean(formErrors.name)}
+              aria-describedby={formErrors.name ? "bookmark-name-error" : undefined}
               onChange={(e): void =>
                 setFormData({ ...formData, name: e.target.value })
               }
               placeholder="NOAA Weather Radio"
               aria-required="true"
             />
+            {formErrors.name && (
+              <div id="bookmark-name-error" role="alert">
+                {formErrors.name}
+              </div>
+            )}
           </label>
 
           <label htmlFor="bookmark-tags">

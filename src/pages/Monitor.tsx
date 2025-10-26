@@ -160,6 +160,8 @@ function Monitor(): React.JSX.Element {
           }
 
           // Target ~25ms audio chunks at 2 MSPS for responsive playback
+          // Calculation: 50,000 samples / 2,000,000 samples per second = 0.025 seconds (25ms)
+          // This chunk size balances latency and smooth playback during buffer scheduling.
           const MIN_IQ_SAMPLES = 50_000;
           if (buffer.length >= MIN_IQ_SAMPLES) {
             const chunk = buffer.splice(0, MIN_IQ_SAMPLES);

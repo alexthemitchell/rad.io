@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { generateBookmarkId } from "../utils/id";
 
 // Temporary simulation values for SNR/SINAD calculations
 // TODO: Replace with real calculations from signal processing
@@ -34,7 +35,7 @@ interface MeasurementsProps {
 }
 
 interface Marker {
-  id: number;
+  id: string;
   frequency: number;
   amplitude: number;
 }
@@ -47,14 +48,14 @@ function Measurements({
 
   const handleAddMarker = (): void => {
     const newMarker: Marker = {
-      id: Date.now(),
+      id: generateBookmarkId(),
       frequency: 100000000 + Math.random() * 10000000, // Random freq around 100 MHz
       amplitude: -60 + Math.random() * 40, // Random amplitude -60 to -20 dBm
     };
     setMarkers([...markers, newMarker]);
   };
 
-  const handleRemoveMarker = (id: number): void => {
+  const handleRemoveMarker = (id: string): void => {
     setMarkers(markers.filter((m) => m.id !== id));
   };
 

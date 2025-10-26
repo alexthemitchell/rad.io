@@ -40,7 +40,7 @@ function Settings(): React.JSX.Element {
         <div className="tabs" role="tablist">
           <button
             role="tab"
-            aria-selected={activeTab === "display" ? "true" : "false"}
+            aria-selected={activeTab === "display"}
             aria-controls="display-panel"
             onClick={() => setActiveTab("display")}
           >
@@ -48,7 +48,7 @@ function Settings(): React.JSX.Element {
           </button>
           <button
             role="tab"
-            aria-selected={activeTab === "radio" ? "true" : "false"}
+            aria-selected={activeTab === "radio"}
             aria-controls="radio-panel"
             onClick={() => setActiveTab("radio")}
           >
@@ -56,7 +56,7 @@ function Settings(): React.JSX.Element {
           </button>
           <button
             role="tab"
-            aria-selected={activeTab === "audio" ? "true" : "false"}
+            aria-selected={activeTab === "audio"}
             aria-controls="audio-panel"
             onClick={() => setActiveTab("audio")}
           >
@@ -64,7 +64,7 @@ function Settings(): React.JSX.Element {
           </button>
           <button
             role="tab"
-            aria-selected={activeTab === "calibration" ? "true" : "false"}
+            aria-selected={activeTab === "calibration"}
             aria-controls="calibration-panel"
             onClick={() => setActiveTab("calibration")}
           >
@@ -72,7 +72,7 @@ function Settings(): React.JSX.Element {
           </button>
           <button
             role="tab"
-            aria-selected={activeTab === "advanced" ? "true" : "false"}
+            aria-selected={activeTab === "advanced"}
             aria-controls="advanced-panel"
             onClick={() => setActiveTab("advanced")}
           >

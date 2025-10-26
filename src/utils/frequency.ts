@@ -35,5 +35,4 @@ export function formatSampleRate(rate: number): string {
   return `${rate.toFixed(0)} SPS`;
 }
 
-// Re-export robust ID generator from id.ts to avoid duplication
-export { generateBookmarkId } from "./id";
+// Consumers should import ID utilities directly from './id'

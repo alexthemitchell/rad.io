@@ -73,9 +73,12 @@ export function useHackRFDevice(): {
         // Always set the device so upstream can configure and begin streaming
         setDevice(hackRF);
       } catch (err) {
+        // TODO(rad.io#123): This is a workaround for a race condition where multiple components
+        // may try to open the device simultaneously. Once ADR-0018 (shared device context at the
+        // App level) is fully implemented, remove this workaround and use the shared context.
+        // See ADR-0018 for details.
         // Handle race condition: if device is already being opened by another component instance,
-        // just use the device once it's opened. This is a workaround until we implement
-        // a shared device context at the App level (see ADR-0018 for proper state management).
+        // just use the device once it's opened.
         if (
           err instanceof DOMException &&
           err.name === "InvalidStateError" &&

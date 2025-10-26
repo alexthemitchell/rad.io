@@ -132,7 +132,9 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
   const makeUrl = (path: string): string => {
     const url = new URL(path, window.location.href);
     // In dev, add cache-busting param to ensure fresh module after rebuilds
-    if (window.location.hostname === "localhost") {
+    const host = window.location.hostname;
+    const isLocalhost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (isLocalhost) {
       url.searchParams.set("v", String(Date.now()));
     }
     return url.toString();

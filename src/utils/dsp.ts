@@ -14,6 +14,10 @@ export type Sample = {
   Q: number;
 };
 
+// Module-level flag to avoid spamming warnings when WASM spectrogram output
+// validation fails; prefer a single warning per session.
+let spectrogramWasmDegenerateWarned = false;
+
 /**
  * Cache for pre-computed sine and cosine tables for common FFT sizes
  * Improves performance by avoiding repeated trig calculations
@@ -155,7 +159,9 @@ export function calculateFFTSync(
         }
 
         const range = max - min;
-        // Accept WASM result only if it looks non-degenerate
+        // Accept WASM result only if it looks non-degenerate. A very small
+        // dynamic range (<= ~1e-3 dB across the array) indicates a constant or
+        // zero-filled buffer, which breaks downstream detection.
         if (allFinite && wasmResult.length === fftSize && range > 1e-3) {
           performanceMonitor.measure("fft-wasm", markStart);
           return wasmResult;
@@ -276,6 +282,7 @@ export function calculateSpectrogram(
         }
 
         const range = max - min;
+        // Require a minimal dynamic range to guard against constant/zero rows.
         if (allFinite && correctShape && range > 1e-3) {
           performanceMonitor.measure("spectrogram-wasm", markStart);
           return wasmResult;
@@ -283,20 +290,12 @@ export function calculateSpectrogram(
 
         // Degenerate or suspicious output; try a safer per-row WASM FFT path first,
         // then fall back to pure JS if needed.
-        type SpectrogramFn = ((
-          samples: Sample[],
-          fftSize: number,
-        ) => Float32Array[]) & {
-          wasmDegenerateWarned?: boolean;
-        };
-        const fnRef = calculateSpectrogram as unknown as SpectrogramFn;
-        const alreadyWarned = fnRef.wasmDegenerateWarned === true;
-        if (!alreadyWarned) {
+        if (!spectrogramWasmDegenerateWarned) {
           dspLogger.warn(
             "calculateSpectrogram: Degenerate WASM spectrogram output detected; falling back to JS",
             { min, max, range, rows: wasmResult.length, fftSize },
           );
-          fnRef.wasmDegenerateWarned = true;
+          spectrogramWasmDegenerateWarned = true;
         }
 
         // Attempt a row-wise WASM FFT using the return-by-value API (calculateFFTOut)

@@ -56,7 +56,19 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
         setFrequency(freq);
 
         // Get device info (these are on the underlying USB device)
-        const usbDevice = (device as unknown as { device?: USBDevice }).device;
+        let usbDevice: USBDevice | undefined;
+        const devContainer = device as unknown as { device?: unknown };
+        const isUSBDeviceLike = (obj: unknown): obj is USBDevice => {
+          if (!obj || typeof obj !== "object") {
+            return false;
+          }
+          const rec = obj as Record<string, unknown>;
+          return "productId" in rec && "vendorId" in rec;
+        };
+        const maybe = devContainer.device;
+        if (isUSBDeviceLike(maybe)) {
+          usbDevice = maybe;
+        }
         if (usbDevice) {
           setDeviceInfo({
             productName: usbDevice.productName ?? undefined,

@@ -24,8 +24,8 @@ import React, {
   type ReactNode,
 } from "react";
 import { useUSBDevice } from "../hooks/useUSBDevice";
-import { HackRFOneAdapter } from "../models/HackRFOneAdapter";
 import { MockSDRDevice } from "../models/MockSDRDevice";
+import { RTLSDRDeviceAdapter } from "../models/RTLSDRDeviceAdapter";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { deviceLogger } from "../utils/logger";
 import type { ISDRDevice } from "../models/SDRDevice";
@@ -129,8 +129,8 @@ export function DeviceProvider({
       const deviceId = getDeviceId(usb);
 
       try {
-        // Create adapter based on device type (currently only HackRF)
-        const adapter = new HackRFOneAdapter(usb);
+  // Create adapter based on device type (temporarily use RTL-SDR adapter as generic)
+  const adapter = new RTLSDRDeviceAdapter(usb);
 
         // Open device if not already opened
         if (!usb.opened) {

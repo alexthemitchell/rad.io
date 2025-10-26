@@ -122,16 +122,17 @@ export function calculateFFT(
  * Convenience wrapper that allocates and returns the FFT magnitude (dB) array.
  *
  * Notes on memory/allocations:
- * - This variant performs an extra allocation and returns the array by value,
- *   which allows JS environments to receive the result directly without an
- *   explicit copy-back step from WASM memory. This is convenient and avoids
- *   some loader quirks where output-parameter versions are not copied to JS
- *   correctly in some toolchains.
- * - The output-parameter variant (`calculateFFT`) allows the caller to
- *   pre-allocate and reuse a buffer, which can reduce GC pressure in tight
- *   loops. Prefer `calculateFFT` in performance-critical sections where you
- *   manage buffers yourself; prefer this `calculateFFTOut` variant for
- *   simplicity and correctness when allocation costs are acceptable.
+ * - This variant performs an additional allocation of length `fftSize` and
+ *   returns the array by value, which lets JS receive results directly without
+ *   a copy-back step from WASM memory. This avoids loader quirks where the
+ *   output-parameter variant may not copy results back to JS in some toolchains.
+ * - The output-parameter variant (`calculateFFT`) avoids that allocation by
+ *   writing into a caller-provided buffer, which is preferable for tight loops
+ *   and performance-critical code paths.
+ *
+ * Guidance: prefer `calculateFFT` when you manage reusable buffers and want to
+ * minimize allocations; prefer `calculateFFTOut` for simplicity and robust
+ * interop with JS when allocation costs are acceptable.
  *
  * @see calculateFFT
  */
@@ -230,7 +231,17 @@ export function calculateSpectrogram(
   }
 }
 
-// Return-by-value variant to avoid JS↔WASM output parameter copy-back issues
+/**
+ * Convenience wrapper that allocates and returns the spectrogram buffer.
+ *
+ * Notes on memory/allocations:
+ * - Allocates a new `Float32Array(fftSize * rowCount)` and returns it by value,
+ *   which lets JS receive a copy directly from the loader. This avoids the
+ *   output-parameter copy-back issue seen with some AssemblyScript loaders.
+ * - The output-parameter variant (`calculateSpectrogram`) writes into a
+ *   caller-provided buffer and avoids the allocation, which is preferable when
+ *   repeatedly computing spectrogram rows in tight loops.
+ */
 export function calculateSpectrogramOut(
   iSamples: Float32Array,
   qSamples: Float32Array,
