@@ -19,6 +19,14 @@ export type Sample = {
 let spectrogramWasmDegenerateWarned = false;
 
 /**
+ * Reset the spectrogram WASM degenerate warning flag.
+ * Call this after a successful WASM reload or validation.
+ */
+export function resetSpectrogramWasmDegenerateWarning() {
+  spectrogramWasmDegenerateWarned = false;
+}
+
+/**
  * Cache for pre-computed sine and cosine tables for common FFT sizes
  * Improves performance by avoiding repeated trig calculations
  */
