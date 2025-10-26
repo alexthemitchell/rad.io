@@ -11,3 +11,6 @@ export * from "./performanceMonitor";
 export * from "./p25decoder";
 export * from "./logger";
 export * from "./id";
+export * from "./usb";
+export * from "./frequency";
+export * from "./e2e";
