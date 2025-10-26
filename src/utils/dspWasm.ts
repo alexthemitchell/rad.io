@@ -286,8 +286,7 @@ function buildOptionalBinding(
   mod: Partial<WasmDSPModule>,
   key: keyof WasmDSPModule,
 ): Partial<WasmDSPModule> | null {
-  const anyMod = mod as Record<string, unknown>;
-  const fn = anyMod[key as string];
+  const fn = mod[key];
   if (typeof fn === "function") {
     const bound = (fn as (...args: unknown[]) => unknown).bind(mod);
     return { [key]: bound } as Partial<WasmDSPModule>;
