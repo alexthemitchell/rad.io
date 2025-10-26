@@ -643,7 +643,6 @@ export class HackRFOne {
     };
   }
 
-
   /**
    * Start receiving IQ samples from the HackRF device
    *
