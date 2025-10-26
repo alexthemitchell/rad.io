@@ -88,6 +88,25 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       expect(await adapter.getSampleRate()).toBe(10_000_000);
     });
 
+    it("validates initialization lifecycle through open/close", async () => {
+      const device = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      // Initialize with sample rate
+      await adapter.setSampleRate(20_000_000);
+      expect(await adapter.getSampleRate()).toBe(20_000_000);
+
+      // Close device - this should reset initialization state
+      await adapter.close();
+
+      // After close, adapter should require re-initialization
+      await expect(
+        adapter.receive(() => {
+          /* no-op */
+        }),
+      ).rejects.toThrow(/not initialized/);
+    });
+
     it("resets initialization state on close()", async () => {
       const device = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
