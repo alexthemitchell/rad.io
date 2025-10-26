@@ -234,21 +234,23 @@ export class CanvasWaterfall implements Renderer {
       gradient.addColorStop(1 - i / 255, `rgb(${r}, ${g}, ${b})`);
     }
 
-    /* eslint-disable no-param-reassign */
+    // eslint-disable-next-line no-param-reassign
     ctx.fillStyle = gradient;
     ctx.fillRect(barX, barY, barWidth, barHeight);
 
     // Draw border
+    // eslint-disable-next-line no-param-reassign
     ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
     ctx.lineWidth = 1;
     ctx.strokeRect(barX, barY, barWidth, barHeight);
 
     // Labels
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    // eslint-disable-next-line no-param-reassign
     ctx.font = "10px monospace";
+    // eslint-disable-next-line no-param-reassign
     ctx.textAlign = "left";
+    // eslint-disable-next-line no-param-reassign
     ctx.textBaseline = "middle";
-    /* eslint-enable no-param-reassign */
     ctx.fillText("High", barX + barWidth + 5, barY);
     ctx.fillText("Low", barX + barWidth + 5, barY + barHeight);
   }
