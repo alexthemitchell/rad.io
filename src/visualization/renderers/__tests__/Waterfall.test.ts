@@ -65,6 +65,78 @@ describe("CanvasWaterfall", () => {
     expect(success).toBe(false);
   });
 
+  it("should handle frequency range subset", async () => {
+    await renderer.initialize(canvas);
+
+    const frames: Float32Array[] = [];
+    for (let f = 0; f < 30; f++) {
+      const frame = new Float32Array(1024);
+      for (let i = 0; i < frame.length; i++) {
+        frame[i] = -50 - i * 0.01 + f * 0.5;
+      }
+      frames.push(frame);
+    }
+
+    const data: WaterfallData = {
+      frames,
+      freqMin: 100,
+      freqMax: 900,
+    };
+
+    const success = renderer.render(data);
+    expect(success).toBe(true);
+  });
+
+  it("should handle single frame", async () => {
+    await renderer.initialize(canvas);
+
+    const frame = new Float32Array(512);
+    for (let i = 0; i < frame.length; i++) {
+      frame[i] = -60 + Math.random() * 40;
+    }
+
+    const data: WaterfallData = {
+      frames: [frame],
+      freqMin: 0,
+      freqMax: 512,
+    };
+
+    const success = renderer.render(data);
+    expect(success).toBe(true);
+  });
+
+  it("should handle data with some invalid values", async () => {
+    await renderer.initialize(canvas);
+
+    const frames: Float32Array[] = [];
+    const frame = new Float32Array(1024);
+    // Mix of valid and invalid values
+    for (let i = 0; i < frame.length; i++) {
+      frame[i] = i % 10 === 0 ? NaN : -60 + i * 0.01;
+    }
+    frames.push(frame);
+
+    const data: WaterfallData = {
+      frames,
+      freqMin: 0,
+      freqMax: 1024,
+    };
+
+    const success = renderer.render(data);
+    expect(success).toBe(true); // Should handle gracefully
+  });
+
+  it("should not render before initialization", () => {
+    const data: WaterfallData = {
+      frames: [new Float32Array(100)],
+      freqMin: 0,
+      freqMax: 100,
+    };
+
+    const success = renderer.render(data);
+    expect(success).toBe(false);
+  });
+
   it("should cleanup safely", async () => {
     await renderer.initialize(canvas);
     renderer.cleanup();

@@ -6,7 +6,7 @@
 import type { Renderer, WaterfallData } from "./types";
 
 // Viridis colormap control points (9 stops)
-const VIRIDIS_STOPS = [
+const VIRIDIS_STOPS: ReadonlyArray<readonly [number, number, number]> = [
   [68, 1, 84],
   [72, 35, 116],
   [64, 67, 135],
@@ -198,11 +198,8 @@ export class CanvasWaterfall implements Renderer {
       const c0 = VIRIDIS_STOPS[idx] ?? [0, 0, 0];
       const c1 = VIRIDIS_STOPS[Math.min(idx + 1, numStops - 1)] ?? [0, 0, 0];
 
-      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       lut[i * 3 + 0] = Math.round(c0[0] + (c1[0] - c0[0]) * frac);
-      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       lut[i * 3 + 1] = Math.round(c0[1] + (c1[1] - c0[1]) * frac);
-      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       lut[i * 3 + 2] = Math.round(c0[2] + (c1[2] - c0[2]) * frac);
     }
 
@@ -240,6 +237,7 @@ export class CanvasWaterfall implements Renderer {
     // Draw border
     // eslint-disable-next-line no-param-reassign
     ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+    // eslint-disable-next-line no-param-reassign
     ctx.lineWidth = 1;
     ctx.strokeRect(barX, barY, barWidth, barHeight);
 

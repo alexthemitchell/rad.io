@@ -90,8 +90,12 @@ export class WebGLWaterfall implements Renderer {
         }));
     }
 
-    // Store GL context (TypeScript flow analysis ensures non-null)
-    this.gl = gl as GL;
+    if (!gl) {
+      return false;
+    }
+
+    // Store GL context
+    this.gl = gl;
     this.dpr = window.devicePixelRatio || 1;
 
     // Compile shaders
@@ -104,6 +108,8 @@ export class WebGLWaterfall implements Renderer {
 
     // Link program
     const program = gl.createProgram();
+    // WebGL spec allows null return in error conditions despite TypeScript types
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!program) {
       return false;
     }
@@ -327,9 +333,9 @@ export class WebGLWaterfall implements Renderer {
     }
 
     const texture = gl.createTexture();
-    // TypeScript knows texture is non-null here since gl is non-null
-    // But we keep the check for runtime safety
-    if (texture === null) {
+    // WebGL spec allows null return in error conditions despite TypeScript types
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!texture) {
       return null;
     }
 

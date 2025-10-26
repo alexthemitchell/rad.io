@@ -46,13 +46,44 @@ describe("CanvasSpectrum", () => {
   });
 
   it("should handle empty data when initialized", async () => {
-    const initSuccess = await renderer.initialize(canvas);
-    if (!initSuccess) {
-      return;
-    }
+    await renderer.initialize(canvas);
 
     const data: SpectrumData = {
       magnitudes: new Float32Array(0),
+      freqMin: 0,
+      freqMax: 1024,
+    };
+
+    const success = renderer.render(data);
+    expect(success).toBe(false);
+  });
+
+  it("should handle frequency range subset", async () => {
+    await renderer.initialize(canvas);
+
+    const magnitudes = new Float32Array(1024);
+    for (let i = 0; i < magnitudes.length; i++) {
+      magnitudes[i] = -50 - i * 0.01;
+    }
+
+    const data: SpectrumData = {
+      magnitudes,
+      freqMin: 100,
+      freqMax: 900,
+    };
+
+    const success = renderer.render(data);
+    expect(success).toBe(true);
+  });
+
+  it("should handle data with invalid values", async () => {
+    await renderer.initialize(canvas);
+
+    const magnitudes = new Float32Array(1024);
+    magnitudes.fill(NaN);
+
+    const data: SpectrumData = {
+      magnitudes,
       freqMin: 0,
       freqMax: 1024,
     };
@@ -65,5 +96,16 @@ describe("CanvasSpectrum", () => {
     await renderer.initialize(canvas);
     renderer.cleanup();
     expect(renderer.isReady()).toBe(false);
+  });
+
+  it("should not render before initialization", () => {
+    const data: SpectrumData = {
+      magnitudes: new Float32Array(100),
+      freqMin: 0,
+      freqMax: 100,
+    };
+
+    const success = renderer.render(data);
+    expect(success).toBe(false);
   });
 });

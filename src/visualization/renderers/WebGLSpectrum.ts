@@ -52,6 +52,8 @@ export class WebGLSpectrum implements Renderer {
     });
 
     // Fallback to WebGL1 if WebGL2 not available
+    // Using if-statement pattern for clarity over ??= operator
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!gl) {
       gl = (canvas.getContext("webgl", {
         alpha: false,
@@ -64,8 +66,12 @@ export class WebGLSpectrum implements Renderer {
         }));
     }
 
-    // Store GL context (TypeScript flow analysis ensures non-null)
-    this.gl = gl as GL;
+    if (!gl) {
+      return false;
+    }
+
+    // Store GL context
+    this.gl = gl;
     this.dpr = window.devicePixelRatio || 1;
 
     // Compile shaders
@@ -78,7 +84,8 @@ export class WebGLSpectrum implements Renderer {
 
     // Link program
     const program = gl.createProgram();
-    
+    // WebGL spec allows null return in error conditions despite TypeScript types
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!program) {
       return false;
     }
