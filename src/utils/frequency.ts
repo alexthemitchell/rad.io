@@ -34,4 +34,3 @@ export function formatSampleRate(rate: number): string {
   }
   return `${rate.toFixed(0)} SPS`;
 }
-

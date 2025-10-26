@@ -83,12 +83,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   const searchableBookmarks = useMemo(() => {
     return bookmarks.map((b) => ({
       bookmark: b,
-      searchText: [
-        b.name,
-        ...b.tags,
-        b.notes,
-        formatFrequency(b.frequency),
-      ]
+      searchText: [b.name, ...b.tags, b.notes, formatFrequency(b.frequency)]
         .join(" ")
         .toLowerCase(),
     }));
@@ -214,7 +209,9 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     saveBookmarks(newBookmarks);
 
     // Navigate to Monitor page with frequency parameter
-    void navigate(`/monitor?frequency=${encodeURIComponent(bookmark.frequency)}`);
+    void navigate(
+      `/monitor?frequency=${encodeURIComponent(bookmark.frequency)}`,
+    );
     announce(
       `Tuning to ${bookmark.name} at ${formatFrequency(bookmark.frequency)}`,
     );
