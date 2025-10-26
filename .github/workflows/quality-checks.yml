@@ -193,7 +193,7 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Build webpack bundle
-        run: webpack --mode production
+        run: npm run build:prod
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
