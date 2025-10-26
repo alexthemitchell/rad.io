@@ -117,6 +117,47 @@ describe("HackRF Error Handling and Recovery", () => {
       expect(status.frequency).toBe(100_000_000);
       expect(status.ampEnabled).toBe(true);
     });
+
+    it("reports device state flags correctly", async () => {
+      const device = createMockUSBDevice();
+      const hackrf = new HackRFOne(device);
+      await hackrf.setSampleRate(20_000_000);
+
+      let status = hackrf.getConfigurationStatus();
+      
+      // Initially not streaming, not closing, is open
+      expect(status.isOpen).toBe(true);
+      expect(status.isStreaming).toBe(false);
+      expect(status.isClosing).toBe(false);
+      
+      // Simulate streaming
+      (hackrf as any).streaming = true;
+      status = hackrf.getConfigurationStatus();
+      expect(status.isStreaming).toBe(true);
+      
+      // Simulate closing
+      (hackrf as any).closing = true;
+      status = hackrf.getConfigurationStatus();
+      expect(status.isClosing).toBe(true);
+      
+      // Simulate device not open
+      (device as any).opened = false;
+      status = hackrf.getConfigurationStatus();
+      expect(status.isOpen).toBe(false);
+    });
+
+    it("returns null for unset configuration values", () => {
+      const device = createMockUSBDevice();
+      const hackrf = new HackRFOne(device);
+
+      const status = hackrf.getConfigurationStatus();
+
+      expect(status.sampleRate).toBeNull();
+      expect(status.frequency).toBeNull();
+      expect(status.bandwidth).toBeNull();
+      expect(status.lnaGain).toBeNull();
+      expect(status.ampEnabled).toBe(false); // Default value
+    });
   });
 
   describe("Pre-Streaming Validation", () => {
@@ -161,6 +202,37 @@ describe("HackRF Error Handling and Recovery", () => {
 
       expect(validation.ready).toBe(false);
       expect(validation.issues).toContain("Device is closing");
+    });
+
+    it("detects when device is already streaming", async () => {
+      const device = createMockUSBDevice();
+      const hackrf = new HackRFOne(device);
+      await hackrf.setSampleRate(20_000_000);
+
+      // Simulate streaming state
+      (hackrf as any).streaming = true;
+
+      const validation = hackrf.validateReadyForStreaming();
+
+      expect(validation.ready).toBe(false);
+      expect(validation.issues).toContain("Device is already streaming");
+    });
+
+    it("detects multiple issues simultaneously", () => {
+      const device = createMockUSBDevice();
+      (device as any).opened = false;
+      const hackrf = new HackRFOne(device);
+      (hackrf as any).closing = true;
+
+      const validation = hackrf.validateReadyForStreaming();
+
+      expect(validation.ready).toBe(false);
+      expect(validation.issues.length).toBeGreaterThan(1);
+      expect(validation.issues).toContain("Device is not open");
+      expect(validation.issues).toContain("Device is closing");
+      expect(validation.issues).toContainEqual(
+        expect.stringMatching(/sample rate not configured/i),
+      );
     });
   });
 
