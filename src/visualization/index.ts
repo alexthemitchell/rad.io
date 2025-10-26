@@ -16,6 +16,7 @@ export type {
 // Implementations
 export { SimulatedSource } from "./SimulatedSource";
 export type { SimulatedSourceConfig } from "./SimulatedSource";
+export { ReplaySource } from "./ReplaySource";
 
 // Visualization Components
 export { default as IQConstellation } from "./components/IQConstellation";

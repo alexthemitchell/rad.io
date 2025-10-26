@@ -100,6 +100,48 @@ await source.startStreaming((samples) => {
 await source.stopStreaming();
 ```
 
+### ReplaySource
+
+A data source implementation for deterministic playback of recorded IQ data. Perfect for testing, demos, and analyzing captured signals.
+
+**Features:**
+
+- Plays back recorded IQ data with proper timing
+- Pause/resume/seek functionality
+- Maintains recording metadata
+- Deterministic for repeatable tests
+
+**Example Usage:**
+
+```typescript
+import { ReplaySource } from "./visualization";
+import { loadRecordingFromFile } from "../utils/iqRecorder";
+
+// Load a recording from file
+const recording = await loadRecordingFromFile(file);
+
+// Create replay source
+const source = new ReplaySource(recording, 32768);
+
+// Start playback
+await source.startStreaming((samples) => {
+  // Handle samples, same interface as SimulatedSource
+  console.log(`Received ${samples.length} samples`);
+});
+
+// Playback controls
+source.pause();
+source.resume();
+source.seek(0.5); // Seek to 50% position
+
+// Get metadata
+const metadata = source.getMetadata();
+console.log(`Sample rate: ${metadata.sampleRate} Hz`);
+
+// Stop when done
+await source.stopStreaming();
+```
+
 ## Demo Page
 
 Visit `/demo` in the application to see all visualizations working with SimulatedSource. The demo includes:
@@ -114,6 +156,7 @@ Visit `/demo` in the application to see all visualizations working with Simulate
 The module includes comprehensive tests:
 
 - **SimulatedSource**: 14 tests covering all signal patterns and lifecycle
+- **ReplaySource**: 20 tests covering playback, controls, and edge cases
 - **Component Tests**: Existing tests maintained for backward compatibility
 
 Run tests:
@@ -148,7 +191,8 @@ The clean interface design enables:
 ```text
 src/visualization/
 ├── interfaces.ts              # Core type definitions
-├── SimulatedSource.ts         # Test data source implementation
+├── SimulatedSource.ts         # Simulated data source for testing
+├── ReplaySource.ts            # Recorded data playback source
 ├── index.ts                   # Module exports
 ├── components/                # Visualization components
 │   ├── IQConstellation.tsx
@@ -156,7 +200,8 @@ src/visualization/
 │   ├── WaveformVisualizer.tsx
 │   └── FFTChart.tsx
 └── __tests__/                 # Test files
-    └── SimulatedSource.test.ts
+    ├── SimulatedSource.test.ts
+    └── ReplaySource.test.ts
 ```
 
 ## Contributing
