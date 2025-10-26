@@ -53,7 +53,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
           /* no-op */
         }),
       ).rejects.toThrow(/not initialized/);
-      
+
       // Verify the error message is helpful
       let errorCaught = false;
       try {
@@ -82,7 +82,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
       // After setSampleRate, we just verify it doesn't throw the validation error
       await adapter.setSampleRate(10_000_000);
-      
+
       // The isInitialized flag is now set, proven by not throwing validation error
       // We don't need to actually call receive() to verify this
       expect(await adapter.getSampleRate()).toBe(10_000_000);
