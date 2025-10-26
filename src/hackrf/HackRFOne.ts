@@ -759,8 +759,12 @@ export class HackRFOne {
 
     let iterationCount = 0;
     let consecutiveTimeouts = 0;
-    const TIMEOUT_MS = 5000; // 5 second timeout per transfer
-    const MAX_CONSECUTIVE_TIMEOUTS = 3; // Max failures before giving up
+    // 5 second timeout per transfer: Chosen to allow for USB latency and HackRF device initialization.
+    // Shorter timeouts may cause premature failures on slower systems or during device startup.
+    const TIMEOUT_MS = 5000;
+    // Max failures before giving up: 3 consecutive timeouts indicate a persistent hardware issue.
+    // This prevents infinite retry loops and allows for graceful recovery or user notification.
+    const MAX_CONSECUTIVE_TIMEOUTS = 3;
 
     // Main streaming loop - continues until streaming flag is cleared
     while (this.streaming as boolean) {
