@@ -397,7 +397,7 @@ Some code paths are difficult to test due to browser API limitations:
 
 Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
-```
+```text
 <type>(<scope>): <subject>
 
 [optional body]
@@ -444,18 +444,18 @@ test(dsp): add edge case tests for waveform calculation
 
 Before submitting a PR:
 
-- [ ] Code follows style guidelines
-- [ ] Added tests for new functionality
-- [ ] All tests pass (`npm test`)
-- [ ] Linting passes (`npm run lint`)
-- [ ] Formatting is correct (`npm run format:check`)
-- [ ] Type checking passes (`npm run type-check`)
-- [ ] Build succeeds (`npm run build`)
-- [ ] Self-assessment passed (`npm run self-assess`) - optional but recommended
-- [ ] Documentation updated if needed
-- [ ] Commit messages follow convention
-- [ ] No unnecessary console statements
-- [ ] **Accessibility checklist completed** (see [.github/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md))
+- ☐ Code follows style guidelines
+- ☐ Added tests for new functionality
+- ☐ All tests pass (`npm test`)
+- ☐ Linting passes (`npm run lint`)
+- ☐ Formatting is correct (`npm run format:check`)
+- ☐ Type checking passes (`npm run type-check`)
+- ☐ Build succeeds (`npm run build`)
+- ☐ Self-assessment passed (`npm run self-assess`) - optional but recommended
+- ☐ Documentation updated if needed
+- ☐ Commit messages follow convention
+- ☐ No unnecessary console statements
+- ☐ **Accessibility checklist completed** (see [.github/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md))
 
 ### Accessibility Requirements
 

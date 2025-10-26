@@ -38,13 +38,9 @@ function Decode(): React.JSX.Element {
   useEffect(() => {
     const interval = setInterval(() => {
       setSignalQuality(Math.random() * 100);
-      const statuses: Array<"searching" | "locked" | "lost"> = [
-        "searching",
-        "locked",
-        "lost",
-      ];
-      const randomStatus =
-        statuses[Math.floor(Math.random() * statuses.length)];
+      const statuses = ["searching", "locked", "lost"] as const;
+      const idx = Math.floor(Math.random() * statuses.length);
+      const randomStatus = statuses[idx] ?? "searching";
       setSyncStatus(randomStatus);
     }, 2000);
 

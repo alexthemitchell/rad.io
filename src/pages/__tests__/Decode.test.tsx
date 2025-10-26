@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import Decode from "../Decode";
 
@@ -48,5 +48,26 @@ describe("Decode", () => {
       </BrowserRouter>,
     );
     expect(screen.getByLabelText(/decoder controls/i)).toBeInTheDocument();
+  });
+
+  it("updates Sync Status on interval", async () => {
+    jest.useFakeTimers();
+    const spy = jest.spyOn(Math, "random").mockReturnValue(0.7); // idx -> 2 -> "lost"
+
+    render(
+      <BrowserRouter>
+        <Decode />
+      </BrowserRouter>,
+    );
+
+    // Initial render shows default status; advance timer to trigger interval update
+    jest.advanceTimersByTime(2000);
+
+    // Expect one of the statuses; with mocked Math.random we expect "lost"
+    expect(screen.getByText(/Sync Status/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/lost/i)).toBeInTheDocument());
+
+    spy.mockRestore();
+    jest.useRealTimers();
   });
 });

@@ -241,6 +241,10 @@ export function calculateSpectrogram(
  * - The output-parameter variant (`calculateSpectrogram`) writes into a
  *   caller-provided buffer and avoids the allocation, which is preferable when
  *   repeatedly computing spectrogram rows in tight loops.
+ *
+ * Return format:
+ * - Returns a flat Float32Array of length `rowCount * fftSize` in row-major
+ *   order. Row i occupies indices `[i*fftSize, (i+1)*fftSize)`.
  */
 export function calculateSpectrogramOut(
   iSamples: Float32Array,

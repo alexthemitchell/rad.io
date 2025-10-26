@@ -126,4 +126,18 @@ describe("Settings", () => {
     const radioTab = screen.getByRole("tab", { name: /radio/i });
     expect(radioTab).toHaveAttribute("aria-selected", "false");
   });
+
+  it("disables Save/Reset actions with aria-disabled", () => {
+    render(
+      <BrowserRouter>
+        <Settings />
+      </BrowserRouter>,
+    );
+    const save = screen.getByRole("button", { name: /save settings/i });
+    const reset = screen.getByRole("button", { name: /reset to defaults/i });
+    expect(save).toBeDisabled();
+    expect(reset).toBeDisabled();
+    expect(save).toHaveAttribute("aria-disabled", "true");
+    expect(reset).toHaveAttribute("aria-disabled", "true");
+  });
 });

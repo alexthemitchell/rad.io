@@ -167,9 +167,11 @@ export function calculateFFTSync(
         }
 
         const range = max - min;
-        // Accept WASM result only if it looks non-degenerate. A very small
-        // dynamic range (<= ~1e-3 dB across the array) indicates a constant or
-        // zero-filled buffer, which breaks downstream detection.
+        // Accept WASM result only if it looks non-degenerate.
+        // Rationale: A very small dynamic range indicates constant/zero output.
+        // We use > 1e-3 dB as an inexpensive, conservative heuristic threshold.
+        // This is orders of magnitude below any visually meaningful spectrum
+        // variation and avoids false negatives while catching zero/constant arrays.
         if (allFinite && wasmResult.length === fftSize && range > 1e-3) {
           performanceMonitor.measure("fft-wasm", markStart);
           return wasmResult;
@@ -297,6 +299,8 @@ export function calculateSpectrogram(
 
         const range = max - min;
         // Require a minimal dynamic range to guard against constant/zero rows.
+        // See note above: 1e-3 dB threshold chosen as a conservative heuristic
+        // to detect degenerate outputs while avoiding measurable spectra.
         if (allFinite && correctShape && range > 1e-3) {
           performanceMonitor.measure("spectrogram-wasm", markStart);
           return wasmResult;
@@ -396,6 +400,7 @@ function attemptRowWiseWasmFFT(
     rows.push(rowFFT);
   }
   const gRange = gMax - gMin;
+  // Same conservative heuristic threshold as above.
   return ok && gRange > 1e-3 ? rows : null;
 }
 

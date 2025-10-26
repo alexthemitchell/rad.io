@@ -41,7 +41,10 @@ export interface WasmDSPModule {
     output: Float32Array,
     rowCount: number,
   ): void;
-  // Newer API: returns a flat Float32Array of length rowCount*fftSize
+  /**
+   * Newer API: returns a flat Float32Array in row-major order.
+   * Length is rowCount * fftSize; row i occupies indices [i*fftSize, (i+1)*fftSize).
+   */
   calculateSpectrogramOut?: (
     iSamples: Float32Array,
     qSamples: Float32Array,
@@ -267,7 +270,7 @@ export function isWasmAvailable(): boolean {
 export function isWasmRuntimeEnabled(): boolean {
   try {
     // In non-browser environments (tests, SSR), default to enabled
-    if (typeof window === "undefined" || !("localStorage" in window)) {
+    if (!hasLocalStorage()) {
       return true;
     }
     const v = window.localStorage.getItem("radio.wasm.enabled");
@@ -294,7 +297,7 @@ export function isWasmValidationEnabled(): boolean {
   try {
     // Node/test or SSR: default to enabled so tests can exercise validation
     const isProd = process.env["NODE_ENV"] === "production";
-    if (typeof window === "undefined" || !("localStorage" in window)) {
+    if (!hasLocalStorage()) {
       return !isProd;
     }
     const v = window.localStorage.getItem("radio.wasm.validate");
@@ -305,6 +308,25 @@ export function isWasmValidationEnabled(): boolean {
     return v !== "false";
   } catch {
     return true;
+  }
+}
+
+/**
+ * Utility: Detect whether window.localStorage is available.
+ * Guards against SSR/test environments and browser privacy modes.
+ */
+function hasLocalStorage(): boolean {
+  try {
+    if (typeof window === "undefined" || !("localStorage" in window)) {
+      return false;
+    }
+    // Basic write/read test to catch disabled storage
+    const k = "__rad_io_ls_check__";
+    window.localStorage.setItem(k, "1");
+    window.localStorage.removeItem(k);
+    return true;
+  } catch {
+    return false;
   }
 }
 

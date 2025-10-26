@@ -120,4 +120,32 @@ describe("Devices", () => {
     render(<Devices />);
     expect(screen.getByText(/https/i)).toBeInTheDocument();
   });
+
+  it("displays connected USB device info including USB ID when available", async () => {
+    const { useDevice } = require("../../contexts/DeviceContext");
+    const fakeUSB = {
+      productName: "HackRF One",
+      serialNumber: "ABC123",
+      vendorId: 0x1d50,
+      productId: 0x6089,
+    };
+    const fakeDevice = {
+      isOpen: () => true,
+      getSampleRate: jest.fn().mockResolvedValue(2_000_000),
+      getFrequency: jest.fn().mockResolvedValue(100_000_000),
+      // expose underlying USB device via `device` property
+      device: fakeUSB,
+    };
+    useDevice.mockReturnValue({
+      device: fakeDevice,
+      initialize: jest.fn(),
+      cleanup: jest.fn(),
+      isCheckingPaired: false,
+    });
+
+    render(<Devices />);
+
+    // USB ID should be displayed as hex 1d50:6089 after async info loads
+    expect(await screen.findByText(/1d50:6089/i)).toBeInTheDocument();
+  });
 });
