@@ -241,7 +241,6 @@ rad.io enforces strict coverage thresholds to maintain code quality and prevent 
 
 - `src/utils/audioStream.ts` (85%) - Real-time audio processing
 - `src/utils/iqRecorder.ts` (75%) - Recording and playback
-- `src/utils/speechRecognition.ts` (75%) - Speech-to-text integration
 - `src/utils/p25decoder.ts` (95%) - P25 protocol decoder
 - `src/utils/rdsDecoder.ts` (55%) - RDS/RBDS data decoder
 - `src/utils/tmcDecoder.ts` (85%) - Traffic message decoder

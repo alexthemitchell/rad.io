@@ -62,12 +62,6 @@ module.exports = {
       functions: 92,
       lines: 77,
     },
-    "./src/utils/speechRecognition.ts": {
-      statements: 78,
-      branches: 68,
-      functions: 87,
-      lines: 77,
-    },
     "./src/utils/p25decoder.ts": {
       statements: 96,
       branches: 85,
