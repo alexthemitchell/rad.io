@@ -643,63 +643,22 @@ export class HackRFOne {
     };
   }
 
-  // New method to start reception with an optional data callback
-  /**
-   * Starts receiving IQ samples from the HackRF device.
-   *
-   * **Prerequisites**:
-   * - Device must be open (call `open()` first)
-   * - Sample rate MUST be configured (call `setSampleRate()` first)
-   * - Frequency should be set (call `setFrequency()` first)
-   *
-   * This method:
-   * 1. Validates device health (open, not closing, sample rate set)
-   * 2. Sets transceiver mode to RECEIVE
-   * 3. Enters streaming loop with timeout protection (5s per transfer)
-   * 4. Calls callback with received IQ data (Int8 format, interleaved I/Q)
-   * 5. Attempts automatic recovery after 3 consecutive timeouts
-   *
-   * **Timeout Protection**: If USB transfers hang (device not responding),
-   * automatic recovery attempts reset and reconfiguration after 3 failures.
-   *
-   * **To stop streaming**: Call `stopRx()` from another context.
-   *
-   * @param callback - Optional callback invoked with each received data chunk.
-   *                   Data is Int8Array in DataView, interleaved I/Q samples.
-   *                   Call `parseSamples()` to convert to IQSample[] format.
-   *
-   * @throws {Error} If device is not open
-   * @throws {Error} If device is closing
-   * @throws {Error} If sample rate not configured (critical requirement)
-   * @throws {Error} If automatic recovery fails after timeouts
-   *
-   * @example
-   * ```typescript
-   * await device.open();
-   * await device.setSampleRate(20_000_000);  // REQUIRED!
-   * await device.setFrequency(100_000_000);
-   *
-   * await device.receive((data) => {
-   *   const samples = parseSamples(data);  // Convert to IQSample[]
-   *   processSamples(samples);
-   * });
-   * ```
-   *
-   * @see {@link setSampleRate} - MUST be called before receive
-   * @see {@link stopRx} - Stop streaming
-   * @see {@link validateDeviceHealth} - Health checks performed
-   * @see {@link fastRecovery} - Automatic recovery after timeouts
-   */
+
   /**
    * Start receiving IQ samples from the HackRF device
+   *
+   * ⚠️ **CRITICAL REQUIREMENT**: Sample rate MUST be configured before calling
+   * this method. Without it, the device hangs indefinitely at transferIn() with
+   * no error message. This is the #1 cause of "device not responding" issues.
    *
    * Enters receive mode and begins a continuous streaming loop that reads
    * data from the device via bulk USB transfers. Each transfer receives up
    * to 4KB of IQ sample data.
    *
-   * **Critical Requirements:**
-   * - Sample rate MUST be configured before calling this method
-   * - Frequency should be configured before calling this method
+   * **Prerequisites:**
+   * - Device must be open (call `open()` first)
+   * - Sample rate MUST be configured (call `setSampleRate()` first) ⚠️
+   * - Frequency should be configured (call `setFrequency()` first)
    * - Device must be in a healthy state (open, not closing)
    *
    * **Streaming Loop Details:**
@@ -714,14 +673,19 @@ export class HackRFOne {
    * - Other errors: Propagated immediately to caller
    *
    * @param callback - Called for each received data chunk with raw DataView
+   *                   containing Int8 interleaved I/Q samples. Use parseSamples()
+   *                   to convert to IQSample[] format.
    * @returns Promise that resolves when streaming stops or encounters error
-   * @throws {Error} If device is not properly configured (e.g., no sample rate)
+   * @throws {Error} If device is not open
+   * @throws {Error} If device is closing
+   * @throws {Error} If sample rate not configured (device will hang indefinitely)
    * @throws {Error} If device experiences repeated timeouts (hardware issue)
    *
    * @example
    * ```typescript
    * // Configure device first (CRITICAL!)
-   * await hackrf.setSampleRate(20_000_000); // MUST be first
+   * await hackrf.open();
+   * await hackrf.setSampleRate(20_000_000); // ⚠️ MUST be first
    * await hackrf.setFrequency(100_000_000);
    *
    * // Start streaming
@@ -739,6 +703,15 @@ export class HackRFOne {
    * The streaming loop runs continuously until `stopRx()` is called or an
    * error occurs. Memory management is handled automatically through buffer
    * tracking and cleanup.
+   *
+   * Without sample rate configuration, the HackRF firmware enters a waiting
+   * state and transferIn() will hang forever with no error. See the
+   * initialization guide (docs/hackrf-initialization-guide.md) for details.
+   *
+   * @see {@link setSampleRate} - MUST be called before receive
+   * @see {@link stopRx} - Stop streaming
+   * @see {@link validateDeviceHealth} - Health checks performed
+   * @see {@link fastRecovery} - Automatic recovery after timeouts
    */
   async receive(callback?: (data: DataView) => void): Promise<void> {
     // Validate device health before streaming

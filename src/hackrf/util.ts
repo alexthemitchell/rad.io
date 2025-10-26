@@ -52,9 +52,11 @@ export const max2837Ft = [
 /**
  * Compute nearest baseband filter bandwidth by rounding down
  *
- * Finds the nearest MAX2837 filter bandwidth that is less than or equal to
- * the requested bandwidth. This is used for manual filter selection to ensure
- * the filter doesn't exceed the requested bandwidth.
+ * Finds the nearest MAX2837 filter bandwidth that is strictly less than
+ * the requested bandwidth. When an exact match exists in the filter table,
+ * the function rounds down to the next lower bandwidth. This is used for
+ * manual filter selection to ensure the filter doesn't exceed the requested
+ * bandwidth.
  *
  * @param bandwidthHz - Desired bandwidth in Hz (must be valid uint32)
  * @returns Selected bandwidth from MAX2837 filter table, or undefined if invalid
@@ -62,9 +64,13 @@ export const max2837Ft = [
  *
  * @example
  * ```typescript
- * // Request 4 MHz bandwidth, gets 3.5 MHz (rounds down)
- * const bw = computeBasebandFilterBwRoundDownLt(4_000_000);
+ * // Request 5 MHz bandwidth (exact match), gets 3.5 MHz (rounds down)
+ * const bw = computeBasebandFilterBwRoundDownLt(5_000_000);
  * console.log(bw); // 3500000
+ *
+ * // Request 4 MHz bandwidth (between values), gets 3.5 MHz (rounds down)
+ * const bw2 = computeBasebandFilterBwRoundDownLt(4_000_000);
+ * console.log(bw2); // 3500000
  * ```
  */
 export function computeBasebandFilterBwRoundDownLt(
