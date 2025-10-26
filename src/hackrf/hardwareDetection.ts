@@ -63,8 +63,8 @@ export async function isHackRFDeviceConnected(): Promise<boolean> {
  * @returns true if streaming succeeds, false otherwise
  */
 export async function testHackRFStreaming(
-  frequencyHz: number = 100_000_000,
-  sampleCount: number = 100_000,
+  frequencyHz = 100_000_000,
+  sampleCount = 100_000,
 ): Promise<boolean> {
   try {
     // Use hackrf_transfer to capture samples to /dev/null
@@ -111,25 +111,25 @@ export async function getHackRFDeviceInfo(): Promise<{
     } = {};
 
     // Extract serial number
-    const serialMatch = stdout.match(/Serial number: (0x[0-9a-f]+)/i);
+    const serialMatch = /Serial number: (0x[0-9a-f]+)/i.exec(stdout);
     if (serialMatch) {
       info.serialNumber = serialMatch[1];
     }
 
     // Extract board ID
-    const boardMatch = stdout.match(/Board ID Number: (\d+)/i);
+    const boardMatch = /Board ID Number: (\d+)/i.exec(stdout);
     if (boardMatch) {
       info.boardId = boardMatch[1];
     }
 
     // Extract firmware version
-    const firmwareMatch = stdout.match(/Firmware Version: ([\d.]+)/i);
+    const firmwareMatch = /Firmware Version: ([\d.]+)/i.exec(stdout);
     if (firmwareMatch) {
       info.firmwareVersion = firmwareMatch[1];
     }
 
     // Extract part ID
-    const partMatch = stdout.match(/Part ID Number: (0x[0-9a-f]+)/i);
+    const partMatch = /Part ID Number: (0x[0-9a-f]+)/i.exec(stdout);
     if (partMatch) {
       info.partId = partMatch[1];
     }

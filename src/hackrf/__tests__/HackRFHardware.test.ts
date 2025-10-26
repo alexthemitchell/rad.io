@@ -22,7 +22,7 @@ import {
   testHackRFStreaming,
   getHackRFDeviceInfo,
   skipIfNoHardware,
-} from "./hardwareDetection";
+} from "../hardwareDetection";
 
 describe("HackRF Hardware Tests", () => {
   let shouldSkip: boolean;
