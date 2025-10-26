@@ -45,9 +45,7 @@ function Decode(): React.JSX.Element {
       ];
       const randomStatus =
         statuses[Math.floor(Math.random() * statuses.length)];
-      if (randomStatus) {
-        setSyncStatus(randomStatus);
-      }
+      setSyncStatus(randomStatus);
     }, 2000);
 
     return (): void => clearInterval(interval);
