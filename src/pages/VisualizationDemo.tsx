@@ -8,9 +8,9 @@ import { SimulatedSource } from "../visualization";
 import FFTChart from "../visualization/components/FFTChart";
 import IQConstellation from "../visualization/components/IQConstellation";
 import WaveformVisualizer from "../visualization/components/WaveformVisualizer";
-import type { ReactElement } from "react";
 import type { Sample } from "../utils/dsp";
 import type { SimulatedSourceConfig } from "../visualization";
+import type { ReactElement } from "react";
 
 /**
  * Demo page showing all visualization components with SimulatedSource

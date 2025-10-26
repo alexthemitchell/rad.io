@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import FFTChart from "../visualization/components/FFTChart";
 import AudioControls from "../components/AudioControls";
 import BandwidthSelector from "../components/BandwidthSelector";
 import Card from "../components/Card";
@@ -39,6 +38,7 @@ import {
   type IQRecording,
 } from "../utils/iqRecorder";
 import { performanceMonitor } from "../utils/performanceMonitor";
+import FFTChart from "../visualization/components/FFTChart";
 import type { RDSStationData, type RDSDecoderStats } from "../models/RDSData";
 import type { ISDRDevice, type IQSample } from "../models/SDRDevice";
 import type { Sample } from "../utils/dsp";

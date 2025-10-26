@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import Spectrogram from "../visualization/components/Spectrogram";
 import AudioControls from "../components/AudioControls";
 import BandwidthSelector from "../components/BandwidthSelector";
 import Card from "../components/Card";
@@ -13,6 +12,7 @@ import { useHackRFDevice } from "../hackrf";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { performanceMonitor } from "../utils/performanceMonitor";
+import Spectrogram from "../visualization/components/Spectrogram";
 
 export default function LiveMonitor(): React.JSX.Element {
   // Accessibility: skip link and live region
