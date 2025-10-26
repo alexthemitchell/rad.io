@@ -119,6 +119,34 @@ export function calculateFFT(
 }
 
 /**
+ * Convenience wrapper that allocates and returns the FFT magnitude (dB) array.
+ *
+ * Notes on memory/allocations:
+ * - This variant performs an additional allocation of length `fftSize` and
+ *   returns the array by value, which lets JS receive results directly without
+ *   a copy-back step from WASM memory. This avoids loader quirks where the
+ *   output-parameter variant may not copy results back to JS in some toolchains.
+ * - The output-parameter variant (`calculateFFT`) avoids that allocation by
+ *   writing into a caller-provided buffer, which is preferable for tight loops
+ *   and performance-critical code paths.
+ *
+ * Guidance: prefer `calculateFFT` when you manage reusable buffers and want to
+ * minimize allocations; prefer `calculateFFTOut` for simplicity and robust
+ * interop with JS when allocation costs are acceptable.
+ *
+ * @see calculateFFT
+ */
+export function calculateFFTOut(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  fftSize: i32,
+): Float32Array {
+  const out = new Float32Array(fftSize);
+  calculateFFT(iSamples, qSamples, fftSize, out);
+  return out;
+}
+
+/**
  * Calculate waveform amplitude and phase from IQ samples
  *
  * @param iSamples - I (in-phase) component samples
@@ -144,6 +172,26 @@ export function calculateWaveform(
     // Calculate phase
     phase[i] = f32(Math.atan2(Q, I));
   }
+}
+
+// Return-by-value variant for waveform calculation.
+// Returns a flat Float32Array of length 2*count with layout:
+//   [ amplitude[0..count-1], phase[0..count-1] ]
+export function calculateWaveformOut(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  count: i32,
+): Float32Array {
+  const amplitude = new Float32Array(count);
+  const phase = new Float32Array(count);
+  calculateWaveform(iSamples, qSamples, amplitude, phase, count);
+
+  const out = new Float32Array(count * 2);
+  for (let i = 0; i < count; i++) {
+    out[i] = amplitude[i];
+    out[count + i] = phase[i];
+  }
+  return out;
 }
 
 /**
@@ -181,6 +229,32 @@ export function calculateSpectrogram(
       output[row * fftSize + i] = rowOutput[i];
     }
   }
+}
+
+/**
+ * Convenience wrapper that allocates and returns the spectrogram buffer.
+ *
+ * Notes on memory/allocations:
+ * - Allocates a new `Float32Array(fftSize * rowCount)` and returns it by value,
+ *   which lets JS receive a copy directly from the loader. This avoids the
+ *   output-parameter copy-back issue seen with some AssemblyScript loaders.
+ * - The output-parameter variant (`calculateSpectrogram`) writes into a
+ *   caller-provided buffer and avoids the allocation, which is preferable when
+ *   repeatedly computing spectrogram rows in tight loops.
+ *
+ * Return format:
+ * - Returns a flat Float32Array of length `rowCount * fftSize` in row-major
+ *   order. Row i occupies indices `[i*fftSize, (i+1)*fftSize)`.
+ */
+export function calculateSpectrogramOut(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  fftSize: i32,
+  rowCount: i32,
+): Float32Array {
+  const out = new Float32Array(fftSize * rowCount);
+  calculateSpectrogram(iSamples, qSamples, fftSize, out, rowCount);
+  return out;
 }
 
 /**

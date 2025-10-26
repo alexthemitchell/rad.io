@@ -6,6 +6,8 @@
 jest.mock("../dspWasm", () => {
   return {
     isWasmAvailable: () => true,
+    isWasmRuntimeEnabled: () => true,
+    isWasmValidationEnabled: () => true,
     calculateFFTWasm: jest.fn((_samples: unknown, fftSize: number) => {
       const arr = new Float32Array(fftSize);
       arr.fill(0);

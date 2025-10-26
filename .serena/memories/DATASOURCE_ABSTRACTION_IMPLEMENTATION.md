@@ -1,12 +1,15 @@
 # DataSource Abstraction Implementation
 
 ## Purpose
+
 Documents the DataSource abstraction and source implementations for decoupling visualizations from data sources.
 
 ## Architecture
 
 ### DataSource Interface (`src/visualization/interfaces.ts`)
+
 Contract for all data sources (hardware, simulated, recorded):
+
 - `startStreaming(callback)`: Begin streaming samples
 - `stopStreaming()`: End streaming
 - `isStreaming()`: Check streaming state
@@ -15,13 +18,17 @@ Contract for all data sources (hardware, simulated, recorded):
 ### Implementations
 
 #### SimulatedSource (`src/visualization/SimulatedSource.ts`)
+
 Generates synthetic signals for testing:
+
 - Patterns: sine, QPSK, FM, noise, multi-tone
 - Configurable: sampleRate, amplitude, updateInterval, samplesPerUpdate
 - Coverage: 93.81% (14 tests)
 
 #### ReplaySource (`src/visualization/ReplaySource.ts`)
+
 Plays back recorded IQ data deterministically:
+
 - Wraps IQPlayback with DataSource interface
 - Features: pause/resume/seek, metadata access
 - Perfect for repeatable test scenarios
@@ -31,12 +38,12 @@ Plays back recorded IQ data deterministically:
 
 ```typescript
 // SimulatedSource
-const source = new SimulatedSource({ 
-  pattern: "sine", 
-  sampleRate: 2048000 
+const source = new SimulatedSource({
+  pattern: "sine",
+  sampleRate: 2048000,
 });
 
-// ReplaySource  
+// ReplaySource
 const recording = await loadRecordingFromFile(file);
 const source = new ReplaySource(recording, 32768);
 
@@ -62,11 +69,13 @@ await source.startStreaming((samples) => {
 ## Visualization Integration
 
 All visualization components accept samples as props:
+
 - `<IQConstellation samples={samples} />`
 - `<WaveformVisualizer samples={samples} />`
 - `<Spectrogram samples={samples} />`
 
 This decouples visualizations from data acquisition, enabling:
+
 - Testing without hardware
 - Deterministic test scenarios
 - Easy mocking for unit tests

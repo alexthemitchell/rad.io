@@ -10,9 +10,12 @@ describe("Navigation", () => {
       </BrowserRouter>,
     );
 
-    expect(screen.getByText("Live Monitor")).toBeInTheDocument();
+    expect(screen.getByText("Monitor")).toBeInTheDocument();
     expect(screen.getByText("Scanner")).toBeInTheDocument();
+    expect(screen.getByText("Decode")).toBeInTheDocument();
     expect(screen.getByText("Analysis")).toBeInTheDocument();
+    expect(screen.getByText("Recordings")).toBeInTheDocument();
+    expect(screen.getByText("Help")).toBeInTheDocument();
   });
 
   it("has correct href attributes", () => {
@@ -22,13 +25,19 @@ describe("Navigation", () => {
       </BrowserRouter>,
     );
 
-    const liveMonitorLink = screen.getByText("Live Monitor").closest("a");
+    const monitorLink = screen.getByText("Monitor").closest("a");
     const scannerLink = screen.getByText("Scanner").closest("a");
+    const decodeLink = screen.getByText("Decode").closest("a");
     const analysisLink = screen.getByText("Analysis").closest("a");
+    const recordingsLink = screen.getByText("Recordings").closest("a");
+    const helpLink = screen.getByText("Help").closest("a");
 
-    expect(liveMonitorLink).toHaveAttribute("href", "/");
+    expect(monitorLink).toHaveAttribute("href", "/monitor");
     expect(scannerLink).toHaveAttribute("href", "/scanner");
+    expect(decodeLink).toHaveAttribute("href", "/decode");
     expect(analysisLink).toHaveAttribute("href", "/analysis");
+    expect(recordingsLink).toHaveAttribute("href", "/recordings");
+    expect(helpLink).toHaveAttribute("href", "/help");
   });
 
   it("has proper navigation role", () => {
@@ -46,13 +55,13 @@ describe("Navigation", () => {
 
   it("highlights active link on home page", () => {
     render(
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter initialEntries={["/monitor"]}>
         <Navigation />
       </MemoryRouter>,
     );
 
-    const liveMonitorLink = screen.getByText("Live Monitor").closest("a");
-    expect(liveMonitorLink).toHaveClass("active");
+    const monitorLink = screen.getByText("Monitor").closest("a");
+    expect(monitorLink).toHaveClass("active");
   });
 
   it("highlights active link on scanner page", () => {
@@ -84,21 +93,21 @@ describe("Navigation", () => {
       </BrowserRouter>,
     );
 
-    const liveMonitorLink = screen.getByText("Live Monitor").closest("a");
+    const monitorLink = screen.getByText("Monitor").closest("a");
     const scannerLink = screen.getByText("Scanner").closest("a");
     const analysisLink = screen.getByText("Analysis").closest("a");
 
-    expect(liveMonitorLink).toHaveAttribute(
+    expect(monitorLink).toHaveAttribute(
       "title",
-      "Live signal monitoring and audio playback",
+      "Live signal monitoring and audio playback (Keyboard: 1)",
     );
     expect(scannerLink).toHaveAttribute(
       "title",
-      "Scan frequencies and talkgroups",
+      "Scan frequencies and talkgroups (Keyboard: 2)",
     );
     expect(analysisLink).toHaveAttribute(
       "title",
-      "Deep signal analysis and DSP pipeline",
+      "Deep signal analysis and DSP pipeline (Keyboard: 4)",
     );
   });
 
@@ -109,11 +118,11 @@ describe("Navigation", () => {
       </BrowserRouter>,
     );
 
-    const liveMonitorLink = screen.getByText("Live Monitor").closest("a");
+    const monitorLink = screen.getByText("Monitor").closest("a");
     const scannerLink = screen.getByText("Scanner").closest("a");
     const analysisLink = screen.getByText("Analysis").closest("a");
 
-    expect(liveMonitorLink).toHaveClass("nav-link");
+    expect(monitorLink).toHaveClass("nav-link");
     expect(scannerLink).toHaveClass("nav-link");
     expect(analysisLink).toHaveClass("nav-link");
   });

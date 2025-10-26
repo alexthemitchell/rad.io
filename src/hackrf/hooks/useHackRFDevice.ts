@@ -73,15 +73,37 @@ export function useHackRFDevice(): {
         // Always set the device so upstream can configure and begin streaming
         setDevice(hackRF);
       } catch (err) {
-        console.error(
-          "useHackRFDevice: Failed to initialize HackRF adapter",
-          err,
-          {
-            wasOpened: usbDevice.opened,
-            productId: usbDevice.productId,
-            vendorId: usbDevice.vendorId,
-          },
-        );
+        // TODO(rad.io#123): This is a workaround for a race condition where multiple components
+        // may try to open the device simultaneously. Once ADR-0018 (shared device context at the
+        // App level) is fully implemented, remove this workaround and use the shared context.
+        // See ADR-0018 for details.
+        // Handle race condition: if device is already being opened by another component instance,
+        // just use the device once it's opened.
+        if (
+          err instanceof DOMException &&
+          err.name === "InvalidStateError" &&
+          err.message.includes("operation that changes the device state")
+        ) {
+          console.warn(
+            "useHackRFDevice: Device is being opened by another component, waiting for it to complete",
+            {
+              productId: usbDevice.productId,
+              vendorId: usbDevice.vendorId,
+            },
+          );
+          // Set device anyway - it will be usable once the other open() completes
+          setDevice(hackRF);
+        } else {
+          console.error(
+            "useHackRFDevice: Failed to initialize HackRF adapter",
+            err,
+            {
+              wasOpened: usbDevice.opened,
+              productId: usbDevice.productId,
+              vendorId: usbDevice.vendorId,
+            },
+          );
+        }
       }
     };
     void setup();

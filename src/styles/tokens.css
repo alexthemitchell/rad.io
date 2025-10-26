@@ -1,4 +1,9 @@
 :root {
+  /* Enable native browser theming for both dark and light color schemes.
+     Dark theme is the default (applied at :root), but this declaration allows
+     the browser to style form controls and other native elements according to
+     the user's preferred color scheme. Light theme is supported via .theme-light/[data-theme="light"]. */
+  color-scheme: dark light;
   /* Typography */
   --rad-font-ui:
     Inter, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell,
@@ -6,6 +11,15 @@
   --rad-font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
+
+  /* Type scale (rem) */
+  --rad-font-size-1: 0.75rem; /* 12px */
+  --rad-font-size-2: 0.875rem; /* 14px */
+  --rad-font-size-3: 1rem; /* 16px */
+  --rad-font-size-4: 1.25rem; /* 20px */
+  --rad-font-size-5: 1.5rem; /* 24px */
+  --rad-line-height-tight: 1.2;
+  --rad-line-height-normal: 1.5;
 
   /* Spacing scale (px) */
   --rad-space-1: 2px;
@@ -24,6 +38,11 @@
   --rad-radius-4: 8px;
   --rad-radius-5: 12px;
 
+  /* Borders */
+  --rad-border-width: 1px;
+  --rad-focus-ring-width: 3px;
+  --rad-focus-ring-offset: 2px;
+
   /* Z-index */
   --rad-z-overlay: 1000;
   --rad-z-modal: 1100;
@@ -33,11 +52,18 @@
   --rad-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   --rad-shadow-2: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
   --rad-shadow-3: 0 10px 15px rgba(0, 0, 0, 0.2), 0 4px 6px rgba(0, 0, 0, 0.1);
+
+  /* Motion */
+  --rad-transition-fast: 120ms;
+  --rad-transition-medium: 200ms;
+  --rad-transition-slow: 320ms;
+  --rad-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* Dark theme (default) */
 :root,
-.theme-dark {
+.theme-dark,
+[data-theme="dark"] {
   /* Core palette in OKLCH */
   --rad-bg: oklch(0.12 0.01 240);
   --rad-bg-elev-1: oklch(0.18 0.015 240);
@@ -72,7 +98,8 @@
 }
 
 /* Light theme (placeholder for future) */
-.theme-light {
+.theme-light,
+[data-theme="light"] {
   --rad-bg: oklch(0.98 0 0);
   --rad-bg-elev-1: oklch(0.96 0.005 240);
   --rad-bg-elev-2: oklch(0.92 0.01 240);
@@ -113,8 +140,8 @@
   border-color: var(--rad-border);
 }
 .rad-ring:focus-visible {
-  outline: 3px solid var(--rad-ring);
-  outline-offset: 2px;
+  outline: var(--rad-focus-ring-width) solid var(--rad-ring);
+  outline-offset: var(--rad-focus-ring-offset);
 }
 .rad-primary {
   background-color: var(--rad-primary);
@@ -131,4 +158,9 @@
 }
 .rad-font-mono {
   font-family: var(--rad-font-mono);
+}
+
+/* Numeric utilities for measurement readouts */
+.rad-tabular-nums {
+  font-variant-numeric: tabular-nums slashed-zero;
 }

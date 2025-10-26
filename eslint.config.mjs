@@ -1,13 +1,13 @@
 import js from "@eslint/js";
-import globals from "globals";
-import tseslint from "typescript-eslint";
-import pluginReact from "eslint-plugin-react";
-import pluginReactHooks from "eslint-plugin-react-hooks";
-import jsxA11y from "eslint-plugin-jsx-a11y";
-import pluginImport from "eslint-plugin-import";
 import json from "@eslint/json";
 import markdown from "@eslint/markdown";
 import { defineConfig, globalIgnores } from "eslint/config";
+import pluginImport from "eslint-plugin-import";
+import jsxA11y from "eslint-plugin-jsx-a11y";
+import pluginReact from "eslint-plugin-react";
+import pluginReactHooks from "eslint-plugin-react-hooks";
+import globals from "globals";
+import tseslint from "typescript-eslint";
 
 export default defineConfig([
   // Global ignores - applied to all files
@@ -16,7 +16,8 @@ export default defineConfig([
     "node_modules/**",
     "build/**",
     "coverage/**",
-    "src/models/templates/**",
+    "assembly/**",
+    "package.json",
   ]),
 
   // Ignore test files from main linting
@@ -136,6 +137,59 @@ export default defineConfig([
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
 
+      // Note: TypeScript-specific rules are applied in a TS-only block below
+
+      // Import plugin rules
+      "import/order": [
+        "error",
+        {
+          groups: [
+            "builtin",
+            "external",
+            "internal",
+            "parent",
+            "sibling",
+            "index",
+            "object",
+            "type",
+          ],
+          alphabetize: { order: "asc", caseInsensitive: true },
+          "newlines-between": "never",
+        },
+      ],
+      "import/no-cycle": "error",
+      "import/no-duplicates": "error",
+
+      // General code quality rules
+      "no-console": [
+        "error",
+        { allow: ["trace", "debug", "info", "warn", "error"] },
+      ],
+      "no-debugger": "error",
+      "prefer-const": "error",
+      "no-var": "error",
+      eqeqeq: ["error", "always"],
+      curly: ["error", "all"],
+      "no-implicit-coercion": "error",
+      "no-param-reassign": [
+        "error",
+        {
+          props: true,
+          ignorePropertyModificationsFor: ["ref", "refs", "state"],
+        },
+      ],
+      "default-case-last": "error",
+    },
+  },
+
+  // TypeScript-only custom rules (requires type info)
+  {
+    name: "rad.io/ts-custom-rules",
+    files: ["**/*.{ts,mts,cts,tsx}"],
+    plugins: {
+      "@typescript-eslint": tseslint.plugin,
+    },
+    rules: {
       // TypeScript rules - Basic
       "@typescript-eslint/no-unused-vars": [
         "error",
@@ -156,9 +210,13 @@ export default defineConfig([
       "@typescript-eslint/no-redundant-type-constituents": "error",
       "@typescript-eslint/no-unnecessary-type-parameters": "error",
       "@typescript-eslint/no-invalid-void-type": "error",
-      "@typescript-eslint/no-confusing-void-expression": "error",
+      "@typescript-eslint/no-confusing-void-expression": [
+        "error",
+        {
+          ignoreArrowShorthand: true,
+        },
+      ],
       "@typescript-eslint/prefer-promise-reject-errors": "error",
-      "@typescript-eslint/restrict-template-expressions": "error",
       "@typescript-eslint/restrict-plus-operands": "error",
       "@typescript-eslint/no-implied-eval": "error",
       "@typescript-eslint/no-deprecated": "error",
@@ -198,12 +256,6 @@ export default defineConfig([
         },
       ],
       "@typescript-eslint/no-non-null-assertion": "error",
-      "@typescript-eslint/no-confusing-void-expression": [
-        "error",
-        {
-          ignoreArrowShorthand: true,
-        },
-      ],
 
       // TypeScript rules - Naming Conventions
       "@typescript-eslint/naming-convention": [
@@ -256,47 +308,6 @@ export default defineConfig([
           },
         },
       ],
-
-      // Import plugin rules
-      "import/order": [
-        "error",
-        {
-          groups: [
-            "builtin",
-            "external",
-            "internal",
-            "parent",
-            "sibling",
-            "index",
-            "object",
-            "type",
-          ],
-          alphabetize: { order: "asc", caseInsensitive: true },
-          "newlines-between": "never",
-        },
-      ],
-      "import/no-cycle": "error",
-      "import/no-duplicates": "error",
-
-      // General code quality rules
-      "no-console": [
-        "error",
-        { allow: ["trace", "debug", "info", "warn", "error"] },
-      ],
-      "no-debugger": "error",
-      "prefer-const": "error",
-      "no-var": "error",
-      eqeqeq: ["error", "always"],
-      curly: ["error", "all"],
-      "no-implicit-coercion": "error",
-      "no-param-reassign": [
-        "error",
-        {
-          props: true,
-          ignorePropertyModificationsFor: ["ref", "refs", "state"],
-        },
-      ],
-      "default-case-last": "error",
     },
   },
 

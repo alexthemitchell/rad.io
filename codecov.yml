@@ -13,7 +13,7 @@ coverage:
         if_ci_failed: error
 
 comment:
-  layout: "reach,diff,flags,tree,files"
+  layout: "reach,diff,flags,components,tree,files"
   behavior: default
   require_changes: false
   require_base: false
@@ -36,6 +36,246 @@ flags:
     paths:
       - src/hooks/
     carryforward: true
+
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        branches:
+          - "!main"
+
+  individual_components:
+    # UI Layer - User-facing components
+    - component_id: ui_components
+      name: "UI Components"
+      paths:
+        - src/components/**
+      statuses:
+        - type: project
+          target: 70%
+        - type: patch
+          target: 75%
+
+    - component_id: ui_pages
+      name: "Pages"
+      paths:
+        - src/pages/**
+      statuses:
+        - type: project
+          target: 60%
+        - type: patch
+          target: 70%
+
+    - component_id: ui_panels
+      name: "Panels"
+      paths:
+        - src/panels/**
+      statuses:
+        - type: project
+          target: 65%
+        - type: patch
+          target: 70%
+
+    # Integration Layer - React hooks
+    - component_id: hooks
+      name: "React Hooks"
+      paths:
+        - src/hooks/**
+      statuses:
+        - type: project
+          target: 75%
+        - type: patch
+          target: 80%
+
+    # Device Layer - Hardware interface
+    - component_id: device_models
+      name: "Device Models"
+      paths:
+        - src/models/**
+      statuses:
+        - type: project
+          target: 80%
+        - type: patch
+          target: 85%
+
+    # DSP Layer - Signal processing
+    - component_id: dsp_core
+      name: "DSP Core"
+      paths:
+        - src/lib/dsp/**
+      statuses:
+        - type: project
+          target: 85%
+        - type: patch
+          target: 90%
+
+    - component_id: dsp_utils
+      name: "DSP Utilities"
+      paths:
+        - src/utils/dsp.ts
+        - src/utils/dspProcessing.ts
+        - src/utils/dspWasm.ts
+        - src/utils/dspBenchmark.ts
+      statuses:
+        - type: project
+          target: 70%
+        - type: patch
+          target: 80%
+
+    # Signal Analysis
+    - component_id: signal_detection
+      name: "Signal Detection"
+      paths:
+        - src/lib/detection/**
+      statuses:
+        - type: project
+          target: 80%
+        - type: patch
+          target: 85%
+
+    - component_id: signal_scanning
+      name: "Signal Scanning"
+      paths:
+        - src/lib/scanning/**
+      statuses:
+        - type: project
+          target: 75%
+        - type: patch
+          target: 80%
+
+    - component_id: signal_measurement
+      name: "Signal Measurement"
+      paths:
+        - src/lib/measurement/**
+      statuses:
+        - type: project
+          target: 80%
+        - type: patch
+          target: 85%
+
+    # Decoders
+    - component_id: decoders
+      name: "Signal Decoders"
+      paths:
+        - src/utils/rdsDecoder.ts
+        - src/utils/p25decoder.ts
+      statuses:
+        - type: project
+          target: 57%
+        - type: patch
+          target: 70%
+
+    # Audio Processing
+    - component_id: audio_processing
+      name: "Audio Processing"
+      paths:
+        - src/utils/audioStream.ts
+      statuses:
+        - type: project
+          target: 93%
+        - type: patch
+          target: 95%
+
+    # Recording & Playback
+    - component_id: recording
+      name: "Recording & Playback"
+      paths:
+        - src/utils/iqRecorder.ts
+      statuses:
+        - type: project
+          target: 77%
+        - type: patch
+          target: 85%
+
+    # Speech Recognition
+    - component_id: speech_recognition
+      name: "Speech Recognition"
+      paths:
+        - src/utils/speechRecognition.ts
+      statuses:
+        - type: project
+          target: 78%
+        - type: patch
+          target: 85%
+
+    # Rendering & Visualization
+    - component_id: rendering
+      name: "Rendering Engine"
+      paths:
+        - src/lib/render/**
+      statuses:
+        - type: project
+          target: 70%
+        - type: patch
+          target: 80%
+
+    - component_id: visualization_webgl
+      name: "WebGL Visualization"
+      paths:
+        - src/utils/webgl.ts
+      statuses:
+        - type: project
+          target: 75%
+        - type: patch
+          target: 80%
+
+    - component_id: visualization_webgpu
+      name: "WebGPU Visualization"
+      paths:
+        - src/utils/webgpu.ts
+      statuses:
+        - type: project
+          target: 70%
+        - type: patch
+          target: 80%
+
+    # Worker Management
+    - component_id: workers
+      name: "Web Workers"
+      paths:
+        - src/lib/workers/**
+      statuses:
+        - type: project
+          target: 75%
+        - type: patch
+          target: 80%
+
+    # Utilities & Infrastructure
+    - component_id: monitoring
+      name: "Monitoring & Metrics"
+      paths:
+        - src/lib/monitoring/**
+        - src/utils/performanceMonitor.ts
+      statuses:
+        - type: project
+          target: 70%
+        - type: patch
+          target: 75%
+
+    - component_id: utils_core
+      name: "Core Utilities"
+      paths:
+        - src/lib/utils/**
+        - src/utils/logger.ts
+        - src/utils/device-utils.ts
+      statuses:
+        - type: project
+          target: 65%
+        - type: patch
+          target: 75%
+
+    - component_id: test_infrastructure
+      name: "Test Infrastructure"
+      paths:
+        - src/utils/testHelpers.ts
+        - src/utils/testMemoryManager.ts
+        - src/utils/signalGenerator.ts
+      statuses:
+        - type: project
+          target: 95%
+        - type: patch
+          target: 100%
 
 ignore:
   - "src/index.tsx"

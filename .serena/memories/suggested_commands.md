@@ -1,7 +1,0 @@
-- `npm start` – launch HTTPS dev server with hot reload.
-- `npm run build` – create production bundle via Webpack.
-- `npm run format` / `npm run format:check` – apply or verify Prettier formatting.
-- `npm run lint` / `npm run lint:fix` – run ESLint checks or auto-fix issues.
-- `npm run type-check` – run TypeScript compiler in noEmit mode.
-- `npm test`, `npm run test:unit`, `npm run test:components` – execute Jest suites.
-- `npm run validate` or `npm run self-assess` – run full local CI/self-assessment workflow.
