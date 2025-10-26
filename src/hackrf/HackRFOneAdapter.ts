@@ -25,6 +25,7 @@ export class HackRFOneAdapter implements ISDRDevice {
   private currentSampleRate = 20e6; // 20 MS/s default
   private currentBandwidth = 20e6; // 20 MHz default
   private isReceivingFlag = false;
+  private isInitialized = false; // Track if device has been properly configured
 
   constructor(usbDevice: USBDevice) {
     this.device = new HackRFOne(usbDevice);
@@ -64,6 +65,7 @@ export class HackRFOneAdapter implements ISDRDevice {
 
   async close(): Promise<void> {
     this.isReceivingFlag = false;
+    this.isInitialized = false; // Reset initialization state on close
     await this.device.close();
   }
 
@@ -87,6 +89,8 @@ export class HackRFOneAdapter implements ISDRDevice {
   async setSampleRate(sampleRateHz: number): Promise<void> {
     this.currentSampleRate = sampleRateHz;
     await this.device.setSampleRate(sampleRateHz);
+    // Mark as initialized once sample rate is set (critical for HackRF)
+    this.isInitialized = true;
   }
 
   async getSampleRate(): Promise<number> {
@@ -160,18 +164,39 @@ export class HackRFOneAdapter implements ISDRDevice {
     return Promise.resolve(this.currentBandwidth);
   }
 
+  /**
+   * Validates that device is properly initialized before streaming.
+   * HackRF REQUIRES sample rate to be set before streaming can begin.
+   */
+  private validateInitialization(): void {
+    if (!this.isInitialized) {
+      throw new Error(
+        "HackRF device not initialized. Must call setSampleRate() before receive(). " +
+          "Sample rate is mandatory for HackRF to stream data.",
+      );
+    }
+  }
+
   async receive(
     callback: IQSampleCallback,
     config?: Partial<SDRStreamConfig>,
   ): Promise<void> {
-    // Apply configuration if provided
+    // Apply configuration if provided, in the CORRECT ORDER:
+    // 1. Sample rate MUST be set first (HackRF requirement)
+    // 2. Then frequency (uses sample rate for tuning)
+    // 3. Then other settings (bandwidth, gains, amp)
     if (config) {
-      if (config.centerFrequency !== undefined) {
-        await this.setFrequency(config.centerFrequency);
-      }
+      // CRITICAL: Set sample rate FIRST before any other configuration
       if (config.sampleRate !== undefined) {
         await this.setSampleRate(config.sampleRate);
       }
+
+      // Now set frequency (can depend on sample rate being configured)
+      if (config.centerFrequency !== undefined) {
+        await this.setFrequency(config.centerFrequency);
+      }
+
+      // Finally, set optional parameters
       if (config.bandwidth !== undefined) {
         await this.setBandwidth(config.bandwidth);
       }
@@ -182,6 +207,9 @@ export class HackRFOneAdapter implements ISDRDevice {
         await this.setAmpEnable(config.ampEnabled);
       }
     }
+
+    // Validate that device has been initialized with mandatory settings
+    this.validateInitialization();
 
     this.isReceivingFlag = true;
 
@@ -229,8 +257,10 @@ export class HackRFOneAdapter implements ISDRDevice {
 
   /**
    * Software reset the device via USB control transfer
+   * Note: After reset, device must be reconfigured (setSampleRate, etc.) before streaming
    */
   async reset(): Promise<void> {
+    this.isInitialized = false; // Reset will clear device configuration
     await this.device.reset();
   }
 

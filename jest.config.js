@@ -23,6 +23,19 @@ module.exports = {
       functions: 39,
       lines: 38,
     },
+    // HackRF implementation - enforcing 80% patch coverage as per CodeCov
+    "./src/hackrf/HackRFOne.ts": {
+      statements: 72,
+      branches: 53,
+      functions: 94,
+      lines: 71,
+    },
+    "./src/hackrf/HackRFOneAdapter.ts": {
+      statements: 93,
+      branches: 83,
+      functions: 87,
+      lines: 93,
+    },
     // Critical DSP utilities - current baseline with improvement targets
     "./src/utils/dsp.ts": {
       statements: 70,
