@@ -23,7 +23,7 @@ export class CanvasSpectrum implements Renderer {
     }
 
     this.dpr = window.devicePixelRatio || 1;
-    return true;
+    return await Promise.resolve(true);
   }
 
   isReady(): boolean {
@@ -89,7 +89,6 @@ export class CanvasSpectrum implements Renderer {
 
     const magRange = maxMag - minMag;
     const effectiveMin = minMag;
-    const effectiveMax = maxMag;
 
     // Draw grid
     ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";

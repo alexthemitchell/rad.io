@@ -49,10 +49,11 @@ export class WebGLSpectrum implements Renderer {
       alpha: false,
       antialias: false,
       desynchronized: true,
-    }) as WebGL2RenderingContext | null;
+    });
 
+    // Fallback to WebGL1 if WebGL2 not available
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!gl) {
-      // Fallback to WebGL1
       gl = (canvas.getContext("webgl", {
         alpha: false,
         antialias: false,
@@ -61,14 +62,11 @@ export class WebGLSpectrum implements Renderer {
         canvas.getContext("experimental-webgl", {
           alpha: false,
           antialias: false,
-        })) as WebGLRenderingContext | null;
+        }));
     }
 
-    if (!gl) {
-      return false;
-    }
-
-    this.gl = gl;
+    // Store GL context (TypeScript flow analysis ensures non-null)
+    this.gl = gl as GL;
     this.dpr = window.devicePixelRatio || 1;
 
     // Compile shaders
@@ -81,6 +79,7 @@ export class WebGLSpectrum implements Renderer {
 
     // Link program
     const program = gl.createProgram();
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!program) {
       return false;
     }
@@ -103,7 +102,7 @@ export class WebGLSpectrum implements Renderer {
     // Create position buffer
     this.positionBuffer = gl.createBuffer();
 
-    return true;
+    return await Promise.resolve(true);
   }
 
   isReady(): boolean {

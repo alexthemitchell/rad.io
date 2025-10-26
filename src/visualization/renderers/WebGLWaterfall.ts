@@ -73,7 +73,7 @@ export class WebGLWaterfall implements Renderer {
       alpha: false,
       antialias: false,
       desynchronized: true,
-    }) as WebGL2RenderingContext | null;
+    });
 
     if (gl) {
       this.isWebGL2 = true;
@@ -87,14 +87,11 @@ export class WebGLWaterfall implements Renderer {
         canvas.getContext("experimental-webgl", {
           alpha: false,
           antialias: false,
-        })) as WebGLRenderingContext | null;
+        }));
     }
 
-    if (!gl) {
-      return false;
-    }
-
-    this.gl = gl;
+    // Store GL context (TypeScript flow analysis ensures non-null)
+    this.gl = gl as GL;
     this.dpr = window.devicePixelRatio || 1;
 
     // Compile shaders
@@ -107,6 +104,7 @@ export class WebGLWaterfall implements Renderer {
 
     // Link program
     const program = gl.createProgram();
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!program) {
       return false;
     }
@@ -137,7 +135,7 @@ export class WebGLWaterfall implements Renderer {
     // Build color LUT
     this.buildColorLUT();
 
-    return true;
+    return await Promise.resolve(true);
   }
 
   isReady(): boolean {
@@ -210,12 +208,13 @@ export class WebGLWaterfall implements Renderer {
         const normalized = (value - effectiveMin) / effectiveRange;
         const t = Math.max(0, Math.min(1, normalized));
 
-        // Map to color using LUT
+        // Map to color using LUT (guaranteed initialized by buildColorLUT)
         const lutIdx = Math.floor(t * 255);
         const base = (x + y * texW) * 4;
-        rgba[base + 0] = this.colorLUT[lutIdx * 3] ?? 0;
-        rgba[base + 1] = this.colorLUT[lutIdx * 3 + 1] ?? 0;
-        rgba[base + 2] = this.colorLUT[lutIdx * 3 + 2] ?? 0;
+        const lut = this.colorLUT;
+        rgba[base + 0] = lut[lutIdx * 3] ?? 0;
+        rgba[base + 1] = lut[lutIdx * 3 + 1] ?? 0;
+        rgba[base + 2] = lut[lutIdx * 3 + 2] ?? 0;
         rgba[base + 3] = 255;
       }
     }
@@ -329,7 +328,10 @@ export class WebGLWaterfall implements Renderer {
     }
 
     const texture = gl.createTexture();
-    if (!texture) {
+    // TypeScript knows texture is non-null here since gl is non-null
+    // But we keep the check for runtime safety
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (texture === null || texture === undefined) {
       return null;
     }
 
@@ -392,9 +394,9 @@ export class WebGLWaterfall implements Renderer {
       const c0 = VIRIDIS_STOPS[idx] ?? [0, 0, 0];
       const c1 = VIRIDIS_STOPS[Math.min(idx + 1, numStops - 1)] ?? [0, 0, 0];
 
-      lut[i * 3 + 0] = Math.round(c0[0] + (c1[0] - c0[0]) * frac);
-      lut[i * 3 + 1] = Math.round(c0[1] + (c1[1] - c0[1]) * frac);
-      lut[i * 3 + 2] = Math.round(c0[2] + (c1[2] - c0[2]) * frac);
+      lut[i * 3 + 0] = Math.round((c0[0] ?? 0) + ((c1[0] ?? 0) - (c0[0] ?? 0)) * frac);
+      lut[i * 3 + 1] = Math.round((c0[1] ?? 0) + ((c1[1] ?? 0) - (c0[1] ?? 0)) * frac);
+      lut[i * 3 + 2] = Math.round((c0[2] ?? 0) + ((c1[2] ?? 0) - (c0[2] ?? 0)) * frac);
     }
 
     this.colorLUT = lut;

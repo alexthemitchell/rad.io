@@ -80,7 +80,7 @@ export default function Spectrum({
     void initRenderer();
 
     // Cleanup on unmount
-    return () => {
+    return (): void => {
       if (rendererRef.current) {
         rendererRef.current.cleanup();
         rendererRef.current = null;
@@ -91,7 +91,7 @@ export default function Spectrum({
   // Render when data changes
   useEffect(() => {
     const renderer = rendererRef.current;
-    if (!renderer || !renderer.isReady()) {
+    if (!renderer?.isReady()) {
       return;
     }
 

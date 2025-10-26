@@ -41,7 +41,7 @@ export class CanvasWaterfall implements Renderer {
 
     this.dpr = window.devicePixelRatio || 1;
     this.buildColorLUT();
-    return true;
+    return await Promise.resolve(true);
   }
 
   isReady(): boolean {
@@ -141,11 +141,13 @@ export class CanvasWaterfall implements Renderer {
         const normalized = (value - effectiveMin) / effectiveRange;
         const t = Math.max(0, Math.min(1, normalized));
 
-        // Map to color using LUT
+        // Map to color using LUT (guaranteed non-null after initialization)
         const colorIdx = Math.floor(t * 255) * 3;
-        const r = this.colorLUT[colorIdx] ?? 0;
-        const g = this.colorLUT[colorIdx + 1] ?? 0;
-        const b = this.colorLUT[colorIdx + 2] ?? 0;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        const lut = this.colorLUT as Uint8Array;
+        const r = lut[colorIdx] ?? 0;
+        const g = lut[colorIdx + 1] ?? 0;
+        const b = lut[colorIdx + 2] ?? 0;
 
         // Draw pixel
         const y = margin.top + chartHeight - (bin - freqMin) * binHeight;
@@ -197,8 +199,11 @@ export class CanvasWaterfall implements Renderer {
       const c0 = VIRIDIS_STOPS[idx] ?? [0, 0, 0];
       const c1 = VIRIDIS_STOPS[Math.min(idx + 1, numStops - 1)] ?? [0, 0, 0];
 
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       lut[i * 3 + 0] = Math.round(c0[0] + (c1[0] - c0[0]) * frac);
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       lut[i * 3 + 1] = Math.round(c0[1] + (c1[1] - c0[1]) * frac);
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       lut[i * 3 + 2] = Math.round(c0[2] + (c1[2] - c0[2]) * frac);
     }
 
@@ -206,6 +211,7 @@ export class CanvasWaterfall implements Renderer {
   }
 
   private drawColorbar(
+     
     ctx: CanvasRenderingContext2D,
     margin: { top: number; bottom: number; left: number; right: number },
     chartHeight: number,
@@ -228,6 +234,7 @@ export class CanvasWaterfall implements Renderer {
       gradient.addColorStop(1 - i / 255, `rgb(${r}, ${g}, ${b})`);
     }
 
+    /* eslint-disable no-param-reassign */
     ctx.fillStyle = gradient;
     ctx.fillRect(barX, barY, barWidth, barHeight);
 
@@ -241,6 +248,7 @@ export class CanvasWaterfall implements Renderer {
     ctx.font = "10px monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
+    /* eslint-enable no-param-reassign */
     ctx.fillText("High", barX + barWidth + 5, barY);
     ctx.fillText("Low", barX + barWidth + 5, barY + barHeight);
   }
