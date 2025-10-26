@@ -26,10 +26,10 @@ Requirements:
 
 Run:
 
-```bash
-# Run Playwright with env flag
-$env:E2E_REAL_HACKRF="1"; npm run test:e2e
-# PowerShell: remove the env var afterwards if desired
+```powershell
+# Run Playwright with env flag (PowerShell)
+$env:E2E_REAL_HACKRF = "1"; npm run test:e2e
+# Remove the env var afterwards if desired
 Remove-Item Env:\E2E_REAL_HACKRF
 ```
 
@@ -37,6 +37,12 @@ Notes:
 
 - Tests rely on previously paired devices to avoid the chooser dialog (`navigator.usb.getDevices()` path). See `WEBUSB_AUTO_CONNECT` memory.
 - If Start is disabled, wait a bit longer for auto-connect or click the Connect button manually and re-run.
+
+Resource management:
+
+- The Playwright config now creates the real-device project only when `E2E_REAL_HACKRF=1` is set. This prevents an extra Chrome instance from launching in default runs (lower memory use).
+- Local runs are limited to 2 workers and file-level parallelism is disabled to avoid Chromium renderer OOM on machines with limited RAM. CI already uses 1 worker.
+- Traces are kept only on failure to keep artifact sizes small.
 
 ## How the mock works
 
