@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useIntersectionObserver } from "../../hooks/useIntersectionObserver";
 import { usePageVisibility } from "../../hooks/usePageVisibility";
 import { useVisualizationInteraction } from "../../hooks/useVisualizationInteraction";
@@ -8,6 +8,7 @@ import { performanceMonitor } from "../../utils/performanceMonitor";
 import type { IVisualizationRenderer } from "../../types/visualization";
 import type { GL } from "../../utils/webgl";
 import type { ReactElement } from "react";
+import { VisualizationWorkerManager } from "../../workers/VisualizationWorkerManager";
 
 export type Sample = {
   I: number;
