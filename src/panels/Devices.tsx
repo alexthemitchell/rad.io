@@ -155,7 +155,7 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
             <h3>Connected Device</h3>
             <dl className="device-info">
               <dt>Device:</dt>
-              <dd>{deviceInfo.productName ?? "HackRF One"}</dd>
+              <dd>{deviceInfo.productName ?? "Unknown Device"}</dd>
 
               {deviceInfo.serialNumber && (
                 <>

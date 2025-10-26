@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import FFTChart from "../components/FFTChart";
 import { useDevice } from "../contexts/DeviceContext";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
 import { formatFrequency } from "../utils/frequency";
+import FFTChart from "../visualization/components/FFTChart";
 import type { IQSample } from "../models/SDRDevice";
 import type { Sample as DSPSample } from "../utils/dsp";
 
@@ -161,11 +161,9 @@ function Monitor(): React.JSX.Element {
             setVizSamples(vbuf.slice());
           }
 
-          // Target ~25ms audio chunks at 2 MSPS for responsive playback
-          // Calculation: 50,000 samples / 2,000,000 samples/sec = 0.025 sec (25ms)
-          // This chunk size is chosen for low-latency, smooth audio playback.
-          // Calculation: 50,000 samples / 2,000,000 samples per second = 0.025 seconds (25ms)
-          // This chunk size balances latency and smooth playback during buffer scheduling.
+          // Buffer chunk size tuned for ~25ms at 2 MSPS:
+          // 50_000 samples / 2_000_000 samples/sec = 0.025s (25ms)
+          // Balances low latency with smooth playback scheduling.
           const MIN_IQ_SAMPLES = 50_000;
           if (buffer.length >= MIN_IQ_SAMPLES) {
             const chunk = buffer.splice(0, MIN_IQ_SAMPLES);

@@ -302,6 +302,8 @@ export function calculateSpectrogram(
         // See note above: 1e-3 dB threshold chosen as a conservative heuristic
         // to detect degenerate outputs while avoiding measurable spectra.
         if (allFinite && correctShape && range > 1e-3) {
+          // Successful validation — clear warning suppression flag
+          spectrogramWasmDegenerateWarned = false;
           performanceMonitor.measure("spectrogram-wasm", markStart);
           return wasmResult;
         }
@@ -325,6 +327,8 @@ export function calculateSpectrogram(
               fftSize,
             );
             if (rowWise) {
+              // Successful row-wise WASM path — clear warning suppression flag
+              spectrogramWasmDegenerateWarned = false;
               performanceMonitor.measure("spectrogram-wasm-row", markStart);
               return rowWise;
             }

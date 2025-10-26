@@ -121,6 +121,33 @@ const dynamicImportModule: (specifier: string) => Promise<unknown> =
       };
 
 /**
+ * Build a URL for loading the WASM JS glue with sensible dev caching behavior.
+ * In local development (localhost/127.0.0.1/::1), we add a stable session-scoped
+ * cache-busting param so reloads within the same session reuse the same asset.
+ */
+function makeUrl(path: string): string {
+  const url = new URL(path, window.location.href);
+  const host = window.location.hostname;
+  const isLocalhost =
+    host === "localhost" || host === "127.0.0.1" || host === "::1";
+  if (isLocalhost) {
+    try {
+      const key = "radio.devBuildTs";
+      const existing = window.sessionStorage.getItem(key);
+      const stamp = existing ?? String(Date.now());
+      if (!existing) {
+        window.sessionStorage.setItem(key, stamp);
+      }
+      url.searchParams.set("v", stamp);
+    } catch {
+      // Fallback to per-load cache bust if sessionStorage unavailable
+      url.searchParams.set("v", String(Date.now()));
+    }
+  }
+  return url.toString();
+}
+
+/**
  * Check if WebAssembly is supported in this environment
  */
 export function isWasmSupported(): boolean {
@@ -154,30 +181,6 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
     wasmSupported = false;
     return null;
   }
-
-  const makeUrl = (path: string): string => {
-    const url = new URL(path, window.location.href);
-    // In dev, add a stable cache-busting param for the browser session to avoid
-    // re-downloading on every reload while still ensuring fresh loads across rebuilds.
-    const host = window.location.hostname;
-    const isLocalhost =
-      host === "localhost" || host === "127.0.0.1" || host === "::1";
-    if (isLocalhost) {
-      try {
-        const key = "radio.devBuildTs";
-        const existing = window.sessionStorage.getItem(key);
-        const stamp = existing ?? String(Date.now());
-        if (!existing) {
-          window.sessionStorage.setItem(key, stamp);
-        }
-        url.searchParams.set("v", stamp);
-      } catch {
-        // Fallback to per-load cache bust if sessionStorage unavailable
-        url.searchParams.set("v", String(Date.now()));
-      }
-    }
-    return url.toString();
-  };
 
   const candidateUrls = [
     makeUrl("release.js"),
