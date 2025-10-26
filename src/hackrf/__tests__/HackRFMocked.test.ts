@@ -317,47 +317,51 @@ describe("HackRF Mocked Logic Tests", () => {
       await expect(receivePromise).rejects.toThrow("USB transfer failed");
     });
 
-    it("should handle timeout errors in streaming with retry", async () => {
-      const { device, transferIn } = createMockUSBDevice();
-      const hackRF = new HackRFOne(device);
+    it(
+      "should handle timeout errors in streaming with retry",
+      async () => {
+        const { device, transferIn } = createMockUSBDevice();
+        const hackRF = new HackRFOne(device);
 
-      await hackRF.setSampleRate(10_000_000);
+        await hackRF.setSampleRate(10_000_000);
 
-      // Mock transferIn to timeout once then succeed
-      let timeoutCount = 0;
-      transferIn.mockImplementation(() => {
-        timeoutCount++;
-        if (timeoutCount === 1) {
-          return Promise.reject(
-            new Error(
-              "transferIn timeout after 5000ms - device may need reset",
-            ),
-          );
-        }
-        // After first timeout, return data once then hang
-        if (timeoutCount === 2) {
-          return Promise.resolve({
-            data: new DataView(new ArrayBuffer(4096)),
-            status: "ok",
-          } as USBInTransferResult);
-        }
-        // Hang to allow stop
-        return new Promise(() => {
-          /* never resolves */
+        // Mock transferIn to timeout once then succeed
+        let timeoutCount = 0;
+        transferIn.mockImplementation(() => {
+          timeoutCount++;
+          if (timeoutCount === 1) {
+            return Promise.reject(
+              new Error(
+                "transferIn timeout after 5000ms - device may need reset",
+              ),
+            );
+          }
+          // After first timeout, return data once then hang
+          if (timeoutCount === 2) {
+            return Promise.resolve({
+              data: new DataView(new ArrayBuffer(4096)),
+              status: "ok",
+            } as USBInTransferResult);
+          }
+          // Hang to allow stop
+          return new Promise(() => {
+            /* never resolves */
+          });
         });
-      });
 
-      const receivePromise = hackRF.receive();
+        const receivePromise = hackRF.receive();
 
-      // Give time for timeout and retry
-      await new Promise((resolve) => setTimeout(resolve, 200));
+        // Give time for timeout and retry
+        await new Promise((resolve) => setTimeout(resolve, 200));
 
-      hackRF.stopRx();
+        hackRF.stopRx();
 
-      // Should complete without throwing after retry
-      await expect(receivePromise).resolves.toBeUndefined();
-      expect(timeoutCount).toBeGreaterThan(1); // Should have retried after timeout
-    });
+        // Should complete without throwing after retry
+        await expect(receivePromise).resolves.toBeUndefined();
+        expect(timeoutCount).toBeGreaterThan(1); // Should have retried after timeout
+      },
+      5000, // Explicit timeout to prevent hanging
+    );
 
     it("should implement fast recovery", async () => {
       const { device, controlTransferOut } = createMockUSBDevice();
