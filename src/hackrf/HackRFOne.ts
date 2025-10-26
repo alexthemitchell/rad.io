@@ -495,7 +495,7 @@ export class HackRFOne {
 
   /**
    * Get current device configuration status
-   * Useful for pre-streaming validation and diagnostics
+   * Useful for pre-streaming validation and diagnostics.
    * 
    * @returns Object containing current device configuration state
    */
