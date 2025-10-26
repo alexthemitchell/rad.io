@@ -41,6 +41,6 @@ logs/
 *.log
 
 # AssemblyScript generated files (unused)
-index.html
+dist/index.html
 
 test-results/
