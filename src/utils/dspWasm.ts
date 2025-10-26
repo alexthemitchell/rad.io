@@ -269,10 +269,13 @@ export function isWasmAvailable(): boolean {
  * Runtime toggle to enable/disable WASM usage without changing build.
  * Defaults to enabled. Can be overridden via localStorage key:
  *   localStorage.setItem('radio.wasm.enabled', 'false')
+ * In non-browser environments (such as tests or SSR), this function
+ * detects the environment by checking hasLocalStorage(). If hasLocalStorage()
+ * returns false, WASM is enabled by default.
  */
 export function isWasmRuntimeEnabled(): boolean {
   try {
-    // In non-browser environments (tests, SSR), default to enabled
+    // In non-browser environments (tests, SSR), hasLocalStorage() returns false; default to enabled
     if (!hasLocalStorage()) {
       return true;
     }
