@@ -195,17 +195,48 @@ export class HackRFOne {
    * @see {@link setSampleRate} - MUST be called before streaming
    * @see {@link receive} - Start streaming after configuration
    */
+  /**
+   * Open and initialize USB connection to HackRF device
+   *
+   * Performs the complete WebUSB initialization sequence:
+   * 1. Opens the USB device if not already open
+   * 2. Selects the first configuration
+   * 3. Finds an interface with a bulk IN endpoint for data streaming
+   * 4. Claims the interface and selects the appropriate alternate setting
+   *
+   * After opening, the device is ready for configuration (sample rate, frequency, etc.)
+   * but is not yet streaming data. Call `receive()` to start streaming.
+   *
+   * @throws {Error} If no suitable interface or endpoint is found
+   *
+   * @remarks
+   * This method is idempotent - calling it multiple times on an already-open
+   * device is safe and will return immediately.
+   *
+   * @example
+   * ```typescript
+   * const hackrf = new HackRFOne(usbDevice);
+   * await hackrf.open();
+   * // Device is now ready for configuration
+   * await hackrf.setSampleRate(20_000_000);
+   * await hackrf.setFrequency(100_000_000);
+   * await hackrf.receive(callback);
+   * ```
+   */
   async open(): Promise<void> {
     this.closing = false;
 
+    // Already initialized
     if (this.usbDevice.opened && this.interfaceNumber !== null) {
       return;
     }
 
+    // Step 1: Open USB device
     if (!this.usbDevice.opened) {
       await this.usbDevice.open();
     }
 
+    // Step 2: Select configuration (use first available)
     if (!this.usbDevice.configuration) {
       const configValue =
         this.usbDevice.configurations[0]?.configurationValue ?? 1;
@@ -217,6 +248,8 @@ export class HackRFOne {
       throw new Error("No interface found on USB device configuration");
     }
 
+    // Step 3: Find interface with bulk IN endpoint for data streaming
+    // HackRF uses bulk transfers for high-bandwidth IQ sample data
     let selectedInterface: USBInterface | undefined;
     let selectedAlternate: USBAlternateInterface | undefined;
 
@@ -250,6 +283,7 @@ export class HackRFOne {
       );
     }
 
+    // Step 4: Claim interface and save endpoint configuration
     this.interfaceNumber = selectedInterface.interfaceNumber;
     this.inEndpointNumber = inEndpoint.endpointNumber;
     await this.usbDevice.claimInterface(this.interfaceNumber);
@@ -656,6 +690,56 @@ export class HackRFOne {
    * @see {@link validateDeviceHealth} - Health checks performed
    * @see {@link fastRecovery} - Automatic recovery after timeouts
    */
+  /**
+   * Start receiving IQ samples from the HackRF device
+   *
+   * Enters receive mode and begins a continuous streaming loop that reads
+   * data from the device via bulk USB transfers. Each transfer receives up
+   * to 4KB of IQ sample data.
+   *
+   * **Critical Requirements:**
+   * - Sample rate MUST be configured before calling this method
+   * - Frequency should be configured before calling this method
+   * - Device must be in a healthy state (open, not closing)
+   *
+   * **Streaming Loop Details:**
+   * - Reads 4KB chunks via `transferIn()` on the bulk IN endpoint
+   * - Protected by 5-second timeout to prevent infinite hangs
+   * - Tracks consecutive timeouts and fails after 3 consecutive failures
+   * - Automatically stops when `stopRx()` is called
+   *
+   * **Error Handling:**
+   * - Timeout errors: Counted and trigger failure after threshold
+   * - AbortError: Expected during clean shutdown
+   * - Other errors: Propagated immediately to caller
+   *
+   * @param callback - Called for each received data chunk with raw DataView
+   * @returns Promise that resolves when streaming stops or encounters error
+   * @throws {Error} If device is not properly configured (e.g., no sample rate)
+   * @throws {Error} If device experiences repeated timeouts (hardware issue)
+   *
+   * @example
+   * ```typescript
+   * // Configure device first (CRITICAL!)
+   * await hackrf.setSampleRate(20_000_000); // MUST be first
+   * await hackrf.setFrequency(100_000_000);
+   *
+   * // Start streaming
+   * const receivePromise = hackrf.receive((dataView) => {
+   *   const samples = parseSamples(dataView);
+   *   processIQSamples(samples);
+   * });
+   *
+   * // Stop streaming when done
+   * await hackrf.stopRx();
+   * await receivePromise; // Wait for streaming loop to exit
+   * ```
+   *
+   * @remarks
+   * The streaming loop runs continuously until `stopRx()` is called or an
+   * error occurs. Memory management is handled automatically through buffer
+   * tracking and cleanup.
+   */
   async receive(callback?: (data: DataView) => void): Promise<void> {
     // Validate device health before streaming
     this.validateDeviceHealth();
@@ -675,9 +759,10 @@ export class HackRFOne {
 
     let iterationCount = 0;
     let consecutiveTimeouts = 0;
-    const TIMEOUT_MS = 5000; // 5 second timeout
-    const MAX_CONSECUTIVE_TIMEOUTS = 3;
+    const TIMEOUT_MS = 5000; // 5 second timeout per transfer
+    const MAX_CONSECUTIVE_TIMEOUTS = 3; // Max failures before giving up
 
+    // Main streaming loop - continues until streaming flag is cleared
     while (this.streaming as boolean) {
       try {
         iterationCount++;
@@ -689,7 +774,9 @@ export class HackRFOne {
           });
         }
 
-        // Wrap transferIn with timeout protection
+        // Wrap transferIn with timeout protection to prevent infinite hangs
+        // This is critical for HackRF - without sample rate configured,
+        // transferIn will hang forever with no error
         const result = await Promise.race([
           this.usbDevice.transferIn(this.inEndpointNumber, 4096),
           this.createTimeout(
