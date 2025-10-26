@@ -103,8 +103,8 @@ export function computeBasebandFilterBwRoundDownLt(
  *
  * @example
  * ```typescript
- * // Request 5 MHz bandwidth, gets 3.5 MHz (auto-selected)
- * const bw = computeBasebandFilterBw(5_000_000);
+ * // Request 4 MHz bandwidth, gets 3.5 MHz (auto-selected)
+ * const bw = computeBasebandFilterBw(4_000_000);
  * console.log(bw); // 3500000
  * ```
  */
