@@ -31,7 +31,9 @@ describe("HackRF Hardware Tests", () => {
     shouldSkip = await skipIfNoHardware();
 
     if (shouldSkip) {
-      console.log("Skipping hardware tests - no device available or HACKRF_HARDWARE_TESTS not set");
+      console.log(
+        "Skipping hardware tests - no device available or HACKRF_HARDWARE_TESTS not set",
+      );
       console.log("To enable: HACKRF_HARDWARE_TESTS=true npm test");
     }
   });
@@ -204,7 +206,9 @@ describe("HackRF Hardware Tests - Informational", () => {
     const deviceConnected = await isHackRFDeviceConnected();
 
     console.log("\n=== HackRF Hardware Test Environment ===");
-    console.log(`HACKRF_HARDWARE_TESTS: ${envSet ? "true" : "false (not set)"}`);
+    console.log(
+      `HACKRF_HARDWARE_TESTS: ${envSet ? "true" : "false (not set)"}`,
+    );
     console.log(`hackrf_info available: ${cmdAvailable ? "yes" : "no"}`);
     console.log(`Device connected: ${deviceConnected ? "yes" : "no"}`);
 

@@ -66,7 +66,12 @@ function createMockUSBDevice(): {
     forget: jest.fn().mockResolvedValue(undefined),
   } as unknown as USBDevice;
 
-  return { device: mockDevice, controlTransferOut, controlTransferIn, transferIn };
+  return {
+    device: mockDevice,
+    controlTransferOut,
+    controlTransferIn,
+    transferIn,
+  };
 }
 
 describe("HackRF Mocked Logic Tests", () => {
@@ -260,7 +265,8 @@ describe("HackRF Mocked Logic Tests", () => {
     });
 
     it("should use correct request command for each operation", async () => {
-      const { device, controlTransferOut, controlTransferIn } = createMockUSBDevice();
+      const { device, controlTransferOut, controlTransferIn } =
+        createMockUSBDevice();
       const hackRF = new HackRFOne(device);
 
       // Track commands used
@@ -322,7 +328,11 @@ describe("HackRF Mocked Logic Tests", () => {
       transferIn.mockImplementation(() => {
         timeoutCount++;
         if (timeoutCount === 1) {
-          return Promise.reject(new Error("transferIn timeout after 5000ms - device may need reset"));
+          return Promise.reject(
+            new Error(
+              "transferIn timeout after 5000ms - device may need reset",
+            ),
+          );
         }
         // After first timeout, return data once then hang
         if (timeoutCount === 2) {
@@ -381,7 +391,9 @@ describe("HackRF Mocked Logic Tests", () => {
       const adapter = new HackRFOneAdapter(device);
 
       // Before initialization
-      let validation = adapter.getUnderlyingDevice().validateReadyForStreaming();
+      let validation = adapter
+        .getUnderlyingDevice()
+        .validateReadyForStreaming();
       expect(validation.ready).toBe(false);
       expect(validation.issues.length).toBeGreaterThan(0);
 

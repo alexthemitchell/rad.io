@@ -14,6 +14,7 @@ The tests are organized into three categories:
 - **`HackRFMocked.test.ts`** - Additional mocked tests for edge cases and protocol compliance
 
 These tests run in CI/CD and don't require physical hardware. They use Jest mocks to simulate USB device behavior and verify:
+
 - USB control transfer formatting
 - Configuration validation
 - State management
@@ -26,11 +27,13 @@ These tests run in CI/CD and don't require physical hardware. They use Jest mock
 - **`HackRFHardware.test.ts`** - Tests that require a physical HackRF device
 
 These tests only run when:
+
 1. `HACKRF_HARDWARE_TESTS=true` environment variable is set
 2. HackRF command-line tools are installed (`hackrf_info`, `hackrf_transfer`)
 3. A physical HackRF device is connected
 
 Hardware tests verify:
+
 - Device detection using native commands
 - Data streaming using `hackrf_transfer`
 - Device information retrieval
@@ -91,6 +94,7 @@ npm test -- src/hackrf/__tests__/ --coverage
    ```
 
    Expected output:
+
    ```
    Found HackRF
    Board ID Number: 2 (HackRF One)
@@ -149,6 +153,7 @@ If `hackrf_info` doesn't detect your device:
    - Avoid USB hubs if possible
 
 2. **Check USB Permissions** (Linux)
+
    ```bash
    # Add udev rule for HackRF
    sudo nano /etc/udev/rules.d/53-hackrf.rules
@@ -172,12 +177,14 @@ If `hackrf_info` doesn't detect your device:
 If hardware tests hang during streaming:
 
 1. **Check Device Health**
+
    ```bash
    hackrf_info
    hackrf_transfer -r /dev/null -f 100000000 -n 100000
    ```
 
 2. **Reset USB Device**
+
    ```bash
    # Find USB bus/device
    lsusb | grep HackRF
@@ -198,6 +205,7 @@ If hardware tests hang during streaming:
 4. Verify expected USB protocol behavior
 
 Example:
+
 ```typescript
 it("should format frequency correctly", async () => {
   const { device, controlTransferOut } = createMockUSBDevice();
@@ -220,6 +228,7 @@ it("should format frequency correctly", async () => {
 4. Test across multiple frequencies/configurations
 
 Example:
+
 ```typescript
 it("should stream at custom frequency", async () => {
   if (shouldSkip) return;
