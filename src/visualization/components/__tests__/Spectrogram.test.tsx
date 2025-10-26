@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import Spectrogram from "../Spectrogram";
-import { createMockCanvasContext } from "../../utils/testHelpers";
+import { createMockCanvasContext } from "../../../utils/testHelpers";
 
 describe("Spectrogram", () => {
   const createFFTData = (rows: number, bins: number): Float32Array[] => {

@@ -9,8 +9,8 @@ import {
 import DSPComparisonView from "./DSPComparisonView";
 import DSPStageMetrics from "./DSPStageMetrics";
 import DSPStagePanel from "./DSPStagePanel";
-import FFTChart from "./FFTChart";
-import IQConstellation from "./IQConstellation";
+import FFTChart from "../visualization/components/FFTChart";
+import IQConstellation from "../visualization/components/IQConstellation";
 import WaveformChart from "./WaveformChart";
 import type { ISDRDevice } from "../models/SDRDevice";
 import type { Sample } from "../utils/dsp";

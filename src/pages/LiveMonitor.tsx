@@ -7,7 +7,7 @@ import RadioControls from "../components/RadioControls";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
-import Spectrogram from "../components/Spectrogram";
+import Spectrogram from "../visualization/components/Spectrogram";
 import StatusBar, { RenderTier } from "../components/StatusBar";
 import { useHackRFDevice } from "../hackrf";
 import { useLiveRegion } from "../hooks/useLiveRegion";

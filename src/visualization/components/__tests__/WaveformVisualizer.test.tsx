@@ -4,7 +4,7 @@ import {
   createTestSamples,
   createMockCanvasContext,
   restoreDevicePixelRatio,
-} from "../../utils/testHelpers";
+} from "../../../utils/testHelpers";
 
 describe("WaveformVisualizer", () => {
   const createSamples = (count: number) => createTestSamples(count, "sine");

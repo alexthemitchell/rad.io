@@ -3,7 +3,7 @@ import AudioControls from "../components/AudioControls";
 import BandwidthSelector from "../components/BandwidthSelector";
 import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
-import FFTChart from "../components/FFTChart";
+import FFTChart from "../visualization/components/FFTChart";
 import FrequencyScanner from "../components/FrequencyScanner";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import P25SystemPresets from "../components/P25SystemPresets";
