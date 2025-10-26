@@ -207,7 +207,6 @@ export class CanvasWaterfall implements Renderer {
   }
 
   private drawColorbar(
-     
     ctx: CanvasRenderingContext2D,
     margin: { top: number; bottom: number; left: number; right: number },
     chartHeight: number,
