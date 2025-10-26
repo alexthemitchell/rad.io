@@ -34,5 +34,3 @@ export function formatSampleRate(rate: number): string {
   }
   return `${rate.toFixed(0)} SPS`;
 }
-
-// Consumers should import ID utilities directly from './id'
