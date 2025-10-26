@@ -132,9 +132,10 @@ function makeUrl(path: string): string {
     typeof window.location.href === "string";
 
   // Use a string base URL for the URL constructor
-  const baseHref = hasWindow && typeof window.location.href === "string"
-    ? window.location.href
-    : "http://localhost/";
+  const baseHref =
+    hasWindow && typeof window.location.href === "string"
+      ? window.location.href
+      : "http://localhost/";
   const host =
     hasWindow && typeof window.location.hostname === "string"
       ? window.location.hostname
