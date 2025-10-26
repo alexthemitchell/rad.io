@@ -107,6 +107,18 @@ describe("HackRFOne control formatting", () => {
     await expect(hackRF.receive()).rejects.toThrow(
       /Sample rate not configured/,
     );
+    
+    // Verify the error message includes helpful guidance
+    let errorCaught = false;
+    try {
+      await hackRF.receive();
+    } catch (error) {
+      errorCaught = true;
+      expect((error as Error).message).toContain("setSampleRate()");
+      expect((error as Error).message).toContain("transferIn()");
+      expect((error as Error).message).toContain("hang");
+    }
+    expect(errorCaught).toBe(true);
   });
 
   it("allows receive() after sample rate is configured", async () => {
