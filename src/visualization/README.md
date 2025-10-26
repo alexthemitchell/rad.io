@@ -145,7 +145,7 @@ The clean interface design enables:
 
 ## Files
 
-```
+```text
 src/visualization/
 ├── interfaces.ts              # Core type definitions
 ├── SimulatedSource.ts         # Test data source implementation

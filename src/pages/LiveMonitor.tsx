@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Spectrogram from "../visualization/components/Spectrogram";
 import AudioControls from "../components/AudioControls";
 import BandwidthSelector from "../components/BandwidthSelector";
 import Card from "../components/Card";
@@ -7,7 +8,6 @@ import RadioControls from "../components/RadioControls";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
-import Spectrogram from "../visualization/components/Spectrogram";
 import StatusBar, { RenderTier } from "../components/StatusBar";
 import { useHackRFDevice } from "../hackrf";
 import { useLiveRegion } from "../hooks/useLiveRegion";
