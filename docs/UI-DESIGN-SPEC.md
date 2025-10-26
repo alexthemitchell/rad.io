@@ -11,7 +11,7 @@ References
 - ROADMAP.md (personas, phases)
 - ARCHITECTURE.md (MVH structure, tech stack)
 - ACCESSIBILITY.md, ADR‑0017 (WCAG AA patterns)
-- ADR‑0003 (WebGL2/WebGPU), ADR‑0015 (Visualization), ADR‑0016 (Viridis), ADR‑0012 (FFT worker pool)
+- ADR‑0003 (WebGL2/WebGPU), ADR‑0015 (Visualization), ADR‑0019 (Viridis), ADR‑0012 (FFT worker pool)
 
 ---
 
@@ -78,6 +78,8 @@ Color system (OKLCH; see tokens)
 Typography
 
 - Inter (UI), JetBrains Mono (numeric/measurements). Tabular figures for all numeric readouts.
+  - Implementation: numeric readouts use tabular figures and slashed‑zero for clarity.
+  - Utility class: `.rad-tabular-nums` enables this where needed.
 
 Density and spacing
 
@@ -87,13 +89,20 @@ Elevation
 
 - Subtle shadows for interactive cards/panels; avoid heavy blur; emphasize content not chrome
 
+Theming and system integration
+
+- Token‑driven themes via CSS Custom Properties (see `src/styles/tokens.css`).
+- Default dark theme; opt‑in light theme via `.theme-light` or `[data-theme="light"]`.
+- System coherence with `color-scheme: dark light` set on `:root`.
+- Global `accent-color` sourced from `--rad-accent` for supported form controls.
+
 ---
 
 ## 4. Core layout and interactions
 
 4.1 Tuning and VFO control
 
-- Large FrequencyDisplay (JetBrains Mono, bold). Digit‑precise editing: arrow keys to increment digit under caret; scroll to change digit under cursor; Shift for coarse steps.
+- Large FrequencyDisplay (JetBrains Mono, bold, tabular figures). Digit‑precise editing: arrow keys to increment digit under caret; scroll to change digit under cursor; Shift for coarse steps.
 - VFO markers in Spectrum/Waterfall; click‑to‑tune; drag to fine‑tune; right‑click context menu (set bandwidth, bookmark, record here).
 - Keyboard: ↑/↓ fine, PgUp/PgDn coarse, `[ / ]` step size, M to cycle modes.
 
@@ -145,7 +154,7 @@ Elevation
 - Keyboard‑first: all controls accessible; focus order mirrors visual order; focus ring ≥3:1 contrast.
 - Live regions: connection changes, frequency changes, detection events, errors.
 - Canvas accessibility: role=img + rich aria‑label with sample counts, peaks, ranges; data table fallback.
-- Reduced motion: respect prefers‑reduced‑motion; disable nonessential transitions.
+- Reduced motion: respect prefers‑reduced‑motion; disable nonessential transitions. A global safeguard clamps animation/transition durations when users opt out of motion.
 - Colormaps: Perceptually uniform (Viridis); no sole reliance on color for meaning.
 - Sonification toggle for waterfall (optional enhancement, ADR‑0017 example).
 
@@ -228,14 +237,16 @@ Touch targets ≥44×44 px on mobile; drag/zoom adapted to touch gestures; hapti
 
 ## 10. Design tokens (brief)
 
-Tokens are defined in `src/styles/tokens.css` (OKLCH) and will drive both light and dark themes. Key groups:
+Tokens are defined in `src/styles/tokens.css` (OKLCH) and drive both light and dark themes. Key groups:
 
 - Color: background/foreground, primary, accent, success/warn/error, border, ring
-- Typography: font stacks, sizes, weights, letter‑spacing
+- Typography: font stacks; type scale variables (0.75/0.875/1/1.25/1.5 rem); line‑height presets
 - Spacing: 2/4/8/12/16/24/32/48 px scale
-- Radius: 2/4/6/8/12 px
+- Radius: 2/4/6/8/12 px; border width
 - Elevation: shadow levels (1/2/3)
 - Z‑index: overlay (1000), modal (1100), toast (1200)
+- Motion: transition speeds (fast/medium/slow) and standard easing curve
+- Focus: ring color, width, offset
 
 Adoption plan: incremental—map existing CSS to variables, enable dark theme via root class without breaking tests.
 

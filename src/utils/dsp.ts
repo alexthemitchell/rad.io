@@ -1,14 +1,35 @@
 import {
   calculateFFTWasm,
+  calculateWaveformWasm,
   calculateSpectrogramWasm,
   isWasmAvailable,
+  isWasmRuntimeEnabled,
+  isWasmValidationEnabled,
 } from "./dspWasm";
+import { dspLogger } from "./logger";
 import { performanceMonitor } from "./performanceMonitor";
 
 export type Sample = {
   I: number;
   Q: number;
 };
+
+// Module-level flag to avoid spamming warnings when WASM spectrogram output
+// validation fails; prefer a single warning per session.
+let spectrogramWasmDegenerateWarned = false;
+
+// Heuristic threshold (in dB) used to detect degenerate FFT outputs
+// from WASM paths (e.g., constant/zero arrays). Any realistic spectrum
+// should exhibit a dynamic range comfortably above this value.
+export const VALIDATION_RANGE_THRESHOLD_DB = 1e-3;
+
+/**
+ * Reset the spectrogram WASM degenerate warning flag.
+ * Call this after a successful WASM reload or validation.
+ */
+export function resetSpectrogramWasmDegenerateWarning(): void {
+  spectrogramWasmDegenerateWarned = false;
+}
 
 /**
  * Cache for pre-computed sine and cosine tables for common FFT sizes
@@ -121,11 +142,57 @@ export function calculateFFTSync(
 
   try {
     // Try WASM first if available
-    if (isWasmAvailable()) {
+    if (isWasmAvailable() && isWasmRuntimeEnabled()) {
       const wasmResult = calculateFFTWasm(samples, fftSize);
       if (wasmResult) {
-        performanceMonitor.measure("fft-wasm", markStart);
-        return wasmResult;
+        // Optionally validate WASM output to detect degenerate results.
+        // Can be disabled in production via isWasmValidationEnabled().
+        if (!isWasmValidationEnabled()) {
+          performanceMonitor.measure("fft-wasm", markStart);
+          return wasmResult;
+        }
+        // Sanity-check WASM output. In some environments a misloaded or
+        // incompatible module can return a zero-filled (or constant) array,
+        // which breaks downstream detection by reporting a 0 dB noise floor.
+        // If the array is degenerate, fall back to the JS path.
+        let min = Infinity;
+        let max = -Infinity;
+        let allFinite = true;
+        for (const v of wasmResult) {
+          if (!Number.isFinite(v)) {
+            allFinite = false;
+            break;
+          }
+          if (v < min) {
+            min = v;
+          }
+          if (v > max) {
+            max = v;
+          }
+        }
+
+        const range = max - min;
+        // Accept WASM result only if it looks non-degenerate.
+        // Rationale: A very small dynamic range indicates constant/zero output.
+        // We use > VALIDATION_RANGE_THRESHOLD_DB (≈1e-3 dB) as an inexpensive,
+        // conservative heuristic threshold.
+        // This is orders of magnitude below any visually meaningful spectrum
+        // variation and avoids false negatives while catching zero/constant arrays.
+        if (
+          allFinite &&
+          wasmResult.length === fftSize &&
+          range > VALIDATION_RANGE_THRESHOLD_DB
+        ) {
+          performanceMonitor.measure("fft-wasm", markStart);
+          return wasmResult;
+        }
+
+        // Degenerate or suspicious output detected — use JS implementation instead
+        // to ensure meaningful spectra for scanning/detection.
+        dspLogger.warn(
+          "calculateFFTSync: Degenerate WASM FFT output detected; falling back to JS",
+          { min, max, range, length: wasmResult.length },
+        );
       }
     }
 
@@ -202,16 +269,91 @@ export function calculateSpectrogram(
   performanceMonitor.mark(markStart);
 
   try {
-    // Try WASM first if available
-    if (isWasmAvailable()) {
+    // Try WASM first if available and enabled
+    if (isWasmAvailable() && isWasmRuntimeEnabled()) {
       const wasmResult = calculateSpectrogramWasm(samples, fftSize);
-      if (wasmResult) {
-        performanceMonitor.measure("spectrogram-wasm", markStart);
-        return wasmResult;
+      if (wasmResult && wasmResult.length > 0) {
+        // If validation is disabled, accept the WASM result directly to avoid O(N)
+        // verification overhead in production builds.
+        if (!isWasmValidationEnabled()) {
+          performanceMonitor.measure("spectrogram-wasm", markStart);
+          return wasmResult;
+        }
+        // Validate WASM result to guard against the known "output parameter not copied back"
+        // issue in some AssemblyScript loader versions (see WASM_OUTPUT_ARRAY_BUG memory).
+        let min = Infinity;
+        let max = -Infinity;
+        let allFinite = true;
+        let correctShape = true;
+        for (const row of wasmResult) {
+          if (!(row instanceof Float32Array) || row.length !== fftSize) {
+            correctShape = false;
+            break;
+          }
+          for (const v of row) {
+            if (!Number.isFinite(v)) {
+              allFinite = false;
+              break;
+            }
+            if (v < min) {
+              min = v;
+            }
+            if (v > max) {
+              max = v;
+            }
+          }
+          if (!allFinite) {
+            break;
+          }
+        }
+
+        const range = max - min;
+        // Require a minimal dynamic range to guard against constant/zero rows.
+        // See note above: VALIDATION_RANGE_THRESHOLD_DB chosen as a conservative heuristic
+        // to detect degenerate outputs while avoiding measurable spectra.
+        if (
+          allFinite &&
+          correctShape &&
+          range > VALIDATION_RANGE_THRESHOLD_DB
+        ) {
+          // Successful validation — clear warning suppression flag
+          spectrogramWasmDegenerateWarned = false;
+          performanceMonitor.measure("spectrogram-wasm", markStart);
+          return wasmResult;
+        }
+
+        // Degenerate or suspicious output; try a safer per-row WASM FFT path first,
+        // then fall back to pure JS if needed.
+        if (!spectrogramWasmDegenerateWarned) {
+          dspLogger.warn(
+            "calculateSpectrogram: Degenerate WASM spectrogram output detected; falling back to JS",
+            { min, max, range, rows: wasmResult.length, fftSize },
+          );
+          spectrogramWasmDegenerateWarned = true;
+        }
+
+        // Attempt a row-wise WASM FFT using the return-by-value API (calculateFFTOut)
+        // to avoid the output-parameter copy-back issue.
+        // This fallback is always attempted after degenerate WASM output,
+        // regardless of validation preference, to maximize WASM usage.
+        try {
+          const rowWise: Float32Array[] | null = attemptRowWiseWasmFFT(
+            samples,
+            fftSize,
+          );
+          if (rowWise) {
+            // Successful row-wise WASM path — clear warning suppression flag
+            spectrogramWasmDegenerateWarned = false;
+            performanceMonitor.measure("spectrogram-wasm-row", markStart);
+            return rowWise;
+          }
+        } catch {
+          // swallow and continue to JS fallback below
+        }
       }
     }
 
-    // Fallback to JavaScript implementation
+    // JavaScript implementation (DFT via calculateFFTSync)
     const rowCount = Math.floor(samples.length / fftSize);
     const spectrogramData: Float32Array[] = [];
 
@@ -229,6 +371,55 @@ export function calculateSpectrogram(
     performanceMonitor.measure("spectrogram-error", markStart);
     throw error;
   }
+}
+
+/**
+ * Helper: Attempt a row-wise WASM FFT using calculateFFTWasm for each window.
+ * Validates rows for finiteness and minimal dynamic range to avoid degenerate output.
+ * Returns null when validation fails.
+ */
+function attemptRowWiseWasmFFT(
+  samples: Sample[],
+  fftSize: number,
+): Float32Array[] | null {
+  const rowCount = Math.floor(samples.length / fftSize);
+  if (rowCount <= 0) {
+    return null;
+  }
+
+  const rows: Float32Array[] = [];
+  let ok = true;
+  let gMin = Infinity;
+  let gMax = -Infinity;
+  for (let i = 0; i < rowCount; i++) {
+    const startIndex = i * fftSize;
+    const endIndex = startIndex + fftSize;
+    const rowSamples = samples.slice(startIndex, endIndex);
+    const rowFFT = calculateFFTWasm(rowSamples, fftSize);
+    if (!rowFFT || rowFFT.length !== fftSize) {
+      ok = false;
+      break;
+    }
+    for (const v of rowFFT) {
+      if (!Number.isFinite(v)) {
+        ok = false;
+        break;
+      }
+      if (v < gMin) {
+        gMin = v;
+      }
+      if (v > gMax) {
+        gMax = v;
+      }
+    }
+    if (!ok) {
+      break;
+    }
+    rows.push(rowFFT);
+  }
+  const gRange = gMax - gMin;
+  // Same conservative heuristic threshold as above.
+  return ok && gRange > VALIDATION_RANGE_THRESHOLD_DB ? rows : null;
 }
 
 /**
@@ -260,14 +451,40 @@ export function calculateWaveform(samples: Sample[]): {
   performanceMonitor.mark(markStart);
 
   try {
-    // TEMPORARILY DISABLED: WASM has issues with output array handling
-    // The AssemblyScript glue code copies output arrays into WASM memory
-    // but doesn't copy the results back to JavaScript, resulting in zeros.
-    // This needs to be fixed by either:
-    // 1. Modifying the WASM functions to return arrays instead of taking them as params
-    // 2. Using a different AssemblyScript compilation mode
-    // 3. Manually copying results back after WASM execution
-    // For now, using JavaScript implementation which is still quite fast.
+    // Try WASM first if available and enabled. The WASM path prefers a
+    // return-by-value API (calculateWaveformOut) to avoid the output-parameter
+    // copy-back issue observed with some AssemblyScript loader versions.
+    if (isWasmAvailable() && isWasmRuntimeEnabled()) {
+      const wasmResult = calculateWaveformWasm(samples);
+      if (wasmResult) {
+        // Validate shape and finiteness to guard against degenerate outputs.
+        const { amplitude, phase } = wasmResult;
+        const n = samples.length;
+        let ok =
+          amplitude instanceof Float32Array &&
+          phase instanceof Float32Array &&
+          amplitude.length === n &&
+          phase.length === n;
+        if (ok) {
+          for (let i = 0; i < n; i++) {
+            const a = amplitude[i];
+            const p = phase[i];
+            if (!Number.isFinite(a) || !Number.isFinite(p)) {
+              ok = false;
+              break;
+            }
+          }
+        }
+        if (ok) {
+          performanceMonitor.measure("waveform-wasm", markStart);
+          return wasmResult;
+        }
+        dspLogger.warn(
+          "calculateWaveform: Degenerate WASM waveform output detected; falling back to JS",
+          { len: n },
+        );
+      }
+    }
 
     // Fallback to JavaScript implementation
     const amplitude = new Float32Array(samples.length);

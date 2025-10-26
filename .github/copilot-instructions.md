@@ -2,24 +2,32 @@
 
 **Take as long as you need to do research using all of the tools available to you. Prioritize correctness and quality over speed.**
 
+**Always use #problems as a first line of quality check. Fix all problems before submitting changes.**
+
 **When considering PR comments, always address each comment individually. If you disagree with a comment, explain your reasoning clearly and respectfully. In some cases, you will be responding to yourself; this is expected, and it is fair to disagree with yourself.**
 
-** Fix issues you find, even if they seem unrelated to your current task. **
+**Fix issues you find, even if they seem unrelated to your current task.**
+
+**Consider `docs/decisions/` for architectural decision records that may inform your work.**
+**Refer to `docs/reference/` for specialized domain knowledge about SDR and related technologies.**
+
+**When reviewing memories, consider whether it is valuable information for future agents. If not, do not allow it to be committed**
 
 ## Tools
 
 - **It is incredibly important to use the tools available to you when implementing your solutions.**
 - Start every turn by using #oraios/serena/activate_project
 - When using #microsoftdocs/mcp/microsoft_docs_fetch to fetch documentation, you can specify a URL or a search query. If you provide a search query, the tool will return the most relevant documentation it can find.
+- Always check for #problems after making changes to the codebase.
 - Look for tools like #problems #runTasks #runTests #usages and #executePrompt to help you interact with the development environment
-- **Critical**: Prefer to use #runTests and #runTasks over #runCommands
-- Avoid using #runCommands unless no other tool can provide the answer and the output is absolutely necessary
+- **Critical**: Prefer to use #runTests and #runTasks over #runCommands/runInTerminal Feel free to #runTasks/createAndRunTask
+- Avoid using #runCommands/runInTerminal unless no other tool can provide the answer and the output is absolutely necessary
 - Use Playwright MCP browser tools to test your code in a browser environment. Take screenshots and analyze them to verify your work.
 - **Prefer to read symbol data with serena tools over reading entirety of files**: use #oraios/serena/find_referencing_symbols #oraios/serena/get_symbols_overview #oraios/serena/search_for_pattern
 - **Maintain Long Term Memory**: use #oraios/serena/read_memory when thinking about how to solve problems and #oraios/serena/write_memory when you have learned something new that will be valuable for a future Agent.
-- Before writing a memory, use #oraios/serena/read_memory to find "SERENA_MEMORY_BEST_PRACTICES". Follow those best practices to add helpful long-term memories before you end your turn.
-- Always keep the user in mind as a tool to help you solve problems. For example, when connecting to a device using WebUSB, you may need to ask the user to select the device from a browser prompt that you cannot see or interact with.
+- Before writing a memory, use #oraios/serena/read_memory to find "SERENA_MEMORY_BEST_PRACTICES". Follow those best practices to add helpful long-term memories before you end your turn. You may decide to update existing memories rather than creating new ones, remove outdated memories, or choose not to write any memories at all.
 - The goal of this project includes the creation of TypeScript-first WebUSB drivers for SDR hardware. This is a complex task that requires careful planning and execution. Use the tools available to you to research and implement these drivers, and always keep the user in mind as a resource to help you solve problems.
+- If you can check the PR quality yourself before submitting, do so. Use #problems to identify any issues and fix them before creating a PR.
 
 ## Agent performance & context hygiene
 

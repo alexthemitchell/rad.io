@@ -265,12 +265,11 @@ Testing with ColorOracle (colorblindness simulator):
 - **Lookup performance**: O(1) hardware-accelerated texture sampling
 - **Memory overhead**: Negligible (3KB GPU, 3KB CPU for multiple schemes)
 
-### Scientific References
+### References
 
 - [Viridis - Matplotlib Default Colormap](https://bids.github.io/colormap/) - Design rationale and perceptual testing
 - [A Better Default Colormap for Matplotlib](https://www.youtube.com/watch?v=xAoljeRJ3lU) - SciPy 2015 presentation
 - [Crameri et al. (2020)](https://www.nature.com/articles/s41467-020-19160-7) - "The misuse of colour in science communication"
-- [IEEE VIS 2015](https://ieeexplore.ieee.org/document/7192657) - "Why We Use Bad Color Maps and What You Can Do About It"
 - [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/Understanding/) - Color contrast and accessibility requirements
 
 ### Migration from Existing Colormaps
