@@ -329,8 +329,7 @@ export class WebGLWaterfall implements Renderer {
     const texture = gl.createTexture();
     // TypeScript knows texture is non-null here since gl is non-null
     // But we keep the check for runtime safety
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (texture === null || texture === undefined) {
+    if (texture === null) {
       return null;
     }
 
