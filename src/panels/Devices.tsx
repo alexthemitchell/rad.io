@@ -28,6 +28,24 @@ interface DevicesProps {
   isPanel?: boolean; // True when rendered as a side panel, false for full-page route
 }
 
+// Adapter-level typing: certain device adapters may expose the underlying
+// WebUSB device as a `device` property. Provide a narrow type and a guard
+// to avoid complex runtime shape checks in the UI component.
+type HasUSBDevice = { device: USBDevice };
+function isDeviceAdapterWithUSBDevice(x: unknown): x is HasUSBDevice {
+  if (!x || typeof x !== "object") {
+    return false;
+  }
+  const rec = x as { device?: unknown };
+  const d = rec.device as USBDevice | undefined;
+  return (
+    Boolean(d) &&
+    typeof d === "object" &&
+    typeof d.vendorId === "number" &&
+    typeof d.productId === "number"
+  );
+}
+
 function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
   const { device, initialize, cleanup, isCheckingPaired } = useDevice();
   const { announce } = useLiveRegion();
@@ -55,30 +73,12 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
         const freq = await device.getFrequency();
         setFrequency(freq);
 
-        // Get device info (these are on the underlying USB device)
-        let usbDevice: USBDevice | undefined;
-        // Some device adapters may expose the underlying WebUSB device via a `device` field.
-        // Probe it safely and validate the shape at runtime without unsafe double-casts.
-        let maybe: unknown;
-        const anyDev = device as unknown as { device?: unknown };
-        if ("device" in anyDev) {
-          maybe = anyDev.device;
-        }
-        const isUSBDeviceLike = (obj: unknown): obj is USBDevice => {
-          if (!obj || typeof obj !== "object") {
-            return false;
-          }
-          const rec = obj as Record<string, unknown>;
-          return (
-            "productId" in rec &&
-            typeof rec["productId"] === "number" &&
-            "vendorId" in rec &&
-            typeof rec["vendorId"] === "number"
-          );
-        };
-        if (isUSBDeviceLike(maybe)) {
-          usbDevice = maybe;
-        }
+        // Get device info (on the underlying USB device) if exposed by adapter
+        const usbDevice: USBDevice | undefined = isDeviceAdapterWithUSBDevice(
+          device as unknown,
+        )
+          ? (device as unknown as HasUSBDevice).device
+          : undefined;
         if (usbDevice) {
           setDeviceInfo({
             productName: usbDevice.productName ?? undefined,

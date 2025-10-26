@@ -134,11 +134,11 @@ function makeUrl(path: string): string {
     try {
       const key = "radio.devBuildTs";
       const existing = window.sessionStorage.getItem(key);
-      const stamp = existing ?? String(Date.now());
+      const buildTs = existing ?? String(Date.now());
       if (!existing) {
-        window.sessionStorage.setItem(key, stamp);
+        window.sessionStorage.setItem(key, buildTs);
       }
-      url.searchParams.set("v", stamp);
+      url.searchParams.set("v", buildTs);
     } catch {
       // Fallback to per-load cache bust if sessionStorage unavailable
       url.searchParams.set("v", String(Date.now()));
@@ -214,13 +214,13 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
         {
           const calc = (mod as Partial<WasmDSPModule>).calculateWaveformOut;
           if (typeof calc === "function") {
-            wasmModule.calculateWaveformOut = calc.bind(mod as object);
+            wasmModule.calculateWaveformOut = calc.bind(mod);
           }
         }
         {
           const calc = (mod as Partial<WasmDSPModule>).calculateSpectrogramOut;
           if (typeof calc === "function") {
-            wasmModule.calculateSpectrogramOut = calc.bind(mod as object);
+            wasmModule.calculateSpectrogramOut = calc.bind(mod);
           }
         }
 

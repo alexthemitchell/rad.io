@@ -44,6 +44,12 @@ declare global {
 
 type DemodMode = "AM" | "FM" | "USB" | "LSB" | "CW" | "NFM" | "WFM";
 
+// Explicit conversion to DSPSample for visualization buffers to avoid
+// relying on structural typing casts.
+function convertIQToDSP(samples: IQSample[]): DSPSample[] {
+  return samples.map((s) => ({ I: s.I, Q: s.Q }) as DSPSample);
+}
+
 function Monitor(): React.JSX.Element {
   const { device, initialize, isCheckingPaired } = useDevice();
 
@@ -146,8 +152,7 @@ function Monitor(): React.JSX.Element {
 
           // Feed visualization ring buffer
           const vbuf = vizBufferRef.current;
-          // IQSample is structurally compatible with DSPSample ({I, Q})
-          vbuf.push(...(samples as DSPSample[]));
+          vbuf.push(...convertIQToDSP(samples));
           // Trim to a reasonable window for spectrogram computation
           const maxVizSamples = fftSize * 64; // 64 frames worth of samples
           if (vbuf.length > maxVizSamples) {
