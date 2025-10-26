@@ -124,22 +124,22 @@ describe("HackRF Error Handling and Recovery", () => {
       await hackrf.setSampleRate(20_000_000);
 
       let status = hackrf.getConfigurationStatus();
-      
+
       // Initially not streaming, not closing, is open
       expect(status.isOpen).toBe(true);
       expect(status.isStreaming).toBe(false);
       expect(status.isClosing).toBe(false);
-      
+
       // Simulate streaming
       (hackrf as any).streaming = true;
       status = hackrf.getConfigurationStatus();
       expect(status.isStreaming).toBe(true);
-      
+
       // Simulate closing
       (hackrf as any).closing = true;
       status = hackrf.getConfigurationStatus();
       expect(status.isClosing).toBe(true);
-      
+
       // Simulate device not open
       (device as any).opened = false;
       status = hackrf.getConfigurationStatus();
@@ -157,6 +157,38 @@ describe("HackRF Error Handling and Recovery", () => {
       expect(status.bandwidth).toBeNull();
       expect(status.lnaGain).toBeNull();
       expect(status.ampEnabled).toBe(false); // Default value
+    });
+
+    it("verifies all properties of configuration status object", async () => {
+      const device = createMockUSBDevice();
+      const hackrf = new HackRFOne(device);
+
+      // Configure with known values
+      await hackrf.setSampleRate(20_000_000);
+      await hackrf.setFrequency(100_000_000);
+      await hackrf.setAmpEnable(true);
+
+      const status = hackrf.getConfigurationStatus();
+
+      // Verify all properties exist and have correct types
+      expect(typeof status.isOpen).toBe("boolean");
+      expect(typeof status.isStreaming).toBe("boolean");
+      expect(typeof status.isClosing).toBe("boolean");
+      expect(typeof status.isConfigured).toBe("boolean");
+      expect(typeof status.ampEnabled).toBe("boolean");
+
+      // Verify values
+      expect(status.isOpen).toBe(true);
+      expect(status.isStreaming).toBe(false);
+      expect(status.isClosing).toBe(false);
+      expect(status.isConfigured).toBe(true);
+      expect(status.sampleRate).toBe(20_000_000);
+      expect(status.frequency).toBe(100_000_000);
+      expect(status.ampEnabled).toBe(true);
+
+      // Null values
+      expect(status.bandwidth).toBeNull();
+      expect(status.lnaGain).toBeNull();
     });
   });
 
@@ -234,6 +266,55 @@ describe("HackRF Error Handling and Recovery", () => {
         expect.stringMatching(/sample rate not configured/i),
       );
     });
+
+    it("returns exact issue messages for each condition", () => {
+      const device = createMockUSBDevice();
+
+      // Test each condition independently
+
+      // 1. Device not open
+      (device as any).opened = false;
+      let hackrf = new HackRFOne(device);
+      let validation = hackrf.validateReadyForStreaming();
+      expect(validation.issues).toContain("Device is not open");
+
+      // 2. Device closing
+      (device as any).opened = true;
+      hackrf = new HackRFOne(device);
+      (hackrf as any).closing = true;
+      validation = hackrf.validateReadyForStreaming();
+      expect(validation.issues).toContain("Device is closing");
+
+      // 3. Sample rate not configured
+      (device as any).opened = true;
+      hackrf = new HackRFOne(device);
+      (hackrf as any).closing = false;
+      validation = hackrf.validateReadyForStreaming();
+      expect(validation.issues).toContain(
+        "Sample rate not configured - call setSampleRate() before streaming",
+      );
+
+      // 4. Already streaming
+      hackrf = new HackRFOne(createMockUSBDevice());
+      (hackrf as any).lastSampleRate = 20_000_000;
+      (hackrf as any).streaming = true;
+      validation = hackrf.validateReadyForStreaming();
+      expect(validation.issues).toContain("Device is already streaming");
+    });
+
+    it("returns ready true only when all conditions pass", async () => {
+      const device = createMockUSBDevice();
+      const hackrf = new HackRFOne(device);
+
+      // Configure device properly
+      await hackrf.setSampleRate(20_000_000);
+
+      const validation = hackrf.validateReadyForStreaming();
+
+      expect(validation.ready).toBe(true);
+      expect(validation.issues).toHaveLength(0);
+      expect(Array.isArray(validation.issues)).toBe(true);
+    });
   });
 
   describe("Reset Functionality", () => {
@@ -295,9 +376,7 @@ describe("HackRF Error Handling and Recovery", () => {
       expect(calls.length).toBeGreaterThan(3);
 
       // Should still be initialized after fastRecovery
-      const status = adapter
-        .getUnderlyingDevice()
-        .getConfigurationStatus();
+      const status = adapter.getUnderlyingDevice().getConfigurationStatus();
       expect(status.isConfigured).toBe(true);
     });
 
@@ -312,11 +391,60 @@ describe("HackRF Error Handling and Recovery", () => {
       // Should NOT throw initialization error
       // (We can't actually test streaming without mocking the loop,
       // but we can verify the configuration state)
-      const status = adapter
-        .getUnderlyingDevice()
-        .getConfigurationStatus();
+      const status = adapter.getUnderlyingDevice().getConfigurationStatus();
       expect(status.isConfigured).toBe(true);
       expect(status.sampleRate).toBe(20_000_000);
+    });
+
+    it("restores all configuration including bandwidth and gains", async () => {
+      const device = createMockUSBDevice();
+
+      // Mock controlTransferIn for LNA gain
+      (device.controlTransferIn as jest.Mock).mockResolvedValue({
+        data: new DataView(new Uint8Array([1]).buffer),
+        status: "ok",
+      } as USBInTransferResult);
+
+      const adapter = new HackRFOneAdapter(device);
+
+      // Configure device with all settings
+      await adapter.setSampleRate(20_000_000);
+      await adapter.setFrequency(100_000_000);
+      await adapter.setBandwidth(10_000_000);
+      await adapter.setLNAGain(16);
+      await adapter.setAmpEnable(true);
+
+      // Perform fast recovery - should restore all settings
+      await expect(adapter.fastRecovery()).resolves.not.toThrow();
+
+      // Verify all configuration restored
+      const underlying = adapter.getUnderlyingDevice();
+      const status = underlying.getConfigurationStatus();
+      expect(status.isConfigured).toBe(true);
+      expect(status.sampleRate).toBe(20_000_000);
+      expect(status.frequency).toBe(100_000_000);
+      expect(status.bandwidth).toBe(10_000_000);
+      expect(status.lnaGain).toBe(16);
+      expect(status.ampEnabled).toBe(true);
+    });
+
+    it("handles fastRecovery when only sample rate is configured", async () => {
+      const device = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      // Only configure sample rate (minimum requirement)
+      await adapter.setSampleRate(20_000_000);
+
+      // Fast recovery should work with minimal configuration
+      await expect(adapter.fastRecovery()).resolves.not.toThrow();
+
+      const status = adapter.getUnderlyingDevice().getConfigurationStatus();
+      expect(status.isConfigured).toBe(true);
+      expect(status.sampleRate).toBe(20_000_000);
+      // Other values should be null
+      expect(status.frequency).toBeNull();
+      expect(status.bandwidth).toBeNull();
+      expect(status.lnaGain).toBeNull();
     });
   });
 

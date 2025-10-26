@@ -496,7 +496,7 @@ export class HackRFOne {
   /**
    * Get current device configuration status
    * Useful for pre-streaming validation and diagnostics.
-   * 
+   *
    * @returns Object containing current device configuration state
    */
   getConfigurationStatus(): {
@@ -526,7 +526,7 @@ export class HackRFOne {
   /**
    * Validate that device is ready for streaming
    * Checks all critical prerequisites before starting reception.
-   * 
+   *
    * @returns Object with validation result and detailed issues if any
    */
   validateReadyForStreaming(): {
@@ -787,11 +787,11 @@ export class HackRFOne {
    */
   /**
    * Fast recovery method that resets device and restores last configuration.
-   * 
+   *
    * This method performs a quick device reset with minimal delay and automatically
    * restores all previously configured settings. Useful for recovering from USB
    * communication errors or device hangs without requiring physical intervention.
-   * 
+   *
    * Recovery steps:
    * 1. Send USB reset command
    * 2. Wait 150ms for device stabilization
@@ -801,10 +801,10 @@ export class HackRFOne {
    * 6. Restore LNA gain
    * 7. Restore amplifier state
    * 8. Set transceiver mode to RECEIVE
-   * 
+   *
    * @throws Error if reset fails or device reconfiguration fails
    * @returns Promise that resolves when recovery and reconfiguration complete
-   * 
+   *
    * @example
    * ```typescript
    * try {

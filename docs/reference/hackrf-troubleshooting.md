@@ -29,11 +29,13 @@ The application includes a built-in diagnostics panel that displays real-time de
 ### 1. Device Not Responding (Timeout)
 
 **Symptoms**:
+
 - Status shows "Receiving" but no data appears
 - Console shows "USB transfer timeout" messages
 - After 3 consecutive timeouts, automatic recovery is attempted
 
 **Causes**:
+
 - USB communication failure
 - Device firmware hung
 - Insufficient USB power
@@ -41,12 +43,14 @@ The application includes a built-in diagnostics panel that displays real-time de
 
 **Automatic Recovery**:
 The system automatically attempts recovery after 3 consecutive timeouts:
+
 1. Sends USB reset command
 2. Restores device configuration (sample rate, frequency, bandwidth, gains)
 3. Restarts transceiver mode
 4. Resumes streaming
 
 **Manual Recovery Steps**:
+
 1. **Software Reset** (First Try):
    - Click "🔄 Reset Device" button in diagnostics panel
    - Wait for confirmation message
@@ -68,10 +72,11 @@ The system automatically attempts recovery after 3 consecutive timeouts:
    - Use shielded USB cables
 
 5. **Verify with CLI Tools**:
+
    ```bash
    # Check device detection
    hackrf_info
-   
+
    # Test data streaming
    hackrf_transfer -r /dev/null -f 100000000 -n 1000000
    ```
@@ -79,6 +84,7 @@ The system automatically attempts recovery after 3 consecutive timeouts:
 ### 2. Sample Rate Not Configured
 
 **Symptoms**:
+
 - Error: "Sample rate not configured"
 - Cannot start reception
 - Device validation fails
@@ -88,11 +94,13 @@ HackRF **requires** sample rate configuration before streaming. Without it, USB 
 
 **Solution**:
 This is automatically handled by the application, but if you encounter this error:
+
 1. Ensure device is properly initialized
 2. Sample rate is set during device setup
 3. If error persists, try disconnecting and reconnecting
 
 **Technical Details**:
+
 - Sample rate range: 1.75 MHz - 28 MHz
 - Default: 20 MSPS (20,000,000 Hz)
 - Must be set before calling `receive()`
@@ -100,16 +108,19 @@ This is automatically handled by the application, but if you encounter this erro
 ### 3. Device Not Open
 
 **Symptoms**:
+
 - Error: "Device is not open"
 - Cannot configure device settings
 - Cannot start streaming
 
 **Causes**:
+
 - Device was closed unexpectedly
 - WebUSB permission revoked
 - Browser security restriction
 
 **Solution**:
+
 1. Disconnect device in application
 2. Click "Connect Device" button
 3. Select HackRF from WebUSB device picker
@@ -118,16 +129,19 @@ This is automatically handled by the application, but if you encounter this erro
 ### 4. Configuration Failures
 
 **Symptoms**:
+
 - "Failed to set frequency" error
 - "Failed to set sample rate" error
 - Settings not taking effect
 
 **Causes**:
+
 - Invalid parameter values
 - Device in wrong state
 - USB communication error
 
 **Solution**:
+
 1. Verify parameter ranges:
    - Frequency: 1 MHz - 6 GHz
    - Sample Rate: 1.75 MHz - 28 MHz
@@ -144,6 +158,7 @@ This is automatically handled by the application, but if you encounter this erro
 ### 5. Firmware Compatibility
 
 **Symptoms**:
+
 - Unexpected behavior
 - Intermittent errors
 - Device works with CLI but not application
@@ -152,12 +167,15 @@ This is automatically handled by the application, but if you encounter this erro
 Outdated or incompatible firmware
 
 **Solution**:
+
 1. Check current firmware version:
+
    ```bash
    hackrf_info
    ```
 
 2. Update firmware if needed:
+
    ```bash
    # Download latest firmware from https://github.com/greatscottgadgets/hackrf/releases
    hackrf_spiflash -w hackrf_one_usb.bin
@@ -168,16 +186,19 @@ Outdated or incompatible firmware
 ### 6. Power Issues
 
 **Symptoms**:
+
 - Device disconnects randomly
 - Unstable operation
 - Resets during use
 
 **Causes**:
+
 - Insufficient USB power
 - Weak USB port
 - Multiple devices on same hub
 
 **Solution**:
+
 1. Connect directly to computer USB port (no hub)
 2. Use USB 3.0 port for more power
 3. Try powered USB hub if available
@@ -187,16 +208,19 @@ Outdated or incompatible firmware
 ### 7. WebUSB Permission Issues
 
 **Symptoms**:
+
 - Cannot connect to device
 - Device not appearing in picker
 - "User cancelled" error
 
 **Browser Requirements**:
+
 - Chrome/Edge 61+ or Chromium-based browsers
 - HTTPS connection (or localhost)
 - WebUSB enabled
 
 **Solution**:
+
 1. Check browser compatibility
 2. Ensure page is served over HTTPS
 3. Check browser permissions:
@@ -261,6 +285,7 @@ Outdated or incompatible firmware
 The application includes comprehensive logging for debugging. Logging is automatically enabled in development mode.
 
 **To enable in production**:
+
 1. Open browser console (F12)
 2. Type: `localStorage.setItem('debug', 'hackrf:*')`
 3. Reload page
@@ -279,6 +304,7 @@ HackRFOne.reset: Initiating software reset
 ### Reading Logs
 
 1. **Normal Operation**:
+
    ```
    HackRFOne.receive: Starting streaming loop
    HackRFOne.receive: Requesting USB transfer (iteration 1)
@@ -287,6 +313,7 @@ HackRFOne.reset: Initiating software reset
    ```
 
 2. **Timeout with Recovery**:
+
    ```
    HackRFOne.receive: USB transfer timeout (consecutiveCount: 1)
    HackRFOne.receive: USB transfer timeout (consecutiveCount: 2)
@@ -310,6 +337,7 @@ HackRFOne.reset: Initiating software reset
 ### Device Health Validation
 
 Before streaming begins, the system validates:
+
 1. **Device State**: Must be open and not closing
 2. **Sample Rate**: Must be configured (critical requirement)
 3. **Configuration**: Device must be in valid state
@@ -317,6 +345,7 @@ Before streaming begins, the system validates:
 ### Timeout Protection
 
 USB transfers have built-in timeout protection:
+
 - **Timeout Duration**: 5 seconds per transfer
 - **Max Consecutive Timeouts**: 3 before triggering recovery
 - **Recovery Actions**: Automatic reset and reconfiguration
@@ -324,6 +353,7 @@ USB transfers have built-in timeout protection:
 ### Fast Recovery Process
 
 When automatic recovery is triggered:
+
 1. Send USB reset command
 2. Wait 150ms for device stabilization
 3. Restore last known configuration:
@@ -338,6 +368,7 @@ When automatic recovery is triggered:
 ### Configuration State Tracking
 
 The device maintains state for recovery:
+
 - Last sample rate
 - Last frequency
 - Last bandwidth

@@ -7,6 +7,7 @@ Enhanced the already-robust HackRF error handling implementation with public API
 ## What Was Already Implemented
 
 The HackRF driver already had comprehensive error handling:
+
 - `reset()` method for software device reset
 - `fastRecovery()` private method for automatic recovery with state restoration
 - `validateDeviceHealth()` for pre-streaming checks
@@ -29,6 +30,7 @@ async fastRecovery(): Promise<void>
 ```
 
 This performs:
+
 1. USB reset command
 2. 150ms stabilization delay
 3. Restore all configuration (sample rate, frequency, bandwidth, gains, amp)
@@ -55,6 +57,7 @@ getConfigurationStatus(): {
 ```
 
 **Use Cases**:
+
 - Pre-flight checks before streaming
 - Diagnostics display
 - Debugging device state issues
@@ -71,6 +74,7 @@ validateReadyForStreaming(): {
 ```
 
 Checks:
+
 - Device is open
 - Device is not closing
 - Sample rate is configured (critical!)
@@ -104,6 +108,7 @@ async fastRecovery(): Promise<void> {
 ```
 
 Key difference from `reset()`:
+
 - `reset()` sets `isInitialized=false` (requires reconfiguration)
 - `fastRecovery()` keeps `isInitialized=true` (config restored automatically)
 
@@ -112,6 +117,7 @@ Key difference from `reset()`:
 **Location**: `src/hackrf/__tests__/HackRFErrorRecovery.test.ts` (new file, 22 tests)
 
 Test coverage for:
+
 - Device configuration status tracking
 - Pre-streaming validation
 - Reset functionality
@@ -130,6 +136,7 @@ All tests pass (1138/1138 total in project).
 Comprehensive guide covering:
 
 **Common Error States**:
+
 1. Device Not Responding (timeout)
 2. Sample Rate Not Configured
 3. Device Not Open
@@ -139,6 +146,7 @@ Comprehensive guide covering:
 7. WebUSB Permission Issues
 
 **For Each Error**:
+
 - Symptoms
 - Root causes
 - Automatic recovery (if applicable)
@@ -146,6 +154,7 @@ Comprehensive guide covering:
 - Technical details
 
 **Additional Content**:
+
 - Error recovery workflow diagram
 - Diagnostic logging guide
 - Best practices for users and developers
@@ -204,10 +213,11 @@ Mock USB device with configurable behaviors:
 ```typescript
 function createMockUSBDevice(options?: {
   transferInBehavior?: "success" | "timeout" | "error";
-})
+});
 ```
 
 Allows testing:
+
 - Normal operation
 - Timeout scenarios
 - USB communication errors
@@ -217,6 +227,7 @@ Allows testing:
 ## Code Quality
 
 All quality gates passed:
+
 - ✅ Tests: 1138/1138 passing
 - ✅ Lint: No errors
 - ✅ Type-check: No errors
@@ -273,6 +284,7 @@ New test file demonstrates patterns for testing error recovery scenarios with mo
 ## Documentation Quality
 
 Troubleshooting guide includes:
+
 - Clear error categorization
 - Prioritized recovery steps (software → hardware)
 - Workflow diagrams (ASCII art)

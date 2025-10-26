@@ -520,14 +520,14 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     it("exposes getConfigurationStatus through adapter", async () => {
       const device = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
-      
+
       // Configure device
       await adapter.setSampleRate(20_000_000);
       await adapter.setFrequency(100_000_000);
-      
+
       const underlying = adapter.getUnderlyingDevice();
       const status = underlying.getConfigurationStatus();
-      
+
       expect(status.isConfigured).toBe(true);
       expect(status.sampleRate).toBe(20_000_000);
       expect(status.frequency).toBe(100_000_000);
@@ -536,13 +536,13 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     it("exposes validateReadyForStreaming through adapter", async () => {
       const device = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
-      
+
       // Before configuration
       const underlying = adapter.getUnderlyingDevice();
       let validation = underlying.validateReadyForStreaming();
       expect(validation.ready).toBe(false);
       expect(validation.issues.length).toBeGreaterThan(0);
-      
+
       // After configuration
       await adapter.setSampleRate(20_000_000);
       validation = underlying.validateReadyForStreaming();
@@ -553,13 +553,13 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     it("fastRecovery maintains adapter initialization state", async () => {
       const device = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
-      
+
       await adapter.setSampleRate(20_000_000);
       await adapter.setFrequency(100_000_000);
-      
+
       // Fast recovery should maintain initialization
       await adapter.fastRecovery();
-      
+
       const underlying = adapter.getUnderlyingDevice();
       const status = underlying.getConfigurationStatus();
       expect(status.isConfigured).toBe(true);
