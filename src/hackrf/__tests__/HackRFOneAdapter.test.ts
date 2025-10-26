@@ -62,8 +62,9 @@ describe("HackRFOneAdapter initialization and configuration", () => {
         });
       } catch (error) {
         errorCaught = true;
-        expect((error as Error).message).toContain("setSampleRate()");
-        expect((error as Error).message).toContain("mandatory");
+        const err = error as Error;
+        expect(err.message).toContain("setSampleRate()");
+        expect(err.message).toContain("mandatory");
       }
       expect(errorCaught).toBe(true);
     });

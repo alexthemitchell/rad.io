@@ -100,6 +100,9 @@ describe("HackRFOne control formatting", () => {
   });
 
   it("throws error when receive() called without sample rate", async () => {
+    // Per HackRF documentation, sample rate must be configured before streaming
+    // See: https://hackrf.readthedocs.io/en/latest/libhackrf_api.html#sample-rate
+    // The device will hang in transferIn() without this configuration
     const { device } = createMockUSBDevice();
     const hackRF = new HackRFOne(device);
 
@@ -114,9 +117,10 @@ describe("HackRFOne control formatting", () => {
       await hackRF.receive();
     } catch (error) {
       errorCaught = true;
-      expect((error as Error).message).toContain("setSampleRate()");
-      expect((error as Error).message).toContain("transferIn()");
-      expect((error as Error).message).toContain("hang");
+      const err = error as Error;
+      expect(err.message).toContain("setSampleRate()");
+      expect(err.message).toContain("transferIn()");
+      expect(err.message).toContain("hang");
     }
     expect(errorCaught).toBe(true);
   });
