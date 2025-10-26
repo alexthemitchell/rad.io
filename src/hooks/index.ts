@@ -3,7 +3,7 @@
  * Provides centralized exports for all React hooks
  */
 
-export { useHackRFDevice } from "./useHackRFDevice";
+export { useHackRFDevice } from "../hackrf";
 export { default as useSDR } from "./useSDR";
 export { useUSBDevice } from "./useUSBDevice";
 export { useFrequencyScanner } from "./useFrequencyScanner";
