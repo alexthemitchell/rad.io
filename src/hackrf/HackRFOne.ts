@@ -1,5 +1,4 @@
-//// filepath: c:\Users\Owner\dev\rad.io\src\models\HackRFOne.ts
-import { TransceiverMode } from "./HackRFDevice/constants";
+import { TransceiverMode } from "./constants";
 
 const UINT32_MAX = 0xffffffff;
 const MHZ_IN_HZ = 1_000_000;

@@ -9,7 +9,7 @@ import SignalTypeSelector, {
 } from "../components/SignalTypeSelector";
 import Spectrogram from "../components/Spectrogram";
 import StatusBar, { RenderTier } from "../components/StatusBar";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
+import { useHackRFDevice } from "../hackrf";
 import { useLiveRegion } from "../hooks/useLiveRegion";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { performanceMonitor } from "../utils/performanceMonitor";

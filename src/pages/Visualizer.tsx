@@ -25,8 +25,8 @@ import TalkgroupScanner, {
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import TrunkedRadioControls from "../components/TrunkedRadioControls";
 import WaveformChart from "../components/WaveformChart";
+import { useHackRFDevice } from "../hackrf";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
-import { useHackRFDevice } from "../hooks/useHackRFDevice";
 import { type RDSStationData, type RDSDecoderStats } from "../models/RDSData";
 import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
 import {

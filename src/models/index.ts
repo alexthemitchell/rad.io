@@ -3,6 +3,5 @@
  * Provides centralized exports for SDR device models and interfaces
  */
 
-export { HackRFOne } from "./HackRFOne";
-export { HackRFOneAdapter } from "./HackRFOneAdapter";
+export { HackRFOne, HackRFOneAdapter } from "../hackrf";
 export * from "./SDRDevice";
