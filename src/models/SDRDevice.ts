@@ -204,6 +204,15 @@ export interface ISDRDevice {
    * @throws Error if reset fails
    */
   reset(): Promise<void>;
+
+  /**
+   * Fast recovery with automatic reconfiguration
+   * Performs a quick device reset and restores all previous configuration settings.
+   * This is useful for recovering from USB communication errors without manual intervention.
+   * @returns Promise that resolves when recovery and reconfiguration complete
+   * @throws Error if recovery fails
+   */
+  fastRecovery?(): Promise<void>;
 }
 
 /**

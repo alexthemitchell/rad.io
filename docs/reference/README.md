@@ -10,6 +10,7 @@ This directory contains comprehensive reference materials for both users and dev
 - **[Signal Analysis](./signal-analysis.md)** - Techniques for analyzing and identifying signals
 - **[Antenna Theory](./antenna-theory.md)** - Understanding antennas and optimal reception
 - **[Common Use Cases](./common-use-cases.md)** - Practical applications of SDR technology
+- **[HackRF Troubleshooting](./hackrf-troubleshooting.md)** - Error recovery and diagnostic guide for HackRF devices
 
 ## For Developers
 

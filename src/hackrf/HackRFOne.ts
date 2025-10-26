@@ -493,6 +493,72 @@ export class HackRFOne {
     // Additional health checks can be added here
   }
 
+  /**
+   * Get current device configuration status
+   * Useful for pre-streaming validation and diagnostics
+   * 
+   * @returns Object containing current device configuration state
+   */
+  getConfigurationStatus(): {
+    isOpen: boolean;
+    isStreaming: boolean;
+    isClosing: boolean;
+    sampleRate: number | null;
+    frequency: number | null;
+    bandwidth: number | null;
+    lnaGain: number | null;
+    ampEnabled: boolean;
+    isConfigured: boolean;
+  } {
+    return {
+      isOpen: this.usbDevice.opened,
+      isStreaming: this.streaming,
+      isClosing: this.closing,
+      sampleRate: this.lastSampleRate,
+      frequency: this.lastFrequency,
+      bandwidth: this.lastBandwidth,
+      lnaGain: this.lastLNAGain,
+      ampEnabled: this.lastAmpEnabled,
+      isConfigured: this.lastSampleRate !== null, // Sample rate is critical
+    };
+  }
+
+  /**
+   * Validate that device is ready for streaming
+   * Checks all critical prerequisites before starting reception
+   * 
+   * @returns Object with validation result and detailed issues if any
+   */
+  validateReadyForStreaming(): {
+    ready: boolean;
+    issues: string[];
+  } {
+    const issues: string[] = [];
+
+    if (!this.usbDevice.opened) {
+      issues.push("Device is not open");
+    }
+
+    if (this.closing) {
+      issues.push("Device is closing");
+    }
+
+    if (this.lastSampleRate === null) {
+      issues.push(
+        "Sample rate not configured - call setSampleRate() before streaming",
+      );
+    }
+
+    if (this.streaming) {
+      issues.push("Device is already streaming");
+    }
+
+    return {
+      ready: issues.length === 0,
+      issues,
+    };
+  }
+
   // New method to start reception with an optional data callback
   async receive(callback?: (data: DataView) => void): Promise<void> {
     // Validate device health before streaming
@@ -719,7 +785,38 @@ export class HackRFOne {
    * Fast recovery from timeout: reset and automatically reconfigure device
    * This makes recovery seamless for the user - no need to restart reception
    */
-  private async fastRecovery(): Promise<void> {
+  /**
+   * Fast recovery method that resets device and restores last configuration.
+   * 
+   * This method performs a quick device reset with minimal delay and automatically
+   * restores all previously configured settings. Useful for recovering from USB
+   * communication errors or device hangs without requiring physical intervention.
+   * 
+   * Recovery steps:
+   * 1. Send USB reset command
+   * 2. Wait 150ms for device stabilization
+   * 3. Restore sample rate
+   * 4. Restore frequency
+   * 5. Restore bandwidth
+   * 6. Restore LNA gain
+   * 7. Restore amplifier state
+   * 8. Set transceiver mode to RECEIVE
+   * 
+   * @throws Error if reset fails or device reconfiguration fails
+   * @returns Promise that resolves when recovery and reconfiguration complete
+   * 
+   * @example
+   * ```typescript
+   * try {
+   *   await device.fastRecovery();
+   *   console.log('Device recovered successfully');
+   * } catch (error) {
+   *   console.error('Fast recovery failed:', error);
+   *   // Fall back to physical reset
+   * }
+   * ```
+   */
+  async fastRecovery(): Promise<void> {
     const isDev = process.env["NODE_ENV"] === "development";
     if (isDev) {
       console.warn("HackRFOne.fastRecovery: Starting automatic recovery", {
