@@ -63,8 +63,14 @@ npm test -- src/utils/__tests__/dsp.test.ts
 # Run in watch mode
 npm run test:watch
 
-# Run E2E tests
+# Run E2E tests (mock + simulated)
 npm run test:e2e
+
+# Run only simulated E2E tests
+npm run test:e2e:sim
+
+# Run device E2E tests (requires real HackRF hardware)
+npm run test:e2e:device
 ```
 
 ### Tracking Test Performance
