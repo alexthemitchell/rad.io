@@ -5,6 +5,7 @@ This document describes the build performance optimizations implemented in rad.i
 ## Overview
 
 Build performance has been optimized across all build targets:
+
 - JavaScript/TypeScript compilation with Webpack
 - WebAssembly compilation with AssemblyScript
 - Test execution with Jest
@@ -13,12 +14,12 @@ Build performance has been optimized across all build targets:
 
 ### Measured Results
 
-| Build Type | Before | After (Cold) | After (Cached) | Improvement |
-|------------|--------|--------------|----------------|-------------|
-| Development | 1.4s | 1.5s | 0.4s | 73% faster (cached) |
-| Production | 16s | 10.3s | 4.7s | 35% faster (cold), 71% faster (cached) |
-| Tests | 49s | 48.7s | - | 1% faster |
-| WASM | <1s | <1s | <1s | Optimized output size |
+| Build Type  | Before | After (Cold) | After (Cached) | Improvement                            |
+| ----------- | ------ | ------------ | -------------- | -------------------------------------- |
+| Development | 1.4s   | 1.5s         | 0.4s           | 73% faster (cached)                    |
+| Production  | 16s    | 10.3s        | 4.7s           | 35% faster (cold), 71% faster (cached) |
+| Tests       | 49s    | 48.7s        | -              | 1% faster                              |
+| WASM        | <1s    | <1s          | <1s            | Optimized output size                  |
 
 ### Key Optimizations
 
@@ -124,19 +125,21 @@ For CI/CD pipelines, consider caching these directories:
 # Example for GitHub Actions
 cache:
   - node_modules
-  - node_modules/.cache  # Webpack cache
-  - .tsbuildinfo         # TypeScript cache
-  - build                # WASM build outputs
+  - node_modules/.cache # Webpack cache
+  - .tsbuildinfo # TypeScript cache
+  - build # WASM build outputs
 ```
 
 ### Build Times
 
 Expected build times in CI (without warm cache):
+
 - Development build: ~6-10 seconds
 - Production build: ~10-15 seconds
 - Full test suite: ~45-55 seconds
 
 With warm cache:
+
 - Development build: ~4-6 seconds
 - Production build: ~4-7 seconds
 
@@ -220,6 +223,7 @@ If builds produce unexpected results:
 ### Slow First Builds
 
 First builds after cache cleanup will be slower. This is expected:
+
 - Development builds: ~6 seconds
 - Production builds: ~10 seconds
 

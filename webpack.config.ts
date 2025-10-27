@@ -13,7 +13,7 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
 
   return {
     cache: {
-      type: 'filesystem',
+      type: "filesystem",
       buildDependencies: {
         config: [__filename],
       },
