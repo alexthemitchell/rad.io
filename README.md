@@ -107,11 +107,19 @@ rad.io is committed to providing an accessible experience for all users, includi
 
 ## Quick Start
 
+### For New Contributors 🚀
+
+**New to the project?** Start here:
+- 📚 **[New Contributor Onboarding Guide](docs/ONBOARDING.md)** - Get started in minutes
+- 🏗️ **[Visualization Architecture](docs/VISUALIZATION_ARCHITECTURE.md)** - Understand the system design
+- 🧪 **[Testing Strategy](docs/testing/TEST_STRATEGY.md)** - Learn how to test your code
+- 🔌 **[E2E Testing Guide](docs/e2e-tests.md)** - Test with and without hardware
+
 ### Prerequisites
 
 - Modern web browser with WebUSB support (Chrome 61+, Edge 79+, Opera 48+)
 - HTTPS context (required for WebUSB)
-- Compatible SDR device (HackRF One, RTL-SDR, etc.)
+- Compatible SDR device (HackRF One, RTL-SDR, etc.) - *optional for development*
 
 ### Installation
 
@@ -128,6 +136,22 @@ npm start
 ```
 
 The development server runs over HTTPS at `https://localhost:8080` by default.
+
+### Running Tests
+
+```bash
+# Unit tests (no hardware required)
+npm test
+
+# E2E tests with simulated device (no hardware required)
+npm run test:e2e
+
+# E2E tests with real HackRF (requires hardware)
+export E2E_REAL_HACKRF=1
+npm run test:e2e
+```
+
+See [Testing Documentation](docs/testing/README.md) for comprehensive testing guide.
 
 ### Building for Production
 
