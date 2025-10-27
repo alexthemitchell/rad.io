@@ -108,17 +108,28 @@ describe("VisualizationWorkerManager", () => {
       });
 
       // Wait a bit then simulate worker initialization response
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
-      const workerInstance = (Worker as jest.MockedClass<typeof Worker>).mock.instances[0] as unknown as MockWorker;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const workerInstance = (Worker as jest.MockedClass<typeof Worker>).mock
+        .instances[0] as unknown as MockWorker;
       if (workerInstance && workerInstance.addEventListener) {
         // Find the message listener that was added for init
-        const addListenerCalls = (workerInstance.addEventListener as jest.Mock).mock.calls;
-        const messageHandler = addListenerCalls.find(call => call[0] === "message")?.[1];
+        const addListenerCalls = (workerInstance.addEventListener as jest.Mock)
+          .mock.calls;
+        const messageHandler = addListenerCalls.find(
+          (call) => call[0] === "message",
+        )?.[1];
         if (messageHandler) {
-          messageHandler(new MessageEvent("message", {
-            data: { type: "initialized", success: true, hasWebGL: true, has2D: false }
-          }));
+          messageHandler(
+            new MessageEvent("message", {
+              data: {
+                type: "initialized",
+                success: true,
+                hasWebGL: true,
+                has2D: false,
+              },
+            }),
+          );
         }
       }
 
@@ -138,7 +149,7 @@ describe("VisualizationWorkerManager", () => {
     beforeEach(async () => {
       manager = new VisualizationWorkerManager();
       canvas = document.createElement("canvas");
-      
+
       const mockOffscreen = {};
       Object.defineProperty(canvas, "transferControlToOffscreen", {
         value: jest.fn(() => mockOffscreen as OffscreenCanvas),
@@ -152,14 +163,22 @@ describe("VisualizationWorkerManager", () => {
       });
 
       // Get the worker instance
-      mockWorker = (Worker as jest.MockedClass<typeof Worker>).mock.instances[0] as unknown as MockWorker;
+      mockWorker = (Worker as jest.MockedClass<typeof Worker>).mock
+        .instances[0] as unknown as MockWorker;
 
       // Simulate initialization response
       setTimeout(() => {
         if (mockWorker.onmessage) {
-          mockWorker.onmessage(new MessageEvent("message", {
-            data: { type: "initialized", success: true, hasWebGL: true, has2D: false }
-          }));
+          mockWorker.onmessage(
+            new MessageEvent("message", {
+              data: {
+                type: "initialized",
+                success: true,
+                hasWebGL: true,
+                has2D: false,
+              },
+            }),
+          );
         }
       }, 10);
 
@@ -183,13 +202,13 @@ describe("VisualizationWorkerManager", () => {
           type: "render",
           frameId: expect.any(Number),
           data: { samples },
-        })
+        }),
       );
     });
 
     it("should throw error if not initialized", () => {
       const uninitializedManager = new VisualizationWorkerManager();
-      
+
       expect(() => {
         uninitializedManager.render({ samples: [] });
       }).toThrow("Worker not initialized");
@@ -210,16 +229,18 @@ describe("VisualizationWorkerManager", () => {
 
       // Simulate frame complete message from worker
       if (mockWorker.onmessage) {
-        mockWorker.onmessage(new MessageEvent("message", {
-          data: {
-            type: "frameComplete",
-            frameId: 1,
-            renderTimeMs: 16.5,
-            queueSize: 0,
-            droppedFrames: 0,
-            renderedFrames: 1,
-          }
-        }));
+        mockWorker.onmessage(
+          new MessageEvent("message", {
+            data: {
+              type: "frameComplete",
+              frameId: 1,
+              renderTimeMs: 16.5,
+              queueSize: 0,
+              droppedFrames: 0,
+              renderedFrames: 1,
+            },
+          }),
+        );
       }
 
       expect(metricsCallback).toHaveBeenCalledWith({
@@ -237,12 +258,14 @@ describe("VisualizationWorkerManager", () => {
 
       // Simulate error message from worker
       if (mockWorker.onmessage) {
-        mockWorker.onmessage(new MessageEvent("message", {
-          data: {
-            type: "error",
-            message: "Rendering failed",
-          }
-        }));
+        mockWorker.onmessage(
+          new MessageEvent("message", {
+            data: {
+              type: "error",
+              message: "Rendering failed",
+            },
+          }),
+        );
       }
 
       expect(errorCallback).toHaveBeenCalledWith("Rendering failed");
@@ -265,12 +288,20 @@ describe("VisualizationWorkerManager", () => {
         dpr: 1,
       });
 
-      const mockWorker = (Worker as jest.MockedClass<typeof Worker>).mock.instances[0] as unknown as MockWorker;
+      const mockWorker = (Worker as jest.MockedClass<typeof Worker>).mock
+        .instances[0] as unknown as MockWorker;
       setTimeout(() => {
         if (mockWorker.onmessage) {
-          mockWorker.onmessage(new MessageEvent("message", {
-            data: { type: "initialized", success: true, hasWebGL: true, has2D: false }
-          }));
+          mockWorker.onmessage(
+            new MessageEvent("message", {
+              data: {
+                type: "initialized",
+                success: true,
+                hasWebGL: true,
+                has2D: false,
+              },
+            }),
+          );
         }
       }, 10);
 

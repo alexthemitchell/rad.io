@@ -3,7 +3,11 @@
 
 // Frame queue management for backpressure
 const MAX_QUEUE_SIZE = 3;
-type QueuedFrame = { type: "render"; data: MessageRender["data"]; timestamp: number };
+type QueuedFrame = {
+  type: "render";
+  data: MessageRender["data"];
+  timestamp: number;
+};
 const frameQueue: QueuedFrame[] = [];
 let isRendering = false;
 let droppedFrames = 0;

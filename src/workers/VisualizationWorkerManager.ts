@@ -26,12 +26,23 @@ type RenderData = {
   transform?: ViewTransform;
 };
 
-type VisualizationType = "spectrogram" | "constellation" | "waveform" | "waterfall";
+type VisualizationType =
+  | "spectrogram"
+  | "constellation"
+  | "waveform"
+  | "waterfall";
 
 type WorkerMessage =
   | { type: "initialized"; success: boolean; hasWebGL: boolean; has2D: boolean }
   | { type: "resized" }
-  | { type: "frameComplete"; frameId: number; renderTimeMs: number; queueSize: number; droppedFrames: number; renderedFrames: number }
+  | {
+      type: "frameComplete";
+      frameId: number;
+      renderTimeMs: number;
+      queueSize: number;
+      droppedFrames: number;
+      renderedFrames: number;
+    }
   | { type: "frameDropped"; frameId: number; reason: string; queueSize: number }
   | { type: "error"; message: string };
 
@@ -65,7 +76,9 @@ export class VisualizationWorkerManager {
    * Check if worker and OffscreenCanvas are supported
    */
   static isSupported(): boolean {
-    return typeof Worker !== "undefined" && typeof OffscreenCanvas === "function";
+    return (
+      typeof Worker !== "undefined" && typeof OffscreenCanvas === "function"
+    );
   }
 
   /**
@@ -196,7 +209,7 @@ export class VisualizationWorkerManager {
       await new Promise<void>((resolve, reject) => {
         const INIT_TIMEOUT_MS = 5000;
         let settled = false;
-        
+
         const handler = (ev: MessageEvent<WorkerMessage>): void => {
           if (ev.data.type === "initialized" && !settled) {
             settled = true;
@@ -205,7 +218,10 @@ export class VisualizationWorkerManager {
             resolve();
           }
         };
-        
+
+        // Add event listener before setting timeout to avoid missing messages
+        this.worker?.addEventListener("message", handler);
+
         const timeoutId = setTimeout(() => {
           if (!settled) {
             settled = true;
@@ -213,8 +229,6 @@ export class VisualizationWorkerManager {
             reject(new Error("Worker initialization timed out after 5s"));
           }
         }, INIT_TIMEOUT_MS);
-        
-        this.worker?.addEventListener("message", handler);
       });
 
       return true;

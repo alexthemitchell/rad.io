@@ -70,7 +70,10 @@ let renderConfig: Config = { width: 0, height: 0, dpr: 1 };
 // WebGL Utilities (minimal subset from src/utils/webgl.ts for worker)
 // ============================================================================
 
-function getGL(canvas: OffscreenCanvas): { gl: GLContext | null; isWebGL2: boolean } {
+function getGL(canvas: OffscreenCanvas): {
+  gl: GLContext | null;
+  isWebGL2: boolean;
+} {
   const opts = { alpha: false, antialias: false, desynchronized: true };
   let context = canvas.getContext("webgl2", opts) as GLContext | null;
   if (context) {
@@ -80,9 +83,15 @@ function getGL(canvas: OffscreenCanvas): { gl: GLContext | null; isWebGL2: boole
   return { gl: context, isWebGL2: false };
 }
 
-function createShader(glContext: GLContext, type: number, source: string): WebGLShader | null {
+function createShader(
+  glContext: GLContext,
+  type: number,
+  source: string,
+): WebGLShader | null {
   const shader = glContext.createShader(type);
-  if (!shader) {return null;}
+  if (!shader) {
+    return null;
+  }
   glContext.shaderSource(shader, source);
   glContext.compileShader(shader);
   if (!glContext.getShaderParameter(shader, glContext.COMPILE_STATUS)) {
@@ -93,26 +102,34 @@ function createShader(glContext: GLContext, type: number, source: string): WebGL
   return shader;
 }
 
-function createProgram(glContext: GLContext, vsSource: string, fsSource: string): WebGLProgram | null {
+function createProgram(
+  glContext: GLContext,
+  vsSource: string,
+  fsSource: string,
+): WebGLProgram | null {
   const vs = createShader(glContext, glContext.VERTEX_SHADER, vsSource);
   const fs = createShader(glContext, glContext.FRAGMENT_SHADER, fsSource);
-  if (!vs || !fs) {return null;}
-  
+  if (!vs || !fs) {
+    return null;
+  }
+
   const program = glContext.createProgram();
   // WebGL context loss can cause createProgram to return null
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (!program) {return null;}
-  
+  if (!program) {
+    return null;
+  }
+
   glContext.attachShader(program, vs);
   glContext.attachShader(program, fs);
   glContext.linkProgram(program);
-  
+
   if (!glContext.getProgramParameter(program, glContext.LINK_STATUS)) {
     console.error("Program link error:", glContext.getProgramInfoLog(program));
     glContext.deleteProgram(program);
     return null;
   }
-  
+
   return program;
 }
 
@@ -123,47 +140,49 @@ function createProgram(glContext: GLContext, vsSource: string, fsSource: string)
 function initializeRenderer(canvas: OffscreenCanvas, cfg: Config): boolean {
   canvasOffscreen = canvas;
   renderConfig = cfg;
-  
+
   const pixelW = Math.max(1, Math.floor(cfg.width * cfg.dpr));
   const pixelH = Math.max(1, Math.floor(cfg.height * cfg.dpr));
   // eslint-disable-next-line no-param-reassign
   canvas.width = pixelW;
   // eslint-disable-next-line no-param-reassign
   canvas.height = pixelH;
-  
+
   // Try WebGL first for performance
   const glResult = getGL(canvas);
   if (glResult.gl) {
     glContext = glResult.gl;
     return true;
   }
-  
+
   // Fallback to 2D context
   const context = canvas.getContext("2d", { alpha: false });
   if (context) {
     context2D = context;
     return true;
   }
-  
+
   return false;
 }
 
 function resizeRenderer(cfg: Config): void {
   renderConfig = cfg;
-  
-  if (!canvasOffscreen) {return;}
-  
+
+  if (!canvasOffscreen) {
+    return;
+  }
+
   const pixelW = Math.max(1, Math.floor(cfg.width * cfg.dpr));
   const pixelH = Math.max(1, Math.floor(cfg.height * cfg.dpr));
   canvasOffscreen.width = pixelW;
   canvasOffscreen.height = pixelH;
-  
+
   // Re-initialize GLContext program if needed
   if (glContext && shaderProgram) {
     glContext.deleteProgram(shaderProgram);
     shaderProgram = null;
   }
-  
+
   // Reset 2D context scaling
   if (context2D) {
     const ctxReset = context2D as { reset?: () => void };
@@ -178,12 +197,17 @@ function resizeRenderer(cfg: Config): void {
 // WebGL Rendering Functions
 // ============================================================================
 
-function renderConstellationWebGL(samples: IQSample[], _transform?: Transform): boolean {
-  if (!glContext || !canvasOffscreen) {return false;}
-  
+function renderConstellationWebGL(
+  samples: IQSample[],
+  _transform?: Transform,
+): boolean {
+  if (!glContext || !canvasOffscreen) {
+    return false;
+  }
+
   const pixelW = canvasOffscreen.width;
   const pixelH = canvasOffscreen.height;
-  
+
   // Create shader program if needed
   if (!shaderProgram) {
     const vs = `
@@ -205,12 +229,14 @@ void main() {
   gl_FragColor = v_color;
 }`;
     shaderProgram = createProgram(glContext, vs, fs);
-    if (!shaderProgram) {return false;}
-    
+    if (!shaderProgram) {
+      return false;
+    }
+
     vertexBuffer = glContext.createBuffer();
     colorBuffer = glContext.createBuffer();
   }
-  
+
   // Build positions in NDC [-1,1]
   const iValues = samples.map((s) => s.I);
   const qValues = samples.map((s) => s.Q);
@@ -224,23 +250,28 @@ void main() {
   const sQ = 2 / (qMax - qMin + 2 * padQ);
   const oI = -1 - sI * (iMin - padI);
   const oQ = -1 - sQ * (qMin - padQ);
-  
+
   const positions = new Float32Array(samples.length * 2);
   for (let i = 0; i < samples.length; i++) {
     const s = samples[i];
-    if (!s) {continue;}
+    if (!s) {
+      continue;
+    }
     positions[i * 2 + 0] = sI * s.I + oI;
     positions[i * 2 + 1] = sQ * s.Q + oQ;
   }
-  
+
   // Density-based alpha calculation
   const gridSize = 0.003;
   const densityMap = new Map<string, number>();
   const MAX_DENSITY_SAMPLES = 8192;
-  const densitySamples = samples.length > MAX_DENSITY_SAMPLES
-    ? samples.filter((_, i) => i % Math.ceil(samples.length / MAX_DENSITY_SAMPLES) === 0)
-    : samples;
-  
+  const densitySamples =
+    samples.length > MAX_DENSITY_SAMPLES
+      ? samples.filter(
+          (_, i) => i % Math.ceil(samples.length / MAX_DENSITY_SAMPLES) === 0,
+        )
+      : samples;
+
   for (const s of densitySamples) {
     const gi = Math.round(s.I / gridSize) * gridSize;
     const gq = Math.round(s.Q / gridSize) * gridSize;
@@ -248,11 +279,13 @@ void main() {
     densityMap.set(key, (densityMap.get(key) ?? 0) + 1);
   }
   const maxDensity = Math.max(...Array.from(densityMap.values()), 1);
-  
+
   const colors = new Float32Array(samples.length * 4);
   for (let i = 0; i < samples.length; i++) {
     const s = samples[i];
-    if (!s) {continue;}
+    if (!s) {
+      continue;
+    }
     const gi = Math.round(s.I / gridSize) * gridSize;
     const gq = Math.round(s.Q / gridSize) * gridSize;
     const key = `${gi.toFixed(4)},${gq.toFixed(4)}`;
@@ -260,10 +293,10 @@ void main() {
     const alpha = Math.min(1, 0.4 + dens * 0.8);
     colors[i * 4 + 0] = 0.31; // r ~ 80/255
     colors[i * 4 + 1] = 0.78; // g ~ 200/255
-    colors[i * 4 + 2] = 1.0;  // b ~ 255/255
+    colors[i * 4 + 2] = 1.0; // b ~ 255/255
     colors[i * 4 + 3] = alpha;
   }
-  
+
   // Render
   glContext.viewport(0, 0, pixelW, pixelH);
   glContext.disable(glContext.DEPTH_TEST);
@@ -271,32 +304,38 @@ void main() {
   glContext.blendFunc(glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA);
   glContext.clearColor(0.04, 0.06, 0.1, 1);
   glContext.clear(glContext.COLOR_BUFFER_BIT);
-  
+
   glContext.useProgram(shaderProgram);
   const aPos = glContext.getAttribLocation(shaderProgram, "a_position");
   const aCol = glContext.getAttribLocation(shaderProgram, "a_color");
-  
+
   glContext.bindBuffer(glContext.ARRAY_BUFFER, vertexBuffer);
-  glContext.bufferData(glContext.ARRAY_BUFFER, positions, glContext.DYNAMIC_DRAW);
+  glContext.bufferData(
+    glContext.ARRAY_BUFFER,
+    positions,
+    glContext.DYNAMIC_DRAW,
+  );
   glContext.enableVertexAttribArray(aPos);
   glContext.vertexAttribPointer(aPos, 2, glContext.FLOAT, false, 0, 0);
-  
+
   glContext.bindBuffer(glContext.ARRAY_BUFFER, colorBuffer);
   glContext.bufferData(glContext.ARRAY_BUFFER, colors, glContext.DYNAMIC_DRAW);
   glContext.enableVertexAttribArray(aCol);
   glContext.vertexAttribPointer(aCol, 4, glContext.FLOAT, false, 0, 0);
-  
+
   glContext.drawArrays(glContext.POINTS, 0, samples.length);
-  
+
   return true;
 }
 
 function renderWaveformWebGL(samples: IQSample[]): boolean {
-  if (!glContext || !canvasOffscreen) {return false;}
-  
+  if (!glContext || !canvasOffscreen) {
+    return false;
+  }
+
   const pixelW = canvasOffscreen.width;
   const pixelH = canvasOffscreen.height;
-  
+
   // Create shader program if needed
   if (!shaderProgram) {
     const vs = `
@@ -310,11 +349,13 @@ void main() {
   gl_FragColor = vec4(0.39, 0.86, 1.0, 0.9);
 }`;
     shaderProgram = createProgram(glContext, vs, fs);
-    if (!shaderProgram) {return false;}
-    
+    if (!shaderProgram) {
+      return false;
+    }
+
     vertexBuffer = glContext.createBuffer();
   }
-  
+
   // Calculate amplitudes
   const amps = samples.map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
   const maxAmp = Math.max(...amps, 1);
@@ -323,7 +364,7 @@ void main() {
   const displayMin = minAmp - padding;
   const displayMax = maxAmp + padding;
   const displayRange = displayMax - displayMin || 1;
-  
+
   // Build line strip in NDC
   const positions = new Float32Array(samples.length * 2);
   for (let i = 0; i < samples.length; i++) {
@@ -333,24 +374,28 @@ void main() {
     positions[i * 2 + 0] = x;
     positions[i * 2 + 1] = y;
   }
-  
+
   // Render
   glContext.viewport(0, 0, pixelW, pixelH);
   glContext.disable(glContext.DEPTH_TEST);
   glContext.clearColor(0.04, 0.06, 0.1, 1);
   glContext.clear(glContext.COLOR_BUFFER_BIT);
-  
+
   glContext.useProgram(shaderProgram);
   const aPos = glContext.getAttribLocation(shaderProgram, "a_position");
-  
+
   glContext.bindBuffer(glContext.ARRAY_BUFFER, vertexBuffer);
-  glContext.bufferData(glContext.ARRAY_BUFFER, positions, glContext.DYNAMIC_DRAW);
+  glContext.bufferData(
+    glContext.ARRAY_BUFFER,
+    positions,
+    glContext.DYNAMIC_DRAW,
+  );
   glContext.enableVertexAttribArray(aPos);
   glContext.vertexAttribPointer(aPos, 2, glContext.FLOAT, false, 0, 0);
-  
+
   glContext.lineWidth(2.0);
   glContext.drawArrays(glContext.LINE_STRIP, 0, samples.length);
-  
+
   return true;
 }
 
@@ -359,41 +404,51 @@ void main() {
 // ============================================================================
 
 function clearBg(): void {
-  if (!context2D) {return;}
+  if (!context2D) {
+    return;
+  }
   context2D.fillStyle = "#0a0e1a";
   context2D.fillRect(0, 0, renderConfig.width, renderConfig.height);
 }
 
-function renderConstellation2D(samples: IQSample[], transform?: Transform): void {
-  if (!context2D) {return;}
-  
+function renderConstellation2D(
+  samples: IQSample[],
+  transform?: Transform,
+): void {
+  if (!context2D) {
+    return;
+  }
+
   clearBg();
-  
+
   if (transform) {
     context2D.save();
     context2D.translate(transform.offsetX, transform.offsetY);
     context2D.scale(transform.scale, transform.scale);
   }
-  
+
   const margin = { top: 60, bottom: 70, left: 80, right: 60 };
   const chartWidth = renderConfig.width - margin.left - margin.right;
   const chartHeight = renderConfig.height - margin.top - margin.bottom;
-  
+
   const iValues = samples.map((s) => s.I);
   const qValues = samples.map((s) => s.Q);
   const iMin = Math.min(...iValues, -0.1);
   const iMax = Math.max(...iValues, 0.1);
   const qMin = Math.min(...qValues, -0.1);
   const qMax = Math.max(...qValues, 0.1);
-  
+
   const iPadding = (iMax - iMin) * 0.1;
   const qPadding = (qMax - qMin) * 0.1;
-  
+
   const scaleI = (i: number): number =>
-    margin.left + ((i - (iMin - iPadding)) / (iMax - iMin + 2 * iPadding)) * chartWidth;
+    margin.left +
+    ((i - (iMin - iPadding)) / (iMax - iMin + 2 * iPadding)) * chartWidth;
   const scaleQ = (q: number): number =>
-    margin.top + chartHeight - ((q - (qMin - qPadding)) / (qMax - qMin + 2 * qPadding)) * chartHeight;
-  
+    margin.top +
+    chartHeight -
+    ((q - (qMin - qPadding)) / (qMax - qMin + 2 * qPadding)) * chartHeight;
+
   // Density calculation
   const gridSize = 0.003;
   const densityMap = new Map<string, number>();
@@ -404,7 +459,7 @@ function renderConstellation2D(samples: IQSample[], transform?: Transform): void
     densityMap.set(key, (densityMap.get(key) ?? 0) + 1);
   });
   const maxDensity = Math.max(...Array.from(densityMap.values()), 1);
-  
+
   const samplesWithDensity = samples.map((sample) => {
     const gi = Math.round(sample.I / gridSize) * gridSize;
     const gq = Math.round(sample.Q / gridSize) * gridSize;
@@ -413,9 +468,11 @@ function renderConstellation2D(samples: IQSample[], transform?: Transform): void
     return { sample, density };
   });
   samplesWithDensity.sort((a, b) => a.density - b.density);
-  
+
   samplesWithDensity.forEach(({ sample, density }) => {
-    if (!context2D) {return;}
+    if (!context2D) {
+      return;
+    }
     const x = scaleI(sample.I);
     const y = scaleQ(sample.Q);
     const alpha = Math.min(1, 0.4 + density * 0.8);
@@ -424,21 +481,23 @@ function renderConstellation2D(samples: IQSample[], transform?: Transform): void
     context2D.arc(x, y, density > 0.5 ? 2.5 : 2, 0, Math.PI * 2);
     context2D.fill();
   });
-  
+
   if (transform) {
     context2D.restore();
   }
 }
 
 function renderWaveform2D(samples: IQSample[]): void {
-  if (!context2D) {return;}
-  
+  if (!context2D) {
+    return;
+  }
+
   clearBg();
-  
+
   const margin = { top: 60, bottom: 60, left: 70, right: 60 };
   const chartWidth = renderConfig.width - margin.left - margin.right;
   const chartHeight = renderConfig.height - margin.top - margin.bottom;
-  
+
   const amps = samples.map((s) => Math.sqrt(s.I * s.I + s.Q * s.Q));
   const maxAmp = Math.max(...amps, 1);
   const minAmp = Math.min(...amps, 0);
@@ -446,16 +505,21 @@ function renderWaveform2D(samples: IQSample[]): void {
   const displayMin = minAmp - padding;
   const displayMax = maxAmp + padding;
   const displayRange = displayMax - displayMin || 1;
-  
+
   const maxPoints = Math.max(100, Math.round(chartWidth * 2));
   const step = Math.max(1, Math.floor(amps.length / maxPoints));
-  
+
   context2D.beginPath();
   for (let i = 0; i < amps.length; i += step) {
     const x = margin.left + (i / amps.length) * chartWidth;
     const amp = amps[i];
-    if (amp === undefined) {continue;}
-    const y = margin.top + chartHeight - ((amp - displayMin) / displayRange) * chartHeight;
+    if (amp === undefined) {
+      continue;
+    }
+    const y =
+      margin.top +
+      chartHeight -
+      ((amp - displayMin) / displayRange) * chartHeight;
     if (i === 0) {
       context2D.moveTo(x, y);
     } else {
@@ -468,19 +532,21 @@ function renderWaveform2D(samples: IQSample[]): void {
 }
 
 function renderSpectrogram2D(fftData: Float32Array[]): void {
-  if (!context2D) {return;}
-  
+  if (!context2D) {
+    return;
+  }
+
   clearBg();
-  
+
   const margin = { top: 70, bottom: 70, left: 80, right: 120 };
   const chartWidth = renderConfig.width - margin.left - margin.right;
   const chartHeight = renderConfig.height - margin.top - margin.bottom;
   const numFrames = fftData.length;
   const frameWidth = Math.max(1, chartWidth / Math.max(1, numFrames));
-  
+
   const freqMin = renderConfig.freqMin ?? 0;
-  const freqMax = renderConfig.freqMax ?? (fftData[0]?.length ?? 0);
-  
+  const freqMax = renderConfig.freqMax ?? fftData[0]?.length ?? 0;
+
   // Compute global min/max
   let gmin = Infinity;
   let gmax = -Infinity;
@@ -493,17 +559,25 @@ function renderSpectrogram2D(fftData: Float32Array[]): void {
       }
     }
   }
-  if (!isFinite(gmin)) {gmin = 0;}
-  if (!isFinite(gmax)) {gmax = 1;}
+  if (!isFinite(gmin)) {
+    gmin = 0;
+  }
+  if (!isFinite(gmax)) {
+    gmax = 1;
+  }
   const effMin = gmin + (gmax - gmin) * 0.05;
-  
+
   for (let frameIdx = 0; frameIdx < numFrames; frameIdx++) {
     const row = fftData[frameIdx];
-    if (!row) {continue;}
+    if (!row) {
+      continue;
+    }
     const x = margin.left + frameIdx * frameWidth;
     for (let bin = freqMin; bin < freqMax && bin < row.length; bin++) {
       const v = row[bin];
-      if (!(typeof v === "number") || !isFinite(v)) {continue;}
+      if (!(typeof v === "number") || !isFinite(v)) {
+        continue;
+      }
       const norm = (v - effMin) / (gmax - effMin || 1);
       const clamped = Math.max(0, Math.min(1, norm));
       const r = Math.round(68 + 185 * clamped);
@@ -527,7 +601,7 @@ function processFrame(): void {
   if (rendering || renderQueue.length === 0) {
     return;
   }
-  
+
   rendering = true;
   const frame = renderQueue.shift();
   if (!frame) {
@@ -535,13 +609,16 @@ function processFrame(): void {
     return;
   }
   const start = performance.now();
-  
+
   try {
     let success = false;
-    
+
     if (visualizationType === "constellation" && frame.data.samples) {
       if (glContext) {
-        success = renderConstellationWebGL(frame.data.samples, frame.data.transform);
+        success = renderConstellationWebGL(
+          frame.data.samples,
+          frame.data.transform,
+        );
       }
       if (!success && context2D) {
         renderConstellation2D(frame.data.samples, frame.data.transform);
@@ -562,11 +639,11 @@ function processFrame(): void {
         success = true;
       }
     }
-    
+
     const end = performance.now();
     const renderTime = end - start;
     framesRendered++;
-    
+
     postMessage({
       type: "frameComplete",
       frameId: frame.frameId,
@@ -604,9 +681,9 @@ function queueFrame(frame: RenderMessage): void {
       });
     }
   }
-  
+
   renderQueue.push(frame);
-  
+
   // Only trigger processing if not already in progress
   // The rendering flag prevents concurrent execution
   if (!rendering) {
@@ -618,9 +695,13 @@ function queueFrame(frame: RenderMessage): void {
 // Message Handler
 // ============================================================================
 
-self.onmessage = (ev: MessageEvent<InitMessage | RenderMessage | ResizeMessage | DisposeMessage>): void => {
+self.onmessage = (
+  ev: MessageEvent<
+    InitMessage | RenderMessage | ResizeMessage | DisposeMessage
+  >,
+): void => {
   const msg = ev.data;
-  
+
   try {
     if (msg.type === "init") {
       visualizationType = msg.visualizationType;
@@ -633,26 +714,32 @@ self.onmessage = (ev: MessageEvent<InitMessage | RenderMessage | ResizeMessage |
       });
       return;
     }
-    
+
     if (msg.type === "resize") {
       resizeRenderer(msg.renderConfig);
       postMessage({ type: "resized" });
       return;
     }
-    
+
     if (msg.type === "render") {
       queueFrame(msg);
       return;
     }
-    
+
     // Exhaustive type check - ensures all message types are handled
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (msg.type === "dispose") {
       // Cleanup
       if (glContext) {
-        if (vertexBuffer) {glContext.deleteBuffer(vertexBuffer);}
-        if (colorBuffer) {glContext.deleteBuffer(colorBuffer);}
-        if (shaderProgram) {glContext.deleteProgram(shaderProgram);}
+        if (vertexBuffer) {
+          glContext.deleteBuffer(vertexBuffer);
+        }
+        if (colorBuffer) {
+          glContext.deleteBuffer(colorBuffer);
+        }
+        if (shaderProgram) {
+          glContext.deleteProgram(shaderProgram);
+        }
       }
       canvasOffscreen = null;
       context2D = null;

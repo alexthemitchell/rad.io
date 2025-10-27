@@ -7,21 +7,25 @@ This implementation enables visualization components to render in a Web Worker u
 ## Features
 
 ### 1. Worker-Based Rendering
+
 - Rendering happens in a dedicated Web Worker
 - Uses OffscreenCanvas for GPU-accelerated rendering off-main-thread
 - Supports both WebGL and Canvas2D rendering paths
 
 ### 2. Backpressure Handling
+
 - Frame queue with configurable maximum size (default: 3 frames)
 - When queue is full, oldest frames are automatically dropped
 - Prevents memory buildup during high-frequency updates
 
 ### 3. Frame Drop Policy
+
 - Tracks and reports dropped frames
 - Provides metrics for monitoring system load
 - Helps maintain consistent frame rates under stress
 
 ### 4. Performance Metrics
+
 - Real-time rendering time tracking
 - Queue size monitoring
 - Frame drop statistics
@@ -93,7 +97,7 @@ function MyVisualization() {
     }).then((success) => {
       if (success) {
         console.log("Worker initialized successfully");
-        
+
         // Set up metrics callback
         manager.onMetrics((metrics) => {
           console.log("Render metrics:", metrics);
@@ -141,12 +145,14 @@ The existing visualization components (IQConstellation, Spectrogram, WaveformVis
 ### When to Use Worker Rendering
 
 **Good candidates:**
+
 - High-frequency updates (>30 FPS)
 - Complex rendering (many samples, WebGL shaders)
 - Visualization-heavy UIs with many concurrent charts
 - Applications where main thread responsiveness is critical
 
 **Not recommended:**
+
 - Low-frequency updates (<1 FPS)
 - Simple visualizations
 - Very small data sets
@@ -162,6 +168,7 @@ const MAX_QUEUE_SIZE = 3; // Adjust based on your needs
 ```
 
 **Guidelines:**
+
 - **Smaller queue (1-2)**: Lower latency, more dropped frames
 - **Larger queue (4-6)**: Fewer dropped frames, higher latency
 - **Default (3)**: Balanced approach for most use cases
@@ -177,7 +184,7 @@ manager.onMetrics((metrics) => {
     console.warn(`High drop rate: ${(dropRate * 100).toFixed(1)}%`);
     // Consider reducing update frequency or simplifying visualization
   }
-  
+
   if (metrics.renderTimeMs > 16) {
     console.warn(`Slow rendering: ${metrics.renderTimeMs}ms per frame`);
     // Frame time should be <16ms for 60 FPS
@@ -188,6 +195,7 @@ manager.onMetrics((metrics) => {
 ## Browser Support
 
 ### OffscreenCanvas Support
+
 - ✅ Chrome 69+
 - ✅ Edge 79+
 - ✅ Firefox 105+ (partial)
@@ -196,6 +204,7 @@ manager.onMetrics((metrics) => {
 The system automatically falls back to main thread rendering when OffscreenCanvas is not available.
 
 ### WebGL in Worker Support
+
 - ✅ Chrome 69+
 - ✅ Edge 79+
 - ⚠️ Firefox (limited)
@@ -210,17 +219,20 @@ Unit tests for the VisualizationWorkerManager are in `src/workers/__tests__/Visu
 ## Troubleshooting
 
 ### Worker initialization fails
+
 - Check browser console for errors
 - Verify OffscreenCanvas support: `typeof OffscreenCanvas === 'function'`
 - Ensure canvas doesn't already have a rendering context
 - Check that `transferControlToOffscreen` is available
 
 ### Frames are being dropped
+
 - Check metrics.queueSize - if consistently at MAX_QUEUE_SIZE, reduce update frequency
 - Simplify rendering (fewer samples, less complex shaders)
 - Increase MAX_QUEUE_SIZE if latency is acceptable
 
 ### No visible output
+
 - Verify worker received initialization message
 - Check for worker errors in console
 - Ensure canvas dimensions are set correctly

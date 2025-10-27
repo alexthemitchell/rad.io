@@ -81,8 +81,8 @@ export class WebGLWaterfall implements Renderer {
       gl = (canvas.getContext("webgl", {
         alpha: false,
         antialias: false,
-          desynchronized: true,
-        }) ??
+        desynchronized: true,
+      }) ??
         canvas.getContext("experimental-webgl", {
           alpha: false,
           antialias: false,
