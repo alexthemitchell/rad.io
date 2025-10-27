@@ -3,7 +3,8 @@
 
 // Frame queue management for backpressure
 const MAX_QUEUE_SIZE = 3;
-const frameQueue: Array<{ type: "render"; data: unknown; timestamp: number }> = [];
+type QueuedFrame = { type: "render"; data: MessageRender["data"]; timestamp: number };
+const frameQueue: QueuedFrame[] = [];
 let isRendering = false;
 let droppedFrames = 0;
 let renderedFrames = 0;
@@ -342,7 +343,7 @@ function processNextFrame(): void {
   const start = performance.now();
 
   try {
-    const msg = frame.data as MessageRender["data"];
+    const msg = frame.data;
     if (!ctx) {
       return;
     }
@@ -401,7 +402,7 @@ function enqueueFrame(data: MessageRender["data"]): void {
     type: "render",
     data,
     timestamp: performance.now(),
-  } as never); // Type assertion to work around structural typing
+  });
 
   processNextFrame();
 }

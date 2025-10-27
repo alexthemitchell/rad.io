@@ -190,8 +190,8 @@ export class VisualizationWorkerManager {
         {
           type: "init",
           canvas: offscreen,
-          vizType,
-          config,
+          visualizationType: vizType,
+          renderConfig: config,
         },
         [offscreen],
       );
@@ -262,7 +262,7 @@ export class VisualizationWorkerManager {
 
     this.worker.postMessage({
       type: "resize",
-      config,
+      renderConfig: config,
     });
   }
 

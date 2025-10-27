@@ -54,7 +54,7 @@ const renderQueue: RenderMessage[] = [];
 let rendering = false;
 let framesDropped = 0;
 let framesRendered = 0;
-const _lastRenderTime = 0;
+// lastRenderTime removed - not used in current implementation
 
 // Rendering state
 let canvasOffscreen: OffscreenCanvas | null = null;
@@ -99,6 +99,7 @@ function createProgram(glContext: GLContext, vsSource: string, fsSource: string)
   if (!vs || !fs) {return null;}
   
   const program = glContext.createProgram();
+  // WebGL context loss can cause createProgram to return null
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!program) {return null;}
   
@@ -424,8 +425,7 @@ function renderConstellation2D(samples: IQSample[], transform?: Transform): void
     context2D.fill();
   });
   
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (transform && context2D) {
+  if (transform) {
     context2D.restore();
   }
 }
@@ -563,7 +563,6 @@ function processFrame(): void {
     
     const end = performance.now();
     const renderTime = end - start;
-    lastRenderTime = end;
     framesRendered++;
     
     postMessage({
@@ -639,6 +638,8 @@ self.onmessage = (ev: MessageEvent<InitMessage | RenderMessage | ResizeMessage |
       return;
     }
     
+    // Exhaustive type check - ensures all message types are handled
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (msg.type === "dispose") {
       // Cleanup
       if (glContext) {
