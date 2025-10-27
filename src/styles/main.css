@@ -9,6 +9,10 @@
 @import "./components/playback.css";
 @import "./components/dialog.css";
 @import "./components/status-bar.css";
+@import "./components/diagnostics.css";
+@import "./components/rds.css";
+@import "./components/tmc.css";
+@import "./components/audio.css";
 
 /* Global base, accessibility, and focus styles moved to base.css and a11y.css */
 
@@ -191,12 +195,12 @@
 .talkgroup-section-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--rad-fg);
   margin-bottom: 1rem;
 }
 
 .talkgroup-add-section {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--rad-border);
   padding-bottom: 1.5rem;
 }
 
@@ -372,19 +376,19 @@
 }
 
 .signal-strength-bar.excellent {
-  background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+  background: var(--rad-success);
 }
 
 .signal-strength-bar.good {
-  background: linear-gradient(90deg, #4299e1 0%, #3182ce 100%);
+  background: var(--rad-primary);
 }
 
 .signal-strength-bar.fair {
-  background: linear-gradient(90deg, #ed8936 0%, #dd6b20 100%);
+  background: var(--rad-warning);
 }
 
 .signal-strength-bar.weak {
-  background: linear-gradient(90deg, #f56565 0%, #e53e3e 100%);
+  background: var(--rad-danger);
 }
 
 .signal-strength-text {
@@ -431,11 +435,11 @@
 .p25-preset-note {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: #fef3c7;
-  border: 1px solid #fbbf24;
+  background: var(--rad-bg-elev-1);
+  border: 1px solid var(--rad-warning);
   border-radius: 6px;
   font-size: 0.875rem;
-  color: #92400e;
+  color: var(--rad-warning-foreground);
 }
 
 @media (max-width: 768px) {
@@ -486,8 +490,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(90, 163, 232, 0.2);
-  border: 1px solid rgba(90, 163, 232, 0.4);
+  background: var(--rad-surface-2);
+  border: 1px solid var(--rad-border);
   border-radius: 4px;
   padding: 4px 10px;
   margin-right: 8px;
@@ -618,7 +622,7 @@
 
 .device-diagnostics-panel {
   padding: 0 20px 20px;
-  border-top: 1px solid rgba(90, 163, 232, 0.2);
+  border-top: 1px solid var(--rad-border);
 }
 
 .device-diagnostics-panel .device-diagnostics {
@@ -645,7 +649,7 @@
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(90, 163, 232, 0.2);
+  border-bottom: 1px solid var(--rad-border);
 }
 
 .diagnostics-header h3 {
@@ -693,7 +697,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid rgba(90, 163, 232, 0.1);
+  border-bottom: 1px solid var(--rad-border);
 }
 
 .diagnostic-item:last-child {
@@ -709,714 +713,13 @@
   justify-content: center;
 }
 
-.diagnostic-content {
-  flex: 1;
-  color: var(--rad-fg);
-  font-size: 14px;
-  line-height: 1.5;
-}
+/* Diagnostics moved to components/diagnostics.css */
 
-.diagnostic-content strong {
-  color: #5aa3e8;
-  font-weight: 600;
-}
+/* RDS styles moved to components/rds.css */
 
-.troubleshooting-guide,
-.info-panel {
-  margin-top: 16px;
-  padding: 16px;
-  border-radius: 6px;
-  background: rgba(30, 40, 60, 0.6);
-  border-left: 3px solid;
-}
+/* TMC styles moved to components/tmc.css */
 
-.troubleshooting-guide {
-  border-left-color: #fbbf24;
-}
-
-.troubleshooting-guide h4 {
-  color: #fbbf24;
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-}
-
-.troubleshooting-guide ol {
-  margin: 0;
-  padding-left: 20px;
-  color: #e0e6ed;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.troubleshooting-guide li {
-  margin-bottom: 8px;
-}
-
-.troubleshooting-guide code {
-  background: rgba(90, 163, 232, 0.15);
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: "Courier New", monospace;
-  font-size: 12px;
-  color: #5aa3e8;
-  display: inline-block;
-  margin: 4px 0;
-}
-
-.troubleshooting-guide p {
-  color: #e0e6ed;
-  font-size: 13px;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.info-panel {
-  border-left-color: var(--rad-primary);
-}
-
-.info-panel p {
-  color: #e0e6ed;
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.info-panel strong {
-  color: #5aa3e8;
-  font-weight: 600;
-}
-
-/* RDS Display Styles */
-.rds-display {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 20px;
-  margin: 20px 0;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  color: white;
-}
-
-.rds-display.rds-no-data {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.rds-status {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.rds-icon {
-  font-size: 48px;
-  opacity: 0.5;
-}
-
-.rds-message {
-  font-size: 20px;
-  font-weight: 600;
-  opacity: 0.8;
-}
-
-.rds-hint {
-  font-size: 14px;
-  opacity: 0.6;
-}
-
-.rds-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.rds-pi,
-.rds-quality {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.rds-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  opacity: 0.7;
-  font-weight: 600;
-}
-
-.rds-value {
-  font-size: 16px;
-  font-weight: bold;
-  font-family: "Courier New", monospace;
-}
-
-.rds-country {
-  font-size: 14px;
-  padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-.rds-quality-bar {
-  width: 100px;
-  height: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.rds-quality-fill {
-  height: 100%;
-  transition:
-    width 0.3s ease,
-    background-color 0.3s ease;
-}
-
-.rds-main {
-  text-align: center;
-  margin: 30px 0;
-}
-
-.rds-station-name {
-  font-size: 48px;
-  font-weight: bold;
-  font-family: "Courier New", monospace;
-  letter-spacing: 8px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  padding: 20px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.1),
-    rgba(255, 255, 255, 0.05)
-  );
-  border-radius: 8px;
-}
-
-.rds-radio-text {
-  margin: 20px 0;
-  padding: 15px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  border-left: 4px solid #667eea;
-}
-
-.rds-rt-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  opacity: 0.7;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.rds-rt-content {
-  font-size: 18px;
-  font-family: "Courier New", monospace;
-  letter-spacing: 1px;
-  line-height: 1.5;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.rds-metadata {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin: 20px 0;
-}
-
-.rds-meta-item {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-}
-
-.rds-meta-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  opacity: 0.7;
-  font-weight: 600;
-}
-
-.rds-meta-value {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.rds-stats {
-  display: flex;
-  justify-content: space-around;
-  padding: 15px;
-  margin-top: 20px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-  font-size: 12px;
-  opacity: 0.8;
-}
-
-.rds-stat {
-  font-family: "Courier New", monospace;
-}
-
-/* Compact RDS Display */
-.rds-display-compact {
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 8px;
-  color: white;
-}
-
-.rds-display-compact.rds-no-data {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  opacity: 0.6;
-}
-
-.rds-compact-ps {
-  font-size: 24px;
-  font-weight: bold;
-  font-family: "Courier New", monospace;
-  letter-spacing: 4px;
-  margin-bottom: 5px;
-}
-
-.rds-compact-rt {
-  font-size: 14px;
-  margin-bottom: 5px;
-  opacity: 0.8;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.rds-compact-meta {
-  font-size: 11px;
-  opacity: 0.6;
-  text-transform: uppercase;
-}
-
-/* Responsive Design for RDS */
-@media (max-width: 768px) {
-  .rds-station-name {
-    font-size: 32px;
-    letter-spacing: 4px;
-  }
-
-  .rds-rt-content {
-    font-size: 14px;
-  }
-
-  .rds-metadata {
-    grid-template-columns: 1fr;
-  }
-
-  .rds-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-}
-
-/* TMC (Traffic Message Channel) Display Styles */
-.tmc-display {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 20px;
-  margin: 20px 0;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  color: white;
-}
-
-.tmc-display.tmc-no-data {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.tmc-status {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.tmc-icon {
-  font-size: 48px;
-  opacity: 0.5;
-}
-
-.tmc-message {
-  font-size: 20px;
-  font-weight: 600;
-  opacity: 0.8;
-}
-
-.tmc-hint {
-  font-size: 14px;
-  opacity: 0.6;
-}
-
-.tmc-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.tmc-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.tmc-title-text {
-  font-weight: 700;
-}
-
-.tmc-count {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.tmc-last-update {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.tmc-messages {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-.tmc-message-card {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-  padding: 15px;
-  transition: transform 0.2s ease;
-}
-
-.tmc-message-card:hover {
-  transform: translateX(4px);
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.tmc-message-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.tmc-message-severity {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.tmc-severity-icon {
-  font-size: 20px;
-}
-
-.tmc-severity-label {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.tmc-diversion-badge {
-  background: rgba(251, 191, 36, 0.3);
-  color: #fbbf24;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.tmc-message-event {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  line-height: 1.4;
-}
-
-.tmc-message-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-}
-
-.tmc-detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.tmc-detail-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  opacity: 0.7;
-  font-weight: 600;
-}
-
-.tmc-detail-value {
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.tmc-message-meta {
-  display: flex;
-  gap: 15px;
-  font-size: 11px;
-  opacity: 0.6;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.tmc-meta-item {
-  font-family: "Courier New", monospace;
-}
-
-.tmc-stats {
-  display: flex;
-  justify-content: space-around;
-  padding: 15px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-  font-size: 12px;
-  opacity: 0.8;
-}
-
-.tmc-stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.tmc-stat-label {
-  text-transform: uppercase;
-  opacity: 0.7;
-  font-weight: 600;
-  font-size: 10px;
-}
-
-.tmc-stat-value {
-  font-family: "Courier New", monospace;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.tmc-stat-error .tmc-stat-value {
-  color: #ef4444;
-}
-
-/* Compact TMC Display */
-.tmc-display-compact {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 8px;
-  border-left-width: 4px;
-  border-left-style: solid;
-  color: white;
-}
-
-.tmc-display-compact.tmc-no-data {
-  opacity: 0.6;
-  border-left-color: transparent;
-}
-
-.tmc-display-compact .tmc-icon {
-  font-size: 20px;
-}
-
-.tmc-display-compact .tmc-count {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.tmc-display-compact .tmc-text {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-/* Responsive Design for TMC */
-@media (max-width: 768px) {
-  .tmc-message-details {
-    grid-template-columns: 1fr;
-  }
-
-  .tmc-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .tmc-message-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-}
-
-/* Audio Controls */
-.audio-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  background: rgba(30, 40, 60, 0.4);
-  border-radius: 8px;
-  border: 1px solid rgba(90, 163, 232, 0.2);
-}
-
-.audio-controls-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.btn-audio {
-  min-width: 140px;
-  font-weight: 600;
-}
-
-.btn-mute {
-  min-width: 60px;
-  font-size: 20px;
-  padding: 8px 16px;
-}
-
-.volume-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 200px;
-}
-
-.volume-label {
-  color: #e0e6ed;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.volume-slider {
-  flex: 1;
-  height: 6px;
-  background: var(--rad-border);
-  border-radius: 3px;
-  outline: none;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.volume-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  background: var(--rad-primary);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.volume-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  background: var(--rad-primary);
-  border-radius: 50%;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.volume-slider:hover::-webkit-slider-thumb {
-  filter: brightness(1.1);
-  transform: scale(1.1);
-}
-
-.volume-slider:hover::-moz-range-thumb {
-  filter: brightness(1.1);
-  transform: scale(1.1);
-}
-
-.volume-slider:focus::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
-}
-
-.volume-slider:focus::-moz-range-thumb {
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
-}
-
-.volume-slider:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.volume-display {
-  color: #e0e6ed;
-  font-size: 14px;
-  font-weight: 600;
-  min-width: 45px;
-  text-align: right;
-}
-
-.audio-status {
-  font-size: 13px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  background: rgba(30, 40, 60, 0.5);
-  text-align: center;
-}
-
-.audio-status-active {
-  color: #34d399;
-  font-weight: 500;
-}
-
-.audio-status-inactive {
-  color: #a0aab5;
-  font-weight: 400;
-}
+/* Audio controls moved to components/audio.css */
 
 /* Info and Empty State Messages */
 .info-message {

@@ -65,21 +65,16 @@
 }
 
 .btn-record {
-  background: #fc8181;
-  color: #fff;
+  background: var(--rad-danger);
+  color: var(--rad-danger-foreground);
 }
 
-.btn-record:hover:not(:disabled) {
-  background: #f56565;
-}
+/* Hover/focus handled by generic .btn styles */
 
 .btn-stop {
-  background: #718096;
-  color: #fff;
-}
-
-.btn-stop:hover:not(:disabled) {
-  background: #4a5568;
+  background: var(--rad-surface-2);
+  color: var(--rad-fg);
+  border: 1px solid var(--rad-border);
 }
 
 /* Playback Controls */
