@@ -6,15 +6,19 @@ Accepted
 
 ## Context
 
-The rad.io project uses GitHub Pages for hosting and has an automated deployment pipeline via GitHub Actions. However, several issues were identified:
+The rad.io project uses GitHub Pages for hosting with an automated deployment pipeline via GitHub Actions. As the project grows, we need to make strategic decisions about deployment reliability, observability, and maintainability.
 
-1. **No deployment validation**: Deployments could succeed but result in a broken site
-2. **No build output validation**: Missing or corrupt files could be deployed
-3. **Artifact accumulation**: GitHub Actions artifacts were accumulating without cleanup
-4. **Lack of documentation**: No comprehensive deployment documentation or runbook
-5. **Manual processes**: No clear procedures for rollback or troubleshooting
+**Key decision points:**
 
-The deployment process needed to be more reliable, observable, and maintainable to support the project's growth and ensure production stability.
+1. **How to validate deployments?** Should we catch broken builds before or after deployment? What level of validation is sufficient?
+
+2. **How to manage artifacts?** Should we keep artifacts indefinitely, or implement a retention policy? What's the right balance between debugging needs and storage costs?
+
+3. **How to document processes?** What level of documentation is needed for operators and developers? Should we prioritize automation or documentation?
+
+4. **Where to invest in automation?** Which manual processes create the most friction? What's the ROI of automating each process?
+
+These decisions impact deployment speed, reliability, operational costs, and team productivity.
 
 ## Decision
 

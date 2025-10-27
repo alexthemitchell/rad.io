@@ -162,17 +162,25 @@ npx http-server dist/ -p 8080 --cors
 
 **Produced artifacts (dist/):**
 
-| File Type            | Size (typical) | Purpose                   |
-| -------------------- | -------------- | ------------------------- |
-| `main.*.js`          | ~403 KB        | Main application bundle   |
-| `react-vendors.*.js` | ~181 KB        | React framework bundle    |
-| `vendors.*.js`       | ~38 KB         | Third-party dependencies  |
-| `runtime.*.js`       | ~3 KB          | Webpack runtime           |
-| `*.wasm`             | ~12 KB each    | DSP processing modules    |
-| `*.js.map`           | ~1.7 MB total  | Source maps for debugging |
-| `index.html`         | ~529 bytes     | Entry point               |
+To check current bundle sizes and composition:
 
-**Total deployment size:** ~2.9 MB (including source maps)
+```bash
+npm run build:prod
+du -h dist/*.js | sort -hr
+du -sh dist/
+```
+
+The build typically includes:
+
+- Main application bundle (JavaScript)
+- React framework bundle (code-split from main)
+- Third-party dependencies bundle (vendors)
+- Webpack runtime
+- WASM modules for DSP processing
+- Source maps for debugging
+- HTML entry point
+
+Total deployment size varies based on features and dependencies.
 
 ### GitHub Actions Artifacts
 
