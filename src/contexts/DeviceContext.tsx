@@ -23,6 +23,7 @@ import React, {
   useRef,
   type ReactNode,
 } from "react";
+import { HackRFOneAdapter } from "../hackrf/HackRFOneAdapter";
 import { useUSBDevice } from "../hooks/useUSBDevice";
 import { MockSDRDevice } from "../models/MockSDRDevice";
 import { RTLSDRDeviceAdapter } from "../models/RTLSDRDeviceAdapter";
@@ -129,13 +130,20 @@ export function DeviceProvider({
       const deviceId = getDeviceId(usb);
 
       try {
-        // Create adapter based on device type (temporarily use RTL-SDR adapter as generic)
-        const adapter = new RTLSDRDeviceAdapter(usb);
+        // Select the correct adapter based on USB VID/PID
+        // HackRF One: VID 0x1D50 (Great Scott Gadgets), PID 0x6089
+        // Reference: https://greatscottgadgets.com/hackrf/one/
+        const isHackRF = usb.vendorId === 0x1d50 && usb.productId === 0x6089;
 
-        // Open device if not already opened
-        if (!usb.opened) {
-          await adapter.open();
-        }
+        const adapter = isHackRF
+          ? new HackRFOneAdapter(usb)
+          : new RTLSDRDeviceAdapter(usb);
+
+        // Ensure device is ready: always invoke adapter.open(),
+        // which is idempotent for already-open devices.
+        // This guarantees claiming interfaces/alternate settings
+        // for drivers like HackRF that require it.
+        await adapter.open();
 
         // Add to devices map (functional update checks for duplicates)
         setDevices((prev) => {

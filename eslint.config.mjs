@@ -1,6 +1,5 @@
 import js from "@eslint/js";
 import json from "@eslint/json";
-import markdown from "@eslint/markdown";
 import { defineConfig, globalIgnores } from "eslint/config";
 import pluginImport from "eslint-plugin-import";
 import jsxA11y from "eslint-plugin-jsx-a11y";
@@ -18,6 +17,7 @@ export default defineConfig([
     "coverage/**",
     "assembly/**",
     "package.json",
+    ".markdownlint.jsonc",
   ]),
 
   // Ignore test files from main linting
@@ -359,12 +359,5 @@ export default defineConfig([
     name: "rad.io/jsonc",
     files: ["**/*.jsonc"],
     language: "json/jsonc",
-  })),
-
-  // Markdown files configuration
-  ...[markdown.configs.recommended].flat().map((config) => ({
-    ...config,
-    name: "rad.io/markdown",
-    files: ["**/*.md"],
   })),
 ]);

@@ -125,9 +125,35 @@ function Monitor(): React.JSX.Element {
       );
     } catch (err) {
       console.error("Tune failed", err);
+      // Attempt fast recovery once, then retry tune sequence
+      try {
+        if (device.fastRecovery) {
+          setStatusMsg("Recovering device after transfer error…");
+          await device.fastRecovery();
+        } else {
+          // Fallback: reopen if no fastRecovery implementation
+          await device.open();
+        }
+        // Retry tune steps once
+        await device.setSampleRate(sampleRate);
+        await device.setLNAGain(lnaGain);
+        await device.setAmpEnable(ampEnabled);
+        if (device.setBandwidth) {
+          await device.setBandwidth(2_500_000);
+        }
+        await device.setFrequency(frequency);
+        setStatusMsg(
+          `Tuned to ${formatFrequency(frequency)} @ ${(sampleRate / 1e6).toFixed(2)} MSPS`,
+        );
+        return;
+      } catch (retryErr) {
+        console.error("Tune retry after recovery failed", retryErr);
+      }
       setStatusMsg(
         err instanceof Error ? `Tune failed: ${err.message}` : "Tune failed",
       );
+      // Propagate error so callers (e.g., handleStart) can abort start flow
+      throw err;
     }
   }, [ampEnabled, device, frequency, lnaGain, sampleRate]);
 
@@ -142,62 +168,84 @@ function Monitor(): React.JSX.Element {
       iqBufferRef.current = [];
       setIsReceiving(true);
 
-      // Start streaming without awaiting to avoid blocking UI
-      void device.receive((dataView) => {
-        try {
-          const samples = device.parseSamples(dataView);
-          // Accumulate a modest chunk before demodulating for smoother audio
-          const buffer = iqBufferRef.current;
-          buffer.push(...samples);
+      // Start streaming without awaiting to avoid blocking UI.
+      // Pass configuration to ensure correct order (sample rate first) and attach
+      // an error handler to avoid unhandled promise rejections.
+      void device
+        .receive(
+          (dataView) => {
+            try {
+              const samples = device.parseSamples(dataView);
+              // Accumulate a modest chunk before demodulating for smoother audio
+              const buffer = iqBufferRef.current;
+              buffer.push(...samples);
 
-          // Feed visualization ring buffer
-          const vbuf = vizBufferRef.current;
-          vbuf.push(...convertIQToDSP(samples));
-          // Trim to a reasonable window for spectrogram computation
-          const maxVizSamples = fftSize * 64; // 64 frames worth of samples
-          if (vbuf.length > maxVizSamples) {
-            vbuf.splice(0, vbuf.length - maxVizSamples);
-          }
-          // Throttle UI updates to ~10fps
-          const now = performance.now();
-          if (now - (lastVizUpdateRef.current || 0) > 100) {
-            lastVizUpdateRef.current = now;
-            // Create a fresh array reference to trigger React updates
-            setVizSamples(vbuf.slice());
-          }
-
-          // Buffer chunk size tuned for ~25ms at 2 MSPS:
-          // 50_000 samples / 2_000_000 samples/sec = 0.025s (25ms)
-          // Balances low latency with smooth playback scheduling.
-          const MIN_IQ_SAMPLES = 50_000;
-          if (buffer.length >= MIN_IQ_SAMPLES) {
-            const chunk = buffer.splice(0, MIN_IQ_SAMPLES);
-            const proc = processorRef.current;
-            const ctx = audioCtxRef.current;
-            if (proc && ctx) {
-              const { audioBuffer } = proc.extractAudio(
-                chunk,
-                mode === "AM" ? DemodulationType.AM : DemodulationType.FM,
-                { sampleRate: 48_000, channels: 1 },
-              );
-              if (ctx.state === "suspended") {
-                void ctx.resume();
+              // Feed visualization ring buffer
+              const vbuf = vizBufferRef.current;
+              vbuf.push(...convertIQToDSP(samples));
+              // Trim to a reasonable window for spectrogram computation
+              const maxVizSamples = fftSize * 64; // 64 frames worth of samples
+              if (vbuf.length > maxVizSamples) {
+                vbuf.splice(0, vbuf.length - maxVizSamples);
               }
-              const src = ctx.createBufferSource();
-              src.buffer = audioBuffer;
-              // Volume: simple gain node for now
-              const gainNode = ctx.createGain();
-              gainNode.gain.value = volume / 100;
-              src.connect(gainNode).connect(ctx.destination);
-              src.start();
-              window.dbgAudioCtxTime = ctx.currentTime;
-              window.dbgLastAudioLength = audioBuffer.length;
+              // Throttle UI updates to ~10fps
+              const now = performance.now();
+              if (now - (lastVizUpdateRef.current || 0) > 100) {
+                lastVizUpdateRef.current = now;
+                // Create a fresh array reference to trigger React updates
+                setVizSamples(vbuf.slice());
+              }
+
+              // Buffer chunk size tuned for ~25ms at 2 MSPS:
+              // 50_000 samples / 2_000_000 samples/sec = 0.025s (25ms)
+              // Balances low latency with smooth playback scheduling.
+              const MIN_IQ_SAMPLES = 50_000;
+              if (buffer.length >= MIN_IQ_SAMPLES) {
+                const chunk = buffer.splice(0, MIN_IQ_SAMPLES);
+                const proc = processorRef.current;
+                const ctx = audioCtxRef.current;
+                if (proc && ctx) {
+                  const { audioBuffer } = proc.extractAudio(
+                    chunk,
+                    mode === "AM" ? DemodulationType.AM : DemodulationType.FM,
+                    { sampleRate: 48_000, channels: 1 },
+                  );
+                  if (ctx.state === "suspended") {
+                    void ctx.resume();
+                  }
+                  const src = ctx.createBufferSource();
+                  src.buffer = audioBuffer;
+                  // Volume: simple gain node for now
+                  const gainNode = ctx.createGain();
+                  gainNode.gain.value = volume / 100;
+                  src.connect(gainNode).connect(ctx.destination);
+                  src.start();
+                  window.dbgAudioCtxTime = ctx.currentTime;
+                  window.dbgLastAudioLength = audioBuffer.length;
+                }
+              }
+            } catch (e) {
+              console.error("Error in receive callback", e);
             }
-          }
-        } catch (e) {
-          console.error("Error in receive callback", e);
-        }
-      });
+          },
+          {
+            sampleRate,
+            centerFrequency: frequency,
+            bandwidth: 2_500_000,
+            lnaGain,
+            ampEnabled,
+          },
+        )
+        .catch((err: unknown) => {
+          console.error("Receive failed", err);
+          setIsReceiving(false);
+          setStatusMsg(
+            err instanceof Error
+              ? `Start failed: ${err.message}`
+              : "Start failed",
+          );
+          window.dbgReceiving = false;
+        });
       setStatusMsg("Receiving started");
       window.dbgReceiving = true;
     } catch (err) {
@@ -207,7 +255,18 @@ function Monitor(): React.JSX.Element {
         err instanceof Error ? `Start failed: ${err.message}` : "Start failed",
       );
     }
-  }, [device, ensureAudio, fftSize, mode, tuneDevice, volume]);
+  }, [
+    ampEnabled,
+    device,
+    ensureAudio,
+    fftSize,
+    frequency,
+    lnaGain,
+    mode,
+    sampleRate,
+    tuneDevice,
+    volume,
+  ]);
 
   const handleStop = useCallback(async (): Promise<void> => {
     if (!device) {

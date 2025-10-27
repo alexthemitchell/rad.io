@@ -56,6 +56,8 @@ npm run build:prod     # Production build with optimizations
 # Code Quality
 npm run lint           # Check code for linting issues
 npm run lint:fix       # Auto-fix linting issues
+npm run lint:md        # Check markdown files for linting issues
+npm run lint:md:fix    # Auto-fix markdown linting issues
 npm run format         # Format code with Prettier
 npm run format:check   # Check code formatting
 npm run type-check     # Run TypeScript type checking
