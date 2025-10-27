@@ -212,7 +212,7 @@
 }
 
 /* Responsive Design for RDS */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .rds-station-name {
     font-size: 32px;
     letter-spacing: 4px;

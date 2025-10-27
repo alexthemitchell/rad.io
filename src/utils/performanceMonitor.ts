@@ -48,10 +48,12 @@ class PerformanceMonitor {
     }
 
     try {
-      // Monitor long tasks (>50ms)
+      // Monitor measures/marks and true long tasks (>50ms). We observe both to
+      // keep our own metric store up-to-date while also capturing browser long tasks.
       this.observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.duration > 50) {
+          // Only record actual "longtask" entries for long task reporting
+          if (entry.entryType === "longtask" && entry.duration > 50) {
             this.longTasks.push({
               name: entry.name,
               duration: entry.duration,
@@ -66,8 +68,8 @@ class PerformanceMonitor {
         }
       });
 
-      // Observe measures and marks
-      this.observer.observe({ entryTypes: ["measure", "mark"] });
+      // Observe long tasks plus measures/marks for completeness
+      this.observer.observe({ entryTypes: ["measure", "mark", "longtask"] });
     } catch {
       // Silently skip observer initialization failures
     }
@@ -133,7 +135,7 @@ class PerformanceMonitor {
 
       performance.measure(name, startMark, finalEndMark);
 
-      // Get the measurement
+      // Get the latest measurement
       const measures = performance.getEntriesByName(name, "measure");
       if (measures.length > 0) {
         const measure = measures[measures.length - 1] as PerformanceMeasure;
@@ -160,6 +162,17 @@ class PerformanceMonitor {
           }
         }
       }
+
+      // Clear marks and measures to avoid unbounded growth in Performance timeline
+      try {
+        performance.clearMarks(finalEndMark);
+      } catch {}
+      try {
+        performance.clearMarks(startMark);
+      } catch {}
+      try {
+        performance.clearMeasures(name);
+      } catch {}
     } catch {
       // no-op
     }
@@ -232,12 +245,78 @@ class PerformanceMonitor {
    * Uses average render duration: fps = 1000 / avg(ms), rounded to 1 decimal.
    */
   getFPS(): number {
+    // Prefer cadence-based FPS using intervals between successive 'rendering' measures
+    const metrics = this.getMetrics("rendering");
+    if (metrics.length >= 2) {
+      // Use up to the last 60 intervals for stability
+      const deltas: number[] = [];
+      const start = Math.max(1, metrics.length - 60);
+      for (let i = start; i < metrics.length; i++) {
+        const prev = metrics[i - 1];
+        const curr = metrics[i];
+        if (!prev || !curr) {
+          continue;
+        }
+        const dt = curr.startTime - prev.startTime;
+        if (isFinite(dt) && dt > 0) {
+          deltas.push(dt);
+        }
+      }
+      if (deltas.length > 0) {
+        const sum = deltas.reduce((a, b) => a + b, 0);
+        const avgDt = sum / deltas.length;
+        const fps = 1000 / avgDt;
+        if (isFinite(fps) && fps > 0) {
+          return Math.round(fps * 10) / 10;
+        }
+      }
+    }
+
+    // Fallback to throughput-based FPS using average render duration
     const avg = this.getAverageDuration("rendering");
     if (!avg || avg <= 0 || !isFinite(avg)) {
       return 0;
     }
     const fps = 1000 / avg;
     return Math.round(fps * 10) / 10;
+  }
+
+  /**
+   * Compute cadence-based FPS for a specific performance measure name by
+   * analyzing intervals between successive measurements' start times.
+   * Uses up to the last `windowCount` intervals for stability.
+   */
+  getCadenceFPS(name: string, windowCount = 60): number {
+    // Compute cadence using our stored metrics that match the exact name
+    const all: PerformanceMetrics[] = [];
+    for (const arr of this.metrics.values()) {
+      for (const m of arr) {
+        if (m.name === name) {
+          all.push(m);
+        }
+      }
+    }
+    if (all.length < 2) {
+      return 0;
+    }
+    const startIdx = Math.max(1, all.length - windowCount);
+    const deltas: number[] = [];
+    for (let i = startIdx; i < all.length; i++) {
+      const prev = all[i - 1];
+      const curr = all[i];
+      if (prev && curr) {
+        const dt = curr.startTime - prev.startTime;
+        if (isFinite(dt) && dt > 0) {
+          deltas.push(dt);
+        }
+      }
+    }
+    if (deltas.length === 0) {
+      return 0;
+    }
+    const avgDt = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+    const fps = 1000 / avgDt;
+    return isFinite(fps) && fps > 0 ? Math.round(fps * 10) / 10 : 0;
   }
 
   /**

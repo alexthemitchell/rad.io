@@ -17,8 +17,8 @@
 }
 
 .panel-header h3 {
-  margin: 0 0 8px 0;
-  color: var(--text-primary, #ffffff);
+  margin: 0 0 8px;
+  color: var(--text-primary, #fff);
   font-size: 18px;
   font-weight: 600;
 }
@@ -44,7 +44,7 @@
   background: var(--button-background, #333);
   border: 1px solid var(--border-color, #555);
   border-radius: 4px;
-  color: var(--text-primary, #ffffff);
+  color: var(--text-primary, #fff);
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
@@ -172,7 +172,7 @@
 }
 
 .detail-row .value {
-  color: var(--text-primary, #ffffff);
+  color: var(--text-primary, #fff);
   font-family: "Courier New", monospace;
 }
 

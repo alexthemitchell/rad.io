@@ -1,10 +1,19 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useDevice } from "../contexts/DeviceContext";
+import { useFrequency } from "../contexts/FrequencyContext";
+import {
+  useFrequencyScanner,
+  type ActiveSignal,
+} from "../hooks/useFrequencyScanner";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
+import {
+  calculateSpectrogramRow,
+  type Sample as DSPSample,
+} from "../utils/dsp";
 import { formatFrequency } from "../utils/frequency";
-import FFTChart from "../visualization/components/FFTChart";
+import { performanceMonitor } from "../utils/performanceMonitor";
+import { SpectrumExplorer, Spectrogram } from "../visualization";
 import type { IQSample } from "../models/SDRDevice";
-import type { Sample as DSPSample } from "../utils/dsp";
 
 // Expose minimal diagnostics on window for automated tests
 declare global {
@@ -54,7 +63,8 @@ function Monitor(): React.JSX.Element {
   const { device, initialize, isCheckingPaired } = useDevice();
 
   // UI state
-  const [frequency, setFrequency] = useState(100_000_000); // 100 MHz default
+  const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
+    useFrequency();
   const [mode, setMode] = useState<DemodMode>("FM");
   const [volume, setVolume] = useState(50);
   const [squelch, setSquelch] = useState(0);
@@ -64,12 +74,41 @@ function Monitor(): React.JSX.Element {
   const [lnaGain, setLnaGain] = useState<number>(16); // dB
   const [ampEnabled, setAmpEnabled] = useState<boolean>(false);
   const [isReceiving, setIsReceiving] = useState(false);
+  // Mirror receiving state in a ref for reliable unmount cleanup
+  const isReceivingRef = useRef<boolean>(false);
+  React.useEffect(() => {
+    isReceivingRef.current = isReceiving;
+  }, [isReceiving]);
   const [statusMsg, setStatusMsg] = useState<string>("");
   // Visualization controls
   const [fftSize, setFftSize] = useState<number>(2048);
-  const [vizMode, setVizMode] = useState<"spectrogram" | "waterfall">(
-    "waterfall",
+  const [showWaterfall, setShowWaterfall] = useState<boolean>(false);
+  // Visualization mode selector for E2E and UX: fft | waterfall | spectrogram
+  const [vizMode, setVizMode] = useState<"fft" | "waterfall" | "spectrogram">(
+    "fft",
   );
+  // Optional spectrogram palette
+  const [colorMap, setColorMap] = useState<
+    "viridis" | "inferno" | "turbo" | "gray"
+  >("viridis");
+  // Optional manual dB range; undefined means auto
+  const [dbMin, setDbMin] = useState<number | undefined>(undefined);
+  const [dbMax, setDbMax] = useState<number | undefined>(undefined);
+
+  // Frequency scanner integration
+  const [foundSignals, setFoundSignals] = useState<ActiveSignal[]>([]);
+  const scanner = useFrequencyScanner(device, (signal) => {
+    // Update or insert signal by frequency
+    setFoundSignals((prev) => {
+      const idx = prev.findIndex((s) => s.frequency === signal.frequency);
+      if (idx >= 0) {
+        const copy = prev.slice();
+        copy[idx] = signal;
+        return copy;
+      }
+      return prev.concat(signal);
+    });
+  });
 
   // Audio processing
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -86,12 +125,20 @@ function Monitor(): React.JSX.Element {
     [device, isReceiving],
   );
 
+  // Will be defined later in file after handleStart to avoid use-before-define
+  const didAutoStartRef = useRef<boolean>(false);
+
   const ensureAudio = useCallback((): void => {
     audioCtxRef.current ??= new AudioContext();
     processorRef.current ??= new AudioStreamProcessor(sampleRate);
     // Expose for automated testing/diagnostics
     window.dbgAudioCtx = audioCtxRef.current;
   }, [sampleRate]);
+
+  // Mirror volume for global status bar diagnostics
+  React.useEffect(() => {
+    window.dbgVolume = volume;
+  }, [volume]);
 
   // Simulate signal strength updates
   React.useEffect(() => {
@@ -100,6 +147,45 @@ function Monitor(): React.JSX.Element {
     }, 500);
     return (): void => clearInterval(interval);
   }, []);
+
+  // Memoized mapping of found signals for overlay
+  const explorerSignals = useMemo(
+    () =>
+      foundSignals.map((s) => ({
+        freqHz: s.frequency,
+        strength: s.strength,
+        label:
+          s.label ??
+          (s.rdsData?.ps
+            ? `${s.rdsData.ps}${s.rdsData.rt ? ` • ${s.rdsData.rt.slice(0, 24)}` : ""}`
+            : undefined),
+      })),
+    [foundSignals],
+  );
+
+  // Build spectrogram frames for non-FFT modes using overlap like SpectrumExplorer
+  const spectroFrames = useMemo(() => {
+    const frames = 200;
+    const overlap = 0.5;
+    const rows: Float32Array[] = [];
+    const s: DSPSample[] = vizSamples;
+    if (s.length < fftSize) {
+      return rows;
+    }
+    const hop = Math.max(1, Math.floor(fftSize * (1 - overlap)));
+    const total = fftSize + (frames - 1) * hop;
+    const start = Math.max(0, s.length - total);
+    for (
+      let i = start;
+      i + fftSize <= s.length && rows.length < frames;
+      i += hop
+    ) {
+      const windowed = s.slice(i, i + fftSize);
+      const row = calculateSpectrogramRow(windowed, fftSize);
+      rows.push(row);
+    }
+    return rows;
+  }, [vizSamples, fftSize]);
 
   const tuneDevice = useCallback(async (): Promise<void> => {
     if (!device) {
@@ -163,6 +249,8 @@ function Monitor(): React.JSX.Element {
       return;
     }
     try {
+      // Ensure any active scan is stopped before starting live reception
+      scanner.stopScan();
       ensureAudio();
       await tuneDevice();
       iqBufferRef.current = [];
@@ -188,12 +276,16 @@ function Monitor(): React.JSX.Element {
               if (vbuf.length > maxVizSamples) {
                 vbuf.splice(0, vbuf.length - maxVizSamples);
               }
-              // Throttle UI updates to ~10fps
+              // Throttle UI updates to ~60fps for smoother visuals on Canvas2D
               const now = performance.now();
-              if (now - (lastVizUpdateRef.current || 0) > 100) {
+              if (now - (lastVizUpdateRef.current || 0) > 16) {
                 lastVizUpdateRef.current = now;
+                // Telemetry: record cadence of visualization sample pushes
+                const mark = "viz-push-start";
+                performanceMonitor.mark(mark);
                 // Create a fresh array reference to trigger React updates
                 setVizSamples(vbuf.slice());
+                performanceMonitor.measure("viz-push", mark);
               }
 
               // Buffer chunk size tuned for ~25ms at 2 MSPS:
@@ -222,6 +314,21 @@ function Monitor(): React.JSX.Element {
                   src.start();
                   window.dbgAudioCtxTime = ctx.currentTime;
                   window.dbgLastAudioLength = audioBuffer.length;
+                  // Surface recent playback and basic clipping flag for status bar
+                  try {
+                    const data = audioBuffer.getChannelData(0);
+                    let maxAbs = 0;
+                    for (const sample of data) {
+                      const v = Math.abs(sample);
+                      if (v > maxAbs) {
+                        maxAbs = v;
+                      }
+                    }
+                    window.dbgAudioClipping = maxAbs >= 0.98;
+                  } catch {
+                    // ignore
+                  }
+                  window.dbgLastAudioAt = performance.now();
                 }
               }
             } catch (e) {
@@ -266,6 +373,7 @@ function Monitor(): React.JSX.Element {
     sampleRate,
     tuneDevice,
     volume,
+    scanner,
   ]);
 
   const handleStop = useCallback(async (): Promise<void> => {
@@ -288,6 +396,51 @@ function Monitor(): React.JSX.Element {
     }
   }, [device]);
 
+  // Auto-start reception if a previously paired device is already connected/opened.
+  // We only do this once per session to avoid surprising re-starts after a manual stop.
+  React.useEffect(() => {
+    // Wait until paired-device check is complete to avoid racing initial state.
+    if (isCheckingPaired) {
+      return;
+    }
+    if (!device) {
+      return;
+    }
+    try {
+      const open = device.isOpen();
+      if (
+        open &&
+        !isReceiving &&
+        !didAutoStartRef.current &&
+        scanner.state === "idle"
+      ) {
+        didAutoStartRef.current = true;
+        // Fire and forget; errors will be reflected into status message by handleStart.
+        void handleStart();
+      }
+    } catch {
+      // If device adapter throws, just skip auto-start.
+      // This avoids blocking UI on edge adapters without isOpen semantics.
+    }
+  }, [device, isReceiving, handleStart, isCheckingPaired, scanner.state]);
+
+  // Ensure RX is stopped when leaving the page to avoid lingering streams and update loops
+  React.useEffect((): (() => void) => {
+    return (): void => {
+      try {
+        if (device && (isReceivingRef.current || device.isReceiving())) {
+          // Fire and forget; avoid blocking unmount
+          void device.stopRx().catch((e: unknown) => {
+            console.warn("Stop on unmount failed", e);
+          });
+        }
+      } catch (e) {
+        // Best-effort cleanup
+        console.warn("Error during unmount cleanup", e);
+      }
+    };
+  }, [device]);
+
   return (
     <main
       className="page-container"
@@ -301,6 +454,23 @@ function Monitor(): React.JSX.Element {
       <section aria-label="Spectrum Visualization">
         <h3>Spectrum &amp; Waterfall</h3>
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <label>
+            Visualization mode:
+            <select
+              aria-label="Visualization mode"
+              value={vizMode}
+              onChange={(e): void =>
+                setVizMode(
+                  e.target.value as "fft" | "waterfall" | "spectrogram",
+                )
+              }
+              style={{ marginLeft: 8 }}
+            >
+              <option value="fft">FFT</option>
+              <option value="waterfall">Waterfall</option>
+              <option value="spectrogram">Spectrogram</option>
+            </select>
+          </label>
           <label>
             FFT Size:
             <select
@@ -316,33 +486,229 @@ function Monitor(): React.JSX.Element {
               ))}
             </select>
           </label>
-          <label style={{ marginLeft: 8 }}>
-            View:
-            <select
-              aria-label="Visualization mode"
-              value={vizMode}
-              onChange={(e): void =>
-                setVizMode(e.target.value as "spectrogram" | "waterfall")
-              }
-              style={{ marginLeft: 8 }}
+          {vizMode === "fft" && (
+            <label>
+              <input
+                type="checkbox"
+                checked={showWaterfall}
+                onChange={(e): void => setShowWaterfall(e.target.checked)}
+                aria-label="Toggle waterfall visualization"
+                style={{ marginLeft: 8, marginRight: 4 }}
+              />
+              Show Waterfall (improves performance when off)
+            </label>
+          )}
+          {/* Inline, lightweight scan controls for quick discovery */}
+          <div
+            role="group"
+            aria-label="Frequency scanner controls"
+            style={{ display: "inline-flex", gap: 8, alignItems: "center" }}
+          >
+            <button
+              onClick={(): void => {
+                // Stop RX to let scanner control the device stream
+                if (isReceiving) {
+                  void handleStop();
+                }
+                void scanner.startScan();
+                setStatusMsg("Scanning for active signals…");
+              }}
+              disabled={scanner.state === "scanning"}
+              aria-label="Start frequency scan"
+              title="Start scanning the current band (stops live reception while running)"
             >
-              <option value="spectrogram">Spectrogram</option>
-              <option value="waterfall">Waterfall</option>
-            </select>
-          </label>
+              🔎 Start Scan
+            </button>
+            <button
+              onClick={(): void => scanner.pauseScan()}
+              disabled={scanner.state !== "scanning"}
+              aria-label="Pause scan"
+            >
+              ⏸ Pause
+            </button>
+            <button
+              onClick={(): void => scanner.resumeScan()}
+              disabled={scanner.state !== "paused"}
+              aria-label="Resume scan"
+            >
+              ▶ Resume
+            </button>
+            <button
+              onClick={(): void => {
+                scanner.stopScan();
+                setStatusMsg("Scan stopped");
+              }}
+              disabled={scanner.state === "idle"}
+              aria-label="Stop scan"
+            >
+              ■ Stop
+            </button>
+            <label style={{ marginLeft: 8 }}>
+              <input
+                type="checkbox"
+                checked={scanner.config.enableRDS ?? true}
+                onChange={(e): void =>
+                  scanner.updateConfig({ enableRDS: e.target.checked })
+                }
+              />
+              RDS
+            </label>
+            <span aria-live="polite" style={{ opacity: 0.8 }}>
+              {scanner.state !== "idle"
+                ? `Progress: ${Math.round(scanner.progress)}%`
+                : ""}
+            </span>
+          </div>
         </div>
-        <div style={{ marginTop: 8 }}>
-          <FFTChart
-            samples={vizSamples}
-            width={900}
-            height={320}
-            fftSize={fftSize}
-            freqMin={0}
-            freqMax={fftSize - 1}
-            mode={vizMode}
-            maxWaterfallFrames={200}
-          />
-        </div>
+        {vizMode === "fft" ? (
+          <div style={{ marginTop: 8 }}>
+            <SpectrumExplorer
+              samples={vizSamples}
+              sampleRate={sampleRate}
+              centerFrequency={frequency}
+              fftSize={fftSize}
+              frames={200}
+              showWaterfall={showWaterfall}
+              signals={explorerSignals}
+              onTune={(fHz): void => {
+                // Snap to nearest 1 kHz for device friendliness
+                const snapped = Math.round(fHz / 1_000) * 1_000;
+                setFrequency(snapped);
+                // Retune live if device is present
+                if (device) {
+                  void device
+                    .setFrequency(snapped)
+                    .then(() =>
+                      setStatusMsg(
+                        `Tuned to ${formatFrequency(snapped)} @ ${(
+                          sampleRate / 1e6
+                        ).toFixed(2)} MSPS`,
+                      ),
+                    )
+                    .catch((err: unknown) => {
+                      console.warn("Quick tune failed", err);
+                      // Fallback to full tune flow
+                      void tuneDevice();
+                    });
+                }
+              }}
+            />
+          </div>
+        ) : (
+          <div style={{ marginTop: 8 }}>
+            {/* Spectrogram/Waterfall modes */}
+            <Spectrogram
+              fftData={spectroFrames}
+              width={900}
+              height={320}
+              freqMin={0}
+              freqMax={fftSize - 1}
+              mode={vizMode === "waterfall" ? "waterfall" : "spectrogram"}
+              colorMap={colorMap}
+              dbMin={dbMin}
+              dbMax={dbMax}
+              maxWaterfallFrames={200}
+            />
+            {/* Minimal controls for color map and range when in spectrogram modes */}
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                marginTop: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <label>
+                Colormap:
+                <select
+                  aria-label="Spectrogram colormap"
+                  value={colorMap}
+                  onChange={(e): void =>
+                    setColorMap(
+                      e.target.value as
+                        | "viridis"
+                        | "inferno"
+                        | "turbo"
+                        | "gray",
+                    )
+                  }
+                  style={{ marginLeft: 6 }}
+                >
+                  <option value="viridis">Viridis</option>
+                  <option value="inferno">Inferno</option>
+                  <option value="turbo">Turbo</option>
+                  <option value="gray">Grayscale</option>
+                </select>
+              </label>
+              <label>
+                dB Floor:
+                <input
+                  type="number"
+                  placeholder="auto"
+                  value={dbMin ?? ""}
+                  onChange={(e): void =>
+                    setDbMin(
+                      e.target.value === ""
+                        ? undefined
+                        : parseFloat(e.target.value),
+                    )
+                  }
+                  style={{ width: 80, marginLeft: 6 }}
+                  aria-label="Manual dB floor (leave blank for auto)"
+                />
+              </label>
+              <label>
+                dB Ceil:
+                <input
+                  type="number"
+                  placeholder="auto"
+                  value={dbMax ?? ""}
+                  onChange={(e): void =>
+                    setDbMax(
+                      e.target.value === ""
+                        ? undefined
+                        : parseFloat(e.target.value),
+                    )
+                  }
+                  style={{ width: 80, marginLeft: 6 }}
+                  aria-label="Manual dB ceiling (leave blank for auto)"
+                />
+              </label>
+            </div>
+          </div>
+        )}
+        {foundSignals.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <strong>Found signals:</strong>
+            <ul style={{ marginTop: 4 }}>
+              {foundSignals
+                .slice()
+                .sort((a, b) => b.strength - a.strength)
+                .map((s) => (
+                  <li key={`${s.frequency}`}>
+                    {(s.frequency / 1e6).toFixed(3)} MHz
+                    {s.rdsData?.ps
+                      ? ` — ${s.rdsData.ps}`
+                      : s.label
+                        ? ` — ${s.label}`
+                        : ""}
+                    <button
+                      style={{ marginLeft: 8 }}
+                      onClick={(): void => {
+                        const snapped = Math.round(s.frequency / 1_000) * 1_000;
+                        setFrequency(snapped);
+                        scanner.pauseScan();
+                        void tuneDevice();
+                      }}
+                      title="Tune to this frequency in Live Monitor"
+                    >
+                      Tune
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <section aria-label="Device Controls">

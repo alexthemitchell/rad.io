@@ -10,8 +10,8 @@
 }
 
 .scan-control h3 {
-  margin: 0 0 16px 0;
-  color: var(--text-primary, #ffffff);
+  margin: 0 0 16px;
+  color: var(--text-primary, #fff);
   font-size: 18px;
   font-weight: 600;
 }
@@ -40,7 +40,7 @@
   background: var(--input-background, #252525);
   border: 1px solid var(--border-color, #333);
   border-radius: 4px;
-  color: var(--text-primary, #ffffff);
+  color: var(--text-primary, #fff);
   font-size: 14px;
   font-family: "Courier New", monospace;
 }
@@ -66,7 +66,7 @@
 
 .validation-error {
   padding: 8px 12px;
-  background: rgba(244, 67, 54, 0.1);
+  background: rgb(244 67 54 / 10%);
   border: 1px solid var(--accent-red, #f44336);
   border-radius: 4px;
   color: var(--accent-red, #f44336);
@@ -94,7 +94,7 @@
 }
 
 .info-item .value {
-  color: var(--text-primary, #ffffff);
+  color: var(--text-primary, #fff);
   font-weight: 600;
   font-family: "Courier New", monospace;
 }
@@ -155,7 +155,7 @@
 .start-button:hover {
   background: var(--accent-cyan-hover, #00acc1);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 188, 212, 0.3);
+  box-shadow: 0 4px 8px rgb(0 188 212 / 30%);
 }
 
 .stop-button {
@@ -166,7 +166,7 @@
 .stop-button:hover {
   background: var(--accent-red-hover, #e53935);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+  box-shadow: 0 4px 8px rgb(244 67 54 / 30%);
 }
 
 .start-button:active,

@@ -60,7 +60,7 @@
   box-shadow: var(--rad-shadow-2);
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .main-nav {
     flex-direction: column;
     gap: 0.5rem;

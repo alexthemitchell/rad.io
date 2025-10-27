@@ -4,6 +4,10 @@ import { RenderTier } from "../types/rendering";
 import { performanceMonitor } from "../utils/performanceMonitor";
 
 /**
+ * DEPRECATED: This component has been replaced by StatusBar and is kept only for
+ * historical reference. It is not exported from the components barrel and should not
+ * be imported anywhere. Please use `StatusBar` instead for system metrics.
+ *
  * StatusFooter component - System metrics display
  *
  * According to ADR-0018, displays (optional on desktop):

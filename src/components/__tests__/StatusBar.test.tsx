@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import StatusBar, { RenderTier } from "../StatusBar";
 
 describe("StatusBar", () => {
@@ -64,51 +64,51 @@ describe("StatusBar", () => {
   it("applies correct color for render tier", () => {
     const { rerender } = render(<StatusBar renderTier={RenderTier.WebGPU} />);
     let tierElement = screen.getByText("WebGPU");
-    expect(tierElement).toHaveStyle({ color: "#4ade80" });
+    expect(tierElement).toHaveStyle({ color: "var(--rad-success)" });
 
     rerender(<StatusBar renderTier={RenderTier.WebGL2} />);
     tierElement = screen.getByText("WebGL2");
-    expect(tierElement).toHaveStyle({ color: "#5aa3e8" });
+    expect(tierElement).toHaveStyle({ color: "var(--rad-primary)" });
 
     rerender(<StatusBar renderTier={RenderTier.WebGL1} />);
     tierElement = screen.getByText("WebGL1");
-    expect(tierElement).toHaveStyle({ color: "#fbbf24" });
+    expect(tierElement).toHaveStyle({ color: "var(--rad-warning)" });
 
     rerender(<StatusBar renderTier={RenderTier.Canvas2D} />);
     tierElement = screen.getByText("Canvas2D");
-    expect(tierElement).toHaveStyle({ color: "#f87171" });
+    expect(tierElement).toHaveStyle({ color: "var(--rad-danger)" });
 
     rerender(<StatusBar renderTier={RenderTier.Unknown} />);
     tierElement = screen.getByText("Unknown");
-    expect(tierElement).toHaveStyle({ color: "#9ca3af" });
+    expect(tierElement).toHaveStyle({ color: "var(--rad-fg-muted)" });
   });
 
   it("applies correct color for FPS", () => {
     const { rerender } = render(<StatusBar fps={60} />);
     let fpsElement = screen.getByText("60");
-    expect(fpsElement).toHaveStyle({ color: "#4ade80" }); // Good
+    expect(fpsElement).toHaveStyle({ color: "var(--rad-success)" }); // Good
 
     rerender(<StatusBar fps={45} />);
     fpsElement = screen.getByText("45");
-    expect(fpsElement).toHaveStyle({ color: "#fbbf24" }); // Warning
+    expect(fpsElement).toHaveStyle({ color: "var(--rad-warning)" }); // Warning
 
     rerender(<StatusBar fps={20} />);
     fpsElement = screen.getByText("20");
-    expect(fpsElement).toHaveStyle({ color: "#ef4444" }); // Critical
+    expect(fpsElement).toHaveStyle({ color: "var(--rad-danger)" }); // Critical
   });
 
   it("applies correct color for buffer health", () => {
     const { rerender } = render(<StatusBar bufferHealth={95} />);
     let bufferElement = screen.getByText("95%");
-    expect(bufferElement).toHaveStyle({ color: "#4ade80" }); // Good
+    expect(bufferElement).toHaveStyle({ color: "var(--rad-success)" }); // Good
 
     rerender(<StatusBar bufferHealth={65} />);
     bufferElement = screen.getByText("65%");
-    expect(bufferElement).toHaveStyle({ color: "#fbbf24" }); // Warning
+    expect(bufferElement).toHaveStyle({ color: "var(--rad-warning)" }); // Warning
 
     rerender(<StatusBar bufferHealth={35} />);
     bufferElement = screen.getByText("35%");
-    expect(bufferElement).toHaveStyle({ color: "#ef4444" }); // Critical
+    expect(bufferElement).toHaveStyle({ color: "var(--rad-danger)" }); // Critical
   });
 
   it("applies correct color for storage quota", () => {
@@ -119,7 +119,7 @@ describe("StatusBar", () => {
       />,
     );
     let storageElement = screen.getByText(/50.0 \/ 100 MB/);
-    expect(storageElement).toHaveStyle({ color: "#4ade80" }); // Good (<70%)
+    expect(storageElement).toHaveStyle({ color: "var(--rad-success)" }); // Good (<70%)
 
     rerender(
       <StatusBar
@@ -128,7 +128,7 @@ describe("StatusBar", () => {
       />,
     );
     storageElement = screen.getByText(/75.0 \/ 100 MB/);
-    expect(storageElement).toHaveStyle({ color: "#fbbf24" }); // Warning (>=70%)
+    expect(storageElement).toHaveStyle({ color: "var(--rad-warning)" }); // Warning (>=70%)
 
     rerender(
       <StatusBar
@@ -137,7 +137,7 @@ describe("StatusBar", () => {
       />,
     );
     storageElement = screen.getByText(/95.0 \/ 100 MB/);
-    expect(storageElement).toHaveStyle({ color: "#ef4444" }); // Critical (>=90%)
+    expect(storageElement).toHaveStyle({ color: "var(--rad-danger)" }); // Critical (>=90%)
   });
 
   it("displays current time", () => {
@@ -159,6 +159,32 @@ describe("StatusBar", () => {
     const statusBar = screen.getByRole("status");
     expect(statusBar).toHaveAttribute("aria-live", "polite");
     expect(statusBar).toHaveAttribute("aria-atomic", "false");
+  });
+
+  it("renders audio state, volume and clipping indicator", () => {
+    render(
+      <StatusBar audioState="playing" audioVolume={42} audioClipping={true} />,
+    );
+    expect(screen.getByText(/Audio/i)).toBeInTheDocument();
+    expect(screen.getByText(/Playing/i)).toBeInTheDocument();
+    expect(screen.getByText(/42%/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Audio clipping/i)).toBeInTheDocument();
+  });
+
+  it("toggles buffer details when info button is clicked", () => {
+    render(
+      <StatusBar
+        bufferHealth={73}
+        bufferDetails={{ currentSamples: 12345, maxSamples: 67890 }}
+      />,
+    );
+    // Hidden before click
+    expect(screen.queryByText(/12,345\s*\/\s*67,890/)).not.toBeInTheDocument();
+    const infoButton = screen.getByRole("button", {
+      name: /Show buffer details/i,
+    });
+    fireEvent.click(infoButton);
+    expect(screen.getByText(/12,345\s*\/\s*67,890/)).toBeInTheDocument();
   });
 
   it("has tooltips for key metrics", () => {

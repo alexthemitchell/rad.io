@@ -28,7 +28,7 @@
   color: var(--rad-warning);
   font-size: 14px;
   font-weight: 600;
-  margin: 0 0 12px 0;
+  margin: 0 0 12px;
 }
 
 .troubleshooting-guide ol {

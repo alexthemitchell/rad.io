@@ -151,6 +151,8 @@ export class HackRFOne {
   private streaming = false;
   // New flag to indicate that shutdown has begun
   private closing = false;
+  // Stop controller to break out of pending USB transfers promptly
+  private stopResolve: (() => void) | null = null;
 
   // Add a simple mutex to prevent concurrent USB state changes
   private transferMutex: Promise<void> = Promise.resolve();
@@ -584,13 +586,6 @@ export class HackRFOne {
     }
 
     const { freqHz, divider } = computeSampleRateParams(sampleRate);
-    // Ensure transceiver is OFF before reconfiguring clocking
-    // Some firmware versions are sensitive to rate changes while active
-    try {
-      await this.setTransceiverMode(TransceiverMode.OFF);
-    } catch {
-      // Best-effort: continue if mode change fails; controlTransferOut has retries
-    }
     const payload = createUint32LEBuffer([freqHz, divider]);
     try {
       await this.controlTransferOut({
@@ -811,6 +806,17 @@ export class HackRFOne {
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
     this.streaming = true;
 
+    // Create a stop signal that allows us to break out of a pending transfer
+    // immediately when stopRx() is called, rather than waiting for timeouts.
+    const stopPromise = new Promise<USBInTransferResult>((_, reject) => {
+      this.stopResolve = (): void => {
+        const abortErr = new Error("Aborted");
+        // Tag as AbortError for consumer logic/tests
+        (abortErr as Error & { name?: string }).name = "AbortError";
+        reject(abortErr);
+      };
+    });
+
     const isDev = process.env["NODE_ENV"] === "development";
     if (isDev) {
       console.warn("HackRFOne.receive: Starting streaming loop", {
@@ -851,6 +857,7 @@ export class HackRFOne {
             TIMEOUT_MS,
             `transferIn timeout after ${TIMEOUT_MS}ms - device may need reset`,
           ),
+          stopPromise,
         ]);
 
         // Reset timeout counter on successful transfer
@@ -982,6 +989,8 @@ export class HackRFOne {
         },
       });
     }
+    // Clear stop controller to avoid leaking references
+    this.stopResolve = null;
     await this.setTransceiverMode(TransceiverMode.OFF);
     await this.controlTransferOut({
       command: RequestCommand.UI_ENABLE,
@@ -992,6 +1001,12 @@ export class HackRFOne {
   // New method to stop reception
   stopRx(): void {
     this.streaming = false;
+    // Trigger stop signal to break out of pending races immediately
+    if (this.stopResolve) {
+      const resolve = this.stopResolve;
+      this.stopResolve = null;
+      resolve();
+    }
   }
 
   /**

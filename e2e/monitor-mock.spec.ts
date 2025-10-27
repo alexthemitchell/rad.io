@@ -54,21 +54,23 @@ test.describe("Monitor (mock SDR @ CI)", () => {
       timeout: 10000,
     });
 
-    // Find first canvas (FFT chart)
+    // Find first canvas (spectrum)
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible({ timeout: 10000 });
 
-    // Snapshot #1 (current view is Waterfall by default)
+    // Snapshot #1 (current view may or may not include Waterfall by default)
     const img1 = await canvas.evaluate((c: HTMLCanvasElement) => c.toDataURL());
 
-    // Toggle view to Spectrogram and snapshot #2
-    const viewSelect = page.getByLabel("Visualization mode");
-    await viewSelect.selectOption("spectrogram");
+    // Toggle Waterfall on and snapshot #2
+    const waterfallToggle = page.getByRole("checkbox", {
+      name: /Toggle waterfall visualization/i,
+    });
+    await waterfallToggle.check();
     await page.waitForTimeout(250);
     const img2 = await canvas.evaluate((c: HTMLCanvasElement) => c.toDataURL());
 
-    // Toggle back to Waterfall and snapshot #3
-    await viewSelect.selectOption("waterfall");
+    // Toggle Waterfall off and snapshot #3
+    await waterfallToggle.uncheck();
     await page.waitForTimeout(250);
     const img3 = await canvas.evaluate((c: HTMLCanvasElement) => c.toDataURL());
 
@@ -77,6 +79,32 @@ test.describe("Monitor (mock SDR @ CI)", () => {
     expect(img2).not.toEqual(img3);
 
     // Stop streaming
+    const stopBtn = page.getByRole("button", { name: "Stop reception" });
+    await stopBtn.click();
+    await page.waitForFunction(() => (window as any).dbgReceiving === false);
+  });
+
+  test("status bar shows rendering tier (GPU or fallback)", async ({
+    page,
+  }) => {
+    await page.goto("https://localhost:8080/monitor?mockSdr=1");
+
+    const startBtn = page.getByRole("button", { name: "Start reception" });
+    await expect(startBtn).toBeVisible({ timeout: 10000 });
+    await startBtn.click();
+
+    await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+      timeout: 10000,
+    });
+
+    const statusRegion = page.getByRole("status");
+    // Accept any concrete tier except Unknown so tests pass in environments
+    // without GPU acceleration (e.g., Canvas2D or Worker fallbacks)
+    const tierText = statusRegion.getByText(
+      /WebGPU|WebGL2|WebGL|Worker|Canvas2D/i,
+    );
+    await expect(tierText).toBeVisible({ timeout: 5000 });
+
     const stopBtn = page.getByRole("button", { name: "Stop reception" });
     await stopBtn.click();
     await page.waitForFunction(() => (window as any).dbgReceiving === false);

@@ -49,7 +49,7 @@
   flex: 1;
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .status-bar {
     font-size: 0.7rem;
     gap: 0.5rem;

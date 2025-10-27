@@ -216,25 +216,25 @@ Motion should communicate system state and guide attention without interfering w
 
 ## Component Selection
 
-**Components** (shadcn v4 with custom RF-specific additions):
+**Components** (custom token-driven CSS with RF-specific additions; no external UI library dependency):
 
 - **Slider**: Custom dual-purpose component—linear for volume/squelch (0-100%), logarithmic for gain (-10 to +40 dB), frequency for coarse tuning; visual value tooltip, keyboard nav (arrows for fine, Shift+arrow for coarse), touch-drag support
-- **Select**: Mode selection (AM/FM/SSB/etc.), FFT size, window function, color palette—shadcn Select with icons, keyboard shortcuts (M for mode, W for window)
-- **Tabs**: Major view switching (Spectrum/Waterfall/Constellation/Tools)—shadcn Tabs with keyboard shortcuts (1-4), persistent state
-- **Card**: Container for control panels, device list, bookmarks, recordings—shadcn Card with minimal borders, subtle shadows
-- **Dialog**: Settings, calibration wizard, file import/export, about—shadcn Dialog with backdrop blur, escape to close
-- **Sheet**: Side panels for bookmarks, recordings, device manager—shadcn Sheet with resize handle
-- **Table**: Bookmark list, measurement log, scan results—shadcn Table with virtual scrolling (react-window), sortable columns
-- **Tooltip**: Parameter explanations, measurement units, control hints—shadcn Tooltip with 400ms delay, rich content support
-- **Badge**: Status indicators (device state, recording active, buffer health, signal quality)—shadcn Badge with color variants
-- **Separator**: Visual grouping in dense control panels—shadcn Separator, both horizontal and vertical
-- **ScrollArea**: Panels with many controls—shadcn ScrollArea with custom scrollbar styling
-- **Switch**: Binary toggles (AGC, Squelch, Grid overlay, Noise blanker)—shadcn Switch with labels
-- **Button**: Primary actions (Connect, Record, Tune) use filled style, secondary (Reset, Cancel) use outline, icon-only for compact toolbars—shadcn Button with icon support
-- **Input**: Numeric entry with validation, unit support (Hz/kHz/MHz auto-conversion)—shadcn Input with custom formatting
-- **RadioGroup**: Exclusive selections (averaging mode, antenna input)—shadcn RadioGroup with descriptions
-- **DropdownMenu**: Context menus for bookmarks, devices, measurements—shadcn DropdownMenu with keyboard nav
-- **Command**: Quick action palette (Cmd/Ctrl+K)—shadcn Command for power users
+- **Select**: Mode selection (AM/FM/SSB/etc.), FFT size, window function, color palette—custom select with icons; keyboard shortcuts (M for mode, W for window)
+- **Tabs**: Major view switching (Spectrum/Waterfall/Constellation/Tools)—custom tabs with keyboard shortcuts (1-4), persistent state
+- **Card**: Container for control panels, device list, bookmarks, recordings—token-styled cards with minimal borders, subtle shadows
+- **Dialog**: Settings, calibration wizard, file import/export, about—accessible dialog with backdrop blur, escape to close
+- **Sheet**: Side panels for bookmarks, recordings, device manager—resizable sheet behavior
+- **Table**: Bookmark list, measurement log, scan results—virtual scrolling (react-window), sortable columns
+- **Tooltip**: Parameter explanations, measurement units, control hints—400ms delay, rich content support
+- **Badge**: Status indicators (device state, recording active, buffer health, signal quality)—color variants via tokens
+- **Separator**: Visual grouping in dense control panels—horizontal and vertical
+- **ScrollArea**: Panels with many controls—custom scrollbar styling
+- **Switch**: Binary toggles (AGC, Squelch, Grid overlay, Noise blanker)—with labels
+- **Button**: Primary actions (Connect, Record, Tune) use filled style, secondary (Reset, Cancel) use outline, icon-only for compact toolbars—icon support
+- **Input**: Numeric entry with validation, unit support (Hz/kHz/MHz auto-conversion)—custom formatting
+- **RadioGroup**: Exclusive selections (averaging mode, antenna input)—with descriptions
+- **DropdownMenu**: Context menus for bookmarks, devices, measurements—keyboard navigable
+- **Command**: Quick action palette (Cmd/Ctrl+K)—planned; use Shortcuts overlay as interim help
 
 **Custom Components** (specialized RF/DSP UIs):
 

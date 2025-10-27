@@ -186,6 +186,82 @@ export function getViridisLUT(): Uint8Array {
   return lut;
 }
 
+export type ColormapName = "viridis" | "inferno" | "turbo" | "gray";
+
+/**
+ * Additional colormaps (approximate) for texture-based renderers.
+ * Returns a 256x RGBA 8-bit LUT.
+ */
+export function getColormapLUT(name: ColormapName): Uint8Array {
+  if (name === "viridis") {
+    return getViridisLUT();
+  }
+
+  // Generate simple approximations using key stops
+  const lut = new Uint8Array(256 * 4);
+  const stops: Array<[number, number, number]> =
+    name === "inferno"
+      ? [
+          [0, 0, 4],
+          [31, 12, 72],
+          [85, 15, 109],
+          [136, 34, 106],
+          [186, 54, 85],
+          [227, 89, 51],
+          [249, 140, 10],
+          [252, 195, 58],
+          [252, 255, 164],
+        ]
+      : name === "turbo"
+        ? [
+            [48, 18, 59],
+            [59, 32, 134],
+            [33, 144, 141],
+            [67, 190, 112],
+            [144, 215, 67],
+            [218, 226, 25],
+            [245, 181, 0],
+            [245, 96, 0],
+            [204, 0, 0],
+          ]
+        : []; // gray handled separately
+
+  for (let i = 0; i < 256; i++) {
+    if (name === "gray") {
+      const v = i;
+      lut[i * 4 + 0] = v;
+      lut[i * 4 + 1] = v;
+      lut[i * 4 + 2] = v;
+      lut[i * 4 + 3] = 255;
+      continue;
+    }
+    const t = i / 255.0;
+    if (stops.length === 0) {
+      // Fallback
+      lut[i * 4 + 0] = i;
+      lut[i * 4 + 1] = i;
+      lut[i * 4 + 2] = i;
+      lut[i * 4 + 3] = 255;
+      continue;
+    }
+    const x = t * (stops.length - 1);
+    const idx = Math.floor(x);
+    const frac = x - idx;
+    const [r0, g0, b0] = stops[idx] ?? [0, 0, 0];
+    const [r1, g1, b1] = stops[Math.min(stops.length - 1, idx + 1)] ?? [
+      0, 0, 0,
+    ];
+    const r = r0 + (r1 - r0) * frac;
+    const g = g0 + (g1 - g0) * frac;
+    const b = b0 + (b1 - b0) * frac;
+    lut[i * 4 + 0] = Math.round(r);
+    lut[i * 4 + 1] = Math.round(g);
+    lut[i * 4 + 2] = Math.round(b);
+    lut[i * 4 + 3] = 255;
+  }
+  return lut;
+}
+
 /**
  * WGSL Shaders for point rendering (IQ Constellation)
  */

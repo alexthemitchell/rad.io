@@ -31,6 +31,23 @@ npm run test:e2e:ui
 npm run test:e2e:headed
 ```
 
+### Optional: GPU-accelerated local project
+
+Some visualization features can take advantage of GPU acceleration (WebGL/WebGPU) when available. You can opt into a headed Chromium project with GPU-friendly flags for local runs:
+
+```bash
+# Enable the GPU project and run only that project
+$env:RADIO_E2E_GPU = "1"; npm run test:e2e -- --project=gpu-chromium
+
+# Or use bash/zsh
+RADIO_E2E_GPU=1 npm run test:e2e -- --project=gpu-chromium
+```
+
+Notes:
+
+- This does not run in CI by default. It’s enabled only when `RADIO_E2E_GPU=1` is set.
+- Even without GPU, the tests will still run using Canvas2D/Worker fallbacks.
+
 The dev server automatically starts on `https://localhost:8080` with a self-signed certificate.
 
 ### Real Device Mode (Hardware Required)

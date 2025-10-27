@@ -7,12 +7,15 @@
      the browser to style form controls and other native elements according to
      the user's preferred color scheme. Light theme is supported via .theme-light/[data-theme="light"]. */
   color-scheme: dark light;
+  /* Use design system accent for supported form controls (checkboxes, radios, progress) */
+  accent-color: var(--rad-accent);
+
   /* Typography */
   --rad-font-ui:
-    Inter, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell,
-    "Helvetica Neue", Arial, sans-serif;
+    inter, system-ui, -apple-system, "Segoe UI", roboto, ubuntu, cantarell,
+    "Helvetica Neue", arial, sans-serif;
   --rad-font-mono:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "JetBrains Mono", ui-monospace, sfmono-regular, menlo, monaco, consolas,
     "Liberation Mono", "Courier New", monospace;
 
   /* Type scale (rem) */
@@ -52,11 +55,12 @@
   --rad-z-toast: 1200;
 
   /* Shadows (elevation) */
-  --rad-shadow-1: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --rad-shadow-2: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-  --rad-shadow-3: 0 10px 15px rgba(0, 0, 0, 0.2), 0 4px 6px rgba(0, 0, 0, 0.1);
+  --rad-shadow-1: 0 1px 3px rgb(0 0 0 / 10%), 0 1px 2px rgb(0 0 0 / 6%);
+  --rad-shadow-2: 0 4px 6px rgb(0 0 0 / 10%), 0 2px 4px rgb(0 0 0 / 6%);
+  --rad-shadow-3: 0 10px 15px rgb(0 0 0 / 20%), 0 4px 6px rgb(0 0 0 / 10%);
+
   /* Overlay (modal scrim) */
-  --rad-overlay: rgba(0, 0, 0, 0.5);
+  --rad-overlay: rgb(0 0 0 / 50%);
 
   /* Motion */
   --rad-transition-fast: 120ms;
@@ -70,88 +74,80 @@
 .theme-dark,
 [data-theme="dark"] {
   /* Core palette in OKLCH */
-  --rad-bg: oklch(0.12 0.01 240);
-  --rad-bg-elev-1: oklch(0.18 0.015 240);
-  --rad-bg-elev-2: oklch(0.22 0.02 240);
-  --rad-surface: oklch(0.18 0.015 240);
-  --rad-surface-2: oklch(0.22 0.02 240);
-
-  --rad-fg: oklch(0.9 0.005 240);
-  --rad-fg-muted: oklch(0.62 0.01 240);
-
-  --rad-primary: oklch(0.55 0.18 240); /* Electric Blue */
-  --rad-primary-foreground: oklch(0.98 0 0);
-
-  --rad-accent: oklch(0.78 0.14 195); /* Cyan for tuning */
-  --rad-accent-foreground: oklch(0.12 0.01 240);
-
-  --rad-success: oklch(0.68 0.15 145);
-  --rad-success-foreground: oklch(0.12 0.01 240);
-
-  --rad-warning: oklch(0.75 0.15 75);
-  --rad-warning-foreground: oklch(0.12 0.01 240);
-
-  --rad-danger: oklch(0.6 0.2 25);
-  --rad-danger-foreground: oklch(0.98 0 0);
-
-  --rad-border: oklch(0.28 0.015 240);
-  --rad-ring: oklch(0.78 0.14 195);
+  --rad-bg: oklch(12% 0.01 240deg);
+  --rad-bg-elev-1: oklch(18% 0.015 240deg);
+  --rad-bg-elev-2: oklch(22% 0.02 240deg);
+  --rad-surface: oklch(18% 0.015 240deg);
+  --rad-surface-2: oklch(22% 0.02 240deg);
+  --rad-fg: oklch(90% 0.005 240deg);
+  --rad-fg-muted: oklch(62% 0.01 240deg);
+  --rad-primary: oklch(55% 0.18 240deg); /* Electric Blue */
+  --rad-primary-foreground: oklch(98% 0 0deg);
+  --rad-accent: oklch(78% 0.14 195deg); /* Cyan for tuning */
+  --rad-accent-foreground: oklch(12% 0.01 240deg);
+  --rad-success: oklch(68% 0.15 145deg);
+  --rad-success-foreground: oklch(12% 0.01 240deg);
+  --rad-warning: oklch(75% 0.15 75deg);
+  --rad-warning-foreground: oklch(12% 0.01 240deg);
+  --rad-danger: oklch(60% 0.2 25deg);
+  --rad-danger-foreground: oklch(98% 0 0deg);
+  --rad-border: oklch(28% 0.015 240deg);
+  --rad-ring: oklch(78% 0.14 195deg);
 
   /* Visualization defaults */
-  --rad-grid: oklch(0.35 0.02 240);
-  --rad-grid-subtle: oklch(0.28 0.015 240);
+  --rad-grid: oklch(35% 0.02 240deg);
+  --rad-grid-subtle: oklch(28% 0.015 240deg);
 }
 
 /* Light theme (placeholder for future) */
 .theme-light,
 [data-theme="light"] {
-  --rad-bg: oklch(0.98 0 0);
-  --rad-bg-elev-1: oklch(0.96 0.005 240);
-  --rad-bg-elev-2: oklch(0.92 0.01 240);
-
-  --rad-fg: oklch(0.12 0.01 240);
-  --rad-fg-muted: oklch(0.4 0.01 240);
-
-  --rad-primary: oklch(0.55 0.18 240);
-  --rad-primary-foreground: oklch(0.98 0 0);
-
-  --rad-accent: oklch(0.65 0.14 195);
-  --rad-accent-foreground: oklch(0.12 0.01 240);
-
-  --rad-success: oklch(0.58 0.15 145);
-  --rad-success-foreground: oklch(0.12 0.01 240);
-
-  --rad-warning: oklch(0.7 0.15 75);
-  --rad-warning-foreground: oklch(0.12 0.01 240);
-
-  --rad-danger: oklch(0.55 0.2 25);
-  --rad-danger-foreground: oklch(0.98 0 0);
-
-  --rad-border: oklch(0.86 0.01 240);
-  --rad-ring: oklch(0.55 0.18 240);
+  --rad-bg: oklch(98% 0 0deg);
+  --rad-bg-elev-1: oklch(96% 0.005 240deg);
+  --rad-bg-elev-2: oklch(92% 0.01 240deg);
+  --rad-fg: oklch(12% 0.01 240deg);
+  --rad-fg-muted: oklch(40% 0.01 240deg);
+  --rad-primary: oklch(55% 0.18 240deg);
+  --rad-primary-foreground: oklch(98% 0 0deg);
+  --rad-accent: oklch(65% 0.14 195deg);
+  --rad-accent-foreground: oklch(12% 0.01 240deg);
+  --rad-success: oklch(58% 0.15 145deg);
+  --rad-success-foreground: oklch(12% 0.01 240deg);
+  --rad-warning: oklch(70% 0.15 75deg);
+  --rad-warning-foreground: oklch(12% 0.01 240deg);
+  --rad-danger: oklch(55% 0.2 25deg);
+  --rad-danger-foreground: oklch(98% 0 0deg);
+  --rad-border: oklch(86% 0.01 240deg);
+  --rad-ring: oklch(55% 0.18 240deg);
 }
 
 /* Utility classes (non-invasive) - not used by current UI */
 .rad-bg {
   background-color: var(--rad-bg);
 }
+
 .rad-surface {
   background-color: var(--rad-surface);
 }
+
 .rad-text {
   color: var(--rad-fg);
 }
+
 .rad-border {
   border-color: var(--rad-border);
 }
+
 .rad-ring:focus-visible {
   outline: var(--rad-focus-ring-width) solid var(--rad-ring);
   outline-offset: var(--rad-focus-ring-offset);
 }
+
 .rad-primary {
   background-color: var(--rad-primary);
   color: var(--rad-primary-foreground);
 }
+
 .rad-accent {
   background-color: var(--rad-accent);
   color: var(--rad-accent-foreground);
@@ -161,6 +157,7 @@
 .rad-font-ui {
   font-family: var(--rad-font-ui);
 }
+
 .rad-font-mono {
   font-family: var(--rad-font-mono);
 }

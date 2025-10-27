@@ -73,6 +73,7 @@ Reusable visualization components in `src/visualization/components/`:
 - **Spectrogram**: Time-frequency heatmap
 - **WaveformVisualizer**: Time-domain amplitude display
 - **FFTChart**: Frequency spectrum line chart
+- **SpectrumExplorer**: Real-time spectrum with optional waterfall and signal highlights
 - **Waterfall**: Scrolling waterfall display
 
 #### 3. Renderers Layer
@@ -220,6 +221,35 @@ test('renders constellation with correct dimensions', () => {
 - Dynamic range compression (5% threshold)
 - Configurable frequency range
 - Scrolling time axis
+
+### Spectrum Explorer
+
+**Purpose**: Unified spectrum line plot with optional waterfall and overlays
+
+**Location**: `src/visualization/components/SpectrumExplorer.tsx`
+
+**Rendering**: Canvas2D for spectrum; Spectrogram component for optional waterfall
+
+**Key Features**:
+
+- Toggleable waterfall to reduce CPU/GPU load (`showWaterfall`)
+- Average and Peak-Hold overlays
+- Interactive pan/zoom, click-to-mark, double-click to tune
+- Signal highlights via `signals` prop with glow; FM stations annotated with RDS when available
+
+**Usage**:
+
+```tsx
+<SpectrumExplorer
+  samples={vizSamples}
+  sampleRate={sampleRate}
+  centerFrequency={frequency}
+  fftSize={fftSize}
+  showWaterfall={false}
+  signals={[{ freqHz: 101.1e6, label: "KFOG", strength: 0.9 }]}
+  onTune={(hz) => console.log("Tune to", hz)}
+/>
+```
 
 **Usage**:
 

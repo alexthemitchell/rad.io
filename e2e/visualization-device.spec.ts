@@ -267,7 +267,7 @@ test.describe("Visualization with Physical Device @device", () => {
     await stopStreaming(page);
   });
 
-  test("should switch visualization modes with physical device @device", async ({
+  test("should toggle waterfall while streaming with physical device @device", async ({
     page,
   }) => {
     await page.goto("/monitor");
@@ -281,19 +281,15 @@ test.describe("Visualization with Physical Device @device", () => {
     });
 
     const canvas = page.locator("canvas").first();
-    const viewSelect = page.getByLabel("Visualization mode");
-    await expect(viewSelect).toBeVisible();
+    const waterfallToggle = page.getByRole("checkbox", {
+      name: /Toggle waterfall visualization/i,
+    });
 
-    // Test switching between visualization modes
-    const modes = ["waterfall", "spectrogram", "fft"];
-
-    for (const mode of modes) {
-      await viewSelect.selectOption(mode);
-
-      // Wait for the canvas to update after mode change
+    // Toggle waterfall on/off a few times and ensure rendering continues
+    for (let i = 0; i < 3; i++) {
+      await waterfallToggle.check();
       await waitForCanvasUpdate(page, canvas);
-
-      // Verify rendering continues in this mode
+      await waterfallToggle.uncheck();
       await waitForCanvasUpdate(page, canvas);
     }
 

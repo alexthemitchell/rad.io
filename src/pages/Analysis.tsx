@@ -4,7 +4,7 @@ import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import { useDevice } from "../contexts/DeviceContext";
-import { useLiveRegion } from "../hooks/useLiveRegion";
+import { notify } from "../lib/notifications";
 import { type ISDRDevice } from "../models/SDRDevice";
 import { type Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
@@ -31,8 +31,7 @@ function Analysis(): React.JSX.Element {
   const fpsLastUpdateRef = useRef<number>(0);
   const receivePromiseRef = useRef<Promise<void> | null>(null);
 
-  // Live region for screen reader announcements
-  const { announce, liveRegion: LiveRegion } = useLiveRegion();
+  // Announcements via unified notifications
 
   const cancelScheduledUpdate = useCallback((): void => {
     if (
@@ -135,7 +134,12 @@ function Analysis(): React.JSX.Element {
       clearVisualizationState();
       setListening(true);
       setDeviceError(null);
-      announce("Started receiving radio signals for analysis");
+      notify({
+        message: "Started receiving radio signals for analysis",
+        sr: "polite",
+        visual: true,
+        tone: "success",
+      });
 
       console.warn("Analysis: Configuring device for streaming", {
         targetSampleRate: 2048000,
@@ -177,7 +181,12 @@ function Analysis(): React.JSX.Element {
           setDeviceError(
             err instanceof Error ? err : new Error("Failed to receive data"),
           );
-          announce("Failed to receive radio signals");
+          notify({
+            message: "Failed to receive radio signals",
+            sr: "assertive",
+            visual: true,
+            tone: "error",
+          });
           throw err;
         })
         .finally(() => {
@@ -194,7 +203,7 @@ function Analysis(): React.JSX.Element {
         receivePromiseRef.current = null;
       }
     },
-    [clearVisualizationState, handleSampleChunk, announce, frequency],
+    [clearVisualizationState, handleSampleChunk, frequency],
   );
 
   // Handle device connection
@@ -209,17 +218,27 @@ function Analysis(): React.JSX.Element {
     try {
       await initialize();
       setDeviceError(null);
-      announce("SDR device connected");
+      notify({
+        message: "SDR device connected",
+        sr: "polite",
+        visual: true,
+        tone: "success",
+      });
     } catch (err) {
       console.error(err);
       setDeviceError(
         err instanceof Error ? err : new Error("Failed to connect device"),
       );
-      announce("Failed to connect device");
+      notify({
+        message: "Failed to connect device",
+        sr: "assertive",
+        visual: true,
+        tone: "error",
+      });
     } finally {
       setIsInitializing(false);
     }
-  }, [initialize, isInitializing, announce]);
+  }, [initialize, isInitializing]);
 
   // Handle start reception
   const startListening = useCallback(async (): Promise<void> => {
@@ -249,17 +268,27 @@ function Analysis(): React.JSX.Element {
       console.warn("Analysis: Attempting software reset");
       await device.reset();
       setDeviceError(null);
-      announce("Device reset successful");
+      notify({
+        message: "Device reset successful",
+        sr: "polite",
+        visual: true,
+        tone: "success",
+      });
       console.warn("Analysis: Reset successful");
     } catch (error) {
       console.error("Analysis: Reset failed:", error);
       const errorMsg = error instanceof Error ? error.message : String(error);
       setDeviceError(new Error(`Reset failed: ${errorMsg}`));
-      announce("Device reset failed");
+      notify({
+        message: "Device reset failed",
+        sr: "assertive",
+        visual: true,
+        tone: "error",
+      });
     } finally {
       setIsResetting(false);
     }
-  }, [device, isResetting, announce]);
+  }, [device, isResetting]);
 
   // Auto-start reception after connection if requested
   useEffect((): void => {
@@ -296,8 +325,13 @@ function Analysis(): React.JSX.Element {
 
     cancelScheduledUpdate();
     setListening(false);
-    announce("Stopped receiving radio signals");
-  }, [cancelScheduledUpdate, device, announce]);
+    notify({
+      message: "Stopped receiving radio signals",
+      sr: "polite",
+      visual: true,
+      tone: "info",
+    });
+  }, [cancelScheduledUpdate, device]);
 
   return (
     <div className="container">
@@ -305,7 +339,7 @@ function Analysis(): React.JSX.Element {
         Skip to main content
       </a>
 
-      <LiveRegion />
+      {null}
 
       <main id="main-content" role="main">
         <DeviceControlBar

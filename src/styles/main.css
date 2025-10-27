@@ -1,18 +1,19 @@
-@import "./tokens.css";
-@import "./base.css";
-@import "./a11y.css";
-@import "./utilities.css";
-@import "./layout.css";
-@import "./components/buttons.css";
-@import "./components/cards.css";
-@import "./components/controls.css";
-@import "./components/playback.css";
-@import "./components/dialog.css";
-@import "./components/status-bar.css";
-@import "./components/diagnostics.css";
-@import "./components/rds.css";
-@import "./components/tmc.css";
-@import "./components/audio.css";
+@import url("./tokens.css");
+@import url("./base.css");
+@import url("./a11y.css");
+@import url("./utilities.css");
+@import url("./layout.css");
+@import url("./components/buttons.css");
+@import url("./components/cards.css");
+@import url("./components/controls.css");
+@import url("./components/playback.css");
+@import url("./components/dialog.css");
+@import url("./components/status-bar.css");
+@import url("./components/toast.css");
+@import url("./components/diagnostics.css");
+@import url("./components/rds.css");
+@import url("./components/tmc.css");
+@import url("./components/audio.css");
 
 /* Global base, accessibility, and focus styles moved to base.css and a11y.css */
 
@@ -82,6 +83,7 @@
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -149,7 +151,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .header h1 {
     font-size: 2rem;
   }
@@ -442,7 +444,7 @@
   color: var(--rad-warning-foreground);
 }
 
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .talkgroup-add-form {
     grid-template-columns: 1fr;
   }

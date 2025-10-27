@@ -64,10 +64,17 @@ jobs:
             core.setOutput('deleted', deletedCount);
             core.setOutput('kept', keptCount);
 
-      - name: Generate summary
-        run: |
-          echo "## 🧹 Artifact Cleanup Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deleted**: ${{ steps.cleanup.outputs.deleted }} old artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- **Kept**: ${{ steps.cleanup.outputs.kept }} recent artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- **Retention Policy**: 7 days" >> $GITHUB_STEP_SUMMARY
+              // Write summary directly from this step to avoid relying on external outputs
+              const lines = [
+                '## 🧹 Artifact Cleanup Summary',
+                '',
+                `- **Deleted**: ${deletedCount} old artifacts`,
+                `- **Kept**: ${keptCount} recent artifacts`,
+                '- **Retention Policy**: 7 days',
+                '',
+              ];
+              const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+              if (summaryPath) {
+                const fs = require('fs');
+                fs.appendFileSync(summaryPath, lines.join('\n'));
+              }
