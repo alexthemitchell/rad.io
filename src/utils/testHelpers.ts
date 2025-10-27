@@ -200,9 +200,11 @@ export function createMockWebGLContext(): WebGLRenderingContext {
  */
 export class SeededRandom {
   private seed: number;
+  private initialSeed: number;
 
   constructor(seed = 12345) {
     this.seed = seed;
+    this.initialSeed = seed;
   }
 
   /**
@@ -221,11 +223,14 @@ export class SeededRandom {
   }
 
   /**
-   * Reset to initial seed
+   * Reset to initial seed or set a new seed
    */
   reset(seed?: number): void {
     if (seed !== undefined) {
       this.seed = seed;
+      this.initialSeed = seed;
+    } else {
+      this.seed = this.initialSeed;
     }
   }
 }
