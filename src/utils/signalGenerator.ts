@@ -116,7 +116,7 @@ export function generateMultiToneIQ(options: {
     // Sum all tones
     for (const tone of tones) {
       const angularFreq = (2 * Math.PI * tone.frequency) / sampleRate;
-      const angle = angularFreq * i + (tone.phase || 0);
+      const angle = angularFreq * i + (tone.phase ?? 0);
 
       iValue += tone.amplitude * Math.cos(angle);
       qValue += tone.amplitude * Math.sin(angle);

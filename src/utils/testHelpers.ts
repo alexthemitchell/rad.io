@@ -287,19 +287,22 @@ export function createMockFile(
 export function suppressConsole(
   methods: Array<'log' | 'warn' | 'error' | 'info'> = ['error', 'warn']
 ): () => void {
-  const originals: Map<string, typeof console.log> = new Map();
+  const originals = new Map<string, typeof console.log>();
   
   methods.forEach(method => {
+    // eslint-disable-next-line no-console
     originals.set(method, console[method]);
+    // eslint-disable-next-line no-console
     console[method] = jest.fn();
   });
   
   return () => {
     methods.forEach(method => {
-    const original = originals.get(method);
-    if (original) {
-      console[method] = original as typeof console.log;
-    }
-  });
+      const original = originals.get(method);
+      if (original) {
+        // eslint-disable-next-line no-console
+        console[method] = original;
+      }
+    });
   };
 }
