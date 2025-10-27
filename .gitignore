@@ -50,3 +50,8 @@ logs/
 dist/
 
 test-results/
+# Build analysis and monitoring
+bundle-report.html
+bundle-stats.json
+build-metrics.json
+webpack-stats.json

@@ -2,6 +2,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import CopyPlugin from "copy-webpack-plugin";
 import HtmlWebpackPlugin from "html-webpack-plugin";
+import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
+import CompressionPlugin from "compression-webpack-plugin";
 import type { Configuration } from "webpack";
 import "webpack-dev-server";
 
@@ -10,6 +12,8 @@ const __dirname = path.dirname(__filename);
 
 export default (_env: unknown, argv: { mode?: string }): Configuration => {
   const isDevelopment = argv.mode === "development";
+  const isProduction = !isDevelopment;
+  const analyzeBundle = process.env["ANALYZE"] === "true";
 
   return {
     cache: {
@@ -92,6 +96,30 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
           { from: "build/release.js", to: "dsp.js" },
         ],
       }),
+      // Gzip compression for production builds
+      ...(isProduction
+        ? [
+            new CompressionPlugin({
+              filename: "[path][base].gz",
+              algorithm: "gzip",
+              test: /\.(js|css|html|svg|wasm)$/,
+              threshold: 10240, // Only compress files > 10KB
+              minRatio: 0.8,
+            }),
+          ]
+        : []),
+      // Bundle analyzer - run with ANALYZE=true npm run build:prod
+      ...(analyzeBundle
+        ? [
+            new BundleAnalyzerPlugin({
+              analyzerMode: "static",
+              reportFilename: "bundle-report.html",
+              openAnalyzer: false,
+              generateStatsFile: true,
+              statsFilename: "bundle-stats.json",
+            }),
+          ]
+        : []),
     ],
     devServer: {
       static: {

@@ -3,7 +3,7 @@ import type { Config } from "jest";
 const config: Config = {
   testEnvironment: "jsdom",
   testTimeout: 30000, // 30 seconds per test
-  maxWorkers: "50%", // Use half of available CPU cores for parallel execution
+  maxWorkers: process.env["CI"] ? 2 : "50%", // Optimize for CI vs local dev
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
   },

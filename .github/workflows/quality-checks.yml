@@ -117,7 +117,15 @@ jobs:
           fail-on-cache-miss: true
 
       - name: Run tests with coverage
-        run: npm test -- --coverage
+        run: |
+          echo "## 🧪 Test Execution" >> $GITHUB_STEP_SUMMARY
+          start_time=$(date +%s)
+          npm test -- --coverage --ci --maxWorkers=2
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Execution Time:** ${duration}s" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Check coverage thresholds
         run: |
@@ -194,6 +202,38 @@ jobs:
 
       - name: Build webpack bundle
         run: npm run build:prod
+
+      - name: Analyze bundle size
+        run: |
+          echo "## 📦 Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### JavaScript Bundles" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ls -lh dist/*.js | awk '{printf "%-40s %10s
+", $9, $5}'
+          ls -lh dist/*.js | awk '{printf "%-40s %10s
+", $9, $5}' >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### WebAssembly" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ls -lh dist/*.wasm | awk '{printf "%-40s %10s
+", $9, $5}'
+          ls -lh dist/*.wasm | awk '{printf "%-40s %10s
+", $9, $5}' >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          total_size=$(du -sh dist/ | cut -f1)
+          echo "**Total Size:** $total_size" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if size exceeds budget
+          size_bytes=$(du -sb dist/ | cut -f1)
+          budget_bytes=3145728  # 3MB budget
+          if [ "$size_bytes" -gt "$budget_bytes" ]; then
+            echo "⚠️ **Warning:** Bundle size ($total_size) exceeds budget (3MB)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Bundle size within budget" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
