@@ -3,7 +3,6 @@
   "sourceMaps": true,
   "minify": false,
   "jsc": {
-    "target": "es2020",
     "parser": {
       "syntax": "typescript",
       "tsx": true,
@@ -17,9 +16,21 @@
       }
     },
     "externalHelpers": false,
-    "keepClassNames": true
+    "keepClassNames": true,
+    "baseUrl": ".",
+    "paths": {}
   },
   "module": {
     "type": "es6"
+  },
+  "env": {
+    "targets": {
+      "chrome": "90",
+      "firefox": "88",
+      "safari": "14",
+      "edge": "90"
+    },
+    "mode": "entry",
+    "coreJs": "3.0"
   }
 }

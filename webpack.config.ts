@@ -12,6 +12,12 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
   const isDevelopment = argv.mode === "development";
 
   return {
+    cache: {
+      type: 'filesystem',
+      buildDependencies: {
+        config: [__filename],
+      },
+    },
     entry: "./src/index.tsx",
     devtool: isDevelopment ? "inline-source-map" : "source-map",
     mode: isDevelopment ? "development" : "production",
@@ -51,21 +57,25 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
       moduleIds: "deterministic",
       runtimeChunk: "single",
       splitChunks: {
+        chunks: "all",
         cacheGroups: {
           vendor: {
             test: /[\\/]node_modules[\\/](?!(react|react-dom|react-router-dom)[\\/])/,
             name: "vendors",
             chunks: "all",
             priority: 10,
+            reuseExistingChunk: true,
           },
           react: {
             test: /[\\/]node_modules[\\/](react|react-dom|react-router-dom)[\\/]/,
             name: "react-vendors",
             chunks: "all",
             priority: 20,
+            reuseExistingChunk: true,
           },
         },
       },
+      minimizer: isDevelopment ? [] : undefined, // Use defaults in production
     },
     plugins: [
       new HtmlWebpackPlugin({

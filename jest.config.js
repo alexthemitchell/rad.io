@@ -2,6 +2,7 @@
 module.exports = {
   testEnvironment: "jsdom",
   testTimeout: 30000, // 30 seconds per test
+  maxWorkers: "50%", // Use half of available CPU cores for parallel execution
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
   },

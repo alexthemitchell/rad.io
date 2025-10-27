@@ -8,6 +8,10 @@ yarn-error.log*
 dist/
 build/
 *.js.map
+.tsbuildinfo
+
+# Webpack cache
+node_modules/.cache/
 
 # Testing
 coverage/
