@@ -66,13 +66,15 @@ The Playwright configuration defines three projects:
 
 ### Test Routes
 
-- **Demo Page**: `https://localhost:8080/demo`
+- **Demo Page**: `/demo`
   - Uses `SimulatedSource` directly
   - Tests fundamental visualization rendering
 
-- **Monitor Page**: `https://localhost:8080/monitor?mockSdr=1`
+- **Monitor Page**: `/monitor?mockSdr=1`
   - Uses `MockSDRDevice` via query parameter
   - Tests integrated visualization modes
+
+Note: Tests use relative paths that rely on Playwright's `baseURL` configuration (`https://localhost:8080`).
 
 ## Key Features
 
