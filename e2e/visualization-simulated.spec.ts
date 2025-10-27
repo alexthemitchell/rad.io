@@ -65,8 +65,8 @@ test.describe("Visualization with Simulated Data @simulated", () => {
     // Wait for initial rendering
     await page.waitForTimeout(500);
 
-    // Find pattern selector if it exists (check common selector patterns)
-    const patternSelect = page.locator('select[name="pattern"]').first();
+    // Find pattern selector (using id since it has pattern-select id)
+    const patternSelect = page.locator("#pattern-select");
     const hasPatternSelect = (await patternSelect.count()) > 0;
 
     if (hasPatternSelect) {
