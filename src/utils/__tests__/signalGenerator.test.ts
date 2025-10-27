@@ -1,6 +1,6 @@
 /**
  * Example test using signal generators and test utilities
- * 
+ *
  * This test demonstrates best practices for using the test data generators
  * and utilities provided by rad.io's testing infrastructure.
  */
@@ -10,16 +10,16 @@ import {
   generateMultiToneIQ,
   generateFMIQ,
   calculateSNR,
-} from '../signalGenerator';
+} from "../signalGenerator";
 import {
   expectFloat32ArraysClose,
   SeededRandom,
   waitForCondition,
-} from '../testHelpers';
+} from "../testHelpers";
 
-describe('Signal Generator Examples', () => {
-  describe('Basic IQ Generation', () => {
-    test('should generate pure sinusoid with expected properties', () => {
+describe("Signal Generator Examples", () => {
+  describe("Basic IQ Generation", () => {
+    test("should generate pure sinusoid with expected properties", () => {
       const samples = generateIQSamples({
         sampleRate: 2048000,
         frequency: 100000,
@@ -35,12 +35,12 @@ describe('Signal Generator Examples', () => {
       // Verify amplitude is approximately correct
       const maxAmplitude = samples.samples.reduce(
         (max, val) => Math.max(max, Math.abs(val)),
-        0
+        0,
       );
       expect(maxAmplitude).toBeCloseTo(0.8, 1);
     });
 
-    test('should generate signal with high SNR', () => {
+    test("should generate signal with high SNR", () => {
       const samples = generateIQSamples({
         sampleRate: 2048000,
         frequency: 100000,
@@ -54,8 +54,8 @@ describe('Signal Generator Examples', () => {
     });
   });
 
-  describe('Multi-Tone Signals', () => {
-    test('should generate multiple tones at specified frequencies', () => {
+  describe("Multi-Tone Signals", () => {
+    test("should generate multiple tones at specified frequencies", () => {
       const samples = generateMultiToneIQ({
         sampleRate: 2048000,
         tones: [
@@ -67,21 +67,21 @@ describe('Signal Generator Examples', () => {
       });
 
       expect(samples.length).toBe(204800);
-      
+
       // Verify the signal contains multiple frequencies
       // (In practice, you'd use FFT to verify each tone is present)
       const maxAmplitude = samples.samples.reduce(
         (max, val) => Math.max(max, Math.abs(val)),
-        0
+        0,
       );
-      
+
       // Max amplitude should be sum of individual amplitudes
       expect(maxAmplitude).toBeLessThanOrEqual(0.8 + 0.5 + 0.3 + 0.1);
     });
   });
 
-  describe('Modulated Signals', () => {
-    test('should generate FM signal', () => {
+  describe("Modulated Signals", () => {
+    test("should generate FM signal", () => {
       const fmSignal = generateFMIQ({
         sampleRate: 2048000,
         carrierFreq: 100000,
@@ -92,25 +92,26 @@ describe('Signal Generator Examples', () => {
       });
 
       expect(fmSignal.length).toBe(204800);
-      
+
       // Verify constant amplitude (characteristic of FM)
       const amplitudes = new Float32Array(fmSignal.length);
       for (let i = 0; i < fmSignal.length; i++) {
         const iSample = fmSignal.samples[i * 2];
         const qSample = fmSignal.samples[i * 2 + 1];
-        
+
         if (iSample !== undefined && qSample !== undefined) {
           amplitudes[i] = Math.sqrt(iSample * iSample + qSample * qSample);
         }
       }
-      
-      const avgAmplitude = amplitudes.reduce((sum, val) => sum + val, 0) / fmSignal.length;
+
+      const avgAmplitude =
+        amplitudes.reduce((sum, val) => sum + val, 0) / fmSignal.length;
       expect(avgAmplitude).toBeCloseTo(0.8, 1);
     });
   });
 
-  describe('Deterministic Random Generation', () => {
-    test('should generate reproducible random sequences', () => {
+  describe("Deterministic Random Generation", () => {
+    test("should generate reproducible random sequences", () => {
       const rng1 = new SeededRandom(42);
       const rng2 = new SeededRandom(42);
 
@@ -122,11 +123,11 @@ describe('Signal Generator Examples', () => {
       expectFloat32ArraysClose(
         new Float32Array(values1),
         new Float32Array(values2),
-        1e-10
+        1e-10,
       );
     });
 
-    test('should reset to initial seed', () => {
+    test("should reset to initial seed", () => {
       const rng = new SeededRandom(42);
 
       const firstValue = rng.next();
@@ -139,8 +140,8 @@ describe('Signal Generator Examples', () => {
     });
   });
 
-  describe('Array Comparison Utilities', () => {
-    test('should compare Float32Arrays with tolerance', () => {
+  describe("Array Comparison Utilities", () => {
+    test("should compare Float32Arrays with tolerance", () => {
       const arr1 = new Float32Array([1.0, 2.0, 3.0]);
       const arr2 = new Float32Array([1.00001, 2.00001, 3.00001]);
 
@@ -150,7 +151,7 @@ describe('Signal Generator Examples', () => {
       }).not.toThrow();
     });
 
-    test('should fail when arrays differ beyond tolerance', () => {
+    test("should fail when arrays differ beyond tolerance", () => {
       const arr1 = new Float32Array([1.0, 2.0, 3.0]);
       const arr2 = new Float32Array([1.1, 2.0, 3.0]);
 
@@ -160,12 +161,14 @@ describe('Signal Generator Examples', () => {
     });
   });
 
-  describe('Async Testing Utilities', () => {
-    test('should wait for condition to be true', async () => {
+  describe("Async Testing Utilities", () => {
+    test("should wait for condition to be true", async () => {
       let value = false;
 
       // Set value to true after 100ms
-      setTimeout(() => { value = true; }, 100);
+      setTimeout(() => {
+        value = true;
+      }, 100);
 
       // Wait for condition
       await waitForCondition(() => value === true, 1000, 10);
@@ -173,16 +176,16 @@ describe('Signal Generator Examples', () => {
       expect(value).toBe(true);
     });
 
-    test('should timeout when condition is not met', async () => {
-      await expect(
-        waitForCondition(() => false, 100, 10)
-      ).rejects.toThrow('Condition timeout exceeded');
+    test("should timeout when condition is not met", async () => {
+      await expect(waitForCondition(() => false, 100, 10)).rejects.toThrow(
+        "Condition timeout exceeded",
+      );
     });
   });
 });
 
-describe('Real-World Testing Patterns', () => {
-  test('should validate DSP pipeline with synthetic signal', () => {
+describe("Real-World Testing Patterns", () => {
+  test("should validate DSP pipeline with synthetic signal", () => {
     // Generate a known signal
     const testSignal = generateIQSamples({
       sampleRate: 2048000,
@@ -202,7 +205,7 @@ describe('Real-World Testing Patterns', () => {
     expect(testSignal.sampleRate).toBe(2048000);
   });
 
-  test('should handle edge cases with deterministic data', () => {
+  test("should handle edge cases with deterministic data", () => {
     const rng = new SeededRandom(12345);
 
     // Test with various deterministic inputs

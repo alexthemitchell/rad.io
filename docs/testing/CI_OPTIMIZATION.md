@@ -3,6 +3,7 @@
 ## Current State
 
 ### Test Execution Times
+
 - **Unit tests**: ~56 seconds (109 suites, 1534 tests)
 - **E2E tests**: ~15-30 seconds (3 test files)
 - **Total CI time**: ~2-3 minutes per workflow
@@ -51,7 +52,7 @@ test:
   steps:
     - name: Run test shard
       run: npm test -- --testPathPattern="src/${{ matrix.shard }}"
-    
+
     - name: Upload coverage
       uses: codecov/codecov-action@v5
       with:
@@ -59,6 +60,7 @@ test:
 ```
 
 **Benefits:**
+
 - 6 parallel jobs = ~6x faster (theoretical)
 - Per-component coverage tracking
 - Early failure detection
@@ -76,7 +78,7 @@ test:
   steps:
     - name: Run test shard
       run: npm test -- --shard=${{ matrix.shard }}/4 --coverage
-    
+
     - name: Upload coverage
       uses: codecov/codecov-action@v5
       with:
@@ -84,6 +86,7 @@ test:
 ```
 
 **Benefits:**
+
 - Automatic load balancing
 - Simpler configuration
 - 4 parallel jobs = ~4x faster
@@ -122,6 +125,7 @@ Optimize caching to reduce setup time.
 ```
 
 **Benefits:**
+
 - Faster test startup
 - Reduced WASM rebuild time
 - Jest transform caching
@@ -145,19 +149,20 @@ test:
         files: |
           src/**/*.ts
           src/**/*.tsx
-    
+
     - name: Run affected tests
       if: steps.changed-files.outputs.any_changed == 'true'
       run: |
         # Run tests related to changed files
         npm test -- --findRelatedTests ${{ steps.changed-files.outputs.all_changed_files }}
-    
+
     - name: Run all tests (main branch)
       if: github.ref == 'refs/heads/main'
       run: npm test -- --coverage
 ```
 
 **Benefits:**
+
 - Faster PR feedback
 - Full coverage on main branch
 - Reduced CI compute time
@@ -172,10 +177,10 @@ Adjust timeouts based on test type.
 // jest.config.ts
 const config: Config = {
   testTimeout: process.env.CI ? 10000 : 30000, // 10s in CI, 30s local
-  
+
   // Fast tests in CI with fewer retries
   maxWorkers: process.env.CI ? "75%" : "50%",
-  
+
   // Optimize memory usage
   workerIdleMemoryLimit: "512MB",
 };
@@ -202,19 +207,20 @@ export default defineConfig({
 export default defineConfig({
   // Enable parallel for independent tests
   fullyParallel: true,
-  
+
   // More workers with resource limits
   workers: process.env.CI ? 2 : 3,
-  
+
   // Limit parallel tests per file
   maxFailures: 3,
-  
+
   // Retry configuration
   retries: process.env.CI ? 2 : 0,
 });
 ```
 
 **Benefits:**
+
 - 2x faster E2E execution
 - Still memory-safe in CI
 - Better resource utilization
@@ -247,14 +253,15 @@ Reduce coverage upload overhead.
     files: ./coverage/lcov.info
     flags: unittests-${{ matrix.shard }}
     fail_ci_if_error: true
-    verbose: false  # Reduce log noise
-    
+    verbose: false # Reduce log noise
+
     # Skip redundant uploads
     disable_search: true
     disable_file_fixes: true
 ```
 
 **Benefits:**
+
 - Faster upload (single file)
 - Per-shard flags for tracking
 - Reduced CI log noise
@@ -264,12 +271,14 @@ Reduce coverage upload overhead.
 ### Phase 1: Low-Hanging Fruit (Immediate)
 
 1. **Enable Jest caching**
+
    ```typescript
    // jest.config.ts
    cacheDirectory: ".jest-cache",
    ```
 
 2. **Optimize test timeouts**
+
    ```typescript
    testTimeout: process.env.CI ? 10000 : 30000,
    ```
@@ -284,6 +293,7 @@ Reduce coverage upload overhead.
 ### Phase 2: Test Sharding (1-2 hours)
 
 1. **Add Jest sharding to quality-checks.yml**
+
    ```yaml
    matrix:
      shard: [1, 2, 3, 4]
@@ -322,7 +332,7 @@ Reduce coverage upload overhead.
 - name: Track test performance
   run: |
     echo "::notice::Test execution time: ${{ steps.test.outputs.time }}s"
-    
+
     # Export to GitHub Actions metrics
     echo "test_duration_seconds{shard=\"${{ matrix.shard }}\"} ${{ steps.test.outputs.time }}" >> metrics.txt
 ```
@@ -330,6 +340,7 @@ Reduce coverage upload overhead.
 ### Dashboard Metrics
 
 Track over time:
+
 - Total CI execution time
 - Test execution time per shard
 - Coverage upload time
@@ -349,17 +360,20 @@ Track over time:
 ## Cost Benefit Analysis
 
 ### Current State
+
 - **Unit tests**: ~56s on single job
 - **E2E tests**: ~15s on single job
 - **Total**: ~71s compute time
 
 ### After Phase 1 (Low effort)
+
 - **Unit tests**: ~45s (-20%)
 - **E2E tests**: ~12s (-20%)
 - **Total**: ~57s compute time
 - **Wall clock**: Same (sequential)
 
 ### After Phase 2 (Sharding)
+
 - **Unit tests**: ~14s per shard (4 parallel)
 - **E2E tests**: ~8s (2 parallel)
 - **Total**: ~112s compute time (+58%)
@@ -368,6 +382,7 @@ Track over time:
 **Trade-off:** 58% more compute, 80% faster feedback
 
 ### After Phase 3 (Selective)
+
 - **Unit tests (PR)**: ~5-10s (affected only)
 - **Unit tests (main)**: ~14s (full)
 - **Wall clock (PR)**: ~5-10s (-93%)

@@ -13,16 +13,19 @@ This document outlines the testing strategy for rad.io, covering unit tests, int
 **Purpose**: Test individual functions, classes, and React components in isolation.
 
 **Tools**:
+
 - Jest (test runner)
 - React Testing Library (component testing)
 - jest-axe (accessibility testing)
 
 **Coverage Targets**:
+
 - Global minimum: 38% (enforced via Jest)
 - Critical modules: 57-96% (see jest.config.ts)
 - New code: 80% patch coverage (enforced via Codecov)
 
 **Best Practices**:
+
 1. **Keep tests fast**: Prefer mocking external dependencies
 2. **Test behavior, not implementation**: Focus on what the code does, not how
 3. **Use descriptive test names**: `should <expected behavior> when <condition>`
@@ -36,11 +39,13 @@ This document outlines the testing strategy for rad.io, covering unit tests, int
 **Purpose**: Test interactions between multiple modules or components.
 
 **Examples**:
+
 - DSP pipeline (FFT → filtering → demodulation)
 - Device state management (connect → configure → stream)
 - React hooks with context providers
 
 **Best Practices**:
+
 1. **Minimize scope**: Test 2-3 components together, not the entire app
 2. **Use real implementations where possible**: Avoid over-mocking
 3. **Test critical paths**: Focus on user flows and data pipelines
@@ -53,15 +58,18 @@ This document outlines the testing strategy for rad.io, covering unit tests, int
 **Purpose**: Test the application from a user's perspective in a real browser.
 
 **Tools**:
+
 - Playwright (browser automation)
 - @axe-core/playwright (accessibility)
 
 **Test Types**:
+
 1. **Mock tests** (CI-friendly): Use MockSDRDevice for reliable CI execution
 2. **Real hardware tests** (opt-in): Test with actual HackRF devices locally
 3. **Accessibility tests**: Automated WCAG 2.1 AA compliance checks
 
 **Best Practices**:
+
 1. **Prefer mock tests for CI**: Real hardware tests are opt-in only
 2. **Test critical user flows**: Connection, streaming, visualization
 3. **Use accessibility assertions**: Validate ARIA labels and keyboard navigation
@@ -177,6 +185,7 @@ Codecov enforces patch coverage on PRs:
   - Test infrastructure: 100% patch
 
 **Coverage reports**:
+
 - Uploaded to Codecov on every PR
 - Available at: https://app.codecov.io/gh/alexthemitchell/rad.io
 
@@ -219,7 +228,7 @@ Located in `src/utils/`:
 
 ```typescript
 // Generate sinusoidal IQ samples
-import { generateIQSamples } from '../utils/signalGenerator';
+import { generateIQSamples } from "../utils/signalGenerator";
 
 const samples = generateIQSamples({
   sampleRate: 2048000,
@@ -229,7 +238,7 @@ const samples = generateIQSamples({
 });
 
 // Memory management in DSP tests
-import { clearMemoryPools } from '../utils/testMemoryManager';
+import { clearMemoryPools } from "../utils/testMemoryManager";
 
 afterEach(() => {
   clearMemoryPools();

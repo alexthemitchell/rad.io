@@ -333,8 +333,14 @@ export function generateChirpIQ(options: {
   duration: number;
   noiseLevel?: number;
 }): ComplexIQSamples {
-  const { sampleRate, startFreq, endFreq, amplitude, duration, noiseLevel = 0 } =
-    options;
+  const {
+    sampleRate,
+    startFreq,
+    endFreq,
+    amplitude,
+    duration,
+    noiseLevel = 0,
+  } = options;
 
   const numSamples = Math.floor(sampleRate * duration);
   const samples = new Float32Array(numSamples * 2);
@@ -380,7 +386,7 @@ export function generateChirpIQ(options: {
 export function calculateSNR(
   samples: Float32Array,
   signalFreq: number,
-  sampleRate: number
+  sampleRate: number,
 ): number {
   const numSamples = samples.length / 2;
 

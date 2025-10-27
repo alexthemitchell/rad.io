@@ -118,7 +118,7 @@ export function restoreDevicePixelRatio(originalValue: number): void {
  * @param timeout Maximum time to wait in milliseconds (default: 5000)
  * @param interval Polling interval in milliseconds (default: 50)
  * @returns Promise that resolves when condition is met or rejects on timeout
- * 
+ *
  * @example
  * await waitForCondition(() => element.textContent === 'Ready', 2000);
  */
@@ -128,12 +128,12 @@ export async function waitForCondition(
   interval = 50,
 ): Promise<void> {
   const startTime = Date.now();
-  
+
   while (!condition()) {
     if (Date.now() - startTime > timeout) {
-      throw new Error('Condition timeout exceeded');
+      throw new Error("Condition timeout exceeded");
     }
-    await new Promise(resolve => setTimeout(resolve, interval));
+    await new Promise((resolve) => setTimeout(resolve, interval));
   }
 }
 
@@ -143,7 +143,7 @@ export async function waitForCondition(
  */
 export function createMockWebGLContext(): WebGLRenderingContext {
   const mockContext = {
-    canvas: document.createElement('canvas'),
+    canvas: document.createElement("canvas"),
     drawingBufferWidth: 800,
     drawingBufferHeight: 600,
     getExtension: jest.fn(() => null),
@@ -181,9 +181,9 @@ export function createMockWebGLContext(): WebGLRenderingContext {
     drawElements: jest.fn(),
     ARRAY_BUFFER: 0x8892,
     ELEMENT_ARRAY_BUFFER: 0x8893,
-    STATIC_DRAW: 0x88E4,
+    STATIC_DRAW: 0x88e4,
     FLOAT: 0x1406,
-    TEXTURE_2D: 0x0DE1,
+    TEXTURE_2D: 0x0de1,
     RGBA: 0x1908,
     UNSIGNED_BYTE: 0x1401,
     COLOR_BUFFER_BIT: 0x00004000,
@@ -200,11 +200,11 @@ export function createMockWebGLContext(): WebGLRenderingContext {
  */
 export class SeededRandom {
   private seed: number;
-  
+
   constructor(seed = 12345) {
     this.seed = seed;
   }
-  
+
   /**
    * Generate next random number between 0 and 1
    */
@@ -212,14 +212,14 @@ export class SeededRandom {
     this.seed = (this.seed * 1664525 + 1013904223) % 4294967296;
     return this.seed / 4294967296;
   }
-  
+
   /**
    * Generate random number in range [min, max)
    */
   range(min: number, max: number): number {
     return min + this.next() * (max - min);
   }
-  
+
   /**
    * Reset to initial seed
    */
@@ -242,19 +242,19 @@ export function expectFloat32ArraysClose(
   tolerance = 1e-6,
 ): void {
   expect(actual.length).toBe(expected.length);
-  
+
   for (let i = 0; i < actual.length; i++) {
     const actualVal = actual[i];
     const expectedVal = expected[i];
-    
+
     if (actualVal === undefined || expectedVal === undefined) {
       throw new Error(`Missing value at index ${i}`);
     }
-    
+
     const diff = Math.abs(actualVal - expectedVal);
     if (diff > tolerance) {
       throw new Error(
-        `Arrays differ at index ${i}: ${actual[i]} vs ${expected[i]} (diff: ${diff}, tolerance: ${tolerance})`
+        `Arrays differ at index ${i}: ${actual[i]} vs ${expected[i]} (diff: ${diff}, tolerance: ${tolerance})`,
       );
     }
   }
@@ -269,7 +269,7 @@ export function expectFloat32ArraysClose(
 export function createMockFile(
   content: string | ArrayBuffer,
   filename: string,
-  mimeType = 'application/octet-stream',
+  mimeType = "application/octet-stream",
 ): File {
   const blob = new Blob([content], { type: mimeType });
   return new File([blob], filename, { type: mimeType });
@@ -278,26 +278,26 @@ export function createMockFile(
 /**
  * Suppress console warnings/errors during test execution
  * Useful for testing error cases without polluting test output
- * 
+ *
  * @example
  * const restore = suppressConsole(['error', 'warn']);
  * // ... test code that generates expected errors ...
  * restore();
  */
 export function suppressConsole(
-  methods: Array<'log' | 'warn' | 'error' | 'info'> = ['error', 'warn']
+  methods: Array<"log" | "warn" | "error" | "info"> = ["error", "warn"],
 ): () => void {
   const originals = new Map<string, typeof console.log>();
-  
-  methods.forEach(method => {
+
+  methods.forEach((method) => {
     // eslint-disable-next-line no-console
     originals.set(method, console[method]);
     // eslint-disable-next-line no-console
     console[method] = jest.fn();
   });
-  
+
   return () => {
-    methods.forEach(method => {
+    methods.forEach((method) => {
       const original = originals.get(method);
       if (original) {
         // eslint-disable-next-line no-console

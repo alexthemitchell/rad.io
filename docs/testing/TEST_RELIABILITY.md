@@ -9,6 +9,7 @@ This guide helps identify, debug, and fix flaky tests in the rad.io project. Fla
 ### 1. Race Conditions
 
 **Symptoms:**
+
 - Test passes locally but fails in CI
 - Test fails intermittently
 - Timing-related failures
@@ -38,6 +39,7 @@ test('should update after state change', async () => {
 ```
 
 **Solutions:**
+
 - Use `waitFor()` from React Testing Library
 - Use `findBy*` queries (built-in waiting)
 - Use `act()` for state updates
@@ -46,6 +48,7 @@ test('should update after state change', async () => {
 ### 2. Shared State Between Tests
 
 **Symptoms:**
+
 - Tests pass when run individually
 - Tests fail when run together
 - Order-dependent failures
@@ -56,18 +59,18 @@ test('should update after state change', async () => {
 // ❌ Bad: Shared global state
 let globalDevice: SDRDevice;
 
-test('should connect device', () => {
+test("should connect device", () => {
   globalDevice = new MockSDRDevice();
   expect(globalDevice.connect()).resolves.toBe(true);
 });
 
-test('should disconnect device', () => {
+test("should disconnect device", () => {
   // Depends on previous test!
   expect(globalDevice.disconnect()).resolves.toBe(true);
 });
 
 // ✅ Good: Independent tests with setup/teardown
-describe('Device operations', () => {
+describe("Device operations", () => {
   let device: SDRDevice;
 
   beforeEach(() => {
@@ -78,11 +81,11 @@ describe('Device operations', () => {
     device.disconnect();
   });
 
-  test('should connect device', async () => {
+  test("should connect device", async () => {
     expect(await device.connect()).toBe(true);
   });
 
-  test('should disconnect device', async () => {
+  test("should disconnect device", async () => {
     await device.connect();
     expect(await device.disconnect()).toBe(true);
   });
@@ -90,6 +93,7 @@ describe('Device operations', () => {
 ```
 
 **Solutions:**
+
 - Use `beforeEach`/`afterEach` for setup/teardown
 - Clear global state in `afterEach`
 - Avoid test interdependencies
@@ -98,6 +102,7 @@ describe('Device operations', () => {
 ### 3. Non-Deterministic Data
 
 **Symptoms:**
+
 - Random test failures
 - Different results with same input
 - Math/calculation errors
@@ -106,32 +111,33 @@ describe('Device operations', () => {
 
 ```typescript
 // ❌ Bad: Random data leads to unpredictable tests
-test('should detect signal', () => {
+test("should detect signal", () => {
   const samples = generateNoiseIQ({
     sampleRate: 2048000,
     amplitude: Math.random(), // Non-deterministic!
     duration: Math.random() * 0.2,
   });
-  
+
   const detected = detectSignal(samples);
   expect(detected).toBe(true); // May fail randomly
 });
 
 // ✅ Good: Deterministic test data
-test('should detect signal', () => {
+test("should detect signal", () => {
   const rng = new SeededRandom(42);
   const samples = generateNoiseIQ({
     sampleRate: 2048000,
     amplitude: rng.range(0.5, 1.0),
     duration: 0.1,
   });
-  
+
   const detected = detectSignal(samples);
   expect(detected).toBe(true); // Consistent
 });
 ```
 
 **Solutions:**
+
 - Use `SeededRandom` for reproducible randomness
 - Use fixed test data
 - Avoid `Math.random()` in tests
@@ -140,6 +146,7 @@ test('should detect signal', () => {
 ### 4. Fake Timers Issues
 
 **Symptoms:**
+
 - Tests hang or timeout
 - Timer-related failures
 - Inconsistent timing behavior
@@ -148,37 +155,38 @@ test('should detect signal', () => {
 
 ```typescript
 // ❌ Bad: Mixing real and fake timers
-test('should update every second', () => {
+test("should update every second", () => {
   jest.useFakeTimers();
   const callback = jest.fn();
-  
+
   setInterval(callback, 1000);
-  
+
   // Using real async with fake timers - BAD!
   await waitFor(() => expect(callback).toHaveBeenCalled());
-  
+
   jest.useRealTimers();
 });
 
 // ✅ Good: Consistent timer usage
-test('should update every second', () => {
+test("should update every second", () => {
   jest.useFakeTimers();
   const callback = jest.fn();
-  
+
   setInterval(callback, 1000);
-  
+
   // Advance fake timers
   jest.advanceTimersByTime(1000);
   expect(callback).toHaveBeenCalledTimes(1);
-  
+
   jest.advanceTimersByTime(1000);
   expect(callback).toHaveBeenCalledTimes(2);
-  
+
   jest.useRealTimers();
 });
 ```
 
 **Solutions:**
+
 - Always restore timers in `afterEach`
 - Don't mix fake and real timers
 - Use `jest.advanceTimersByTime()` consistently
@@ -187,6 +195,7 @@ test('should update every second', () => {
 ### 5. Memory Leaks
 
 **Symptoms:**
+
 - Tests slow down over time
 - Out of memory errors
 - Failing after many tests
@@ -195,32 +204,33 @@ test('should update every second', () => {
 
 ```typescript
 // ❌ Bad: Memory leak from unreleased resources
-test('should process spectrum', () => {
+test("should process spectrum", () => {
   const samples = new Float32Array(1024 * 1024); // Large allocation
   processSpectrum(samples);
   // samples not released
 });
 
 // ✅ Good: Clean up resources
-test('should process spectrum', () => {
+test("should process spectrum", () => {
   const samples = new Float32Array(1024 * 1024);
   processSpectrum(samples);
-  
+
   // Explicit cleanup
   clearMemoryPools();
 });
 
-describe('DSP tests', () => {
+describe("DSP tests", () => {
   afterEach(() => {
     clearMemoryPools();
     jest.clearAllMocks();
   });
-  
+
   // ... tests
 });
 ```
 
 **Solutions:**
+
 - Call `clearMemoryPools()` in `afterEach`
 - Unmount React components
 - Clear intervals/timeouts
@@ -229,6 +239,7 @@ describe('DSP tests', () => {
 ### 6. Mock Issues
 
 **Symptoms:**
+
 - Mocks from previous tests interfere
 - Unexpected mock behavior
 - Mock state persists between tests
@@ -237,16 +248,16 @@ describe('DSP tests', () => {
 
 ```typescript
 // ❌ Bad: Mock persists across tests
-jest.mock('../utils/dsp', () => ({
+jest.mock("../utils/dsp", () => ({
   calculateFFT: jest.fn(() => new Float32Array(1024)),
 }));
 
-test('test 1', () => {
+test("test 1", () => {
   calculateFFT(samples);
   expect(calculateFFT).toHaveBeenCalledTimes(1);
 });
 
-test('test 2', () => {
+test("test 2", () => {
   calculateFFT(samples);
   // Will be 2 if test 1 ran first!
   expect(calculateFFT).toHaveBeenCalledTimes(1);
@@ -257,18 +268,19 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test('test 1', () => {
+test("test 1", () => {
   calculateFFT(samples);
   expect(calculateFFT).toHaveBeenCalledTimes(1);
 });
 
-test('test 2', () => {
+test("test 2", () => {
   calculateFFT(samples);
   expect(calculateFFT).toHaveBeenCalledTimes(1);
 });
 ```
 
 **Solutions:**
+
 - Call `jest.clearAllMocks()` in `beforeEach`
 - Use `jest.resetModules()` for module mocks
 - Avoid persistent mock state
@@ -277,6 +289,7 @@ test('test 2', () => {
 ### 7. Browser API Availability
 
 **Symptoms:**
+
 - Tests fail in CI but pass locally
 - Missing browser APIs
 - Feature detection issues
@@ -285,31 +298,32 @@ test('test 2', () => {
 
 ```typescript
 // ❌ Bad: Assumes browser APIs exist
-test('should use WebGL', () => {
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl');
-  
+test("should use WebGL", () => {
+  const canvas = document.createElement("canvas");
+  const gl = canvas.getContext("webgl");
+
   // gl might be null in CI!
   gl.clearColor(0, 0, 0, 1);
 });
 
 // ✅ Good: Graceful fallback or mocking
-test('should use WebGL', () => {
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl');
-  
+test("should use WebGL", () => {
+  const canvas = document.createElement("canvas");
+  const gl = canvas.getContext("webgl");
+
   if (!gl) {
     // Mock WebGL context
     const mockGL = createMockWebGLContext();
-    jest.spyOn(canvas, 'getContext').mockReturnValue(mockGL);
+    jest.spyOn(canvas, "getContext").mockReturnValue(mockGL);
   }
-  
-  const context = canvas.getContext('webgl');
+
+  const context = canvas.getContext("webgl");
   expect(context).toBeDefined();
 });
 ```
 
 **Solutions:**
+
 - Mock unavailable APIs in jest.setup.ts
 - Use feature detection
 - Provide test-specific implementations
@@ -350,24 +364,24 @@ npm test -- --verbose path/to/test.test.ts
 
 ```typescript
 // Add debugging output
-test('should work', () => {
-  console.log('State before:', getState());
-  
+test("should work", () => {
+  console.log("State before:", getState());
+
   // ... test code ...
-  
-  console.log('State after:', getState());
+
+  console.log("State after:", getState());
 });
 
 // Check mock state
-test('should work', () => {
-  console.log('Mock calls:', mockFn.mock.calls);
-  console.log('Mock results:', mockFn.mock.results);
+test("should work", () => {
+  console.log("Mock calls:", mockFn.mock.calls);
+  console.log("Mock results:", mockFn.mock.results);
 });
 
 // Verify cleanup
 afterEach(() => {
-  console.log('Timers remaining:', jest.getTimerCount());
-  console.log('Mocks remaining:', jest.isMockFunction(fn));
+  console.log("Timers remaining:", jest.getTimerCount());
+  console.log("Mocks remaining:", jest.isMockFunction(fn));
 });
 ```
 
@@ -392,6 +406,7 @@ node --expose-gc node_modules/.bin/jest test.test.ts
 ### 1. Test Hygiene Checklist
 
 Every test should:
+
 - [ ] Clean up in `afterEach`
 - [ ] Not depend on other tests
 - [ ] Use deterministic data
@@ -402,6 +417,7 @@ Every test should:
 ### 2. Code Review Checklist
 
 For new tests, verify:
+
 - [ ] No `Math.random()` or `Date.now()`
 - [ ] No global state modifications
 - [ ] Proper async/await usage
@@ -416,7 +432,7 @@ test:
   steps:
     - name: Run tests (detect flakiness)
       run: npm test -- --maxWorkers=2 --randomize
-      
+
     - name: Retry failed tests
       if: failure()
       run: npm test -- --onlyFailures --maxWorkers=1
@@ -428,8 +444,8 @@ test:
 // jest-flake-detector.js
 class FlakeDetector {
   onTestResult(test, testResult) {
-    testResult.testResults.forEach(result => {
-      if (result.status === 'failed') {
+    testResult.testResults.forEach((result) => {
+      if (result.status === "failed") {
         // Log potential flake
         console.log(`Potential flake: ${result.fullName}`);
       }
@@ -446,7 +462,7 @@ Document known flaky tests and their status:
 
 ```typescript
 // Known flaky test - under investigation
-test.skip('should handle race condition', () => {
+test.skip("should handle race condition", () => {
   // TODO: Fix race condition in useEffect
   // Tracked in: #123
 });
@@ -457,12 +473,14 @@ test.skip('should handle race condition', () => {
 ### Do's ✅
 
 1. **Use React Testing Library's async utilities**
+
    ```typescript
-   await findByText('Expected text');
+   await findByText("Expected text");
    await waitFor(() => expect(condition).toBe(true));
    ```
 
 2. **Clean up in afterEach**
+
    ```typescript
    afterEach(() => {
      clearMemoryPools();
@@ -472,16 +490,24 @@ test.skip('should handle race condition', () => {
    ```
 
 3. **Use deterministic data**
+
    ```typescript
    const rng = new SeededRandom(42);
-   const samples = generateIQSamples({ /* fixed params */ });
+   const samples = generateIQSamples({
+     /* fixed params */
+   });
    ```
 
 4. **Isolate tests**
+
    ```typescript
    let device: SDRDevice;
-   beforeEach(() => { device = new MockSDRDevice(); });
-   afterEach(() => { device.cleanup(); });
+   beforeEach(() => {
+     device = new MockSDRDevice();
+   });
+   afterEach(() => {
+     device.cleanup();
+   });
    ```
 
 5. **Handle async properly**
@@ -493,24 +519,28 @@ test.skip('should handle race condition', () => {
 ### Don'ts ❌
 
 1. **Don't use arbitrary timeouts**
+
    ```typescript
    // Bad: await new Promise(resolve => setTimeout(resolve, 1000));
    // Good: await waitFor(() => expect(condition).toBe(true));
    ```
 
 2. **Don't share state**
+
    ```typescript
    // Bad: let sharedData;
    // Good: Create fresh data in beforeEach
    ```
 
 3. **Don't forget cleanup**
+
    ```typescript
    // Bad: setInterval without cleanup
    // Good: Clear in afterEach
    ```
 
 4. **Don't mix timer types**
+
    ```typescript
    // Bad: jest.useFakeTimers() + real setTimeout
    // Good: Consistent fake timer usage

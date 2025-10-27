@@ -13,16 +13,17 @@ This document describes the test data generators and utilities available for tes
 Generate a pure sinusoidal IQ signal at a specific frequency.
 
 **Usage:**
+
 ```typescript
-import { generateIQSamples } from '../utils/signalGenerator';
+import { generateIQSamples } from "../utils/signalGenerator";
 
 const samples = generateIQSamples({
-  sampleRate: 2048000,   // 2.048 MHz sample rate
-  frequency: 100000,     // 100 kHz signal
-  amplitude: 0.8,        // 80% amplitude
-  duration: 0.1,         // 100ms duration
-  phase: 0,              // Optional: phase offset in radians
-  noiseLevel: 0.1,       // Optional: add 10% noise
+  sampleRate: 2048000, // 2.048 MHz sample rate
+  frequency: 100000, // 100 kHz signal
+  amplitude: 0.8, // 80% amplitude
+  duration: 0.1, // 100ms duration
+  phase: 0, // Optional: phase offset in radians
+  noiseLevel: 0.1, // Optional: add 10% noise
 });
 ```
 
@@ -35,8 +36,9 @@ const samples = generateIQSamples({
 Generate multiple sinusoids at different frequencies for testing frequency discrimination.
 
 **Usage:**
+
 ```typescript
-import { generateMultiToneIQ } from '../utils/signalGenerator';
+import { generateMultiToneIQ } from "../utils/signalGenerator";
 
 const samples = generateMultiToneIQ({
   sampleRate: 2048000,
@@ -51,6 +53,7 @@ const samples = generateMultiToneIQ({
 ```
 
 **Use cases:**
+
 - Testing FFT frequency resolution
 - Channel separation tests
 - Interference scenarios
@@ -62,14 +65,15 @@ const samples = generateMultiToneIQ({
 Generate FM (Frequency Modulation) signals for testing demodulation.
 
 **Usage:**
+
 ```typescript
-import { generateFMIQ } from '../utils/signalGenerator';
+import { generateFMIQ } from "../utils/signalGenerator";
 
 const fmSignal = generateFMIQ({
   sampleRate: 2048000,
-  carrierFreq: 100000,     // Carrier at 100 kHz
-  modulationFreq: 1000,    // 1 kHz audio signal
-  deviation: 5000,         // 5 kHz deviation
+  carrierFreq: 100000, // Carrier at 100 kHz
+  modulationFreq: 1000, // 1 kHz audio signal
+  deviation: 5000, // 5 kHz deviation
   amplitude: 0.8,
   duration: 0.1,
   noiseLevel: 0.01,
@@ -77,6 +81,7 @@ const fmSignal = generateFMIQ({
 ```
 
 **Use cases:**
+
 - FM demodulation tests
 - Deviation accuracy tests
 - Audio quality tests
@@ -86,20 +91,22 @@ const fmSignal = generateFMIQ({
 Generate AM (Amplitude Modulation) signals.
 
 **Usage:**
+
 ```typescript
-import { generateAMIQ } from '../utils/signalGenerator';
+import { generateAMIQ } from "../utils/signalGenerator";
 
 const amSignal = generateAMIQ({
   sampleRate: 2048000,
   carrierFreq: 100000,
   modulationFreq: 1000,
-  modulationDepth: 0.5,    // 50% modulation
+  modulationDepth: 0.5, // 50% modulation
   amplitude: 0.8,
   duration: 0.1,
 });
 ```
 
 **Use cases:**
+
 - AM demodulation tests
 - Envelope detection tests
 - Broadcast signal simulation
@@ -111,19 +118,21 @@ const amSignal = generateAMIQ({
 Generate linear frequency sweep (chirp) for testing time-frequency analysis.
 
 **Usage:**
+
 ```typescript
-import { generateChirpIQ } from '../utils/signalGenerator';
+import { generateChirpIQ } from "../utils/signalGenerator";
 
 const chirp = generateChirpIQ({
   sampleRate: 2048000,
-  startFreq: 50000,     // Start at 50 kHz
-  endFreq: 150000,      // End at 150 kHz
+  startFreq: 50000, // Start at 50 kHz
+  endFreq: 150000, // End at 150 kHz
   amplitude: 0.8,
   duration: 0.1,
 });
 ```
 
 **Use cases:**
+
 - Spectrogram tests
 - Filter response tests
 - Time-frequency representation
@@ -133,8 +142,9 @@ const chirp = generateChirpIQ({
 Generate uniform random noise.
 
 **Usage:**
+
 ```typescript
-import { generateNoiseIQ } from '../utils/signalGenerator';
+import { generateNoiseIQ } from "../utils/signalGenerator";
 
 const noise = generateNoiseIQ({
   sampleRate: 2048000,
@@ -144,6 +154,7 @@ const noise = generateNoiseIQ({
 ```
 
 **Use cases:**
+
 - Noise floor tests
 - Signal detection threshold tests
 - SNR calculations
@@ -155,8 +166,9 @@ const noise = generateNoiseIQ({
 Calculate signal-to-noise ratio in dB.
 
 **Usage:**
+
 ```typescript
-import { calculateSNR, generateIQSamples } from '../utils/signalGenerator';
+import { calculateSNR, generateIQSamples } from "../utils/signalGenerator";
 
 const samples = generateIQSamples({
   sampleRate: 2048000,
@@ -179,8 +191,9 @@ expect(snr).toBeGreaterThan(20); // Expect >20 dB SNR
 Create a mock 2D canvas context for testing visualizations.
 
 **Usage:**
+
 ```typescript
-import { createMockCanvasContext } from '../utils/testHelpers';
+import { createMockCanvasContext } from "../utils/testHelpers";
 
 beforeEach(() => {
   const mockContext = createMockCanvasContext();
@@ -193,8 +206,9 @@ beforeEach(() => {
 Create a mock WebGL context for testing GPU-accelerated visualizations.
 
 **Usage:**
+
 ```typescript
-import { createMockWebGLContext } from '../utils/testHelpers';
+import { createMockWebGLContext } from "../utils/testHelpers";
 
 const gl = createMockWebGLContext();
 // Use in tests that need WebGL
@@ -207,10 +221,11 @@ const gl = createMockWebGLContext();
 Create simple IQ samples for visualization tests.
 
 **Usage:**
-```typescript
-import { createTestSamples } from '../utils/testHelpers';
 
-const samples = createTestSamples(1000, 'sine');
+```typescript
+import { createTestSamples } from "../utils/testHelpers";
+
+const samples = createTestSamples(1000, "sine");
 // patterns: 'sine', 'linear', 'random'
 ```
 
@@ -221,13 +236,14 @@ const samples = createTestSamples(1000, 'sine');
 Wait for a condition to be true with timeout.
 
 **Usage:**
+
 ```typescript
-import { waitForCondition } from '../utils/testHelpers';
+import { waitForCondition } from "../utils/testHelpers";
 
 await waitForCondition(
   () => component.state.isReady === true,
   2000, // 2 second timeout
-  50    // check every 50ms
+  50, // check every 50ms
 );
 ```
 
@@ -238,13 +254,14 @@ await waitForCondition(
 Generate reproducible random numbers for tests.
 
 **Usage:**
+
 ```typescript
-import { SeededRandom } from '../utils/testHelpers';
+import { SeededRandom } from "../utils/testHelpers";
 
 const rng = new SeededRandom(42); // Fixed seed for reproducibility
 
-const value1 = rng.next();           // 0 to 1
-const value2 = rng.range(10, 20);    // 10 to 20
+const value1 = rng.next(); // 0 to 1
+const value2 = rng.range(10, 20); // 10 to 20
 
 rng.reset(42); // Reset to initial state
 ```
@@ -256,13 +273,14 @@ rng.reset(42); // Reset to initial state
 Assert approximate equality of Float32Arrays.
 
 **Usage:**
+
 ```typescript
-import { expectFloat32ArraysClose } from '../utils/testHelpers';
+import { expectFloat32ArraysClose } from "../utils/testHelpers";
 
 expectFloat32ArraysClose(
   actualFFT,
   expectedFFT,
-  1e-6  // tolerance
+  1e-6, // tolerance
 );
 ```
 
@@ -273,15 +291,16 @@ expectFloat32ArraysClose(
 Suppress console output during tests.
 
 **Usage:**
-```typescript
-import { suppressConsole } from '../utils/testHelpers';
 
-test('should handle error gracefully', () => {
-  const restore = suppressConsole(['error', 'warn']);
-  
+```typescript
+import { suppressConsole } from "../utils/testHelpers";
+
+test("should handle error gracefully", () => {
+  const restore = suppressConsole(["error", "warn"]);
+
   // Test code that generates expected errors
   expect(() => functionThatThrows()).toThrow();
-  
+
   restore();
 });
 ```
@@ -293,13 +312,14 @@ test('should handle error gracefully', () => {
 Create mock File objects for upload tests.
 
 **Usage:**
+
 ```typescript
-import { createMockFile } from '../utils/testHelpers';
+import { createMockFile } from "../utils/testHelpers";
 
 const file = createMockFile(
-  'IQ sample data',
-  'samples.iq',
-  'application/octet-stream'
+  "IQ sample data",
+  "samples.iq",
+  "application/octet-stream",
 );
 ```
 
@@ -310,8 +330,9 @@ const file = createMockFile(
 Clear DSP memory pools between tests.
 
 **Usage:**
+
 ```typescript
-import { clearMemoryPools } from '../utils/testMemoryManager';
+import { clearMemoryPools } from "../utils/testMemoryManager";
 
 afterEach(() => {
   clearMemoryPools();
@@ -356,8 +377,8 @@ const samples = generateMultiToneIQ({
 const samples = generateMultiToneIQ({
   sampleRate: 2048000,
   tones: [
-    { frequency: 1000000, amplitude: 0.8 },  // Near Nyquist
-    { frequency: 1010000, amplitude: 0.5 },  // Too close
+    { frequency: 1000000, amplitude: 0.8 }, // Near Nyquist
+    { frequency: 1010000, amplitude: 0.5 }, // Too close
   ],
   duration: 0.001, // Too short for FFT
 });
@@ -366,20 +387,20 @@ const samples = generateMultiToneIQ({
 ### 3. Clean Up Between Tests
 
 ```typescript
-describe('DSP Tests', () => {
+describe("DSP Tests", () => {
   afterEach(() => {
     clearMemoryPools();
     jest.clearAllMocks();
   });
-  
-  test('should process FFT', () => {
+
+  test("should process FFT", () => {
     const samples = generateIQSamples({
       sampleRate: 2048000,
       frequency: 100000,
       amplitude: 0.8,
       duration: 0.1,
     });
-    
+
     const result = calculateFFT(samples.samples);
     expect(result).toBeDefined();
   });
@@ -389,7 +410,7 @@ describe('DSP Tests', () => {
 ### 4. Validate Signal Quality
 
 ```typescript
-test('should maintain high SNR', () => {
+test("should maintain high SNR", () => {
   const samples = generateIQSamples({
     sampleRate: 2048000,
     frequency: 100000,
@@ -397,7 +418,7 @@ test('should maintain high SNR', () => {
     duration: 0.1,
     noiseLevel: 0.01,
   });
-  
+
   const snr = calculateSNR(samples.samples, 100000, 2048000);
   expect(snr).toBeGreaterThan(30); // High quality signal
 });
@@ -406,21 +427,21 @@ test('should maintain high SNR', () => {
 ### 5. Use Seeded Random for Edge Cases
 
 ```typescript
-test('should handle random input reliably', () => {
+test("should handle random input reliably", () => {
   const rng = new SeededRandom(42);
-  
+
   // Generate reproducible "random" test cases
   for (let i = 0; i < 100; i++) {
     const amplitude = rng.range(0.1, 1.0);
     const frequency = rng.range(10000, 500000);
-    
+
     const samples = generateIQSamples({
       sampleRate: 2048000,
       frequency,
       amplitude,
       duration: 0.1,
     });
-    
+
     expect(processSamples(samples)).toBeDefined();
   }
 });
@@ -431,20 +452,20 @@ test('should handle random input reliably', () => {
 ### FFT Testing
 
 ```typescript
-import { generateIQSamples, calculateSNR } from '../utils/signalGenerator';
+import { generateIQSamples, calculateSNR } from "../utils/signalGenerator";
 
-test('FFT should detect signal frequency', () => {
+test("FFT should detect signal frequency", () => {
   const samples = generateIQSamples({
     sampleRate: 2048000,
     frequency: 100000,
     amplitude: 0.8,
     duration: 0.1,
   });
-  
+
   const fft = calculateFFT(samples.samples, 2048);
   const peakBin = findPeakBin(fft);
   const peakFreq = (peakBin * 2048000) / 2048;
-  
+
   expect(peakFreq).toBeCloseTo(100000, -2);
 });
 ```
@@ -452,14 +473,17 @@ test('FFT should detect signal frequency', () => {
 ### Visualization Testing
 
 ```typescript
-import { createTestSamples, createMockCanvasContext } from '../utils/testHelpers';
+import {
+  createTestSamples,
+  createMockCanvasContext,
+} from "../utils/testHelpers";
 
-test('should render constellation', () => {
+test("should render constellation", () => {
   const mockContext = createMockCanvasContext();
-  const samples = createTestSamples(1000, 'sine');
-  
+  const samples = createTestSamples(1000, "sine");
+
   renderConstellation(mockContext, samples);
-  
+
   expect(mockContext.fillRect).toHaveBeenCalled();
 });
 ```
@@ -467,9 +491,9 @@ test('should render constellation', () => {
 ### Demodulation Testing
 
 ```typescript
-import { generateFMIQ } from '../utils/signalGenerator';
+import { generateFMIQ } from "../utils/signalGenerator";
 
-test('FM demodulator should extract audio', () => {
+test("FM demodulator should extract audio", () => {
   const fmSignal = generateFMIQ({
     sampleRate: 2048000,
     carrierFreq: 100000,
@@ -478,14 +502,14 @@ test('FM demodulator should extract audio', () => {
     amplitude: 0.8,
     duration: 0.1,
   });
-  
+
   const audio = demodulateF(fmSignal.samples, 2048000);
-  
+
   // Verify audio frequency
   const audioFFT = calculateFFT(audio, 1024);
   const peakBin = findPeakBin(audioFFT);
   const audioFreq = (peakBin * 48000) / 1024; // Assuming 48kHz audio
-  
+
   expect(audioFreq).toBeCloseTo(1000, -1);
 });
 ```

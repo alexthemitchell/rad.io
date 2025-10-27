@@ -5,7 +5,9 @@ This directory contains comprehensive testing documentation for the rad.io proje
 ## Contents
 
 ### [Test Strategy](./TEST_STRATEGY.md)
+
 Complete overview of the testing approach, including:
+
 - Test categories (unit, integration, E2E)
 - Test organization and structure
 - Running tests (commands and options)
@@ -14,7 +16,9 @@ Complete overview of the testing approach, including:
 - CI/CD integration
 
 ### [Test Data Generators](./TEST_DATA_GENERATORS.md)
+
 Guide to using test data generators and utilities:
+
 - Signal generators (`signalGenerator.ts`)
 - Test helpers (`testHelpers.ts`)
 - Mock creation utilities
@@ -22,7 +26,9 @@ Guide to using test data generators and utilities:
 - Best practices for test data
 
 ### [Test Reliability](./TEST_RELIABILITY.md)
+
 Guide for identifying and fixing flaky tests:
+
 - Common causes of test flakiness
 - Debugging strategies
 - Prevention techniques
@@ -30,7 +36,9 @@ Guide for identifying and fixing flaky tests:
 - Known issues and solutions
 
 ### [CI Optimization](./CI_OPTIMIZATION.md)
+
 Strategies for optimizing test execution in CI:
+
 - Current state and metrics
 - Test sharding strategies
 - Caching optimizations
@@ -76,9 +84,10 @@ npm test -- --verbose --logHeapUsage
    - E2E tests: `e2e/<feature>.spec.ts`
 
 2. **Use appropriate test data**:
+
    ```typescript
-   import { generateIQSamples } from '../utils/signalGenerator';
-   import { createTestSamples } from '../utils/testHelpers';
+   import { generateIQSamples } from "../utils/signalGenerator";
+   import { createTestSamples } from "../utils/testHelpers";
    ```
 
 3. **Follow best practices**:
@@ -99,6 +108,7 @@ npm test -- --verbose --logHeapUsage
 - **Critical modules**: 57-96% (see `jest.config.ts`)
 
 Coverage reports:
+
 - Local: `coverage/lcov-report/index.html`
 - CI: https://app.codecov.io/gh/alexthemitchell/rad.io
 
@@ -108,15 +118,15 @@ Coverage reports:
 
 ```typescript
 // src/utils/__tests__/myFeature.test.ts
-import { myFeature } from '../myFeature';
-import { generateIQSamples } from '../signalGenerator';
+import { myFeature } from "../myFeature";
+import { generateIQSamples } from "../signalGenerator";
 
-describe('myFeature', () => {
+describe("myFeature", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  test('should process samples correctly', () => {
+  test("should process samples correctly", () => {
     const samples = generateIQSamples({
       sampleRate: 2048000,
       frequency: 100000,
@@ -251,6 +261,7 @@ rad.io/
 - **General questions**: See [TEST_STRATEGY.md](./TEST_STRATEGY.md)
 
 For project-specific questions, check:
+
 - [CONTRIBUTING.md](../../CONTRIBUTING.md)
 - [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - [Project memories](.serena/memories/)
@@ -258,15 +269,18 @@ For project-specific questions, check:
 ## CI Integration
 
 Tests run automatically on:
+
 - Every PR to `main`
 - Every push to `main`
 - Manual workflow dispatch
 
 Workflows:
+
 - `quality-checks.yml`: Unit tests with coverage
 - `e2e.yml`: End-to-end and accessibility tests
 
 CI configuration:
+
 - **Parallel execution**: 50% of CPU cores
 - **Timeout**: 30 seconds per test
 - **Retries**: 2 retries for E2E tests
@@ -275,17 +289,20 @@ CI configuration:
 ## Metrics and Monitoring
 
 Track test performance:
+
 - **Total execution time**: ~56 seconds (unit tests)
 - **Total test count**: 1534 tests (109 suites)
 - **Coverage**: 38% global, 57-96% per-module
 - **Pass rate**: 99.5%+ (7 skipped tests)
 
 Enable performance tracking:
+
 ```bash
 TRACK_PERFORMANCE=1 npm test
 ```
 
 View performance report:
+
 ```bash
 cat test-performance-report.json
 ```
@@ -293,6 +310,7 @@ cat test-performance-report.json
 ## Future Improvements
 
 Planned enhancements:
+
 - [ ] Test sharding (4x faster CI)
 - [ ] Selective test execution (80% faster PRs)
 - [ ] Visual regression testing
