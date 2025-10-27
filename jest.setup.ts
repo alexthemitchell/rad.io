@@ -9,6 +9,7 @@ global.TextDecoder = TextDecoder as any;
 // Mock canvas methods for testing
 HTMLCanvasElement.prototype.getContext = function () {
   return {
+    setTransform: jest.fn(),
     fillStyle: "",
     strokeStyle: "",
     lineWidth: 1,
