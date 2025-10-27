@@ -458,7 +458,6 @@ Monitor these metrics for deployment health:
 - [README.md](../README.md) - Project overview and quick start
 - [ARCHITECTURE.md](../ARCHITECTURE.md) - System architecture
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
-- [Quality Checks Workflow](../.github/workflows/quality-checks.yml)
 - [Deploy Pages Workflow](../.github/workflows/deploy-pages.yml)
 - [Cleanup Artifacts Workflow](../.github/workflows/cleanup-artifacts.yml)
 
