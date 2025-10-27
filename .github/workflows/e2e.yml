@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   e2e:
-    name: Playwright E2E (mock + a11y)
+    name: Playwright E2E (mock + simulated + a11y)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -48,7 +48,7 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps
 
-      - name: Run Playwright tests
+      - name: Run Playwright tests (mock + simulated + a11y)
         env:
           CI: true
         run: npm run test:e2e
