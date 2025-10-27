@@ -404,6 +404,23 @@ For AI agents contributing to this repository, use Serena memories to keep conte
 
 See `.github/copilot-instructions.md` for detailed agent workflows and available tools.
 
+## Deployment
+
+rad.io is automatically deployed to GitHub Pages on every push to `main`. The deployment process includes:
+
+- Automated build and validation
+- CDN distribution via GitHub Pages
+- Post-deployment health checks
+- Artifact management and cleanup
+
+**For detailed deployment documentation**, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), which covers:
+
+- Automated and manual deployment procedures
+- Build artifact management
+- Post-deployment validation
+- Rollback procedures
+- Troubleshooting guides
+
 ## Community health
 
 This repository includes community health files to help guide contributors and users:
