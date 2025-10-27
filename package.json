@@ -25,7 +25,8 @@
     "asbuild:debug": "asc assembly/index.ts --target debug",
     "asbuild:release": "asc assembly/index.ts --target release",
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
-    "as:check": "npm run asbuild:debug"
+    "as:check": "npm run asbuild:debug",
+    "test:perf": "TRACK_PERFORMANCE=1 jest --no-coverage"
   },
   "author": "Alex Mitchell <alex@alexmitchelltech.com>",
   "license": "UNLICENSED",
