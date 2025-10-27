@@ -6,7 +6,7 @@ describe("Spectrum", () => {
     const mags = new Float32Array(size);
     for (let i = 0; i < size; i++) {
       // Create some test magnitude data (simulated dB values)
-      mags[i] = -80 + (Math.sin((i * Math.PI) / size) * 40);
+      mags[i] = -80 + Math.sin((i * Math.PI) / size) * 40;
     }
     return mags;
   };
@@ -45,7 +45,7 @@ describe("Spectrum", () => {
     const height = 300;
 
     const { container } = render(
-      <Spectrum magnitudes={magnitudes} width={width} height={height} />
+      <Spectrum magnitudes={magnitudes} width={width} height={height} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -59,15 +59,11 @@ describe("Spectrum", () => {
     const freqMax = 900;
 
     render(
-      <Spectrum
-        magnitudes={magnitudes}
-        freqMin={freqMin}
-        freqMax={freqMax}
-      />
+      <Spectrum magnitudes={magnitudes} freqMin={freqMin} freqMax={freqMax} />,
     );
 
     const canvas = screen.getByLabelText(
-      /Spectrum display showing frequency bins/
+      /Spectrum display showing frequency bins/,
     );
     expect(canvas).toBeInTheDocument();
   });
@@ -88,11 +84,11 @@ describe("Spectrum", () => {
     await waitFor(
       () => {
         const indicator = container.querySelector(
-          'div[style*="position: absolute"]'
+          'div[style*="position: absolute"]',
         );
         expect(indicator).toBeInTheDocument();
       },
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
   });
 
@@ -106,7 +102,9 @@ describe("Spectrum", () => {
 
   it("should update when magnitude data changes", () => {
     const magnitudes1 = createMagnitudes(1024);
-    const { rerender, container } = render(<Spectrum magnitudes={magnitudes1} />);
+    const { rerender, container } = render(
+      <Spectrum magnitudes={magnitudes1} />,
+    );
 
     const magnitudes2 = createMagnitudes(2048);
     rerender(<Spectrum magnitudes={magnitudes2} />);
@@ -119,12 +117,10 @@ describe("Spectrum", () => {
   it("should handle frequency range updates", () => {
     const magnitudes = createMagnitudes(1024);
     const { rerender, container } = render(
-      <Spectrum magnitudes={magnitudes} freqMin={0} freqMax={512} />
+      <Spectrum magnitudes={magnitudes} freqMin={0} freqMax={512} />,
     );
 
-    rerender(
-      <Spectrum magnitudes={magnitudes} freqMin={256} freqMax={768} />
-    );
+    rerender(<Spectrum magnitudes={magnitudes} freqMin={256} freqMax={768} />);
 
     // Component should not crash on frequency range update
     const canvas = container.querySelector("canvas");

@@ -26,7 +26,7 @@ describe("FFTChart", () => {
 
     expect(screen.getByText("Waiting for signal data")).toBeInTheDocument();
     expect(
-      screen.getByText("Connect and start reception to view spectrogram")
+      screen.getByText("Connect and start reception to view spectrogram"),
     ).toBeInTheDocument();
   });
 
@@ -43,7 +43,9 @@ describe("FFTChart", () => {
 
     const canvas = container.querySelector("canvas");
     expect(canvas).toBeInTheDocument();
-    expect(screen.queryByText("Waiting for signal data")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Waiting for signal data"),
+    ).not.toBeInTheDocument();
   });
 
   it("should use default dimensions when not provided", () => {
@@ -61,7 +63,7 @@ describe("FFTChart", () => {
     const height = 600;
 
     const { container } = render(
-      <FFTChart samples={samples} width={width} height={height} />
+      <FFTChart samples={samples} width={width} height={height} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -73,7 +75,7 @@ describe("FFTChart", () => {
     const samples = createSamples(1024);
 
     const { container } = render(
-      <FFTChart samples={samples} fftSize={fftSize} />
+      <FFTChart samples={samples} fftSize={fftSize} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -86,11 +88,7 @@ describe("FFTChart", () => {
     const freqMax = 1500;
 
     const { container } = render(
-      <FFTChart
-        samples={samples}
-        freqMin={freqMin}
-        freqMax={freqMax}
-      />
+      <FFTChart samples={samples} freqMin={freqMin} freqMax={freqMax} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -100,7 +98,7 @@ describe("FFTChart", () => {
   it("should support spectrogram mode", () => {
     const samples = createSamples(2048);
     const { container } = render(
-      <FFTChart samples={samples} mode="spectrogram" />
+      <FFTChart samples={samples} mode="spectrogram" />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -110,7 +108,7 @@ describe("FFTChart", () => {
   it("should support waterfall mode", () => {
     const samples = createSamples(2048);
     const { container } = render(
-      <FFTChart samples={samples} mode="waterfall" />
+      <FFTChart samples={samples} mode="waterfall" />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -134,7 +132,7 @@ describe("FFTChart", () => {
         samples={samples}
         mode="waterfall"
         maxWaterfallFrames={maxWaterfallFrames}
-      />
+      />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -163,7 +161,9 @@ describe("FFTChart", () => {
     const samples = createSamples(2048);
     rerender(<FFTChart samples={samples} />);
 
-    expect(screen.queryByText("Waiting for signal data")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Waiting for signal data"),
+    ).not.toBeInTheDocument();
   });
 
   it("should handle transition from data to no data", () => {

@@ -32,7 +32,9 @@ describe("WaveformChart", () => {
 
     expect(screen.getByText("Waiting for signal data")).toBeInTheDocument();
     expect(
-      screen.getByText("Connect and start reception to view amplitude waveform")
+      screen.getByText(
+        "Connect and start reception to view amplitude waveform",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -42,7 +44,9 @@ describe("WaveformChart", () => {
 
     const canvas = container.querySelector("canvas");
     expect(canvas).toBeInTheDocument();
-    expect(screen.queryByText("Waiting for signal data")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Waiting for signal data"),
+    ).not.toBeInTheDocument();
   });
 
   it("should use default dimensions when not provided", () => {
@@ -61,7 +65,7 @@ describe("WaveformChart", () => {
     const width = 600;
 
     const { container } = render(
-      <WaveformChart samples={samples} width={width} />
+      <WaveformChart samples={samples} width={width} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -75,7 +79,7 @@ describe("WaveformChart", () => {
     const height = 400;
 
     const { container } = render(
-      <WaveformChart samples={samples} height={height} />
+      <WaveformChart samples={samples} height={height} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -90,7 +94,7 @@ describe("WaveformChart", () => {
     const height = 400;
 
     const { container } = render(
-      <WaveformChart samples={samples} width={width} height={height} />
+      <WaveformChart samples={samples} width={width} height={height} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -124,7 +128,9 @@ describe("WaveformChart", () => {
     const samples = createSamples(100);
     rerender(<WaveformChart samples={samples} />);
 
-    expect(screen.queryByText("Waiting for signal data")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Waiting for signal data"),
+    ).not.toBeInTheDocument();
   });
 
   it("should update when samples change from data to empty", () => {
@@ -141,7 +147,9 @@ describe("WaveformChart", () => {
 
   it("should update when sample data changes", () => {
     const samples1 = createSamples(100, 0.3);
-    const { rerender, container } = render(<WaveformChart samples={samples1} />);
+    const { rerender, container } = render(
+      <WaveformChart samples={samples1} />,
+    );
 
     let canvas = container.querySelector("canvas");
     expect(canvas).toBeInTheDocument();

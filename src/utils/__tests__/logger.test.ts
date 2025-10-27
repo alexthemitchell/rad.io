@@ -21,9 +21,12 @@ describe("Logger", () => {
     consoleInfoSpy = jest.spyOn(console, "info").mockImplementation();
     consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation();
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation();
-    
+
     // Reset logger configuration before each test
-    logger.configure({ minLevel: LogLevel.DEBUG, enabledCategories: undefined });
+    logger.configure({
+      minLevel: LogLevel.DEBUG,
+      enabledCategories: undefined,
+    });
   });
 
   afterEach(() => {
@@ -131,10 +134,10 @@ describe("Logger", () => {
       logger.debug("test message", undefined, LogCategory.DEVICE);
 
       expect(consoleDebugSpy).toHaveBeenCalledWith(
-        expect.stringContaining(LogCategory.DEVICE)
+        expect.stringContaining(LogCategory.DEVICE),
       );
       expect(consoleDebugSpy).toHaveBeenCalledWith(
-        expect.stringContaining("test message")
+        expect.stringContaining("test message"),
       );
     });
   });
@@ -169,7 +172,7 @@ describe("Logger", () => {
       expect(consoleDebugSpy).toHaveBeenCalledWith(
         expect.any(String),
         "\n",
-        expect.stringContaining('"key"')
+        expect.stringContaining('"key"'),
       );
     });
   });
@@ -177,21 +180,21 @@ describe("Logger", () => {
   describe("Category-specific loggers", () => {
     it("should automatically apply category in device logger", () => {
       logger.configure({ minLevel: LogLevel.DEBUG, includeTimestamp: false });
-      
+
       deviceLogger.debug("device message");
 
       expect(consoleDebugSpy).toHaveBeenCalledWith(
-        expect.stringContaining(LogCategory.DEVICE)
+        expect.stringContaining(LogCategory.DEVICE),
       );
     });
 
     it("should automatically apply category in audio logger", () => {
       logger.configure({ minLevel: LogLevel.DEBUG, includeTimestamp: false });
-      
+
       audioLogger.info("audio message");
 
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        expect.stringContaining(LogCategory.AUDIO)
+        expect.stringContaining(LogCategory.AUDIO),
       );
     });
   });
@@ -202,13 +205,13 @@ describe("Logger", () => {
       const error = new Error("Test error");
       const context = { errorCode: 500 };
 
-      logger.error("error message", error, context);
+      logger.error("error message", error, context, undefined);
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.any(String),
         "\n",
-        expect.stringContaining("errorCode")
+        expect.stringContaining("errorCode"),
       );
     });
 

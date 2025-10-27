@@ -11,7 +11,7 @@ describe("EmptyState", () => {
 
   it("should use default width and height", () => {
     const { container } = render(
-      <EmptyState title="Test" message="Test message" />
+      <EmptyState title="Test" message="Test message" />,
     );
 
     const div = container.firstChild as HTMLElement;
@@ -23,7 +23,7 @@ describe("EmptyState", () => {
 
   it("should accept numeric width", () => {
     const { container } = render(
-      <EmptyState title="Test" message="Test message" width={600} />
+      <EmptyState title="Test" message="Test message" width={600} />,
     );
 
     const div = container.firstChild as HTMLElement;
@@ -34,7 +34,7 @@ describe("EmptyState", () => {
 
   it("should accept string width", () => {
     const { container } = render(
-      <EmptyState title="Test" message="Test message" width="80%" />
+      <EmptyState title="Test" message="Test message" width="80%" />,
     );
 
     const div = container.firstChild as HTMLElement;
@@ -45,7 +45,7 @@ describe("EmptyState", () => {
 
   it("should accept numeric height", () => {
     const { container } = render(
-      <EmptyState title="Test" message="Test message" height={500} />
+      <EmptyState title="Test" message="Test message" height={500} />,
     );
 
     const div = container.firstChild as HTMLElement;
@@ -56,7 +56,7 @@ describe("EmptyState", () => {
 
   it("should accept string height", () => {
     const { container } = render(
-      <EmptyState title="Test" message="Test message" height="50vh" />
+      <EmptyState title="Test" message="Test message" height="50vh" />,
     );
 
     const div = container.firstChild as HTMLElement;
@@ -67,7 +67,7 @@ describe("EmptyState", () => {
 
   it("should have correct styling", () => {
     const { container } = render(
-      <EmptyState title="Test" message="Test message" />
+      <EmptyState title="Test" message="Test message" />,
     );
 
     const div = container.firstChild as HTMLElement;
@@ -88,7 +88,7 @@ describe("EmptyState", () => {
         message="Custom message"
         width={800}
         height={300}
-      />
+      />,
     );
 
     const div = container.firstChild as HTMLElement;
@@ -99,8 +99,10 @@ describe("EmptyState", () => {
   });
 
   it("should handle long title and message", () => {
-    const longTitle = "This is a very long title that might wrap to multiple lines";
-    const longMessage = "This is a very long message with lots of text that might also wrap to multiple lines in the display area";
+    const longTitle =
+      "This is a very long title that might wrap to multiple lines";
+    const longMessage =
+      "This is a very long message with lots of text that might also wrap to multiple lines in the display area";
 
     render(<EmptyState title={longTitle} message={longMessage} />);
 

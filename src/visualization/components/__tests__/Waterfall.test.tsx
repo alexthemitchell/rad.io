@@ -47,7 +47,7 @@ describe("Waterfall", () => {
     const height = 600;
 
     const { container } = render(
-      <Waterfall frames={frames} width={width} height={height} />
+      <Waterfall frames={frames} width={width} height={height} />,
     );
 
     const canvas = container.querySelector("canvas");
@@ -60,16 +60,10 @@ describe("Waterfall", () => {
     const freqMin = 100;
     const freqMax = 900;
 
-    render(
-      <Waterfall
-        frames={frames}
-        freqMin={freqMin}
-        freqMax={freqMax}
-      />
-    );
+    render(<Waterfall frames={frames} freqMin={freqMin} freqMax={freqMax} />);
 
     const canvas = screen.getByLabelText(
-      /Waterfall display showing 32 frames across frequency bins/
+      /Waterfall display showing 32 frames across frequency bins/,
     );
     expect(canvas).toBeInTheDocument();
   });
@@ -90,11 +84,11 @@ describe("Waterfall", () => {
     await waitFor(
       () => {
         const indicator = container.querySelector(
-          'div[style*="position: absolute"]'
+          'div[style*="position: absolute"]',
         );
         expect(indicator).toBeInTheDocument();
       },
-      { timeout: 2000 }
+      { timeout: 2000 },
     );
   });
 
@@ -129,12 +123,10 @@ describe("Waterfall", () => {
   it("should handle frequency range updates", () => {
     const frames = createFrames(32, 1024);
     const { rerender, container } = render(
-      <Waterfall frames={frames} freqMin={0} freqMax={512} />
+      <Waterfall frames={frames} freqMin={0} freqMax={512} />,
     );
 
-    rerender(
-      <Waterfall frames={frames} freqMin={256} freqMax={768} />
-    );
+    rerender(<Waterfall frames={frames} freqMin={256} freqMax={768} />);
 
     // Component should not crash on frequency range update
     const canvas = container.querySelector("canvas");
