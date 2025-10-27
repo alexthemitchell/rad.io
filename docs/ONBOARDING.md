@@ -48,6 +48,7 @@ Data Sources (Hardware/Mock/Simulated)
 ```
 
 **Key Concept**: Visualizations don't care where data comes from. They work identically with:
+
 - Real SDR hardware (HackRF One)
 - Mock devices (for CI/E2E testing)
 - Simulated sources (for development)
@@ -154,10 +155,10 @@ describe('MyVisualization', () => {
       amplitude: 0.8,
       duration: 0.1,
     });
-    
+
     // Render component
     render(<MyVisualization samples={samples} width={800} height={600} />);
-    
+
     // Verify rendering
     const canvas = screen.getByRole('img');
     expect(canvas).toBeInTheDocument();
@@ -171,37 +172,37 @@ describe('MyVisualization', () => {
 The `signalGenerator` utility provides realistic test signals:
 
 ```typescript
-import { generateIQSamples } from '../utils/signalGenerator';
+import { generateIQSamples } from "../utils/signalGenerator";
 
 // Simple sine wave
-const sine = generateIQSamples({ 
-  pattern: 'sine',
+const sine = generateIQSamples({
+  pattern: "sine",
   frequency: 100000,
-  sampleRate: 2048000 
+  sampleRate: 2048000,
 });
 
 // QPSK modulation (digital)
-const qpsk = generateIQSamples({ 
-  pattern: 'qpsk',
-  sampleRate: 2048000 
+const qpsk = generateIQSamples({
+  pattern: "qpsk",
+  sampleRate: 2048000,
 });
 
 // FM modulation (analog)
-const fm = generateIQSamples({ 
-  pattern: 'fm',
-  sampleRate: 2048000 
+const fm = generateIQSamples({
+  pattern: "fm",
+  sampleRate: 2048000,
 });
 
 // White noise
-const noise = generateIQSamples({ 
-  pattern: 'noise',
-  sampleRate: 2048000 
+const noise = generateIQSamples({
+  pattern: "noise",
+  sampleRate: 2048000,
 });
 
 // Multiple carriers
-const multiTone = generateIQSamples({ 
-  pattern: 'multi-tone',
-  sampleRate: 2048000 
+const multiTone = generateIQSamples({
+  pattern: "multi-tone",
+  sampleRate: 2048000,
 });
 ```
 
@@ -218,21 +219,21 @@ test('visualization updates with streaming data', async () => {
     sampleRate: 2048000,
     amplitude: 0.8,
   });
-  
+
   const samples: IQSample[] = [];
-  
+
   await source.startStreaming((chunk) => {
     samples.push(...chunk);
   });
-  
+
   // Wait for data
   await waitFor(() => {
     expect(samples.length).toBeGreaterThan(0);
   });
-  
+
   // Test your visualization
   render(<MyVisualization samples={samples} />);
-  
+
   await source.stopStreaming();
 });
 ```
@@ -245,22 +246,22 @@ These tests run in CI without hardware:
 
 ```typescript
 // e2e/my-feature.spec.ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('visualizations work with mock device', async ({ page }) => {
+test("visualizations work with mock device", async ({ page }) => {
   // Navigate with mock flag
-  await page.goto('https://localhost:8080/monitor?mockSdr=1');
-  
+  await page.goto("https://localhost:8080/monitor?mockSdr=1");
+
   // Start reception
   await page.click('button:has-text("Start reception")');
-  
+
   // Wait for visualizations
   await page.waitForSelector('canvas[role="img"]');
-  
+
   // Verify multiple visualizations present
   const canvases = await page.locator('canvas[role="img"]').count();
   expect(canvases).toBeGreaterThanOrEqual(3);
-  
+
   // Stop reception
   await page.click('button:has-text("Stop reception")');
 });
@@ -272,25 +273,25 @@ These tests only run when explicitly enabled:
 
 ```typescript
 // e2e/hardware.spec.ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('receives real signals from HackRF', async ({ page }) => {
+test("receives real signals from HackRF", async ({ page }) => {
   // Skip if hardware not available
   if (!process.env.E2E_REAL_HACKRF) {
     test.skip();
   }
-  
-  await page.goto('https://localhost:8080/monitor');
-  
+
+  await page.goto("https://localhost:8080/monitor");
+
   // Wait for auto-connect (device must be pre-paired)
   await page.waitForSelector(
     'button:has-text("Start reception"):not([disabled])',
-    { timeout: 10000 }
+    { timeout: 10000 },
   );
-  
+
   // Start reception
   await page.click('button:has-text("Start reception")');
-  
+
   // Verify real signal processing
   const isReceiving = await page.evaluate(() => window.dbgReceiving);
   expect(isReceiving).toBe(true);
@@ -302,21 +303,25 @@ test('receives real signals from HackRF', async ({ page }) => {
 ### Typical Development Cycle
 
 1. **Write failing test**
+
    ```bash
    npm test -- MyComponent
    ```
 
 2. **Implement feature**
+
    ```typescript
    // Edit src/components/MyComponent.tsx
    ```
 
 3. **Run tests**
+
    ```bash
    npm test -- MyComponent
    ```
 
 4. **Check quality gates**
+
    ```bash
    npm run lint          # ESLint
    npm run type-check    # TypeScript
@@ -324,6 +329,7 @@ test('receives real signals from HackRF', async ({ page }) => {
    ```
 
 5. **Test in browser**
+
    ```bash
    npm run dev
    # Visit https://localhost:8080
@@ -344,6 +350,7 @@ npm run dev
 ```
 
 Features:
+
 - All visualization components in one place
 - Live data from SimulatedSource
 - Different signal patterns (sine, QPSK, FM, noise)
@@ -385,14 +392,16 @@ Features:
 ### Data Types
 
 **IQSample** - Core data type:
+
 ```typescript
 interface IQSample {
-  I: number;  // In-phase: -1.0 to 1.0
-  Q: number;  // Quadrature: -1.0 to 1.0
+  I: number; // In-phase: -1.0 to 1.0
+  Q: number; // Quadrature: -1.0 to 1.0
 }
 ```
 
 **Why I/Q?**
+
 - Represents both amplitude and phase
 - Required for digital modulation (QPSK, QAM, etc.)
 - Enables frequency shifting in software
@@ -506,16 +515,19 @@ All contributions must meet:
 ### Common Issues
 
 **Canvas not rendering:**
+
 - Check samples array not empty
 - Verify canvas dimensions > 0
 - Look for JavaScript errors in console
 
 **E2E tests timing out:**
+
 - Add appropriate `waitFor()` calls
 - Increase timeout in Playwright config
 - Check dev server is running
 
 **Coverage too low:**
+
 - Add tests for new code
 - Check coverage report: `open coverage/lcov-report/index.html`
 - Focus on critical paths first

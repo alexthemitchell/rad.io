@@ -177,26 +177,29 @@ interface ProcessedFrame {
 **Rendering**: WebGL (gl.POINTS) with Canvas2D fallback
 
 **Key Features**:
+
 - Density-based alpha blending for overlapping points
 - Automatic scaling based on sample range
 - Grid overlay with axis labels
 - Statistics display (sample count, range)
 
 **Usage**:
+
 ```typescript
-<IQConstellation 
-  samples={iqSamples} 
-  width={750} 
-  height={400} 
+<IQConstellation
+  samples={iqSamples}
+  width={750}
+  height={400}
 />
 ```
 
 **Testing Pattern**:
+
 ```typescript
 test('renders constellation with correct dimensions', () => {
   const samples = generateIQSamples({ /* config */ });
   render(<IQConstellation samples={samples} width={800} height={600} />);
-  
+
   const canvas = screen.getByRole('img', { name: /constellation/i });
   expect(canvas).toHaveAttribute('width');
   expect(canvas).toHaveAttribute('height');
@@ -212,32 +215,35 @@ test('renders constellation with correct dimensions', () => {
 **Rendering**: WebGL (texture-based) with Canvas2D fallback
 
 **Key Features**:
+
 - Viridis colormap for perceptually uniform color mapping
 - Dynamic range compression (5% threshold)
 - Configurable frequency range
 - Scrolling time axis
 
 **Usage**:
+
 ```typescript
-<Spectrogram 
-  samples={iqSamples} 
+<Spectrogram
+  samples={iqSamples}
   sampleRate={2048000}
-  width={750} 
+  width={750}
   height={800}
   fftSize={1024}
 />
 ```
 
 **Testing Pattern**:
+
 ```typescript
 test('updates spectrogram with new samples', async () => {
   const { rerender } = render(
     <Spectrogram samples={samples1} sampleRate={2048000} />
   );
-  
+
   // Update with new samples
   rerender(<Spectrogram samples={samples2} sampleRate={2048000} />);
-  
+
   // Verify canvas updated
   await waitFor(() => {
     const canvas = screen.getByRole('img');
@@ -255,21 +261,24 @@ test('updates spectrogram with new samples', async () => {
 **Rendering**: WebGL (gl.LINE_STRIP) with Canvas2D fallback
 
 **Key Features**:
+
 - Adaptive scaling based on amplitude range
 - Automatic downsampling for performance
 - Statistics overlay (min, max, avg)
 - Grid with major/minor lines
 
 **Usage**:
+
 ```typescript
-<WaveformVisualizer 
-  samples={iqSamples} 
-  width={750} 
+<WaveformVisualizer
+  samples={iqSamples}
+  width={750}
   height={300}
 />
 ```
 
 **Testing Pattern**:
+
 ```typescript
 test('calculates correct statistics', () => {
   const samples = [
@@ -277,9 +286,9 @@ test('calculates correct statistics', () => {
     { I: 0.0, Q: 1.0 },   // amplitude: 1.0
     { I: 0.5, Q: 0.5 },   // amplitude: ~0.707
   ];
-  
+
   render(<WaveformVisualizer samples={samples} />);
-  
+
   // Statistics should be visible
   expect(screen.getByText(/max/i)).toBeInTheDocument();
   expect(screen.getByText(/min/i)).toBeInTheDocument();
@@ -295,18 +304,20 @@ test('calculates correct statistics', () => {
 **Rendering**: Canvas2D
 
 **Key Features**:
+
 - Peak detection and labeling
 - Frequency axis with Hz/kHz/MHz formatting
 - Power axis in dB
 - Configurable frequency range
 
 **Usage**:
+
 ```typescript
-<FFTChart 
-  samples={iqSamples} 
+<FFTChart
+  samples={iqSamples}
   sampleRate={2048000}
   centerFrequency={100e6}
-  width={750} 
+  width={750}
   height={400}
 />
 ```
@@ -331,28 +342,23 @@ useEffect(() => {
   const render = async () => {
     try {
       // Import WebGL utilities dynamically
-      const webgl = await import('../utils/webgl');
-      
+      const webgl = await import("../utils/webgl");
+
       // Get WebGL context
       const { gl, isWebGL2 } = webgl.getGL(canvasRef.current);
-      if (!gl) throw new Error('WebGL not available');
-      
+      if (!gl) throw new Error("WebGL not available");
+
       // Create shader program
-      const program = webgl.createProgram(
-        gl, 
-        VERTEX_SHADER, 
-        FRAGMENT_SHADER
-      );
-      
+      const program = webgl.createProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER);
+
       // Set up buffers and render
       // ...
-      
     } catch (error) {
-      console.warn('WebGL failed, using fallback', error);
+      console.warn("WebGL failed, using fallback", error);
       // Fall through to Canvas2D
     }
   };
-  
+
   void render();
 }, [samples]);
 ```
@@ -382,25 +388,25 @@ useEffect(() => {
 
 ```typescript
 useEffect(() => {
-  const ctx = canvasRef.current?.getContext('2d');
+  const ctx = canvasRef.current?.getContext("2d");
   if (!ctx) return;
-  
+
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
-  
+
   // Draw visualization
   ctx.beginPath();
-  ctx.strokeStyle = '#4CAF50';
+  ctx.strokeStyle = "#4CAF50";
   ctx.lineWidth = 2;
-  
+
   samples.forEach((sample, i) => {
     const x = (i / samples.length) * width;
-    const y = (sample.I + 1) * height / 2;
-    
+    const y = ((sample.I + 1) * height) / 2;
+
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
-  
+
   ctx.stroke();
 }, [samples, width, height]);
 ```
@@ -428,7 +434,7 @@ canvas.style.width = `${width}px`;
 canvas.style.height = `${height}px`;
 
 // THEN load WebGL
-const webgl = await import('../utils/webgl');
+const webgl = await import("../utils/webgl");
 ```
 
 This ensures tests can access canvas dimensions synchronously.
@@ -446,12 +452,12 @@ describe('VisualizationComponent', () => {
     // Mock canvas context
     HTMLCanvasElement.prototype.getContext = jest.fn();
   });
-  
+
   // Cleanup
   afterEach(() => {
     jest.clearAllMocks();
   });
-  
+
   // Tests
   test('renders with valid samples', () => {
     const samples = generateIQSamples({
@@ -460,9 +466,9 @@ describe('VisualizationComponent', () => {
       amplitude: 0.8,
       duration: 0.1,
     });
-    
+
     render(<VisualizationComponent samples={samples} />);
-    
+
     expect(screen.getByRole('img')).toBeInTheDocument();
   });
 });
@@ -473,6 +479,7 @@ describe('VisualizationComponent', () => {
 **File**: `src/utils/signalGenerator.ts`
 
 Available patterns:
+
 - `sine`: Simple sinusoid
 - `qpsk`: QPSK modulation
 - `fm`: FM modulation
@@ -481,11 +488,12 @@ Available patterns:
 - `pulsed`: Radar/burst patterns
 
 **Example**:
+
 ```typescript
-import { generateIQSamples } from '../utils/signalGenerator';
+import { generateIQSamples } from "../utils/signalGenerator";
 
 const samples = generateIQSamples({
-  pattern: 'qpsk',
+  pattern: "qpsk",
   sampleRate: 2048000,
   frequency: 100000,
   amplitude: 0.8,
@@ -500,7 +508,7 @@ All visualizations must have proper ARIA attributes:
 ```typescript
 test('has correct accessibility attributes', () => {
   render(<Spectrogram samples={samples} sampleRate={2048000} />);
-  
+
   const canvas = screen.getByRole('img');
   expect(canvas).toHaveAttribute('aria-label');
   expect(canvas.getAttribute('aria-label')).toMatch(/spectrogram/i);
@@ -518,20 +526,20 @@ test('visualization updates with simulated data', async () => {
     sampleRate: 2048000,
     amplitude: 0.8,
   });
-  
+
   const samples: IQSample[] = [];
   await source.startStreaming((chunk) => {
     samples.push(...chunk);
   });
-  
+
   // Wait for samples
   await waitFor(() => {
     expect(samples.length).toBeGreaterThan(0);
   });
-  
+
   // Render with samples
   render(<IQConstellation samples={samples} />);
-  
+
   await source.stopStreaming();
 });
 ```
@@ -542,7 +550,7 @@ For E2E tests that need device-like behavior:
 
 ```typescript
 // In E2E test (Playwright)
-await page.goto('https://localhost:8080/monitor?mockSdr=1');
+await page.goto("https://localhost:8080/monitor?mockSdr=1");
 await page.click('button:has-text("Start reception")');
 
 // Wait for visualizations to appear
@@ -560,28 +568,31 @@ expect(await canvas.isVisible()).toBe(true);
 **Setup**: No hardware required, uses `MockSDRDevice`
 
 **Enabling**:
+
 - URL param: `?mockSdr=1`
 - localStorage: `radio:e2e:mockSdr = "1"`
 - Build env: `E2E_MOCK_SDR=1`
 
 **Test Example**:
+
 ```typescript
 // e2e/monitor-mock.spec.ts
-test('can start and stop reception with mock device', async ({ page }) => {
-  await page.goto('https://localhost:8080/monitor?mockSdr=1');
-  
+test("can start and stop reception with mock device", async ({ page }) => {
+  await page.goto("https://localhost:8080/monitor?mockSdr=1");
+
   // Start reception
   await page.click('button:has-text("Start reception")');
-  
+
   // Verify visualizations appear
   await expect(page.locator('canvas[role="img"]')).toBeVisible();
-  
+
   // Stop reception
   await page.click('button:has-text("Stop reception")');
 });
 ```
 
 **Run**:
+
 ```bash
 npm run test:e2e
 ```
@@ -591,12 +602,14 @@ npm run test:e2e
 **Setup**: Requires HackRF One connected and paired via WebUSB
 
 **Prerequisites**:
+
 1. Connect HackRF One via USB
 2. Open https://localhost:8080/monitor
 3. Click "Connect Device" to pair (one-time)
 4. Device is now in `navigator.usb.getDevices()`
 
 **Enabling**:
+
 ```bash
 # Set environment variable
 export E2E_REAL_HACKRF=1
@@ -606,20 +619,23 @@ npm run test:e2e
 ```
 
 **Test Example**:
+
 ```typescript
 // e2e/monitor-real.spec.ts
-test('can receive from real HackRF', async ({ page }) => {
-  await page.goto('https://localhost:8080/monitor');
-  
+test("can receive from real HackRF", async ({ page }) => {
+  await page.goto("https://localhost:8080/monitor");
+
   // Wait for auto-connect
-  await page.waitForSelector('button:has-text("Start reception"):not([disabled])');
-  
+  await page.waitForSelector(
+    'button:has-text("Start reception"):not([disabled])',
+  );
+
   // Start reception
   await page.click('button:has-text("Start reception")');
-  
+
   // Verify real data flowing
   await expect(page.locator('canvas[role="img"]')).toBeVisible();
-  
+
   // Check for non-zero signal
   const hasSignal = await page.evaluate(() => {
     return window.dbgReceiving === true;
@@ -633,21 +649,22 @@ test('can receive from real HackRF', async ({ page }) => {
 **Framework**: @axe-core/playwright
 
 **Pattern**:
+
 ```typescript
 // e2e/accessibility.spec.ts
-import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
-test('visualizations meet accessibility standards', async ({ page }) => {
-  await page.goto('https://localhost:8080/monitor?mockSdr=1');
+test("visualizations meet accessibility standards", async ({ page }) => {
+  await page.goto("https://localhost:8080/monitor?mockSdr=1");
   await page.click('button:has-text("Start reception")');
-  
+
   // Wait for visualizations
   await page.waitForSelector('canvas[role="img"]');
-  
+
   // Run axe accessibility scan
   const results = await new AxeBuilder({ page }).analyze();
-  
+
   expect(results.violations).toEqual([]);
 });
 ```
@@ -698,13 +715,14 @@ npm run test:utils                    # Utility tests only
 ### WebGL Best Practices
 
 1. **Minimize State Changes**
+
    ```typescript
    // ❌ Bad: Multiple state changes
    gl.useProgram(program1);
    gl.drawArrays(...);
    gl.useProgram(program2);
    gl.drawArrays(...);
-   
+
    // ✅ Good: Batch similar operations
    gl.useProgram(program);
    gl.drawArrays(...);
@@ -712,19 +730,21 @@ npm run test:utils                    # Utility tests only
    ```
 
 2. **Reuse Buffers**
+
    ```typescript
    // Create once
    const vbo = gl.createBuffer();
-   
+
    // Update many times
    gl.bufferData(gl.ARRAY_BUFFER, newData, gl.DYNAMIC_DRAW);
    ```
 
 3. **Use Appropriate Data Types**
+
    ```typescript
    // High precision (8 bytes per value)
    gl.texImage2D(..., gl.R32F, ..., gl.FLOAT, data);
-   
+
    // Lower precision (1 byte per value) - 8x less memory
    gl.texImage2D(..., gl.R8, ..., gl.UNSIGNED_BYTE, data);
    ```
@@ -732,14 +752,16 @@ npm run test:utils                    # Utility tests only
 ### Canvas2D Best Practices
 
 1. **Enable Hardware Acceleration Hints**
+
    ```typescript
-   const ctx = canvas.getContext('2d', {
-     alpha: false,           // Opaque canvas
-     desynchronized: true,   // GPU hint
+   const ctx = canvas.getContext("2d", {
+     alpha: false, // Opaque canvas
+     desynchronized: true, // GPU hint
    });
    ```
 
 2. **Minimize Redraws**
+
    ```typescript
    // Use dirty rectangles
    ctx.clearRect(dirtyX, dirtyY, dirtyWidth, dirtyHeight);
@@ -748,16 +770,17 @@ npm run test:utils                    # Utility tests only
 3. **Batch Operations**
    ```typescript
    ctx.beginPath();
-   samples.forEach(s => ctx.lineTo(s.x, s.y));
+   samples.forEach((s) => ctx.lineTo(s.x, s.y));
    ctx.stroke(); // One stroke call
    ```
 
 ### Memory Management
 
 1. **Clear Pools After Tests**
+
    ```typescript
-   import { clearMemoryPools } from '../utils/testMemoryManager';
-   
+   import { clearMemoryPools } from "../utils/testMemoryManager";
+
    afterEach(() => {
      clearMemoryPools();
    });
@@ -767,7 +790,7 @@ npm run test:utils                    # Utility tests only
    ```typescript
    useEffect(() => {
      const glState = { program, vbo, texture };
-     
+
      return () => {
        if (glState.program) gl.deleteProgram(glState.program);
        if (glState.vbo) gl.deleteBuffer(glState.vbo);
@@ -781,9 +804,12 @@ npm run test:utils                    # Utility tests only
 For large datasets, downsample before rendering:
 
 ```typescript
-function adaptiveDownsample(samples: IQSample[], maxPoints: number): IQSample[] {
+function adaptiveDownsample(
+  samples: IQSample[],
+  maxPoints: number,
+): IQSample[] {
   if (samples.length <= maxPoints) return samples;
-  
+
   const step = Math.floor(samples.length / maxPoints);
   return samples.filter((_, i) => i % step === 0);
 }
@@ -794,6 +820,7 @@ function adaptiveDownsample(samples: IQSample[], maxPoints: number): IQSample[] 
 ### Adding a New Visualization Component
 
 1. **Create Component File**
+
    ```typescript
    // src/visualization/components/MyVisualization.tsx
    interface MyVisualizationProps {
@@ -802,22 +829,22 @@ function adaptiveDownsample(samples: IQSample[], maxPoints: number): IQSample[] 
      height: number;
      sampleRate: number;
    }
-   
-   export function MyVisualization({ 
-     samples, 
-     width, 
+
+   export function MyVisualization({
+     samples,
+     width,
      height,
-     sampleRate 
+     sampleRate
    }: MyVisualizationProps): JSX.Element {
      const canvasRef = useRef<HTMLCanvasElement>(null);
-     
+
      useEffect(() => {
        const canvas = canvasRef.current;
        if (!canvas) return;
-       
+
        // Rendering logic here
      }, [samples, width, height]);
-     
+
      return (
        <canvas
          ref={canvasRef}
@@ -831,30 +858,32 @@ function adaptiveDownsample(samples: IQSample[], maxPoints: number): IQSample[] 
    ```
 
 2. **Add Tests**
+
    ```typescript
    // src/visualization/components/__tests__/MyVisualization.test.tsx
    describe('MyVisualization', () => {
      test('renders with samples', () => {
        const samples = generateIQSamples({ /* config */ });
        render(<MyVisualization samples={samples} width={800} height={600} />);
-       
+
        expect(screen.getByRole('img')).toBeInTheDocument();
      });
    });
    ```
 
 3. **Export from Module**
+
    ```typescript
    // src/visualization/components/index.ts
-   export { MyVisualization } from './MyVisualization';
+   export { MyVisualization } from "./MyVisualization";
    ```
 
 4. **Add to Demo Page**
    ```typescript
    // src/pages/VisualizationDemo.tsx
-   <MyVisualization 
-     samples={samples} 
-     width={750} 
+   <MyVisualization
+     samples={samples}
+     width={750}
      height={400}
      sampleRate={sampleRate}
    />
@@ -863,42 +892,45 @@ function adaptiveDownsample(samples: IQSample[], maxPoints: number): IQSample[] 
 ### Adding a New Data Source
 
 1. **Implement DataSource Interface**
+
    ```typescript
    // src/visualization/MyDataSource.ts
    export class MyDataSource implements DataSource {
      private streaming = false;
      private callback?: (samples: IQSample[]) => void;
-     
-     async startStreaming(callback: (samples: IQSample[]) => void): Promise<void> {
+
+     async startStreaming(
+       callback: (samples: IQSample[]) => void,
+     ): Promise<void> {
        this.callback = callback;
        this.streaming = true;
-       
+
        // Start generating/fetching samples
        this.generateSamples();
      }
-     
+
      async stopStreaming(): Promise<void> {
        this.streaming = false;
        this.callback = undefined;
      }
-     
+
      isStreaming(): boolean {
        return this.streaming;
      }
-     
+
      getSampleRate(): number {
        return 2048000; // Your sample rate
      }
-     
+
      private generateSamples(): void {
        if (!this.streaming || !this.callback) return;
-       
+
        // Generate or fetch samples
        const samples: IQSample[] = [];
        // ... populate samples
-       
+
        this.callback(samples);
-       
+
        // Continue if still streaming
        if (this.streaming) {
          setTimeout(() => this.generateSamples(), 100);
@@ -910,19 +942,19 @@ function adaptiveDownsample(samples: IQSample[], maxPoints: number): IQSample[] 
 2. **Add Tests**
    ```typescript
    // src/visualization/__tests__/MyDataSource.test.ts
-   describe('MyDataSource', () => {
-     test('streams samples', async () => {
+   describe("MyDataSource", () => {
+     test("streams samples", async () => {
        const source = new MyDataSource();
        const samples: IQSample[] = [];
-       
+
        await source.startStreaming((chunk) => {
          samples.push(...chunk);
        });
-       
+
        await waitFor(() => {
          expect(samples.length).toBeGreaterThan(0);
        });
-       
+
        await source.stopStreaming();
      });
    });

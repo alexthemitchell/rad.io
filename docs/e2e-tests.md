@@ -8,6 +8,7 @@ rad.io supports **two E2E testing modes** to accommodate different development a
 2. **Real Device Mode** (Hardware testing) - Uses actual HackRF hardware
 
 This dual-mode approach enables:
+
 - ✅ Reliable CI/CD testing without hardware dependencies
 - ✅ Real-world hardware integration testing when needed
 - ✅ Rapid development iteration without physical devices
@@ -57,17 +58,17 @@ npm run test:e2e
 
 The `MockSDRDevice` class implements the `ISDRDevice` interface and generates synthetic IQ samples:
 
-```
-User Action → DeviceContext detects mock flag → Creates MockSDRDevice
-                                                         ↓
-                                           Generates realistic IQ samples
-                                                         ↓
-                                           Streams to visualizations
-                                                         ↓
-                                           Visualizations render normally
+```mermaid
+flowchart TD
+    A[User Action] --> B[DeviceContext detects mock flag]
+    B --> C[Creates MockSDRDevice]
+    C --> D[Generates realistic IQ samples]
+    D --> E[Streams to visualizations]
+    E --> F[Visualizations render normally]
 ```
 
 **Key Files**:
+
 - `src/models/MockSDRDevice.ts` - Mock device implementation
 - `src/utils/e2e.ts` - Mock flag detection (`shouldUseMockSDR()`)
 - `src/contexts/DeviceContext.tsx` - Device provider with mock injection
@@ -77,15 +78,17 @@ User Action → DeviceContext detects mock flag → Creates MockSDRDevice
 Mock mode activates when **any** of the following is present:
 
 1. **URL Query Parameter**: `?mockSdr=1`
+
    ```typescript
    // In E2E test
-   await page.goto('https://localhost:8080/monitor?mockSdr=1');
+   await page.goto("https://localhost:8080/monitor?mockSdr=1");
    ```
 
 2. **localStorage Flag**: `radio:e2e:mockSdr = "1"`
+
    ```typescript
    // Set in browser console or test
-   localStorage.setItem('radio:e2e:mockSdr', '1');
+   localStorage.setItem("radio:e2e:mockSdr", "1");
    ```
 
 3. **Build-Time Environment**: `E2E_MOCK_SDR=1`
@@ -94,19 +97,20 @@ Mock mode activates when **any** of the following is present:
    ```
 
 **Detection Logic**:
+
 ```typescript
 // src/utils/e2e.ts
 export function shouldUseMockSDR(): boolean {
   // Check URL param
   const params = new URLSearchParams(window.location.search);
-  if (params.get('mockSdr') === '1') return true;
-  
+  if (params.get("mockSdr") === "1") return true;
+
   // Check localStorage
-  if (localStorage.getItem('radio:e2e:mockSdr') === '1') return true;
-  
+  if (localStorage.getItem("radio:e2e:mockSdr") === "1") return true;
+
   // Check build-time flag
-  if (process.env.E2E_MOCK_SDR === '1') return true;
-  
+  if (process.env.E2E_MOCK_SDR === "1") return true;
+
   return false;
 }
 ```
@@ -116,6 +120,7 @@ export function shouldUseMockSDR(): boolean {
 The `MockSDRDevice` generates realistic signal patterns:
 
 **Generated Patterns**:
+
 - Sine waves at configurable frequencies
 - QPSK modulation patterns
 - FM modulation with carrier
@@ -123,12 +128,14 @@ The `MockSDRDevice` generates realistic signal patterns:
 - Multi-tone signals
 
 **Streaming Characteristics**:
+
 - Sample rate: 2,048,000 samples/sec (configurable)
 - Chunk size: 16,384 samples per callback
 - Update interval: 100ms (configurable)
 - IQ values: Normalized to [-1.0, 1.0] range
 
 **Example Usage**:
+
 ```typescript
 const mockDevice = new MockSDRDevice();
 await mockDevice.open();
@@ -187,19 +194,19 @@ Resource management:
 
 ```typescript
 // e2e/my-feature.spec.ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test.describe('My Feature', () => {
-  test('works with mock device', async ({ page }) => {
+test.describe("My Feature", () => {
+  test("works with mock device", async ({ page }) => {
     // Navigate with mock flag
-    await page.goto('https://localhost:8080/monitor?mockSdr=1');
-    
+    await page.goto("https://localhost:8080/monitor?mockSdr=1");
+
     // Interact with UI
     await page.click('button:has-text("Start reception")');
-    
+
     // Wait for visualization
     await page.waitForSelector('canvas[role="img"]');
-    
+
     // Assertions
     const canvas = page.locator('canvas[role="img"]').first();
     await expect(canvas).toBeVisible();
@@ -210,30 +217,34 @@ test.describe('My Feature', () => {
 ### Best Practices
 
 1. **Use Mock Mode for CI Tests**
+
    ```typescript
    // Always include ?mockSdr=1 for CI tests
-   await page.goto('https://localhost:8080/monitor?mockSdr=1');
+   await page.goto("https://localhost:8080/monitor?mockSdr=1");
    ```
 
 2. **Wait for Streaming Before Checking Visualizations**
+
    ```typescript
    // Start reception
    await page.click('button:has-text("Start reception")');
-   
+
    // Wait for canvas to appear (only renders when data flows)
    await page.waitForSelector('canvas[role="img"]', { timeout: 5000 });
    ```
 
 3. **Use Accessible Selectors**
+
    ```typescript
    // ✅ Good - uses accessible name
    await page.click('button:has-text("Start reception")');
-   
+
    // ❌ Bad - relies on implementation details
-   await page.click('.start-button');
+   await page.click(".start-button");
    ```
 
 4. **Check Data Flow, Not Just UI**
+
    ```typescript
    // Verify data is actually flowing
    const isReceiving = await page.evaluate(() => window.dbgReceiving);
@@ -251,23 +262,23 @@ test.describe('My Feature', () => {
 ### Testing Visualizations
 
 ```typescript
-test('visualizations render with mock data', async ({ page }) => {
-  await page.goto('https://localhost:8080/monitor?mockSdr=1');
-  
+test("visualizations render with mock data", async ({ page }) => {
+  await page.goto("https://localhost:8080/monitor?mockSdr=1");
+
   // Start streaming
   await page.click('button:has-text("Start reception")');
-  
+
   // Wait for all visualizations to appear
   await page.waitForSelector('canvas[role="img"]');
-  
+
   // Count visualizations
   const canvases = await page.locator('canvas[role="img"]').count();
   expect(canvases).toBeGreaterThanOrEqual(3); // IQ, Waveform, Spectrogram
-  
+
   // Verify ARIA labels
   const iqCanvas = page.locator('canvas[aria-label*="constellation" i]');
   await expect(iqCanvas).toBeVisible();
-  
+
   const spectrogram = page.locator('canvas[aria-label*="spectrogram" i]');
   await expect(spectrogram).toBeVisible();
 });
@@ -276,30 +287,30 @@ test('visualizations render with mock data', async ({ page }) => {
 ### Testing Real Device (Hardware)
 
 ```typescript
-test('receives from real HackRF', async ({ page }) => {
+test("receives from real HackRF", async ({ page }) => {
   // Skip if hardware not available
   if (!process.env.E2E_REAL_HACKRF) {
     test.skip();
   }
-  
-  await page.goto('https://localhost:8080/monitor');
-  
+
+  await page.goto("https://localhost:8080/monitor");
+
   // Wait for auto-connect (device must be pre-paired)
   await page.waitForSelector(
     'button:has-text("Start reception"):not([disabled])',
-    { timeout: 10000 }
+    { timeout: 10000 },
   );
-  
+
   // Verify device connected
   const deviceName = await page.textContent('[data-testid="device-name"]');
-  expect(deviceName).toContain('HackRF');
-  
+  expect(deviceName).toContain("HackRF");
+
   // Start reception
   await page.click('button:has-text("Start reception")');
-  
+
   // Verify real data
   await page.waitForSelector('canvas[role="img"]');
-  
+
   // Check for actual signal processing
   await page.waitForTimeout(2000); // Allow time for real samples
   const hasSignal = await page.evaluate(() => window.dbgReceiving);
@@ -326,16 +337,20 @@ Use tags to organize tests:
 
 ```typescript
 // Mock tests (always run)
-test('mock device test', async ({ page }) => { /* ... */ });
+test("mock device test", async ({ page }) => {
+  /* ... */
+});
 
 // Real device tests (opt-in with @real tag)
-test('@real hardware test', async ({ page }) => {
+test("@real hardware test", async ({ page }) => {
   if (!process.env.E2E_REAL_HACKRF) test.skip();
   /* ... */
 });
 
 // Slow tests
-test.slow('complex integration test', async ({ page }) => { /* ... */ });
+test.slow("complex integration test", async ({ page }) => {
+  /* ... */
+});
 ```
 
 ## Continuous Integration
@@ -354,6 +369,7 @@ The E2E tests run automatically in CI:
 ```
 
 **CI Behavior**:
+
 - Mock device mode only (no hardware)
 - 1 worker (prevents OOM on CI runners)
 - Retries: 2 attempts on failure
@@ -362,43 +378,47 @@ The E2E tests run automatically in CI:
 
 ### Local vs CI
 
-| Feature | Local | CI |
-|---------|-------|-----|
-| Device Mode | Mock or Real | Mock only |
-| Workers | 2 (configurable) | 1 |
-| Browser | Headed/Headless | Headless |
-| Retries | 0 | 2 |
-| Traces | Always | On failure |
+| Feature     | Local            | CI         |
+| ----------- | ---------------- | ---------- |
+| Device Mode | Mock or Real     | Mock only  |
+| Workers     | 2 (configurable) | 1          |
+| Browser     | Headed/Headless  | Headless   |
+| Retries     | 0                | 2          |
+| Traces      | Always           | On failure |
 
 ## Troubleshooting
 
 ### Mock Device Issues
 
 **Problem**: Visualizations not appearing
+
 ```typescript
 // Solution: Ensure mock flag is set
-await page.goto('https://localhost:8080/monitor?mockSdr=1');
+await page.goto("https://localhost:8080/monitor?mockSdr=1");
 
 // Verify mock mode active
-const mockActive = await page.evaluate(() => 
-  localStorage.getItem('radio:e2e:mockSdr') === '1' ||
-  new URLSearchParams(window.location.search).get('mockSdr') === '1'
+const mockActive = await page.evaluate(
+  () =>
+    localStorage.getItem("radio:e2e:mockSdr") === "1" ||
+    new URLSearchParams(window.location.search).get("mockSdr") === "1",
 );
 expect(mockActive).toBe(true);
 ```
 
 **Problem**: Start button disabled
+
 ```typescript
 // Solution: Wait for mock device initialization
 await page.waitForSelector(
   'button:has-text("Start reception"):not([disabled])',
-  { timeout: 5000 }
+  { timeout: 5000 },
 );
 ```
 
 ### Real Device Issues
 
 **Problem**: Device not found
+
 ```bash
 # Solution: Pair device first
 # 1. Open https://localhost:8080/monitor in Chrome
@@ -412,20 +432,20 @@ navigator.usb.getDevices().then(devices => console.log(devices));
 ```
 
 **Problem**: Permission denied
+
 ```typescript
 // Solution: Check device permissions
-const devices = await page.evaluate(() => 
-  navigator.usb.getDevices()
-);
-console.log('Paired devices:', devices.length);
+const devices = await page.evaluate(() => navigator.usb.getDevices());
+console.log("Paired devices:", devices.length);
 ```
 
 **Problem**: Timeout waiting for connection
+
 ```typescript
 // Solution: Increase timeout for hardware
 await page.waitForSelector(
   'button:has-text("Start reception"):not([disabled])',
-  { timeout: 15000 } // Increase for hardware
+  { timeout: 15000 }, // Increase for hardware
 );
 ```
 
@@ -434,6 +454,7 @@ await page.waitForSelector(
 **Problem**: Self-signed certificate errors
 
 **Solution**: Playwright config handles this automatically
+
 ```typescript
 // playwright.config.ts
 use: {
@@ -442,6 +463,7 @@ use: {
 ```
 
 **Local Development**: Accept certificate once in browser
+
 1. Visit https://localhost:8080
 2. Click "Advanced" → "Proceed to localhost"
 3. Certificate trusted for this session
@@ -451,6 +473,7 @@ use: {
 **Problem**: Audio context suspended
 
 **Solution**: Tests click Start button to serve as user gesture
+
 ```typescript
 // User gesture required to unlock audio
 await page.click('button:has-text("Start reception")');
@@ -458,9 +481,9 @@ await page.click('button:has-text("Start reception")');
 // Verify audio context running
 const audioState = await page.evaluate(() => {
   const ctx = window.audioContext;
-  return ctx ? ctx.state : 'no context';
+  return ctx ? ctx.state : "no context";
 });
-expect(audioState).toBe('running');
+expect(audioState).toBe("running");
 ```
 
 ### Dev Server Already Running
@@ -468,6 +491,7 @@ expect(audioState).toBe('running');
 **Problem**: Port 8080 already in use
 
 **Solution**: Playwright config reuses existing server
+
 ```typescript
 // playwright.config.ts
 webServer: {
@@ -478,6 +502,7 @@ webServer: {
 ```
 
 **Manual Stop**:
+
 ```bash
 # Find process on port 8080
 lsof -i :8080  # Mac/Linux
@@ -491,24 +516,26 @@ taskkill /PID <PID> /F  # Windows
 ### Test Flakiness
 
 **Common Causes**:
+
 1. Race conditions (not waiting for async operations)
 2. Timing issues (network delays, rendering delays)
 3. Resource contention (multiple tests running in parallel)
 
 **Solutions**:
+
 ```typescript
 // 1. Use proper waits
 await page.waitForSelector('canvas[role="img"]');
-await page.waitForLoadState('networkidle');
+await page.waitForLoadState("networkidle");
 
 // 2. Add explicit timeouts for slow operations
-await page.click('button', { timeout: 10000 });
+await page.click("button", { timeout: 10000 });
 
 // 3. Run tests serially if needed
-test.describe.configure({ mode: 'serial' });
+test.describe.configure({ mode: "serial" });
 
 // 4. Use soft assertions for non-critical checks
-await expect.soft(page.locator('.optional')).toBeVisible();
+await expect.soft(page.locator(".optional")).toBeVisible();
 ```
 
 ## Performance Optimization
@@ -516,18 +543,21 @@ await expect.soft(page.locator('.optional')).toBeVisible();
 ### Resource Management
 
 **Limit Workers**:
+
 ```typescript
 // playwright.config.ts
 workers: process.env.CI ? 1 : 2,
 ```
 
 **Disable Parallelism for File**:
+
 ```typescript
 // In test file
-test.describe.configure({ mode: 'serial' });
+test.describe.configure({ mode: "serial" });
 ```
 
 **Reduce Trace Size**:
+
 ```typescript
 // playwright.config.ts
 use: {
@@ -538,21 +568,23 @@ use: {
 ### Memory Management
 
 **Clear State Between Tests**:
+
 ```typescript
 test.afterEach(async ({ page }) => {
   // Stop streaming
   await page.click('button:has-text("Stop")').catch(() => {});
-  
+
   // Clear localStorage
   await page.evaluate(() => localStorage.clear());
 });
 ```
 
 **Monitor Memory**:
+
 ```typescript
-test('memory usage', async ({ page }) => {
-  await page.goto('https://localhost:8080/monitor?mockSdr=1');
-  
+test("memory usage", async ({ page }) => {
+  await page.goto("https://localhost:8080/monitor?mockSdr=1");
+
   const metrics = await page.evaluate(() => {
     if (performance.memory) {
       return {
@@ -562,8 +594,8 @@ test('memory usage', async ({ page }) => {
     }
     return null;
   });
-  
-  console.log('Heap usage:', metrics);
+
+  console.log("Heap usage:", metrics);
 });
 ```
 

@@ -110,6 +110,7 @@ rad.io is committed to providing an accessible experience for all users, includi
 ### For New Contributors 🚀
 
 **New to the project?** Start here:
+
 - 📚 **[New Contributor Onboarding Guide](docs/ONBOARDING.md)** - Get started in minutes
 - 🏗️ **[Visualization Architecture](docs/VISUALIZATION_ARCHITECTURE.md)** - Understand the system design
 - 🧪 **[Testing Strategy](docs/testing/TEST_STRATEGY.md)** - Learn how to test your code
@@ -119,7 +120,7 @@ rad.io is committed to providing an accessible experience for all users, includi
 
 - Modern web browser with WebUSB support (Chrome 61+, Edge 79+, Opera 48+)
 - HTTPS context (required for WebUSB)
-- Compatible SDR device (HackRF One, RTL-SDR, etc.) - *optional for development*
+- Compatible SDR device (HackRF One, RTL-SDR, etc.) - _optional for development_
 
 ### Installation
 
