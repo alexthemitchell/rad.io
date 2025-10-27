@@ -58,8 +58,21 @@ test.describe("Visualization with Physical Device @device", () => {
       timeout: 10000,
     });
 
-    // Let it stream for a moment
-    await page.waitForTimeout(1000);
+    // Wait for canvas to start rendering (first frame update)
+    const canvas = page.locator("canvas").first();
+    await expect(canvas).toBeVisible({ timeout: 5000 });
+    const initialFrame = await canvas.evaluate((c: HTMLCanvasElement) =>
+      c.toDataURL(),
+    );
+    // Wait for canvas to update (streaming is active)
+    await page.waitForFunction(
+      ([initialFrame]) => {
+        const c = document.querySelector("canvas") as HTMLCanvasElement;
+        return c && c.toDataURL() !== initialFrame;
+      },
+      [initialFrame],
+      { timeout: 5000 },
+    );
 
     // Stop streaming
     const stopBtn = page.getByRole("button", { name: "Stop reception" });
@@ -93,8 +106,8 @@ test.describe("Visualization with Physical Device @device", () => {
     await freqInput.fill("100000000");
     await freqInput.press("Enter");
 
-    // Wait for tuning to complete
-    await page.waitForTimeout(500);
+    // Wait for frequency input to reflect new value
+    await expect(freqInput).toHaveValue("100000000", { timeout: 5000 });
 
     // Verify frequency changed
     const newFreq = await freqInput.inputValue();
@@ -109,13 +122,15 @@ test.describe("Visualization with Physical Device @device", () => {
     const frame1 = await canvas.evaluate((c: HTMLCanvasElement) =>
       c.toDataURL(),
     );
-    await page.waitForTimeout(300);
-    const frame2 = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
+    // Wait for canvas to update (rendering continues)
+    await page.waitForFunction(
+      ([frame1]) => {
+        const c = document.querySelector("canvas") as HTMLCanvasElement;
+        return c && c.toDataURL() !== frame1;
+      },
+      [frame1],
+      { timeout: 5000 },
     );
-
-    // Frames should differ, indicating continuous updates
-    expect(frame1).not.toEqual(frame2);
 
     // Stop streaming
     const stopBtn = page.getByRole("button", { name: "Stop reception" });
@@ -164,8 +179,10 @@ test.describe("Visualization with Physical Device @device", () => {
         }
       }
 
-      // Wait for change to apply
-      await page.waitForTimeout(300);
+      // Wait for change to apply (wait until value changes)
+      await expect(firstGainControl).not.toHaveValue(initialValue, {
+        timeout: 5000,
+      });
 
       // Verify gain changed
       const newValue = await firstGainControl.inputValue();
@@ -176,12 +193,15 @@ test.describe("Visualization with Physical Device @device", () => {
       const frame1 = await canvas.evaluate((c: HTMLCanvasElement) =>
         c.toDataURL(),
       );
-      await page.waitForTimeout(300);
-      const frame2 = await canvas.evaluate((c: HTMLCanvasElement) =>
-        c.toDataURL(),
+      // Wait for canvas to update after gain change
+      await page.waitForFunction(
+        ([frame1]) => {
+          const c = document.querySelector("canvas") as HTMLCanvasElement;
+          return c && c.toDataURL() !== frame1;
+        },
+        [frame1],
+        { timeout: 5000 },
       );
-
-      expect(frame1).not.toEqual(frame2);
     }
 
     // Stop streaming
@@ -193,6 +213,14 @@ test.describe("Visualization with Physical Device @device", () => {
   test("should maintain stable rendering with physical device @device", async ({
     page,
   }) => {
+    // Capture console errors during the test
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        consoleErrors.push(msg.text());
+      }
+    });
+
     await page.goto("/monitor");
 
     // Start streaming
@@ -204,11 +232,21 @@ test.describe("Visualization with Physical Device @device", () => {
       timeout: 15000,
     });
 
-    // Wait for initial rendering to stabilize
-    await page.waitForTimeout(1000);
-
+    // Wait for initial rendering: wait until canvas contents change (first frame rendered)
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible();
+    const initialDataUrl = await canvas.evaluate((c: HTMLCanvasElement) =>
+      c.toDataURL(),
+    );
+    // Wait until canvas contents change (first frame rendered)
+    await page.waitForFunction(
+      ([initialUrl]) => {
+        const c = document.querySelector("canvas") as HTMLCanvasElement;
+        return c && c.toDataURL() !== initialUrl;
+      },
+      [initialDataUrl],
+      { timeout: 5000 },
+    );
 
     // Collect multiple frame snapshots over time to verify continuous updates
     const snapshots: string[] = [];
@@ -227,9 +265,8 @@ test.describe("Visualization with Physical Device @device", () => {
     const uniqueFrames = new Set(snapshots).size;
     expect(uniqueFrames).toBeGreaterThan(3); // At least 4 unique frames in 2 seconds
 
-    // Verify no errors in console
-    const consoleMessages = page.context().errors();
-    expect(consoleMessages.length).toBe(0);
+    // Verify no console errors occurred during streaming
+    expect(consoleErrors.length).toBe(0);
 
     // Stop streaming
     const stopBtn = page.getByRole("button", { name: "Stop reception" });
@@ -260,19 +297,32 @@ test.describe("Visualization with Physical Device @device", () => {
 
     for (const mode of modes) {
       await viewSelect.selectOption(mode);
-      await page.waitForTimeout(300);
+
+      // Wait for the canvas to update after mode change
+      const prevFrame = await canvas.evaluate((c: HTMLCanvasElement) =>
+        c.toDataURL(),
+      );
+      await page.waitForFunction(
+        ([prevFrame]) => {
+          const c = document.querySelector("canvas") as HTMLCanvasElement;
+          return c && c.toDataURL() !== prevFrame;
+        },
+        [prevFrame],
+        { timeout: 5000 },
+      );
 
       // Verify rendering continues in this mode
       const frame1 = await canvas.evaluate((c: HTMLCanvasElement) =>
         c.toDataURL(),
       );
-      await page.waitForTimeout(300);
-      const frame2 = await canvas.evaluate((c: HTMLCanvasElement) =>
-        c.toDataURL(),
+      await page.waitForFunction(
+        ([frame1]) => {
+          const c = document.querySelector("canvas") as HTMLCanvasElement;
+          return c && c.toDataURL() !== frame1;
+        },
+        [frame1],
+        { timeout: 5000 },
       );
-
-      // Frames should differ, indicating continuous updates
-      expect(frame1).not.toEqual(frame2);
     }
 
     // Stop streaming
@@ -305,14 +355,17 @@ test.describe("Visualization with Physical Device @device", () => {
       const img1 = await iqCanvas
         .first()
         .evaluate((c: HTMLCanvasElement) => c.toDataURL());
-      await page.waitForTimeout(500);
-      const img2 = await iqCanvas
-        .first()
-        .evaluate((c: HTMLCanvasElement) => c.toDataURL());
-
-      // With real RF data, constellation should be updating
-      expect(img1).toBeTruthy();
-      expect(img2).toBeTruthy();
+      // Wait for IQ canvas to update
+      await page.waitForFunction(
+        ([img1]) => {
+          const c = document.querySelector(
+            'canvas[aria-label*="IQ Constellation"]',
+          ) as HTMLCanvasElement;
+          return c && c.toDataURL() !== img1;
+        },
+        [img1],
+        { timeout: 5000 },
+      );
     }
 
     // Stop streaming
@@ -336,7 +389,21 @@ test.describe("Visualization with Physical Device @device", () => {
     await page.waitForFunction(() => (window as any).dbgReceiving === true, {
       timeout: 15000,
     });
-    await page.waitForTimeout(500);
+
+    // Wait for canvas to start rendering
+    const canvas = page.locator("canvas").first();
+    await expect(canvas).toBeVisible();
+    const initialFrame = await canvas.evaluate((c: HTMLCanvasElement) =>
+      c.toDataURL(),
+    );
+    await page.waitForFunction(
+      ([initialFrame]) => {
+        const c = document.querySelector("canvas") as HTMLCanvasElement;
+        return c && c.toDataURL() !== initialFrame;
+      },
+      [initialFrame],
+      { timeout: 5000 },
+    );
 
     const stopBtn = page.getByRole("button", { name: "Stop reception" });
     await stopBtn.click();
@@ -350,15 +417,18 @@ test.describe("Visualization with Physical Device @device", () => {
     });
 
     // Verify rendering is working
-    const canvas = page.locator("canvas").first();
     const frame1 = await canvas.evaluate((c: HTMLCanvasElement) =>
       c.toDataURL(),
     );
-    await page.waitForTimeout(300);
-    const frame2 = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
+    // Wait for canvas to update (verify rendering continues)
+    await page.waitForFunction(
+      ([frame1]) => {
+        const c = document.querySelector("canvas") as HTMLCanvasElement;
+        return c && c.toDataURL() !== frame1;
+      },
+      [frame1],
+      { timeout: 5000 },
     );
-    expect(frame1).not.toEqual(frame2);
 
     // Final stop
     await stopBtn.click();
