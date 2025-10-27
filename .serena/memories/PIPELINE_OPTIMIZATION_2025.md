@@ -1,176 +1,209 @@
-# Pipeline Optimization Implementation (2025)
+# Pipeline Optimization Patterns
 
 ## Overview
 
-Comprehensive optimization of rad.io's build, test, and deploy pipeline completed January 2025. Focus areas: bundle compression, build monitoring, CI efficiency, and documentation.
+Reusable patterns and tools for optimizing rad.io's build, test, and deploy pipeline. Focus on webpack configuration, CI optimization, and bundle analysis.
 
-## Key Achievements
+## Key Tools & Configurations
 
-### 1. Bundle Compression (77% size reduction)
+### Bundle Compression
 
-- Implemented CompressionPlugin for automatic gzip compression
-- Results: 625 KB uncompressed → 146 KB compressed delivery
-  - main.js: 403 KB → 75 KB (81% reduction)
-  - react-vendors.js: 181 KB → 57 KB (68% reduction)
-  - vendors.js: 38 KB → 14 KB (63% reduction)
-  - WASM: 12 KB → 6 KB (50% reduction)
-
-### 2. Bundle Analysis Tooling
-
-- Added webpack-bundle-analyzer plugin
-- Scripts: `npm run build:analyze` (visual), `npm run build:stats` (JSON)
-- Generates: `dist/bundle-report.html`, `dist/bundle-stats.json`
-
-### 3. Build Performance Monitoring
-
-- Created `scripts/build-monitor.mjs` for artifact analysis
-- Script: `npm run build:monitor`
-- Tracks bundle sizes, compression ratios, file breakdown
-
-### 4. CI Test Optimization
-
-- Dynamic worker configuration: `process.env["CI"] ? 2 : "50%"`
-- Script: `npm run test:ci` (CI-optimized execution)
-- Improves stability in CI while maintaining local performance
-
-### 5. CI/CD Enhancements
-
-- Bundle size tracking in GitHub Actions summary
-- Test execution time reporting
-- Budget warnings (alerts if bundle > 3MB)
-- Enhanced caching strategy preserved
-
-## Build Configuration
-
-### Webpack Plugins
+Use CompressionPlugin for production builds to reduce delivery size:
 
 ```typescript
-// Production only
-new CompressionPlugin({
-  filename: "[path][base].gz",
-  algorithm: "gzip",
-  test: /\.(js|css|html|svg|wasm)$/,
-  threshold: 10240, // Only compress files > 10KB
-  minRatio: 0.8,
-});
+// webpack.config.ts
+import CompressionPlugin from "compression-webpack-plugin";
 
-// When ANALYZE=true
-new BundleAnalyzerPlugin({
-  analyzerMode: "static",
-  reportFilename: "bundle-report.html",
-  generateStatsFile: true,
-  statsFilename: "bundle-stats.json",
-});
+plugins: [
+  ...(isProduction ? [
+    new CompressionPlugin({
+      filename: "[path][base].gz",
+      algorithm: "gzip",
+      test: /\.(js|css|html|svg|wasm)$/,
+      threshold: 10240, // Only compress files > 10KB
+      minRatio: 0.8,
+    }),
+  ] : []),
+]
 ```
 
-### Jest Configuration
+**Results**: Typically 70-80% size reduction for text assets.
+
+### Bundle Analysis
+
+Use webpack-bundle-analyzer conditionally:
 
 ```typescript
-maxWorkers: process.env["CI"] ? 2 : "50%";
+// webpack.config.ts
+import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
+
+const analyzeBundle = process.env["ANALYZE"] === "true";
+
+plugins: [
+  ...(analyzeBundle ? [
+    new BundleAnalyzerPlugin({
+      analyzerMode: "static",
+      reportFilename: "bundle-report.html",
+      generateStatsFile: true,
+      statsFilename: "bundle-stats.json",
+    }),
+  ] : []),
+]
 ```
 
-## Usage Patterns
+**Usage**: `ANALYZE=true npm run build:prod`
 
-### Development Workflow
+### CI Test Optimization
+
+Dynamic Jest worker configuration for CI vs local:
+
+```typescript
+// jest.config.ts
+maxWorkers: process.env["CI"] ? 2 : "50%"
+```
+
+**Rationale**: CI environments benefit from fixed worker count (stability), local dev benefits from percentage-based (speed).
+
+## Build Analysis
+
+### Quick Bundle Inspection
+
+Use standard shell commands:
 
 ```bash
-npm start                    # Dev with hot reload
-npm run test:watch          # Tests in watch mode
-npm run build:monitor       # Check bundle size
+# List all artifacts with sizes
+ls -lh dist/
+
+# Total bundle size
+du -sh dist/
+
+# Breakdown by file type
+du -sh dist/*.js dist/*.wasm
+
+# Top 5 largest files
+du -h dist/* | sort -hr | head -5
 ```
 
-### Analysis Workflow
+### Detailed Bundle Analysis
+
+For deep analysis of dependencies and chunks:
 
 ```bash
-npm run build:analyze       # Visual bundle analysis
-npm run build:stats         # Export webpack stats
-node scripts/build-monitor.mjs analyze  # Detailed breakdown
+npm run build:analyze    # Visual HTML report
+npm run build:stats      # Export webpack stats JSON
 ```
 
-### CI/CD Workflow
+### Available Scripts
 
 ```bash
-npm run test:ci             # CI-optimized tests
-npm run validate:ci         # Full validation
+npm run build:analyze    # Visual bundle analysis (opens HTML report)
+npm run build:stats      # Export webpack stats JSON
+npm run test:ci          # CI-optimized test execution
 ```
 
-## Performance Metrics
+## Performance Patterns
 
-**Build:**
+### Webpack Caching
 
-- Time: 10.6s (6% improvement from 11.4s)
-- WASM: 2.8s (unchanged, already optimal)
-- Webpack: 7.8s (improved caching)
+Enable filesystem caching for faster rebuilds:
 
-**Test:**
+```typescript
+// webpack.config.ts
+cache: {
+  type: "filesystem",
+  buildDependencies: {
+    config: [__filename],
+  },
+}
+```
 
-- Time: 51.7s with CI workers (improved from 60s)
-- 1612 tests across 116 suites
-- All coverage thresholds maintained
+### Code Splitting Strategy
 
-**CI/CD:**
+Separate React/vendors for better caching:
 
-- Total PR feedback: 5-8 minutes (parallel jobs)
-- Cache hit rate: >85% typical
-- Bundle tracking: Automatic in GitHub Actions
+```typescript
+optimization: {
+  splitChunks: {
+    cacheGroups: {
+      react: {
+        test: /[\\/]node_modules[\\/](react|react-dom|react-router-dom)[\\/]/,
+        name: "react-vendors",
+        priority: 20,
+      },
+      vendor: {
+        test: /[\\/]node_modules[\\/](?!(react|react-dom|react-router-dom)[\\/])/,
+        name: "vendors",
+        priority: 10,
+      },
+    },
+  },
+}
+```
 
-## Documentation
+## CI/CD Patterns
 
-- **Comprehensive Guide**: `docs/PIPELINE_OPTIMIZATION.md`
-  - Build/test/deploy optimization details
-  - Monitoring and troubleshooting
-  - Best practices and workflows
-- **ADR**: `docs/decisions/pipeline-optimization-2025.md`
-  - Strategic decisions and rationale
-  - Implementation phases
-  - Success metrics and future work
+### Bundle Size Tracking
 
-## Future Enhancements
+Add to GitHub Actions workflow for visibility:
 
-**Phase 2 (Next Sprint):**
+```yaml
+- name: Analyze bundle size
+  run: |
+    echo "## 📦 Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+    echo "### JavaScript Bundles" >> $GITHUB_STEP_SUMMARY
+    echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+    ls -lh dist/*.js | awk '{printf "%-40s %10s\n", $9, $5}' >> $GITHUB_STEP_SUMMARY
+    echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+    total_size=$(du -sh dist/ | cut -f1)
+    echo "**Total Size:** $total_size" >> $GITHUB_STEP_SUMMARY
+```
 
-- Lighthouse CI for performance budgets
-- Test result caching
-- E2E deployment smoke tests
-- Historical bundle size tracking
+### Budget Enforcement
 
-**Phase 3 (Future):**
+Example budget check in CI:
 
-- Incremental WASM builds
-- Distributed test execution
-- Blue-green deployment
-- Multi-region CDN
+```bash
+size_bytes=$(du -sb dist/ | cut -f1)
+budget_bytes=3145728  # 3MB
+if [ "$size_bytes" -gt "$budget_bytes" ]; then
+  echo "⚠️ Bundle exceeds budget"
+  # Can fail build or just warn
+fi
+```
 
 ## Troubleshooting
 
-**Bundle analyzer not generating files:**
+### Build Performance Issues
 
-- Ensure `ANALYZE=true` environment variable
-- Check `dist/` for `bundle-report.html` and `bundle-stats.json`
+**Symptom**: Slow webpack builds
+**Check**:
+1. Verify filesystem cache enabled
+2. Check if running in production mode unnecessarily
+3. Use `ANALYZE=true` to identify large dependencies
 
-**Compression not applied:**
+**Symptom**: Large bundle sizes
+**Fix**:
+1. Run `npm run build:analyze` to visualize
+2. Check for duplicate dependencies
+3. Ensure tree shaking enabled (production mode)
 
-- Verify production build: `npm run build:prod`
-- Check for `*.gz` files in `dist/`
-- Files < 10KB not compressed (threshold)
+### Test Performance Issues
 
-**CI tests slower than local:**
-
-- Expected: CI uses 2 workers for stability
-- Local uses 50% CPU cores for speed
-- Trade-off: reliability vs performance
+**Symptom**: Tests slow in CI
+**Check**:
+1. Verify `maxWorkers` set to fixed number (e.g., 2)
+2. Look for memory leaks in test setup/teardown
+3. Use `--maxWorkers=1` to isolate if parallelization issue
 
 ## Related Files
 
-- `webpack.config.ts` - Build configuration with plugins
-- `jest.config.ts` - Test configuration with CI optimization
-- `scripts/build-monitor.mjs` - Build analysis utility
+- `webpack.config.ts` - Build configuration
+- `jest.config.ts` - Test configuration  
 - `.github/workflows/quality-checks.yml` - CI pipeline
-- `docs/PIPELINE_OPTIMIZATION.md` - Complete guide
+- `package.json` - Build/test scripts
 
-## Key Learnings
+## References
 
-1. **Compression is essential**: 77% size reduction with minimal overhead
-2. **Monitoring enables optimization**: Can't improve what you don't measure
-3. **CI needs different config**: Stability vs speed trade-offs
-4. **Documentation multiplies impact**: Enables team to use and extend work
+- webpack-bundle-analyzer: https://github.com/webpack-contrib/webpack-bundle-analyzer
+- compression-webpack-plugin: https://github.com/webpack-contrib/compression-webpack-plugin
+- Jest CLI: https://jestjs.io/docs/cli

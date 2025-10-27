@@ -209,18 +209,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### JavaScript Bundles" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          ls -lh dist/*.js | awk '{printf "%-40s %10s
-", $9, $5}'
-          ls -lh dist/*.js | awk '{printf "%-40s %10s
-", $9, $5}' >> $GITHUB_STEP_SUMMARY
+          ls -lh dist/*.js | awk '{printf "%-40s %10s\n", $9, $5}' >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### WebAssembly" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          ls -lh dist/*.wasm | awk '{printf "%-40s %10s
-", $9, $5}'
-          ls -lh dist/*.wasm | awk '{printf "%-40s %10s
-", $9, $5}' >> $GITHUB_STEP_SUMMARY
+          ls -lh dist/*.wasm | awk '{printf "%-40s %10s\n", $9, $5}' >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           total_size=$(du -sh dist/ | cut -f1)

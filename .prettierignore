@@ -9,5 +9,7 @@ coverage
 package-lock.json
 # Template files with placeholder syntax
 src/models/templates/
+# Serena internal files - managed separately
 .serena/memories/*.md
+# GitHub Actions - prettier doesn't handle GHA syntax well (use actionlint instead)
 .github/workflows/*.yml
