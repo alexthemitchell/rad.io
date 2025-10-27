@@ -72,11 +72,11 @@ let renderConfig: Config = { width: 0, height: 0, dpr: 1 };
 
 function getGL(canvas: OffscreenCanvas): { gl: GLContext | null; isWebGL2: boolean } {
   const opts = { alpha: false, antialias: false, desynchronized: true };
-  let context = canvas.getContext("webgl2", opts);
+  let context = canvas.getContext("webgl2", opts) as GLContext | null;
   if (context) {
     return { gl: context, isWebGL2: true };
   }
-  context = canvas.getContext("webgl", opts);
+  context = canvas.getContext("webgl", opts) as GLContext | null;
   return { gl: context, isWebGL2: false };
 }
 

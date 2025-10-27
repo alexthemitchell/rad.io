@@ -167,8 +167,15 @@ describe("WebGLSpectrum", () => {
     };
 
     // Mock getContext to return our mock WebGL context
-    jest.spyOn(canvas, "getContext").mockImplementation((type) => {
-      if (type === "webgl2" || type === "webgl") {
+    jest.spyOn(canvas, "getContext").mockImplementation((type: string) => {
+      // Support webgl2, webgl, and webgpu context types
+      if (type === "webgl2") {
+        return mockGL;
+      }
+      if (type === "webgl") {
+        return mockGL;
+      }
+      if (type === "webgpu") {
         return mockGL;
       }
       return null;

@@ -54,8 +54,6 @@ export type WorkerCapabilities = {
  */
 export class VisualizationWorkerManager {
   private worker: Worker | null = null;
-   
-  private _canvas: HTMLCanvasElement | null = null;
   private transferred = false;
   private nextFrameId = 0;
   private capabilities: WorkerCapabilities | null = null;
@@ -103,8 +101,6 @@ export class VisualizationWorkerManager {
     if (!VisualizationWorkerManager.isSupported()) {
       return false;
     }
-
-    this._canvas = canvas;
 
     // Check if canvas can be transferred
     const hasContext =
@@ -315,7 +311,6 @@ export class VisualizationWorkerManager {
     }
 
     this.transferred = false;
-    this._canvas = null;
     this.capabilities = null;
     this.onMetricsCallback = null;
     this.onErrorCallback = null;

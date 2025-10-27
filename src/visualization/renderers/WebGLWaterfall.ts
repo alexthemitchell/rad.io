@@ -54,7 +54,6 @@ const TEX_COORDS = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]);
 export class WebGLWaterfall implements Renderer {
   private canvas: HTMLCanvasElement | null = null;
   private gl: GL | null = null;
-  private isWebGL2 = false;
   private program: WebGLProgram | null = null;
   private quadVBO: WebGLBuffer | null = null;
   private uvVBO: WebGLBuffer | null = null;
@@ -73,22 +72,21 @@ export class WebGLWaterfall implements Renderer {
       alpha: false,
       antialias: false,
       desynchronized: true,
-    });
+    }) as GL | null;
 
     if (gl) {
-      this.isWebGL2 = true;
+      // No need to track WebGL2 separately
     } else {
       // Fallback to WebGL1
-      gl =
-        canvas.getContext("webgl", {
-          alpha: false,
-          antialias: false,
+      gl = (canvas.getContext("webgl", {
+        alpha: false,
+        antialias: false,
           desynchronized: true,
         }) ??
         canvas.getContext("experimental-webgl", {
           alpha: false,
           antialias: false,
-        });
+        })) as GL | null;
     }
 
     if (!gl) {
