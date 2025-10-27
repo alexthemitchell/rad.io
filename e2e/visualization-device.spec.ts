@@ -1,4 +1,46 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page, Locator } from "@playwright/test";
+
+/**
+ * Helper function to wait for the start button to be ready
+ */
+async function waitForStartButton(page: Page) {
+  const startBtn = page.getByRole("button", { name: "Start reception" });
+  await expect(startBtn).toBeVisible({ timeout: 15000 });
+  await expect(startBtn).toBeEnabled({ timeout: 5000 });
+  return startBtn;
+}
+
+/**
+ * Helper function to wait for canvas to update (render a new frame)
+ */
+async function waitForCanvasUpdate(
+  page: Page,
+  canvas: Locator,
+  timeout = 5000,
+) {
+  const currentFrame = await canvas.evaluate((c: HTMLCanvasElement) =>
+    c.toDataURL(),
+  );
+  await page.waitForFunction(
+    ([currentFrame]) => {
+      const c = document.querySelector("canvas") as HTMLCanvasElement;
+      return c && c.toDataURL() !== currentFrame;
+    },
+    [currentFrame],
+    { timeout },
+  );
+}
+
+/**
+ * Helper function to stop streaming and wait for it to stop
+ */
+async function stopStreaming(page: Page) {
+  const stopBtn = page.getByRole("button", { name: "Stop reception" });
+  await stopBtn.click();
+  await page.waitForFunction(() => (window as any).dbgReceiving === false, {
+    timeout: 10000,
+  });
+}
 
 /**
  * E2E tests for visualization with physical SDR device
@@ -26,9 +68,7 @@ test.describe("Visualization with Physical Device @device", () => {
     await page.goto("/monitor");
 
     // Wait for device auto-connect (from previously paired device)
-    const startBtn = page.getByRole("button", { name: "Start reception" });
-    await expect(startBtn).toBeVisible({ timeout: 15000 });
-    await expect(startBtn).toBeEnabled({ timeout: 5000 });
+    await waitForStartButton(page);
 
     // Verify device is detected (button should be ready to start)
     const status = page.getByRole("status");
@@ -41,9 +81,7 @@ test.describe("Visualization with Physical Device @device", () => {
     await page.goto("/monitor");
 
     // Wait for device to be ready
-    const startBtn = page.getByRole("button", { name: "Start reception" });
-    await expect(startBtn).toBeVisible({ timeout: 15000 });
-    await expect(startBtn).toBeEnabled({ timeout: 5000 });
+    const startBtn = await waitForStartButton(page);
 
     // Start streaming
     await startBtn.click();
@@ -61,34 +99,17 @@ test.describe("Visualization with Physical Device @device", () => {
     // Wait for canvas to start rendering (first frame update)
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible({ timeout: 5000 });
-    const initialFrame = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
-    );
-    // Wait for canvas to update (streaming is active)
-    await page.waitForFunction(
-      ([initialFrame]) => {
-        const c = document.querySelector("canvas") as HTMLCanvasElement;
-        return c && c.toDataURL() !== initialFrame;
-      },
-      [initialFrame],
-      { timeout: 5000 },
-    );
+    await waitForCanvasUpdate(page, canvas);
 
     // Stop streaming
-    const stopBtn = page.getByRole("button", { name: "Stop reception" });
-    await stopBtn.click();
-
-    await page.waitForFunction(() => (window as any).dbgReceiving === false, {
-      timeout: 10000,
-    });
+    await stopStreaming(page);
   });
 
   test("should tune to different frequencies @device", async ({ page }) => {
     await page.goto("/monitor");
 
     // Start streaming
-    const startBtn = page.getByRole("button", { name: "Start reception" });
-    await expect(startBtn).toBeVisible({ timeout: 15000 });
+    const startBtn = await waitForStartButton(page);
     await startBtn.click();
 
     await page.waitForFunction(() => (window as any).dbgReceiving === true, {
@@ -117,33 +138,17 @@ test.describe("Visualization with Physical Device @device", () => {
     // Verify rendering continues
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible();
-
-    // Capture two frames to verify continuous updates
-    const frame1 = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
-    );
-    // Wait for canvas to update (rendering continues)
-    await page.waitForFunction(
-      ([frame1]) => {
-        const c = document.querySelector("canvas") as HTMLCanvasElement;
-        return c && c.toDataURL() !== frame1;
-      },
-      [frame1],
-      { timeout: 5000 },
-    );
+    await waitForCanvasUpdate(page, canvas);
 
     // Stop streaming
-    const stopBtn = page.getByRole("button", { name: "Stop reception" });
-    await stopBtn.click();
-    await page.waitForFunction(() => (window as any).dbgReceiving === false);
+    await stopStreaming(page);
   });
 
   test("should adjust gain settings @device", async ({ page }) => {
     await page.goto("/monitor");
 
     // Start streaming
-    const startBtn = page.getByRole("button", { name: "Start reception" });
-    await expect(startBtn).toBeVisible({ timeout: 15000 });
+    const startBtn = await waitForStartButton(page);
     await startBtn.click();
 
     await page.waitForFunction(() => (window as any).dbgReceiving === true, {
@@ -190,24 +195,11 @@ test.describe("Visualization with Physical Device @device", () => {
 
       // Verify rendering continues after gain change
       const canvas = page.locator("canvas").first();
-      const frame1 = await canvas.evaluate((c: HTMLCanvasElement) =>
-        c.toDataURL(),
-      );
-      // Wait for canvas to update after gain change
-      await page.waitForFunction(
-        ([frame1]) => {
-          const c = document.querySelector("canvas") as HTMLCanvasElement;
-          return c && c.toDataURL() !== frame1;
-        },
-        [frame1],
-        { timeout: 5000 },
-      );
+      await waitForCanvasUpdate(page, canvas);
     }
 
     // Stop streaming
-    const stopBtn = page.getByRole("button", { name: "Stop reception" });
-    await stopBtn.click();
-    await page.waitForFunction(() => (window as any).dbgReceiving === false);
+    await stopStreaming(page);
   });
 
   test("should maintain stable rendering with physical device @device", async ({
@@ -224,8 +216,7 @@ test.describe("Visualization with Physical Device @device", () => {
     await page.goto("/monitor");
 
     // Start streaming
-    const startBtn = page.getByRole("button", { name: "Start reception" });
-    await expect(startBtn).toBeVisible({ timeout: 15000 });
+    const startBtn = await waitForStartButton(page);
     await startBtn.click();
 
     await page.waitForFunction(() => (window as any).dbgReceiving === true, {
@@ -235,43 +226,42 @@ test.describe("Visualization with Physical Device @device", () => {
     // Wait for initial rendering: wait until canvas contents change (first frame rendered)
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible();
-    const initialDataUrl = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
-    );
-    // Wait until canvas contents change (first frame rendered)
-    await page.waitForFunction(
-      ([initialUrl]) => {
-        const c = document.querySelector("canvas") as HTMLCanvasElement;
-        return c && c.toDataURL() !== initialUrl;
-      },
-      [initialDataUrl],
-      { timeout: 5000 },
-    );
+    await waitForCanvasUpdate(page, canvas);
 
-    // Collect multiple frame snapshots over time to verify continuous updates
+    // Collect multiple frame snapshots to verify continuous updates
     const snapshots: string[] = [];
     const sampleCount = 10;
-    const intervalMs = 200;
 
-    for (let i = 0; i < sampleCount; i++) {
-      const snapshot = await canvas.evaluate((c: HTMLCanvasElement) =>
+    let lastSnapshot = await canvas.evaluate((c: HTMLCanvasElement) =>
+      c.toDataURL(),
+    );
+    snapshots.push(lastSnapshot);
+
+    for (let i = 1; i < sampleCount; i++) {
+      // Wait until canvas contents change (new frame rendered)
+      await page.waitForFunction(
+        ([prevUrl]) => {
+          const c = document.querySelector("canvas") as HTMLCanvasElement;
+          return c && c.toDataURL() !== prevUrl;
+        },
+        [lastSnapshot],
+        { timeout: 2000 },
+      );
+      lastSnapshot = await canvas.evaluate((c: HTMLCanvasElement) =>
         c.toDataURL(),
       );
-      snapshots.push(snapshot);
-      await page.waitForTimeout(intervalMs);
+      snapshots.push(lastSnapshot);
     }
 
     // Verify we got unique frames (rendering is active)
     const uniqueFrames = new Set(snapshots).size;
-    expect(uniqueFrames).toBeGreaterThan(3); // At least 4 unique frames in 2 seconds
+    expect(uniqueFrames).toBeGreaterThan(3); // At least 4 unique frames
 
     // Verify no console errors occurred during streaming
     expect(consoleErrors.length).toBe(0);
 
     // Stop streaming
-    const stopBtn = page.getByRole("button", { name: "Stop reception" });
-    await stopBtn.click();
-    await page.waitForFunction(() => (window as any).dbgReceiving === false);
+    await stopStreaming(page);
   });
 
   test("should switch visualization modes with physical device @device", async ({
@@ -280,8 +270,7 @@ test.describe("Visualization with Physical Device @device", () => {
     await page.goto("/monitor");
 
     // Start streaming
-    const startBtn = page.getByRole("button", { name: "Start reception" });
-    await expect(startBtn).toBeVisible({ timeout: 15000 });
+    const startBtn = await waitForStartButton(page);
     await startBtn.click();
 
     await page.waitForFunction(() => (window as any).dbgReceiving === true, {
@@ -299,36 +288,14 @@ test.describe("Visualization with Physical Device @device", () => {
       await viewSelect.selectOption(mode);
 
       // Wait for the canvas to update after mode change
-      const prevFrame = await canvas.evaluate((c: HTMLCanvasElement) =>
-        c.toDataURL(),
-      );
-      await page.waitForFunction(
-        ([prevFrame]) => {
-          const c = document.querySelector("canvas") as HTMLCanvasElement;
-          return c && c.toDataURL() !== prevFrame;
-        },
-        [prevFrame],
-        { timeout: 5000 },
-      );
+      await waitForCanvasUpdate(page, canvas);
 
       // Verify rendering continues in this mode
-      const frame1 = await canvas.evaluate((c: HTMLCanvasElement) =>
-        c.toDataURL(),
-      );
-      await page.waitForFunction(
-        ([frame1]) => {
-          const c = document.querySelector("canvas") as HTMLCanvasElement;
-          return c && c.toDataURL() !== frame1;
-        },
-        [frame1],
-        { timeout: 5000 },
-      );
+      await waitForCanvasUpdate(page, canvas);
     }
 
     // Stop streaming
-    const stopBtn = page.getByRole("button", { name: "Stop reception" });
-    await stopBtn.click();
-    await page.waitForFunction(() => (window as any).dbgReceiving === false);
+    await stopStreaming(page);
   });
 
   test("should display IQ constellation with physical device @device", async ({
@@ -337,8 +304,7 @@ test.describe("Visualization with Physical Device @device", () => {
     await page.goto("/monitor");
 
     // Start streaming
-    const startBtn = page.getByRole("button", { name: "Start reception" });
-    await expect(startBtn).toBeVisible({ timeout: 15000 });
+    const startBtn = await waitForStartButton(page);
     await startBtn.click();
 
     await page.waitForFunction(() => (window as any).dbgReceiving === true, {
@@ -351,27 +317,12 @@ test.describe("Visualization with Physical Device @device", () => {
     if ((await iqCanvas.count()) > 0) {
       await expect(iqCanvas.first()).toBeVisible();
 
-      // Verify it's rendering with real data
-      const img1 = await iqCanvas
-        .first()
-        .evaluate((c: HTMLCanvasElement) => c.toDataURL());
-      // Wait for IQ canvas to update
-      await page.waitForFunction(
-        ([img1]) => {
-          const c = document.querySelector(
-            'canvas[aria-label*="IQ Constellation"]',
-          ) as HTMLCanvasElement;
-          return c && c.toDataURL() !== img1;
-        },
-        [img1],
-        { timeout: 5000 },
-      );
+      // Verify it's rendering with real data - wait for canvas to update
+      await waitForCanvasUpdate(page, iqCanvas.first());
     }
 
     // Stop streaming
-    const stopBtn = page.getByRole("button", { name: "Stop reception" });
-    await stopBtn.click();
-    await page.waitForFunction(() => (window as any).dbgReceiving === false);
+    await stopStreaming(page);
   });
 
   test("should handle device reconnection gracefully @device", async ({
@@ -380,9 +331,7 @@ test.describe("Visualization with Physical Device @device", () => {
     await page.goto("/monitor");
 
     // Initial connection
-    const startBtn = page.getByRole("button", { name: "Start reception" });
-    await expect(startBtn).toBeVisible({ timeout: 15000 });
-    await expect(startBtn).toBeEnabled({ timeout: 5000 });
+    const startBtn = await waitForStartButton(page);
 
     // Start and stop streaming
     await startBtn.click();
@@ -393,21 +342,9 @@ test.describe("Visualization with Physical Device @device", () => {
     // Wait for canvas to start rendering
     const canvas = page.locator("canvas").first();
     await expect(canvas).toBeVisible();
-    const initialFrame = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
-    );
-    await page.waitForFunction(
-      ([initialFrame]) => {
-        const c = document.querySelector("canvas") as HTMLCanvasElement;
-        return c && c.toDataURL() !== initialFrame;
-      },
-      [initialFrame],
-      { timeout: 5000 },
-    );
+    await waitForCanvasUpdate(page, canvas);
 
-    const stopBtn = page.getByRole("button", { name: "Stop reception" });
-    await stopBtn.click();
-    await page.waitForFunction(() => (window as any).dbgReceiving === false);
+    await stopStreaming(page);
 
     // Start again to verify device can be reused
     await expect(startBtn).toBeEnabled({ timeout: 2000 });
@@ -417,21 +354,9 @@ test.describe("Visualization with Physical Device @device", () => {
     });
 
     // Verify rendering is working
-    const frame1 = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
-    );
-    // Wait for canvas to update (verify rendering continues)
-    await page.waitForFunction(
-      ([frame1]) => {
-        const c = document.querySelector("canvas") as HTMLCanvasElement;
-        return c && c.toDataURL() !== frame1;
-      },
-      [frame1],
-      { timeout: 5000 },
-    );
+    await waitForCanvasUpdate(page, canvas);
 
     // Final stop
-    await stopBtn.click();
-    await page.waitForFunction(() => (window as any).dbgReceiving === false);
+    await stopStreaming(page);
   });
 });
