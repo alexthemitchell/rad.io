@@ -31,7 +31,9 @@
     "build:analyze": "npm run asbuild:release && ANALYZE=true webpack --mode production",
     "build:stats": "npm run asbuild:release && webpack --mode production --json > dist/webpack-stats.json",
     "test:ci": "jest --coverage --ci --maxWorkers=2 --silent",
-    "validate:ci": "npm run lint && npm run format:check && npm run type-check && npm run test:ci && npm run build:prod"
+    "validate:ci": "npm run lint && npm run format:check && npm run type-check && npm run test:ci && npm run build:prod",
+    "lint:workflows": "bash scripts/lint-workflows.sh",
+    "validate:full": "npm run lint && npm run lint:workflows && npm run format:check && npm run type-check && npm run test:ci && npm run build:prod"
   },
   "author": "Alex Mitchell <alex@alexmitchelltech.com>",
   "license": "UNLICENSED",

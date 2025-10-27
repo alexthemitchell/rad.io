@@ -66,8 +66,10 @@ jobs:
 
       - name: Generate summary
         run: |
-          echo "## 🧹 Artifact Cleanup Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deleted**: ${{ steps.cleanup.outputs.deleted }} old artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- **Kept**: ${{ steps.cleanup.outputs.kept }} recent artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- **Retention Policy**: 7 days" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 🧹 Artifact Cleanup Summary"
+            echo ""
+            echo "- **Deleted**: ${{ steps.cleanup.outputs.deleted }} old artifacts"
+            echo "- **Kept**: ${{ steps.cleanup.outputs.kept }} recent artifacts"
+            echo "- **Retention Policy**: 7 days"
+          } >> "$GITHUB_STEP_SUMMARY"
