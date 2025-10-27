@@ -15,6 +15,7 @@
     "test:utils": "jest --coverage src/utils/__tests__/",
     "test:e2e": "playwright test",
     "test:e2e:sim": "playwright test --grep @simulated",
+    "test:e2e:device": "E2E_REAL_HACKRF=1 playwright test --grep @real",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "format": "prettier --write .",
