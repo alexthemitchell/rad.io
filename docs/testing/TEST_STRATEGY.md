@@ -120,8 +120,14 @@ npm run test:watch
 # Run specific test file
 npm test -- src/utils/__tests__/dsp.test.ts
 
-# Run E2E tests (mock only)
+# Run E2E tests (mock + simulated)
 npm run test:e2e
+
+# Run only simulated E2E tests
+npm run test:e2e:sim
+
+# Run device E2E tests (requires real HackRF)
+npm run test:e2e:device
 
 # Run E2E tests with UI
 npm run test:e2e:ui
