@@ -105,6 +105,7 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
       // Updated to match documented bundle sizes: main chunk ~406 KB, total ~628 KB
       maxEntrypointSize: 630000,
       maxAssetSize: 630000,
+      hints: isDevelopment ? false : "warning",
     },
   };
 };
