@@ -44,6 +44,9 @@ describe("dspWasm binding & runtime behavior", () => {
       // Unused in this test
       calculateWaveform: () => {},
       calculateSpectrogram: () => {},
+      applyHannWindow: () => {},
+      applyHammingWindow: () => {},
+      applyBlackmanWindow: () => {},
     };
 
     setWasmModuleForTest(fake, true);
@@ -83,6 +86,9 @@ describe("dspWasm binding & runtime behavior", () => {
       // No calculateFFTOut here on purpose
       calculateWaveform: () => undefined,
       calculateSpectrogram: () => undefined,
+      applyHannWindow: () => {},
+      applyHammingWindow: () => {},
+      applyBlackmanWindow: () => {},
     };
 
     setWasmModuleForTest(fake, true);
@@ -107,6 +113,9 @@ describe("dspWasm binding & runtime behavior", () => {
       },
       calculateWaveform: () => undefined,
       calculateSpectrogram: () => undefined,
+      applyHannWindow: () => {},
+      applyHammingWindow: () => {},
+      applyBlackmanWindow: () => {},
     };
 
     setWasmModuleForTest(fake, true);

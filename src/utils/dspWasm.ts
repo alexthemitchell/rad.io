@@ -52,6 +52,21 @@ export interface WasmDSPModule {
     rowCount: number,
   ) => Float32Array;
   allocateFloat32Array(size: number): Float32Array;
+  applyHannWindow(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ): void;
+  applyHammingWindow(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ): void;
+  applyBlackmanWindow(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ): void;
 }
 
 function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
@@ -229,6 +244,9 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
           calculateWaveform: mod.calculateWaveform.bind(mod),
           calculateSpectrogram: mod.calculateSpectrogram.bind(mod),
           allocateFloat32Array: mod.allocateFloat32Array.bind(mod),
+          applyHannWindow: mod.applyHannWindow.bind(mod),
+          applyHammingWindow: mod.applyHammingWindow.bind(mod),
+          applyBlackmanWindow: mod.applyBlackmanWindow.bind(mod),
         };
         // Bind optional return-by-value APIs if present so callers can detect/use them
         const b1 = buildOptionalBinding(mod, "calculateFFTOut");
@@ -546,6 +564,115 @@ export function calculateSpectrogramWasm(
     );
     return null;
   }
+}
+
+/**
+ * Helper function to separate I/Q samples into Float32Arrays
+ */
+function separateIQComponents(samples: Sample[]): {
+  iSamples: Float32Array;
+  qSamples: Float32Array;
+} {
+  const iSamples = new Float32Array(samples.length);
+  const qSamples = new Float32Array(samples.length);
+
+  for (let i = 0; i < samples.length; i++) {
+    iSamples[i] = samples[i]?.I ?? 0;
+    qSamples[i] = samples[i]?.Q ?? 0;
+  }
+
+  return { iSamples, qSamples };
+}
+
+/**
+ * Helper function to copy processed I/Q arrays back to samples
+ */
+function copyIQToSamples(
+  samples: Sample[],
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+): void {
+  for (let i = 0; i < samples.length; i++) {
+    const iVal = iSamples[i];
+    const qVal = qSamples[i];
+    if (iVal !== undefined && qVal !== undefined) {
+      // eslint-disable-next-line no-param-reassign
+      samples[i] = { I: iVal, Q: qVal };
+    }
+  }
+}
+
+/**
+ * Generic helper for applying WASM window functions
+ */
+function applyWasmWindow(
+  samples: Sample[],
+  windowFn: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ) => void,
+  windowName: string,
+): boolean {
+  if (!wasmModule || samples.length === 0) {
+    return false;
+  }
+
+  try {
+    const { iSamples, qSamples } = separateIQComponents(samples);
+    windowFn(iSamples, qSamples, samples.length);
+    copyIQToSamples(samples, iSamples, qSamples);
+    return true;
+  } catch (error) {
+    console.warn(`dspWasm: ${windowName} window failed`, error);
+    return false;
+  }
+}
+
+/**
+ * Apply Hann window using WASM if available
+ * Modifies samples in-place for efficiency
+ */
+export function applyHannWindowWasm(samples: Sample[]): boolean {
+  if (!wasmModule) {
+    return false;
+  }
+  const module = wasmModule;
+  return applyWasmWindow(
+    samples,
+    (i, q, s) => module.applyHannWindow(i, q, s),
+    "Hann",
+  );
+}
+
+/**
+ * Apply Hamming window using WASM if available
+ */
+export function applyHammingWindowWasm(samples: Sample[]): boolean {
+  if (!wasmModule) {
+    return false;
+  }
+  const module = wasmModule;
+  return applyWasmWindow(
+    samples,
+    (i, q, s) => module.applyHammingWindow(i, q, s),
+    "Hamming",
+  );
+}
+
+/**
+ * Apply Blackman window using WASM if available
+ */
+export function applyBlackmanWindowWasm(samples: Sample[]): boolean {
+  if (!wasmModule) {
+    return false;
+  }
+  const module = wasmModule;
+  return applyWasmWindow(
+    samples,
+    (i, q, s) => module.applyBlackmanWindow(i, q, s),
+    "Blackman",
+  );
 }
 
 /**

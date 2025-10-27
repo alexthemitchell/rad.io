@@ -15,6 +15,7 @@ Core Principles
    - Avoid feature-specific, transient details or large dumps of logs.
    - **Do NOT create memories about updates you've made - that's what commit messages are for.**
    - **Do NOT rewrite existing bug fix memories into general documentation - they document specific issues.**
+   - **Do NOT include derived runtime data in documentation** - test counts, execution times, or other metrics that change with every run. Instead, provide instructions on how to measure them (e.g., "Use `npm run test:perf` to measure current performance").
 
 2. Prefer short, scannable memories:
    - Target 150–400 words; use headings and bullets.
@@ -47,13 +48,14 @@ Core Principles
 8. Deletion and freshness:
    - If a memory becomes misleading, use delete_memory and note the replacement. Prefer updating over deleting when possible.
 
-What NOT to Create as Memories
+What NOT to Create as Memories or Documentation
 
 - **Update summaries**: "Documentation Update 2025" - use commit messages instead
 - **General documentation**: Comprehensive setup guides belong in `docs/`, not memories
 - **Change logs**: What files you modified and why - use PR descriptions
 - **Duplicate content**: Rewriting existing memories without deleting the old one
 - **Transient state**: Current task progress or temporary findings
+- **Derived runtime data**: Test counts, execution times, suite counts, pass rates - these change with every run and should not be hard-coded in documentation
 
 When to Write a New Memory
 
@@ -69,6 +71,7 @@ Checklist Before Writing
 - Does an existing memory cover 70% of this already? If yes, update that instead.
 - **Is this about a specific bug fix or issue resolution? Keep it focused on that issue, not general documentation.**
 - **Am I just documenting changes I made? If yes, use commit messages instead.**
+- **Does this contain runtime metrics or derived data? If yes, replace with instructions on how to measure them.**
 
 Quick Workflow
 

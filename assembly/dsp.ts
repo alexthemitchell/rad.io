@@ -44,6 +44,73 @@ class Complex {
  * @param fftSize - FFT size (must be power of 2)
  * @param output - Pre-allocated output array for magnitude spectrum in dB
  */
+/**
+ * Apply Hann window to I/Q samples in-place
+ * Hann window: w(n) = 0.5 * (1 - cos(2π*n/(N-1)))
+ *
+ * @param iSamples - I component samples (modified in-place)
+ * @param qSamples - Q component samples (modified in-place)
+ * @param size - Number of samples
+ */
+export function applyHannWindow(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  size: i32,
+): void {
+  const N = f64(size);
+  for (let n: i32 = 0; n < size; n++) {
+    const w = 0.5 * (1.0 - Math.cos((2.0 * Math.PI * f64(n)) / (N - 1.0)));
+    iSamples[n] *= f32(w);
+    qSamples[n] *= f32(w);
+  }
+}
+
+/**
+ * Apply Hamming window to I/Q samples in-place
+ * Hamming window: w(n) = 0.54 - 0.46 * cos(2π*n/(N-1))
+ *
+ * @param iSamples - I component samples (modified in-place)
+ * @param qSamples - Q component samples (modified in-place)
+ * @param size - Number of samples
+ */
+export function applyHammingWindow(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  size: i32,
+): void {
+  const N = f64(size);
+  for (let n: i32 = 0; n < size; n++) {
+    const w = 0.54 - 0.46 * Math.cos((2.0 * Math.PI * f64(n)) / (N - 1.0));
+    iSamples[n] *= f32(w);
+    qSamples[n] *= f32(w);
+  }
+}
+
+/**
+ * Apply Blackman window to I/Q samples in-place
+ * Blackman window: w(n) = 0.42 - 0.5*cos(2π*n/(N-1)) + 0.08*cos(4π*n/(N-1))
+ *
+ * @param iSamples - I component samples (modified in-place)
+ * @param qSamples - Q component samples (modified in-place)
+ * @param size - Number of samples
+ */
+export function applyBlackmanWindow(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  size: i32,
+): void {
+  const N = f64(size);
+  for (let n: i32 = 0; n < size; n++) {
+    const nf = f64(n);
+    const w =
+      0.42 -
+      0.5 * Math.cos((2.0 * Math.PI * nf) / (N - 1.0)) +
+      0.08 * Math.cos((4.0 * Math.PI * nf) / (N - 1.0));
+    iSamples[n] *= f32(w);
+    qSamples[n] *= f32(w);
+  }
+}
+
 export function calculateFFT(
   iSamples: Float32Array,
   qSamples: Float32Array,
