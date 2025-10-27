@@ -1002,10 +1002,10 @@ export class HackRFOne {
   stopRx(): void {
     this.streaming = false;
     // Trigger stop signal to break out of pending races immediately
-    if (this.stopResolve) {
-      const resolve = this.stopResolve;
-      this.stopResolve = null;
-      resolve();
+    if (this.stopReject) {
+      const reject = this.stopReject;
+      this.stopReject = null;
+      reject(new DOMException('Aborted', 'AbortError'));
     }
   }
 
