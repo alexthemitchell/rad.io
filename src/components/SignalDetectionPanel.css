@@ -50,14 +50,14 @@
   transition: all 0.2s;
 }
 
-.clear-button:hover:not(:disabled) {
-  background: var(--button-hover, #444);
-  border-color: var(--border-hover, #666);
-}
-
 .clear-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.clear-button:hover:not(:disabled) {
+  background: var(--button-hover, #444);
+  border-color: var(--border-hover, #666);
 }
 
 .signals-list {

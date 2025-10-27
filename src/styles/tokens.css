@@ -7,6 +7,7 @@
      the browser to style form controls and other native elements according to
      the user's preferred color scheme. Light theme is supported via .theme-light/[data-theme="light"]. */
   color-scheme: dark light;
+
   /* Use design system accent for supported form controls (checkboxes, radios, progress) */
   accent-color: var(--rad-accent);
 

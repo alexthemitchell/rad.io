@@ -10,10 +10,10 @@ Structure (src/styles)
 
 Import order in main.css (top to bottom)
 
-1) ./tokens.css
-2) ./base.css
-3) ./a11y.css
-4) ./components/*.css (ordered from generic to specific: buttons → cards → controls → playback → dialog → status-bar)
+1. ./tokens.css
+2. ./base.css
+3. ./a11y.css
+4. ./components/\*.css (ordered from generic to specific: buttons → cards → controls → playback → dialog → status-bar)
 
 Rationale / Invariants
 
@@ -27,7 +27,7 @@ Paths
 - Aggregator: src/styles/main.css
 - Tokens: src/styles/tokens.css
 - Base/A11y: src/styles/base.css, src/styles/a11y.css
-- Components: src/styles/components/*.css
+- Components: src/styles/components/\*.css
 
 Testing
 

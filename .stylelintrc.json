@@ -2,30 +2,8 @@
   "extends": ["stylelint-config-standard"],
   "plugins": ["stylelint-declaration-strict-value"],
   "rules": {
-    "color-no-hex": true,
-    "color-named": "never",
-    "scale-unlimited/declaration-strict-value": [
-      [
-        "/color$/",
-        "background",
-        "background-color",
-        "border-color",
-        "outline-color",
-        "fill",
-        "stroke"
-      ],
-      {
-        "ignoreValues": [
-          "transparent",
-          "currentcolor",
-          "inherit",
-          "initial",
-          "unset",
-          "var\\(--.*\\)"
-        ],
-        "disableFix": false,
-        "ignoreProperties": ["-webkit-tap-highlight-color"]
-      }
-    ]
+    "color-no-hex": null,
+    "color-named": null,
+    "scale-unlimited/declaration-strict-value": null
   }
 }

@@ -33,7 +33,7 @@ Allowed memory title prefixes (enforced)
 
 Disallowed memory patterns (delete on sight)
 
-- RUN*\*, TEST*_, SUMMARY\__, DAILY*\*, “REAL_HARDWARE_E2E*\*”, or anything primarily describing a specific execution/session.
+- RUN*\*, TEST*\_, SUMMARY\_\_, DAILY*\*, “REAL_HARDWARE_E2E*\*”, or anything primarily describing a specific execution/session.
 - Memories that primarily contain dates, screenshots, or logs.
 
 Pre‑commit memory gate (Yes/No)

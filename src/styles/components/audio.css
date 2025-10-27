@@ -50,11 +50,9 @@
   outline: none;
   cursor: pointer;
   appearance: none;
-  appearance: none;
 }
 
 .volume-slider::-webkit-slider-thumb {
-  appearance: none;
   appearance: none;
   width: 16px;
   height: 16px;

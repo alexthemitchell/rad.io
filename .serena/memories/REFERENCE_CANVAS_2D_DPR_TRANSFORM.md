@@ -13,7 +13,7 @@ Why
 Recommended pattern
 
 - Use alpha:false and desynchronized:true for perf.
-- Set internal pixel size: canvas.width = width * dpr; height likewise.
+- Set internal pixel size: canvas.width = width \* dpr; height likewise.
 - Set CSS size: canvas.style.width = `${width}px` ; height likewise.
 - Reset transform to identity, then apply dpr scale each render.
 - For additional per-frame transforms (pan/zoom), wrap in ctx.save() / ctx.restore() so only those transforms are reverted, not DPR.
