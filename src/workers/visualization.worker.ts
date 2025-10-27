@@ -330,6 +330,8 @@ function drawWaveform(samples: WaveformSample[]): void {
 }
 
 function processNextFrame(): void {
+  // Guard against race conditions: check and set flag in same tick
+  // Workers are single-threaded, but setTimeout can schedule multiple calls
   if (isRendering || frameQueue.length === 0) {
     return;
   }
@@ -376,7 +378,7 @@ function processNextFrame(): void {
     console.error("Rendering error:", err);
   } finally {
     isRendering = false;
-    // Process next frame if available
+    // Process next frame if available (async to avoid stack overflow)
     if (frameQueue.length > 0) {
       setTimeout(processNextFrame, 0);
     }
@@ -404,7 +406,11 @@ function enqueueFrame(data: MessageRender["data"]): void {
     timestamp: performance.now(),
   });
 
-  processNextFrame();
+  // Only trigger processing if not already in progress
+  // The isRendering flag prevents concurrent execution
+  if (!isRendering) {
+    processNextFrame();
+  }
 }
 
 self.onmessage = (

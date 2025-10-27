@@ -196,14 +196,28 @@ export class VisualizationWorkerManager {
         [offscreen],
       );
 
-      // Wait for initialization confirmation
-      await new Promise<void>((resolve) => {
+      // Wait for initialization confirmation with timeout
+      await new Promise<void>((resolve, reject) => {
+        const INIT_TIMEOUT_MS = 5000;
+        let settled = false;
+        
         const handler = (ev: MessageEvent<WorkerMessage>): void => {
-          if (ev.data.type === "initialized") {
+          if (ev.data.type === "initialized" && !settled) {
+            settled = true;
+            clearTimeout(timeoutId);
             this.worker?.removeEventListener("message", handler);
             resolve();
           }
         };
+        
+        const timeoutId = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            this.worker?.removeEventListener("message", handler);
+            reject(new Error("Worker initialization timed out after 5s"));
+          }
+        }, INIT_TIMEOUT_MS);
+        
         this.worker?.addEventListener("message", handler);
       });
 

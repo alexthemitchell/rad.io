@@ -522,6 +522,8 @@ function renderSpectrogram2D(fftData: Float32Array[]): void {
 // ============================================================================
 
 function processFrame(): void {
+  // Guard against race conditions: check and set flag in same tick
+  // Workers are single-threaded, but setTimeout can schedule multiple calls
   if (rendering || renderQueue.length === 0) {
     return;
   }
@@ -581,7 +583,7 @@ function processFrame(): void {
     });
   } finally {
     rendering = false;
-    // Process next frame if available
+    // Process next frame if available (async to avoid stack overflow)
     if (renderQueue.length > 0) {
       setTimeout(processFrame, 0);
     }
@@ -604,7 +606,12 @@ function queueFrame(frame: RenderMessage): void {
   }
   
   renderQueue.push(frame);
-  processFrame();
+  
+  // Only trigger processing if not already in progress
+  // The rendering flag prevents concurrent execution
+  if (!rendering) {
+    processFrame();
+  }
 }
 
 // ============================================================================
