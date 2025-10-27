@@ -83,7 +83,14 @@ const config: Config = {
       lines: 94,
     },
   },
-  coverageReporters: ["text", "lcov", "json-summary"],
+  coverageReporters: ["text", "lcov", "json-summary", "html"],
+  // Custom reporters for performance tracking
+  reporters: [
+    "default",
+    ...(process.env["TRACK_PERFORMANCE"] === "1"
+      ? ["<rootDir>/jest-performance-reporter.js"]
+      : []),
+  ],
   transformIgnorePatterns: ["node_modules/(?!(webfft)/)"],
   transform: {
     "^.+\\.(t|j)sx?$": [

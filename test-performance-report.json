@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-10-27T01:39:43.358Z",
+  "metrics": {
+    "totalTests": 44,
+    "totalTime": 114,
+    "slowTests": 0,
+    "verySlowTests": 0,
+    "averageTime": 2.590909090909091
+  },
+  "slowTests": [],
+  "thresholds": {
+    "unit": {
+      "slow": 100,
+      "verySlow": 500
+    },
+    "integration": {
+      "slow": 1000,
+      "verySlow": 5000
+    }
+  }
+}
