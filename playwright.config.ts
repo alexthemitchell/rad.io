@@ -1,6 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
+ * Test tag patterns for organizing e2e tests
+ */
+const REAL_TAG = /@real/;
+const SIMULATED_TAG = /@simulated/;
+
+/**
  * Playwright configuration for rad.io E2E tests
  * See https://playwright.dev/docs/test-configuration
  */
@@ -64,27 +70,35 @@ export default defineConfig({
 
   /* Configure projects to separate mock vs real tests */
   projects: (() => {
-    const baseProject = {
+    const mockProject = {
       name: "mock-chromium",
       use: { ...devices["Desktop Chrome"] },
-      // Run everything except @real tests
-      grepInvert: /@real/,
+      // Run everything except @real and @simulated tests
+      grepInvert: new RegExp(`${REAL_TAG.source}|${SIMULATED_TAG.source}`),
+    } as const;
+
+    const simulatedProject = {
+      name: "simulated",
+      use: { ...devices["Desktop Chrome"] },
+      // Run only @simulated tests
+      grep: SIMULATED_TAG,
     } as const;
 
     // Only add the real device project when explicitly enabled to avoid spinning
     // up an extra Chrome instance that does no work but consumes memory.
     if (process.env["E2E_REAL_HACKRF"] === "1") {
       return [
-        baseProject,
+        mockProject,
+        simulatedProject,
         {
           name: "real-chromium",
           use: { ...devices["Desktop Chrome"] },
-          grep: /@real/,
+          grep: REAL_TAG,
         },
       ];
     }
 
-    return [baseProject];
+    return [mockProject, simulatedProject];
   })(),
 
   /* Run your local dev server before starting the tests */
