@@ -2,7 +2,7 @@
  * Spectrum component - frequency domain line chart with WebGL/Canvas2D fallback
  */
 
-import React, { useEffect, useRef, useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import {
   CanvasSpectrum,
   WebGLSpectrum,

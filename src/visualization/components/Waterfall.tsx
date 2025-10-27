@@ -2,7 +2,7 @@
  * Waterfall component - time-frequency heatmap with WebGL/Canvas2D fallback
  */
 
-import React, { useEffect, useRef, useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import {
   CanvasWaterfall,
   WebGLWaterfall,

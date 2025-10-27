@@ -45,26 +45,25 @@ export class WebGLSpectrum implements Renderer {
     this.canvas = canvas;
 
     // Try WebGL2 first
-    let gl = canvas.getContext("webgl2", {
+    let gl: GL | null = canvas.getContext("webgl2", {
       alpha: false,
       antialias: false,
       desynchronized: true,
-    });
+    }) as GL | null;
 
     // Fallback to WebGL1 if WebGL2 not available
     // Using if-statement pattern for clarity over ??= operator
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!gl) {
-      gl =
-        canvas.getContext("webgl", {
-          alpha: false,
-          antialias: false,
-          desynchronized: true,
-        }) ??
+      gl = (canvas.getContext("webgl", {
+        alpha: false,
+        antialias: false,
+        desynchronized: true,
+      }) ??
         canvas.getContext("experimental-webgl", {
           alpha: false,
           antialias: false,
-        });
+        })) as GL | null;
     }
 
     if (!gl) {
