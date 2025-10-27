@@ -1,6 +1,8 @@
 @import "./tokens.css";
 @import "./base.css";
 @import "./a11y.css";
+@import "./utilities.css";
+@import "./layout.css";
 @import "./components/buttons.css";
 @import "./components/cards.css";
 @import "./components/controls.css";
@@ -10,82 +12,7 @@
 
 /* Global base, accessibility, and focus styles moved to base.css and a11y.css */
 
-/* Container */
-.container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-/* Header */
-.header {
-  text-align: center;
-  padding: 2rem 0 3rem;
-}
-
-.header h1 {
-  font-size: 3rem;
-  font-weight: 700;
-  color: var(--rad-fg);
-  text-shadow: none;
-  margin-bottom: 0.5rem;
-}
-
-.header p {
-  font-size: 1.1rem;
-  color: var(--rad-fg-muted);
-}
-
-/* Navigation */
-.main-nav {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  padding: 0;
-}
-/* Frequency Display */
-.frequency-value {
-  font-family: var(--rad-font-mono);
-  font-variant-numeric: tabular-nums slashed-zero;
-}
-
-.nav-link {
-  padding: 0.75rem 1.5rem;
-  background: var(--rad-surface);
-  color: var(--rad-fg-muted);
-  text-decoration: none;
-  border-radius: var(--rad-radius-4);
-  font-weight: 500;
-  transition: all var(--rad-transition-medium, 200ms)
-    var(--rad-ease-standard, ease);
-  border: 2px solid transparent;
-}
-
-.nav-link:hover {
-  background: var(--rad-surface-2);
-  color: var(--rad-fg);
-  border-color: var(--rad-border);
-}
-
-.nav-link.active {
-  background: var(--rad-primary);
-  color: var(--rad-primary-foreground);
-  border-color: var(--rad-primary);
-  box-shadow: var(--rad-shadow-2);
-}
-
-@media (max-width: 768px) {
-  .main-nav {
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0 1rem;
-  }
-
-  .nav-link {
-    text-align: center;
-  }
-}
+/* Layout and navigation moved to layout.css; frequency-value moved to utilities.css */
 
 /* Card component moved to components/cards.css */
 
