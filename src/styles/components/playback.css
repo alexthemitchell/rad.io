@@ -1,0 +1,123 @@
+/* Recording Controls */
+.recording-section,
+.playback-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.recording-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.info-label {
+  font-weight: 600;
+  color: var(--rad-fg-muted);
+  min-width: 80px;
+}
+
+.info-value {
+  color: var(--rad-fg);
+  font-family: var(--rad-font-mono);
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-badge.idle {
+  background: var(--rad-surface-2);
+  color: var(--rad-fg-muted);
+}
+
+.status-badge.recording {
+  background: var(--rad-surface-2);
+  color: var(--rad-danger);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-badge.playback {
+  background: var(--rad-surface-2);
+  color: var(--rad-primary);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-record {
+  background: #fc8181;
+  color: #fff;
+}
+
+.btn-record:hover:not(:disabled) {
+  background: #f56565;
+}
+
+.btn-stop {
+  background: #718096;
+  color: #fff;
+}
+
+.btn-stop:hover:not(:disabled) {
+  background: #4a5568;
+}
+
+/* Playback Controls */
+.playback-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.playback-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.playback-progress-bar {
+  height: 8px;
+  background: var(--rad-border);
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.playback-progress-bar:hover {
+  filter: brightness(1.05);
+}
+
+.playback-progress-fill {
+  height: 100%;
+  background: var(--rad-primary);
+  transition: width 0.1s linear;
+}
+
+.playback-time-display {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: var(--rad-fg-muted);
+  font-family: var(--rad-font-mono);
+}

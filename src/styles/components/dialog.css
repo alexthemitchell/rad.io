@@ -1,0 +1,61 @@
+/* Dialog */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: var(--rad-surface);
+  color: var(--rad-fg);
+  border-radius: 12px;
+  padding: 2rem;
+  min-width: 400px;
+  max-width: 90vw;
+  border: 1px solid var(--rad-border);
+  box-shadow: var(--rad-shadow-3);
+}
+
+.dialog h4 {
+  margin: 0 0 1.5rem;
+  font-size: 1.5rem;
+  color: var(--rad-fg);
+}
+
+.dialog label {
+  display: block;
+  margin: 1rem 0 0.5rem;
+  font-weight: 600;
+  color: var(--rad-fg-muted);
+}
+
+.dialog input,
+.dialog select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--rad-border);
+  border-radius: 8px;
+  font-size: 1rem;
+  background: var(--rad-surface);
+  color: var(--rad-fg);
+}
+
+.dialog input:focus,
+.dialog select:focus {
+  outline: none;
+  border-color: var(--rad-ring);
+}
+
+.dialog-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
