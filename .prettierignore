@@ -9,3 +9,5 @@ coverage
 package-lock.json
 # Template files with placeholder syntax
 src/models/templates/
+.serena/memories/*.md
+.github/workflows/*.yml

@@ -24,11 +24,13 @@ The rad.io pipeline has been optimized across multiple dimensions:
 ### Key Metrics
 
 **Before Optimization:**
+
 - Build time: ~11.4s (WASM: 2.8s, Webpack: 8.6s)
 - Test time: ~60s (116 suites, 1612 tests)
 - Bundle size: 625 KB uncompressed
 
 **After Optimization:**
+
 - Build time: ~10.6s (improved caching, compression)
 - Test time: ~60s (optimized for CI)
 - Bundle size: 625 KB + gzip compression (~146 KB compressed)
@@ -49,6 +51,7 @@ npm run build:analyze
 ```
 
 This generates:
+
 - `dist/bundle-report.html` - Visual bundle analysis
 - `dist/bundle-stats.json` - Detailed bundle statistics
 
@@ -61,10 +64,12 @@ npm run build:prod
 ```
 
 Compressed files:
+
 - `*.js.gz` - Gzipped JavaScript bundles
 - `*.wasm.gz` - Gzipped WebAssembly modules
 
 Benefits:
+
 - ~81% compression ratio for main bundle (403 KB → 75 KB)
 - ~68% compression ratio for React vendors (181 KB → 57 KB)
 - ~63% compression ratio for vendors (38 KB → 14 KB)
@@ -72,6 +77,7 @@ Benefits:
 #### 3. Code Splitting
 
 Optimized chunk splitting strategy:
+
 - `main.js` - Application code (~403 KB)
 - `react-vendors.js` - React ecosystem (~181 KB)
 - `vendors.js` - Other dependencies (~38 KB)
@@ -80,6 +86,7 @@ Optimized chunk splitting strategy:
 #### 4. Caching
 
 Filesystem caching enabled for faster rebuilds:
+
 - Build cache stored in `node_modules/.cache/webpack`
 - Content-hash filenames for long-term browser caching
 
@@ -97,6 +104,7 @@ AssemblyScript WASM compilation is optimized:
 ```
 
 Build commands:
+
 ```bash
 npm run asbuild:release  # Optimized production build (12 KB)
 npm run asbuild:debug    # Debug build with symbols
@@ -112,6 +120,7 @@ npm run build:monitor    # Analyze current build artifacts
 ```
 
 Output includes:
+
 - Bundle size breakdown
 - JavaScript file sizes
 - WebAssembly artifact sizes
@@ -135,8 +144,9 @@ npm run test:perf
 ```
 
 Configuration in `jest.config.ts`:
+
 ```typescript
-maxWorkers: process.env["CI"] ? 2 : "50%"
+maxWorkers: process.env["CI"] ? 2 : "50%";
 ```
 
 ### Coverage Optimization
@@ -148,6 +158,7 @@ npm test -- --coverage
 ```
 
 Key thresholds:
+
 - Global: 38% statements, 35% branches, 39% functions, 38% lines
 - Critical DSP: 70-96% coverage
 - Device models: 72-93% coverage
@@ -156,12 +167,14 @@ Key thresholds:
 ### Test Performance
 
 Current metrics:
+
 - **Total time**: ~60s for 1612 tests
 - **Average**: ~37ms per test
 - **Suites**: 116 test suites
 - **Parallel**: 50% CPU cores (local) or 2 workers (CI)
 
 Tips for faster test execution:
+
 1. Run specific test suites: `npm test -- path/to/test.ts`
 2. Use watch mode for development: `npm run test:watch`
 3. Skip coverage for faster feedback: `npm test -- --no-coverage`
@@ -175,29 +188,32 @@ The quality checks workflow uses parallel jobs with shared caching:
 
 ```yaml
 jobs:
-  setup:          # Install deps once, cache for all jobs
-  build-wasm:     # Build WASM, cache for build job
-  lint:           # Parallel with other checks
-  test:           # Parallel with other checks
-  format:         # Parallel with other checks
-  type-check:     # Parallel with other checks
-  build:          # Uses WASM cache
-  all-checks:     # Verify all passed
+  setup: # Install deps once, cache for all jobs
+  build-wasm: # Build WASM, cache for build job
+  lint: # Parallel with other checks
+  test: # Parallel with other checks
+  format: # Parallel with other checks
+  type-check: # Parallel with other checks
+  build: # Uses WASM cache
+  all-checks: # Verify all passed
 ```
 
 ### Caching Strategy
 
 **Node Modules Cache:**
+
 ```yaml
 key: npm-${{ runner.os }}-node-20-${{ hashFiles('package-lock.json') }}
 ```
 
 **WASM Build Cache:**
+
 ```yaml
 key: wasm-${{ runner.os }}-${{ hashFiles('assembly/**/*.ts', 'asconfig.json') }}
 ```
 
 **Playwright Browsers:**
+
 ```yaml
 key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 ```
@@ -205,6 +221,7 @@ key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 ### Job Performance
 
 Typical job durations:
+
 - Setup: ~30s (with cache: ~10s)
 - WASM build: ~5s
 - Lint: ~10s
@@ -255,11 +272,13 @@ node scripts/build-monitor.mjs analyze
 ### Post-Deployment Validation
 
 Automated checks after deployment:
+
 1. HTTP 200 response check
 2. CDN propagation wait
 3. Content availability verification
 
 Future enhancements:
+
 - Lighthouse CI integration
 - E2E smoke tests
 - Performance budget enforcement
@@ -286,16 +305,19 @@ npm run build:monitor
 Track key metrics:
 
 1. **Build Time**
+
    ```bash
    time npm run build:prod
    ```
 
 2. **Test Time**
+
    ```bash
    time npm test
    ```
 
 3. **Bundle Size**
+
    ```bash
    du -sh dist/
    ls -lh dist/*.js
@@ -309,6 +331,7 @@ Track key metrics:
 ### CI/CD Metrics
 
 Monitor in GitHub Actions:
+
 - Job duration trends
 - Cache hit rates
 - Artifact sizes
@@ -322,6 +345,7 @@ Monitor in GitHub Actions:
 **Problem**: Webpack build fails with memory error
 
 **Solution**:
+
 ```bash
 export NODE_OPTIONS="--max-old-space-size=4096"
 npm run build:prod
@@ -330,6 +354,7 @@ npm run build:prod
 **Problem**: WASM build cache invalidation
 
 **Solution**:
+
 ```bash
 rm -rf build/
 npm run asbuild:release
@@ -338,6 +363,7 @@ npm run asbuild:release
 **Problem**: Type errors with webpack plugins
 
 **Solution**:
+
 ```bash
 npm install --save-dev @types/webpack-bundle-analyzer @types/compression-webpack-plugin
 ```
@@ -385,6 +411,7 @@ npm install --save-dev @types/webpack-bundle-analyzer @types/compression-webpack
 ### Development Workflow
 
 1. **Local Development**
+
    ```bash
    npm start                    # Dev server with hot reload
    npm run test:watch          # Watch mode for tests
@@ -392,6 +419,7 @@ npm install --save-dev @types/webpack-bundle-analyzer @types/compression-webpack
    ```
 
 2. **Before Committing**
+
    ```bash
    npm run validate            # Run all quality checks
    npm run build:monitor       # Check bundle size
@@ -458,6 +486,7 @@ npm install --save-dev @types/webpack-bundle-analyzer @types/compression-webpack
 ## Support
 
 For questions or issues:
+
 - Review this documentation
 - Check existing GitHub issues
 - Review CI/CD logs for specific failures

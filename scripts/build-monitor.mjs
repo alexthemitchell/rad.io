@@ -2,12 +2,12 @@
 
 /**
  * Build Performance Monitor
- * 
+ *
  * Tracks and reports build metrics for rad.io pipeline optimization.
- * 
+ *
  * Usage:
  *   node scripts/build-monitor.mjs [command]
- * 
+ *
  * Commands:
  *   benchmark  - Run comprehensive build benchmarks
  *   analyze    - Analyze current build artifacts
@@ -89,7 +89,10 @@ class BuildMonitor {
     };
 
     try {
-      const entries = execSync("ls -lh dist/", { cwd: rootDir, encoding: "utf8" });
+      const entries = execSync("ls -lh dist/", {
+        cwd: rootDir,
+        encoding: "utf8",
+      });
       const lines = entries.split("\n").filter((l) => l.trim());
 
       for (const line of lines) {
@@ -103,17 +106,32 @@ class BuildMonitor {
         const name = parts.slice(8).join(" ");
 
         if (name.endsWith(".js")) {
-          files.js.push({ name, size, bytes: this.getFileSize(`dist/${name}`) });
+          files.js.push({
+            name,
+            size,
+            bytes: this.getFileSize(`dist/${name}`),
+          });
         } else if (name.endsWith(".wasm")) {
-          files.wasm.push({ name, size, bytes: this.getFileSize(`dist/${name}`) });
+          files.wasm.push({
+            name,
+            size,
+            bytes: this.getFileSize(`dist/${name}`),
+          });
         } else {
-          files.other.push({ name, size, bytes: this.getFileSize(`dist/${name}`) });
+          files.other.push({
+            name,
+            size,
+            bytes: this.getFileSize(`dist/${name}`),
+          });
         }
       }
 
       const totalJs = files.js.reduce((sum, f) => sum + (f.bytes || 0), 0);
       const totalWasm = files.wasm.reduce((sum, f) => sum + (f.bytes || 0), 0);
-      const totalOther = files.other.reduce((sum, f) => sum + (f.bytes || 0), 0);
+      const totalOther = files.other.reduce(
+        (sum, f) => sum + (f.bytes || 0),
+        0,
+      );
       const totalAll = totalJs + totalWasm + totalOther;
 
       this.metrics.artifacts.bundle = {
@@ -138,7 +156,9 @@ class BuildMonitor {
           human: this.formatBytes(totalAll),
         },
         breakdown: {
-          js: files.js.sort((a, b) => (b.bytes || 0) - (a.bytes || 0)).slice(0, 5),
+          js: files.js
+            .sort((a, b) => (b.bytes || 0) - (a.bytes || 0))
+            .slice(0, 5),
           wasm: files.wasm,
         },
       };
