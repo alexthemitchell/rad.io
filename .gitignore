@@ -40,7 +40,7 @@ playwright-report/
 logs/
 *.log
 
-# AssemblyScript generated files (unused)
-index.html
+# Build output
+dist/
 
 test-results/

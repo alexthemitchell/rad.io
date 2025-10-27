@@ -27,11 +27,25 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Restore build cache
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            build/
+            dist/
+          key: deploy-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/**/*.{ts,tsx,js,jsx,css}', 'assembly/**', 'webpack.config.ts') }}
+          restore-keys: |
+            deploy-${{ runner.os }}-
+
       - name: Install
+        if: steps.cache-build.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Build
-        run: npm run build
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: npm run build:prod
 
       # SPA fallback so client-side routes work on refresh
       - name: Add 404 fallback
