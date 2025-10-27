@@ -199,11 +199,28 @@ describe("Logger", () => {
   describe("Error logging with context", () => {
     it("should log error with context", () => {
       logger.configure({ minLevel: LogLevel.ERROR });
+      const error = new Error("Test error");
       const context = { errorCode: 500 };
 
-      logger.error("error message", undefined, context);
+      logger.error("error message", error, context);
 
       expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        "\n",
+        expect.stringContaining("errorCode")
+      );
+    });
+
+    it("should log error with category", () => {
+      logger.configure({ minLevel: LogLevel.ERROR, includeTimestamp: false });
+
+      logger.error("error message", undefined, undefined, LogCategory.DEVICE);
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      const firstArg = consoleErrorSpy.mock.calls[0][0];
+      expect(firstArg).toContain(LogCategory.DEVICE);
+      expect(firstArg).toContain("error message");
     });
   });
 });
