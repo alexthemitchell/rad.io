@@ -980,7 +980,7 @@ export default function SpectrumExplorer({
             }}
             role="slider"
             tabIndex={0}
-            aria-orientation="horizontal"
+            aria-orientation="vertical"
             aria-valuemin={10}
             aria-valuemax={90}
             aria-valuenow={Math.round(splitRatio * 100)}
