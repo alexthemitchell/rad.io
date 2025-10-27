@@ -38,3 +38,31 @@ export function shouldUseMockSDR(): boolean {
 
   return false;
 }
+
+/**
+ * Determine whether device e2e tests should run.
+ * 
+ * Returns true if:
+ * - Environment variable RADIO_E2E_DEVICE=1 is set
+ * - A compatible SDR device is detected (via WebUSB)
+ */
+export async function shouldRunDeviceTests(): Promise<boolean> {
+  // Check environment variable
+  if (typeof process !== "undefined" && process.env["RADIO_E2E_DEVICE"] !== "1") {
+    return false;
+  }
+  
+  // Check for WebUSB support
+  if (typeof navigator === "undefined" || !("usb" in navigator)) {
+    return false;
+  }
+  
+  try {
+    // Check for previously paired devices (HackRF vendor ID)
+    const devices = await navigator.usb.getDevices();
+    const hackrfDevices = devices.filter(d => d.vendorId === 0x1d50);
+    return hackrfDevices.length > 0;
+  } catch {
+    return false;
+  }
+}
