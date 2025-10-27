@@ -162,14 +162,6 @@ npx http-server dist/ -p 8080 --cors
 
 **Produced artifacts (dist/):**
 
-To check current bundle sizes and composition:
-
-```bash
-npm run build:prod
-du -h dist/*.js | sort -hr
-du -sh dist/
-```
-
 The build typically includes:
 
 - Main application bundle (JavaScript)
@@ -181,6 +173,16 @@ The build typically includes:
 - HTML entry point
 
 Total deployment size varies based on features and dependencies.
+
+**Checking Bundle Sizes:**
+
+To check current bundle sizes and composition:
+
+```bash
+npm run build:prod
+du -h dist/*.js | sort -hr
+du -sh dist/
+```
 
 ### GitHub Actions Artifacts
 

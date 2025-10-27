@@ -68,6 +68,6 @@ jobs:
         run: |
           echo "## 🧹 Artifact Cleanup Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deleted**: ${{ steps.cleanup.outputs.deleted || 0 }} old artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- **Kept**: ${{ steps.cleanup.outputs.kept || 0 }} recent artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deleted**: ${{ steps.cleanup.outputs.deleted }} old artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- **Kept**: ${{ steps.cleanup.outputs.kept }} recent artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- **Retention Policy**: 7 days" >> $GITHUB_STEP_SUMMARY
