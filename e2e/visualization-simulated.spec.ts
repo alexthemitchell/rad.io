@@ -6,6 +6,9 @@ import { test, expect } from "@playwright/test";
  * Usage: npm run test:e2e -- --grep @simulated
  */
 
+// Performance thresholds
+const MAX_MEMORY_GROWTH_MB = 50;
+
 test.use({
   ignoreHTTPSErrors: true,
   viewport: { width: 1280, height: 800 },
@@ -16,7 +19,7 @@ test.describe("Visualization with Simulated Data @simulated", () => {
     page,
   }) => {
     // Navigate to demo page which uses SimulatedSource
-    await page.goto("https://localhost:8080/demo");
+    await page.goto("/demo");
 
     // Wait for page to load
     await page.waitForSelector("h1", { timeout: 10000 });
@@ -52,7 +55,7 @@ test.describe("Visualization with Simulated Data @simulated", () => {
   test("should display different signal patterns @simulated", async ({
     page,
   }) => {
-    await page.goto("https://localhost:8080/demo");
+    await page.goto("/demo");
 
     // Wait for page to load
     await page.waitForSelector("h1", { timeout: 10000 });
@@ -100,7 +103,7 @@ test.describe("Visualization with Simulated Data @simulated", () => {
   test("should show continuous updates when streaming simulated data @simulated", async ({
     page,
   }) => {
-    await page.goto("https://localhost:8080/demo");
+    await page.goto("/demo");
 
     // Wait for page to load
     await page.waitForSelector("h1", { timeout: 10000 });
@@ -137,7 +140,7 @@ test.describe("Visualization with Simulated Data @simulated", () => {
   test("should handle start/stop cycles correctly @simulated", async ({
     page,
   }) => {
-    await page.goto("https://localhost:8080/demo");
+    await page.goto("/demo");
 
     // Wait for page to load
     await page.waitForSelector("h1", { timeout: 10000 });
@@ -173,7 +176,7 @@ test.describe("Monitor Page with Simulated Data @simulated", () => {
   test("should render all visualization modes with simulated data @simulated", async ({
     page,
   }) => {
-    await page.goto("https://localhost:8080/monitor?mockSdr=1");
+    await page.goto("/monitor?mockSdr=1");
 
     // Wait for page to load
     const startBtn = page.getByRole("button", { name: "Start reception" });
@@ -232,7 +235,7 @@ test.describe("Monitor Page with Simulated Data @simulated", () => {
   test("should maintain visualization continuity during mode switches @simulated", async ({
     page,
   }) => {
-    await page.goto("https://localhost:8080/monitor?mockSdr=1");
+    await page.goto("/monitor?mockSdr=1");
 
     const startBtn = page.getByRole("button", { name: "Start reception" });
     await expect(startBtn).toBeVisible({ timeout: 10000 });
@@ -273,7 +276,7 @@ test.describe("Monitor Page with Simulated Data @simulated", () => {
   test("should display IQ constellation with simulated data @simulated", async ({
     page,
   }) => {
-    await page.goto("https://localhost:8080/monitor?mockSdr=1");
+    await page.goto("/monitor?mockSdr=1");
 
     const startBtn = page.getByRole("button", { name: "Start reception" });
     await expect(startBtn).toBeVisible({ timeout: 10000 });
@@ -312,7 +315,7 @@ test.describe("Monitor Page with Simulated Data @simulated", () => {
   test("should display amplitude waveform with simulated data @simulated", async ({
     page,
   }) => {
-    await page.goto("https://localhost:8080/monitor?mockSdr=1");
+    await page.goto("/monitor?mockSdr=1");
 
     const startBtn = page.getByRole("button", { name: "Start reception" });
     await expect(startBtn).toBeVisible({ timeout: 10000 });
@@ -347,7 +350,7 @@ test.describe("Visualization Performance @simulated", () => {
   test("should render frames at acceptable rate @simulated", async ({
     page,
   }) => {
-    await page.goto("https://localhost:8080/monitor?mockSdr=1");
+    await page.goto("/monitor?mockSdr=1");
 
     const startBtn = page.getByRole("button", { name: "Start reception" });
     await expect(startBtn).toBeVisible({ timeout: 10000 });
@@ -385,7 +388,7 @@ test.describe("Visualization Performance @simulated", () => {
   test("should not leak memory during extended streaming @simulated", async ({
     page,
   }) => {
-    await page.goto("https://localhost:8080/monitor?mockSdr=1");
+    await page.goto("/monitor?mockSdr=1");
 
     const startBtn = page.getByRole("button", { name: "Start reception" });
     await expect(startBtn).toBeVisible({ timeout: 10000 });
@@ -419,8 +422,8 @@ test.describe("Visualization Performance @simulated", () => {
       const growth = heap2 - heap1;
       const growthMB = growth / (1024 * 1024);
 
-      // Memory growth should be reasonable (less than 50 MB in 2 seconds)
-      expect(growthMB).toBeLessThan(50);
+      // Memory growth should be reasonable
+      expect(growthMB).toBeLessThan(MAX_MEMORY_GROWTH_MB);
     }
 
     const stopBtn = page.getByRole("button", { name: "Stop reception" });

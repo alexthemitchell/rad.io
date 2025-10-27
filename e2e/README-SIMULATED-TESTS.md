@@ -31,21 +31,25 @@ Comprehensive tests tagged with `@simulated` for isolated execution in the "simu
 ## Running Tests
 
 ### Run all e2e tests (includes simulated tests)
+
 ```bash
 npm run test:e2e
 ```
 
 ### Run only simulated tests
+
 ```bash
 npm run test:e2e:sim
 ```
 
 ### Run with UI mode for debugging
+
 ```bash
 npm run test:e2e:ui -- --grep @simulated
 ```
 
 ### Run in headed mode to see browser
+
 ```bash
 npm run test:e2e:headed -- --grep @simulated
 ```
@@ -73,17 +77,20 @@ The Playwright configuration defines three projects:
 ## Key Features
 
 ### Deterministic Testing
+
 - All tests use simulated data sources
 - No dependency on physical hardware
 - Consistent results across environments
 
 ### Comprehensive Coverage
+
 - Multiple visualization modes (waterfall, spectrogram, FFT)
 - IQ constellation and waveform displays
 - Mode switching and continuity verification
 - Performance and memory leak detection
 
 ### CI-Friendly
+
 - Fast execution (no hardware initialization delays)
 - Reliable results (no hardware flakiness)
 - Parallel execution support
@@ -111,6 +118,7 @@ The `SimulatedSource` supports multiple signal patterns:
 ### Adding New Tests
 
 1. Tag tests with `@simulated` in the test name:
+
    ```typescript
    test("should do something @simulated", async ({ page }) => {
      // test code

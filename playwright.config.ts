@@ -1,6 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
+ * Test tag patterns for organizing e2e tests
+ */
+const REAL_TAG = /@real/;
+const SIMULATED_TAG = /@simulated/;
+
+/**
  * Playwright configuration for rad.io E2E tests
  * See https://playwright.dev/docs/test-configuration
  */
@@ -68,14 +74,14 @@ export default defineConfig({
       name: "mock-chromium",
       use: { ...devices["Desktop Chrome"] },
       // Run everything except @real and @simulated tests
-      grepInvert: /@real|@simulated/,
+      grepInvert: new RegExp(`${REAL_TAG.source}|${SIMULATED_TAG.source}`),
     } as const;
 
     const simulatedProject = {
       name: "simulated",
       use: { ...devices["Desktop Chrome"] },
       // Run only @simulated tests
-      grep: /@simulated/,
+      grep: SIMULATED_TAG,
     } as const;
 
     // Only add the real device project when explicitly enabled to avoid spinning
@@ -87,7 +93,7 @@ export default defineConfig({
         {
           name: "real-chromium",
           use: { ...devices["Desktop Chrome"] },
-          grep: /@real/,
+          grep: REAL_TAG,
         },
       ];
     }
