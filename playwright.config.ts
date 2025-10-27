@@ -5,6 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
  */
 const REAL_TAG = /@real/;
 const SIMULATED_TAG = /@simulated/;
+const DEVICE_TAG = /@device/;
 
 /**
  * Playwright configuration for rad.io E2E tests
@@ -68,37 +69,47 @@ export default defineConfig({
     },
   },
 
-  /* Configure projects to separate mock vs real tests */
+  /* Configure projects to separate mock vs real vs device tests */
   projects: (() => {
     const mockProject = {
       name: "mock-chromium",
       use: { ...devices["Desktop Chrome"] },
-      // Run everything except @real and @simulated tests
-      grepInvert: new RegExp(`${REAL_TAG.source}|${SIMULATED_TAG.source}`),
-    } as const;
+      // Run everything except @real, @simulated, and @device tests
+      grepInvert: new RegExp(
+        `${REAL_TAG.source}|${SIMULATED_TAG.source}|${DEVICE_TAG.source}`,
+      ),
+    };
 
     const simulatedProject = {
       name: "simulated",
       use: { ...devices["Desktop Chrome"] },
       // Run only @simulated tests
       grep: SIMULATED_TAG,
-    } as const;
+    };
+
+    const projects = [mockProject, simulatedProject];
 
     // Only add the real device project when explicitly enabled to avoid spinning
     // up an extra Chrome instance that does no work but consumes memory.
     if (process.env["E2E_REAL_HACKRF"] === "1") {
-      return [
-        mockProject,
-        simulatedProject,
-        {
-          name: "real-chromium",
-          use: { ...devices["Desktop Chrome"] },
-          grep: REAL_TAG,
-        },
-      ];
+      projects.push({
+        name: "real-chromium",
+        use: { ...devices["Desktop Chrome"] },
+        grep: REAL_TAG,
+      });
     }
 
-    return [mockProject, simulatedProject];
+    // Add the device project when RADIO_E2E_DEVICE=1 is set
+    // This runs hardware-in-the-loop visualization tests with a physical device
+    if (process.env["RADIO_E2E_DEVICE"] === "1") {
+      projects.push({
+        name: "device",
+        use: { ...devices["Desktop Chrome"] },
+        grep: DEVICE_TAG,
+      });
+    }
+
+    return projects;
   })(),
 
   /* Run your local dev server before starting the tests */
