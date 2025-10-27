@@ -75,7 +75,9 @@ export default defineConfig({
       name: "mock-chromium",
       use: { ...devices["Desktop Chrome"] },
       // Run everything except @real, @simulated, and @device tests
-      grepInvert: new RegExp(`${REAL_TAG.source}|${SIMULATED_TAG.source}|${DEVICE_TAG.source}`),
+      grepInvert: new RegExp(
+        `${REAL_TAG.source}|${SIMULATED_TAG.source}|${DEVICE_TAG.source}`,
+      ),
     };
 
     const simulatedProject = {

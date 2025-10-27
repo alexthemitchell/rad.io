@@ -30,6 +30,7 @@ npm run test:e2e:device
 ```
 
 This will:
+
 - Set `RADIO_E2E_DEVICE=1`
 - Run only tests tagged with `@device`
 - Skip tests if device is not detected
@@ -57,41 +58,49 @@ npm run test:e2e:device -- --headed
 The device test suite validates:
 
 ### 1. Device Connection
+
 - Auto-connection to previously paired device
 - Device detection and initialization
 - WebUSB permission handling
 
 ### 2. Start/Stop Reception
+
 - Starting streaming with physical device
 - Stopping streaming cleanly
 - Verifying device state transitions
 
 ### 3. Frequency Tuning
+
 - Tuning to different frequencies (e.g., FM radio band at 100 MHz)
 - Verifying frequency changes are applied
 - Ensuring visualization continues after tuning
 
 ### 4. Gain Control
+
 - Adjusting LNA gain, VGA gain, or amp settings
 - Verifying gain changes are applied to hardware
 - Ensuring rendering stability after gain adjustments
 
 ### 5. Rendering Stability
+
 - Continuous frame updates over time
 - No memory leaks during extended streaming
 - Consistent visualization performance
 
 ### 6. Visualization Modes
+
 - Waterfall display with real RF data
 - Spectrogram display with real RF data
 - FFT display with real RF data
 - Mode switching while streaming
 
 ### 7. IQ Constellation
+
 - Rendering IQ constellation plot with real data
 - Verifying constellation updates continuously
 
 ### 8. Device Reconnection
+
 - Starting, stopping, and restarting streaming
 - Verifying device can be reused across sessions
 
@@ -103,6 +112,7 @@ The device tests are gated in two ways:
 2. **Test Level**: Tests are skipped if `RADIO_E2E_DEVICE` is not set to `1`
 
 This ensures:
+
 - Device tests don't run in CI by default
 - No extra Chrome instances are spawned when not needed
 - Tests fail gracefully if hardware is not present
@@ -110,6 +120,7 @@ This ensures:
 ## Continuous Integration
 
 Device tests are **not** run in CI by default. They are intended for:
+
 - Local development with hardware
 - Manual validation of device functionality
 - Pre-release hardware testing
@@ -130,6 +141,7 @@ To run device tests in CI (if hardware is available):
 **Problem**: Tests skip with "Device not detected"
 
 **Solutions**:
+
 1. Ensure HackRF is plugged in via USB
 2. Verify device is paired in browser (visit monitor page and click "Connect Device")
 3. Check that `RADIO_E2E_DEVICE=1` is set
@@ -140,6 +152,7 @@ To run device tests in CI (if hardware is available):
 **Problem**: Tests hang waiting for device to initialize
 
 **Solutions**:
+
 1. Unplug and replug the HackRF device
 2. Close other applications using the device
 3. Check device firmware is up to date
@@ -150,6 +163,7 @@ To run device tests in CI (if hardware is available):
 **Problem**: WebUSB permission denied
 
 **Solutions**:
+
 1. Clear browser site data and re-pair device
 2. Ensure you're using HTTPS (`https://localhost:8080`)
 3. Don't run in incognito/private mode (permissions not persisted)
@@ -159,6 +173,7 @@ To run device tests in CI (if hardware is available):
 **Problem**: Frame comparison tests fail
 
 **Solutions**:
+
 1. Check that device is receiving RF signals (connect antenna)
 2. Verify gain settings are not too low
 3. Try tuning to a frequency with known activity (e.g., FM radio)

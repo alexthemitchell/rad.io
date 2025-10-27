@@ -45,12 +45,12 @@ async function stopStreaming(page: Page) {
 /**
  * E2E tests for visualization with physical SDR device
  * Tagged with @device to run in the "device" project
- * 
+ *
  * Requirements:
  * - RADIO_E2E_DEVICE=1 environment variable
  * - Previously paired HackRF device (WebUSB permission saved)
  * - Physical device connected
- * 
+ *
  * Usage: RADIO_E2E_DEVICE=1 npm run test:e2e -- --grep @device
  */
 
@@ -62,7 +62,10 @@ test.use({
 const DEVICE_ENABLED = process.env["RADIO_E2E_DEVICE"] === "1";
 
 test.describe("Visualization with Physical Device @device", () => {
-  test.skip(!DEVICE_ENABLED, "Skipping device tests (RADIO_E2E_DEVICE not set)");
+  test.skip(
+    !DEVICE_ENABLED,
+    "Skipping device tests (RADIO_E2E_DEVICE not set)",
+  );
 
   test("should connect to physical device @device", async ({ page }) => {
     await page.goto("/monitor");

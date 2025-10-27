@@ -14,16 +14,19 @@ Key paths
 Test Projects & Flags
 
 Three Playwright projects exist:
+
 1. mock-chromium: runs accessibility + monitor-mock (default, no env var needed)
 2. simulated: runs @simulated tests (included by default)
 3. device: runs @device tests (only when RADIO_E2E_DEVICE=1)
 
 Mock mode detection (shouldUseMockSDR):
+
 - URL query param: ?mockSdr=1
 - localStorage: radio:e2e:mockSdr === "1"
 - build-time env: E2E_MOCK_SDR === "1"
 
 Device mode gating:
+
 - RADIO_E2E_DEVICE=1 must be set
 - WebUSB support detected
 - Previously paired HackRF device present (vendor ID 0x1d50)
@@ -39,6 +42,7 @@ Running tests
 Device test coverage
 
 Tests in visualization-device.spec.ts validate:
+
 - Device connection (auto-connection to paired device)
 - Start/stop reception with hardware
 - Frequency tuning (e.g., to 100 MHz FM band)
