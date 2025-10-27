@@ -787,6 +787,7 @@ npm run test:utils                    # Utility tests only
    ```
 
 2. **Cleanup WebGL Resources**
+
    ```typescript
    useEffect(() => {
      const glState = { program, vbo, texture };
@@ -940,6 +941,7 @@ function adaptiveDownsample(
    ```
 
 2. **Add Tests**
+
    ```typescript
    // src/visualization/__tests__/MyDataSource.test.ts
    describe("MyDataSource", () => {
