@@ -64,18 +64,26 @@ export default defineConfig({
 
   /* Configure projects to separate mock vs real tests */
   projects: (() => {
-    const baseProject = {
+    const mockProject = {
       name: "mock-chromium",
       use: { ...devices["Desktop Chrome"] },
-      // Run everything except @real tests
-      grepInvert: /@real/,
+      // Run everything except @real and @simulated tests
+      grepInvert: /@real|@simulated/,
+    } as const;
+
+    const simulatedProject = {
+      name: "simulated",
+      use: { ...devices["Desktop Chrome"] },
+      // Run only @simulated tests
+      grep: /@simulated/,
     } as const;
 
     // Only add the real device project when explicitly enabled to avoid spinning
     // up an extra Chrome instance that does no work but consumes memory.
     if (process.env["E2E_REAL_HACKRF"] === "1") {
       return [
-        baseProject,
+        mockProject,
+        simulatedProject,
         {
           name: "real-chromium",
           use: { ...devices["Desktop Chrome"] },
@@ -84,7 +92,7 @@ export default defineConfig({
       ];
     }
 
-    return [baseProject];
+    return [mockProject, simulatedProject];
   })(),
 
   /* Run your local dev server before starting the tests */
