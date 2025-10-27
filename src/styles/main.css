@@ -55,11 +55,11 @@
 .status-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: var(--rad-space-3);
+  padding: var(--rad-space-3) var(--rad-space-5);
   background: var(--rad-surface);
-  border-radius: 16px;
-  font-size: 13px;
+  border-radius: var(--rad-radius-4);
+  font-size: var(--rad-font-size-2);
   font-weight: 500;
 }
 
