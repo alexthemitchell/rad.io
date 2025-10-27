@@ -55,11 +55,11 @@
 .status-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: var(--rad-space-3);
+  padding: var(--rad-space-3) var(--rad-space-5);
   background: var(--rad-surface);
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: var(--rad-radius-4);
+  font-size: var(--rad-font-size-2);
   font-weight: 500;
 }
 
@@ -594,16 +594,6 @@
   margin-left: auto;
 }
 
-.status-indicator {
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 13px;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .status-indicator.status-active {
   background: var(--rad-surface-2);
   color: var(--rad-success);
@@ -627,14 +617,6 @@
   border-top: 1px solid var(--rad-border);
 }
 
-.device-diagnostics-panel .device-diagnostics {
-  margin: 0;
-  border: none;
-  background: transparent;
-  padding: 16px 0 0;
-  box-shadow: none;
-}
-
 /* Device Diagnostics Component */
 .device-diagnostics {
   background: var(--rad-surface);
@@ -643,6 +625,14 @@
   margin: 20px 0;
   border: 1px solid var(--rad-border);
   box-shadow: var(--rad-shadow-1);
+}
+
+.device-diagnostics-panel .device-diagnostics {
+  margin: 0;
+  border: none;
+  background: transparent;
+  padding: 16px 0 0;
+  box-shadow: none;
 }
 
 .diagnostics-header {

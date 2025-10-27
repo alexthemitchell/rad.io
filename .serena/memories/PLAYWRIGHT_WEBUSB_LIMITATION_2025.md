@@ -39,34 +39,48 @@
 ## Alternative Approaches for Real Hardware Testing
 
 ### 1. Manual Testing (Current Recommendation)
+
 Use checklist in `e2e/monitor-real-manual.md`:
+
 - First-time pairing
-- Auto-reconnect behavior  
+- Auto-reconnect behavior
 - Start/stop reception
 - Hot-reload during development
 - Device replug handling
 - Error scenarios
 
 ### 2. Playwright MCP Browser Tools
+
 Semi-automated testing with real browser instance:
+
 ```typescript
 // Controls actual Chrome/Edge, not Playwright's sandboxed version
-await mcp_microsoft_pla_browser_navigate({ url: "https://localhost:8080/monitor" });
-await mcp_microsoft_pla_browser_click({ element: "Connect Device", ref: "..." });
+await mcp_microsoft_pla_browser_navigate({
+  url: "https://localhost:8080/monitor",
+});
+await mcp_microsoft_pla_browser_click({
+  element: "Connect Device",
+  ref: "...",
+});
 // User manually selects device from picker
 await mcp_microsoft_pla_browser_wait_for({ time: 10 });
 ```
+
 **Caveat**: Still requires user to click device in picker dialog.
 
 ### 3. Integration Tests with Mocked WebUSB
+
 Test hooks/logic without real hardware:
+
 - `src/hooks/__tests__/useUSBDevice.test.ts`
 - Mock `navigator.usb` APIs
 - Verify pairing logic, error handling, state management
 - Fast, reliable, can run in CI
 
 ### 4. Chrome DevTools Protocol (CDP)
+
 Bypass Playwright entirely, use CDP directly:
+
 - Complex setup
 - Still may not support WebUSB in automation
 - Not recommended unless absolutely necessary

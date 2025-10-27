@@ -23,8 +23,8 @@ describe("SpectrumExplorer resizable split", () => {
       />,
     );
 
-    // Handle is a focusable separator with an aria-label including current percentage
-    const handle = screen.getByRole("separator", {
+    // Handle is a focusable slider with an aria-label including current percentage
+    const handle = screen.getByRole("slider", {
       name: /Resize split between spectrum and waterfall/i,
     });
     expect(handle).toBeInTheDocument();
