@@ -11,5 +11,5 @@ package-lock.json
 src/models/templates/
 # Serena internal files - managed separately
 .serena/memories/*.md
-# GitHub Actions - prettier doesn't handle GHA syntax well (use actionlint instead)
+# GitHub Actions workflows - excluded from Prettier formatting (prefer actionlint for formatting/validation)
 .github/workflows/*.yml
