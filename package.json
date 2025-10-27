@@ -14,6 +14,7 @@
     "test:components": "jest --coverage src/components/__tests__/",
     "test:utils": "jest --coverage src/utils/__tests__/",
     "test:e2e": "playwright test",
+    "test:e2e:sim": "playwright test --grep @simulated",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "format": "prettier --write .",
