@@ -1,13 +1,665 @@
 {
-  "timestamp": "2025-10-27T01:39:43.358Z",
+  "timestamp": "2025-10-27T01:49:11.531Z",
   "metrics": {
-    "totalTests": 44,
-    "totalTime": 114,
-    "slowTests": 0,
-    "verySlowTests": 0,
-    "averageTime": 2.590909090909091
+    "totalTests": 1546,
+    "totalTime": 50501,
+    "slowTests": 93,
+    "verySlowTests": 20,
+    "averageTime": 32.66558861578267
   },
-  "slowTests": [],
+  "slowTests": [
+    {
+      "name": "HackRFOne control formatting allows receive() after sample rate is configured",
+      "file": "src/hackrf/__tests__/HackRFOne.test.ts",
+      "duration": 5229,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Mocked Logic Tests Streaming state management should track streaming state correctly",
+      "file": "src/hackrf/__tests__/HackRFMocked.test.ts",
+      "duration": 5228,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Mocked Logic Tests Error recovery should handle timeout errors in streaming with retry",
+      "file": "src/hackrf/__tests__/HackRFMocked.test.ts",
+      "duration": 5204,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Tests with Realistic SDR Data Real-World Scenarios should handle scanning across frequency band",
+      "file": "src/components/__tests__/VisualizationSDRData.test.tsx",
+      "duration": 1113,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Fast Recovery restores all configuration including bandwidth and gains",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 655,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "IQRecorder should calculate duration correctly",
+      "file": "src/utils/__tests__/iqRecorder.test.ts",
+      "duration": 633,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Reset Functionality resets initialization flag after reset",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 613,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Reset Functionality sends reset command successfully",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 607,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOneAdapter initialization and configuration initialization validation resets initialization state on reset()",
+      "file": "src/hackrf/__tests__/HackRFOneAdapter.test.ts",
+      "duration": 605,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Tests with Realistic SDR Data Spectrogram with SDR Signals should show FM signal in frequency domain",
+      "file": "src/components/__tests__/VisualizationSDRData.test.tsx",
+      "duration": 572,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Tests with Realistic SDR Data Spectrogram with SDR Signals should show pulsed signal temporal variation",
+      "file": "src/components/__tests__/VisualizationSDRData.test.tsx",
+      "duration": 569,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Tests with Realistic SDR Data Spectrogram with SDR Signals should show multi-tone signal with distinct peaks",
+      "file": "src/components/__tests__/VisualizationSDRData.test.tsx",
+      "duration": 568,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Tests with Realistic SDR Data Real-World Scenarios should handle typical FM station at 100.3 MHz",
+      "file": "src/components/__tests__/VisualizationSDRData.test.tsx",
+      "duration": 562,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "InteractiveDSPPipeline shows stage panel when a stage is selected",
+      "file": "src/components/__tests__/InteractiveDSPPipeline.test.tsx",
+      "duration": 558,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOne control formatting resets device",
+      "file": "src/hackrf/__tests__/HackRFOne.test.ts",
+      "duration": 554,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Fast Recovery performs fast recovery with configuration restoration",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 554,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOneAdapter initialization and configuration device operations reset resets the device",
+      "file": "src/hackrf/__tests__/HackRFOneAdapter.test.ts",
+      "duration": 552,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "AdaptiveScanner scan should add finer steps around active signals",
+      "file": "src/lib/scanning/__tests__/adaptive-scanner.test.ts",
+      "duration": 520,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Mocked Logic Tests Error recovery should implement fast recovery",
+      "file": "src/hackrf/__tests__/HackRFMocked.test.ts",
+      "duration": 503,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOneAdapter initialization and configuration configuration status and validation fastRecovery maintains adapter initialization state",
+      "file": "src/hackrf/__tests__/HackRFOneAdapter.test.ts",
+      "duration": 503,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Integration Tests should process complete visualization pipeline",
+      "file": "src/utils/__tests__/dspProcessing.test.ts",
+      "duration": 482,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Tests with Realistic SDR Data Spectrogram with SDR Signals should handle different FFT sizes",
+      "file": "src/components/__tests__/VisualizationSDRData.test.tsx",
+      "duration": 454,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Fast Recovery handles fastRecovery when only sample rate is configured",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 403,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Fast Recovery maintains initialized state after fast recovery",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 402,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Data Compatibility should provide samples suitable for IQ Constellation",
+      "file": "src/models/__tests__/SDRDevice.test.ts",
+      "duration": 359,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "WebGLWaterfall should handle large datasets",
+      "file": "src/visualization/renderers/__tests__/Waterfall.test.ts",
+      "duration": 350,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Signal Generator Examples Multi-Tone Signals should generate multiple tones at specified frequencies",
+      "file": "src/utils/__tests__/signalGenerator.test.ts",
+      "duration": 321,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "AdaptiveScanner reset should clear learned interest data",
+      "file": "src/lib/scanning/__tests__/adaptive-scanner.test.ts",
+      "duration": 306,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Data Compatibility should reflect gain changes in signal amplitude",
+      "file": "src/models/__tests__/SDRDevice.test.ts",
+      "duration": 301,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Real-World Testing Patterns should handle edge cases with deterministic data",
+      "file": "src/utils/__tests__/signalGenerator.test.ts",
+      "duration": 265,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "InteractiveDSPPipeline renders all stage buttons",
+      "file": "src/components/__tests__/InteractiveDSPPipeline.test.tsx",
+      "duration": 262,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "SDRDevice Interface Sample Reception should start receiving samples",
+      "file": "src/models/__tests__/SDRDevice.test.ts",
+      "duration": 259,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOneAdapter initialization and configuration configuration sequence applies all configuration options in receive()",
+      "file": "src/hackrf/__tests__/HackRFOneAdapter.test.ts",
+      "duration": 255,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "LinearScanner scan should scan all frequencies in range",
+      "file": "src/lib/scanning/__tests__/linear-scanner.test.ts",
+      "duration": 255,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Tests with Realistic SDR Data Spectrogram with SDR Signals should show noise floor correctly",
+      "file": "src/components/__tests__/VisualizationSDRData.test.tsx",
+      "duration": 228,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "AudioStreamProcessor Sample Rate Conversion should decimate to lower sample rate",
+      "file": "src/utils/__tests__/audioStream.test.ts",
+      "duration": 222,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Mocked Logic Tests Protocol compliance should use correct request command for each operation",
+      "file": "src/hackrf/__tests__/HackRFMocked.test.ts",
+      "duration": 201,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "RDS Decoder Performance should process 1 second of audio in reasonable time",
+      "file": "src/utils/__tests__/rdsDecoder.test.ts",
+      "duration": 200,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "SDRDevice Interface Sample Reception should generate realistic signal characteristics",
+      "file": "src/models/__tests__/SDRDevice.test.ts",
+      "duration": 183,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Spectrogram should handle wide frequency range",
+      "file": "src/visualization/components/__tests__/Spectrogram.test.tsx",
+      "duration": 172,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "AdaptiveScanner scan should scan base frequencies",
+      "file": "src/lib/scanning/__tests__/adaptive-scanner.test.ts",
+      "duration": 159,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOneAdapter initialization and configuration configuration sequence sets sample rate before frequency when config provided",
+      "file": "src/hackrf/__tests__/HackRFOneAdapter.test.ts",
+      "duration": 157,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Device Configuration Status verifies all properties of configuration status object",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 153,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Device Configuration Status tracks all configuration parameters",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 152,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Data Compatibility should provide samples suitable for FFT/Spectrogram",
+      "file": "src/models/__tests__/SDRDevice.test.ts",
+      "duration": 152,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Data Compatibility should provide samples suitable for Waveform visualization",
+      "file": "src/models/__tests__/SDRDevice.test.ts",
+      "duration": 152,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "LinearScanner scan should call setFrequency with correct frequencies",
+      "file": "src/lib/scanning/__tests__/linear-scanner.test.ts",
+      "duration": 152,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "LinearScanner scan should report progress for each frequency",
+      "file": "src/lib/scanning/__tests__/linear-scanner.test.ts",
+      "duration": 152,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Mocked Logic Tests Adapter integration should provide configuration status through adapter",
+      "file": "src/hackrf/__tests__/HackRFMocked.test.ts",
+      "duration": 151,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Signal Generator Examples Basic IQ Generation should generate pure sinusoid with expected properties",
+      "file": "src/utils/__tests__/signalGenerator.test.ts",
+      "duration": 151,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Signal Generator Examples Basic IQ Generation should generate signal with high SNR",
+      "file": "src/utils/__tests__/signalGenerator.test.ts",
+      "duration": 151,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "SDRDevice Interface Sample Reception should provide properly formatted IQ samples",
+      "file": "src/models/__tests__/SDRDevice.test.ts",
+      "duration": 151,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Data Compatibility should generate samples with signal characteristics",
+      "file": "src/models/__tests__/SDRDevice.test.ts",
+      "duration": 151,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Signal Generator Examples Modulated Signals should generate FM signal",
+      "file": "src/utils/__tests__/signalGenerator.test.ts",
+      "duration": 138,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Spectrogram should handle custom frequency range",
+      "file": "src/visualization/components/__tests__/Spectrogram.test.tsx",
+      "duration": 134,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "AudioStreamProcessor RDS enable/disable branches toggles RDS on and off to hit both branches",
+      "file": "src/utils/__tests__/audioStream.rds.coverage.test.ts",
+      "duration": 133,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "processFFT should process FFT with windowing",
+      "file": "src/utils/__tests__/dspProcessing.test.ts",
+      "duration": 121,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "processFFT should work with different window types",
+      "file": "src/utils/__tests__/dspProcessing.test.ts",
+      "duration": 119,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "BandwidthSelector displays all supported bandwidths as options",
+      "file": "src/components/__tests__/BandwidthSelector.test.tsx",
+      "duration": 119,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "AudioStreamProcessor AM Demodulation should remove DC component",
+      "file": "src/utils/__tests__/audioStream.test.ts",
+      "duration": 117,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "processFFT should measure processing time",
+      "file": "src/utils/__tests__/dspProcessing.test.ts",
+      "duration": 114,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Tests with Realistic SDR Data Cross-Visualization Consistency should show frequency content consistently",
+      "file": "src/components/__tests__/VisualizationSDRData.test.tsx",
+      "duration": 113,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Pipeline Composition createVisualizationPipeline should execute pipeline on real samples",
+      "file": "src/utils/__tests__/dspProcessing.test.ts",
+      "duration": 113,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Edge Cases and Error Handling should handle very large samples",
+      "file": "src/utils/__tests__/dspProcessing.test.ts",
+      "duration": 113,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Visualization Tests with Realistic SDR Data Cross-Visualization Consistency should show consistent signal power across visualizations",
+      "file": "src/components/__tests__/VisualizationSDRData.test.tsx",
+      "duration": 112,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "DataSource Integration with Visualizations SimulatedSource with visualizations should feed samples to IQConstellation",
+      "file": "src/visualization/__tests__/DataSourceIntegration.test.tsx",
+      "duration": 111,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "useDetection should clear signals",
+      "file": "src/hooks/__tests__/useDetection.test.ts",
+      "duration": 110,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "useDetection should accumulate signals over multiple detections",
+      "file": "src/hooks/__tests__/useDetection.test.ts",
+      "duration": 108,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "WebGPU Utilities getViridisLUT should have valid RGBA values",
+      "file": "src/utils/__tests__/webgpu.test.ts",
+      "duration": 108,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Signal Generator Examples Async Testing Utilities should wait for condition to be true",
+      "file": "src/utils/__tests__/signalGenerator.test.ts",
+      "duration": 107,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "LinearScanner scan should handle device errors gracefully",
+      "file": "src/lib/scanning/__tests__/linear-scanner.test.ts",
+      "duration": 107,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "PriorityScanner scan should scan priority frequencies first",
+      "file": "src/lib/scanning/__tests__/priority-scanner.test.ts",
+      "duration": 106,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "Signal Generator Examples Async Testing Utilities should timeout when condition is not met",
+      "file": "src/utils/__tests__/signalGenerator.test.ts",
+      "duration": 104,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Mocked Logic Tests Streaming state management should use mutex for USB control transfers",
+      "file": "src/hackrf/__tests__/HackRFMocked.test.ts",
+      "duration": 103,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "LinearScanner scan should stop scanning when aborted",
+      "file": "src/lib/scanning/__tests__/linear-scanner.test.ts",
+      "duration": 103,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "PriorityScanner scan should abort early if signal aborted during priority scan",
+      "file": "src/lib/scanning/__tests__/priority-scanner.test.ts",
+      "duration": 103,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOne control formatting sets amp enable correctly",
+      "file": "src/hackrf/__tests__/HackRFOne.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOne control formatting does not log in non-development mode",
+      "file": "src/hackrf/__tests__/HackRFOne.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Mocked Logic Tests Error recovery should handle USB transfer errors gracefully",
+      "file": "src/hackrf/__tests__/HackRFMocked.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOneAdapter initialization and configuration bandwidth control setBandwidth adjusts to nearest supported value",
+      "file": "src/hackrf/__tests__/HackRFOneAdapter.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOneAdapter initialization and configuration configuration status and validation exposes getConfigurationStatus through adapter",
+      "file": "src/hackrf/__tests__/HackRFOneAdapter.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Configuration State Tracking tracks all configuration parameters independently",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "IQPlayback should deliver chunks during playback",
+      "file": "src/utils/__tests__/iqRecorder.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "PriorityScanner scan should use custom settling time and sample count",
+      "file": "src/lib/scanning/__tests__/priority-scanner.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "ReplaySource playback control should get playback progress",
+      "file": "src/visualization/__tests__/ReplaySource.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "RTLSDRDeviceAdapter Streaming should call callback with DataView",
+      "file": "src/models/__tests__/RTLSDRDevice.test.ts",
+      "duration": 102,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Mocked Logic Tests Device validation should report configuration status accurately",
+      "file": "src/hackrf/__tests__/HackRFMocked.test.ts",
+      "duration": 101,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRFOneAdapter initialization and configuration gain and amplifier control setAmpEnable enables/disables amplifier",
+      "file": "src/hackrf/__tests__/HackRFOneAdapter.test.ts",
+      "duration": 101,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Configuration State Tracking tracks sample rate changes",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 101,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "HackRF Error Handling and Recovery Configuration State Tracking tracks frequency changes",
+      "file": "src/hackrf/__tests__/HackRFErrorRecovery.test.ts",
+      "duration": 101,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "AdaptiveScanner scan should respect abort signal",
+      "file": "src/lib/scanning/__tests__/adaptive-scanner.test.ts",
+      "duration": 101,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "LinearScanner scan should use custom settling time if provided",
+      "file": "src/lib/scanning/__tests__/linear-scanner.test.ts",
+      "duration": 101,
+      "type": "unit",
+      "threshold": 100
+    },
+    {
+      "name": "ReplaySource playback control should get current playback time",
+      "file": "src/visualization/__tests__/ReplaySource.test.ts",
+      "duration": 101,
+      "type": "unit",
+      "threshold": 100
+    }
+  ],
   "thresholds": {
     "unit": {
       "slow": 100,
