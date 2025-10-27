@@ -1,4 +1,17 @@
 // Worker handling for visualization rendering using OffscreenCanvas
+// Enhanced with backpressure handling and frame drop policy
+
+// Frame queue management for backpressure
+const MAX_QUEUE_SIZE = 3;
+type QueuedFrame = {
+  type: "render";
+  data: MessageRender["data"];
+  timestamp: number;
+};
+const frameQueue: QueuedFrame[] = [];
+let isRendering = false;
+let droppedFrames = 0;
+let renderedFrames = 0;
 
 type MessageInit = {
   type: "init";
@@ -320,6 +333,90 @@ function drawWaveform(samples: WaveformSample[]): void {
   postMessage({ type: "metrics", viz: "waveform", renderTimeMs: end - start });
 }
 
+function processNextFrame(): void {
+  // Guard against race conditions: check and set flag in same tick
+  // Workers are single-threaded, but setTimeout can schedule multiple calls
+  if (isRendering || frameQueue.length === 0) {
+    return;
+  }
+
+  isRendering = true;
+  const frame = frameQueue.shift();
+  if (!frame) {
+    isRendering = false;
+    return;
+  }
+  const start = performance.now();
+
+  try {
+    const msg = frame.data;
+    if (!ctx) {
+      return;
+    }
+
+    if (vizType === "constellation") {
+      drawConstellation(msg.samples ?? [], msg.transform);
+    } else if (vizType === "spectrogram") {
+      drawSpectrogram(
+        msg.fftData ?? [],
+        msg.freqMin ?? freqMin,
+        msg.freqMax ?? freqMax,
+      );
+    } else if (vizType === "waveform") {
+      drawWaveform(msg.samples ?? []);
+    }
+
+    const end = performance.now();
+    renderedFrames++;
+
+    // Report metrics
+    postMessage({
+      type: "metrics",
+      viz: vizType,
+      renderTimeMs: end - start,
+      queueSize: frameQueue.length,
+      droppedFrames,
+      renderedFrames,
+    });
+  } catch (err) {
+    console.error("Rendering error:", err);
+  } finally {
+    isRendering = false;
+    // Process next frame if available (async to avoid stack overflow)
+    if (frameQueue.length > 0) {
+      setTimeout(processNextFrame, 0);
+    }
+  }
+}
+
+function enqueueFrame(data: MessageRender["data"]): void {
+  // Implement backpressure: drop oldest frames if queue is full
+  if (frameQueue.length >= MAX_QUEUE_SIZE) {
+    const dropped = frameQueue.shift();
+    if (dropped) {
+      droppedFrames++;
+      postMessage({
+        type: "frameDropped",
+        reason: "queue_full",
+        queueSize: frameQueue.length,
+        droppedFrames,
+      });
+    }
+  }
+
+  frameQueue.push({
+    type: "render",
+    data,
+    timestamp: performance.now(),
+  });
+
+  // Only trigger processing if not already in progress
+  // The isRendering flag prevents concurrent execution
+  if (!isRendering) {
+    processNextFrame();
+  }
+}
+
 self.onmessage = (
   ev: MessageEvent<
     MessageInit | MessageRender | MessageResize | { type: "dispose" }
@@ -354,25 +451,14 @@ self.onmessage = (
     }
 
     if (msg.type === "render") {
-      if (!ctx) {
-        return;
-      }
-      if (vizType === "constellation") {
-        drawConstellation(msg.data.samples ?? [], msg.data.transform);
-      } else if (vizType === "spectrogram") {
-        drawSpectrogram(
-          msg.data.fftData ?? [],
-          msg.data.freqMin ?? freqMin,
-          msg.data.freqMax ?? freqMax,
-        );
-      } else if (vizType === "waveform") {
-        drawWaveform(msg.data.samples ?? []);
-      }
+      // Use frame queue for backpressure handling
+      enqueueFrame(msg.data);
       return;
     }
 
     // msg.type === "dispose" at this point (exhaustive check)
-    // let GC collect
+    // Clear frame queue and let GC collect
+    frameQueue.length = 0;
     offscreen = null;
     ctx = null;
     vizType = null;

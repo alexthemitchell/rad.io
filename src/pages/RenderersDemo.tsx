@@ -155,7 +155,7 @@ export default function RenderersDemo(): ReactElement {
           <div style={{ fontSize: "14px", color: "#666" }}>
             <p>
               Sample Rate: {(metadata.sampleRate / 1e6).toFixed(2)} MHz |
-              Pattern: {metadata.pattern} | Streaming:{" "}
+              Pattern: {metadata["pattern"] as string} | Streaming:{" "}
               {isStreaming ? "Yes" : "No"}
             </p>
           </div>
