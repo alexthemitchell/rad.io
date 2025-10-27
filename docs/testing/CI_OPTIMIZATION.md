@@ -4,9 +4,12 @@
 
 ### Test Execution Times
 
-- **Unit tests**: ~56 seconds (109 suites, 1534 tests)
-- **E2E tests**: ~15-30 seconds (3 test files)
-- **Total CI time**: ~2-3 minutes per workflow
+Current baseline (will vary with code changes):
+- **Unit tests**: Varies based on test suite size
+- **E2E tests**: Varies based on browser/hardware
+- **Total CI time**: Varies based on parallelization
+
+Use `npm run test:perf` to measure current performance.
 
 ### Current Configuration
 

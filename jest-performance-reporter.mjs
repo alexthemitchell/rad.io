@@ -5,11 +5,11 @@
  * This helps maintain test suite performance and catch regressions.
  *
  * Usage: Add to jest.config.ts:
- *   reporters: ['default', '<rootDir>/jest-performance-reporter.js']
+ *   reporters: ['default', '<rootDir>/jest-performance-reporter.mjs']
  */
 
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
 
 // Thresholds for test categorization (in milliseconds)
 const THRESHOLDS = {
@@ -163,4 +163,4 @@ class PerformanceReporter {
   }
 }
 
-module.exports = PerformanceReporter;
+export default PerformanceReporter;

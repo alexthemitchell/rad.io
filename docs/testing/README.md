@@ -290,10 +290,10 @@ CI configuration:
 
 Track test performance:
 
-- **Total execution time**: ~56 seconds (unit tests)
-- **Total test count**: 1534 tests (109 suites)
-- **Coverage**: 38% global, 57-96% per-module
-- **Pass rate**: 99.5%+ (7 skipped tests)
+- **Total execution time**: Use `npm run test:perf` to measure
+- **Total test count**: Varies based on test suite
+- **Coverage**: See jest.config.ts for current thresholds
+- **Pass rate**: Should be 100% on main branch
 
 Enable performance tracking:
 

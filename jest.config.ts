@@ -88,7 +88,7 @@ const config: Config = {
   reporters: [
     "default",
     ...(process.env["TRACK_PERFORMANCE"] === "1"
-      ? ["<rootDir>/jest-performance-reporter.js"]
+      ? ["<rootDir>/jest-performance-reporter.mjs"]
       : []),
   ],
   transformIgnorePatterns: ["node_modules/(?!(webfft)/)"],
