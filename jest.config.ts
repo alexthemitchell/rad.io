@@ -1,5 +1,6 @@
-/** @type {import('jest').Config} */
-module.exports = {
+import type { Config } from "jest";
+
+const config: Config = {
   testEnvironment: "jsdom",
   testTimeout: 30000, // 30 seconds per test
   maxWorkers: "50%", // Use half of available CPU cores for parallel execution
@@ -91,7 +92,6 @@ module.exports = {
         jsc: {
           parser: { syntax: "typescript", tsx: true },
           transform: { react: { runtime: "automatic" } },
-          target: "es2020",
         },
         module: { type: "commonjs" },
         sourceMaps: true,
@@ -99,3 +99,5 @@ module.exports = {
     ],
   },
 };
+
+export default config;

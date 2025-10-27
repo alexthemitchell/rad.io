@@ -1,58 +1,15 @@
 # Build Performance Optimization
 
-This document describes the build performance optimizations implemented in rad.io and how to use them effectively.
+This document describes how to use the build performance optimizations in rad.io effectively.
 
 ## Overview
 
-Build performance has been optimized across all build targets:
+The build system uses several caching and optimization strategies:
 
-- JavaScript/TypeScript compilation with Webpack
-- WebAssembly compilation with AssemblyScript
-- Test execution with Jest
-
-## Performance Improvements
-
-### Measured Results
-
-| Build Type  | Before | After (Cold) | After (Cached) | Improvement                            |
-| ----------- | ------ | ------------ | -------------- | -------------------------------------- |
-| Development | 1.4s   | 1.5s         | 0.4s           | 73% faster (cached)                    |
-| Production  | 16s    | 10.3s        | 4.7s           | 35% faster (cold), 71% faster (cached) |
-| Tests       | 49s    | 48.7s        | -              | 1% faster                              |
-| WASM        | <1s    | <1s          | <1s            | Optimized output size                  |
-
-### Key Optimizations
-
-1. **TypeScript Incremental Compilation**
-   - Enabled `incremental: true` in `tsconfig.json`
-   - Creates `.tsbuildinfo` cache for faster rebuilds
-   - Reduces type-checking time on subsequent builds
-
-2. **Webpack Filesystem Cache**
-   - Enabled persistent caching to disk
-   - Cache invalidates on config changes
-   - Dramatically speeds up second and subsequent builds
-
-3. **Optimized Code Splitting**
-   - Added `chunks: "all"` to enable more aggressive splitting
-   - Added `reuseExistingChunk: true` to avoid duplicating modules
-   - Separates React vendors from other dependencies for better caching
-
-4. **Jest Parallel Execution**
-   - Configured `maxWorkers: "50%"` to use half of CPU cores
-   - Balances speed with system resources
-   - Can be overridden with `--maxWorkers` flag
-
-5. **AssemblyScript Optimization**
-   - Enabled `converge: true` for better optimization passes
-   - Enabled `noAssert: true` in release builds for smaller output
-   - Increased `shrinkLevel: 2` for better size optimization
-   - Reduced WASM size from 13.5KB to 11.9KB (12% smaller)
-
-6. **SWC Transpiler Configuration**
-   - Uses browser-specific targets for optimized output
-   - Reduces unnecessary polyfills
-   - Faster than TypeScript compiler
+- **TypeScript Incremental Compilation**: Caches type-checking results between builds
+- **Webpack Filesystem Cache**: Persistent build cache for fast rebuilds
+- **Jest Parallel Execution**: Runs tests across multiple CPU cores
+- **AssemblyScript Optimization**: Aggressive WASM optimization for smaller binaries
 
 ## Using the Optimizations
 
@@ -125,7 +82,7 @@ For CI/CD pipelines, consider caching these directories:
 # Example for GitHub Actions
 cache:
   - node_modules
-  - node_modules/.cache # Webpack cache
+  - node_modules/.cache/webpack # Webpack cache
   - .tsbuildinfo # TypeScript cache
   - build # WASM build outputs
 ```

@@ -3,6 +3,7 @@
   "sourceMaps": true,
   "minify": false,
   "jsc": {
+    "target": "es2022",
     "parser": {
       "syntax": "typescript",
       "tsx": true,
@@ -22,15 +23,5 @@
   },
   "module": {
     "type": "es6"
-  },
-  "env": {
-    "targets": {
-      "chrome": "90",
-      "firefox": "88",
-      "safari": "14",
-      "edge": "90"
-    },
-    "mode": "entry",
-    "coreJs": "3.0"
   }
 }
