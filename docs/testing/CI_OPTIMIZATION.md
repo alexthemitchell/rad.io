@@ -5,6 +5,7 @@
 ### Test Execution Times
 
 Current baseline (will vary with code changes):
+
 - **Unit tests**: Varies based on test suite size
 - **E2E tests**: Varies based on browser/hardware
 - **Total CI time**: Varies based on parallelization
