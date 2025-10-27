@@ -17,6 +17,8 @@ node_modules/.cache/
 coverage/
 .nyc_output/
 tests/  # AssemblyScript tests (not used)
+test-performance-report.json
+.jest-cache/
 
 # IDE
 .vscode/
