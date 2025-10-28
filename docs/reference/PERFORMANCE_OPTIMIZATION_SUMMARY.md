@@ -31,8 +31,8 @@ Documented current performance across all key areas:
 - Waveform: 0.2-0.3ms (WASM), 0.5-0.7ms (JS)
 
 **Visualization**:
-- Canvas 2D: 25-60 FPS depending on complexity
-- WebGL: 60+ FPS at 1920px width
+- Canvas 2D: 25-35 FPS (complex spectrogram), 50-60 FPS (simple charts)
+- WebGL: 60+ FPS at 1920px width with all visualizations
 - Memory: Stable with buffer pooling
 
 **Current Optimizations**:
@@ -68,21 +68,21 @@ Created detailed implementation plan with three phases:
 
 Created three major documentation files:
 
-**[performance-benchmarks.md](./docs/reference/performance-benchmarks.md)** (15KB)
+**[performance-benchmarks.md](./performance-benchmarks.md)** (15KB)
 - Baseline measurements for all operations
 - Current vs target performance metrics
 - Browser compatibility matrices
 - Testing and monitoring strategies
 - Version history for tracking improvements
 
-**[performance-optimization.md](./docs/reference/performance-optimization.md)** (Enhanced)
+**[performance-optimization.md](./performance-optimization.md)** (Enhanced)
 - Added WASM SIMD section with implementation details
 - Added SharedArrayBuffer section with ring buffer patterns
 - Added WebGPU compute shader examples
 - Enhanced resources with 20+ authoritative references
 - Cross-referenced all related documentation
 
-**[performance-implementation-plan.md](./docs/reference/performance-implementation-plan.md)** (18KB)
+**[performance-implementation-plan.md](./performance-implementation-plan.md)** (18KB)
 - Step-by-step implementation guide for 3 phases
 - Complete code examples for all optimizations
 - Testing strategy and success metrics
@@ -229,4 +229,4 @@ The rad.io project now has:
 
 ---
 
-*For questions or clarifications, refer to the detailed documentation in `docs/reference/`.*
+*For questions or clarifications, refer to the detailed documentation in this directory.*
