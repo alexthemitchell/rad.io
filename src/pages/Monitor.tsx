@@ -125,7 +125,6 @@ function Monitor(): React.JSX.Element {
     [device, isReceiving],
   );
 
-  // Will be defined later in file after handleStart to avoid use-before-define
   const didAutoStartRef = useRef<boolean>(false);
 
   const ensureAudio = useCallback((): void => {
