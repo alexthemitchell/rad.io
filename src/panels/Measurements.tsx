@@ -47,14 +47,18 @@ interface Marker {
   amplitude?: number;
 }
 
-function Measurements({ isPanel = false, markers: externalMarkers, readOnly = false }: MeasurementsProps): React.JSX.Element {
+function Measurements({
+  isPanel = false,
+  markers: externalMarkers,
+  readOnly = false,
+}: MeasurementsProps): React.JSX.Element {
   const containerClass = isPanel ? "panel-container" : "page-container";
   const [markers, setMarkers] = useState<Marker[]>(externalMarkers ?? []);
   const isReadOnly = readOnly || Array.isArray(externalMarkers);
 
   // Keep local state loosely in sync when externalMarkers is provided (view-only)
   const displayMarkers: Marker[] = useMemo(() => {
-    return isReadOnly ? externalMarkers ?? [] : markers;
+    return isReadOnly ? (externalMarkers ?? []) : markers;
   }, [isReadOnly, externalMarkers, markers]);
 
   const handleAddMarker = (): void => {
@@ -74,7 +78,8 @@ function Measurements({ isPanel = false, markers: externalMarkers, readOnly = fa
     const csv = [
       "Marker,Frequency (Hz),Amplitude (dBm)",
       ...displayMarkers.map((m, i) => {
-        const amp = typeof m.amplitude === "number" ? m.amplitude.toFixed(2) : "";
+        const amp =
+          typeof m.amplitude === "number" ? m.amplitude.toFixed(2) : "";
         return `${i + 1},${m.frequency},${amp}`;
       }),
     ].join("\n");
@@ -141,7 +146,8 @@ function Measurements({ isPanel = false, markers: externalMarkers, readOnly = fa
             <div>
               Δf:{" "}
               {Math.abs(
-                (displayMarkers[1]?.frequency ?? 0) - (displayMarkers[0]?.frequency ?? 0),
+                (displayMarkers[1]?.frequency ?? 0) -
+                  (displayMarkers[0]?.frequency ?? 0),
               ).toFixed(0)}{" "}
               Hz
             </div>
@@ -258,7 +264,10 @@ function Measurements({ isPanel = false, markers: externalMarkers, readOnly = fa
 
       <section aria-label="Export">
         <h3>Export Measurements</h3>
-        <button onClick={handleExportCSV} disabled={displayMarkers.length === 0}>
+        <button
+          onClick={handleExportCSV}
+          disabled={displayMarkers.length === 0}
+        >
           Export to CSV
         </button>
         <button

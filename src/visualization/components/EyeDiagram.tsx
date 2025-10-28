@@ -55,7 +55,7 @@ export default function EyeDiagram({
 
     // Background grid (subtle)
     ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth = dpr;
+    ctx.lineWidth = dpr;
     ctx.beginPath();
     const gridCols = 8;
     for (let i = 1; i < gridCols; i++) {
@@ -85,7 +85,7 @@ export default function EyeDiagram({
     let minI = Infinity;
     let maxI = -Infinity;
     for (const s of samples) {
-  const I = s.I;
+      const I = s.I;
       if (I < minI) {
         minI = I;
       }
@@ -96,7 +96,7 @@ export default function EyeDiagram({
     const ampSpan = Math.max(1e-6, maxI - minI);
 
     for (let o = 0; o < overlays; o++) {
-  const start = o * periodSamples;
+      const start = o * periodSamples;
       ctx.beginPath();
       // Slightly vary hue/alpha for depth perception
       ctx.strokeStyle = `rgba(79, 195, 247, ${Math.max(0.08, 0.4 - o / (overlays * 2))})`;

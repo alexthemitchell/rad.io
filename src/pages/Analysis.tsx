@@ -9,7 +9,11 @@ import { type ISDRDevice } from "../models/SDRDevice";
 import Measurements from "../panels/Measurements";
 import { type Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
-import { IQConstellation, WaveformVisualizer, EyeDiagram } from "../visualization";
+import {
+  IQConstellation,
+  WaveformVisualizer,
+  EyeDiagram,
+} from "../visualization";
 import type { MarkerRow } from "../components/MarkerTable";
 
 const MAX_BUFFER_SAMPLES = 32768;
@@ -23,7 +27,7 @@ function Analysis(): React.JSX.Element {
   const [deviceError, setDeviceError] = useState<Error | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [samples, setSamples] = useState<Sample[]>([]);
-  const [currentFPS, setCurrentFPS] = useState<number>(0);
+  const [_currentFPS, setCurrentFPS] = useState<number>(0);
 
   const shouldStartOnConnectRef = useRef(false);
 
@@ -347,7 +351,7 @@ function Analysis(): React.JSX.Element {
         if (!raw || cancelled) {
           return;
         }
-  const parsed = JSON.parse(raw) as MarkerRow[];
+        const parsed = JSON.parse(raw) as MarkerRow[];
         if (Array.isArray(parsed)) {
           setSharedMarkers(parsed);
         }
@@ -384,6 +388,7 @@ function Analysis(): React.JSX.Element {
           onStopReception={_stopListening}
           onResetDevice={handleResetDevice}
           isResetting={isResetting}
+          showConnect={false}
         />
 
         <Card
@@ -393,7 +398,7 @@ function Analysis(): React.JSX.Element {
           {!device ? (
             <div className="empty-state">
               <p>
-                No device connected. Use the controls above to connect your SDR
+                No device connected. Use the Status Bar to connect your SDR
                 device.
               </p>
             </div>
@@ -428,13 +433,23 @@ function Analysis(): React.JSX.Element {
           </Card>
         </div>
 
-        <Card title="Eye Diagram" subtitle="Overlayed symbol periods to assess timing and ISI">
+        <Card
+          title="Eye Diagram"
+          subtitle="Overlayed symbol periods to assess timing and ISI"
+        >
           <EyeDiagram samples={samples} />
         </Card>
 
         <Card title="Measurements" subtitle="Markers, deltas, and export">
           {/* Render as a panel to avoid nested page containers; use shared markers in read-only mode */}
-          <Measurements isPanel={true} markers={sharedMarkers.map((m) => ({ id: m.id, frequency: m.freqHz }))} readOnly={true} />
+          <Measurements
+            isPanel={true}
+            markers={sharedMarkers.map((m) => ({
+              id: m.id,
+              frequency: m.freqHz,
+            }))}
+            readOnly={true}
+          />
         </Card>
 
         <Card
@@ -446,7 +461,14 @@ function Analysis(): React.JSX.Element {
           <InteractiveDSPPipeline device={device} samples={samples} />
         </Card>
 
-        <PerformanceMetrics currentFPS={currentFPS} />
+        <Card
+          title="Performance Metrics"
+          subtitle="Rendering timing and diagnostics"
+          collapsible
+          defaultExpanded={false}
+        >
+          <PerformanceMetrics currentFPS={_currentFPS} />
+        </Card>
       </main>
     </div>
   );

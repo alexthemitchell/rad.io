@@ -14,6 +14,11 @@ interface DeviceControlBarProps {
   onStopReception: () => Promise<void>;
   onResetDevice?: () => Promise<void>;
   isResetting?: boolean;
+  /**
+   * Whether to show the Connect control. Defaults to true.
+   * Set to false when connect is handled elsewhere (e.g., StatusBar).
+   */
+  showConnect?: boolean;
 }
 
 /**
@@ -41,6 +46,7 @@ export function DeviceControlBar({
   onStopReception,
   onResetDevice,
   isResetting = false,
+  showConnect = true,
 }: DeviceControlBarProps): React.JSX.Element {
   const [diagnosticsExpanded, setDiagnosticsExpanded] = useState(false);
 
@@ -88,7 +94,7 @@ export function DeviceControlBar({
         role="toolbar"
         aria-label="Device control actions"
       >
-        {!device && (
+        {!device && showConnect && (
           <button
             className="btn btn-primary"
             onClick={() => void handleConnect()}

@@ -79,7 +79,13 @@ function StatusBar({
   const [currentTime, setCurrentTime] = useState(new Date());
   // Tolerate missing DeviceProvider in isolated tests by gracefully degrading
   let primaryDevice: unknown = undefined;
-  let connectPairedUSBDevice: (usb: USBDevice) => Promise<void> = async (_usb: USBDevice): Promise<void> => {
+  let connectPairedUSBDevice: (usb: USBDevice) => Promise<void> = async (
+    _usb: USBDevice,
+  ): Promise<void> => {
+    // intentional noop when no DeviceProvider is present (unit tests)
+    await Promise.resolve();
+  };
+  let requestDevice: () => Promise<void> = async (): Promise<void> => {
     // intentional noop when no DeviceProvider is present (unit tests)
     await Promise.resolve();
   };
@@ -88,6 +94,7 @@ function StatusBar({
     const ctx = useDeviceContext();
     primaryDevice = ctx.primaryDevice;
     connectPairedUSBDevice = ctx.connectPairedUSBDevice;
+    requestDevice = ctx.requestDevice;
     isCheckingPaired = ctx.isCheckingPaired;
   } catch {
     // No provider: leave defaults; component will render in read-only mode
@@ -107,6 +114,11 @@ function StatusBar({
     const usb = extractUSBDevice(primaryDevice);
     return usb ? deviceKey(usb) : "";
   }, [primaryDevice]);
+
+  const primaryUSB = useMemo(
+    () => extractUSBDevice(primaryDevice),
+    [primaryDevice],
+  );
 
   // Enumerate paired devices (similar to Devices panel)
   useEffect(() => {
@@ -230,6 +242,7 @@ function StatusBar({
   };
 
   const [showBufferDetails, setShowBufferDetails] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   return (
     <div
@@ -267,20 +280,30 @@ function StatusBar({
                 : "Select a paired SDR device to connect"
             }
           >
+            {/* Placeholder when no device is currently selected */}
+            {!deviceConnected && (
+              <option value="" disabled>
+                Select device…
+              </option>
+            )}
             {/* Ensure the current selection is present even if enumeration is slow */}
             {selectedKey &&
             !pairedUSBDevices.some((u) => deviceKey(u) === selectedKey) ? (
               <option value={selectedKey}>Current device</option>
             ) : null}
-            {pairedUSBDevices.map((usb) => (
-              <option key={deviceKey(usb)} value={deviceKey(usb)}>
-                {(usb.productName ?? "Unknown Device") +
-                  " (" +
-                  formatUsbId(usb.vendorId, usb.productId) +
-                  (usb.serialNumber ? ` • ${usb.serialNumber}` : "") +
-                  ")"}
-              </option>
-            ))}
+            {pairedUSBDevices.map((usb) => {
+              const visible = `${usb.productName ?? "Unknown Device"} (${formatUsbId(usb.vendorId, usb.productId)})`;
+              const tooltip = `${usb.productName ?? "Unknown Device"} • ${formatUsbId(usb.vendorId, usb.productId)}${usb.serialNumber ? ` • SN: ${usb.serialNumber}` : ""}`;
+              return (
+                <option
+                  key={deviceKey(usb)}
+                  value={deviceKey(usb)}
+                  title={tooltip}
+                >
+                  {visible}
+                </option>
+              );
+            })}
           </select>
         ) : (
           <span
@@ -290,10 +313,43 @@ function StatusBar({
                 ? "var(--rad-success)"
                 : "var(--rad-danger)",
             }}
+            title={
+              primaryUSB
+                ? `${primaryUSB.productName ?? "Unknown Device"} • ${formatUsbId(primaryUSB.vendorId, primaryUSB.productId)}${primaryUSB.serialNumber ? ` • SN: ${primaryUSB.serialNumber}` : ""}`
+                : undefined
+            }
           >
             {deviceConnected ? "Connected" : "Disconnected"}
           </span>
         )}
+
+        {/* Connect affordance lives in the StatusBar when not connected */}
+        {!deviceConnected ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setIsConnecting(true);
+              void requestDevice()
+                .catch((err: unknown) => {
+                  console.error("StatusBar: Failed to request device", err);
+                })
+                .finally(() => {
+                  setIsConnecting(false);
+                });
+            }}
+            disabled={isCheckingPaired || isConnecting}
+            aria-label="Connect SDR device via WebUSB"
+            title={
+              isCheckingPaired
+                ? "Checking for previously paired devices..."
+                : "Click to connect your SDR device via WebUSB"
+            }
+            style={{ marginLeft: 8, padding: "2px 8px" }}
+          >
+            {isConnecting ? "Connecting…" : "Connect…"}
+          </button>
+        ) : null}
       </div>
 
       <div className="status-bar-separator" aria-hidden="true" />
