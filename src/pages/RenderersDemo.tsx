@@ -5,9 +5,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { calculateSpectrogram } from "../utils/dsp";
-import { SimulatedSource } from "../visualization";
-import Spectrum from "../visualization/components/Spectrum";
-import Waterfall from "../visualization/components/Waterfall";
+import { SimulatedSource, Spectrum, Waterfall } from "../visualization";
 import type { Sample } from "../utils/dsp";
 import type { SimulatedSourceConfig } from "../visualization";
 import type { ReactElement } from "react";
