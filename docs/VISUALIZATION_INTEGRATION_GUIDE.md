@@ -46,6 +46,7 @@ interface DataSource {
 ```
 
 **Available Implementations:**
+
 - `SimulatedSource` - Synthetic signals for testing/demos
 - `ReplaySource` - Recorded IQ data playback
 - `HackRFOne` - Real hardware via WebUSB
@@ -64,6 +65,7 @@ interface FrameProcessor<TInput, TOutput> {
 ```
 
 **Available Implementations:**
+
 - `FFTProcessor` - Frequency domain transformation
 - `AGCProcessor` - Automatic gain control
 - `SpectrogramProcessor` - Time-frequency representation
@@ -82,6 +84,7 @@ interface Renderer {
 ```
 
 **Available Implementations:**
+
 - `WebGLSpectrum` / `WebGLWaterfall` - GPU-accelerated rendering
 - `CanvasSpectrum` / `CanvasWaterfall` - CPU fallback rendering
 
@@ -488,6 +491,7 @@ function MyComponent() {
 ```
 
 Benefits of the new pattern:
+
 - **Testable**: Processor can be tested independently
 - **Reusable**: Same processor used across components
 - **Configurable**: Easy to change settings via `updateConfig`

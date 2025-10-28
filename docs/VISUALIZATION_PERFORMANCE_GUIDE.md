@@ -101,6 +101,7 @@ const fft = calculateFFTSync(samples, fftSize);
 ```
 
 **WASM Functions Available**:
+
 - `calculateFFTSync` - FFT computation
 - `applyWindow` (Hann, Hamming, Blackman) - Window functions
 - `calculateSpectrogram` - Multi-frame FFT
@@ -235,6 +236,7 @@ function renderLoop() {
 ```
 
 **Performance Characteristics**:
+
 - **WebGL**: 60+ FPS for 8192 bins
 - **Canvas2D**: 30 FPS for 2048 bins
 
@@ -537,11 +539,13 @@ When implementing new processors or visualizations:
 ### Issue: Frame Rate Drops Below 30 FPS
 
 **Diagnosis**:
+
 1. Open DevTools Performance tab
 2. Record while issue occurs
 3. Look for long tasks > 50ms
 
 **Solutions**:
+
 - Move processing to Web Worker
 - Reduce FFT size or sample rate
 - Enable WASM acceleration
@@ -550,11 +554,13 @@ When implementing new processors or visualizations:
 ### Issue: High Memory Usage
 
 **Diagnosis**:
+
 1. Check performance.memory metrics
 2. Look for continuous growth
 3. Take heap snapshots
 
 **Solutions**:
+
 - Implement buffer pooling
 - Limit spectrogram buffer size
 - Clear buffers in cleanup methods
@@ -563,10 +569,12 @@ When implementing new processors or visualizations:
 ### Issue: GC Pauses
 
 **Diagnosis**:
+
 1. DevTools shows frequent GC events
 2. Frame drops correlate with GC
 
 **Solutions**:
+
 - Avoid allocations in hot paths
 - Reuse TypedArrays
 - Reduce object creation
@@ -575,10 +583,12 @@ When implementing new processors or visualizations:
 ### Issue: Slow Initial Load
 
 **Diagnosis**:
+
 1. Network tab shows large bundle
 2. Main thread blocked during parse
 
 **Solutions**:
+
 - Code split visualization modules
 - Lazy load components
 - Use dynamic imports
