@@ -30,6 +30,7 @@ This document tracks performance benchmarks, optimization implementations, and m
 ### Hardware Configuration
 
 **Test Environment**:
+
 - Browser: Chrome 120+, Firefox 120+, Safari 17+
 - CPU: Modern multi-core (4+ cores)
 - GPU: WebGL 2.0 / WebGPU capable
@@ -131,17 +132,20 @@ Current implementation uses WebAssembly-accelerated Cooley-Tukey FFT with automa
 **Status**: Production
 
 **Implementation**:
+
 - Cooley-Tukey FFT algorithm in AssemblyScript
 - Automatic feature detection and fallback
 - Pre-allocated buffer management
 - Window function optimization
 
 **Files**:
+
 - `assembly/dsp.ts` - WASM DSP implementations
 - `src/utils/dspWasm.ts` - WASM loader and management
 - `src/utils/dsp.ts` - Unified DSP API with WASM integration
 
 **Results**:
+
 - 2.5-3.3x speedup for FFT operations
 - 2.5x speedup for windowing functions
 - Reduced GC pressure
@@ -154,22 +158,26 @@ Current implementation uses WebAssembly-accelerated Cooley-Tukey FFT with automa
 **Status**: Production
 
 **Implementation**:
+
 - Dedicated worker for FFT calculations
 - Worker pool for batch processing
 - Transferable objects for zero-copy
 - Automatic worker cleanup
 
 **Files**:
+
 - `src/utils/dspWorker.ts` - Worker interface
 - `src/lib/workers/dsp-worker-pool.ts` - Worker pool management
 - `src/lib/workers/fft-worker.ts` - FFT worker implementation
 
 **Results**:
+
 - Main thread freed for UI updates
 - Parallel processing of multiple streams
 - Improved responsiveness
 
 **Limitations**:
+
 - Worker startup overhead (~50-100ms)
 - Message passing latency (~1-5ms)
 - Not beneficial for small datasets (<1024 samples)
@@ -179,18 +187,21 @@ Current implementation uses WebAssembly-accelerated Cooley-Tukey FFT with automa
 **Status**: Production (WebGL), Experimental (WebGPU)
 
 **Implementation**:
+
 - WebGL shaders for spectrum and waterfall
 - GPU-accelerated texture manipulation
 - Automatic fallback to Canvas2D
 - High-DPI support
 
 **Files**:
+
 - `src/utils/webgl.ts` - WebGL utilities
 - `src/utils/webgpu.ts` - WebGPU utilities
 - `src/visualization/renderers/WebGLSpectrum.ts`
 - `src/visualization/renderers/WebGLWaterfall.ts`
 
 **Results**:
+
 - 60+ FPS at 1920px width
 - GPU utilization ~20-30%
 - Smooth animations and updates
@@ -200,16 +211,19 @@ Current implementation uses WebAssembly-accelerated Cooley-Tukey FFT with automa
 **Status**: Production
 
 **Implementation**:
+
 - TypedArray buffer pools
 - Pre-allocated working buffers
 - Automatic buffer reuse
 - Memory pressure monitoring
 
 **Files**:
+
 - `src/lib/utils/buffer-pool.ts` - Buffer pool implementation
 - `src/utils/dsp.ts` - Buffer reuse in DSP
 
 **Results**:
+
 - Reduced GC frequency by 70%
 - Stable memory usage
 - Fewer frame drops
@@ -219,16 +233,19 @@ Current implementation uses WebAssembly-accelerated Cooley-Tukey FFT with automa
 **Status**: Production
 
 **Implementation**:
+
 - Performance marks and measures
 - FPS tracking
 - Memory usage monitoring
 - Long task detection
 
 **Files**:
+
 - `src/utils/performanceMonitor.ts` - Performance monitoring utilities
 - `src/lib/monitoring/dsp-metrics.ts` - DSP-specific metrics
 
 **Results**:
+
 - Real-time performance visibility
 - Automatic issue detection
 - Data-driven optimization
@@ -242,6 +259,7 @@ Current implementation uses WebAssembly-accelerated Cooley-Tukey FFT with automa
 **Expected Impact**: 1.5-2x additional speedup on top of existing WASM
 
 **Technical Approach**:
+
 - Add SIMD intrinsics to AssemblyScript FFT
 - Implement SIMD detection at runtime
 - Provide graceful fallback for unsupported platforms
@@ -249,17 +267,20 @@ Current implementation uses WebAssembly-accelerated Cooley-Tukey FFT with automa
 **Complexity**: Medium
 
 **References**:
+
 - RustFFT WASM SIMD: https://deepwiki.com/ejmahler/RustFFT/4.4-wasm-simd-implementation
 - pffft.wasm: https://github.com/JorenSix/pffft.wasm
 - WebFFT meta-library: https://webfft.com/
 
 **Browser Support**:
+
 - Chrome 91+ ✅
 - Firefox 89+ ✅
 - Safari 16.4+ ✅
 - Edge 91+ ✅
 
 **Detection Code**:
+
 ```javascript
 function detectWasmSIMD() {
   try {
@@ -281,6 +302,7 @@ function detectWasmSIMD() {
 **Expected Impact**: Eliminate 1-5ms message passing latency
 
 **Technical Approach**:
+
 - Use SharedArrayBuffer for sample buffers
 - Implement Atomics for synchronization
 - Ring buffer for continuous streaming
@@ -288,16 +310,19 @@ function detectWasmSIMD() {
 **Complexity**: Medium-High
 
 **Browser Support**:
+
 - Requires HTTPS + COOP/COEP headers
 - Chrome 92+ ✅
 - Firefox 79+ ✅
 - Safari 15.2+ ✅
 
 **References**:
+
 - MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
 - Signal Analyzer implementation: https://cprimozic.net/blog/building-a-signal-analyzer-with-modern-web-tech/
 
 **Security Considerations**:
+
 - Spectre mitigation required
 - Cross-origin isolation needed
 
@@ -309,6 +334,7 @@ function detectWasmSIMD() {
 **Expected Impact**: 5-10x speedup for large FFTs (4096+)
 
 **Technical Approach**:
+
 - Implement FFT compute shader in WGSL
 - GPU-native butterfly operations
 - Direct rendering from compute output
@@ -316,12 +342,14 @@ function detectWasmSIMD() {
 **Complexity**: High
 
 **Browser Support**:
+
 - Chrome 113+ ✅
 - Edge 113+ ✅
 - Safari 18+ ✅
 - Firefox: In development
 
 **References**:
+
 - WebGPU Fundamentals: https://webgpufundamentals.org/
 - Compute shader optimization: https://github.com/gfx-rs/wgpu/discussions/6688
 
@@ -335,6 +363,7 @@ function detectWasmSIMD() {
 **Expected Impact**: Maintain 60 FPS under varying load
 
 **Technical Approach**:
+
 - Real-time FPS monitoring
 - Dynamic FFT size adjustment
 - Quality tier system
@@ -343,6 +372,7 @@ function detectWasmSIMD() {
 **Complexity**: Medium
 
 **Implementation**:
+
 - Monitor frame time
 - Reduce FFT size when frame time >16ms
 - Reduce waterfall update rate
@@ -356,6 +386,7 @@ function detectWasmSIMD() {
 **Expected Impact**: Free main thread from rendering
 
 **Technical Approach**:
+
 - Transfer canvas control to worker
 - Render visualizations in background
 - Sync with main thread for display
@@ -363,6 +394,7 @@ function detectWasmSIMD() {
 **Complexity**: Medium
 
 **Browser Support**:
+
 - Chrome 69+ ✅
 - Firefox 105+ ✅
 - Safari 17+ ✅
@@ -377,6 +409,7 @@ function detectWasmSIMD() {
 **Expected Impact**: <1ms audio latency
 
 **Technical Approach**:
+
 - Move demodulation to AudioWorklet
 - Real-time audio processing
 - Direct audio output
@@ -391,11 +424,13 @@ function detectWasmSIMD() {
 ### Automated Benchmarks
 
 Run benchmark suite:
+
 ```bash
 npm run test:perf -- --testNamePattern=benchmark
 ```
 
 Run specific DSP benchmarks:
+
 ```bash
 npm run test:perf -- src/utils/__tests__/dspBenchmark
 ```

@@ -107,6 +107,7 @@ worker.postMessage({ buffer: myFloat32Array }, [myFloat32Array.buffer]);
 SharedArrayBuffer allows multiple workers and main thread to access the same memory without copying, eliminating transfer overhead entirely.
 
 **Browser Requirements**:
+
 - HTTPS deployment
 - `Cross-Origin-Opener-Policy: same-origin` header
 - `Cross-Origin-Embedder-Policy: require-corp` header
@@ -187,17 +188,20 @@ class SharedRingBuffer {
 | SharedArrayBuffer | <0.01ms | ~10+ GB/s |
 
 **Use Cases**:
+
 - Real-time SDR sample streaming (20+ MS/s)
 - Multi-worker parallel processing
 - Low-latency audio pipelines
 - High-frequency data visualization
 
 **Security Considerations**:
+
 - Requires cross-origin isolation (Spectre mitigation)
 - May not work in embedded contexts (iframes)
 - Server configuration needed
 
 **Resources**:
+
 - [MDN SharedArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer)
 - [Signal Analyzer Implementation](https://cprimozic.net/blog/building-a-signal-analyzer-with-modern-web-tech/)
 
@@ -392,6 +396,7 @@ class WindowCache {
 WebAssembly SIMD (Single Instruction, Multiple Data) provides 2-4x additional speedup on top of regular WASM by performing operations on multiple data points simultaneously.
 
 **Browser Support**:
+
 - Chrome 91+ ✅
 - Firefox 89+ ✅  
 - Safari 16.4+ ✅
@@ -461,6 +466,7 @@ v128.store(outputPtr, result);
 - Trap on unsupported platforms (careful fallback needed)
 
 **Resources**:
+
 - [RustFFT WASM SIMD](https://deepwiki.com/ejmahler/RustFFT/4.4-wasm-simd-implementation)
 - [V8 SIMD Blog Post](https://v8.dev/features/simd)
 - [WebAssembly SIMD Proposal](https://github.com/WebAssembly/simd)
@@ -542,6 +548,7 @@ gl.texImage2D(
 WebGPU provides direct access to GPU compute capabilities, enabling 5-10x speedup for large FFTs and parallel DSP operations compared to WASM.
 
 **Browser Support**:
+
 - Chrome 113+ ✅
 - Edge 113+ ✅
 - Safari 18+ ✅
@@ -734,6 +741,7 @@ class WebGPUSpectrumAnalyzer {
 - Profile with browser GPU debuggers (Chrome DevTools, Safari Web Inspector)
 
 **Resources**:
+
 - [WebGPU Fundamentals](https://webgpufundamentals.org/)
 - [Compute Shader Optimization](https://github.com/gfx-rs/wgpu/discussions/6688)
 - [WebGPU Best Practices](https://toji.github.io/webgpu-best-practices/)
