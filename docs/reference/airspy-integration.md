@@ -38,6 +38,7 @@ devices in the rad.io visualizer.
 **Note**: Airspy Mini and R2 share the same USB IDs and can be distinguished by their capabilities and firmware.
 
 > **Warning:** The current rad.io implementation only supports the sample rates of Airspy R2 (2.5 MS/s, 10 MS/s) due to the shared USB VID/PID (0x1d50:0x60a1) and lack of device variant detection. Attempting to use Airspy Mini's native sample rates (3 MS/s, 6 MS/s) will fail. This limitation will be addressed in a future update.
+
 ### Airspy HF+
 
 **Specifications:**

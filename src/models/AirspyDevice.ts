@@ -1,19 +1,21 @@
 /**
  * Airspy Device Implementation
  *
- * Implements WebUSB communication for Airspy R2 and Mini SDR devices.
- * These devices provide high-performance reception with 12-bit samples
- * and sample rates up to 10 MS/s.
+ * Implements WebUSB communication for Airspy R2 SDR devices.
+ * Note: While Airspy Mini shares the same USB VID/PID (0x1d50:0x60a1),
+ * this implementation currently only supports R2 sample rates (2.5 MS/s, 10 MS/s).
+ * Mini-specific sample rates (3 MS/s, 6 MS/s) are not yet supported due to lack
+ * of device variant detection. This limitation will be addressed in a future update.
  *
  * USB Configuration:
  * - Vendor ID: 0x1d50 (OpenMoko)
- * - Product ID: 0x60a1 (Airspy)
+ * - Product ID: 0x60a1 (Airspy R2/Mini)
  * - Interface: 0
  * - Bulk IN Endpoint: 0x81
  *
- * Key Features:
+ * Key Features (Airspy R2):
  * - Frequency range: 24 MHz - 1.8 GHz
- * - Sample rates: 2.5 MS/s, 10 MS/s
+ * - Sample rates: 2.5 MS/s, 10 MS/s (R2 only)
  * - 12-bit samples (transmitted as 16-bit)
  * - Configurable gains: LNA, Mixer, IF (VGA)
  * - Low noise amplifier control
@@ -68,7 +70,8 @@ export class AirspyDevice {
   // Device limits
   private readonly MIN_FREQUENCY = 24e6; // 24 MHz
   private readonly MAX_FREQUENCY = 1800e6; // 1.8 GHz
-  private readonly SUPPORTED_SAMPLE_RATES = [2.5e6, 10e6]; // 2.5 MS/s, 10 MS/s
+  // Airspy R2 sample rates only. Mini rates (3 MS/s, 6 MS/s) not yet supported.
+  private readonly SUPPORTED_SAMPLE_RATES = [2.5e6, 10e6]; // 2.5 MS/s, 10 MS/s (R2)
 
   // Transfer parameters
   private readonly TRANSFER_SIZE = 262144; // 256 KB buffer
