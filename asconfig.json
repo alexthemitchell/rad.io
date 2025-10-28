@@ -14,6 +14,16 @@
       "shrinkLevel": 2,
       "converge": true,
       "noAssert": true
+    },
+    "release-simd": {
+      "outFile": "build/release-simd.wasm",
+      "textFile": "build/release-simd.wat",
+      "sourceMap": false,
+      "optimizeLevel": 3,
+      "shrinkLevel": 2,
+      "converge": true,
+      "noAssert": true,
+      "feature": ["simd"]
     }
   },
   "options": {

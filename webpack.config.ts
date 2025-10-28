@@ -90,6 +90,26 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
           { from: "build/release.wasm", to: "dsp.wasm" },
           { from: "build/release.js", to: "release.js" },
           { from: "build/release.js", to: "dsp.js" },
+          {
+            from: "build/release-simd.wasm",
+            to: "release-simd.wasm",
+            noErrorOnMissing: true,
+          },
+          {
+            from: "build/release-simd.wasm",
+            to: "dsp-simd.wasm",
+            noErrorOnMissing: true,
+          },
+          {
+            from: "build/release-simd.js",
+            to: "release-simd.js",
+            noErrorOnMissing: true,
+          },
+          {
+            from: "build/release-simd.js",
+            to: "dsp-simd.js",
+            noErrorOnMissing: true,
+          },
         ],
       }),
     ],
@@ -100,6 +120,10 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
       historyApiFallback: true,
       hot: true,
       server: "https",
+      headers: {
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp",
+      },
     },
     performance: {
       // Updated to match documented bundle sizes: main chunk ~406 KB, total ~628 KB

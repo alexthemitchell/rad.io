@@ -30,7 +30,8 @@
     "clean": "rimraf dist node_modules build",
     "asbuild:debug": "asc assembly/index.ts --target debug",
     "asbuild:release": "asc assembly/index.ts --target release",
-    "asbuild": "npm run asbuild:debug && npm run asbuild:release",
+    "asbuild:release-simd": "asc assembly/index.ts --target release-simd",
+    "asbuild": "npm run asbuild:debug && npm run asbuild:release && npm run asbuild:release-simd",
     "as:check": "npm run asbuild:debug",
     "test:perf": "TRACK_PERFORMANCE=1 jest --no-coverage"
   },
