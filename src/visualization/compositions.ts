@@ -1,9 +1,9 @@
 /**
  * Composition helpers for creating common visualization patterns
- * 
+ *
  * This module provides factory functions and utilities to easily compose
  * data sources, processors, and visualizations for common SDR use cases.
- * 
+ *
  * @example
  * ```typescript
  * // Create a complete waterfall display with simulated data
@@ -12,7 +12,7 @@
  *   sampleRate: 2048000,
  *   fftSize: 1024,
  * });
- * 
+ *
  * // Use in your React component
  * <Waterfall frames={config.frames} width={900} height={600} />
  * ```
@@ -21,7 +21,11 @@
 import { FFTProcessor, AGCProcessor, SpectrogramProcessor } from "./processors";
 import { SimulatedSource } from "./SimulatedSource";
 import type { DataSource, DataSourceMetadata } from "./interfaces";
-import type { FFTProcessorConfig, AGCProcessorConfig, SpectrogramProcessorConfig } from "./processors";
+import type {
+  FFTProcessorConfig,
+  AGCProcessorConfig,
+  SpectrogramProcessorConfig,
+} from "./processors";
 import type { SimulatedSourceConfig } from "./SimulatedSource";
 
 /**
@@ -96,10 +100,10 @@ export const VisualizationPresets = {
 
 /**
  * Create a complete FFT processing pipeline with sensible defaults
- * 
+ *
  * @param config - FFT configuration (uses RealtimeMonitoring preset if not specified)
  * @returns Configured FFT processor
- * 
+ *
  * @example
  * ```typescript
  * const fftProcessor = createFFTPipeline({
@@ -108,15 +112,15 @@ export const VisualizationPresets = {
  *   useWasm: true,
  *   sampleRate: 2048000,
  * });
- * 
+ *
  * const output = fftProcessor.process(samples);
  * ```
  */
 export function createFFTPipeline(
-  config?: Partial<FFTProcessorConfig>
+  config?: Partial<FFTProcessorConfig>,
 ): FFTProcessor {
   const defaults = VisualizationPresets.RealtimeMonitoring;
-  
+
   return new FFTProcessor({
     type: "fft",
     fftSize: config?.fftSize ?? defaults.fftSize,
@@ -128,10 +132,10 @@ export function createFFTPipeline(
 
 /**
  * Create an AGC processor with sensible defaults for SDR applications
- * 
+ *
  * @param config - AGC configuration
  * @returns Configured AGC processor
- * 
+ *
  * @example
  * ```typescript
  * const agc = createAGCPipeline({
@@ -139,12 +143,12 @@ export function createFFTPipeline(
  *   attackTime: 0.01,
  *   decayTime: 0.1,
  * });
- * 
+ *
  * const normalized = agc.process(samples);
  * ```
  */
 export function createAGCPipeline(
-  config?: Partial<AGCProcessorConfig>
+  config?: Partial<AGCProcessorConfig>,
 ): AGCProcessor {
   return new AGCProcessor({
     type: "agc",
@@ -157,10 +161,10 @@ export function createAGCPipeline(
 
 /**
  * Create a spectrogram processor with sensible defaults
- * 
+ *
  * @param config - Spectrogram configuration
  * @returns Configured spectrogram processor
- * 
+ *
  * @example
  * ```typescript
  * const spectrogram = createSpectrogramPipeline({
@@ -168,19 +172,20 @@ export function createAGCPipeline(
  *   hopSize: 512,
  *   maxTimeSlices: 100,
  * });
- * 
+ *
  * const output = spectrogram.process(samples);
  * ```
  */
 export function createSpectrogramPipeline(
-  config?: Partial<SpectrogramProcessorConfig>
+  config?: Partial<SpectrogramProcessorConfig>,
 ): SpectrogramProcessor {
   const defaults = VisualizationPresets.RealtimeMonitoring;
-  
+
   return new SpectrogramProcessor({
     type: "spectrogram",
     fftSize: config?.fftSize ?? defaults.fftSize,
-    hopSize: config?.hopSize ?? Math.floor((config?.fftSize ?? defaults.fftSize) / 2),
+    hopSize:
+      config?.hopSize ?? Math.floor((config?.fftSize ?? defaults.fftSize) / 2),
     windowFunction: config?.windowFunction ?? defaults.windowFunction,
     useWasm: config?.useWasm ?? true,
     sampleRate: config?.sampleRate ?? defaults.sampleRate,
@@ -190,10 +195,10 @@ export function createSpectrogramPipeline(
 
 /**
  * Create a simulated data source with a specific signal pattern
- * 
+ *
  * @param config - Simulated source configuration
  * @returns Configured simulated source
- * 
+ *
  * @example
  * ```typescript
  * const source = createSimulatedSource({
@@ -201,17 +206,17 @@ export function createSpectrogramPipeline(
  *   sampleRate: 2048000,
  *   amplitude: 0.8,
  * });
- * 
+ *
  * await source.startStreaming((samples) => {
  *   // Handle samples
  * });
  * ```
  */
 export function createSimulatedSource(
-  config?: Partial<SimulatedSourceConfig>
+  config?: Partial<SimulatedSourceConfig>,
 ): SimulatedSource {
   const defaults = VisualizationPresets.RealtimeMonitoring;
-  
+
   return new SimulatedSource({
     pattern: config?.pattern ?? "sine",
     sampleRate: config?.sampleRate ?? defaults.sampleRate,
@@ -240,16 +245,16 @@ export interface VisualizationSetup<T extends DataSource = DataSource> {
 
 /**
  * Create a complete visualization setup with data source and processors
- * 
+ *
  * This is a high-level factory that creates a full pipeline including:
  * - Simulated data source
  * - Optional AGC for signal normalization
  * - Optional FFT processor for frequency analysis
  * - Optional spectrogram processor for time-frequency analysis
- * 
+ *
  * @param options - Configuration options
  * @returns Complete visualization setup with cleanup function
- * 
+ *
  * @example
  * ```typescript
  * const setup = await createVisualizationSetup({
@@ -258,20 +263,20 @@ export interface VisualizationSetup<T extends DataSource = DataSource> {
  *   enableAGC: true,
  *   enableFFT: true,
  * });
- * 
+ *
  * // Start streaming
  * await setup.source.startStreaming((samples) => {
  *   if (setup.agcProcessor) {
  *     const normalized = setup.agcProcessor.process(samples);
  *     samples = normalized.samples;
  *   }
- *   
+ *
  *   if (setup.fftProcessor) {
  *     const spectrum = setup.fftProcessor.process(samples);
  *     // Update visualization
  *   }
  * });
- * 
+ *
  * // When done
  * await setup.cleanup();
  * ```
@@ -311,9 +316,7 @@ export function createVisualizationSetup(options?: {
     ? createFFTPipeline({ fftSize, sampleRate })
     : undefined;
 
-  const agcProcessor = options?.enableAGC
-    ? createAGCPipeline()
-    : undefined;
+  const agcProcessor = options?.enableAGC ? createAGCPipeline() : undefined;
 
   const spectrogramProcessor = options?.enableSpectrogram
     ? createSpectrogramPipeline({ fftSize, sampleRate })
@@ -324,6 +327,11 @@ export function createVisualizationSetup(options?: {
     fftProcessor,
     agcProcessor,
     spectrogramProcessor,
+    /**
+     * Cleanup function to stop streaming and release resources.
+     * Note: Processors (FFTProcessor, AGCProcessor, SpectrogramProcessor) are stateless
+     * and do not require explicit cleanup. They can be safely discarded after use.
+     */
     cleanup: async (): Promise<void> => {
       await source.stopStreaming();
     },
@@ -332,24 +340,35 @@ export function createVisualizationSetup(options?: {
 
 /**
  * Utility to chain multiple frame processors
- * 
+ *
+ * Chains processors in sequence, automatically extracting the `samples` property
+ * from intermediate results when present. This allows chaining processors that
+ * return complex objects (like AGC which returns {samples, currentGain}) with
+ * processors that expect simple sample arrays (like FFT).
+ *
  * @param processors - Array of processors to chain
  * @returns A function that processes data through all processors in sequence
- * 
+ *
  * @example
  * ```typescript
  * const agc = createAGCPipeline();
  * const fft = createFFTPipeline();
- * 
+ *
  * // Create a chain that normalizes then computes FFT
  * const process = chainProcessors([agc, fft]);
- * 
+ *
  * // Process samples
  * const result = process(samples);
  * ```
+ *
+ * @remarks
+ * If a processor returns an object with a `samples` property, that property
+ * will be automatically extracted and passed to the next processor. This enables
+ * seamless chaining of processors with different output formats. If you need
+ * access to the full output of an intermediate processor, process them separately.
  */
 export function chainProcessors(
-  processors: Array<{ process: (input: unknown) => unknown }>
+  processors: Array<{ process: (input: unknown) => unknown }>,
 ): (input: unknown) => unknown {
   return (input: unknown): unknown => {
     let result: unknown = input;
@@ -366,7 +385,7 @@ export function chainProcessors(
 
 /**
  * Create a metadata object from visualization configuration
- * 
+ *
  * @param config - Configuration to derive metadata from
  * @returns Data source metadata
  */

@@ -12,7 +12,11 @@ import {
   chainProcessors,
   createMetadata,
 } from "../compositions";
-import { FFTProcessor, AGCProcessor, SpectrogramProcessor } from "../processors";
+import {
+  FFTProcessor,
+  AGCProcessor,
+  SpectrogramProcessor,
+} from "../processors";
 import { SimulatedSource } from "../SimulatedSource";
 
 // Type alias for processor-like objects
@@ -68,7 +72,7 @@ describe("createFFTPipeline", () => {
   it("should create FFT processor with defaults", () => {
     const processor = createFFTPipeline();
     expect(processor).toBeInstanceOf(FFTProcessor);
-    
+
     const config = processor.getConfig();
     expect(config.type).toBe("fft");
     expect(config.fftSize).toBe(1024);
@@ -81,7 +85,7 @@ describe("createFFTPipeline", () => {
       windowFunction: "blackman",
       sampleRate: 1000000,
     });
-    
+
     const config = processor.getConfig();
     expect(config.fftSize).toBe(2048);
     expect(config.windowFunction).toBe("blackman");
@@ -99,7 +103,7 @@ describe("createAGCPipeline", () => {
   it("should create AGC processor with defaults", () => {
     const processor = createAGCPipeline();
     expect(processor).toBeInstanceOf(AGCProcessor);
-    
+
     const config = processor.getConfig();
     expect(config.type).toBe("agc");
     expect(config.targetLevel).toBe(0.7);
@@ -115,7 +119,7 @@ describe("createAGCPipeline", () => {
       decayTime: 0.2,
       maxGain: 20.0,
     });
-    
+
     const config = processor.getConfig();
     expect(config.targetLevel).toBe(0.5);
     expect(config.attackTime).toBe(0.05);
@@ -128,7 +132,7 @@ describe("createSpectrogramPipeline", () => {
   it("should create spectrogram processor with defaults", () => {
     const processor = createSpectrogramPipeline();
     expect(processor).toBeInstanceOf(SpectrogramProcessor);
-    
+
     const config = processor.getConfig();
     expect(config.type).toBe("spectrogram");
     expect(config.fftSize).toBe(1024);
@@ -143,7 +147,7 @@ describe("createSpectrogramPipeline", () => {
       maxTimeSlices: 200,
       sampleRate: 1000000,
     });
-    
+
     const config = processor.getConfig();
     expect(config.fftSize).toBe(2048);
     expect(config.hopSize).toBe(1024);
@@ -162,7 +166,7 @@ describe("createSimulatedSource", () => {
   it("should create simulated source with defaults", () => {
     const source = createSimulatedSource();
     expect(source).toBeInstanceOf(SimulatedSource);
-    
+
     const metadata = source.getMetadata();
     expect(metadata.sampleRate).toBe(2048000);
   });
@@ -173,14 +177,14 @@ describe("createSimulatedSource", () => {
       sampleRate: 1000000,
       amplitude: 0.5,
     });
-    
+
     const metadata = source.getMetadata();
     expect(metadata.sampleRate).toBe(1000000);
   });
 
   it("should support all signal patterns", () => {
     const patterns = ["sine", "qpsk", "fm", "noise", "multi-tone"] as const;
-    
+
     patterns.forEach((pattern) => {
       const source = createSimulatedSource({ pattern });
       expect(source).toBeInstanceOf(SimulatedSource);
@@ -191,7 +195,7 @@ describe("createSimulatedSource", () => {
 describe("createVisualizationSetup", () => {
   it("should create setup with default preset", () => {
     const setup = createVisualizationSetup();
-    
+
     expect(setup.source).toBeInstanceOf(SimulatedSource);
     expect(setup.fftProcessor).toBeUndefined();
     expect(setup.agcProcessor).toBeUndefined();
@@ -204,7 +208,7 @@ describe("createVisualizationSetup", () => {
       preset: "FMBroadcast",
       pattern: "fm",
     });
-    
+
     const metadata = setup.source.getMetadata();
     expect(metadata.sampleRate).toBe(2048000);
   });
@@ -213,7 +217,7 @@ describe("createVisualizationSetup", () => {
     const setup = createVisualizationSetup({
       enableFFT: true,
     });
-    
+
     expect(setup.fftProcessor).toBeInstanceOf(FFTProcessor);
   });
 
@@ -221,7 +225,7 @@ describe("createVisualizationSetup", () => {
     const setup = createVisualizationSetup({
       enableAGC: true,
     });
-    
+
     expect(setup.agcProcessor).toBeInstanceOf(AGCProcessor);
   });
 
@@ -229,7 +233,7 @@ describe("createVisualizationSetup", () => {
     const setup = createVisualizationSetup({
       enableSpectrogram: true,
     });
-    
+
     expect(setup.spectrogramProcessor).toBeInstanceOf(SpectrogramProcessor);
   });
 
@@ -241,7 +245,7 @@ describe("createVisualizationSetup", () => {
       enableAGC: true,
       enableSpectrogram: true,
     });
-    
+
     expect(setup.source).toBeInstanceOf(SimulatedSource);
     expect(setup.fftProcessor).toBeInstanceOf(FFTProcessor);
     expect(setup.agcProcessor).toBeInstanceOf(AGCProcessor);
@@ -254,10 +258,10 @@ describe("createVisualizationSetup", () => {
       fftSize: 2048,
       enableFFT: true,
     });
-    
+
     const metadata = setup.source.getMetadata();
     expect(metadata.sampleRate).toBe(1000000);
-    
+
     if (setup.fftProcessor) {
       const config = setup.fftProcessor.getConfig();
       expect(config.fftSize).toBe(2048);
@@ -267,17 +271,17 @@ describe("createVisualizationSetup", () => {
 
   it("should cleanup source when calling cleanup function", async () => {
     const setup = createVisualizationSetup();
-    
+
     // Start streaming
     await setup.source.startStreaming(() => {
       // no-op callback
     });
-    
+
     expect(setup.source.isStreaming()).toBe(true);
-    
+
     // Cleanup
     await setup.cleanup();
-    
+
     expect(setup.source.isStreaming()).toBe(false);
   });
 });
@@ -286,17 +290,20 @@ describe("chainProcessors", () => {
   it("should chain AGC and FFT processors", () => {
     const agc = createAGCPipeline();
     const fft = createFFTPipeline({ fftSize: 256, sampleRate: 1000000 });
-    
-    const process = chainProcessors([agc as ProcessorLike, fft as ProcessorLike]);
-    
+
+    const process = chainProcessors([
+      agc as ProcessorLike,
+      fft as ProcessorLike,
+    ]);
+
     // Create test samples
     const samples = Array.from({ length: 256 }, (_, i) => ({
       I: Math.cos((2 * Math.PI * 1000 * i) / 1000000),
       Q: Math.sin((2 * Math.PI * 1000 * i) / 1000000),
     }));
-    
+
     const result = process(samples);
-    
+
     expect(result).toHaveProperty("magnitudes");
     expect(result).toHaveProperty("frequencies");
   });
@@ -304,14 +311,17 @@ describe("chainProcessors", () => {
   it("should pass data through single processor", () => {
     const fft = createFFTPipeline({ fftSize: 128, sampleRate: 1000000 });
     const process = chainProcessors([fft as ProcessorLike]);
-    
+
     const samples = Array.from({ length: 128 }, (_, i) => ({
       I: Math.sin((2 * Math.PI * 1000 * i) / 1000000),
       Q: Math.cos((2 * Math.PI * 1000 * i) / 1000000),
     }));
-    
-    const result = process(samples) as { magnitudes: Float32Array; frequencies: Float32Array };
-    
+
+    const result = process(samples) as {
+      magnitudes: Float32Array;
+      frequencies: Float32Array;
+    };
+
     expect(result).toHaveProperty("magnitudes");
     expect(result.magnitudes.length).toBe(128);
   });
@@ -320,7 +330,7 @@ describe("chainProcessors", () => {
     const process = chainProcessors([]);
     const input = [1, 2, 3];
     const result = process(input);
-    
+
     expect(result).toEqual(input);
   });
 });
@@ -332,7 +342,7 @@ describe("createMetadata", () => {
       centerFrequency: 100000000,
       bandwidth: 200000,
     });
-    
+
     expect(metadata).toMatchObject({
       name: "Configuration-derived source",
       sampleRate: 2048000,
@@ -346,7 +356,7 @@ describe("createMetadata", () => {
     const metadata = createMetadata({
       sampleRate: 1000000,
     });
-    
+
     expect(metadata.name).toBe("Configuration-derived source");
     expect(metadata.sampleRate).toBe(1000000);
     expect(metadata["centerFrequency"]).toBeUndefined();

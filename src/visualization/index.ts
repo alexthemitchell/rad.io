@@ -52,11 +52,7 @@ export {
   CanvasWaterfall,
   WebGLWaterfall,
 } from "./renderers";
-export type {
-  SpectrumData,
-  WaterfallData,
-  RenderTransform,
-} from "./renderers";
+export type { SpectrumData, WaterfallData, RenderTransform } from "./renderers";
 export { RendererTier } from "./renderers";
 
 // Composition helpers and presets

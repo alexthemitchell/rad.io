@@ -355,7 +355,10 @@ The module now includes composition helpers that make it easier to create comple
 ### Quick Setup
 
 ```typescript
-import { createVisualizationSetup, VisualizationPresets } from "./visualization";
+import {
+  createVisualizationSetup,
+  VisualizationPresets,
+} from "./visualization";
 
 // Create a complete FM receiver setup
 const setup = createVisualizationSetup({
@@ -371,7 +374,7 @@ await setup.source.startStreaming((samples) => {
     const normalized = setup.agcProcessor.process(samples);
     samples = normalized.samples;
   }
-  
+
   if (setup.fftProcessor) {
     const spectrum = setup.fftProcessor.process(samples);
     // Update visualization with spectrum.magnitudes
@@ -407,4 +410,3 @@ const process = chainProcessors([agc as ProcessorLike, fft as ProcessorLike]);
 ```
 
 See [Usage Guide](../../docs/VISUALIZATION_USAGE.md) for more examples.
-

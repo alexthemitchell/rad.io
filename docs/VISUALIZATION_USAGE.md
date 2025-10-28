@@ -19,35 +19,38 @@ This guide demonstrates how to use rad.io's modular SDR visualization components
 import { Spectrum, Waterfall, IQConstellation } from "@/visualization";
 
 // Display a spectrum analyzer
-<Spectrum 
-  magnitudes={fftData} 
-  freqMin={0} 
-  freqMax={1024} 
-  width={900} 
-  height={400} 
+<Spectrum
+  magnitudes={fftData}
+  freqMin={0}
+  freqMax={1024}
+  width={900}
+  height={400}
 />
 
 // Display a waterfall plot
-<Waterfall 
-  frames={spectrogramFrames} 
-  freqMin={0} 
-  freqMax={1024} 
-  width={900} 
-  height={600} 
+<Waterfall
+  frames={spectrogramFrames}
+  freqMin={0}
+  freqMax={1024}
+  width={900}
+  height={600}
 />
 
 // Display IQ constellation diagram
-<IQConstellation 
-  samples={iqSamples} 
-  width={750} 
-  height={400} 
+<IQConstellation
+  samples={iqSamples}
+  width={750}
+  height={400}
 />
 ```
 
 ### Using Composition Helpers
 
 ```typescript
-import { createVisualizationSetup, VisualizationPresets } from "@/visualization";
+import {
+  createVisualizationSetup,
+  VisualizationPresets,
+} from "@/visualization";
 
 // Create a complete FM receiver pipeline
 const setup = createVisualizationSetup({
@@ -64,7 +67,7 @@ await setup.source.startStreaming((samples) => {
     const normalized = setup.agcProcessor.process(samples);
     samples = normalized.samples;
   }
-  
+
   // Process FFT
   if (setup.fftProcessor) {
     const spectrum = setup.fftProcessor.process(samples);
@@ -80,15 +83,15 @@ await setup.cleanup();
 
 ### Available Components
 
-| Component | Purpose | Key Props |
-|-----------|---------|-----------|
-| **Spectrum** | Real-time frequency spectrum display | `magnitudes`, `freqMin`, `freqMax` |
-| **Waterfall** | Time-frequency heatmap | `frames`, `freqMin`, `freqMax` |
-| **IQConstellation** | Scatter plot of I/Q samples | `samples` |
-| **Spectrogram** | STFT time-frequency visualization | `samples`, `sampleRate` |
-| **WaveformVisualizer** | Time-domain amplitude display | `samples` |
-| **FFTChart** | Frequency chart with annotations | `magnitudes`, `frequencies` |
-| **SpectrumExplorer** | Interactive spectrum analyzer | `samples`, `sampleRate`, `centerFrequency` |
+| Component              | Purpose                              | Key Props                                  |
+| ---------------------- | ------------------------------------ | ------------------------------------------ |
+| **Spectrum**           | Real-time frequency spectrum display | `magnitudes`, `freqMin`, `freqMax`         |
+| **Waterfall**          | Time-frequency heatmap               | `frames`, `freqMin`, `freqMax`             |
+| **IQConstellation**    | Scatter plot of I/Q samples          | `samples`                                  |
+| **Spectrogram**        | STFT time-frequency visualization    | `samples`, `sampleRate`                    |
+| **WaveformVisualizer** | Time-domain amplitude display        | `samples`                                  |
+| **FFTChart**           | Frequency chart with annotations     | `magnitudes`, `frequencies`                |
+| **SpectrumExplorer**   | Interactive spectrum analyzer        | `samples`, `sampleRate`, `centerFrequency` |
 
 ### Component Features
 
@@ -205,16 +208,16 @@ Factory for automatic gain control:
 import { createAGCPipeline } from "@/visualization";
 
 const agc = createAGCPipeline({
-  targetLevel: 0.7,     // Target amplitude
-  attackTime: 0.01,     // Fast attack (10ms)
-  decayTime: 0.1,       // Slower decay (100ms)
-  maxGain: 10.0,        // Maximum gain multiplier
+  targetLevel: 0.7, // Target amplitude
+  attackTime: 0.01, // Fast attack (10ms)
+  decayTime: 0.1, // Slower decay (100ms)
+  maxGain: 10.0, // Maximum gain multiplier
 });
 
 // Usage
 const output = agc.process(samples);
-console.log(output.samples);      // Normalized IQ samples
-console.log(output.currentGain);  // Current gain level
+console.log(output.samples); // Normalized IQ samples
+console.log(output.currentGain); // Current gain level
 ```
 
 ### createSpectrogramPipeline
@@ -226,16 +229,16 @@ import { createSpectrogramPipeline } from "@/visualization";
 
 const spectrogram = createSpectrogramPipeline({
   fftSize: 1024,
-  hopSize: 512,         // 50% overlap
-  maxTimeSlices: 100,   // Buffer depth
+  hopSize: 512, // 50% overlap
+  maxTimeSlices: 100, // Buffer depth
   sampleRate: 2048000,
 });
 
 // Usage
 const output = spectrogram.process(samples);
-console.log(output.data);         // 2D array: [time][frequency]
-console.log(output.times);        // Time bins in seconds
-console.log(output.frequencies);  // Frequency bins in Hz
+console.log(output.data); // 2D array: [time][frequency]
+console.log(output.times); // Time bins in seconds
+console.log(output.frequencies); // Frequency bins in Hz
 ```
 
 ### createSimulatedSource
@@ -246,10 +249,10 @@ Factory for test data generation:
 import { createSimulatedSource } from "@/visualization";
 
 const source = createSimulatedSource({
-  pattern: "fm",           // sine, qpsk, fm, noise, multi-tone
+  pattern: "fm", // sine, qpsk, fm, noise, multi-tone
   sampleRate: 2048000,
   amplitude: 0.8,
-  updateInterval: 50,      // ms between updates
+  updateInterval: 50, // ms between updates
   samplesPerUpdate: 2048,
 });
 
@@ -278,9 +281,9 @@ const setup = createVisualizationSetup({
 });
 
 // Access components
-setup.source;              // SimulatedSource
-setup.fftProcessor;        // FFTProcessor (if enabled)
-setup.agcProcessor;        // AGCProcessor (if enabled)
+setup.source; // SimulatedSource
+setup.fftProcessor; // FFTProcessor (if enabled)
+setup.agcProcessor; // AGCProcessor (if enabled)
 setup.spectrogramProcessor; // SpectrogramProcessor (if enabled)
 
 // Cleanup
@@ -292,23 +295,22 @@ await setup.cleanup();
 Utility for chaining multiple processors:
 
 ```typescript
-import { 
-  chainProcessors, 
-  createAGCPipeline, 
-  createFFTPipeline 
+import {
+  chainProcessors,
+  createAGCPipeline,
+  createFFTPipeline,
 } from "@/visualization";
 
 const agc = createAGCPipeline();
 const fft = createFFTPipeline();
 
-// Cast once for type compatibility
+// Type cast is needed because processors have strongly-typed parameters
+// (e.g., AGCProcessor.process expects Sample[]), but chainProcessors uses
+// `unknown` for flexibility to work with any processor combination
 type ProcessorLike = { process: (input: unknown) => unknown };
 
 // Create a processing chain
-const process = chainProcessors([
-  agc as ProcessorLike,
-  fft as ProcessorLike
-]);
+const process = chainProcessors([agc as ProcessorLike, fft as ProcessorLike]);
 
 // Process samples through entire chain
 const result = process(samples);
@@ -320,7 +322,7 @@ const result = process(samples);
 ### Complete FM Receiver
 
 ```typescript
-import { 
+import {
   createVisualizationSetup,
   Spectrum,
   Waterfall,
@@ -377,24 +379,24 @@ function FMReceiver() {
   return (
     <div>
       <h2>FM Receiver</h2>
-      
-      <Spectrum 
+
+      <Spectrum
         magnitudes={magnitudes}
         freqMin={0}
         freqMax={1024}
         width={900}
         height={300}
       />
-      
-      <Waterfall 
+
+      <Waterfall
         frames={frames}
         freqMin={0}
         freqMax={1024}
         width={900}
         height={500}
       />
-      
-      <IQConstellation 
+
+      <IQConstellation
         samples={samples}
         width={400}
         height={400}
@@ -407,7 +409,7 @@ function FMReceiver() {
 ### Signal Scanner
 
 ```typescript
-import { 
+import {
   createVisualizationSetup,
   SpectrumExplorer,
 } from "@/visualization";
@@ -434,7 +436,7 @@ function SignalScanner() {
       if (setup.fftProcessor) {
         const spectrum = setup.fftProcessor.process(newSamples);
         const threshold = -80; // dB
-        
+
         const signals = [];
         for (let i = 0; i < spectrum.magnitudes.length; i++) {
           if (spectrum.magnitudes[i] > threshold) {
@@ -475,23 +477,23 @@ import type { DataSource, Sample } from "@/visualization";
 class HardwareSDRSource implements DataSource {
   private device: USBDevice | null = null;
   private streaming = false;
-  
+
   async startStreaming(callback: (samples: Sample[]) => void): Promise<void> {
     this.streaming = true;
     // Connect to hardware device
     // Start reading data
     // Call callback with new samples
   }
-  
+
   async stopStreaming(): Promise<void> {
     this.streaming = false;
     // Stop device
   }
-  
+
   isStreaming(): boolean {
     return this.streaming;
   }
-  
+
   getMetadata() {
     return {
       name: "HackRF One",
@@ -518,28 +520,28 @@ import type { Renderer, SpectrumData } from "@/visualization";
 class CustomSpectrumRenderer implements Renderer {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
-  
+
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     return this.ctx !== null;
   }
-  
+
   render(data: unknown): boolean {
     const specData = data as SpectrumData;
     if (!this.ctx || !this.canvas) return false;
-    
+
     // Custom rendering logic
     // Draw spectrum with your own style
-    
+
     return true;
   }
-  
+
   cleanup(): void {
     this.canvas = null;
     this.ctx = null;
   }
-  
+
   isReady(): boolean {
     return this.ctx !== null;
   }
@@ -577,8 +579,10 @@ const fft = new FFTProcessor({
 ```typescript
 // ✅ Good - Always cleanup
 useEffect(() => {
-  const setup = createVisualizationSetup({ /* ... */ });
-  
+  const setup = createVisualizationSetup({
+    /* ... */
+  });
+
   return () => {
     setup.cleanup();
   };
@@ -586,7 +590,9 @@ useEffect(() => {
 
 // ❌ Avoid - Memory leaks
 useEffect(() => {
-  const setup = createVisualizationSetup({ /* ... */ });
+  const setup = createVisualizationSetup({
+    /* ... */
+  });
   // Missing cleanup!
 }, []);
 ```
@@ -602,9 +608,15 @@ const setup = createVisualizationSetup({
 });
 
 // ❌ Avoid - Manual orchestration
-const source = new SimulatedSource({ /* ... */ });
-const agc = new AGCProcessor({ /* ... */ });
-const fft = new FFTProcessor({ /* ... */ });
+const source = new SimulatedSource({
+  /* ... */
+});
+const agc = new AGCProcessor({
+  /* ... */
+});
+const fft = new FFTProcessor({
+  /* ... */
+});
 // ... manual wiring
 ```
 
@@ -629,10 +641,10 @@ const config: SpectrumProps = {
 
 ```typescript
 // ✅ Good - Limit sample buffer size
-setSamples(prev => [...prev, ...newSamples].slice(-2048));
+setSamples((prev) => [...prev, ...newSamples].slice(-2048));
 
 // ❌ Avoid - Unbounded growth
-setSamples(prev => [...prev, ...newSamples]);
+setSamples((prev) => [...prev, ...newSamples]);
 ```
 
 ### 6. Error Handling
@@ -664,17 +676,17 @@ import type {
   WaveformVisualizerProps,
   FFTChartProps,
   SpectrumExplorerProps,
-  
+
   // Core interfaces
   DataSource,
   FrameProcessor,
   Renderer,
-  
+
   // Processor types
   FFTProcessorConfig,
   AGCProcessorConfig,
   SpectrogramProcessorConfig,
-  
+
   // Data types
   Sample,
   SpectrumData,
@@ -691,12 +703,12 @@ import type {
 
 ## Performance Metrics
 
-| Operation | WebGL | Canvas2D |
-|-----------|-------|----------|
-| Spectrum (1024 bins) | ~1ms | ~3ms |
-| Waterfall (1024x100) | ~2ms | ~15ms |
-| IQ Constellation (2048 points) | ~2ms | ~8ms |
-| FFT (2048 samples) | ~3ms | ~3ms |
+| Operation                      | WebGL | Canvas2D |
+| ------------------------------ | ----- | -------- |
+| Spectrum (1024 bins)           | ~1ms  | ~3ms     |
+| Waterfall (1024x100)           | ~2ms  | ~15ms    |
+| IQ Constellation (2048 points) | ~2ms  | ~8ms     |
+| FFT (2048 samples)             | ~3ms  | ~3ms     |
 
 ## Next Steps
 

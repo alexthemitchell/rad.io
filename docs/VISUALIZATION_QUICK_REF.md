@@ -14,7 +14,7 @@ import {
   WaveformVisualizer,
   FFTChart,
   SpectrumExplorer,
-  
+
   // Composition Helpers
   createVisualizationSetup,
   createFFTPipeline,
@@ -22,10 +22,10 @@ import {
   createSpectrogramPipeline,
   createSimulatedSource,
   chainProcessors,
-  
+
   // Presets
   VisualizationPresets,
-  
+
   // Types
   type SpectrumProps,
   type WaterfallProps,
@@ -38,7 +38,7 @@ import {
 ### Spectrum Analyzer
 
 ```typescript
-<Spectrum 
+<Spectrum
   magnitudes={fftMagnitudes}  // Float32Array of dB values
   freqMin={0}                 // Min frequency bin
   freqMax={1024}              // Max frequency bin
@@ -50,7 +50,7 @@ import {
 ### Waterfall Plot
 
 ```typescript
-<Waterfall 
+<Waterfall
   frames={spectrogramFrames}  // Array of Float32Array (magnitude frames)
   freqMin={0}
   freqMax={1024}
@@ -62,7 +62,7 @@ import {
 ### IQ Constellation
 
 ```typescript
-<IQConstellation 
+<IQConstellation
   samples={iqSamples}         // Array of {I, Q} samples
   width={750}
   height={400}
@@ -81,8 +81,10 @@ const setup = createVisualizationSetup({
 });
 
 await setup.source.startStreaming((samples) => {
-  const spectrum = setup.fftProcessor.process(samples);
-  setMagnitudes(spectrum.magnitudes);
+  if (setup.fftProcessor) {
+    const spectrum = setup.fftProcessor.process(samples);
+    setMagnitudes(spectrum.magnitudes);
+  }
 });
 
 // Cleanup
@@ -112,13 +114,13 @@ const setup = createVisualizationSetup({
 
 ## Presets
 
-| Preset | Sample Rate | FFT Size | Window | Use Case |
-|--------|-------------|----------|--------|----------|
-| `FMBroadcast` | 2.048 MHz | 2048 | Hann | FM radio (88-108 MHz) |
-| `AMBroadcast` | 1.024 MHz | 1024 | Hann | AM radio (530-1700 kHz) |
-| `WidebandScanner` | 20 MHz | 4096 | Blackman | Wide spectrum scanning |
-| `NarrowbandAnalysis` | 256 kHz | 4096 | Blackman | Weak signal detection |
-| `RealtimeMonitoring` | 2.048 MHz | 1024 | Hann | General monitoring |
+| Preset               | Sample Rate | FFT Size | Window   | Use Case                |
+| -------------------- | ----------- | -------- | -------- | ----------------------- |
+| `FMBroadcast`        | 2.048 MHz   | 2048     | Hann     | FM radio (88-108 MHz)   |
+| `AMBroadcast`        | 1.024 MHz   | 1024     | Hann     | AM radio (530-1700 kHz) |
+| `WidebandScanner`    | 20 MHz      | 4096     | Blackman | Wide spectrum scanning  |
+| `NarrowbandAnalysis` | 256 kHz     | 4096     | Blackman | Weak signal detection   |
+| `RealtimeMonitoring` | 2.048 MHz   | 1024     | Hann     | General monitoring      |
 
 ## Factory Functions
 
@@ -155,7 +157,7 @@ const output = agc.process(samples);
 ```typescript
 const spec = createSpectrogramPipeline({
   fftSize: 1024,
-  hopSize: 512,  // 50% overlap
+  hopSize: 512, // 50% overlap
   maxTimeSlices: 100,
 });
 
@@ -169,7 +171,7 @@ const output = spec.process(samples);
 
 ```typescript
 const source = createSimulatedSource({
-  pattern: "fm",      // sine, qpsk, fm, noise, multi-tone
+  pattern: "fm", // sine, qpsk, fm, noise, multi-tone
   sampleRate: 2048000,
   amplitude: 0.8,
 });
@@ -185,13 +187,11 @@ await source.startStreaming((samples) => {
 const agc = createAGCPipeline();
 const fft = createFFTPipeline();
 
-// Cast once for type compatibility
+// Type cast needed: processors have strongly-typed parameters (Sample[]),
+// but chainProcessors uses `unknown` for flexibility across processor types
 type ProcessorLike = { process: (input: unknown) => unknown };
 
-const process = chainProcessors([
-  agc as ProcessorLike,
-  fft as ProcessorLike
-]);
+const process = chainProcessors([agc as ProcessorLike, fft as ProcessorLike]);
 
 const result = process(samples);
 ```
@@ -224,7 +224,7 @@ function useSDRVisualization(preset: keyof typeof VisualizationPresets) {
 
     setup.source.startStreaming((newSamples) => {
       setSamples(newSamples.slice(-2048));
-      
+
       if (setup.fftProcessor) {
         const spectrum = setup.fftProcessor.process(newSamples);
         setMagnitudes(spectrum.magnitudes);
@@ -242,7 +242,7 @@ function useSDRVisualization(preset: keyof typeof VisualizationPresets) {
 // Usage
 function MyComponent() {
   const { magnitudes, samples } = useSDRVisualization("FMBroadcast");
-  
+
   return (
     <>
       <Spectrum magnitudes={magnitudes} />
@@ -262,10 +262,10 @@ const fft = createFFTPipeline();
 source.startStreaming((samples) => {
   // 1. Normalize amplitude
   const normalized = agc.process(samples);
-  
+
   // 2. Compute spectrum
   const spectrum = fft.process(normalized.samples);
-  
+
   // 3. Display
   setMagnitudes(spectrum.magnitudes);
 });
@@ -276,26 +276,26 @@ source.startStreaming((samples) => {
 ```typescript
 // Sample format
 interface Sample {
-  I: number;  // In-phase component
-  Q: number;  // Quadrature component
+  I: number; // In-phase component
+  Q: number; // Quadrature component
 }
 
 // FFT output
 interface FFTOutput {
-  magnitudes: Float32Array;  // Power in dB
+  magnitudes: Float32Array; // Power in dB
   frequencies: Float32Array; // Frequency bins in Hz
 }
 
 // AGC output
 interface AGCOutput {
-  samples: Sample[];         // Normalized samples
-  currentGain: number;       // Current gain value
+  samples: Sample[]; // Normalized samples
+  currentGain: number; // Current gain value
 }
 
 // Spectrogram output
 interface SpectrogramOutput {
-  data: Float32Array[];      // 2D array [time][freq]
-  times: Float32Array;       // Time bins in seconds
+  data: Float32Array[]; // 2D array [time][freq]
+  times: Float32Array; // Time bins in seconds
   frequencies: Float32Array; // Frequency bins in Hz
 }
 ```
@@ -316,10 +316,8 @@ try {
 } catch (error) {
   console.error("Streaming failed:", error);
   // Handle error
-}
-
-// Always cleanup
-finally {
+} finally {
+  // Always cleanup
   await setup.cleanup();
 }
 ```
@@ -329,7 +327,7 @@ finally {
 - ✅ Chrome/Edge (WebGL, full support)
 - ✅ Firefox (WebGL, full support)
 - ✅ Safari (WebGL, full support)
-- ⚠️  Older browsers (Canvas2D fallback)
+- ⚠️ Older browsers (Canvas2D fallback)
 
 ## Links
 
