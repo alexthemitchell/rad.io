@@ -744,9 +744,11 @@ describe("SDRDevice Interface", () => {
     });
 
     it("should have Airspy definitions", () => {
-      const airspy = SDR_USB_DEVICES.AIRSPY_MINI;
+      const airspy = SDR_USB_DEVICES.AIRSPY;
       expect(airspy).toBeDefined();
       expect(airspy.vendorId).toBe(0x1d50);
+      expect(airspy.productId).toBe(0x60a1);
+      expect(airspy.name).toBe("Airspy R2/Mini");
     });
   });
 });

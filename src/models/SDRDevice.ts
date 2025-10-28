@@ -249,15 +249,15 @@ export const SDR_USB_DEVICES = {
     productId: 0x2832,
     name: "RTL-SDR EzCap",
   },
-  AIRSPY_MINI: {
+  AIRSPY: {
     vendorId: 0x1d50,
     productId: 0x60a1,
-    name: "Airspy Mini",
+    name: "Airspy R2/Mini",
   },
-  AIRSPY_R2: {
-    vendorId: 0x1d50,
-    productId: 0x60a1,
-    name: "Airspy R2",
+  AIRSPY_HF_PLUS: {
+    vendorId: 0x03eb,
+    productId: 0x800c,
+    name: "Airspy HF+",
   },
 } as const;
 
