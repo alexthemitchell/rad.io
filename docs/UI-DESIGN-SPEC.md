@@ -158,6 +158,7 @@ Theming and system integration
 ### Implemented Features
 
 **Keyboard Navigation:**
+
 - Full keyboard control: all interactive elements accessible without mouse
 - Logical tab order following visual layout (top→bottom, left→right)
 - Skip link as first tab stop (jump to main content)
@@ -166,6 +167,7 @@ Theming and system integration
 - No keyboard traps: users can always navigate away using standard controls
 
 **Screen Reader Support:**
+
 - Semantic HTML: proper heading hierarchy (h1→h2→h3), landmark regions
 - ARIA labels: all interactive elements have clear, descriptive labels
 - Canvas visualizations: role="img" with rich aria-label (sample counts, peaks, ranges)
@@ -173,6 +175,7 @@ Theming and system integration
 - Form labels: all inputs associated with labels via htmlFor or aria-label
 
 **Visual Accessibility:**
+
 - Color contrast: 4.5:1 for text, 3:1 for UI components (WCAG AA)
 - Color independence: information not conveyed by color alone (icons + text)
 - Perceptually uniform colormaps: Viridis default (colorblind-safe)
@@ -180,11 +183,13 @@ Theming and system integration
 - Responsive design: touch targets ≥44×44px on mobile
 
 **Motion and Animation:**
+
 - Reduced motion support: respects prefers-reduced-motion
 - Global safeguard: clamps animation/transition durations to 0s when user opts out
 - No auto-playing animations that can't be paused
 
 **Testing and Compliance:**
+
 - 36 automated accessibility tests (jest-axe + manual ARIA/keyboard)
 - E2E tests with @axe-core/playwright for full-page scans
 - ESLint enforcement: 25+ jsx-a11y rules

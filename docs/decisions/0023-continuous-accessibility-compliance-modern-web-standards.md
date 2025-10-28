@@ -17,6 +17,7 @@ WebSDR Pro (rad.io) is a professional-grade SDR visualizer serving diverse users
 The project has already established strong accessibility foundations through ADR-0017 (Comprehensive Accessibility Pattern Implementation) and ADR-0018 (UX Information Architecture). Current implementation includes:
 
 **Implemented Features:**
+
 - Full keyboard navigation with logical focus order and visible indicators
 - ARIA labels and live regions for dynamic content updates
 - Semantic HTML with proper landmark regions and heading hierarchy
@@ -29,6 +30,7 @@ The project has already established strong accessibility foundations through ADR
 - ESLint enforcement of 25+ jsx-a11y rules
 
 **Test Coverage:**
+
 - AxeAccessibility.test.tsx: 15 axe-core automated scans
 - Accessibility.test.tsx: 21 manual ARIA/keyboard tests
 - Continuous Integration: All tests run on every PR
@@ -52,6 +54,7 @@ Establish a comprehensive continuous accessibility compliance program encompassi
 ### 1. Multi-Layer Testing Strategy
 
 **Automated Testing (Current + Enhanced):**
+
 - Continue jest-axe unit testing (36 tests currently passing)
 - Add Playwright E2E tests with @axe-core/playwright for full-page scans
 - Add contrast ratio verification tests using computed styles
@@ -60,6 +63,7 @@ Establish a comprehensive continuous accessibility compliance program encompassi
 - Target: 100% component coverage, zero critical violations
 
 **Manual Testing Protocols:**
+
 - Quarterly screen reader testing (NVDA, JAWS, VoiceOver)
 - Keyboard-only navigation testing for all new features
 - Browser zoom testing (200%) for responsive breakpoints
@@ -67,6 +71,7 @@ Establish a comprehensive continuous accessibility compliance program encompassi
 - High contrast mode verification (Windows, macOS)
 
 **Performance + Accessibility Monitoring:**
+
 - Lighthouse CI integration for accessibility scores (target: 100)
 - WebPageTest accessibility audits on production deploys
 - Performance budget ensuring accessibility features don't regress UX
@@ -74,18 +79,21 @@ Establish a comprehensive continuous accessibility compliance program encompassi
 ### 2. Documentation Framework
 
 **For Contributors:**
+
 - ACCESSIBILITY-TESTING-GUIDE.md: Step-by-step testing procedures
 - Component accessibility patterns reference with code examples
 - ARIA implementation checklist for new components
 - Keyboard shortcut registration and documentation process
 
 **For Users:**
+
 - Comprehensive keyboard shortcuts reference (via ShortcutsOverlay)
 - Assistive technology compatibility matrix
 - Accessibility features overview in README
 - Release notes highlighting accessibility improvements
 
 **For Compliance:**
+
 - VPAT (Voluntary Product Accessibility Template) documentation
 - WCAG 2.1 AA compliance statement with verified checkpoints
 - Known limitations and remediation timeline
@@ -94,12 +102,14 @@ Establish a comprehensive continuous accessibility compliance program encompassi
 ### 3. Design System Accessibility
 
 **Token-Driven Accessibility:**
+
 - Focus ring tokens for consistent visibility (--rad-ring, --rad-focus-ring-width)
 - Color tokens meeting WCAG contrast requirements
 - Motion tokens respecting prefers-reduced-motion
 - Typography tokens ensuring readability (Inter UI, JetBrains Mono tabular)
 
 **Component Library Standards:**
+
 - All interactive components include aria-label or aria-labelledby
 - All form controls have associated labels (visual or screen-reader-only)
 - All buttons use semantic `<button>` elements (not div/span with onClick)
@@ -109,18 +119,21 @@ Establish a comprehensive continuous accessibility compliance program encompassi
 ### 4. Continuous Improvement Process
 
 **Quarterly Reviews:**
+
 - Audit new components for accessibility compliance
 - Review and update ARIA patterns based on latest specifications
 - Test with latest assistive technology versions
 - Update documentation based on user feedback
 
 **Feature Development:**
+
 - Accessibility requirements included in all feature specs
 - Accessibility review required before PR approval
 - Automated tests for new interactive components
 - Manual testing before release
 
 **Incident Response:**
+
 - Accessibility issues labeled and prioritized
 - Critical issues (keyboard traps, screen reader blockers) get immediate attention
 - Non-critical issues scheduled for next minor release
@@ -156,9 +169,11 @@ Establish a comprehensive continuous accessibility compliance program encompassi
 ### Phase 1: Enhanced Testing Infrastructure (Week 1-2)
 
 1. **Add Playwright E2E Accessibility Tests:**
+
    ```bash
    npm install --save-dev @axe-core/playwright
    ```
+
    - Create e2e/accessibility/ test suite
    - Scan all primary routes (/monitor, /scanner, /decode, /analysis)
    - Verify keyboard navigation flows
@@ -289,8 +304,8 @@ Establish a comprehensive continuous accessibility compliance program encompassi
 - **ACCESSIBILITY.md**: Comprehensive accessibility feature documentation
 - **src/styles/a11y.css**: Global accessibility utilities and focus styles
 - **src/styles/tokens.css**: Token-driven design system with accessible colors
-- **src/components/__tests__/Accessibility.test.tsx**: Manual ARIA/keyboard tests
-- **src/components/__tests__/AxeAccessibility.test.tsx**: Automated axe-core tests
+- **src/components/**tests**/Accessibility.test.tsx**: Manual ARIA/keyboard tests
+- **src/components/**tests**/AxeAccessibility.test.tsx**: Automated axe-core tests
 
 ## Lifecycle
 
