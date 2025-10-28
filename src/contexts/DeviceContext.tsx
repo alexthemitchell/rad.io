@@ -23,10 +23,9 @@ import React, {
   useRef,
   type ReactNode,
 } from "react";
-import { HackRFOneAdapter } from "../hackrf/HackRFOneAdapter";
+import { SDRDriverRegistry, registerBuiltinDrivers } from "../drivers";
 import { useUSBDevice } from "../hooks/useUSBDevice";
 import { MockSDRDevice } from "../models/MockSDRDevice";
-import { RTLSDRDeviceAdapter } from "../models/RTLSDRDeviceAdapter";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { deviceLogger } from "../utils/logger";
 import type { ISDRDevice } from "../models/SDRDevice";
@@ -105,17 +104,18 @@ export function DeviceProvider({
     devicesRef.current = devices;
   }, [devices]);
 
+  // Register built-in drivers on mount
+  useEffect(() => {
+    registerBuiltinDrivers();
+  }, []);
+
   // Use the existing useUSBDevice hook for device discovery
+  // Now gets all USB filters from the driver registry
   const {
     device: usbDevice,
     requestDevice,
     isCheckingPaired,
-  } = useUSBDevice([
-    {
-      // HackRF devices
-      vendorId: 0x1d50,
-    },
-  ]);
+  } = useUSBDevice(SDRDriverRegistry.getAllUSBFilters());
 
   /**
    * Initialize a USB device when it's connected
@@ -130,14 +130,9 @@ export function DeviceProvider({
       const deviceId = getDeviceId(usb);
 
       try {
-        // Select the correct adapter based on USB VID/PID
-        // HackRF One: VID 0x1D50 (Great Scott Gadgets), PID 0x6089
-        // Reference: https://greatscottgadgets.com/hackrf/one/
-        const isHackRF = usb.vendorId === 0x1d50 && usb.productId === 0x6089;
-
-        const adapter = isHackRF
-          ? new HackRFOneAdapter(usb)
-          : new RTLSDRDeviceAdapter(usb);
+        // Use driver registry to automatically select the correct adapter
+        // based on USB VID/PID matching
+        const adapter = await SDRDriverRegistry.createDevice(usb);
 
         // Ensure device is ready: always invoke adapter.open(),
         // which is idempotent for already-open devices.
