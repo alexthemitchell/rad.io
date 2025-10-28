@@ -100,6 +100,107 @@ worker.postMessage({ buffer: myFloat32Array }, [myFloat32Array.buffer]);
 
 **Note**: After transfer, original is neutered (length = 0).
 
+### SharedArrayBuffer for Zero-Copy
+
+**Advanced technique for maximum performance** (requires HTTPS + security headers):
+
+SharedArrayBuffer allows multiple workers and main thread to access the same memory without copying, eliminating transfer overhead entirely.
+
+**Browser Requirements**:
+- HTTPS deployment
+- `Cross-Origin-Opener-Policy: same-origin` header
+- `Cross-Origin-Embedder-Policy: require-corp` header
+- Chrome 92+, Firefox 79+, Safari 15.2+
+
+**Zero-Copy Pattern**:
+
+```javascript
+// Create shared buffer
+const sharedBuffer = new SharedArrayBuffer(1024 * 4); // 1024 floats
+const sharedArray = new Float32Array(sharedBuffer);
+
+// Pass to worker (no copy!)
+worker.postMessage({ sharedBuffer });
+
+// Worker receives same memory
+// worker.js
+self.onmessage = (e) => {
+  const samples = new Float32Array(e.data.sharedBuffer);
+  
+  // Process directly - no copy needed
+  for (let i = 0; i < samples.length; i++) {
+    samples[i] = processFFT(samples[i]);
+  }
+  
+  // Signal completion
+  Atomics.notify(samples, 0, 1);
+};
+
+// Main thread reads results immediately
+Atomics.wait(sharedArray, 0, 0);
+const processedData = sharedArray; // Already updated!
+```
+
+**Synchronization with Atomics**:
+
+```javascript
+// Ring buffer for continuous streaming
+class SharedRingBuffer {
+  constructor(size) {
+    this.buffer = new SharedArrayBuffer((size + 2) * 4);
+    this.data = new Float32Array(this.buffer, 8); // Skip header
+    this.header = new Int32Array(this.buffer, 0, 2);
+    this.size = size;
+  }
+  
+  write(samples) {
+    const writePos = Atomics.load(this.header, 0);
+    
+    for (let i = 0; i < samples.length; i++) {
+      this.data[(writePos + i) % this.size] = samples[i];
+    }
+    
+    Atomics.store(this.header, 0, (writePos + samples.length) % this.size);
+    Atomics.notify(this.header, 0, 1);
+  }
+  
+  read(count) {
+    const readPos = Atomics.load(this.header, 1);
+    const samples = new Float32Array(count);
+    
+    for (let i = 0; i < count; i++) {
+      samples[i] = this.data[(readPos + i) % this.size];
+    }
+    
+    Atomics.store(this.header, 1, (readPos + count) % this.size);
+    return samples;
+  }
+}
+```
+
+**Performance Benefits**:
+
+| Transfer Method | Latency | Throughput (1MB) |
+|----------------|---------|------------------|
+| postMessage (copy) | 1-5ms | ~200 MB/s |
+| Transferable | 0.1-0.5ms | ~2 GB/s |
+| SharedArrayBuffer | <0.01ms | ~10+ GB/s |
+
+**Use Cases**:
+- Real-time SDR sample streaming (20+ MS/s)
+- Multi-worker parallel processing
+- Low-latency audio pipelines
+- High-frequency data visualization
+
+**Security Considerations**:
+- Requires cross-origin isolation (Spectre mitigation)
+- May not work in embedded contexts (iframes)
+- Server configuration needed
+
+**Resources**:
+- [MDN SharedArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer)
+- [Signal Analyzer Implementation](https://cprimozic.net/blog/building-a-signal-analyzer-with-modern-web-tech/)
+
 ## Memory Management
 
 ### Typed Arrays
@@ -284,6 +385,86 @@ class WindowCache {
 }
 ```
 
+### WebAssembly SIMD Acceleration
+
+**Advanced optimization for modern browsers** (2024+):
+
+WebAssembly SIMD (Single Instruction, Multiple Data) provides 2-4x additional speedup on top of regular WASM by performing operations on multiple data points simultaneously.
+
+**Browser Support**:
+- Chrome 91+ ✅
+- Firefox 89+ ✅  
+- Safari 16.4+ ✅
+- Edge 91+ ✅
+
+**Feature Detection**:
+
+```javascript
+function detectWasmSIMD() {
+  try {
+    // Minimal WASM module with SIMD instruction
+    return WebAssembly.validate(new Uint8Array([
+      0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,
+      3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11
+    ]));
+  } catch {
+    return false;
+  }
+}
+
+if (detectWasmSIMD()) {
+  // Load SIMD-optimized WASM module
+  import('./dsp-simd.wasm');
+} else {
+  // Fallback to regular WASM
+  import('./dsp.wasm');
+}
+```
+
+**Implementation Strategies**:
+
+1. **Vector Operations**: Process 4 float32 values per instruction
+2. **Butterfly FFT**: SIMD-optimized complex multiply-add
+3. **Parallel Windowing**: Apply window to 4+ samples simultaneously
+4. **SIMD Intrinsics**: Use v128 types in AssemblyScript/Rust
+
+**Example - SIMD FFT (AssemblyScript)**:
+
+```typescript
+// Load 4 samples at once
+let samples = v128.load(samplesPtr);
+
+// Multiply by twiddle factors (4 parallel operations)
+let real = f32x4.mul(samples, twiddleReal);
+let imag = f32x4.mul(samples, twiddleImag);
+
+// Complex rotation
+let result = f32x4.add(real, imag);
+
+// Store result
+v128.store(outputPtr, result);
+```
+
+**Performance Gains**:
+
+| Operation | Regular WASM | WASM + SIMD | Total Speedup |
+|-----------|--------------|-------------|---------------|
+| FFT 2048 | 6-8ms | 2-3ms | 8-10x vs JS |
+| FFT 4096 | 25-30ms | 8-12ms | 7-9x vs JS |
+| Windowing | 0.1-0.15ms | 0.03-0.05ms | 4-7x vs JS |
+
+**Limitations**:
+
+- No runtime detection in WASM itself (must build separate modules)
+- Alignment requirements (16-byte boundaries)
+- Limited to 128-bit wide vectors
+- Trap on unsupported platforms (careful fallback needed)
+
+**Resources**:
+- [RustFFT WASM SIMD](https://deepwiki.com/ejmahler/RustFFT/4.4-wasm-simd-implementation)
+- [V8 SIMD Blog Post](https://v8.dev/features/simd)
+- [WebAssembly SIMD Proposal](https://github.com/WebAssembly/simd)
+
 ## WebGL Acceleration
 
 ### Waterfall Display
@@ -353,6 +534,209 @@ gl.texImage2D(
 
 // Vertex shader samples texture, renders line
 ```
+
+## WebGPU Compute Acceleration
+
+**Next-generation GPU computing** (2024+ browsers):
+
+WebGPU provides direct access to GPU compute capabilities, enabling 5-10x speedup for large FFTs and parallel DSP operations compared to WASM.
+
+**Browser Support**:
+- Chrome 113+ ✅
+- Edge 113+ ✅
+- Safari 18+ ✅
+- Firefox: In development 🔄
+
+**Feature Detection**:
+
+```javascript
+async function initWebGPU() {
+  if (!navigator.gpu) {
+    console.warn('WebGPU not supported');
+    return null;
+  }
+  
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) {
+    console.warn('No GPU adapter found');
+    return null;
+  }
+  
+  const device = await adapter.requestDevice();
+  return device;
+}
+```
+
+**Compute Shader FFT Example**:
+
+```wgsl
+// WGSL compute shader for FFT butterfly operation
+@group(0) @binding(0) var<storage, read_write> data: array<vec2<f32>>;
+@group(0) @binding(1) var<storage, read> twiddles: array<vec2<f32>>;
+
+@compute @workgroup_size(64)
+fn fft_butterfly(@builtin(global_invocation_id) id: vec3<u32>) {
+    let idx = id.x;
+    let half_size = arrayLength(&data) / 2u;
+    
+    if (idx >= half_size) {
+        return;
+    }
+    
+    // Butterfly operation
+    let even = data[idx];
+    let odd = data[idx + half_size];
+    let twiddle = twiddles[idx];
+    
+    // Complex multiplication: odd * twiddle
+    let odd_mul = vec2<f32>(
+        odd.x * twiddle.x - odd.y * twiddle.y,
+        odd.x * twiddle.y + odd.y * twiddle.x
+    );
+    
+    // Combine
+    data[idx] = even + odd_mul;
+    data[idx + half_size] = even - odd_mul;
+}
+```
+
+**JavaScript Integration**:
+
+```javascript
+class WebGPUFFT {
+  async initialize(device, fftSize) {
+    this.device = device;
+    this.fftSize = fftSize;
+    
+    // Create buffers
+    this.dataBuffer = device.createBuffer({
+      size: fftSize * 8, // vec2<f32> = 8 bytes
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC
+    });
+    
+    // Load compute shader
+    const module = device.createShaderModule({
+      code: fftShaderCode
+    });
+    
+    // Create compute pipeline
+    this.pipeline = device.createComputePipeline({
+      layout: 'auto',
+      compute: {
+        module,
+        entryPoint: 'fft_butterfly'
+      }
+    });
+    
+    // Create bind group
+    this.bindGroup = device.createBindGroup({
+      layout: this.pipeline.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.dataBuffer } },
+        { binding: 1, resource: { buffer: this.twiddleBuffer } }
+      ]
+    });
+  }
+  
+  async compute(samples) {
+    // Upload data
+    this.device.queue.writeBuffer(this.dataBuffer, 0, samples);
+    
+    // Create command encoder
+    const encoder = this.device.createCommandEncoder();
+    const pass = encoder.beginComputePass();
+    
+    // Dispatch compute shader
+    pass.setPipeline(this.pipeline);
+    pass.setBindGroup(0, this.bindGroup);
+    pass.dispatchWorkgroups(Math.ceil(this.fftSize / 64));
+    pass.end();
+    
+    // Submit
+    this.device.queue.submit([encoder.finish()]);
+    
+    // Read results
+    const resultBuffer = this.device.createBuffer({
+      size: this.dataBuffer.size,
+      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+    });
+    
+    const copyEncoder = this.device.createCommandEncoder();
+    copyEncoder.copyBufferToBuffer(this.dataBuffer, 0, resultBuffer, 0, this.dataBuffer.size);
+    this.device.queue.submit([copyEncoder.finish()]);
+    
+    await resultBuffer.mapAsync(GPUMapMode.READ);
+    const result = new Float32Array(resultBuffer.getMappedRange());
+    resultBuffer.unmap();
+    
+    return result;
+  }
+}
+```
+
+**Performance Characteristics**:
+
+| Operation | WASM (ms) | WebGPU (ms) | Speedup |
+|-----------|-----------|-------------|---------|
+| FFT 2048 | 6-8 | 0.5-1.0 | 8-12x |
+| FFT 4096 | 25-30 | 2-4 | 8-12x |
+| FFT 8192 | 100-120 | 8-12 | 10-12x |
+| FFT 16384 | 400-500 | 25-35 | 12-15x |
+
+**Best Practices**:
+
+1. **Batch Operations**: Process multiple FFTs in one shader invocation
+2. **Workgroup Size**: Tune for target GPU (typically 64-256)
+3. **Memory Management**: Reuse buffers, avoid allocations
+4. **Async Patterns**: Use timestamps for profiling
+5. **Fallback Path**: Always provide WASM/JS fallback
+
+**Direct Rendering Pipeline**:
+
+```javascript
+// Compute FFT and render in single GPU pass
+class WebGPUSpectrumAnalyzer {
+  async renderFrame(samples) {
+    const encoder = this.device.createCommandEncoder();
+    
+    // 1. Compute pass: FFT
+    const computePass = encoder.beginComputePass();
+    computePass.setPipeline(this.fftPipeline);
+    computePass.setBindGroup(0, this.fftBindGroup);
+    computePass.dispatchWorkgroups(this.workgroupCount);
+    computePass.end();
+    
+    // 2. Render pass: Visualize
+    const renderPass = encoder.beginRenderPass({
+      colorAttachments: [{
+        view: context.getCurrentTexture().createView(),
+        loadOp: 'clear',
+        storeOp: 'store'
+      }]
+    });
+    renderPass.setPipeline(this.renderPipeline);
+    renderPass.setBindGroup(0, this.renderBindGroup); // Uses FFT output
+    renderPass.draw(vertexCount);
+    renderPass.end();
+    
+    // Submit both passes together
+    this.device.queue.submit([encoder.finish()]);
+  }
+}
+```
+
+**Optimization Tips**:
+
+- Use timestamp queries for profiling GPU work
+- Minimize CPU-GPU synchronization
+- Leverage shared memory within workgroups
+- Consider relaxed memory ordering for non-critical data
+- Profile with browser GPU debuggers (Chrome DevTools, Safari Web Inspector)
+
+**Resources**:
+- [WebGPU Fundamentals](https://webgpufundamentals.org/)
+- [Compute Shader Optimization](https://github.com/gfx-rs/wgpu/discussions/6688)
+- [WebGPU Best Practices](https://toji.github.io/webgpu-best-practices/)
 
 ## Audio Processing Optimization
 
@@ -685,7 +1069,39 @@ class PerformanceTest {
 
 ## Resources
 
-- **Web Workers**: MDN documentation
-- **WebGL**: webglfundamentals.org
-- **Audio Worklet**: W3C specification
-- **Performance**: web.dev/performance
+### Official Documentation
+
+- **Web Workers**: [MDN Web Workers API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+- **SharedArrayBuffer**: [MDN SharedArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer)
+- **WebGL**: [WebGL Fundamentals](https://webglfundamentals.org/)
+- **WebGPU**: [WebGPU Fundamentals](https://webgpufundamentals.org/)
+- **Audio Worklet**: [MDN AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Using_AudioWorklet)
+- **Performance API**: [MDN Performance](https://developer.mozilla.org/en-US/docs/Web/API/Performance)
+
+### WebAssembly and SIMD
+
+- **WebAssembly**: [Official Specification](https://webassembly.github.io/spec/)
+- **WASM SIMD**: [V8 SIMD Features](https://v8.dev/features/simd)
+- **RustFFT WASM**: [WASM SIMD Implementation](https://deepwiki.com/ejmahler/RustFFT/4.4-wasm-simd-implementation)
+- **pffft.wasm**: [Fast FFT Library](https://github.com/JorenSix/pffft.wasm)
+- **WebFFT**: [Meta-Library for FFT](https://webfft.com/)
+- **AssemblyScript**: [TypeScript to WASM](https://www.assemblyscript.org/)
+
+### Performance Optimization Guides
+
+- **Web.dev Performance**: [web.dev/performance](https://web.dev/performance/)
+- **High-Performance JS**: [Off-Main-Thread](https://web.dev/off-main-thread/)
+- **Signal Analyzer Example**: [Building with Modern Web Tech](https://cprimozic.net/blog/building-a-signal-analyzer-with-modern-web-tech/)
+- **WebGPU Optimization**: [Compute Shader Performance](https://github.com/gfx-rs/wgpu/discussions/6688)
+
+### Internal Documentation
+
+- **[Performance Benchmarks](./performance-benchmarks.md)**: Detailed measurements and optimization results
+- **[WASM Runtime Flags](./wasm-runtime-flags.md)**: WebAssembly configuration
+- **[FFT Implementation](./fft-implementation.md)**: FFT algorithm details
+- **[WebGL Visualization](./webgl-visualization.md)**: GPU rendering techniques
+
+## See Also
+
+- [Performance Benchmarks Documentation](./performance-benchmarks.md) - Comprehensive benchmark results and optimization roadmap
+- [Visualization Performance Guide](../VISUALIZATION_PERFORMANCE_GUIDE.md) - Detailed visualization optimization patterns
