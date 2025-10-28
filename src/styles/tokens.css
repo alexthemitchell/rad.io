@@ -1,34 +1,42 @@
 /* Load preferred UI fonts (self-hosted, non-blocking, falls back gracefully if offline) */
+
 /* Self-hosted Inter font */
 @font-face {
-  font-family: 'Inter';
-  src: url('../assets/fonts/Inter-Variable.woff2') format('woff2-variations'),
-       url('../assets/fonts/Inter-Variable.woff') format('woff-variations');
+  font-family: Inter;
+  src:
+    url("../assets/fonts/Inter-Variable.woff2") format("woff2-variations"),
+    url("../assets/fonts/Inter-Variable.woff") format("woff-variations");
   font-weight: 400 800;
   font-display: swap;
   font-style: normal;
 }
+
 /* Self-hosted JetBrains Mono font */
 @font-face {
-  font-family: 'JetBrains Mono';
-  src: url('../assets/fonts/JetBrainsMono-Regular.woff2') format('woff2'),
-       url('../assets/fonts/JetBrainsMono-Regular.woff') format('woff');
+  font-family: "JetBrains Mono";
+  src:
+    url("../assets/fonts/JetBrainsMono-Regular.woff2") format("woff2"),
+    url("../assets/fonts/JetBrainsMono-Regular.woff") format("woff");
   font-weight: 400;
   font-display: swap;
   font-style: normal;
 }
+
 @font-face {
-  font-family: 'JetBrains Mono';
-  src: url('../assets/fonts/JetBrainsMono-Medium.woff2') format('woff2'),
-       url('../assets/fonts/JetBrainsMono-Medium.woff') format('woff');
+  font-family: "JetBrains Mono";
+  src:
+    url("../assets/fonts/JetBrainsMono-Medium.woff2") format("woff2"),
+    url("../assets/fonts/JetBrainsMono-Medium.woff") format("woff");
   font-weight: 500;
   font-display: swap;
   font-style: normal;
 }
+
 @font-face {
-  font-family: 'JetBrains Mono';
-  src: url('../assets/fonts/JetBrainsMono-Bold.woff2') format('woff2'),
-       url('../assets/fonts/JetBrainsMono-Bold.woff') format('woff');
+  font-family: "JetBrains Mono";
+  src:
+    url("../assets/fonts/JetBrainsMono-Bold.woff2") format("woff2"),
+    url("../assets/fonts/JetBrainsMono-Bold.woff") format("woff");
   font-weight: 700;
   font-display: swap;
   font-style: normal;
@@ -46,10 +54,10 @@
 
   /* Typography */
   --rad-font-ui:
-    Inter, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell,
+    inter, system-ui, -apple-system, "Segoe UI", roboto, ubuntu, cantarell,
     "Helvetica Neue", arial, sans-serif;
   --rad-font-mono:
-    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "JetBrains Mono", ui-monospace, sfmono-regular, menlo, monaco, consolas,
     "Liberation Mono", "Courier New", monospace;
 
   /* Type scale (rem) */

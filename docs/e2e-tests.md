@@ -109,6 +109,7 @@ Mock mode activates when **any** of the following is present:
    ```
 
 3. **Build-Time Environment**: `E2E_MOCK_SDR=1`
+
    ```bash
    E2E_MOCK_SDR=1 npm run build
    ```
@@ -197,7 +198,7 @@ Resource management:
 ## Test entries
 
 - `e2e/monitor-mock.spec.ts` — CI-friendly smoke test that starts/stops reception with the mock device
-- `e2e/monitor-real.spec.ts` — opt-in real device test (tagged `@real` and additionally gated by E2E_REAL_HACKRF)
+- `e2e/monitor-real.spec.ts` — opt-in real device test (tagged `@real` and additionally gated by E2E_REAL_HackRF)
 - `e2e/accessibility.spec.ts` — existing a11y coverage (unchanged)
 
 ## Writing E2E Tests
@@ -264,6 +265,7 @@ test.describe("My Feature", () => {
    ```
 
 5. **Clean Up After Tests**
+
    ```typescript
    test.afterEach(async ({ page }) => {
      // Stop any active streaming

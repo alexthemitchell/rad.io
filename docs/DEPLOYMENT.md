@@ -269,6 +269,7 @@ If a deployment introduces critical issues:
    This triggers automatic redeployment of the previous version.
 
 3. **Alternative - Force push previous version** (use with caution):
+
    ```bash
    git reset --hard <good-commit-sha>
    git push --force origin main
@@ -387,7 +388,7 @@ npx webpack-bundle-analyzer dist/stats.json
 
 **Resolution:**
 
-- Review webpack optimization settings
+- Review Webpack optimization settings
 - Consider code splitting for large components
 - Lazy load non-critical features
 - Optimize images and assets
@@ -424,7 +425,7 @@ Monitor these metrics for deployment health:
    ```
 
 2. **Keep bundle sizes manageable**:
-   - Monitor webpack warnings
+   - Monitor Webpack warnings
    - Use dynamic imports for large dependencies
    - Regularly review bundle composition
 

@@ -336,6 +336,7 @@ test("receives real signals from HackRF", async ({ page }) => {
    ```
 
 6. **Run E2E tests**
+
    ```bash
    npm run test:e2e
    ```

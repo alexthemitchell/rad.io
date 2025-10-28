@@ -51,7 +51,7 @@ If any answer is “No”, don’t write a memory. Use one of:
 
 2. Prefer short, scannable memories:
    - Target 150–400 words; use headings and bullets.
-   - Start with a one-line purpose. Clearly scoped titles like "WASM_DSP" or "WEBUSB_STREAMING_DEBUG_GUIDE".
+   - Start with a one-line purpose. Clearly scoped titles like "WASM_DSP" or "WebUSB_STREAMING_DEBUG_GUIDE".
    - Link to source files by path (e.g., `src/utils/dsp.ts`) rather than inlining code.
 
 3. Retrieve before you read:
@@ -91,8 +91,8 @@ What NOT to Create as Memories or Documentation
 
 Examples
 
-- Good: “PLAYBOOK_WEBUSB_STREAM_RECOVERY” — minimal steps to recover from device disconnect; links to `src/hackrf/*` and `e2e/monitor-real.spec.ts`.
-- Good: “ADR_WEBGL_CLEANUP_ORDERING” — states cleanup invariants and rationale; links to `src/visualization/renderers/*` and tests.
+- Good: “PLAYBOOK_WebUSB_STREAM_RECOVERY” — minimal steps to recover from device disconnect; links to `src/hackrf/*` and `e2e/monitor-real.spec.ts`.
+- Good: “ADR_WebGL_CLEANUP_ORDERING” — states cleanup invariants and rationale; links to `src/visualization/renderers/*` and tests.
 - Bad: “REAL_HARDWARE_E2E_2025-10-27” — session summary with screenshots and per‑run outcomes; should be a PR note or chat message.
 
 Enforcement

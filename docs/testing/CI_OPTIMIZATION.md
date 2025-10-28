@@ -288,6 +288,7 @@ Reduce coverage upload overhead.
    ```
 
 3. **Increase E2E parallelism**
+
    ```typescript
    workers: process.env.CI ? 2 : 3,
    ```
@@ -305,6 +306,7 @@ Reduce coverage upload overhead.
    ```
 
 2. **Update coverage upload**
+
    ```yaml
    flags: shard-${{ matrix.shard }}
    ```

@@ -35,7 +35,7 @@ Running tests
 
 - CI default: npm run test:e2e → runs mock + simulated (26 tests)
 - Simulated only: npm run test:e2e:sim → @simulated tests
-- Real device (legacy): E2E_REAL_HACKRF=1 npm run test:e2e → @real tests
+- Real device (legacy): E2E_REAL_HackRF=1 npm run test:e2e → @real tests
 - Device tests: npm run test:e2e:device → 8 hardware-in-the-loop tests
 - Device headed: npm run test:e2e:device -- --headed
 

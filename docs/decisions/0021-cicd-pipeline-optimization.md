@@ -11,7 +11,7 @@ The rad.io CI/CD pipeline had several inefficiencies that were slowing down buil
 1. **Redundant dependency installation**: Each job ran `npm ci` independently (~30-60s per job)
 2. **No caching strategy**: WASM builds were rebuilt on every run
 3. **Sequential execution**: Independent jobs (lint, format, type-check) could run in parallel
-4. **Suboptimal webpack configuration**: Using development config in CI, no code splitting
+4. **Suboptimal Webpack configuration**: Using development config in CI, no code splitting
 5. **Playwright browser installation**: Browsers reinstalled on every run (~2-3 minutes)
 
 ### Baseline Performance (Pre-Optimization)
@@ -30,7 +30,7 @@ The rad.io CI/CD pipeline had several inefficiencies that were slowing down buil
 2. WASM build run 2 times (build + deploy jobs)
 3. Playwright browsers downloaded on every E2E run
 4. No incremental build support
-5. Development webpack config used in CI (no optimizations)
+5. Development Webpack config used in CI (no optimizations)
 
 ## Decision
 
@@ -237,7 +237,7 @@ Monitor these metrics to validate optimizations:
 
 1. GitHub Actions workflow run times
 2. Cache hit rates in workflow logs
-3. Bundle sizes in webpack output
+3. Bundle sizes in Webpack output
 4. Coverage report upload times
 
 ### Future Optimizations

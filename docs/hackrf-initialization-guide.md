@@ -295,7 +295,7 @@ await hackrf.receive(callback); // Works!
 
 **Fix (Windows, using Zadig):**
 
-1. Disconnect other SDR applications (SDR#, CubicSDR, hackrf_transfer)
+1. Disconnect other SDR applications (SDR#, CubicSDR, HackRF_transfer)
 2. Install Zadig from https://zadig.akeo.ie/
 3. Plug in the HackRF, then open Zadig and select:
 

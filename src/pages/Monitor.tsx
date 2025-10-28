@@ -212,7 +212,7 @@ function Monitor(): React.JSX.Element {
       console.error("Tune failed", err);
       // Attempt fast recovery once, then retry tune sequence
       try {
-        if (typeof device.fastRecovery === 'function') {
+        if (typeof device.fastRecovery === "function") {
           setStatusMsg("Recovering device after transfer error…");
           await device.fastRecovery();
         } else {

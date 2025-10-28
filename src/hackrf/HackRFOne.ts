@@ -152,7 +152,7 @@ export class HackRFOne {
   // New flag to indicate that shutdown has begun
   private closing = false;
   // Stop controller to break out of pending USB transfers promptly
-  private stopResolve: (() => void) | null = null;
+  private stopReject: ((reason?: unknown) => void) | null = null;
 
   // Add a simple mutex to prevent concurrent USB state changes
   private transferMutex: Promise<void> = Promise.resolve();
@@ -990,7 +990,7 @@ export class HackRFOne {
       });
     }
     // Clear stop controller to avoid leaking references
-    this.stopResolve = null;
+    this.stopReject = null;
     await this.setTransceiverMode(TransceiverMode.OFF);
     await this.controlTransferOut({
       command: RequestCommand.UI_ENABLE,
@@ -1005,7 +1005,7 @@ export class HackRFOne {
     if (this.stopReject) {
       const reject = this.stopReject;
       this.stopReject = null;
-      reject(new DOMException('Aborted', 'AbortError'));
+      reject(new DOMException("Aborted", "AbortError"));
     }
   }
 

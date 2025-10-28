@@ -798,6 +798,7 @@ npm run test:utils                    # Utility tests only
    ```
 
 3. **Batch Operations**
+
    ```typescript
    ctx.beginPath();
    samples.forEach((s) => ctx.lineTo(s.x, s.y));
@@ -910,6 +911,7 @@ function adaptiveDownsample(
    ```
 
 4. **Add to Demo Page**
+
    ```typescript
    // src/pages/VisualizationDemo.tsx
    <MyVisualization

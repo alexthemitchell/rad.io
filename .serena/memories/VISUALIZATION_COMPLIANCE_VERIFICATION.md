@@ -36,8 +36,8 @@ Each tier wrapped in try-catch with console.warn on failure. Graceful degradatio
 
 **ADR-0003** (GPU Acceleration): ✅ COMPLIANT
 
-- WebGL utilities: src/utils/webgl.ts
-- WebGPU utilities: src/utils/webgpu.ts
+- WebGL utilities: src/utils/WebGL.ts
+- WebGPU utilities: src/utils/WebGPU.ts
 - Viridis colormap LUT implemented
 - Progressive enhancement ready
 
@@ -49,7 +49,7 @@ Each tier wrapped in try-catch with console.warn on failure. Graceful degradatio
 
 ## Best Practices Verified
 
-From WEBGL_VISUALIZATION_ARCHITECTURE memory:
+From WebGL_VISUALIZATION_ARCHITECTURE memory:
 
 ✅ **Synchronous Canvas Sizing** (before async import):
 
@@ -142,14 +142,14 @@ These are documented in VISUALIZATION_COMPLIANCE_REPORT.md with priority ratings
 
 1. Check console.warn messages for fallback failures
 2. Verify DPR scaling in DevTools (canvas.width vs style.width)
-3. Test with WebGL disabled (chrome://flags/#disable-webgl)
+3. Test with WebGL disabled (chrome://flags/#disable-WebGL)
 4. Check if OffscreenCanvas is supported (typeof OffscreenCanvas)
 
 ## References
 
 - Compliance Report: VISUALIZATION_COMPLIANCE_REPORT.md
-- Architecture Memory: WEBGL_VISUALIZATION_ARCHITECTURE
-- WebGPU Memory: WEBGPU_VISUALIZATION_IMPLEMENTATION
+- Architecture Memory: WebGL_VISUALIZATION_ARCHITECTURE
+- WebGPU Memory: WebGPU_VISUALIZATION_IMPLEMENTATION
 - Test Patterns: SERENA_MEMORY_BEST_PRACTICES
 
 **Verification Completed**: 2025-10-25

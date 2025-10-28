@@ -76,7 +76,7 @@ Updated `README.md` to reference deployment documentation.
 
 ### 5. Webpack Performance Optimization
 
-Enhanced webpack configuration:
+Enhanced Webpack configuration:
 
 - Conditional performance hints (disabled in development, warnings in production)
 - Maintains current size limits (630 KB)
@@ -127,7 +127,7 @@ Enhanced webpack configuration:
 ### Neutral
 
 1. **No Changes to Core Build Process**:
-   - Existing webpack configuration remains largely unchanged
+   - Existing Webpack configuration remains largely unchanged
    - Build outputs and artifacts are identical
    - Only validation and cleanup are new
 
@@ -246,9 +246,9 @@ Organized for discoverability:
 ## Related Documents
 
 - [docs/DEPLOYMENT.md](../DEPLOYMENT.md) - Deployment runbook
-- [.github/workflows/deploy-pages.yml](../../.github/workflows/deploy-pages.yml) - Deployment workflow
-- [.github/workflows/cleanup-artifacts.yml](../../.github/workflows/cleanup-artifacts.yml) - Cleanup workflow
-- [webpack.config.ts](../../webpack.config.ts) - Webpack configuration
+- [.GitHub/workflows/deploy-pages.yml](../../.github/workflows/deploy-pages.yml) - Deployment workflow
+- [.GitHub/workflows/cleanup-artifacts.yml](../../.github/workflows/cleanup-artifacts.yml) - Cleanup workflow
+- [Webpack.config.ts](../../webpack.config.ts) - Webpack configuration
 
 ---
 

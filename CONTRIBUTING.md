@@ -108,6 +108,7 @@ git commit -m "feat: add support for new SDR device"
 ```
 
 5. **Push and create PR**
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -457,7 +458,7 @@ Before submitting a PR:
 - ☐ Documentation updated if needed
 - ☐ Commit messages follow convention
 - ☐ No unnecessary console statements
-- ☐ **Accessibility checklist completed** (see [.github/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md))
+- ☐ **Accessibility checklist completed** (see [.GitHub/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md))
 
 ### Accessibility Requirements
 
@@ -467,12 +468,12 @@ All PRs must maintain or improve accessibility. Before submitting:
 2. **Test keyboard navigation**: Navigate your changes using only Tab, Enter, Space, and arrow keys
 3. **Verify focus indicators**: Ensure all interactive elements have visible focus
 4. **Check ARIA labels**: All non-text elements have descriptive labels
-5. **Review the checklist**: See [.github/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md)
+5. **Review the checklist**: See [.GitHub/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md)
 
 **Key Resources**:
 
 - Full accessibility guide: [ACCESSIBILITY.md](./ACCESSIBILITY.md)
-- PR review checklist: [.github/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md)
+- PR review checklist: [.GitHub/ACCESSIBILITY_CHECKLIST.md](.github/ACCESSIBILITY_CHECKLIST.md)
 - WCAG 2.1 Guidelines: https://www.w3.org/WAI/WCAG21/quickref/
 
 ### Additional Notes

@@ -13,4 +13,4 @@ Code links
 
 - Models: src/models/HackRFOne.ts, HackRFOneAdapter.ts
 - Hooks: src/hooks/useUSBDevice.ts, useHackRFDevice.ts
-- Debug: WEBUSB_STREAMING_DEBUG_GUIDE
+- Debug: WebUSB_STREAMING_DEBUG_GUIDE

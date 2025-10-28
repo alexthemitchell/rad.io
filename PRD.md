@@ -224,7 +224,7 @@ Motion should communicate system state and guide attention without interfering w
 - **Card**: Container for control panels, device list, bookmarks, recordings—token-styled cards with minimal borders, subtle shadows
 - **Dialog**: Settings, calibration wizard, file import/export, about—accessible dialog with backdrop blur, escape to close
 - **Sheet**: Side panels for bookmarks, recordings, device manager—resizable sheet behavior
-- **Table**: Bookmark list, measurement log, scan results—virtual scrolling (react-window), sortable columns
+- **Table**: Bookmark list, measurement log, scan results—virtual scrolling (React-window), sortable columns
 - **Tooltip**: Parameter explanations, measurement units, control hints—400ms delay, rich content support
 - **Badge**: Status indicators (device state, recording active, buffer health, signal quality)—color variants via tokens
 - **Separator**: Visual grouping in dense control panels—horizontal and vertical

@@ -57,7 +57,7 @@ useEffect(() => {
 
 ## Audio Buffer Sizing
 
-**Formula**: AUDIO_BUFFER_SIZE = (target_latency_ms / 1000) \* sdr_sample_rate
+**Formula**: AUDIO_BUFFER_SIZE = (target_latency_ms / 1000) \* SDR_sample_rate
 
 **For 2.048 MSPS with ~64ms latency**:
 
@@ -111,7 +111,7 @@ When audio playback fails or visualizers show "Waiting for signal data":
    - For 2.048 MSPS: 131072 / 2048000 \* 1000 = 64ms ✅
 
 3. **Verify decimation ratio**:
-   - Ratio = sdr_sample_rate / audio_sample_rate
+   - Ratio = SDR_sample_rate / audio_sample_rate
    - For 2.048 MSPS → 48 kHz: 2048000 / 48000 = ~42.67:1
    - Should be < 100:1 for browser real-time processing
 

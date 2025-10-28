@@ -23,5 +23,5 @@ Key patterns
 
 Related
 
-- Testing infra: `jest.setup.ts` (canvas/webgpu mocks, jest-axe integration)
+- Testing infra: `jest.setup.ts` (canvas/WebGPU mocks, jest-axe integration)
 - Coverage policy: `codecov.yml` (component-level patch thresholds for `ui_pages`)

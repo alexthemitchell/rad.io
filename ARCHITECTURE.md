@@ -70,7 +70,7 @@ src/
 │ └── **tests**/ # Component tests
 ├── utils/ # Utility functions
 │ ├── dsp.ts # DSP algorithms
-│ ├── webgl.ts # WebGL utilities
+│ ├── WebGL.ts # WebGL utilities
 │ └── **tests**/ # Utility tests
 ├── pages/ # Top-level pages
 │ └── Visualizer.tsx # Main application

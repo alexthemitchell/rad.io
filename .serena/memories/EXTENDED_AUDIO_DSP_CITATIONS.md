@@ -37,7 +37,7 @@ else:
 - Wikipedia: "Nyquist–Shannon sampling theorem" (en.wikipedia.org)
 - GeeksforGeeks: Nyquist Sampling Theorem tutorial
 - ICO Optics: "Sampling Theory and Aliasing in SDRs" (ico-optics.org)
-- LearnSDR: "Lesson 6 — Sampling" (gallicchio.github.io/learnSDR/lesson06.html)
+- LearnSDR: "Lesson 6 — Sampling" (gallicchio.GitHub.io/learnSDR/lesson06.html)
 - TI: "Why Use Oversampling when Undersampling Can Do the Job?" (ti.com/lit/an/slaa594a)
 
 **Core Principle:**
@@ -71,7 +71,7 @@ else:
 **Technical Deep Dives:**
 
 - PeerDH: "Understanding AudioWorklet: Deep Dive" (peerdh.com/blogs/programming-insights)
-- GitHub: Real-Time Audio Worklet Recorder (github.com/alyssonbarrera/audio-worklet-recorder)
+- GitHub: Real-Time Audio Worklet Recorder (GitHub.com/alyssonbarrera/audio-worklet-recorder)
 - Stack Overflow: AudioWorkletProcessor for scheduling (stackoverflow.com/questions/62505257)
 
 **WebAssembly Integration:**
@@ -189,7 +189,7 @@ else:
 - Fastest pure JavaScript FFT
 - 47,511 ops/sec @ 2048 points (Mozilla Kraken)
 - Radix-2 Cooley-Tukey algorithm
-- github.com/indutny/fft.js
+- GitHub.com/indutny/fft.js
 
 **dsp.js:**
 

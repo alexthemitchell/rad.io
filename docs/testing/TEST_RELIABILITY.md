@@ -511,6 +511,7 @@ test.skip("should handle race condition", () => {
    ```
 
 5. **Handle async properly**
+
    ```typescript
    const promise = asyncFunction();
    await expect(promise).resolves.toBe(expected);
@@ -547,6 +548,7 @@ test.skip("should handle race condition", () => {
    ```
 
 5. **Don't ignore warnings**
+
    ```typescript
    // Fix "not wrapped in act()" warnings
    // Fix "memory leak" warnings

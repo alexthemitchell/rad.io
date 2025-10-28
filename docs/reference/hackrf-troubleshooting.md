@@ -440,6 +440,7 @@ HackRFOne.reset: Initiating software reset
    ```
 
 3. **Failed Recovery**:
+
    ```
    HackRFOne.receive: Max timeouts reached, initiating automatic recovery
    HackRFOne.fastRecovery: Starting automatic recovery
@@ -588,7 +589,7 @@ Start with 16 dB and adjust based on signal strength.
 
 ## Diagnostic Commands Reference
 
-### hackrf_info
+### HackRF_info
 
 **Purpose**: Display device information  
 **Output**: Serial number, firmware version, board ID, part ID
@@ -608,7 +609,7 @@ Firmware Version: 2018.01.1
 Part ID Number: 0xa000cb3c 0x005e4759
 ```
 
-### hackrf_transfer
+### HackRF_transfer
 
 **Purpose**: Test TX/RX data path  
 **Common Options**:
@@ -630,7 +631,7 @@ hackrf_transfer -r /tmp/test.bin -f 100000000 -s 20000000 -n 10000000
 hackrf_transfer -t test.bin -f 100000000 -s 10000000 -x 47
 ```
 
-### hackrf_sweep
+### HackRF_sweep
 
 **Purpose**: Spectrum analyzer / frequency sweep  
 **Common Options**:
@@ -647,7 +648,7 @@ hackrf_sweep -f 88:108
 hackrf_sweep -f 1:6000 -w 1000000
 ```
 
-### hackrf_debug
+### HackRF_debug
 
 **Purpose**: Read/write chip registers (advanced)
 
@@ -659,7 +660,7 @@ hackrf_debug -r
 hackrf_debug -w address value
 ```
 
-### hackrf_clock
+### HackRF_clock
 
 **Purpose**: View/configure clock settings
 
@@ -672,7 +673,7 @@ hackrf_clock -i  # Internal
 hackrf_clock -e  # External
 ```
 
-### hackrf_spiflash
+### HackRF_spiflash
 
 **Purpose**: Firmware update/verification
 

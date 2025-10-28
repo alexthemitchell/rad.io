@@ -10,7 +10,7 @@ The app uses `BrowserRouter` (not `HashRouter`), which means:
 
 - Routes are pathname-based: `/monitor`, `/scanner`, etc.
 - No hash in URLs: Use `/monitor` not `#/monitor`
-- Server must be configured to serve index.html for all routes (handled by webpack dev server)
+- Server must be configured to serve index.html for all routes (handled by Webpack dev server)
 
 ## Correct Navigation Methods
 
