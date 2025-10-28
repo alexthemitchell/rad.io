@@ -218,6 +218,7 @@ export function createSimulatedSource(
     amplitude: config?.amplitude ?? 0.8,
     updateInterval: config?.updateInterval ?? 50,
     samplesPerUpdate: config?.samplesPerUpdate ?? 2048,
+    centerFrequency: config?.centerFrequency ?? defaults.centerFrequency,
   });
 }
 

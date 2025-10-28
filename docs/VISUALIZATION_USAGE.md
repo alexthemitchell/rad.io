@@ -125,7 +125,7 @@ Optimized for AM radio reception (530-1700 kHz):
 ```typescript
 const setup = createVisualizationSetup({
   preset: "AMBroadcast",
-  pattern: "am",
+  pattern: "sine",
   enableFFT: true,
 });
 ```

@@ -94,7 +94,7 @@ await setup.cleanup();
 ```typescript
 const setup = createVisualizationSetup({
   preset: "AMBroadcast",
-  pattern: "am",
+  pattern: "sine",
   enableFFT: true,
   enableAGC: true,
 });

@@ -15,6 +15,9 @@ import {
 import { FFTProcessor, AGCProcessor, SpectrogramProcessor } from "../processors";
 import { SimulatedSource } from "../SimulatedSource";
 
+// Type alias for processor-like objects
+type ProcessorLike = { process: (input: unknown) => unknown };
+
 describe("VisualizationPresets", () => {
   it("should define FM broadcast preset", () => {
     expect(VisualizationPresets.FMBroadcast).toMatchObject({
@@ -284,7 +287,7 @@ describe("chainProcessors", () => {
     const agc = createAGCPipeline();
     const fft = createFFTPipeline({ fftSize: 256, sampleRate: 1000000 });
     
-    const process = chainProcessors([agc as { process: (input: unknown) => unknown }, fft as { process: (input: unknown) => unknown }]);
+    const process = chainProcessors([agc as ProcessorLike, fft as ProcessorLike]);
     
     // Create test samples
     const samples = Array.from({ length: 256 }, (_, i) => ({
@@ -300,7 +303,7 @@ describe("chainProcessors", () => {
 
   it("should pass data through single processor", () => {
     const fft = createFFTPipeline({ fftSize: 128, sampleRate: 1000000 });
-    const process = chainProcessors([fft as { process: (input: unknown) => unknown }]);
+    const process = chainProcessors([fft as ProcessorLike]);
     
     const samples = Array.from({ length: 128 }, (_, i) => ({
       I: Math.sin((2 * Math.PI * 1000 * i) / 1000000),
