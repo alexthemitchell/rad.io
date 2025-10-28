@@ -61,7 +61,7 @@ export class ReplaySource implements DataSource {
     return this.playback?.getIsPlaying() ?? false;
   }
 
-  getMetadata(): DataSourceMetadata {
+  async getMetadata(): Promise<DataSourceMetadata> {
     const metadata = this.recording.metadata;
     return {
       name: "Replay Source",

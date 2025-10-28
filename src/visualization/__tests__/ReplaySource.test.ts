@@ -71,10 +71,10 @@ describe("ReplaySource", () => {
   });
 
   describe("getMetadata", () => {
-    it("should return recording metadata", () => {
+    it("should return recording metadata", async () => {
       const recording = createTestRecording(1024);
       const source = new ReplaySource(recording);
-      const metadata = source.getMetadata();
+      const metadata = await source.getMetadata();
 
       expect(metadata.name).toBe("Replay Source");
       expect(metadata.sampleRate).toBe(sampleRate);

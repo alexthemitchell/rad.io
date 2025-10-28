@@ -14,6 +14,8 @@ export interface StatusBarProps {
   fps?: number;
   /** Input data cadence FPS (viz-push) */
   inputFps?: number;
+  /** Estimated dropped frames over recent window */
+  droppedFrames?: number;
   /** p95 render duration for 'rendering' measures (ms) */
   renderP95Ms?: number;
   /** Count of long tasks observed (PerformanceObserver) */
@@ -38,6 +40,8 @@ export interface StatusBarProps {
   audioClipping?: boolean;
   /** Additional className for styling */
   className?: string;
+  /** Open the Rendering Settings modal */
+  onOpenRenderingSettings?: () => void;
 }
 
 /**
@@ -63,6 +67,7 @@ function StatusBar({
   renderTier = RenderTier.Unknown,
   fps = 0,
   inputFps = 0,
+  droppedFrames,
   renderP95Ms = 0,
   longTasks = 0,
   sampleRate = 0,
@@ -75,6 +80,7 @@ function StatusBar({
   audioVolume,
   audioClipping = false,
   className = "",
+  onOpenRenderingSettings,
 }: StatusBarProps): React.JSX.Element {
   const [currentTime, setCurrentTime] = useState(new Date());
   // Tolerate missing DeviceProvider in isolated tests by gracefully degrading
@@ -356,13 +362,34 @@ function StatusBar({
 
       <div className="status-bar-item">
         <span className="status-bar-label">GPU</span>
-        <span
-          className="status-bar-value"
-          style={{ color: getRenderTierColor(renderTier) }}
-          title={`Rendering with ${renderTier}`}
-        >
-          {renderTier}
-        </span>
+        {typeof onOpenRenderingSettings === "function" ? (
+          <button
+            type="button"
+            className="status-bar-value"
+            onClick={onOpenRenderingSettings}
+            style={{
+              color: getRenderTierColor(renderTier),
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              textDecoration: "underline",
+              textUnderlineOffset: 2,
+            }}
+            aria-label={`Rendering with ${renderTier}. Open rendering settings.`}
+            title={`Rendering with ${renderTier} • Click for settings`}
+          >
+            {renderTier}
+          </button>
+        ) : (
+          <span
+            className="status-bar-value"
+            style={{ color: getRenderTierColor(renderTier) }}
+            title={`Rendering with ${renderTier}`}
+          >
+            {renderTier}
+          </span>
+        )}
       </div>
 
       <div className="status-bar-separator" aria-hidden="true" />
@@ -443,6 +470,27 @@ function StatusBar({
           {longTasks}
         </span>
       </div>
+
+      {typeof droppedFrames === "number" ? (
+        <>
+          <div className="status-bar-separator" aria-hidden="true" />
+          <div className="status-bar-item">
+            <span className="status-bar-label">Dropped</span>
+            <span
+              className="status-bar-value status-bar-mono"
+              style={{
+                color:
+                  droppedFrames > 0
+                    ? "var(--rad-warning)"
+                    : "var(--rad-success)",
+              }}
+              title="Estimated dropped frames (last 60s)"
+            >
+              {Math.max(0, Math.round(droppedFrames))}
+            </span>
+          </div>
+        </>
+      ) : null}
 
       <div className="status-bar-separator" aria-hidden="true" />
 

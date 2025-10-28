@@ -281,10 +281,12 @@ export interface VisualizationSetup<T extends DataSource = DataSource> {
  * await setup.cleanup();
  * ```
  */
-export function createVisualizationSetup(options?: {
+export function createVisualizationSetup<T extends DataSource = SimulatedSource>(options?: {
   /** Use a preset configuration */
   preset?: keyof typeof VisualizationPresets;
-  /** Signal pattern for simulated source */
+  /** Custom data source. If not provided, a simulated source will be created. */
+  source?: T;
+  /** Signal pattern for simulated source (only used if no custom source is provided) */
   pattern?: SimulatedSourceConfig["pattern"];
   /** Enable AGC processing */
   enableAGC?: boolean;
@@ -296,7 +298,7 @@ export function createVisualizationSetup(options?: {
   sampleRate?: number;
   /** Custom FFT size (overrides preset) */
   fftSize?: number;
-}): VisualizationSetup<SimulatedSource> {
+}): VisualizationSetup<T> {
   const presetConfig = options?.preset
     ? VisualizationPresets[options.preset]
     : VisualizationPresets.RealtimeMonitoring;
@@ -305,11 +307,13 @@ export function createVisualizationSetup(options?: {
   const fftSize = options?.fftSize ?? presetConfig.fftSize;
 
   // Create data source
-  const source = createSimulatedSource({
-    pattern: options?.pattern ?? "sine",
-    sampleRate,
-    samplesPerUpdate: fftSize,
-  });
+  const source =
+    options?.source ??
+    (createSimulatedSource({
+      pattern: options?.pattern ?? "sine",
+      sampleRate,
+      samplesPerUpdate: fftSize,
+    }) as unknown as T);
 
   // Create processors based on options
   const fftProcessor = options?.enableFFT

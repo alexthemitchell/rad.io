@@ -19,21 +19,21 @@ describe("SimulatedSource", () => {
   });
 
   describe("initialization", () => {
-    it("should create with default configuration", () => {
-      const metadata = source.getMetadata();
+    it("should create with default configuration", async () => {
+      const metadata = await source.getMetadata();
       expect(metadata.name).toBe("Simulated Source");
       expect(metadata.sampleRate).toBe(2048000);
       expect(metadata.centerFrequency).toBe(100000000);
     });
 
-    it("should create with custom configuration", () => {
+    it("should create with custom configuration", async () => {
       const customSource = new SimulatedSource({
         sampleRate: 1000000,
         centerFrequency: 50000000,
         pattern: "qpsk",
       });
 
-      const metadata = customSource.getMetadata();
+      const metadata = await customSource.getMetadata();
       expect(metadata.sampleRate).toBe(1000000);
       expect(metadata.centerFrequency).toBe(50000000);
       expect(metadata["pattern"]).toBe("qpsk");

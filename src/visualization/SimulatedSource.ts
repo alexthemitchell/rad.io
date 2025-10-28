@@ -92,14 +92,14 @@ export class SimulatedSource implements DataSource {
     return this.streaming;
   }
 
-  getMetadata(): DataSourceMetadata {
-    return {
+  async getMetadata(): Promise<DataSourceMetadata> {
+    return Promise.resolve({
       name: "Simulated Source",
       sampleRate: this.config.sampleRate,
       centerFrequency: this.config.centerFrequency,
       pattern: this.config.pattern,
       amplitude: this.config.amplitude,
-    };
+    });
   }
 
   /**

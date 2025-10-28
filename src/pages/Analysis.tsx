@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
 import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
@@ -16,8 +16,8 @@ import {
 } from "../visualization";
 import type { MarkerRow } from "../components/MarkerTable";
 
-const MAX_BUFFER_SAMPLES = 32768;
-const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
+const DEFAULT_MAX_BUFFER_SAMPLES = 32768;
+const DEFAULT_UPDATE_INTERVAL_MS = 33; // ~30 FPS
 
 function Analysis(): React.JSX.Element {
   const { device, initialize, isCheckingPaired } = useDevice();
@@ -28,6 +28,24 @@ function Analysis(): React.JSX.Element {
   const [isResetting, setIsResetting] = useState(false);
   const [samples, setSamples] = useState<Sample[]>([]);
   const [_currentFPS, setCurrentFPS] = useState<number>(0);
+
+  // Analysis controls
+  const [isFrozen, setIsFrozen] = useState(false);
+  const [updateIntervalMs, setUpdateIntervalMs] = useState<number>(
+    DEFAULT_UPDATE_INTERVAL_MS,
+  );
+  const [maxBufferSamples, setMaxBufferSamples] = useState<number>(
+    DEFAULT_MAX_BUFFER_SAMPLES,
+  );
+  const [renderInBackground, setRenderInBackground] = useState<boolean>(false);
+
+  // Autosizing for visualizations
+  const viz1Ref = useRef<HTMLDivElement | null>(null);
+  const viz2Ref = useRef<HTMLDivElement | null>(null);
+  const viz3Ref = useRef<HTMLDivElement | null>(null);
+  const [viz1Width, setViz1Width] = useState<number>(750);
+  const [viz2Width, setViz2Width] = useState<number>(750);
+  const [viz3Width, setViz3Width] = useState<number>(750);
 
   const shouldStartOnConnectRef = useRef(false);
 
@@ -61,6 +79,9 @@ function Analysis(): React.JSX.Element {
   }, [cancelScheduledUpdate]);
 
   const scheduleVisualizationUpdate = useCallback((): void => {
+    if (isFrozen) {
+      return;
+    }
     if (typeof requestAnimationFrame !== "function") {
       setSamples([...sampleBufferRef.current]);
       return;
@@ -87,7 +108,7 @@ function Analysis(): React.JSX.Element {
         fpsLastUpdateRef.current = now;
       }
     });
-  }, []);
+  }, [isFrozen]);
 
   const handleSampleChunk = useCallback(
     (chunk: Sample[]): void => {
@@ -102,7 +123,7 @@ function Analysis(): React.JSX.Element {
         sampleCount: chunk.length,
         bufferState: {
           currentSize: sampleBufferRef.current.length,
-          maxSize: MAX_BUFFER_SAMPLES,
+          maxSize: maxBufferSamples,
         },
       });
 
@@ -114,9 +135,10 @@ function Analysis(): React.JSX.Element {
       const combined = sampleBufferRef.current.length
         ? sampleBufferRef.current.concat(chunk)
         : chunk.slice();
+      const limit = Math.max(1024, Math.floor(maxBufferSamples));
       const trimmed =
-        combined.length > MAX_BUFFER_SAMPLES
-          ? combined.slice(combined.length - MAX_BUFFER_SAMPLES)
+        combined.length > limit
+          ? combined.slice(combined.length - limit)
           : combined;
       sampleBufferRef.current = trimmed;
 
@@ -124,7 +146,7 @@ function Analysis(): React.JSX.Element {
 
       const now =
         typeof performance !== "undefined" ? performance.now() : Date.now();
-      if (now - lastUpdateRef.current >= UPDATE_INTERVAL_MS) {
+      if (!isFrozen && now - lastUpdateRef.current >= updateIntervalMs) {
         lastUpdateRef.current = now;
         console.debug("Analysis: Scheduling visualization update", {
           bufferSize: sampleBufferRef.current.length,
@@ -133,7 +155,7 @@ function Analysis(): React.JSX.Element {
         scheduleVisualizationUpdate();
       }
     },
-    [scheduleVisualizationUpdate],
+    [scheduleVisualizationUpdate, isFrozen, updateIntervalMs, maxBufferSamples],
   );
 
   const beginDeviceStreaming = useCallback(
@@ -307,7 +329,7 @@ function Analysis(): React.JSX.Element {
   }, [device, beginDeviceStreaming]);
 
   useEffect((): (() => void) => {
-    return () => {
+    return (): void => {
       cancelScheduledUpdate();
     };
   }, [cancelScheduledUpdate]);
@@ -340,6 +362,97 @@ function Analysis(): React.JSX.Element {
     });
   }, [cancelScheduledUpdate, device]);
 
+  // Utility actions
+  const handleClear = useCallback((): void => {
+    clearVisualizationState();
+  }, [clearVisualizationState]);
+
+  const handleSnapshotCSV = useCallback((): void => {
+    try {
+      const rows = sampleBufferRef.current
+        .map((s) => `${s.I},${s.Q}`)
+        .join("\n");
+      const header = "I,Q\n";
+      const blob = new Blob([header, rows], {
+        type: "text/csv;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const ts = new Date().toISOString().replace(/[:.]/g, "-");
+      a.href = url;
+      a.download = `iq-snapshot-${Math.min(
+        sampleBufferRef.current.length,
+        maxBufferSamples,
+      )}-${ts}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      notify({
+        message: "Exported CSV snapshot of current IQ buffer",
+        sr: "polite",
+        visual: true,
+        tone: "success",
+      });
+    } catch (e) {
+      console.error("CSV export failed", e);
+      notify({
+        message: "CSV export failed",
+        sr: "assertive",
+        visual: true,
+        tone: "error",
+      });
+    }
+  }, [maxBufferSamples]);
+
+  // Keyboard shortcuts: F = freeze, E = export
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "SELECT")) {
+        return;
+      }
+      if (e.key.toLowerCase() === "f") {
+        setIsFrozen((v) => !v);
+      } else if (e.key.toLowerCase() === "e") {
+        handleSnapshotCSV();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return (): void => window.removeEventListener("keydown", onKey);
+  }, [handleSnapshotCSV]);
+
+  // Autosize: observe visualization containers
+  useLayoutEffect(() => {
+    const update = (
+      ref: React.RefObject<HTMLElement | null>,
+      set: (w: number) => void,
+    ): void => {
+      const el = ref.current;
+      if (!el) {
+        return;
+      }
+      const box = el.getBoundingClientRect();
+      set(Math.max(320, Math.floor(box.width)));
+    };
+    const ro = new ResizeObserver(() => {
+      update(viz1Ref, setViz1Width);
+      update(viz2Ref, setViz2Width);
+      update(viz3Ref, setViz3Width);
+    });
+    const els = [viz1Ref.current, viz2Ref.current, viz3Ref.current].filter(
+      Boolean,
+    ) as HTMLElement[];
+    for (const el of els) {
+      ro.observe(el);
+    }
+    // Prime sizes
+    update(viz1Ref, setViz1Width);
+    update(viz2Ref, setViz2Width);
+    update(viz3Ref, setViz3Width);
+    return (): void => ro.disconnect();
+  }, []);
+
   // Shared markers persisted by SpectrumExplorer
   const [sharedMarkers, setSharedMarkers] = useState<MarkerRow[]>([]);
   useEffect((): (() => void) => {
@@ -361,7 +474,7 @@ function Analysis(): React.JSX.Element {
     };
     load();
     const id = window.setInterval(load, 5000);
-    return () => {
+    return (): void => {
       cancelled = true;
       window.clearInterval(id);
     };
@@ -414,6 +527,77 @@ function Analysis(): React.JSX.Element {
               <p>Receiving and analyzing signal data in real-time...</p>
             </div>
           )}
+
+          {/* Analysis controls */}
+          <div className="controls-panel" role="region" aria-label="Analysis controls">
+            <div className="control-group">
+              <label className="control-label" htmlFor="freeze-toggle">Live view</label>
+              <button
+                id="freeze-toggle"
+                className={`btn ${isFrozen ? "btn-secondary" : "btn-primary"}`}
+                onClick={() => setIsFrozen((v) => !v)}
+                aria-pressed={isFrozen}
+                title={isFrozen ? "Unfreeze to resume live updates (F)" : "Freeze the visualizations (F)"}
+              >
+                {isFrozen ? "❄️ Frozen" : "🟢 Live"}
+              </button>
+            </div>
+
+            <div className="control-group">
+              <label className="control-label" htmlFor="fps-cap">Refresh rate</label>
+              <select
+                id="fps-cap"
+                className="control-select"
+                value={updateIntervalMs}
+                onChange={(e) => setUpdateIntervalMs(Number(e.target.value))}
+                aria-label="Visualization refresh rate"
+              >
+                <option value={66}>~15 FPS</option>
+                <option value={33}>~30 FPS</option>
+                <option value={16}>~60 FPS</option>
+              </select>
+            </div>
+
+            <div className="control-group">
+              <label className="control-label" htmlFor="buffer-size">Buffer window</label>
+              <select
+                id="buffer-size"
+                className="control-select"
+                value={maxBufferSamples}
+                onChange={(e) => setMaxBufferSamples(Number(e.target.value))}
+                aria-label="Max samples kept in buffer"
+              >
+                <option value={8192}>8K samples</option>
+                <option value={16384}>16K samples</option>
+                <option value={32768}>32K samples</option>
+                <option value={65536}>64K samples</option>
+              </select>
+            </div>
+
+            <div className="control-group">
+              <label className="control-label" htmlFor="bg-render">Background</label>
+              <button
+                id="bg-render"
+                className="btn btn-secondary"
+                onClick={() => setRenderInBackground((v) => !v)}
+                aria-pressed={renderInBackground}
+                title={renderInBackground ? "Rendering continues when tab is hidden" : "Pause rendering when tab is hidden"}
+              >
+                {renderInBackground ? "On" : "Auto-pause"}
+              </button>
+            </div>
+
+            <div className="control-group" style={{ alignSelf: "end" }}>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <button className="btn btn-secondary" onClick={handleClear} title="Clear current buffer and counters">
+                  🧹 Clear
+                </button>
+                <button className="btn btn-secondary" onClick={handleSnapshotCSV} title="Export current buffer as CSV (E)">
+                  ⬇️ Export CSV
+                </button>
+              </div>
+            </div>
+          </div>
         </Card>
 
         {/* Core analysis visuals per design guidelines */}
@@ -422,14 +606,28 @@ function Analysis(): React.JSX.Element {
             title="IQ Constellation"
             subtitle="Visualize modulation quality and symbol clustering"
           >
-            <IQConstellation samples={samples} />
+            <div ref={viz1Ref}>
+              <IQConstellation
+                samples={samples}
+                width={viz1Width}
+                height={Math.max(260, Math.round(viz1Width * 0.5))}
+                continueInBackground={renderInBackground}
+              />
+            </div>
           </Card>
 
           <Card
             title="Time-Domain Waveform"
             subtitle="Amplitude vs. time for signal quality checks"
           >
-            <WaveformVisualizer samples={samples} />
+            <div ref={viz2Ref}>
+              <WaveformVisualizer
+                samples={samples}
+                width={viz2Width}
+                height={Math.max(220, Math.round(viz2Width * 0.4))}
+                continueInBackground={renderInBackground}
+              />
+            </div>
           </Card>
         </div>
 
@@ -437,7 +635,13 @@ function Analysis(): React.JSX.Element {
           title="Eye Diagram"
           subtitle="Overlayed symbol periods to assess timing and ISI"
         >
-          <EyeDiagram samples={samples} />
+          <div ref={viz3Ref}>
+            <EyeDiagram
+              samples={samples}
+              width={viz3Width}
+              height={Math.max(240, Math.round(viz3Width * 0.35))}
+            />
+          </div>
         </Card>
 
         <Card title="Measurements" subtitle="Markers, deltas, and export">

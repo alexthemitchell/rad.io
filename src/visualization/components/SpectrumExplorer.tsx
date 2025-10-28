@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import MarkerTable from "../../components/MarkerTable";
+import { useRenderer } from "../../hooks/useRenderer";
 import { useVisualizationInteraction } from "../../hooks/useVisualizationInteraction";
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
@@ -15,6 +16,7 @@ import {
 } from "../../utils/dsp";
 import { performanceMonitor } from "../../utils/performanceMonitor";
 import { Spectrogram } from "../index";
+import { WebGLSpectrum } from "../renderers/WebGLSpectrum";
 
 type WindowType = "hann" | "blackman" | "rect";
 
@@ -117,7 +119,8 @@ export default function SpectrumExplorer({
   } | null>(null);
 
   // Refs for overlays
-  const spectrumCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const webglCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const dprRef = useRef<number>(window.devicePixelRatio || 1);
   const avgRef = useRef<Float32Array | null>(null);
   const peakRef = useRef<Float32Array | null>(null);
@@ -237,9 +240,9 @@ export default function SpectrumExplorer({
   });
 
   // Combined ref for spectrum canvas (interaction + local)
-  const combinedSpectrumRef = useCallback(
+  const combinedOverlayRef = useCallback(
     (el: HTMLCanvasElement | null) => {
-      spectrumCanvasRef.current = el;
+      overlayCanvasRef.current = el;
       interactionCanvasRef(el);
     },
     [interactionCanvasRef],
@@ -410,7 +413,30 @@ export default function SpectrumExplorer({
     };
   }, []);
 
-  // Draw spectrum via requestAnimationFrame for smooth 60fps updates (Canvas2D)
+  // --- WebGL Rendering ---
+  const webglRendererRef = useRenderer(webglCanvasRef.current, WebGLSpectrum);
+
+  useEffect(() => {
+    const renderer = webglRendererRef.current;
+    const mags = latestMagnitudes;
+    if (!renderer || !mags) {
+      return;
+    }
+
+    performanceMonitor.mark("render-spectrum-webgl-start");
+    const success = renderer.render({
+      magnitudes: mags,
+      freqMin: 0,
+      freqMax: mags.length,
+    });
+    if (success) {
+      renderTierManager.reportSuccess(RenderTier.WebGL2);
+      performanceMonitor.measure("render-spectrum-webgl", "render-spectrum-webgl-start");
+    }
+  }, [latestMagnitudes, webglRendererRef]);
+
+
+  // Draw overlays (grid, labels, markers) via requestAnimationFrame
   const lastCanvasSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
   const latestMagsRef = useRef<Float32Array | null>(null);
   useEffect(() => {
@@ -420,11 +446,11 @@ export default function SpectrumExplorer({
   useEffect(() => {
     let rafId = 0;
 
-    const drawFrame = (): void => {
-      const canvas = spectrumCanvasRef.current;
-      const mags = latestMagsRef.current;
+    const drawOverlays = (): void => {
+      const canvas = overlayCanvasRef.current;
+      const mags = latestMagsRef.current; // Use ref to get latest mags without re-triggering effect
       if (!canvas || !mags) {
-        rafId = requestAnimationFrame(drawFrame);
+        rafId = requestAnimationFrame(drawOverlays);
         return;
       }
 
@@ -442,31 +468,24 @@ export default function SpectrumExplorer({
         lastCanvasSizeRef.current = { w: width, h: height };
       }
 
-      const ctx = canvas.getContext("2d", {
-        alpha: false,
-        desynchronized: true,
-      });
+      const ctx = canvas.getContext("2d");
       if (!ctx) {
-        rafId = requestAnimationFrame(drawFrame);
+        rafId = requestAnimationFrame(drawOverlays);
         return;
       }
 
-      // Mark render start for FPS/metrics
-      const markStart = "render-spectrum-start";
+      const markStart = "render-overlays-start";
       performanceMonitor.mark(markStart);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
-
-      // Background
-      ctx.fillStyle = "#0a0e1a";
-      ctx.fillRect(0, 0, width, height);
+      ctx.clearRect(0, 0, width, height);
 
       // Chart area
       const margin = { top: 20, bottom: 22, left: 48, right: 16 };
       const cw = width - margin.left - margin.right;
       const ch = height - margin.top - margin.bottom;
 
-      // Band plan overlays (simple selection of common bands)
+      // Band plan overlays
       const bands: Array<{ lo: number; hi: number; label: string }> = [
         { lo: 88e6, hi: 108e6, label: "FM Broadcast" },
         { lo: 118e6, hi: 137e6, label: "Airband" },
@@ -482,75 +501,38 @@ export default function SpectrumExplorer({
       for (const b of bands) {
         const lo = Math.max(b.lo, overlayStartHz);
         const hi = Math.min(b.hi, overlayEndHz);
-        if (hi <= lo) {
-          continue;
-        }
-        const kLo =
-          (lo - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
-        const kHi =
-          (hi - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
-        const xLo =
-          margin.left +
-          Math.max(
-            0,
-            Math.min(
-              cw,
-              transform.scale * ((kLo / (mags.length - 1)) * cw) +
-                transform.offsetX,
-            ),
-          );
-        const xHi =
-          margin.left +
-          Math.max(
-            0,
-            Math.min(
-              cw,
-              transform.scale * ((kHi / (mags.length - 1)) * cw) +
-                transform.offsetX,
-            ),
-          );
+        if (hi <= lo) continue;
+        const kLo = (lo - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
+        const kHi = (hi - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
+        const xLo = margin.left + Math.max(0, Math.min(cw, transform.scale * ((kLo / (mags.length - 1)) * cw) + transform.offsetX));
+        const xHi = margin.left + Math.max(0, Math.min(cw, transform.scale * ((kHi / (mags.length - 1)) * cw) + transform.offsetX));
         const x = Math.min(xLo, xHi);
         const w = Math.abs(xHi - xLo);
         ctx.fillRect(x, margin.top, w, ch);
       }
       ctx.restore();
 
-      // Compute dB range
-      let dbMin = Infinity;
-      let dbMax = -Infinity;
+      // Compute dB range from magnitudes
+      let dbMin = Infinity, dbMax = -Infinity;
       for (const v of mags) {
         if (Number.isFinite(v)) {
-          if (v < dbMin) {
-            dbMin = v;
-          }
-          if (v > dbMax) {
-            dbMax = v;
-          }
+          if (v < dbMin) dbMin = v;
+          if (v > dbMax) dbMax = v;
         }
       }
-      if (
-        !Number.isFinite(dbMin) ||
-        !Number.isFinite(dbMax) ||
-        dbMax <= dbMin
-      ) {
+      if (!Number.isFinite(dbMin) || !Number.isFinite(dbMax) || dbMax <= dbMin) {
         dbMin = -120;
         dbMax = 0;
       }
-      // Gentle compression towards noise floor
       const effMin = dbMin + (dbMax - dbMin) * 0.05;
-      const yForDb = (db: number): number =>
-        margin.top + ch * (1 - (db - effMin) / Math.max(1e-9, dbMax - effMin));
+      const yForDb = (db: number): number => margin.top + ch * (1 - (db - effMin) / Math.max(1e-9, dbMax - effMin));
 
       // Gridlines (dB)
       if (showGrid) {
         ctx.strokeStyle = "rgba(255,255,255,0.08)";
         ctx.lineWidth = 1;
         const dbStep = 10;
-        for (
-          let d = Math.ceil(effMin / dbStep) * dbStep;
-          d <= dbMax;
-          d += dbStep
-        ) {
+        for (let d = Math.ceil(effMin / dbStep) * dbStep; d <= dbMax; d += dbStep) {
           const y = yForDb(d);
           ctx.beginPath();
           ctx.moveTo(margin.left, y);
@@ -563,17 +545,15 @@ export default function SpectrumExplorer({
       }
 
       // Frequency axis grid
-      const spanHz: number = sampleRate; // Full baseband span
+      const spanHz: number = sampleRate;
       const rbw = sampleRate / fftSize;
       const niceStepHz = ((): number => {
         const steps = [1, 2, 5];
-        const target = spanHz / 10; // aim ~10 ticks
+        const target = spanHz / 10;
         const pow = Math.pow(10, Math.floor(Math.log10(target)));
         for (const s of steps) {
           const v = s * pow;
-          if (v >= target) {
-            return v;
-          }
+          if (v >= target) return v;
         }
         return 10 * pow;
       })();
@@ -582,54 +562,19 @@ export default function SpectrumExplorer({
         const x0 = margin.left;
         const x1 = margin.left + cw;
         const nx = (k / (mags.length - 1)) * cw;
-        // Apply pan/zoom transform (only X)
         const tx = transform.scale * nx + transform.offsetX;
         return Math.max(x0, Math.min(x1, x0 + tx));
       };
-
-      // Draw spectrum lines
-      const drawLine = (arr: Float32Array, color: string): void => {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        for (let k = 0; k < arr.length; k++) {
-          const x = xForBin(k);
-          const y = yForDb(arr[k] ?? effMin);
-          if (k === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
-          }
-        }
-        ctx.stroke();
-      };
-
-      // Average and peak overlays first
-      if (avgRef.current) {
-        drawLine(avgRef.current, "rgba(120,200,255,0.7)");
-      }
-      if (peakRef.current) {
-        drawLine(peakRef.current, "rgba(255,180,60,0.8)");
-      }
-      // Current frame on top
-      drawLine(mags, "#50c8ff");
 
       // X-axis labels (frequency)
       ctx.fillStyle = "rgba(255,255,255,0.8)";
       ctx.font = "10px system-ui, sans-serif";
       const fStartHz = centerFrequency - sampleRate / 2;
-      for (
-        let f = Math.ceil(fStartHz / niceStepHz) * niceStepHz;
-        f <= fStartHz + spanHz;
-        f += niceStepHz
-      ) {
+      for (let f = Math.ceil(fStartHz / niceStepHz) * niceStepHz; f <= fStartHz + spanHz; f += niceStepHz) {
         const k = (f - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
         const x = xForBin(k);
         ctx.fillRect(x, margin.top + ch, 1, 4);
-        const label =
-          f >= 1e6
-            ? `${(f / 1e6).toFixed(3)} MHz`
-            : `${Math.round(f / 1e3)} kHz`;
+        const label = f >= 1e6 ? `${(f / 1e6).toFixed(3)} MHz` : `${Math.round(f / 1e3)} kHz`;
         ctx.fillText(label, x + 2, margin.top + ch + 12);
       }
 
@@ -643,8 +588,7 @@ export default function SpectrumExplorer({
       ctx.strokeStyle = "rgba(255,80,80,0.9)";
       ctx.fillStyle = "rgba(255,80,80,0.9)";
       markers.forEach((m) => {
-        const k =
-          (m.freqHz - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
+        const k = (m.freqHz - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
         const x = xForBin(k);
         ctx.beginPath();
         ctx.moveTo(x, margin.top);
@@ -654,13 +598,11 @@ export default function SpectrumExplorer({
         ctx.fillText(label, x + 4, margin.top + 14);
       });
 
-      // Detected signals overlay (glow + label)
+      // Detected signals overlay
       if (signals.length > 0) {
         signals.forEach((s) => {
-          const k =
-            (s.freqHz - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
+          const k = (s.freqHz - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
           const x = xForBin(k);
-          // Glow line
           ctx.save();
           ctx.shadowColor = "rgba(80,200,255,0.9)";
           ctx.shadowBlur = 12;
@@ -671,16 +613,12 @@ export default function SpectrumExplorer({
           ctx.lineTo(x, margin.top + ch);
           ctx.stroke();
           ctx.restore();
-
-          // Strength indicator dot near top
           const strength = Math.max(0, Math.min(1, s.strength ?? 0.7));
           const radius = 3 + strength * 4;
           ctx.beginPath();
           ctx.fillStyle = "rgba(80,200,255,0.9)";
           ctx.arc(x, margin.top + 6, radius, 0, Math.PI * 2);
           ctx.fill();
-
-          // Label (prefer provided label)
           const slabel = s.label ?? `${(s.freqHz / 1e6).toFixed(3)} MHz`;
           ctx.fillStyle = "rgba(200,240,255,0.95)";
           ctx.font = "10px system-ui, sans-serif";
@@ -690,7 +628,6 @@ export default function SpectrumExplorer({
 
       // Crosshair and hover readout
       if (hoverInfo) {
-        // Vertical line
         const xCSS = hoverInfo.xCss;
         ctx.save();
         ctx.strokeStyle = "rgba(255,255,255,0.4)";
@@ -700,8 +637,6 @@ export default function SpectrumExplorer({
         ctx.lineTo(xCSS, margin.top + ch);
         ctx.stroke();
         ctx.setLineDash([]);
-
-        // Tooltip box
         const label = `${(hoverInfo.freqHz / 1e6).toFixed(6)} MHz  •  ${hoverInfo.powerDb.toFixed(1)} dB`;
         ctx.font = "11px system-ui, sans-serif";
         const tw = ctx.measureText(label).width + 10;
@@ -717,17 +652,13 @@ export default function SpectrumExplorer({
         ctx.restore();
       }
 
-      // Report successful Canvas2D rendering and record performance metric
-      renderTierManager.reportSuccess(RenderTier.Canvas2D);
-      performanceMonitor.measure("render-spectrum", markStart);
-
-      rafId = requestAnimationFrame(drawFrame);
+      performanceMonitor.measure("render-overlays", markStart);
+      rafId = requestAnimationFrame(drawOverlays);
     };
 
-    rafId = requestAnimationFrame(drawFrame);
+    rafId = requestAnimationFrame(drawOverlays);
     return (): void => cancelAnimationFrame(rafId);
   }, [
-    // Stable across frames, dependencies captured via refs where needed
     centerFrequency,
     fftSize,
     markers,
@@ -742,7 +673,7 @@ export default function SpectrumExplorer({
   // Click to add marker near local peak; double-click to tune
   const onSpectrumClick = useCallback(
     (ev: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = spectrumCanvasRef.current;
+      const canvas = overlayCanvasRef.current;
       const mags = latestMagnitudes;
       if (!canvas || !mags) {
         return;
@@ -777,7 +708,7 @@ export default function SpectrumExplorer({
 
   const onSpectrumDoubleClick = useCallback(
     (ev: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = spectrumCanvasRef.current;
+      const canvas = overlayCanvasRef.current;
       const mags = latestMagnitudes;
       if (!canvas || !mags) {
         return;
@@ -808,7 +739,7 @@ export default function SpectrumExplorer({
 
   const onSpectrumMouseMove = useCallback(
     (ev: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = spectrumCanvasRef.current;
+      const canvas = overlayCanvasRef.current;
       const mags = latestMagnitudes;
       if (!canvas || !mags) {
         setHoverInfo(null);
@@ -905,7 +836,7 @@ export default function SpectrumExplorer({
       </button>
       <button
         onClick={() => {
-          const canvas = spectrumCanvasRef.current;
+          const canvas = overlayCanvasRef.current;
           if (!canvas) {
             return;
           }
@@ -946,15 +877,26 @@ export default function SpectrumExplorer({
         >
           <div style={{ position: "relative" }}>
             <canvas
-              ref={combinedSpectrumRef}
+              ref={webglCanvasRef}
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "block",
+                position: "absolute",
+                top: 0,
+                left: 0,
+              }}
+            />
+            <canvas
+              ref={combinedOverlayRef}
               role="img"
               aria-label="Spectrum plot with interactive pan and zoom"
               tabIndex={0}
               style={{
                 width: "100%",
-                height: spectrumHeight,
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 4,
+                height: "100%",
+                position: "relative",
+                zIndex: 1,
                 display: "block",
               }}
               {...handlers}
@@ -968,6 +910,7 @@ export default function SpectrumExplorer({
             onPointerDown={onDragStart}
             onPointerMove={onDragMove}
             onPointerUp={onDragEnd}
+            onPointerCancel={onDragEnd}
             onKeyDown={onHandleKey}
             style={{
               height: 8,
@@ -978,6 +921,7 @@ export default function SpectrumExplorer({
               padding: 0,
               borderRadius: 2,
               margin: "4px 0",
+              touchAction: "none", // Prevent scrolling on touch devices
             }}
             role="slider"
             tabIndex={0}
@@ -985,19 +929,11 @@ export default function SpectrumExplorer({
             aria-valuemin={10}
             aria-valuemax={90}
             aria-valuenow={Math.round(splitRatio * 100)}
-            aria-label={`Resize split between spectrum and waterfall. Current: ${Math.round(splitRatio * 100)} percent spectrum.`}
+            aria-label={`Resize split between spectrum and waterfall. Current: ${Math.round(
+              splitRatio * 100,
+            )} percent spectrum.`}
           />
           <div>
-            <Spectrogram
-              // Feed only newly computed frames; Spectrogram manages its own buffer
-              fftData={spectrogramFeed}
-              width={containerWidth}
-              height={waterfallHeight}
-              freqMin={0}
-              freqMax={fftSize - 1}
-              mode="waterfall"
-              maxWaterfallFrames={frames}
-            />
             {markers.length > 0 && (
               <MarkerTable
                 markers={markers.map((m) => ({ id: m.id, freqHz: m.freqHz }))}
@@ -1009,17 +945,27 @@ export default function SpectrumExplorer({
           </div>
         </div>
       ) : (
-        <div style={{ position: "relative", marginTop: 8 }}>
+        <div style={{ position: "relative", marginTop: 8, height: 260 }}>
           <canvas
-            ref={combinedSpectrumRef}
+            ref={webglCanvasRef}
+            style={{
+              width: "100%",
+              height: "100%",
+              display: "block",
+              position: "absolute",
+              top: 0,
+              left: 0,
+            }}
+          />
+          <canvas
+            ref={combinedOverlayRef}
             role="img"
             aria-label="Spectrum plot with interactive pan and zoom"
             style={{
               width: "100%",
-              height: 260,
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 4,
-              display: "block",
+              height: "100%",
+              position: "relative",
+              zIndex: 1,
             }}
             {...handlers}
             onClick={onSpectrumClick}

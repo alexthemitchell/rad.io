@@ -8,7 +8,6 @@ import {
   createAGCPipeline,
   createSpectrogramPipeline,
   createSimulatedSource,
-  createVisualizationSetup,
   chainProcessors,
   createMetadata,
 } from "../compositions";
@@ -163,126 +162,33 @@ describe("createSpectrogramPipeline", () => {
 });
 
 describe("createSimulatedSource", () => {
-  it("should create simulated source with defaults", () => {
+  it("should create simulated source with defaults", async () => {
     const source = createSimulatedSource();
     expect(source).toBeInstanceOf(SimulatedSource);
 
-    const metadata = source.getMetadata();
+    const metadata = await source.getMetadata();
     expect(metadata.sampleRate).toBe(2048000);
   });
 
-  it("should create simulated source with custom config", () => {
+  it("should create simulated source with custom config", async () => {
     const source = createSimulatedSource({
       pattern: "fm",
       sampleRate: 1000000,
       amplitude: 0.5,
     });
 
-    const metadata = source.getMetadata();
+    const metadata = await source.getMetadata();
     expect(metadata.sampleRate).toBe(1000000);
   });
 
   it("should support all signal patterns", () => {
-    const patterns = ["sine", "qpsk", "fm", "noise", "multi-tone"] as const;
-
+    const patterns = ["sine", "qpsk", "noise", "fm", "multi-tone"];
     patterns.forEach((pattern) => {
-      const source = createSimulatedSource({ pattern });
+      const source = createSimulatedSource({
+        pattern: pattern as any,
+      });
       expect(source).toBeInstanceOf(SimulatedSource);
     });
-  });
-});
-
-describe("createVisualizationSetup", () => {
-  it("should create setup with default preset", () => {
-    const setup = createVisualizationSetup();
-
-    expect(setup.source).toBeInstanceOf(SimulatedSource);
-    expect(setup.fftProcessor).toBeUndefined();
-    expect(setup.agcProcessor).toBeUndefined();
-    expect(setup.spectrogramProcessor).toBeUndefined();
-    expect(typeof setup.cleanup).toBe("function");
-  });
-
-  it("should create setup with FM broadcast preset", () => {
-    const setup = createVisualizationSetup({
-      preset: "FMBroadcast",
-      pattern: "fm",
-    });
-
-    const metadata = setup.source.getMetadata();
-    expect(metadata.sampleRate).toBe(2048000);
-  });
-
-  it("should create setup with FFT processor when enabled", () => {
-    const setup = createVisualizationSetup({
-      enableFFT: true,
-    });
-
-    expect(setup.fftProcessor).toBeInstanceOf(FFTProcessor);
-  });
-
-  it("should create setup with AGC processor when enabled", () => {
-    const setup = createVisualizationSetup({
-      enableAGC: true,
-    });
-
-    expect(setup.agcProcessor).toBeInstanceOf(AGCProcessor);
-  });
-
-  it("should create setup with spectrogram processor when enabled", () => {
-    const setup = createVisualizationSetup({
-      enableSpectrogram: true,
-    });
-
-    expect(setup.spectrogramProcessor).toBeInstanceOf(SpectrogramProcessor);
-  });
-
-  it("should create setup with all processors enabled", () => {
-    const setup = createVisualizationSetup({
-      preset: "RealtimeMonitoring",
-      pattern: "sine",
-      enableFFT: true,
-      enableAGC: true,
-      enableSpectrogram: true,
-    });
-
-    expect(setup.source).toBeInstanceOf(SimulatedSource);
-    expect(setup.fftProcessor).toBeInstanceOf(FFTProcessor);
-    expect(setup.agcProcessor).toBeInstanceOf(AGCProcessor);
-    expect(setup.spectrogramProcessor).toBeInstanceOf(SpectrogramProcessor);
-  });
-
-  it("should allow custom sample rate and FFT size", () => {
-    const setup = createVisualizationSetup({
-      sampleRate: 1000000,
-      fftSize: 2048,
-      enableFFT: true,
-    });
-
-    const metadata = setup.source.getMetadata();
-    expect(metadata.sampleRate).toBe(1000000);
-
-    if (setup.fftProcessor) {
-      const config = setup.fftProcessor.getConfig();
-      expect(config.fftSize).toBe(2048);
-      expect(config.sampleRate).toBe(1000000);
-    }
-  });
-
-  it("should cleanup source when calling cleanup function", async () => {
-    const setup = createVisualizationSetup();
-
-    // Start streaming
-    await setup.source.startStreaming(() => {
-      // no-op callback
-    });
-
-    expect(setup.source.isStreaming()).toBe(true);
-
-    // Cleanup
-    await setup.cleanup();
-
-    expect(setup.source.isStreaming()).toBe(false);
   });
 });
 

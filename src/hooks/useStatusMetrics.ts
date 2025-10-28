@@ -12,6 +12,8 @@ export type StatusMetrics = {
   fps: number;
   /** Cadence of visualization data pushes (viz-push) in FPS */
   inputFps?: number;
+  /** Estimated dropped frames over the last 60 seconds */
+  droppedFrames?: number;
   /** p95 render duration for 'rendering' measures (ms) */
   renderP95Ms: number;
   /** Count of long tasks observed (PerformanceObserver) */
@@ -39,6 +41,7 @@ export function useStatusMetrics(): StatusMetrics {
   );
   const [fps, setFps] = useState<number>(0);
   const [inputFps, setInputFps] = useState<number>(0);
+  const [droppedFrames, setDroppedFrames] = useState<number>(0);
   const [renderP95Ms, setRenderP95Ms] = useState<number>(0);
   const [longTasks, setLongTasks] = useState<number>(0);
   const [sampleRate, setSampleRate] = useState<number>(0);
@@ -214,6 +217,8 @@ export function useStatusMetrics(): StatusMetrics {
 
   // Poll FPS every second
   useEffect(() => {
+    const windowSeconds = 60;
+    const windowBuf: number[] = [];
     const id = setInterval(() => {
       setFps(performanceMonitor.getFPS());
       // Data arrival cadence (viz push loop)
@@ -221,6 +226,17 @@ export function useStatusMetrics(): StatusMetrics {
       const stats = performanceMonitor.getStats("rendering");
       setRenderP95Ms(stats.p95 || 0);
       setLongTasks(performanceMonitor.getLongTasks().length);
+
+      // Approximate dropped frames as the positive delta between input cadence and render fps
+      const fIn = performanceMonitor.getCadenceFPS("viz-push");
+      const fOut = performanceMonitor.getFPS();
+      const est = Math.max(0, Math.round(Math.max(0, fIn - fOut)));
+      windowBuf.push(est);
+      if (windowBuf.length > windowSeconds) {
+        windowBuf.shift();
+      }
+      const sum = windowBuf.reduce((a, b) => a + b, 0);
+      setDroppedFrames(sum);
     }, 1000);
     return (): void => clearInterval(id);
   }, []);
@@ -300,5 +316,6 @@ export function useStatusMetrics(): StatusMetrics {
     storageUsed,
     storageQuota,
     audio: speaker,
+    droppedFrames,
   };
 }

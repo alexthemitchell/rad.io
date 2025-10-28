@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import FrequencyDisplay from "./components/FrequencyDisplay";
 import Navigation from "./components/Navigation";
 import ShortcutsOverlay from "./components/ShortcutsOverlay";
 import StatusBar from "./components/StatusBar";
+import RenderingSettingsModal from "./components/RenderingSettingsModal";
 import ToastProvider from "./components/ToastProvider";
 import TopAppBar from "./components/TopAppBar";
 import VFOControl from "./components/VFOControl";
@@ -32,6 +33,7 @@ function App(): React.JSX.Element {
   }, []);
 
   const metrics = useStatusMetrics();
+  const [showRenderingSettings, setShowRenderingSettings] = useState(false);
 
   return (
     <Router>
@@ -108,6 +110,7 @@ function App(): React.JSX.Element {
               renderTier={metrics.renderTier}
               fps={metrics.fps}
               inputFps={metrics.inputFps}
+              droppedFrames={metrics.droppedFrames}
               renderP95Ms={metrics.renderP95Ms}
               longTasks={metrics.longTasks}
               sampleRate={metrics.sampleRate}
@@ -118,6 +121,11 @@ function App(): React.JSX.Element {
               audioState={metrics.audio.state}
               audioVolume={metrics.audio.volume}
               audioClipping={metrics.audio.clipping}
+              onOpenRenderingSettings={() => setShowRenderingSettings(true)}
+            />
+            <RenderingSettingsModal
+              isOpen={showRenderingSettings}
+              onClose={() => setShowRenderingSettings(false)}
             />
             {/* Footer intentionally minimal to keep focus on primary tasks */}
           </div>

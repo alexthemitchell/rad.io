@@ -9,6 +9,7 @@ import {
   FFTChart,
   IQConstellation,
   WaveformVisualizer,
+  type DataSourceMetadata,
 } from "../visualization";
 import type { Sample } from "../utils/dsp";
 import type { SimulatedSourceConfig } from "../visualization";
@@ -24,6 +25,7 @@ export default function VisualizationDemo(): ReactElement {
     "sine" | "qpsk" | "noise" | "fm" | "multi-tone"
   >("sine");
   const sourceRef = useRef<SimulatedSource | null>(null);
+  const [metadata, setMetadata] = useState<DataSourceMetadata | null>(null);
 
   // Initialize SimulatedSource
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function VisualizationDemo(): ReactElement {
       amplitude: 0.8,
     };
     sourceRef.current = new SimulatedSource(config);
+    sourceRef.current.getMetadata().then(setMetadata).catch(console.error);
 
     return (): void => {
       if (sourceRef.current?.isStreaming()) {
@@ -59,8 +62,6 @@ export default function VisualizationDemo(): ReactElement {
       setIsStreaming(true);
     }
   };
-
-  const metadata = sourceRef.current?.getMetadata();
 
   return (
     <div style={{ padding: "20px", fontFamily: "sans-serif" }}>

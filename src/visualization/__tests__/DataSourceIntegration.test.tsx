@@ -172,12 +172,12 @@ describe("DataSource Integration with Visualizations", () => {
       expect(typeof replay.getMetadata).toBe("function");
     });
 
-    it("both sources provide compatible metadata", () => {
+    it("both sources provide compatible metadata", async () => {
       const simulated = new SimulatedSource();
       const replay = new ReplaySource(createTestRecording());
 
-      const simulatedMeta = simulated.getMetadata();
-      const replayMeta = replay.getMetadata();
+      const simulatedMeta = await simulated.getMetadata();
+      const replayMeta = await replay.getMetadata();
 
       expect(simulatedMeta.name).toBeDefined();
       expect(simulatedMeta.sampleRate).toBeDefined();

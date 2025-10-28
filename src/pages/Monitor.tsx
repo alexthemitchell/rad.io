@@ -8,10 +8,8 @@ import React, {
 import StatusBar from "../components/StatusBar";
 import { useDevice } from "../contexts/DeviceContext";
 import { useFrequency } from "../contexts/FrequencyContext";
-import {
-  useFrequencyScanner,
-  type ActiveSignal,
-} from "../hooks/useFrequencyScanner";
+import { HardwareSDRSource } from "../drivers/HardwareSDRSource";
+import { useFrequencyScanner, type ActiveSignal } from "../hooks/useFrequencyScanner";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
 import { type Sample as DSPSample } from "../utils/dsp";
@@ -20,7 +18,8 @@ import { performanceMonitor } from "../utils/performanceMonitor";
 import {
   SpectrumExplorer,
   Spectrogram,
-  SpectrogramProcessor,
+  createVisualizationSetup,
+  type VisualizationSetup,
 } from "../visualization";
 import type { IQSample } from "../models/SDRDevice";
 import type { RenderTier } from "../types/rendering";
@@ -37,9 +36,6 @@ declare global {
   }
 }
 
-// Spectrogram overlap constant
-const SPECTROGRAM_OVERLAP = 0.5;
-
 export default function Monitor(): React.JSX.Element {
   const { device, isCheckingPaired } = useDevice();
 
@@ -52,6 +48,11 @@ export default function Monitor(): React.JSX.Element {
   const ampEnabled = false;
   const [isReceiving, setIsReceiving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string>("");
+
+  // Visualization and processing setup
+  const vizSetupRef = useRef<VisualizationSetup<HardwareSDRSource> | null>(
+    null,
+  );
 
   // Visualization controls
   const [fftSize, setFftSize] = useState<number>(2048);
@@ -85,10 +86,13 @@ export default function Monitor(): React.JSX.Element {
   const iqBufferRef = useRef<IQSample[]>([]);
 
   // Visualization ring buffer
+  // Visualization ring buffer (capped) and rAF-driven state updates to reduce churn
   const vizBufferRef = useRef<DSPSample[]>([]);
   const [vizSamples, setVizSamples] = useState<DSPSample[]>([]);
   const lastVizUpdateRef = useRef<number>(0);
-  const spectrogramProcessorRef = useRef<SpectrogramProcessor | null>(null);
+  const vizUpdatePendingRef = useRef<boolean>(false);
+  const HIGH_PERF_DEFAULT = true; // prefer lower churn by default
+  const [highPerfMode, setHighPerfMode] = useState<boolean>(HIGH_PERF_DEFAULT);
 
   // Render tier for StatusBar
   const [renderTier, setRenderTier] = useState<RenderTier>(() =>
@@ -101,6 +105,27 @@ export default function Monitor(): React.JSX.Element {
   const [storageUsed, setStorageUsed] = useState<number>(0);
   const [storageQuota, setStorageQuota] = useState<number>(0);
   const [bufferHealth, setBufferHealth] = useState<number>(100);
+
+  useEffect(() => {
+    if (!device) {
+      return;
+    }
+
+    const source = new HardwareSDRSource(device);
+    const setup = createVisualizationSetup({
+      source,
+      preset: "RealtimeMonitoring",
+      enableFFT: true,
+      enableSpectrogram: true,
+      fftSize,
+      sampleRate,
+    });
+    vizSetupRef.current = setup;
+
+    return (): void => {
+      void setup.cleanup();
+    };
+  }, [device, fftSize, sampleRate]);
 
   // Update FPS every second
   useEffect(() => {
@@ -140,7 +165,8 @@ export default function Monitor(): React.JSX.Element {
   // Compute buffer health every second based on visualization buffer fill
   useEffect(() => {
     const id = setInterval((): void => {
-      const maxViz = fftSize * 64;
+      const maxFrames = highPerfMode ? 16 : 64;
+      const maxViz = fftSize * maxFrames;
       const pct = Math.max(
         0,
         Math.min(100, Math.round((vizBufferRef.current.length / maxViz) * 100)),
@@ -148,7 +174,7 @@ export default function Monitor(): React.JSX.Element {
       setBufferHealth(pct);
     }, 1000);
     return (): void => clearInterval(id);
-  }, [fftSize]);
+  }, [fftSize, highPerfMode]);
 
   const ensureAudio = useCallback((): void => {
     audioCtxRef.current ??= new AudioContext();
@@ -158,7 +184,7 @@ export default function Monitor(): React.JSX.Element {
 
   useEffect(() => {
     window.dbgVolume = volume;
-  }, []);
+  }, [volume]);
 
   // (Optional) signal strength simulation removed in merged view
 
@@ -177,42 +203,15 @@ export default function Monitor(): React.JSX.Element {
     [foundSignals],
   );
 
-  // Initialize SpectrogramProcessor
-  useEffect(() => {
-    if (!spectrogramProcessorRef.current) {
-      const hopSize = Math.floor(fftSize * (1 - SPECTROGRAM_OVERLAP));
-      spectrogramProcessorRef.current = new SpectrogramProcessor({
-        type: "spectrogram",
-        fftSize,
-        hopSize,
-        windowFunction: "hann",
-        useWasm: true,
-        sampleRate,
-        maxTimeSlices: 200,
-      });
-    }
-  }, [fftSize, sampleRate]);
-
   // Build spectrogram frames
   const spectroFrames = useMemo(() => {
-    if (!spectrogramProcessorRef.current || vizSamples.length < fftSize) {
+    const processor = vizSetupRef.current?.spectrogramProcessor;
+    if (!processor || vizSamples.length < fftSize) {
       return [];
     }
-    const currentConfig = spectrogramProcessorRef.current.getConfig();
-    if (
-      currentConfig.fftSize !== fftSize ||
-      currentConfig.sampleRate !== sampleRate
-    ) {
-      const hopSize = Math.floor(fftSize * (1 - SPECTROGRAM_OVERLAP));
-      spectrogramProcessorRef.current.updateConfig({
-        fftSize,
-        hopSize,
-        sampleRate,
-      });
-    }
-    const output = spectrogramProcessorRef.current.process(vizSamples);
+    const output = processor.process(vizSamples);
     return output.data;
-  }, [vizSamples, fftSize, sampleRate]);
+  }, [vizSamples, fftSize]);
 
   const tuneDevice = useCallback(async (): Promise<void> => {
     if (!device) {
@@ -231,7 +230,9 @@ export default function Monitor(): React.JSX.Element {
       }
       await device.setFrequency(frequency);
       setStatusMsg(
-        `Tuned to ${formatFrequency(frequency)} @ ${(sampleRate / 1e6).toFixed(2)} MSPS`,
+        `Tuned to ${formatFrequency(frequency)} @ ${(
+          sampleRate / 1e6
+        ).toFixed(2)} MSPS`,
       );
     } catch (err) {
       console.error("Tune failed", err);
@@ -250,7 +251,9 @@ export default function Monitor(): React.JSX.Element {
         }
         await device.setFrequency(frequency);
         setStatusMsg(
-          `Tuned to ${formatFrequency(frequency)} @ ${(sampleRate / 1e6).toFixed(2)} MSPS`,
+          `Tuned to ${formatFrequency(frequency)} @ ${(
+            sampleRate / 1e6
+          ).toFixed(2)} MSPS`,
         );
         return;
       } catch (retryErr) {
@@ -264,8 +267,9 @@ export default function Monitor(): React.JSX.Element {
   }, [ampEnabled, device, frequency, lnaGain, sampleRate]);
 
   const handleStart = useCallback(async (): Promise<void> => {
-    if (!device) {
-      setStatusMsg("No device connected");
+    const setup = vizSetupRef.current;
+    if (!device || !setup) {
+      setStatusMsg("No device connected or setup not initialized");
       return;
     }
     try {
@@ -275,95 +279,99 @@ export default function Monitor(): React.JSX.Element {
       iqBufferRef.current = [];
       setIsReceiving(true);
 
-      void device
-        .receive(
-          (dataView) => {
-            try {
-              const samples = device.parseSamples(dataView);
-              const buffer = iqBufferRef.current;
-              buffer.push(...samples);
+      await setup.source.startStreaming((samples: DSPSample[]) => {
+        try {
+          const buffer = iqBufferRef.current;
+          buffer.push(...samples.map((s) => ({ I: s.I, Q: s.Q })));
 
-              // Feed visualization ring buffer and trim
-              const vbuf = vizBufferRef.current;
-              vbuf.push(
-                ...samples.map((s) => ({ I: s.I, Q: s.Q }) as DSPSample),
-              );
-              const maxVizSamples = fftSize * 64;
-              if (vbuf.length > maxVizSamples) {
-                vbuf.splice(0, vbuf.length - maxVizSamples);
-              }
+          // Feed visualization ring buffer and trim
+          const vbuf = vizBufferRef.current;
+          vbuf.push(...samples);
+          // Cap visualization buffer aggressively in high performance mode to reduce GC pressure
+          const maxVizFrames = highPerfMode ? 16 : 64;
+          const maxVizSamples = fftSize * maxVizFrames;
+          if (vbuf.length > maxVizSamples) {
+            vbuf.splice(0, vbuf.length - maxVizSamples);
+          }
 
-              // Throttle UI updates to ~60fps
-              const now = performance.now();
-              if (now - (lastVizUpdateRef.current || 0) > 16) {
-                lastVizUpdateRef.current = now;
-                const mark = "viz-push-start";
-                performanceMonitor.mark(mark);
-                setVizSamples(vbuf.slice());
-                performanceMonitor.measure("viz-push", mark);
-              }
+          // Throttle UI updates and avoid copying entire buffers
+          // Use rAF scheduling and only clone the tail needed by visualizers
+          const requestTailUpdate = (): void => {
+            vizUpdatePendingRef.current = false;
+            const mark = "viz-push-start";
+            performanceMonitor.mark(mark);
+            // Tail window: a small multiple of fftSize is enough for SpectrumExplorer incremental feed
+            const tailSamples = fftSize * (highPerfMode ? 4 : 12);
+            const start = Math.max(0, vbuf.length - tailSamples);
+            // Create a shallow copy of only the needed window
+            setVizSamples(vbuf.slice(start));
+            performanceMonitor.measure("viz-push", mark);
+            lastVizUpdateRef.current = performance.now();
+          };
 
-              // Audio chunk ~25ms at 2 MSPS
-              const MIN_IQ_SAMPLES = 50_000;
-              if (buffer.length >= MIN_IQ_SAMPLES) {
-                const chunk = buffer.splice(0, MIN_IQ_SAMPLES);
-                const proc = processorRef.current;
-                const ctx = audioCtxRef.current;
-                if (proc && ctx) {
-                  const demod = DemodulationType.FM;
-                  const { audioBuffer } = proc.extractAudio(chunk, demod, {
-                    sampleRate: 48_000,
-                    channels: 1,
-                  });
-                  if (ctx.state === "suspended") {
-                    void ctx.resume();
-                  }
-                  const src = ctx.createBufferSource();
-                  src.buffer = audioBuffer;
-                  const gainNode = ctx.createGain();
-                  gainNode.gain.value = volume / 100;
-                  src.connect(gainNode).connect(ctx.destination);
-                  src.start();
-                  window.dbgAudioCtxTime = ctx.currentTime;
-                  window.dbgLastAudioLength = audioBuffer.length;
-                  try {
-                    const data = audioBuffer.getChannelData(0);
-                    let maxAbs = 0;
-                    for (const sample of data) {
-                      const v = Math.abs(sample);
-                      if (v > maxAbs) {
-                        maxAbs = v;
-                      }
-                    }
-                    window.dbgAudioClipping = maxAbs >= 0.98;
-                  } catch {
-                    // ignore
-                  }
-                  window.dbgLastAudioAt = performance.now();
-                }
-              }
-            } catch (e) {
-              console.error("Error in receive callback", e);
+          const now = performance.now();
+          const minFrameMs = highPerfMode ? 33 /* ~30fps */ : 16; /* ~60fps */
+          if (
+            !vizUpdatePendingRef.current &&
+            now - lastVizUpdateRef.current > minFrameMs
+          ) {
+            vizUpdatePendingRef.current = true;
+            // Schedule on next animation tick for smoother pacing
+            if (
+              typeof window !== "undefined" &&
+              typeof window.requestAnimationFrame === "function"
+            ) {
+              window.requestAnimationFrame(() => requestTailUpdate());
+            } else {
+              // Fallback if rAF unavailable (e.g., hidden tabs/tests)
+              setTimeout(requestTailUpdate, 0);
             }
-          },
-          {
-            sampleRate,
-            centerFrequency: frequency,
-            bandwidth: 2_500_000,
-            lnaGain,
-            ampEnabled,
-          },
-        )
-        .catch((err: unknown) => {
-          console.error("Receive failed", err);
-          setIsReceiving(false);
-          setStatusMsg(
-            err instanceof Error
-              ? `Start failed: ${err.message}`
-              : "Start failed",
-          );
-          window.dbgReceiving = false;
-        });
+          }
+
+          // Audio chunk ~25ms at 2 MSPS
+          const MIN_IQ_SAMPLES = 50_000;
+          if (buffer.length >= MIN_IQ_SAMPLES) {
+            const chunk = buffer.splice(0, MIN_IQ_SAMPLES);
+            const proc = processorRef.current;
+            const ctx = audioCtxRef.current;
+            if (proc && ctx) {
+              const demod = DemodulationType.FM;
+              const { audioBuffer } = proc.extractAudio(chunk, demod, {
+                sampleRate: 48_000,
+                channels: 1,
+              });
+              if (ctx.state === "suspended") {
+                void ctx.resume();
+              }
+              const src = ctx.createBufferSource();
+              src.buffer = audioBuffer;
+              const gainNode = ctx.createGain();
+              gainNode.gain.value = volume / 100;
+              src.connect(gainNode).connect(ctx.destination);
+              src.start();
+              window.dbgAudioCtxTime = ctx.currentTime;
+              window.dbgLastAudioLength = audioBuffer.length;
+              try {
+                const data = audioBuffer.getChannelData(0);
+                let maxAbs = 0;
+                for (const sample of data) {
+                  const v = Math.abs(sample);
+                  if (v > maxAbs) {
+                    maxAbs = v;
+                  }
+                }
+                window.dbgAudioClipping = maxAbs >= 0.98;
+              } catch {
+                // ignore
+              }
+              window.dbgLastAudioAt = performance.now();
+            }
+          }
+        } catch (e) {
+          console.error("Error in receive callback", e);
+        }
+      });
+
       setStatusMsg("Receiving started");
       window.dbgReceiving = true;
     } catch (err) {
@@ -374,13 +382,10 @@ export default function Monitor(): React.JSX.Element {
       );
     }
   }, [
-    ampEnabled,
     device,
     ensureAudio,
     fftSize,
-    frequency,
-    lnaGain,
-    sampleRate,
+    highPerfMode,
     tuneDevice,
     volume,
     scanner,
@@ -388,8 +393,8 @@ export default function Monitor(): React.JSX.Element {
 
   const handleStop = useCallback(async (): Promise<void> => {
     try {
-      if (device?.isReceiving()) {
-        await device.stopRx();
+      if (vizSetupRef.current?.source.isStreaming()) {
+        await vizSetupRef.current.source.stopStreaming();
       }
     } finally {
       setIsReceiving(false);
@@ -398,7 +403,7 @@ export default function Monitor(): React.JSX.Element {
       vizBufferRef.current = [];
       setVizSamples([]);
     }
-  }, [device]);
+  }, []);
 
   // Auto-start reception if a previously paired device is already connected/opened.
   // We only do this once per session to avoid surprising re-starts after a manual stop.
@@ -424,8 +429,8 @@ export default function Monitor(): React.JSX.Element {
   useEffect(() => {
     return (): void => {
       try {
-        if (device?.isReceiving()) {
-          void device.stopRx().catch((e: unknown) => {
+        if (vizSetupRef.current?.source.isStreaming()) {
+          void vizSetupRef.current.source.stopStreaming().catch((e: unknown) => {
             console.warn("Stop on unmount failed", e);
           });
         }
@@ -433,7 +438,7 @@ export default function Monitor(): React.JSX.Element {
         console.warn("Error during unmount cleanup", e);
       }
     };
-  }, [device]);
+  }, []);
 
   return (
     <main
@@ -467,6 +472,16 @@ export default function Monitor(): React.JSX.Element {
               <option value="waterfall">Waterfall</option>
               <option value="spectrogram">Spectrogram</option>
             </select>
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={highPerfMode}
+              onChange={(e) => setHighPerfMode(e.target.checked)}
+              aria-label="High performance mode (lower latency, less history)"
+              style={{ marginLeft: 8, marginRight: 4 }}
+            />
+            High performance mode
           </label>
           <label>
             FFT Size:
@@ -720,7 +735,7 @@ export default function Monitor(): React.JSX.Element {
           bufferHealth={bufferHealth}
           bufferDetails={{
             currentSamples: vizBufferRef.current.length,
-            maxSamples: fftSize * 64,
+            maxSamples: fftSize * (highPerfMode ? 16 : 64),
           }}
           storageUsed={storageUsed}
           storageQuota={storageQuota}
