@@ -193,7 +193,10 @@ function Monitor(): React.JSX.Element {
 
     // Update processor config if FFT size changed
     const currentConfig = spectrogramProcessorRef.current.getConfig();
-    if (currentConfig.fftSize !== fftSize || currentConfig.sampleRate !== sampleRate) {
+    if (
+      currentConfig.fftSize !== fftSize ||
+      currentConfig.sampleRate !== sampleRate
+    ) {
       const hopSize = Math.floor(fftSize * (1 - SPECTROGRAM_OVERLAP));
       spectrogramProcessorRef.current.updateConfig({
         fftSize,

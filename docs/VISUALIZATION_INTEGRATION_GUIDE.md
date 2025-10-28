@@ -132,7 +132,7 @@ import type { Sample } from './utils/dsp';
 
 function SpectrumDisplay() {
   const [fftData, setFFTData] = useState<Float32Array>(new Float32Array(1024));
-  
+
   const processorRef = useRef(new FFTProcessor({
     type: 'fft',
     fftSize: 1024,
@@ -167,11 +167,11 @@ function SpectrumDisplay() {
 For complex processing chains:
 
 ```typescript
-import { 
-  SimulatedSource, 
-  AGCProcessor, 
+import {
+  SimulatedSource,
+  AGCProcessor,
   FFTProcessor,
-  type Sample 
+  type Sample
 } from './visualization';
 
 function AdvancedProcessor() {
@@ -194,9 +194,9 @@ function AdvancedProcessor() {
   }));
 
   useEffect(() => {
-    const source = new SimulatedSource({ 
+    const source = new SimulatedSource({
       pattern: 'fm',
-      sampleRate: 2048000 
+      sampleRate: 2048000
     });
 
     void source.startStreaming((samples: Sample[]) => {
@@ -242,7 +242,7 @@ function HardwareSpectrum() {
     void (async () => {
       await device.setFrequency(100e6);
       await device.setSampleRate(20_000_000);
-      
+
       await device.receive((samples) => {
         const output = processorRef.current.process(samples);
         setFFTData(output.magnitudes);
@@ -263,11 +263,11 @@ function HardwareSpectrum() {
 ### Step 1: Define Configuration and Output Types
 
 ```typescript
-import type { FrameProcessor, FrameProcessorConfig } from '../interfaces';
-import type { Sample } from '../../utils/dsp';
+import type { FrameProcessor, FrameProcessorConfig } from "../interfaces";
+import type { Sample } from "../../utils/dsp";
 
 export interface MyProcessorConfig extends FrameProcessorConfig {
-  type: 'my-processor';
+  type: "my-processor";
   // Your custom config parameters
   parameter1: number;
   parameter2: string;
@@ -276,7 +276,9 @@ export interface MyProcessorConfig extends FrameProcessorConfig {
 export interface MyProcessorOutput {
   // Your output data structure
   data: Float32Array;
-  metadata: { /* ... */ };
+  metadata: {
+    /* ... */
+  };
 }
 ```
 
@@ -294,7 +296,7 @@ export class MyProcessor implements FrameProcessor<Sample[], MyProcessorOutput> 
   process(samples: Sample[]): MyProcessorOutput {
     // Your processing logic here
     const data = new Float32Array(samples.length);
-    
+
     for (let i = 0; i < samples.length; i++) {
       // Process each sample
       data[i] = /* your calculation */;
@@ -328,17 +330,20 @@ export class MyProcessor implements FrameProcessor<Sample[], MyProcessorOutput> 
 ### Step 3: Add Tests
 
 ```typescript
-import { MyProcessor } from '../MyProcessor';
+import { MyProcessor } from "../MyProcessor";
 
-describe('MyProcessor', () => {
-  it('should process samples correctly', () => {
+describe("MyProcessor", () => {
+  it("should process samples correctly", () => {
     const processor = new MyProcessor({
-      type: 'my-processor',
+      type: "my-processor",
       parameter1: 42,
-      parameter2: 'test',
+      parameter2: "test",
     });
 
-    const samples = [{ I: 1, Q: 0 }, { I: 0, Q: 1 }];
+    const samples = [
+      { I: 1, Q: 0 },
+      { I: 0, Q: 1 },
+    ];
     const output = processor.process(samples);
 
     expect(output.data).toHaveLength(samples.length);
@@ -363,7 +368,9 @@ class StatefulProcessor implements FrameProcessor<Sample[], Output> {
   process(samples: Sample[]): Output {
     // Use and update state
     this.state += samples.length;
-    return { /* ... */ };
+    return {
+      /* ... */
+    };
   }
 
   reset(): void {
@@ -436,8 +443,8 @@ Test at multiple levels:
 - **Performance tests**: Measure throughput and memory usage
 
 ```typescript
-describe('MyProcessor performance', () => {
-  it('should process 10k samples in < 10ms', () => {
+describe("MyProcessor performance", () => {
+  it("should process 10k samples in < 10ms", () => {
     const processor = new MyProcessor(config);
     const samples = generateTestSamples(10000);
 
@@ -463,7 +470,7 @@ function MyComponent() {
   useEffect(() => {
     // Inline processing
     const fft = calculateFFTSync(samples, 1024);
-    const windowed = applyWindow(samples, 'hann');
+    const windowed = applyWindow(samples, "hann");
     // ... more processing
   }, [samples]);
 }
@@ -474,14 +481,16 @@ function MyComponent() {
 ```typescript
 function MyComponent() {
   const [samples, setSamples] = useState<Sample[]>([]);
-  
-  const processorRef = useRef(new FFTProcessor({
-    type: 'fft',
-    fftSize: 1024,
-    windowFunction: 'hann',
-    useWasm: true,
-    sampleRate: 2048000,
-  }));
+
+  const processorRef = useRef(
+    new FFTProcessor({
+      type: "fft",
+      fftSize: 1024,
+      windowFunction: "hann",
+      useWasm: true,
+      sampleRate: 2048000,
+    }),
+  );
 
   useEffect(() => {
     const output = processorRef.current.process(samples);

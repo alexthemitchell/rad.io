@@ -285,8 +285,12 @@ Processors can be chained together for complex pipelines:
 ```typescript
 import { AGCProcessor, FFTProcessor } from "./visualization";
 
-const agc = new AGCProcessor({ /* config */ });
-const fft = new FFTProcessor({ /* config */ });
+const agc = new AGCProcessor({
+  /* config */
+});
+const fft = new FFTProcessor({
+  /* config */
+});
 
 // Chain processors
 const agcOutput = agc.process(samples);

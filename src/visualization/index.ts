@@ -19,11 +19,7 @@ export type { SimulatedSourceConfig } from "./SimulatedSource";
 export { ReplaySource } from "./ReplaySource";
 
 // Frame Processors
-export {
-  FFTProcessor,
-  AGCProcessor,
-  SpectrogramProcessor,
-} from "./processors";
+export { FFTProcessor, AGCProcessor, SpectrogramProcessor } from "./processors";
 export type {
   FFTProcessorConfig,
   FFTOutput,

@@ -204,10 +204,7 @@ export class SpectrogramProcessor
       throw new Error("sampleRate must be positive");
     }
 
-    if (
-      !Number.isInteger(config.maxTimeSlices) ||
-      config.maxTimeSlices <= 0
-    ) {
+    if (!Number.isInteger(config.maxTimeSlices) || config.maxTimeSlices <= 0) {
       throw new Error("maxTimeSlices must be a positive integer");
     }
   }

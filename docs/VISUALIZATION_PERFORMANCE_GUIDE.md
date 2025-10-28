@@ -6,13 +6,13 @@ This guide documents performance optimization patterns and best practices for th
 
 ## Performance Goals
 
-| Metric | Target | Critical Threshold |
-|--------|--------|-------------------|
-| Frame Rate | 60 FPS | < 30 FPS |
-| Frame Time | < 16ms | > 33ms |
-| GC Frequency | < 1/sec | > 5/sec |
-| Memory Growth | < 10MB/min | > 50MB/min |
-| CPU Usage | < 50% | > 80% |
+| Metric        | Target     | Critical Threshold |
+| ------------- | ---------- | ------------------ |
+| Frame Rate    | 60 FPS     | < 30 FPS           |
+| Frame Time    | < 16ms     | > 33ms             |
+| GC Frequency  | < 1/sec    | > 5/sec            |
+| Memory Growth | < 10MB/min | > 50MB/min         |
+| CPU Usage     | < 50%      | > 80%              |
 
 ## Optimization Techniques
 
@@ -62,8 +62,9 @@ class BufferPool {
   release(buffer: Float32Array): void {
     const size = buffer.length;
     const pool = this.buffers.get(size) ?? [];
-    
-    if (pool.length < 10) { // Max pool size
+
+    if (pool.length < 10) {
+      // Max pool size
       pool.push(buffer);
       this.buffers.set(size, pool);
     }
@@ -76,9 +77,9 @@ class PooledProcessor {
 
   process(samples: Sample[]): Float32Array {
     const output = this.pool.acquire(samples.length);
-    
+
     // ... process into output
-    
+
     // Note: Consumer must release buffer when done
     return output;
   }
@@ -94,7 +95,7 @@ class PooledProcessor {
 **Solution**: Use WebAssembly for compute-intensive operations.
 
 ```typescript
-import { calculateFFTSync } from '../../utils/dsp';
+import { calculateFFTSync } from "../../utils/dsp";
 
 // Automatically uses WASM when available
 const fft = calculateFFTSync(samples, fftSize);
@@ -111,7 +112,7 @@ const fft = calculateFFTSync(samples, fftSize);
 **Feature Detection**:
 
 ```typescript
-import { isWasmAvailable, isWasmRuntimeEnabled } from '../../utils/dspWasm';
+import { isWasmAvailable, isWasmRuntimeEnabled } from "../../utils/dspWasm";
 
 if (isWasmAvailable() && isWasmRuntimeEnabled()) {
   // Use WASM path
@@ -128,12 +129,12 @@ if (isWasmAvailable() && isWasmRuntimeEnabled()) {
 
 ```typescript
 // worker.ts
-import { FFTProcessor } from './visualization/processors';
+import { FFTProcessor } from "./visualization/processors";
 
 const processor = new FFTProcessor({
-  type: 'fft',
+  type: "fft",
   fftSize: 2048,
-  windowFunction: 'hann',
+  windowFunction: "hann",
   useWasm: true,
   sampleRate: 2048000,
 });
@@ -141,18 +142,17 @@ const processor = new FFTProcessor({
 self.onmessage = (e) => {
   const { samples } = e.data;
   const output = processor.process(samples);
-  
+
   // Transfer ownership for zero-copy
-  self.postMessage(
-    { magnitudes: output.magnitudes },
-    [output.magnitudes.buffer]
-  );
+  self.postMessage({ magnitudes: output.magnitudes }, [
+    output.magnitudes.buffer,
+  ]);
 };
 ```
 
 ```typescript
 // main.ts
-const worker = new Worker(new URL('./worker.ts', import.meta.url));
+const worker = new Worker(new URL("./worker.ts", import.meta.url));
 
 worker.onmessage = (e) => {
   const { magnitudes } = e.data;
@@ -162,7 +162,7 @@ worker.onmessage = (e) => {
 // Send samples with transfer
 worker.postMessage(
   { samples },
-  [samples.buffer] // Transfer ownership
+  [samples.buffer], // Transfer ownership
 );
 ```
 
@@ -182,7 +182,7 @@ let ctx: OffscreenCanvasRenderingContext2D;
 self.onmessage = (e) => {
   if (e.data.canvas) {
     offscreen = e.data.canvas;
-    ctx = offscreen.getContext('2d')!;
+    ctx = offscreen.getContext("2d")!;
   } else if (e.data.data) {
     // Render in worker
     drawSpectrum(ctx, e.data.data);
@@ -192,7 +192,7 @@ self.onmessage = (e) => {
 
 ```typescript
 // main.ts
-const canvas = document.getElementById('spectrum') as HTMLCanvasElement;
+const canvas = document.getElementById("spectrum") as HTMLCanvasElement;
 const offscreen = canvas.transferControlToOffscreen();
 
 worker.postMessage({ canvas: offscreen }, [offscreen]);
@@ -203,12 +203,12 @@ worker.postMessage({ canvas: offscreen }, [offscreen]);
 ```typescript
 try {
   // Try OffscreenCanvas
-  if (typeof OffscreenCanvas !== 'undefined') {
+  if (typeof OffscreenCanvas !== "undefined") {
     useOffscreenCanvas();
     return;
   }
 } catch (err) {
-  console.warn('OffscreenCanvas failed', err);
+  console.warn("OffscreenCanvas failed", err);
 }
 
 // Fallback to main thread Canvas2D
@@ -222,7 +222,7 @@ useMainThreadCanvas();
 **Solution**: Use WebGL for GPU-accelerated rendering.
 
 ```typescript
-import { WebGLSpectrum } from './visualization/renderers';
+import { WebGLSpectrum } from "./visualization/renderers";
 
 const renderer = new WebGLSpectrum();
 await renderer.initialize(canvas);
@@ -250,7 +250,7 @@ try {
     return webgl;
   }
 } catch (err) {
-  console.warn('WebGL failed', err);
+  console.warn("WebGL failed", err);
 }
 
 // Fallback to Canvas2D
@@ -299,17 +299,17 @@ class BatchProcessor {
 class AdaptiveProcessor {
   private targetFPS = 60;
   private currentFPS = 60;
-  private quality: 'high' | 'medium' | 'low' = 'high';
+  private quality: "high" | "medium" | "low" = "high";
 
   updateFPS(fps: number): void {
     this.currentFPS = fps;
 
     if (fps < 30) {
-      this.quality = 'low';
+      this.quality = "low";
     } else if (fps < 50) {
-      this.quality = 'medium';
+      this.quality = "medium";
     } else {
-      this.quality = 'high';
+      this.quality = "high";
     }
   }
 
@@ -320,9 +320,12 @@ class AdaptiveProcessor {
 
   private getFftSize(): number {
     switch (this.quality) {
-      case 'high': return 4096;
-      case 'medium': return 2048;
-      case 'low': return 1024;
+      case "high":
+        return 4096;
+      case "medium":
+        return 2048;
+      case "low":
+        return 1024;
     }
   }
 }
@@ -397,7 +400,7 @@ function decimateWithPeaks(samples: Sample[], targetSize: number): Sample[] {
     for (let j = i; j < Math.min(i + step, samples.length); j++) {
       const sample = samples[j];
       const magnitude = Math.sqrt(sample.I ** 2 + sample.Q ** 2);
-      
+
       if (magnitude > maxMagnitude) {
         maxSample = sample;
         maxMagnitude = magnitude;
@@ -425,13 +428,13 @@ class MemoizedProcessor {
 
   private getWindow(type: WindowFunction, size: number): Float32Array {
     const key = `${type}-${size}`;
-    
+
     let window = this.windowCache.get(key);
     if (!window) {
       window = this.computeWindow(type, size);
       this.windowCache.set(key, window);
     }
-    
+
     return window;
   }
 
@@ -461,16 +464,16 @@ class MemoizedProcessor {
 ### Performance Marks
 
 ```typescript
-import { performanceMonitor } from './utils/performanceMonitor';
+import { performanceMonitor } from "./utils/performanceMonitor";
 
 function processData(samples: Sample[]): Output {
-  const mark = 'process-start';
+  const mark = "process-start";
   performanceMonitor.mark(mark);
 
   // ... processing
 
-  performanceMonitor.measure('process-duration', mark);
-  
+  performanceMonitor.measure("process-duration", mark);
+
   return output;
 }
 ```
@@ -508,9 +511,12 @@ class FPSMonitor {
 if (performance.memory) {
   setInterval(() => {
     console.log({
-      used: (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2) + ' MB',
-      total: (performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(2) + ' MB',
-      limit: (performance.memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2) + ' MB',
+      used:
+        (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2) + " MB",
+      total:
+        (performance.memory.totalJSHeapSize / 1024 / 1024).toFixed(2) + " MB",
+      limit:
+        (performance.memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2) + " MB",
     });
   }, 5000);
 }
