@@ -190,6 +190,7 @@ Frame processors transform IQ samples into visualization-ready data. Three imple
 Transforms IQ samples to frequency domain with windowing.
 
 **Features:**
+
 - Configurable FFT size (power of 2)
 - Multiple window functions (Hann, Hamming, Blackman, Kaiser, Rectangular)
 - WASM acceleration support
@@ -219,6 +220,7 @@ console.log(output.frequencies); // Float32Array of frequency bins
 Automatic gain control for signal normalization.
 
 **Features:**
+
 - Configurable attack and decay rates
 - Target level control
 - Maximum gain limiting
@@ -248,6 +250,7 @@ console.log(output.currentGain); // Current gain level
 Time-frequency representation with sliding window FFT.
 
 **Features:**
+
 - Configurable overlap (hopSize)
 - Buffered time slices
 - Time and frequency bin generation
