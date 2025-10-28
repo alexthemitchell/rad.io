@@ -88,7 +88,10 @@ export class AirspyDevice {
     await this.device.selectConfiguration(this.CONFIG_NUM);
     await this.device.claimInterface(this.INTERFACE_NUM);
 
-    // Initialize device - set to receiver mode OFF initially
+    // Initialize device - set to receiver mode OFF to ensure known state.
+    // The Airspy protocol does not provide a command to query the current receiver mode,
+    // so this explicit initialization ensures predictable operation and device safety
+    // before further configuration.
     await this.setReceiverMode(ReceiverMode.OFF);
 
     console.debug("Airspy device opened successfully");
@@ -131,10 +134,10 @@ export class AirspyDevice {
       );
     }
 
-    // Pack frequency as 32-bit unsigned integer
+    // Pack frequency as 32-bit unsigned integer (floor to ensure integer)
     const buffer = new ArrayBuffer(4);
     const view = new DataView(buffer);
-    view.setUint32(0, frequencyHz, true); // little-endian
+    view.setUint32(0, Math.floor(frequencyHz), true); // little-endian
 
     await this.device.controlTransferOut(
       {
@@ -162,9 +165,17 @@ export class AirspyDevice {
       );
     }
 
-    // Airspy uses sample rate index
-    // 0 = 10 MS/s, 1 = 2.5 MS/s
-    const rateIndex = sampleRateHz === 10e6 ? 0 : 1;
+    // Airspy uses sample rate index - explicit mapping for clarity and maintainability
+    const SAMPLE_RATE_INDEX_MAP: Record<number, number> = {
+      [10e6]: 0, // 10 MS/s
+      [2.5e6]: 1, // 2.5 MS/s
+    };
+    const rateIndex = SAMPLE_RATE_INDEX_MAP[sampleRateHz];
+    if (rateIndex === undefined) {
+      throw new Error(
+        `Internal error: No index mapping for sample rate ${sampleRateHz} Hz.`,
+      );
+    }
 
     const buffer = new ArrayBuffer(4);
     const view = new DataView(buffer);

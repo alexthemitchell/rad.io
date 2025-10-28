@@ -464,7 +464,6 @@ export function useAirspyDevice() {
 - [Airspy Official Documentation](https://airspy.com/)
 - [USB Control Transfer Specification](https://www.usb.org/document-library/usb-20-specification)
 - [WebUSB API](https://developer.mozilla.org/en-US/docs/Web/API/USB)
-- [rad.io WebUSB Integration Playbook](../../.serena/memories/WEBUSB_SDR_INTEGRATION_PLAYBOOK.md)
 
 ## Related Documentation
 
