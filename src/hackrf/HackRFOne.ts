@@ -809,7 +809,7 @@ export class HackRFOne {
     // Create a stop signal that allows us to break out of a pending transfer
     // immediately when stopRx() is called, rather than waiting for timeouts.
     const stopPromise = new Promise<USBInTransferResult>((_, reject) => {
-      this.stopResolve = (): void => {
+      this.stopReject = (): void => {
         const abortErr = new Error("Aborted");
         // Tag as AbortError for consumer logic/tests
         (abortErr as Error & { name?: string }).name = "AbortError";
