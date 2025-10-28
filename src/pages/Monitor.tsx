@@ -6,13 +6,14 @@ import {
   type ActiveSignal,
 } from "../hooks/useFrequencyScanner";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
-import {
-  calculateSpectrogramRow,
-  type Sample as DSPSample,
-} from "../utils/dsp";
+import { type Sample as DSPSample } from "../utils/dsp";
 import { formatFrequency } from "../utils/frequency";
 import { performanceMonitor } from "../utils/performanceMonitor";
-import { SpectrumExplorer, Spectrogram } from "../visualization";
+import {
+  SpectrumExplorer,
+  Spectrogram,
+  SpectrogramProcessor,
+} from "../visualization";
 import type { IQSample } from "../models/SDRDevice";
 
 // Expose minimal diagnostics on window for automated tests
@@ -58,6 +59,9 @@ type DemodMode = "AM" | "FM" | "USB" | "LSB" | "CW" | "NFM" | "WFM";
 function convertIQToDSP(samples: IQSample[]): DSPSample[] {
   return samples.map((s) => ({ I: s.I, Q: s.Q }) as DSPSample);
 }
+
+// Spectrogram overlap constant
+const SPECTROGRAM_OVERLAP = 0.5;
 
 function Monitor(): React.JSX.Element {
   const { device, initialize, isCheckingPaired } = useDevice();
@@ -120,6 +124,9 @@ function Monitor(): React.JSX.Element {
   const [vizSamples, setVizSamples] = useState<DSPSample[]>([]);
   const lastVizUpdateRef = useRef<number>(0);
 
+  // SpectrogramProcessor for optimized spectrogram computation
+  const spectrogramProcessorRef = useRef<SpectrogramProcessor | null>(null);
+
   const canStart = useMemo(
     () => Boolean(device && device.isOpen() && !isReceiving),
     [device, isReceiving],
@@ -162,29 +169,46 @@ function Monitor(): React.JSX.Element {
     [foundSignals],
   );
 
-  // Build spectrogram frames for non-FFT modes using overlap like SpectrumExplorer
+  // Initialize SpectrogramProcessor with optimal settings
+  React.useEffect(() => {
+    if (!spectrogramProcessorRef.current) {
+      const hopSize = Math.floor(fftSize * (1 - SPECTROGRAM_OVERLAP));
+      spectrogramProcessorRef.current = new SpectrogramProcessor({
+        type: "spectrogram",
+        fftSize,
+        hopSize,
+        windowFunction: "hann",
+        useWasm: true,
+        sampleRate,
+        maxTimeSlices: 200,
+      });
+    }
+  }, [fftSize, sampleRate]);
+
+  // Build spectrogram frames using optimized processor
   const spectroFrames = useMemo(() => {
-    const frames = 200;
-    const overlap = 0.5;
-    const rows: Float32Array[] = [];
-    const s: DSPSample[] = vizSamples;
-    if (s.length < fftSize) {
-      return rows;
+    if (!spectrogramProcessorRef.current || vizSamples.length < fftSize) {
+      return [];
     }
-    const hop = Math.max(1, Math.floor(fftSize * (1 - overlap)));
-    const total = fftSize + (frames - 1) * hop;
-    const start = Math.max(0, s.length - total);
-    for (
-      let i = start;
-      i + fftSize <= s.length && rows.length < frames;
-      i += hop
+
+    // Update processor config if FFT size changed
+    const currentConfig = spectrogramProcessorRef.current.getConfig();
+    if (
+      currentConfig.fftSize !== fftSize ||
+      currentConfig.sampleRate !== sampleRate
     ) {
-      const windowed = s.slice(i, i + fftSize);
-      const row = calculateSpectrogramRow(windowed, fftSize);
-      rows.push(row);
+      const hopSize = Math.floor(fftSize * (1 - SPECTROGRAM_OVERLAP));
+      spectrogramProcessorRef.current.updateConfig({
+        fftSize,
+        hopSize,
+        sampleRate,
+      });
     }
-    return rows;
-  }, [vizSamples, fftSize]);
+
+    // Process samples through optimized processor
+    const output = spectrogramProcessorRef.current.process(vizSamples);
+    return output.data;
+  }, [vizSamples, fftSize, sampleRate]);
 
   const tuneDevice = useCallback(async (): Promise<void> => {
     if (!device) {
