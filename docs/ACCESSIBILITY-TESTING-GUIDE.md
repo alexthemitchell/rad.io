@@ -182,12 +182,12 @@ Example test:
 
 ```tsx
 // In component test file
-test('frequency input is properly labeled', () => {
+test("frequency input is properly labeled", () => {
   const { getByLabelText } = render(<FrequencyDisplay />);
   const input = getByLabelText(/center frequency/i);
-  
+
   expect(input).toBeInTheDocument();
-  expect(input).toHaveAttribute('aria-describedby');
+  expect(input).toHaveAttribute("aria-describedby");
 });
 ```
 
@@ -219,12 +219,12 @@ Screen reader testing ensures content is properly announced to blind users.
 
 ### Recommended Screen Readers
 
-| Platform | Screen Reader | Cost | Download |
-|----------|--------------|------|----------|
-| Windows | NVDA | Free | https://www.nvaccess.org/ |
-| Windows | JAWS | Paid | https://www.freedomscientific.com/ |
-| macOS | VoiceOver | Free (built-in) | Cmd+F5 to enable |
-| Linux | Orca | Free | Pre-installed on most distros |
+| Platform | Screen Reader | Cost            | Download                           |
+| -------- | ------------- | --------------- | ---------------------------------- |
+| Windows  | NVDA          | Free            | https://www.nvaccess.org/          |
+| Windows  | JAWS          | Paid            | https://www.freedomscientific.com/ |
+| macOS    | VoiceOver     | Free (built-in) | Cmd+F5 to enable                   |
+| Linux    | Orca          | Free            | Pre-installed on most distros      |
 
 ### NVDA Testing (Windows)
 
@@ -288,16 +288,16 @@ Screen reader testing ensures content is properly announced to blind users.
 
 ### Standard Keyboard Patterns
 
-| Element | Keys | Expected Behavior |
-|---------|------|-------------------|
-| Button | `Enter` or `Space` | Activates button |
-| Link | `Enter` | Follows link |
-| Checkbox | `Space` | Toggles checked state |
-| Radio | Arrow keys | Selects option in group |
-| Slider | Arrow keys | Adjusts value |
-| Tab list | Arrow keys | Changes active tab |
-| Menu | Arrow keys, `Enter`, `Escape` | Navigate, select, close |
-| Dialog | `Escape` | Closes dialog |
+| Element  | Keys                          | Expected Behavior       |
+| -------- | ----------------------------- | ----------------------- |
+| Button   | `Enter` or `Space`            | Activates button        |
+| Link     | `Enter`                       | Follows link            |
+| Checkbox | `Space`                       | Toggles checked state   |
+| Radio    | Arrow keys                    | Selects option in group |
+| Slider   | Arrow keys                    | Adjusts value           |
+| Tab list | Arrow keys                    | Changes active tab      |
+| Menu     | Arrow keys, `Enter`, `Escape` | Navigate, select, close |
+| Dialog   | `Escape`                      | Closes dialog           |
 
 ### Application-Specific Shortcuts
 
