@@ -573,13 +573,26 @@ export default function Monitor(): React.JSX.Element {
       id="main-content"
       tabIndex={-1}
     >
-      <h2 id="monitor-heading">Monitor - Live Signal Reception</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+        <h2 id="monitor-heading" style={{ margin: 0 }}>Monitor - Live Signal Reception</h2>
+        <div style={{ fontSize: "0.9em", opacity: 0.8 }}>
+          <span title="Keyboard shortcuts: F to freeze, E to export CSV">⌨️ Shortcuts available</span>
+        </div>
+      </div>
       <p role="status" aria-live="polite" style={{ marginBottom: 8 }}>
         {statusMsg}
       </p>
 
-      <section aria-label="Spectrum Visualization">
-        <h3>Spectrum &amp; Waterfall</h3>
+      <section 
+        aria-label="Spectrum Visualization"
+        style={{
+          backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
+          padding: "16px",
+          borderRadius: "8px",
+          marginBottom: "16px",
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>Spectrum & Waterfall</h3>
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
           <label>
             Visualization mode:
@@ -839,8 +852,16 @@ export default function Monitor(): React.JSX.Element {
       </section>
 
       {/* Professional audio controls with real-time VU meter */}
-      <section aria-label="Audio Controls">
-        <h3>Audio Controls</h3>
+      <section 
+        aria-label="Audio Controls"
+        style={{
+          backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
+          padding: "16px",
+          borderRadius: "8px",
+          marginBottom: "16px",
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>Audio Controls</h3>
         <AudioControls
           isPlaying={isAudioPlaying && isReceiving}
           volume={volume / 100}
@@ -853,8 +874,16 @@ export default function Monitor(): React.JSX.Element {
         />
       </section>
 
-      <section aria-label="Signal Information">
-        <h3>Signal Information</h3>
+      <section 
+        aria-label="Signal Information"
+        style={{
+          backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
+          padding: "16px",
+          borderRadius: "8px",
+          marginBottom: "16px",
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>Signal Information</h3>
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
           <div style={{ flex: "1 1 300px" }}>
             <SignalStrengthMeter samples={vizSamples} />
@@ -913,8 +942,16 @@ export default function Monitor(): React.JSX.Element {
         )}
       </section>
 
-      <section aria-label="Recording">
-        <h3>Recording & Playback</h3>
+      <section 
+        aria-label="Recording"
+        style={{
+          backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
+          padding: "16px",
+          borderRadius: "8px",
+          marginBottom: "16px",
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>Recording & Playback</h3>
         <RecordingControls
           recordingState={recordingState}
           canRecord={Boolean(device && isReceiving)}
@@ -948,6 +985,34 @@ export default function Monitor(): React.JSX.Element {
           onStopPlayback={handleStopPlayback}
         />
       </section>
+
+      {/* Quick reference card */}
+      <details 
+        style={{
+          backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
+          padding: "12px",
+          borderRadius: "8px",
+          marginBottom: "16px",
+        }}
+      >
+        <summary style={{ cursor: "pointer", fontWeight: "bold", marginBottom: "8px" }}>
+          ℹ️ Monitor Page Features & Controls
+        </summary>
+        <div style={{ fontSize: "0.9em", lineHeight: "1.6" }}>
+          <p><strong>Spectrum Explorer:</strong> Click to tune, drag to pan, scroll to zoom. Markers can be added by clicking "Add Marker".</p>
+          <p><strong>Scanner:</strong> Automatically finds active signals with optional RDS decoding. Click "Tune" on found signals to listen.</p>
+          <p><strong>Signal Measurements:</strong> Real-time SNR, power levels, and sample rate. S-meter shows signal strength quality.</p>
+          <p><strong>Audio:</strong> Play/pause, volume control, and mute. Audio demodulation happens in real-time from IQ samples.</p>
+          <p><strong>Recording:</strong> Capture IQ samples for later analysis or playback. Recordings can be saved and loaded.</p>
+          <p><strong>Keyboard Shortcuts:</strong></p>
+          <ul>
+            <li><code>F</code> - Freeze/unfreeze visualization</li>
+            <li><code>E</code> - Export current buffer to CSV</li>
+            <li><code>↑/↓</code> - Adjust frequency</li>
+            <li><code>M</code> - Add marker at current frequency</li>
+          </ul>
+        </div>
+      </details>
 
       {/* Bottom status bar */}
       <div style={{ marginTop: 12 }}>
