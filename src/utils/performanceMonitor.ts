@@ -166,13 +166,25 @@ class PerformanceMonitor {
       // Clear marks and measures to avoid unbounded growth in Performance timeline
       try {
         performance.clearMarks(finalEndMark);
-      } catch {}
+      } catch (err) {
+        // Cleanup failures are non-fatal and can be safely ignored.
+        // Optionally log for debugging:
+        // console.debug('Failed to clear mark:', finalEndMark, err);
+      }
       try {
         performance.clearMarks(startMark);
-      } catch {}
+      } catch (err) {
+        // Cleanup failures are non-fatal and can be safely ignored.
+        // Optionally log for debugging:
+        // console.debug('Failed to clear mark:', startMark, err);
+      }
       try {
         performance.clearMeasures(name);
-      } catch {}
+      } catch (err) {
+        // Cleanup failures are non-fatal and can be safely ignored.
+        // Optionally log for debugging:
+        // console.debug('Failed to clear measure:', name, err);
+      }
     } catch {
       // no-op
     }
