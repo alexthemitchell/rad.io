@@ -53,4 +53,10 @@ export {
   type DeviceDiscoveryOptions,
 } from "./DeviceDiscovery";
 
+export {
+  DriverHotReload,
+  type HotReloadResult,
+  type HotReloadOptions,
+} from "./DriverHotReload";
+
 export { registerBuiltinDrivers } from "./registerBuiltinDrivers";

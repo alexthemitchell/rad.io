@@ -166,12 +166,14 @@ src/drivers/
 ├── SDRDriverRegistry.ts          # Core registry
 ├── WebUSBDeviceSelector.ts       # WebUSB helper
 ├── DeviceDiscovery.ts            # Automatic device detection
+├── DriverHotReload.ts            # Runtime driver updates
 ├── registerBuiltinDrivers.ts     # Built-in registrations
 ├── index.ts                      # Public API exports
 └── __tests__/
     ├── SDRDriverRegistry.test.ts
     ├── WebUSBDeviceSelector.test.ts
     ├── DeviceDiscovery.test.ts
+    ├── DriverHotReload.test.ts
     └── registerBuiltinDrivers.test.ts
 ```
 
@@ -179,8 +181,9 @@ src/drivers/
 - **SDRDriverRegistry**: 13 tests covering registration, matching, and factory
 - **WebUSBDeviceSelector**: 8 tests covering browser support and formatting
 - **DeviceDiscovery**: 14 tests covering automatic detection and enumeration
+- **DriverHotReload**: 14 tests covering runtime driver updates and rollback
 - **registerBuiltinDrivers**: 16 tests verifying driver metadata and instantiation
-- **Total**: 51 tests with 100% coverage of new code
+- **Total**: 65 tests with 100% coverage of new code
 
 ### Design Patterns Used
 1. **Registry Pattern**: Central driver storage and lookup
@@ -197,14 +200,20 @@ src/drivers/
    - Device filtering with custom predicates
    - Event watching for connect/disconnect
 
+2. **✅ Driver Hot-Reload** (`DriverHotReload` class): Unregister and re-register drivers at runtime
+   - Runtime driver updates without application restart
+   - Safe driver replacement with rollback on failure
+   - Bulk driver reloading
+   - Lifecycle callbacks (beforeUnload, afterLoad)
+   - Useful for development, testing, and A/B testing
+
 ## Future Enhancements
 
-1. **Driver Hot-Reload**: Unregister and re-register drivers at runtime
-2. **Capability Negotiation**: Request specific capabilities and find matching drivers
-3. **Driver Versioning**: Support multiple versions of same driver
-4. **Class/Protocol Matching**: Enhanced USB descriptor matching beyond vendor/product IDs
-5. **Serial Number Filtering**: Support for device-specific serial number matching (partially supported via predicates)
-6. **Driver Priority**: Allow multiple drivers for same device with priority ordering
+1. **Capability Negotiation**: Request specific capabilities and find matching drivers
+2. **Driver Versioning**: Support multiple versions of same driver
+3. **Class/Protocol Matching**: Enhanced USB descriptor matching beyond vendor/product IDs
+4. **Serial Number Filtering**: Support for device-specific serial number matching (partially supported via predicates)
+5. **Driver Priority**: Allow multiple drivers for same device with priority ordering
 
 ## References
 

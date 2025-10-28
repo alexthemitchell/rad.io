@@ -40,15 +40,27 @@ export function useHackRFDevice(): {
   isCheckingPaired: boolean;
 } {
   const [device, setDevice] = useState<ISDRDevice>();
+  const [driversRegistered, setDriversRegistered] = useState(false);
   
   // Register drivers on hook mount
   useEffect(() => {
     registerBuiltinDrivers();
+    setDriversRegistered(true);
   }, []);
 
   // Get HackRF-specific USB filter from registry
-  const hackrfMetadata = SDRDriverRegistry.getDriverMetadata("hackrf-one");
-  const filters = hackrfMetadata?.usbFilters ?? [{ vendorId: 0x1d50 }];
+  // Only access after drivers are registered to ensure metadata is available
+  const hackrfMetadata = driversRegistered
+    ? SDRDriverRegistry.getDriverMetadata("hackrf-one")
+    : undefined;
+
+  if (driversRegistered && !hackrfMetadata) {
+    throw new Error(
+      "HackRF One driver not found in registry. Ensure registerBuiltinDrivers() has been called.",
+    );
+  }
+
+  const filters = hackrfMetadata?.usbFilters ?? [];
 
   const {
     device: usbDevice,
@@ -102,7 +114,17 @@ export function useHackRFDevice(): {
           // Try to create device anyway - it will be usable once the other open() completes
           SDRDriverRegistry.createDevice(usbDevice)
             .then(setDevice)
-            .catch(console.error);
+            .catch((error: unknown) => {
+              console.error(
+                "useHackRFDevice: Failed to create device in fallback path:",
+                error,
+                {
+                  wasOpened: usbDevice.opened,
+                  productId: usbDevice.productId,
+                  vendorId: usbDevice.vendorId,
+                },
+              );
+            });
         } else {
           console.error(
             "useHackRFDevice: Failed to initialize HackRF adapter",
