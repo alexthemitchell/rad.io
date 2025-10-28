@@ -98,7 +98,7 @@ export default function SpectrumExplorer({
   sampleRate,
   centerFrequency,
   fftSize,
-  frames = 48,
+  frames: _frames = 48,
   overlap = 0.5,
   onTune,
   showWaterfall = true,

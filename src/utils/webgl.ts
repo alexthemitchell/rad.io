@@ -95,7 +95,10 @@ export function createBuffer(
   target: number = gl.ARRAY_BUFFER,
   usage: number = gl.STATIC_DRAW,
 ): WebGLBuffer {
-  const buffer = gl.createBuffer() as WebGLBuffer;
+  const buffer = gl.createBuffer();
+  if (!buffer) {
+    throw new Error("Failed to create WebGL buffer");
+  }
   gl.bindBuffer(target, buffer);
   gl.bufferData(target, data, usage);
   return buffer;
@@ -107,7 +110,10 @@ export function createTextureLuminanceF32(
   height: number,
   data: Float32Array | null,
 ): WebGLTexture {
-  const tex = gl.createTexture() as WebGLTexture;
+  const tex = gl.createTexture();
+  if (!tex) {
+    throw new Error("Failed to create WebGL texture");
+  }
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -121,7 +127,6 @@ export function createTextureLuminanceF32(
   const srcFormat = gl instanceof WebGL2RenderingContext ? gl.RED : gl.LUMINANCE;
   const type = ext ? gl.FLOAT : gl.UNSIGNED_BYTE;
   const dataForUpload = type === gl.FLOAT ? data : (data ? new Uint8Array(data.buffer) : null);
-
 
   gl.texImage2D(
     gl.TEXTURE_2D,

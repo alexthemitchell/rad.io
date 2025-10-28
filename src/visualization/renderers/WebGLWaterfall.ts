@@ -1,5 +1,5 @@
-import * as webgl from "../../utils/webgl";
 import { WATERFALL_COLORMAPS } from "../../constants";
+import * as webgl from "../../utils/webgl";
 import type { Renderer } from "./types";
 
 const WATERFALL_FS = `
@@ -8,10 +8,10 @@ uniform sampler2D uColormap;
 uniform sampler2D uSpectrogram;
 uniform float uGain;
 uniform float uOffset;
-varying vec2 vTexCoord;
+varying vec2 v_texCoord;
 
 void main() {
-  float power = texture2D(uSpectrogram, vTexCoord).r;
+  float power = texture2D(uSpectrogram, v_texCoord).r;
   power = power * uGain + uOffset;
   gl_FragColor = texture2D(uColormap, vec2(power, 0.5));
 }
@@ -20,7 +20,8 @@ void main() {
 export class WebGLWaterfall implements Renderer {
   private gl: WebGLRenderingContext | null = null;
   private program: WebGLProgram | null = null;
-  private aPosition: number = -1;
+  private aPosition = -1;
+  private aTexCoord = -1;
   private uColormap: WebGLUniformLocation | null = null;
   private uSpectrogram: WebGLUniformLocation | null = null;
   private uGain: WebGLUniformLocation | null = null;
@@ -36,48 +37,54 @@ export class WebGLWaterfall implements Renderer {
   private currentRow = 0;
 
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
-    this.gl = canvas.getContext("webgl", {
-      alpha: false,
-      antialias: false,
-      depth: false,
-      stencil: false,
-      powerPreference: "high-performance",
-    });
+    try {
+      this.gl = canvas.getContext("webgl", {
+        alpha: false,
+        antialias: false,
+        depth: false,
+        stencil: false,
+        powerPreference: "high-performance",
+      });
 
-    if (!this.gl) {
-      this.error("Failed to get WebGL context");
+      if (!this.gl) {
+        this.error("Failed to get WebGL context");
+        return false;
+      }
+
+      const { gl } = this;
+      this.program = webgl.createProgram(gl, webgl.FULLSCREEN_VS, WATERFALL_FS);
+      if (!this.program) {
+        this.error("Failed to create WebGL program");
+        return false;
+      }
+
+      this.aPosition = gl.getAttribLocation(this.program, "a_position");
+      this.aTexCoord = gl.getAttribLocation(this.program, "a_texCoord");
+      this.uColormap = gl.getUniformLocation(this.program, "uColormap");
+      this.uSpectrogram = gl.getUniformLocation(this.program, "uSpectrogram");
+      this.uGain = gl.getUniformLocation(this.program, "uGain");
+      this.uOffset = gl.getUniformLocation(this.program, "uOffset");
+
+      this.textureSize = { width: 2048, height: 512 }; // Default size
+      this.spectrogramTexture = webgl.createTextureLuminanceF32(
+        gl,
+        this.textureSize.width,
+        this.textureSize.height,
+        null,
+      );
+      this.colormapTexture = webgl.createTextureRGBA(gl, 256, 1, null);
+
+      this.vertexBuffer = webgl.createBuffer(gl, webgl.QUAD_VERTICES);
+      this.textureBuffer = webgl.createBuffer(
+        gl,
+        webgl.TEX_COORDS,
+      );
+
+      return true;
+    } catch (error) {
+      this.error(`Initialization failed: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
-
-    const { gl } = this;
-    this.program = webgl.createProgram(gl, webgl.FULLSCREEN_VS, WATERFALL_FS);
-    if (!this.program) {
-      this.error("Failed to create WebGL program");
-      return false;
-    }
-
-    this.aPosition = gl.getAttribLocation(this.program, "aPosition");
-    this.uColormap = gl.getUniformLocation(this.program, "uColormap");
-    this.uSpectrogram = gl.getUniformLocation(this.program, "uSpectrogram");
-    this.uGain = gl.getUniformLocation(this.program, "uGain");
-    this.uOffset = gl.getUniformLocation(this.program, "uOffset");
-
-    this.textureSize = { width: 2048, height: 512 }; // Default size
-    this.spectrogramTexture = webgl.createTexture(
-      gl,
-      gl.LUMINANCE,
-      this.textureSize.width,
-      this.textureSize.height,
-    );
-    this.colormapTexture = webgl.createTexture(gl, gl.RGBA, 256, 1);
-
-    this.vertexBuffer = webgl.createBuffer(gl, webgl.FULLSCREEN_VERTICES);
-    this.textureBuffer = webgl.createBuffer(
-      gl,
-      webgl.FULLSCREEN_TEXTURE_COORDS,
-    );
-
-    return true;
   }
 
   isReady(): boolean {
@@ -85,27 +92,45 @@ export class WebGLWaterfall implements Renderer {
   }
 
   render(data: {
-    spectrogram: Float32Array[];
-    colormapName: keyof typeof WATERFALL_COLORMAPS;
-    gain: number;
-    offset: number;
+    spectrogram?: Float32Array[];
+    frames?: Float32Array[];
+    colormapName?: keyof typeof WATERFALL_COLORMAPS;
+    gain?: number;
+    offset?: number;
+    freqMin?: number;
+    freqMax?: number;
+    transform?: unknown;
   }): boolean {
     const { gl, program } = this;
-    if (!gl || !program || !data.spectrogram || data.spectrogram.length === 0) {
+    const spectrogram = data.spectrogram || data.frames;
+    if (!gl || !program || !spectrogram || spectrogram.length === 0) {
       return false;
     }
 
-    const { spectrogram, colormapName, gain, offset } = data;
+    const colormapName = data.colormapName || "viridis";
+    const gain = data.gain ?? 1.0;
+    const offset = data.offset ?? 0.0;
 
     gl.useProgram(program);
 
-    webgl.updateTexture(
+    // Convert colormap from 0-1 range to 0-255 range for updateTextureRGBA
+    const colormapData = WATERFALL_COLORMAPS[colormapName];
+    const colormapRGBA = new Uint8Array(colormapData.length * 4);
+    for (let i = 0; i < colormapData.length; i++) {
+      const rgb = colormapData[i];
+      if (!rgb || rgb.length < 3) continue;
+      colormapRGBA[i * 4 + 0] = Math.round((rgb[0] ?? 0) * 255);
+      colormapRGBA[i * 4 + 1] = Math.round((rgb[1] ?? 0) * 255);
+      colormapRGBA[i * 4 + 2] = Math.round((rgb[2] ?? 0) * 255);
+      colormapRGBA[i * 4 + 3] = 255; // Alpha
+    }
+
+    webgl.updateTextureRGBA(
       gl,
-      this.colormapTexture,
-      WATERFALL_COLORMAPS[colormapName],
-      gl.RGBA,
-      256,
+      this.colormapTexture!,
+      colormapData.length,
       1,
+      colormapRGBA,
     );
 
     gl.activeTexture(gl.TEXTURE1);
@@ -116,11 +141,11 @@ export class WebGLWaterfall implements Renderer {
         // Resize texture if FFT size changes
         this.textureSize.width = row.length;
         if (this.spectrogramTexture) gl.deleteTexture(this.spectrogramTexture);
-        this.spectrogramTexture = webgl.createTexture(
+        this.spectrogramTexture = webgl.createTextureLuminanceF32(
           gl,
-          gl.LUMINANCE,
           this.textureSize.width,
           this.textureSize.height,
+          null,
         );
         this.currentRow = 0;
         gl.bindTexture(gl.TEXTURE_2D, this.spectrogramTexture);
@@ -160,7 +185,8 @@ export class WebGLWaterfall implements Renderer {
     ]);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.textureBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, textureCoords, gl.DYNAMIC_DRAW);
-    gl.vertexAttribPointer(this.aPosition, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(this.aTexCoord, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.aTexCoord);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -175,6 +201,8 @@ export class WebGLWaterfall implements Renderer {
     if (this.colormapTexture) gl.deleteTexture(this.colormapTexture);
     if (this.vertexBuffer) gl.deleteBuffer(this.vertexBuffer);
     if (this.textureBuffer) gl.deleteBuffer(this.textureBuffer);
+    this.gl = null;
+    this.program = null;
   }
 
   private error(message: string): void {

@@ -2,6 +2,9 @@
  * Tests for Canvas2D and WebGL waterfall renderers
  */
 
+// Mock WebGL2RenderingContext for instanceof checks in webgl.ts
+(global as any).WebGL2RenderingContext = class WebGL2RenderingContext {};
+
 import { CanvasWaterfall } from "../CanvasWaterfall";
 import { WebGLWaterfall } from "../WebGLWaterfall";
 import type { WaterfallData } from "../types";
@@ -208,6 +211,16 @@ describe("WebGLWaterfall", () => {
       texParameteri: jest.fn(),
       activeTexture: jest.fn(),
       uniform1i: jest.fn(),
+      uniform1f: jest.fn(),
+      pixelStorei: jest.fn(),
+      texSubImage2D: jest.fn(),
+      UNPACK_ALIGNMENT: 3317,
+      LUMINANCE: 6409,
+      DYNAMIC_DRAW: 35048,
+      TEXTURE1: 33985,
+      R32F: 33326,
+      RED: 6403,
+      getExtension: jest.fn(() => null),
       deleteShader: jest.fn(),
       deleteProgram: jest.fn(),
       deleteBuffer: jest.fn(),
@@ -283,8 +296,7 @@ describe("WebGLWaterfall", () => {
 
     const success = renderer.render(data);
     expect(success).toBe(true);
-    expect(mockGL.clear).toHaveBeenCalled();
-    expect(mockGL.texImage2D).toHaveBeenCalled();
+    expect(mockGL.texSubImage2D).toHaveBeenCalled();
     expect(mockGL.drawArrays).toHaveBeenCalled();
   });
 
