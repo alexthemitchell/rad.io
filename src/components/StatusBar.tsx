@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDeviceContext } from "../contexts/DeviceContext";
+import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
 import { RenderTier } from "../types/rendering";
+import { extractUSBDevice, formatUsbId } from "../utils/usb";
 /** Rendering tier detected for visualization components */
 // Re-export for backward compatibility with existing imports/tests
 export { RenderTier } from "../types/rendering";
@@ -74,6 +77,61 @@ function StatusBar({
   className = "",
 }: StatusBarProps): React.JSX.Element {
   const [currentTime, setCurrentTime] = useState(new Date());
+  // Tolerate missing DeviceProvider in isolated tests by gracefully degrading
+  let primaryDevice: unknown = undefined;
+  let connectPairedUSBDevice: (usb: USBDevice) => Promise<void> = async (_usb: USBDevice): Promise<void> => {
+    // intentional noop when no DeviceProvider is present (unit tests)
+    await Promise.resolve();
+  };
+  let isCheckingPaired = false;
+  try {
+    const ctx = useDeviceContext();
+    primaryDevice = ctx.primaryDevice;
+    connectPairedUSBDevice = ctx.connectPairedUSBDevice;
+    isCheckingPaired = ctx.isCheckingPaired;
+  } catch {
+    // No provider: leave defaults; component will render in read-only mode
+  }
+
+  // Helper to compute a stable key for a USB device
+  const deviceKey = (usb: USBDevice): string =>
+    `${usb.vendorId}:${usb.productId}:${usb.serialNumber ?? ""}`;
+
+  // Enumerated list of previously paired and supported USB devices
+  const [pairedUSBDevices, setPairedUSBDevices] = useState<USBDevice[] | null>(
+    null,
+  );
+
+  // Selected device key in the dropdown (tracks current primary device)
+  const selectedKey = useMemo(() => {
+    const usb = extractUSBDevice(primaryDevice);
+    return usb ? deviceKey(usb) : "";
+  }, [primaryDevice]);
+
+  // Enumerate paired devices (similar to Devices panel)
+  useEffect(() => {
+    const enumerate = async (): Promise<void> => {
+      if (isCheckingPaired) {
+        setPairedUSBDevices(null);
+        return;
+      }
+      try {
+        const selector = new WebUSBDeviceSelector();
+        const paired = await selector.getDevices();
+        const supported = paired.filter((usb) =>
+          Boolean(SDRDriverRegistry.getDriverForDevice(usb)),
+        );
+        setPairedUSBDevices(supported);
+      } catch (err) {
+        console.error(
+          "StatusBar: Failed to enumerate paired USB devices:",
+          err,
+        );
+        setPairedUSBDevices([]);
+      }
+    };
+    void enumerate();
+  }, [isCheckingPaired, primaryDevice]);
 
   // Update clock every second
   useEffect((): (() => void) => {
@@ -182,14 +240,60 @@ function StatusBar({
     >
       <div className="status-bar-item">
         <span className="status-bar-label">Device</span>
-        <span
-          className="status-bar-value"
-          style={{
-            color: deviceConnected ? "var(--rad-success)" : "var(--rad-danger)",
-          }}
-        >
-          {deviceConnected ? "Connected" : "Disconnected"}
-        </span>
+        {Array.isArray(pairedUSBDevices) && pairedUSBDevices.length > 1 ? (
+          <select
+            aria-label="Select SDR device"
+            className="status-bar-value"
+            value={selectedKey}
+            onChange={(e): void => {
+              const key = e.target.value;
+              const next = pairedUSBDevices.find((u) => deviceKey(u) === key);
+              if (next) {
+                void connectPairedUSBDevice(next);
+              }
+            }}
+            style={{
+              marginLeft: 6,
+              padding: "2px 6px",
+              background: "transparent",
+              border: "1px solid var(--rad-border)",
+              color: deviceConnected
+                ? "var(--rad-success)"
+                : "var(--rad-danger)",
+            }}
+            title={
+              deviceConnected
+                ? "Switch between paired SDR devices"
+                : "Select a paired SDR device to connect"
+            }
+          >
+            {/* Ensure the current selection is present even if enumeration is slow */}
+            {selectedKey &&
+            !pairedUSBDevices.some((u) => deviceKey(u) === selectedKey) ? (
+              <option value={selectedKey}>Current device</option>
+            ) : null}
+            {pairedUSBDevices.map((usb) => (
+              <option key={deviceKey(usb)} value={deviceKey(usb)}>
+                {(usb.productName ?? "Unknown Device") +
+                  " (" +
+                  formatUsbId(usb.vendorId, usb.productId) +
+                  (usb.serialNumber ? ` • ${usb.serialNumber}` : "") +
+                  ")"}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span
+            className="status-bar-value"
+            style={{
+              color: deviceConnected
+                ? "var(--rad-success)"
+                : "var(--rad-danger)",
+            }}
+          >
+            {deviceConnected ? "Connected" : "Disconnected"}
+          </span>
+        )}
       </div>
 
       <div className="status-bar-separator" aria-hidden="true" />

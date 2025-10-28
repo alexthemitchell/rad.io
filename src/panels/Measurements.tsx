@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { generateBookmarkId } from "../utils/id";
 
 // TODO(v2.0, rad.io): Temporary simulation values for SNR/SINAD calculations.
@@ -35,19 +35,27 @@ const SIMULATION_CONFIG = {
  */
 interface MeasurementsProps {
   isPanel?: boolean; // True when rendered as a side panel, false for full-page route
+  /** Optional external markers to display (read-only). If provided, Add/Remove is hidden. */
+  markers?: Marker[];
+  /** When true, disables mutation controls regardless of markers prop. */
+  readOnly?: boolean;
 }
 
 interface Marker {
   id: string;
   frequency: number;
-  amplitude: number;
+  amplitude?: number;
 }
 
-function Measurements({
-  isPanel = false,
-}: MeasurementsProps): React.JSX.Element {
+function Measurements({ isPanel = false, markers: externalMarkers, readOnly = false }: MeasurementsProps): React.JSX.Element {
   const containerClass = isPanel ? "panel-container" : "page-container";
-  const [markers, setMarkers] = useState<Marker[]>([]);
+  const [markers, setMarkers] = useState<Marker[]>(externalMarkers ?? []);
+  const isReadOnly = readOnly || Array.isArray(externalMarkers);
+
+  // Keep local state loosely in sync when externalMarkers is provided (view-only)
+  const displayMarkers: Marker[] = useMemo(() => {
+    return isReadOnly ? externalMarkers ?? [] : markers;
+  }, [isReadOnly, externalMarkers, markers]);
 
   const handleAddMarker = (): void => {
     const newMarker: Marker = {
@@ -65,9 +73,10 @@ function Measurements({
   const handleExportCSV = (): void => {
     const csv = [
       "Marker,Frequency (Hz),Amplitude (dBm)",
-      ...markers.map(
-        (m, i) => `${i + 1},${m.frequency},${m.amplitude.toFixed(2)}`,
-      ),
+      ...displayMarkers.map((m, i) => {
+        const amp = typeof m.amplitude === "number" ? m.amplitude.toFixed(2) : "";
+        return `${i + 1},${m.frequency},${amp}`;
+      }),
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -80,7 +89,7 @@ function Measurements({
 
   const handleExportJSON = (): void => {
     const json = JSON.stringify(
-      { markers, timestamp: new Date().toISOString() },
+      { markers: displayMarkers, timestamp: new Date().toISOString() },
       null,
       2,
     );
@@ -103,41 +112,49 @@ function Measurements({
 
       <section aria-label="Marker Controls">
         <h3>Markers</h3>
-        <button onClick={handleAddMarker}>Add Marker</button>
-        {markers.length === 0 ? (
+        {!isReadOnly && <button onClick={handleAddMarker}>Add Marker</button>}
+        {displayMarkers.length === 0 ? (
           <p>No markers placed. Add markers to take measurements.</p>
         ) : (
           <ul>
-            {markers.map((marker, index) => (
+            {displayMarkers.map((marker, index) => (
               <li key={marker.id}>
                 Marker {index + 1}: {(marker.frequency / 1e6).toFixed(3)} MHz,{" "}
-                {marker.amplitude.toFixed(2)} dBm
-                <button
-                  onClick={() => handleRemoveMarker(marker.id)}
-                  style={{ marginLeft: "0.5rem" }}
-                >
-                  Remove
-                </button>
+                {typeof marker.amplitude === "number"
+                  ? `${marker.amplitude.toFixed(2)} dBm`
+                  : "N/A"}
+                {!isReadOnly && (
+                  <button
+                    onClick={() => handleRemoveMarker(marker.id)}
+                    style={{ marginLeft: "0.5rem" }}
+                  >
+                    Remove
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         )}
-        {markers.length >= 2 && (
+        {displayMarkers.length >= 2 && (
           <div style={{ marginTop: "1rem" }}>
             <strong>Delta Measurement:</strong>
             <div>
               Δf:{" "}
               {Math.abs(
-                (markers[1]?.frequency ?? 0) - (markers[0]?.frequency ?? 0),
+                (displayMarkers[1]?.frequency ?? 0) - (displayMarkers[0]?.frequency ?? 0),
               ).toFixed(0)}{" "}
               Hz
             </div>
             <div>
               Δ Power:{" "}
-              {Math.abs(
-                (markers[1]?.amplitude ?? 0) - (markers[0]?.amplitude ?? 0),
-              ).toFixed(2)}{" "}
-              dB
+              {((): string => {
+                const a0 = displayMarkers[0]?.amplitude;
+                const a1 = displayMarkers[1]?.amplitude;
+                if (typeof a0 === "number" && typeof a1 === "number") {
+                  return `${Math.abs(a1 - a0).toFixed(2)} dB`;
+                }
+                return "N/A";
+              })()}
             </div>
           </div>
         )}
@@ -147,19 +164,24 @@ function Measurements({
         <h3>Signal Strength</h3>
         <div>
           <strong>Average Power:</strong>{" "}
-          {markers.length > 0
-            ? (
-                markers.reduce((sum, m) => sum + m.amplitude, 0) /
-                markers.length
-              ).toFixed(2)
-            : "N/A"}{" "}
+          {((): string => {
+            const amps = displayMarkers
+              .map((m) => m.amplitude)
+              .filter((a): a is number => typeof a === "number");
+            return amps.length
+              ? (amps.reduce((sum, a) => sum + a, 0) / amps.length).toFixed(2)
+              : "N/A";
+          })()}{" "}
           dBm
         </div>
         <div>
           <strong>Peak Power:</strong>{" "}
-          {markers.length > 0
-            ? Math.max(...markers.map((m) => m.amplitude)).toFixed(2)
-            : "N/A"}{" "}
+          {((): string => {
+            const amps = displayMarkers
+              .map((m) => m.amplitude)
+              .filter((a): a is number => typeof a === "number");
+            return amps.length ? Math.max(...amps).toFixed(2) : "N/A";
+          })()}{" "}
           dBm
         </div>
       </section>
@@ -168,11 +190,11 @@ function Measurements({
         <h3>Bandwidth</h3>
         <div>
           <strong>Occupied Bandwidth (99%):</strong>{" "}
-          {markers.length >= 2
+          {displayMarkers.length >= 2
             ? (
                 Math.abs(
-                  (markers[markers.length - 1]?.frequency ?? 0) -
-                    (markers[0]?.frequency ?? 0),
+                  (displayMarkers[displayMarkers.length - 1]?.frequency ?? 0) -
+                    (displayMarkers[0]?.frequency ?? 0),
                 ) / 1000
               ).toFixed(1)
             : "N/A"}{" "}
@@ -188,7 +210,7 @@ function Measurements({
         <h3>SNR / SINAD</h3>
         <div>
           <strong>SNR:</strong>{" "}
-          {markers.length > 0
+          {displayMarkers.length > 0
             ? (
                 SIMULATION_CONFIG.SNR_BASE +
                 Math.random() * SIMULATION_CONFIG.SNR_VARIANCE
@@ -198,7 +220,7 @@ function Measurements({
         </div>
         <div>
           <strong>SINAD:</strong>{" "}
-          {markers.length > 0
+          {displayMarkers.length > 0
             ? (
                 SIMULATION_CONFIG.SINAD_BASE +
                 Math.random() * SIMULATION_CONFIG.SINAD_VARIANCE
@@ -236,12 +258,12 @@ function Measurements({
 
       <section aria-label="Export">
         <h3>Export Measurements</h3>
-        <button onClick={handleExportCSV} disabled={markers.length === 0}>
+        <button onClick={handleExportCSV} disabled={displayMarkers.length === 0}>
           Export to CSV
         </button>
         <button
           onClick={handleExportJSON}
-          disabled={markers.length === 0}
+          disabled={displayMarkers.length === 0}
           style={{ marginLeft: "0.5rem" }}
         >
           Export to JSON

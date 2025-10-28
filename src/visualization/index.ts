@@ -37,3 +37,4 @@ export { default as FFTChart } from "./components/FFTChart";
 export { default as SpectrumExplorer } from "./components/SpectrumExplorer";
 export { default as Spectrum } from "./components/Spectrum";
 export { default as Waterfall } from "./components/Waterfall";
+export { default as EyeDiagram } from "./components/EyeDiagram";

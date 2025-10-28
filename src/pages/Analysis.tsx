@@ -6,8 +6,11 @@ import PerformanceMetrics from "../components/PerformanceMetrics";
 import { useDevice } from "../contexts/DeviceContext";
 import { notify } from "../lib/notifications";
 import { type ISDRDevice } from "../models/SDRDevice";
+import Measurements from "../panels/Measurements";
 import { type Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
+import { IQConstellation, WaveformVisualizer, EyeDiagram } from "../visualization";
+import type { MarkerRow } from "../components/MarkerTable";
 
 const MAX_BUFFER_SAMPLES = 32768;
 const UPDATE_INTERVAL_MS = 33; // Target 30 FPS
@@ -333,6 +336,33 @@ function Analysis(): React.JSX.Element {
     });
   }, [cancelScheduledUpdate, device]);
 
+  // Shared markers persisted by SpectrumExplorer
+  const [sharedMarkers, setSharedMarkers] = useState<MarkerRow[]>([]);
+  useEffect((): (() => void) => {
+    let cancelled = false;
+    const MARKERS_KEY = "viz.markers";
+    const load = (): void => {
+      try {
+        const raw = window.localStorage.getItem(MARKERS_KEY);
+        if (!raw || cancelled) {
+          return;
+        }
+  const parsed = JSON.parse(raw) as MarkerRow[];
+        if (Array.isArray(parsed)) {
+          setSharedMarkers(parsed);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    load();
+    const id = window.setInterval(load, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
   return (
     <div className="container">
       <a href="#main-content" className="skip-link">
@@ -381,7 +411,40 @@ function Analysis(): React.JSX.Element {
           )}
         </Card>
 
-        <InteractiveDSPPipeline device={device} samples={samples} />
+        {/* Core analysis visuals per design guidelines */}
+        <div className="analysis-grid">
+          <Card
+            title="IQ Constellation"
+            subtitle="Visualize modulation quality and symbol clustering"
+          >
+            <IQConstellation samples={samples} />
+          </Card>
+
+          <Card
+            title="Time-Domain Waveform"
+            subtitle="Amplitude vs. time for signal quality checks"
+          >
+            <WaveformVisualizer samples={samples} />
+          </Card>
+        </div>
+
+        <Card title="Eye Diagram" subtitle="Overlayed symbol periods to assess timing and ISI">
+          <EyeDiagram samples={samples} />
+        </Card>
+
+        <Card title="Measurements" subtitle="Markers, deltas, and export">
+          {/* Render as a panel to avoid nested page containers; use shared markers in read-only mode */}
+          <Measurements isPanel={true} markers={sharedMarkers.map((m) => ({ id: m.id, frequency: m.freqHz }))} readOnly={true} />
+        </Card>
+
+        <Card
+          title="Interactive DSP Pipeline"
+          subtitle="Click a stage to inspect data and parameters"
+          collapsible
+          defaultExpanded={false}
+        >
+          <InteractiveDSPPipeline device={device} samples={samples} />
+        </Card>
 
         <PerformanceMetrics currentFPS={currentFPS} />
       </main>

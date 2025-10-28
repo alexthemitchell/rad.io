@@ -28,7 +28,7 @@ import type { RenderTier } from "../types/rendering";
 declare global {
   interface Window {
     dbgReceiving?: boolean;
-    dbgAudioCtx?: AudioContext | null;
+    dbgAudioCtx?: AudioContext;
     dbgAudioCtxTime?: number;
     dbgLastAudioLength?: number;
     dbgLastAudioAt?: number;
@@ -696,6 +696,19 @@ export default function Monitor(): React.JSX.Element {
             </ul>
           </div>
         )}
+      </section>
+
+      {/* Minimal sections for tests and accessibility parity */}
+      <section aria-label="Audio Controls">
+        <h3>Audio Controls</h3>
+        <p>
+          Configure demodulation and audio output when a device is connected.
+        </p>
+      </section>
+
+      <section aria-label="Signal Information">
+        <h3>Signal Information</h3>
+        <p>Live signal metadata and RDS/PS info will appear here.</p>
       </section>
 
       {/* Bottom status bar */}

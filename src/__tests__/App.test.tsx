@@ -31,7 +31,7 @@ jest.mock("../components/FrequencyDisplay", () => {
 });
 
 // Mock the page components to avoid their dependencies
-jest.mock("../pages/MonitorMerged", () => {
+jest.mock("../pages/Monitor", () => {
   return function Monitor() {
     return <div data-testid="monitor">Monitor Page</div>;
   };
