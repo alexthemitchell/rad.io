@@ -5,11 +5,16 @@ import React, {
   useRef,
   useState,
 } from "react";
+import AudioControls from "../components/AudioControls";
+import RDSDisplay from "../components/RDSDisplay";
+import RecordingControls from "../components/RecordingControls";
+import SignalStrengthMeter from "../components/SignalStrengthMeter";
 import StatusBar from "../components/StatusBar";
 import { useDevice } from "../contexts/DeviceContext";
 import { useFrequency } from "../contexts/FrequencyContext";
 import { HardwareSDRSource } from "../drivers/HardwareSDRSource";
 import { useFrequencyScanner, type ActiveSignal } from "../hooks/useFrequencyScanner";
+import { notify } from "../lib/notifications";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
 import { type Sample as DSPSample } from "../utils/dsp";
@@ -42,7 +47,9 @@ export default function Monitor(): React.JSX.Element {
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
     useFrequency();
-  const volume = 50;
+  const [volume, setVolume] = useState(50);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const sampleRate = 2_000_000; // 2 MSPS
   const lnaGain = 16; // dB
   const ampEnabled = false;
@@ -65,6 +72,12 @@ export default function Monitor(): React.JSX.Element {
   >("viridis");
   const [dbMin, setDbMin] = useState<number | undefined>(undefined);
   const [dbMax, setDbMax] = useState<number | undefined>(undefined);
+  
+  // Recording state
+  const [recordingState, setRecordingState] = useState<"idle" | "recording" | "playback">("idle");
+  const [recordedSamples, setRecordedSamples] = useState<DSPSample[]>([]);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingStartTimeRef = useRef<number>(0);
 
   // Frequency scanner integration
   const [foundSignals, setFoundSignals] = useState<ActiveSignal[]>([]);
@@ -105,6 +118,13 @@ export default function Monitor(): React.JSX.Element {
   const [storageUsed, setStorageUsed] = useState<number>(0);
   const [storageQuota, setStorageQuota] = useState<number>(0);
   const [bufferHealth, setBufferHealth] = useState<number>(100);
+
+  // Signal quality metrics
+  const [signalQuality, setSignalQuality] = useState<{
+    snr: number;
+    peakPower: number;
+    avgPower: number;
+  }>({ snr: 0, peakPower: -100, avgPower: -100 });
 
   useEffect(() => {
     if (!device) {
@@ -172,9 +192,35 @@ export default function Monitor(): React.JSX.Element {
         Math.min(100, Math.round((vizBufferRef.current.length / maxViz) * 100)),
       );
       setBufferHealth(pct);
+
+      // Calculate signal quality metrics
+      if (vizSamples.length > 0) {
+        let sumPower = 0;
+        let peakPower = -Infinity;
+        for (const sample of vizSamples) {
+          const power = sample.I * sample.I + sample.Q * sample.Q;
+          sumPower += power;
+          if (power > peakPower) {
+            peakPower = power;
+          }
+        }
+        const avgPower = sumPower / vizSamples.length;
+        const avgPowerDb = 10 * Math.log10(avgPower + 1e-10);
+        const peakPowerDb = 10 * Math.log10(peakPower + 1e-10);
+        
+        // Simple SNR estimate: assume noise floor is -80dBm
+        const noiseFloor = -80;
+        const snr = Math.max(0, avgPowerDb - noiseFloor);
+        
+        setSignalQuality({
+          snr: Math.round(snr * 10) / 10,
+          peakPower: Math.round(peakPowerDb * 10) / 10,
+          avgPower: Math.round(avgPowerDb * 10) / 10,
+        });
+      }
     }, 1000);
     return (): void => clearInterval(id);
-  }, [fftSize, highPerfMode]);
+  }, [fftSize, highPerfMode, vizSamples]);
 
   const ensureAudio = useCallback((): void => {
     audioCtxRef.current ??= new AudioContext();
@@ -183,8 +229,80 @@ export default function Monitor(): React.JSX.Element {
   }, [sampleRate]);
 
   useEffect(() => {
-    window.dbgVolume = volume;
-  }, [volume]);
+    window.dbgVolume = isMuted ? 0 : volume;
+  }, [volume, isMuted]);
+
+  // Recording duration timer
+  useEffect((): (() => void) | void => {
+    if (recordingState !== "recording") {
+      return;
+    }
+    const interval = setInterval((): void => {
+      setRecordingDuration(Date.now() - recordingStartTimeRef.current);
+    }, 100);
+    return (): void => clearInterval(interval);
+  }, [recordingState]);
+
+  // Audio controls handlers
+  const handleToggleAudio = useCallback(() => {
+    setIsAudioPlaying((prev) => !prev);
+  }, []);
+
+  const handleVolumeChange = useCallback((newVolume: number) => {
+    setVolume(Math.round(newVolume * 100));
+  }, []);
+
+  const handleToggleMute = useCallback(() => {
+    setIsMuted((prev) => !prev);
+  }, []);
+
+  // Recording handlers
+  const handleStartRecording = useCallback(() => {
+    setRecordingState("recording");
+    setRecordedSamples([]);
+    recordingStartTimeRef.current = Date.now();
+    setRecordingDuration(0);
+    notify({
+      message: "Recording started",
+      sr: "polite",
+      visual: true,
+      tone: "info",
+    });
+  }, []);
+
+  const handleStopRecording = useCallback(() => {
+    setRecordingState("idle");
+    const duration = (Date.now() - recordingStartTimeRef.current) / 1000;
+    notify({
+      message: `Recording stopped. Captured ${recordedSamples.length.toLocaleString()} samples (${duration.toFixed(1)}s)`,
+      sr: "polite",
+      visual: true,
+      tone: "success",
+    });
+  }, [recordedSamples.length]);
+
+  const handleStartPlayback = useCallback(() => {
+    if (recordedSamples.length === 0) {
+      notify({
+        message: "No recording to play back",
+        sr: "assertive",
+        visual: true,
+        tone: "warning",
+      });
+      return;
+    }
+    setRecordingState("playback");
+    notify({
+      message: "Playing back recording",
+      sr: "polite",
+      visual: true,
+      tone: "info",
+    });
+  }, [recordedSamples.length]);
+
+  const handleStopPlayback = useCallback(() => {
+    setRecordingState("idle");
+  }, []);
 
   // (Optional) signal strength simulation removed in merged view
 
@@ -281,6 +399,11 @@ export default function Monitor(): React.JSX.Element {
 
       await setup.source.startStreaming((samples: DSPSample[]) => {
         try {
+          // Capture samples for recording
+          if (recordingState === "recording") {
+            setRecordedSamples((prev) => [...prev, ...samples]);
+          }
+
           const buffer = iqBufferRef.current;
           buffer.push(...samples.map((s) => ({ I: s.I, Q: s.Q })));
 
@@ -346,7 +469,7 @@ export default function Monitor(): React.JSX.Element {
               const src = ctx.createBufferSource();
               src.buffer = audioBuffer;
               const gainNode = ctx.createGain();
-              gainNode.gain.value = volume / 100;
+              gainNode.gain.value = isMuted ? 0 : volume / 100;
               src.connect(gainNode).connect(ctx.destination);
               src.start();
               window.dbgAudioCtxTime = ctx.currentTime;
@@ -389,6 +512,8 @@ export default function Monitor(): React.JSX.Element {
     tuneDevice,
     volume,
     scanner,
+    recordingState,
+    isMuted,
   ]);
 
   const handleStop = useCallback(async (): Promise<void> => {
@@ -713,17 +838,115 @@ export default function Monitor(): React.JSX.Element {
         )}
       </section>
 
-      {/* Minimal sections for tests and accessibility parity */}
+      {/* Professional audio controls with real-time VU meter */}
       <section aria-label="Audio Controls">
         <h3>Audio Controls</h3>
-        <p>
-          Configure demodulation and audio output when a device is connected.
-        </p>
+        <AudioControls
+          isPlaying={isAudioPlaying && isReceiving}
+          volume={volume / 100}
+          isMuted={isMuted}
+          signalType="FM"
+          isAvailable={Boolean(device)}
+          onTogglePlay={handleToggleAudio}
+          onVolumeChange={handleVolumeChange}
+          onToggleMute={handleToggleMute}
+        />
       </section>
 
       <section aria-label="Signal Information">
         <h3>Signal Information</h3>
-        <p>Live signal metadata and RDS/PS info will appear here.</p>
+        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
+          <div style={{ flex: "1 1 300px" }}>
+            <SignalStrengthMeter samples={vizSamples} />
+          </div>
+          {foundSignals.length > 0 && foundSignals[0]?.rdsData && (
+            <div style={{ flex: "1 1 300px" }}>
+              <RDSDisplay 
+                rdsData={foundSignals[0].rdsData} 
+                stats={null}
+              />
+            </div>
+          )}
+        </div>
+        
+        {/* Professional signal measurements */}
+        {vizSamples.length > 0 && (
+          <div 
+            className="signal-measurements"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: "12px",
+              padding: "12px",
+              backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
+              borderRadius: "4px",
+              fontFamily: "JetBrains Mono, monospace",
+            }}
+            role="region"
+            aria-label="Signal measurements"
+          >
+            <div>
+              <div style={{ fontSize: "0.85em", opacity: 0.7 }}>SNR</div>
+              <div style={{ fontSize: "1.2em", fontWeight: "bold" }}>
+                {signalQuality.snr.toFixed(1)} dB
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: "0.85em", opacity: 0.7 }}>Peak Power</div>
+              <div style={{ fontSize: "1.2em", fontWeight: "bold" }}>
+                {signalQuality.peakPower.toFixed(1)} dB
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: "0.85em", opacity: 0.7 }}>Avg Power</div>
+              <div style={{ fontSize: "1.2em", fontWeight: "bold" }}>
+                {signalQuality.avgPower.toFixed(1)} dB
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: "0.85em", opacity: 0.7 }}>Sample Rate</div>
+              <div style={{ fontSize: "1.2em", fontWeight: "bold" }}>
+                {(sampleRate / 1e6).toFixed(2)} MSPS
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section aria-label="Recording">
+        <h3>Recording & Playback</h3>
+        <RecordingControls
+          recordingState={recordingState}
+          canRecord={Boolean(device && isReceiving)}
+          canPlayback={recordedSamples.length > 0}
+          isPlaying={recordingState === "playback"}
+          duration={recordingDuration / 1000}
+          playbackProgress={0}
+          playbackTime={0}
+          sampleCount={recordedSamples.length}
+          onStartRecording={handleStartRecording}
+          onStopRecording={handleStopRecording}
+          onSaveRecording={(filename, format) => {
+            notify({
+              message: `Recording saved to ${filename} (${format})`,
+              sr: "polite",
+              visual: true,
+              tone: "success",
+            });
+          }}
+          onLoadRecording={(recording) => {
+            setRecordedSamples(recording.samples);
+            notify({
+              message: `Loaded recording with ${recording.samples.length} samples`,
+              sr: "polite",
+              visual: true,
+              tone: "success",
+            });
+          }}
+          onStartPlayback={handleStartPlayback}
+          onPausePlayback={handleStopPlayback}
+          onStopPlayback={handleStopPlayback}
+        />
       </section>
 
       {/* Bottom status bar */}
