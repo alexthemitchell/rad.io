@@ -11,6 +11,20 @@ import {
 } from "./SDRDriverRegistry";
 
 /**
+ * Helper function to format error messages consistently
+ */
+function formatError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Helper function to append error messages with consistent formatting
+ */
+function appendError(baseError: string, additionalError: unknown): string {
+  return `${baseError} | ${formatError(additionalError)}`;
+}
+
+/**
  * Result of a hot reload operation
  */
 export interface HotReloadResult {
@@ -123,19 +137,17 @@ export class DriverHotReload {
 
       result.success = true;
     } catch (error) {
-      result.error =
-        error instanceof Error ? error.message : String(error);
+      result.error = formatError(error);
 
       // Try to restore previous driver if reload failed
       if (result.previousDriver) {
         try {
           SDRDriverRegistry.register(result.previousDriver);
         } catch (restoreError: unknown) {
-          const errorMsg =
-            restoreError instanceof Error
-              ? restoreError.message
-              : String(restoreError);
-          result.error += ` | Failed to restore previous driver: ${errorMsg}`;
+          result.error = appendError(
+            result.error,
+            `Failed to restore previous driver: ${formatError(restoreError)}`,
+          );
         }
       }
     }
@@ -188,8 +200,7 @@ export class DriverHotReload {
 
       result.success = true;
     } catch (error) {
-      result.error =
-        error instanceof Error ? error.message : String(error);
+      result.error = formatError(error);
     }
 
     return result;

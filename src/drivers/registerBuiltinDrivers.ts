@@ -30,9 +30,11 @@ import { SDRDriverRegistry } from "./SDRDriverRegistry";
  * ```
  */
 export function registerBuiltinDrivers(): void {
-  // Check if drivers are already registered (idempotent)
-  if (SDRDriverRegistry.getDriverMetadata("hackrf-one")) {
-    return; // Already registered
+  // Check if all drivers are already registered (idempotent)
+  const hackrfRegistered = SDRDriverRegistry.getDriverMetadata("hackrf-one");
+  const rtlsdrRegistered = SDRDriverRegistry.getDriverMetadata("rtl-sdr");
+  if (hackrfRegistered && rtlsdrRegistered) {
+    return; // All drivers already registered
   }
 
   // Register HackRF One driver

@@ -367,8 +367,10 @@ useEffect(() => {
 
 All components are fully tested:
 - `SDRDriverRegistry.test.ts` - 13 tests
-- `WebUSBDeviceSelector.test.ts` - 7 tests
-- `registerBuiltinDrivers.test.ts` - 12 tests
+- `WebUSBDeviceSelector.test.ts` - 8 tests
+- `DeviceDiscovery.test.ts` - 14 tests
+- `DriverHotReload.test.ts` - 14 tests
+- `registerBuiltinDrivers.test.ts` - 16 tests
 
 Run tests:
 ```bash

@@ -56,7 +56,7 @@ export function useHackRFDevice(): {
 
   if (driversRegistered && !hackrfMetadata) {
     throw new Error(
-      "HackRF One driver not found in registry. Ensure registerBuiltinDrivers() has been called.",
+      "HackRF One driver failed to register. This may indicate a registration error in registerBuiltinDrivers().",
     );
   }
 
