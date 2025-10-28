@@ -62,6 +62,7 @@ export function registerBuiltinDrivers(): void {
       documentationUrl: "https://hackrf.readthedocs.io/",
       experimental: false,
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
     factory: async (usbDevice: USBDevice) => {
       const adapter = new HackRFOneAdapter(usbDevice);
       return adapter;
@@ -104,6 +105,7 @@ export function registerBuiltinDrivers(): void {
       documentationUrl: "https://osmocom.org/projects/rtl-sdr/wiki",
       experimental: false,
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
     factory: async (usbDevice: USBDevice) => {
       const adapter = new RTLSDRDeviceAdapter(usbDevice);
       return adapter;

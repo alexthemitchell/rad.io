@@ -194,7 +194,7 @@ export class WebUSBDeviceSelector {
 
     // Setup connect listener
     if (onConnect) {
-      this.connectListener = (event: USBConnectionEvent) => {
+      this.connectListener = (event: USBConnectionEvent): void => {
         onConnect(event.device);
       };
       navigator.usb.addEventListener("connect", this.connectListener);
@@ -202,10 +202,10 @@ export class WebUSBDeviceSelector {
 
     // Setup disconnect listener
     if (onDisconnect) {
-      this.disconnectListener = (event: USBConnectionEvent) => {
+      this.disconnectListener = (event: USBConnectionEvent): void => {
         onDisconnect(event.device);
       };
-      navigator.usb.addEventListener("disconnect", this.disconnectListener);
+      navigator.usb.removeEventListener("disconnect", this.disconnectListener);
     }
   }
 
@@ -239,7 +239,7 @@ export class WebUSBDeviceSelector {
 
     // Try to get product name from device
     const productName =
-      device.productName || `Unknown Device (${vendorId}:${productId})`;
+      device.productName ?? `Unknown Device (${vendorId}:${productId})`;
 
     return `${productName} [${vendorId}:${productId}]`;
   }

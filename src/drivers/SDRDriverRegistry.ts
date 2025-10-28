@@ -11,7 +11,7 @@
  * - WebUSB integration helpers
  */
 
-import {
+import type {
   ISDRDevice,
   SDRCapabilities,
   SDRDeviceType,
@@ -91,9 +91,14 @@ export interface SDRDriverRegistration {
  * // Create driver instance
  * const device = await SDRDriverRegistry.createDevice(usbDevice);
  * ```
+ *
+ * Note: This class uses static methods as it acts as a singleton registry.
+ * Using a namespace would be an alternative, but class allows for potential
+ * future extensibility (e.g., multiple registry instances).
  */
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class SDRDriverRegistry {
-  private static drivers: Map<string, SDRDriverRegistration> = new Map();
+  private static drivers = new Map<string, SDRDriverRegistration>();
 
   /**
    * Register a new SDR driver
