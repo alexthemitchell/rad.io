@@ -133,8 +133,9 @@ export class AirspyDeviceAdapter implements ISDRDevice {
         // Convert ±1.0 float to int16
         const I = Math.round(sample.I * 32768.0);
         const Q = Math.round(sample.Q * 32768.0);
-        view.setInt16(i * 4, Math.max(-32768, Math.min(32767, I)), true);
-        view.setInt16(i * 4 + 2, Math.max(-32768, Math.min(32767, Q)), true);
+        const offset = i * 4;
+        view.setInt16(offset, Math.max(-32768, Math.min(32767, I)), true);
+        view.setInt16(offset + 2, Math.max(-32768, Math.min(32767, Q)), true);
       }
 
       // Track memory usage
