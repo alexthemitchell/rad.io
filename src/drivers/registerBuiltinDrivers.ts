@@ -19,6 +19,7 @@ import { SDRDriverRegistry } from "./SDRDriverRegistry";
  * - RTL-SDR driver
  *
  * Call this at application startup before any device operations.
+ * Safe to call multiple times - will only register drivers once.
  *
  * Example:
  * ```typescript
@@ -29,6 +30,11 @@ import { SDRDriverRegistry } from "./SDRDriverRegistry";
  * ```
  */
 export function registerBuiltinDrivers(): void {
+  // Check if drivers are already registered (idempotent)
+  if (SDRDriverRegistry.getDriverMetadata("hackrf-one")) {
+    return; // Already registered
+  }
+
   // Register HackRF One driver
   SDRDriverRegistry.register({
     metadata: {

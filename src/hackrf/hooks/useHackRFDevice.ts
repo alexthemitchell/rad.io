@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { SDRDriverRegistry, registerBuiltinDrivers } from "../../drivers";
 import { useUSBDevice } from "../../hooks/useUSBDevice";
 import { type ISDRDevice } from "../../models/SDRDevice";
-import { HackRFOneAdapter } from "../HackRFOneAdapter";
 
 /**
  * React hook for managing HackRF One device lifecycle
@@ -40,16 +40,21 @@ export function useHackRFDevice(): {
   isCheckingPaired: boolean;
 } {
   const [device, setDevice] = useState<ISDRDevice>();
+  
+  // Register drivers on hook mount
+  useEffect(() => {
+    registerBuiltinDrivers();
+  }, []);
+
+  // Get HackRF-specific USB filter from registry
+  const hackrfMetadata = SDRDriverRegistry.getDriverMetadata("hackrf-one");
+  const filters = hackrfMetadata?.usbFilters ?? [{ vendorId: 0x1d50 }];
+
   const {
     device: usbDevice,
     requestDevice,
     isCheckingPaired,
-  } = useUSBDevice([
-    {
-      // HackRF devices
-      vendorId: 0x1d50,
-    },
-  ]);
+  } = useUSBDevice(filters);
 
   const cleanup = useCallback((): void => {
     device?.close().catch((error: unknown) => {
@@ -64,14 +69,17 @@ export function useHackRFDevice(): {
     if (!usbDevice) {
       return;
     }
-    const hackRF = new HackRFOneAdapter(usbDevice);
+    
     const setup = async (): Promise<void> => {
       try {
+        // Use driver registry to create the appropriate device
+        const sdrDevice = await SDRDriverRegistry.createDevice(usbDevice);
+        
         if (!usbDevice.opened) {
-          await hackRF.open();
+          await sdrDevice.open();
         }
         // Always set the device so upstream can configure and begin streaming
-        setDevice(hackRF);
+        setDevice(sdrDevice);
       } catch (err) {
         // TODO(rad.io#123): This is a workaround for a race condition where multiple components
         // may try to open the device simultaneously. Once ADR-0018 (shared device context at the
@@ -91,8 +99,10 @@ export function useHackRFDevice(): {
               vendorId: usbDevice.vendorId,
             },
           );
-          // Set device anyway - it will be usable once the other open() completes
-          setDevice(hackRF);
+          // Try to create device anyway - it will be usable once the other open() completes
+          SDRDriverRegistry.createDevice(usbDevice)
+            .then(setDevice)
+            .catch(console.error);
         } else {
           console.error(
             "useHackRFDevice: Failed to initialize HackRF adapter",
