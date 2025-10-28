@@ -2,7 +2,9 @@
 
 ## Overview
 
-Airspy is a family of high-performance Software Defined Radio (SDR) receivers designed for demanding applications requiring excellent dynamic range and low noise performance. This guide covers WebUSB integration for Airspy devices in the rad.io visualizer.
+Airspy is a family of high-performance Software Defined Radio (SDR) receivers designed for demanding applications
+requiring excellent dynamic range and low noise performance. This guide covers WebUSB integration for Airspy
+devices in the rad.io visualizer.
 
 ## Supported Devices
 
@@ -70,17 +72,17 @@ await device.claimInterface(0);
 
 Airspy uses vendor-specific control transfers:
 
-| Command           | Value | Description                            |
-| ----------------- | ----- | -------------------------------------- |
-| RECEIVER_MODE     | 1     | Start/stop receiver (0=OFF, 1=ON)      |
-| SET_FREQ          | 2     | Set center frequency (32-bit Hz)       |
-| SET_SAMPLE_RATE   | 3     | Set sample rate index (0=10MS/s, 1=2.5MS/s) |
-| SET_LNA_GAIN      | 5     | Set LNA gain (0-15)                    |
-| SET_MIXER_GAIN    | 6     | Set mixer gain (0-15)                  |
-| SET_VGA_GAIN      | 7     | Set VGA/IF gain (0-15)                 |
-| SET_LNA_AGC       | 8     | Enable/disable LNA AGC                 |
-| SET_MIXER_AGC     | 9     | Enable/disable mixer AGC               |
-| GET_SAMPLERATES   | 27    | Query available sample rates           |
+| Command         | Value | Description                                 |
+| --------------- | ----- | ------------------------------------------- |
+| RECEIVER_MODE   | 1     | Start/stop receiver (0=OFF, 1=ON)           |
+| SET_FREQ        | 2     | Set center frequency (32-bit Hz)            |
+| SET_SAMPLE_RATE | 3     | Set sample rate index (0=10MS/s, 1=2.5MS/s) |
+| SET_LNA_GAIN    | 5     | Set LNA gain (0-15)                         |
+| SET_MIXER_GAIN  | 6     | Set mixer gain (0-15)                       |
+| SET_VGA_GAIN    | 7     | Set VGA/IF gain (0-15)                      |
+| SET_LNA_AGC     | 8     | Enable/disable LNA AGC                      |
+| SET_MIXER_AGC   | 9     | Enable/disable mixer AGC                    |
+| GET_SAMPLERATES | 27    | Query available sample rates                |
 
 ### Example: Set Frequency
 
@@ -133,7 +135,7 @@ async function setSampleRate(device: USBDevice, rateMs: number) {
 
 Airspy transmits 12-bit samples as 16-bit signed integers (Int16):
 
-```
+```text
 [I0_LSB, I0_MSB, Q0_LSB, Q0_MSB, I1_LSB, I1_MSB, Q1_LSB, Q1_MSB, ...]
 ```
 
@@ -166,14 +168,12 @@ function parseSamples(data: DataView): IQSample[] {
 Airspy provides three independent gain stages for optimal signal reception:
 
 1. **LNA (Low Noise Amplifier)**
-
    - First stage after antenna
    - Controls sensitivity
    - Range: 0-45 dB (3 dB steps)
    - Higher values increase sensitivity but may cause overload
 
 2. **Mixer**
-
    - Downconverts RF to IF
    - Range: 0-15 dB (1 dB steps)
    - Balances gain distribution
@@ -209,22 +209,28 @@ Enable AGC for hands-free operation:
 
 ```typescript
 // Enable LNA AGC
-await device.controlTransferOut({
-  requestType: "vendor",
-  recipient: "device",
-  request: 8, // SET_LNA_AGC
-  value: 0,
-  index: 0,
-}, new Uint8Array([1]));
+await device.controlTransferOut(
+  {
+    requestType: "vendor",
+    recipient: "device",
+    request: 8, // SET_LNA_AGC
+    value: 0,
+    index: 0,
+  },
+  new Uint8Array([1]),
+);
 
 // Enable Mixer AGC
-await device.controlTransferOut({
-  requestType: "vendor",
-  recipient: "device",
-  request: 9, // SET_MIXER_AGC
-  value: 0,
-  index: 0,
-}, new Uint8Array([1]));
+await device.controlTransferOut(
+  {
+    requestType: "vendor",
+    recipient: "device",
+    request: 9, // SET_MIXER_AGC
+    value: 0,
+    index: 0,
+  },
+  new Uint8Array([1]),
+);
 ```
 
 **AGC Considerations:**

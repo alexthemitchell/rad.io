@@ -134,11 +134,7 @@ export class AirspyDeviceAdapter implements ISDRDevice {
         const I = Math.floor(sample.I * 32768.0);
         const Q = Math.floor(sample.Q * 32768.0);
         view.setInt16(i * 4, Math.max(-32768, Math.min(32767, I)), true);
-        view.setInt16(
-          i * 4 + 2,
-          Math.max(-32768, Math.min(32767, Q)),
-          true,
-        );
+        view.setInt16(i * 4 + 2, Math.max(-32768, Math.min(32767, Q)), true);
       }
 
       // Track memory usage

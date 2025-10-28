@@ -205,7 +205,9 @@ export class AirspyDevice {
       buffer,
     );
 
-    console.debug(`Airspy LNA gain set to ${clampedGain} (${clampedGain * 3} dB)`);
+    console.debug(
+      `Airspy LNA gain set to ${clampedGain} (${clampedGain * 3} dB)`,
+    );
   }
 
   async setMixerGain(gain: number): Promise<void> {

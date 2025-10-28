@@ -15,7 +15,7 @@ class MockUSBDevice implements USBDevice {
   vendorId = 0x1d50;
   productName = "Airspy";
   manufacturerName = "Airspy";
-  serialNumber?: string;
+  serialNumber: string | null = null;
   usbVersionMajor = 2;
   usbVersionMinor = 0;
   usbVersionSubminor = 0;
@@ -26,7 +26,7 @@ class MockUSBDevice implements USBDevice {
   deviceVersionMinor = 0;
   deviceVersionSubminor = 0;
   configurations: USBConfiguration[] = [];
-  configuration?: USBConfiguration;
+  configuration: USBConfiguration | null = null;
 
   async open(): Promise<void> {
     this.opened = true;
@@ -75,7 +75,10 @@ class MockUSBDevice implements USBDevice {
     };
   }
 
-  async clearHalt(_direction: USBDirection, _endpointNumber: number): Promise<void> {
+  async clearHalt(
+    _direction: USBDirection,
+    _endpointNumber: number,
+  ): Promise<void> {
     // Mock implementation
   }
 
@@ -194,9 +197,7 @@ describe("AirspyDevice", () => {
     });
 
     it("should reject frequency below minimum", async () => {
-      await expect(device.setFrequency(10e6)).rejects.toThrow(
-        "out of range",
-      );
+      await expect(device.setFrequency(10e6)).rejects.toThrow("out of range");
     });
 
     it("should reject frequency above maximum", async () => {
@@ -220,9 +221,7 @@ describe("AirspyDevice", () => {
     });
 
     it("should reject unsupported sample rate", async () => {
-      await expect(device.setSampleRate(5e6)).rejects.toThrow(
-        "not supported",
-      );
+      await expect(device.setSampleRate(5e6)).rejects.toThrow("not supported");
     });
   });
 
