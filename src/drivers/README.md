@@ -5,11 +5,11 @@ This module provides a unified, TypeScript-first API for SDR hardware drivers. I
 ## Quick Start
 
 ```typescript
-import { 
-  registerBuiltinDrivers, 
-  SDRDriverRegistry, 
-  WebUSBDeviceSelector 
-} from './drivers';
+import {
+  registerBuiltinDrivers,
+  SDRDriverRegistry,
+  WebUSBDeviceSelector,
+} from "./drivers";
 
 // 1. Register built-in drivers at app startup
 registerBuiltinDrivers();
@@ -39,21 +39,23 @@ The driver abstraction consists of three main components:
 The central registry for SDR device drivers.
 
 **Key Features:**
+
 - Driver registration with metadata
 - USB device matching
 - Factory pattern for instantiation
 - Filter aggregation for WebUSB
 
 **Example:**
+
 ```typescript
 // Register a custom driver
 SDRDriverRegistry.register({
   metadata: {
-    id: 'my-sdr',
-    name: 'My Custom SDR',
+    id: "my-sdr",
+    name: "My Custom SDR",
     deviceType: SDRDeviceType.GENERIC,
-    version: '1.0.0',
-    description: 'Custom SDR device driver',
+    version: "1.0.0",
+    description: "Custom SDR device driver",
     usbFilters: [{ vendorId: 0x1234, productId: 0x5678 }],
     capabilities: {
       minFrequency: 1e6,
@@ -82,26 +84,28 @@ const device = await SDRDriverRegistry.createDevice(usbDevice);
 User-friendly abstraction for WebUSB device selection.
 
 **Key Features:**
+
 - Browser compatibility checks
 - Device enumeration
 - Event handling (connect/disconnect)
 - Device information formatting
 
 **Example:**
+
 ```typescript
 const selector = new WebUSBDeviceSelector();
 
 // Check if WebUSB is supported
 if (!selector.isSupported()) {
-  console.error('WebUSB not supported in this browser');
+  console.error("WebUSB not supported in this browser");
   return;
 }
 
 // Request device from user (shows browser picker)
 const device = await selector.requestDevice({
   useRegisteredDrivers: true, // Use filters from registry
-  onConnect: (device) => console.log('Connected:', device),
-  onDisconnect: (device) => console.log('Disconnected:', device),
+  onConnect: (device) => console.log("Connected:", device),
+  onDisconnect: (device) => console.log("Disconnected:", device),
 });
 
 // Get previously paired devices
@@ -109,8 +113,8 @@ const devices = await selector.getDevices();
 
 // Enumerate devices with status
 const result = await selector.enumerate();
-console.log('Paired devices:', result.pairedDevices);
-console.log('WebUSB supported:', result.supported);
+console.log("Paired devices:", result.pairedDevices);
+console.log("WebUSB supported:", result.supported);
 
 // Format device info for display
 const info = selector.formatDeviceInfo(device);
@@ -122,8 +126,9 @@ console.log(info); // "HackRF One [0x1d50:0x6089]"
 One-line registration of all built-in drivers.
 
 **Example:**
+
 ```typescript
-import { registerBuiltinDrivers } from './drivers';
+import { registerBuiltinDrivers } from "./drivers";
 
 // At app startup
 registerBuiltinDrivers();
@@ -134,12 +139,14 @@ registerBuiltinDrivers();
 ## Built-in Drivers
 
 ### HackRF One
+
 - **ID**: `hackrf-one`
 - **Frequency Range**: 1 MHz - 6 GHz
 - **Sample Rates**: 1-20 MHz
 - **USB**: VID 0x1d50, PID 0x6089
 
 ### RTL-SDR
+
 - **ID**: `rtl-sdr`
 - **Frequency Range**: 24 MHz - 1.7 GHz
 - **Sample Rates**: 225 kHz - 3.2 MHz
@@ -152,7 +159,11 @@ To add support for new hardware:
 ### 1. Implement ISDRDevice Interface
 
 ```typescript
-import { ISDRDevice, SDRDeviceInfo, SDRCapabilities } from '../models/SDRDevice';
+import {
+  ISDRDevice,
+  SDRDeviceInfo,
+  SDRCapabilities,
+} from "../models/SDRDevice";
 
 export class MySDRAdapter implements ISDRDevice {
   constructor(private usbDevice: USBDevice) {}
@@ -162,7 +173,7 @@ export class MySDRAdapter implements ISDRDevice {
       type: SDRDeviceType.GENERIC,
       vendorId: 0x1234,
       productId: 0x5678,
-      serialNumber: 'ABC123',
+      serialNumber: "ABC123",
     };
   }
 
@@ -183,16 +194,16 @@ export class MySDRAdapter implements ISDRDevice {
 ### 2. Register the Driver
 
 ```typescript
-import { SDRDriverRegistry } from './drivers';
-import { MySDRAdapter } from './MySDRAdapter';
+import { SDRDriverRegistry } from "./drivers";
+import { MySDRAdapter } from "./MySDRAdapter";
 
 SDRDriverRegistry.register({
   metadata: {
-    id: 'my-sdr',
-    name: 'My Custom SDR',
+    id: "my-sdr",
+    name: "My Custom SDR",
     deviceType: SDRDeviceType.GENERIC,
-    version: '1.0.0',
-    description: 'Custom SDR device driver',
+    version: "1.0.0",
+    description: "Custom SDR device driver",
     usbFilters: [{ vendorId: 0x1234, productId: 0x5678 }],
     capabilities: {
       minFrequency: 1e6,
@@ -202,7 +213,7 @@ SDRDriverRegistry.register({
       supportsAntennaControl: false,
     },
     requiresWebUSB: true,
-    documentationUrl: 'https://example.com/docs',
+    documentationUrl: "https://example.com/docs",
     experimental: false,
   },
   factory: async (usbDevice) => new MySDRAdapter(usbDevice),
@@ -284,6 +295,7 @@ await device.setFrequency(100e6);
 ### Types
 
 #### SDRDriverMetadata
+
 ```typescript
 interface SDRDriverMetadata {
   id: string;
@@ -300,6 +312,7 @@ interface SDRDriverMetadata {
 ```
 
 #### SDRDriverRegistration
+
 ```typescript
 interface SDRDriverRegistration {
   metadata: SDRDriverMetadata;
@@ -310,6 +323,7 @@ type SDRDriverFactory = (usbDevice: USBDevice) => Promise<ISDRDevice>;
 ```
 
 #### DeviceSelectionOptions
+
 ```typescript
 interface DeviceSelectionOptions {
   filters?: USBDeviceFilter[];
@@ -322,15 +336,19 @@ interface DeviceSelectionOptions {
 ## Best Practices
 
 ### 1. Register Drivers Early
+
 Call `registerBuiltinDrivers()` at app startup, before any device operations.
 
 ### 2. Handle Browser Compatibility
+
 Always check `selector.isSupported()` before using WebUSB.
 
 ### 3. User Interaction Required
+
 WebUSB requires explicit user gesture (button click) to show device picker.
 
 ### 4. Error Handling
+
 ```typescript
 try {
   const device = await selector.requestDevice();
@@ -338,25 +356,26 @@ try {
     // User cancelled
     return;
   }
-  
+
   const sdrDevice = await SDRDriverRegistry.createDevice(device);
   await sdrDevice.open();
 } catch (error) {
-  if (error.name === 'NotFoundError') {
+  if (error.name === "NotFoundError") {
     // No compatible device found
   } else {
     // Other error
-    console.error('Error:', error);
+    console.error("Error:", error);
   }
 }
 ```
 
 ### 5. Cleanup
+
 ```typescript
 // Remove event listeners when component unmounts
 useEffect(() => {
   selector.setupEventListeners(handleConnect, handleDisconnect);
-  
+
   return () => {
     selector.removeEventListeners();
   };
@@ -366,6 +385,7 @@ useEffect(() => {
 ## Testing
 
 All components are fully tested:
+
 - `SDRDriverRegistry.test.ts` - 13 tests
 - `WebUSBDeviceSelector.test.ts` - 8 tests
 - `DeviceDiscovery.test.ts` - 14 tests
@@ -373,6 +393,7 @@ All components are fully tested:
 - `registerBuiltinDrivers.test.ts` - 16 tests
 
 Run tests:
+
 ```bash
 npm test -- src/drivers/__tests__
 ```
@@ -382,16 +403,18 @@ npm test -- src/drivers/__tests__
 ### From Direct Instantiation
 
 **Before:**
+
 ```typescript
-import { HackRFOneAdapter } from './hackrf/HackRFOneAdapter';
+import { HackRFOneAdapter } from "./hackrf/HackRFOneAdapter";
 
 const adapter = new HackRFOneAdapter(usbDevice);
 await adapter.open();
 ```
 
 **After:**
+
 ```typescript
-import { SDRDriverRegistry, registerBuiltinDrivers } from './drivers';
+import { SDRDriverRegistry, registerBuiltinDrivers } from "./drivers";
 
 registerBuiltinDrivers();
 const device = await SDRDriverRegistry.createDevice(usbDevice);
@@ -399,6 +422,7 @@ await device.open();
 ```
 
 ### Benefits
+
 - ✅ Automatic driver selection
 - ✅ Centralized configuration
 - ✅ Easy to add new hardware

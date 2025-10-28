@@ -44,7 +44,7 @@ describe("WebUSBDeviceSelector", () => {
         vendorId: 0x1234,
         productId: 0x5678,
         productName: undefined,
-      } as USBDevice;
+      } as unknown as USBDevice;
 
       const formatted = selector.formatDeviceInfo(device);
       expect(formatted).toContain("0x1234");

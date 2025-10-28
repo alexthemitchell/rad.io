@@ -130,8 +130,7 @@ export class DeviceDiscovery {
           }
         } catch (error) {
           // Device failed to initialize
-          const err =
-            error instanceof Error ? error : new Error(String(error));
+          const err = error instanceof Error ? error : new Error(String(error));
 
           result.failedDevices.push({
             usbDevice,

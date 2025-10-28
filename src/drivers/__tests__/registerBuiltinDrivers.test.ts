@@ -41,8 +41,8 @@ describe("registerBuiltinDrivers", () => {
 
     const metadata = SDRDriverRegistry.getDriverMetadata("hackrf-one");
     expect(metadata?.usbFilters).toHaveLength(1);
-    expect(metadata?.usbFilters[0].vendorId).toBe(0x1d50);
-    expect(metadata?.usbFilters[0].productId).toBe(0x6089);
+    expect(metadata?.usbFilters[0]?.vendorId).toBe(0x1d50);
+    expect(metadata?.usbFilters[0]?.productId).toBe(0x6089);
   });
 
   it("should include USB filters for RTL-SDR", () => {

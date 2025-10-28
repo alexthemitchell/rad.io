@@ -41,7 +41,7 @@ export function useHackRFDevice(): {
 } {
   const [device, setDevice] = useState<ISDRDevice>();
   const [driversRegistered, setDriversRegistered] = useState(false);
-  
+
   // Register drivers on hook mount
   useEffect(() => {
     registerBuiltinDrivers();
@@ -81,12 +81,12 @@ export function useHackRFDevice(): {
     if (!usbDevice) {
       return;
     }
-    
+
     const setup = async (): Promise<void> => {
       try {
         // Use driver registry to create the appropriate device
         const sdrDevice = await SDRDriverRegistry.createDevice(usbDevice);
-        
+
         if (!usbDevice.opened) {
           await sdrDevice.open();
         }

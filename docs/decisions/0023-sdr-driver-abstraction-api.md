@@ -25,12 +25,14 @@ We have implemented a comprehensive **TypeScript-first driver abstraction API** 
 ### 1. SDR Driver Registry (`src/drivers/SDRDriverRegistry.ts`)
 
 A central registry that:
+
 - Stores driver registrations with metadata and factory functions
 - Matches USB devices to appropriate drivers
 - Provides USB filters for WebUSB device discovery
 - Creates device instances via factory pattern
 
 **Key APIs:**
+
 ```typescript
 // Register a driver
 SDRDriverRegistry.register({
@@ -51,6 +53,7 @@ const filters = SDRDriverRegistry.getAllUSBFilters();
 ### 2. WebUSB Device Selector (`src/drivers/WebUSBDeviceSelector.ts`)
 
 A user-friendly abstraction for WebUSB operations:
+
 - Browser compatibility checks
 - Device enumeration (previously paired devices)
 - User device selection dialog
@@ -58,6 +61,7 @@ A user-friendly abstraction for WebUSB operations:
 - Device information formatting
 
 **Key APIs:**
+
 ```typescript
 const selector = new WebUSBDeviceSelector();
 
@@ -65,10 +69,10 @@ const selector = new WebUSBDeviceSelector();
 if (selector.isSupported()) {
   // Request device from user
   const device = await selector.requestDevice();
-  
+
   // Get paired devices
   const devices = await selector.getDevices();
-  
+
   // Setup event listeners
   selector.setupEventListeners(onConnect, onDisconnect);
 }
@@ -77,12 +81,14 @@ if (selector.isSupported()) {
 ### 3. Built-in Driver Registration (`src/drivers/registerBuiltinDrivers.ts`)
 
 One-line registration of all built-in drivers:
+
 - HackRF One (via `HackRFOneAdapter`)
 - RTL-SDR (via `RTLSDRDeviceAdapter`)
 
 **Usage:**
+
 ```typescript
-import { registerBuiltinDrivers } from './drivers';
+import { registerBuiltinDrivers } from "./drivers";
 
 // At app startup
 registerBuiltinDrivers();
@@ -91,29 +97,30 @@ registerBuiltinDrivers();
 ### 4. Driver Metadata Interface
 
 Comprehensive metadata for each driver:
+
 ```typescript
 interface SDRDriverMetadata {
-  id: string;                      // Unique identifier
-  name: string;                    // Human-readable name
-  deviceType: SDRDeviceType;       // Device type enum
-  version: string;                 // Driver version
-  description: string;             // Brief description
-  usbFilters: SDRUSBFilter[];      // USB device identification
-  capabilities: SDRCapabilities;   // Frequency, sample rates, gains, etc.
-  requiresWebUSB: boolean;         // WebUSB requirement flag
-  documentationUrl?: string;       // Optional docs link
-  experimental?: boolean;          // Stability flag
+  id: string; // Unique identifier
+  name: string; // Human-readable name
+  deviceType: SDRDeviceType; // Device type enum
+  version: string; // Driver version
+  description: string; // Brief description
+  usbFilters: SDRUSBFilter[]; // USB device identification
+  capabilities: SDRCapabilities; // Frequency, sample rates, gains, etc.
+  requiresWebUSB: boolean; // WebUSB requirement flag
+  documentationUrl?: string; // Optional docs link
+  experimental?: boolean; // Stability flag
 }
 ```
 
 ## Complete Usage Example
 
 ```typescript
-import { 
-  registerBuiltinDrivers, 
-  SDRDriverRegistry, 
-  WebUSBDeviceSelector 
-} from './drivers';
+import {
+  registerBuiltinDrivers,
+  SDRDriverRegistry,
+  WebUSBDeviceSelector,
+} from "./drivers";
 
 // 1. Register drivers at app startup
 registerBuiltinDrivers();
@@ -161,6 +168,7 @@ await sdrDevice.receive((samples) => {
 ## Implementation Details
 
 ### File Structure
+
 ```
 src/drivers/
 ├── SDRDriverRegistry.ts          # Core registry
@@ -178,6 +186,7 @@ src/drivers/
 ```
 
 ### Test Coverage
+
 - **SDRDriverRegistry**: 13 tests covering registration, matching, and factory
 - **WebUSBDeviceSelector**: 8 tests covering browser support and formatting
 - **DeviceDiscovery**: 14 tests covering automatic detection and enumeration
@@ -186,6 +195,7 @@ src/drivers/
 - **Total**: 65 tests with 100% coverage of new code
 
 ### Design Patterns Used
+
 1. **Registry Pattern**: Central driver storage and lookup
 2. **Factory Pattern**: Driver instantiation via factory functions
 3. **Strategy Pattern**: Different drivers implement same interface
@@ -218,7 +228,7 @@ src/drivers/
 ## References
 
 - **Interface**: `src/models/SDRDevice.ts` (ISDRDevice)
-- **Adapters**: 
+- **Adapters**:
   - `src/hackrf/HackRFOneAdapter.ts`
   - `src/models/RTLSDRDeviceAdapter.ts`
 - **WebUSB Spec**: https://wicg.github.io/webusb/
@@ -231,16 +241,18 @@ src/drivers/
 For existing code using direct device instantiation:
 
 ### Before
+
 ```typescript
-import { HackRFOneAdapter } from './hackrf/HackRFOneAdapter';
+import { HackRFOneAdapter } from "./hackrf/HackRFOneAdapter";
 
 const adapter = new HackRFOneAdapter(usbDevice);
 await adapter.open();
 ```
 
 ### After
+
 ```typescript
-import { SDRDriverRegistry, registerBuiltinDrivers } from './drivers';
+import { SDRDriverRegistry, registerBuiltinDrivers } from "./drivers";
 
 registerBuiltinDrivers();
 const device = await SDRDriverRegistry.createDevice(usbDevice);

@@ -31,7 +31,7 @@ describe("DriverHotReload", () => {
         },
         requiresWebUSB: true,
       },
-      factory: async () => ({} as any),
+      factory: async () => ({}) as any,
     };
   });
 
@@ -68,7 +68,8 @@ describe("DriverHotReload", () => {
       expect(result.previousDriver).toBeDefined();
       expect(result.previousDriver?.metadata.version).toBe("1.0.0");
 
-      const currentMetadata = SDRDriverRegistry.getDriverMetadata("test-driver");
+      const currentMetadata =
+        SDRDriverRegistry.getDriverMetadata("test-driver");
       expect(currentMetadata?.version).toBe("2.0.0");
     });
 
@@ -120,7 +121,7 @@ describe("DriverHotReload", () => {
           },
           requiresWebUSB: true,
         },
-        factory: async () => ({} as any),
+        factory: async () => ({}) as any,
       };
 
       // This should succeed because it's registering with a different ID
@@ -209,8 +210,8 @@ describe("DriverHotReload", () => {
       const results = hotReload.reloadAllDrivers(drivers);
 
       expect(results).toHaveLength(2);
-      expect(results[0].success).toBe(true);
-      expect(results[1].success).toBe(true);
+      expect(results[0]?.success).toBe(true);
+      expect(results[1]?.success).toBe(true);
       expect(hotReload.getLoadedDrivers()).toHaveLength(2);
     });
 
@@ -224,7 +225,7 @@ describe("DriverHotReload", () => {
       const results = hotReload.reloadAllDrivers(drivers);
 
       expect(results).toHaveLength(1);
-      expect(results[0].driverId).toBe("driver-1");
+      expect(results[0]?.driverId).toBe("driver-1");
     });
   });
 });

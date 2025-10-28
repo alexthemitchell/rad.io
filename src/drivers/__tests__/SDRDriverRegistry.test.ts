@@ -3,10 +3,7 @@
  */
 
 import { ISDRDevice, SDRDeviceType } from "../../models/SDRDevice";
-import {
-  SDRDriverRegistry,
-  SDRDriverRegistration,
-} from "../SDRDriverRegistry";
+import { SDRDriverRegistry, SDRDriverRegistration } from "../SDRDriverRegistry";
 
 describe("SDRDriverRegistry", () => {
   // Mock USB device
@@ -76,7 +73,7 @@ describe("SDRDriverRegistry", () => {
 
       const drivers = SDRDriverRegistry.getAllDrivers();
       expect(drivers).toHaveLength(1);
-      expect(drivers[0].metadata.id).toBe("test-driver");
+      expect(drivers[0]?.metadata.id).toBe("test-driver");
     });
 
     it("should throw error when registering duplicate driver ID", () => {
@@ -137,12 +134,14 @@ describe("SDRDriverRegistry", () => {
     });
 
     it("should return filters from single driver", () => {
-      SDRDriverRegistry.register(createMockRegistration("test", 0x1234, 0x5678));
+      SDRDriverRegistry.register(
+        createMockRegistration("test", 0x1234, 0x5678),
+      );
 
       const filters = SDRDriverRegistry.getAllUSBFilters();
       expect(filters).toHaveLength(1);
-      expect(filters[0].vendorId).toBe(0x1234);
-      expect(filters[0].productId).toBe(0x5678);
+      expect(filters[0]?.vendorId).toBe(0x1234);
+      expect(filters[0]?.productId).toBe(0x5678);
     });
 
     it("should return combined filters from multiple drivers", () => {
@@ -151,14 +150,16 @@ describe("SDRDriverRegistry", () => {
 
       const filters = SDRDriverRegistry.getAllUSBFilters();
       expect(filters).toHaveLength(2);
-      expect(filters[0].vendorId).toBe(0x1234);
-      expect(filters[1].vendorId).toBe(0x5678);
+      expect(filters[0]?.vendorId).toBe(0x1234);
+      expect(filters[1]?.vendorId).toBe(0x5678);
     });
   });
 
   describe("getDriverForDevice", () => {
     it("should find driver matching vendorId and productId", () => {
-      SDRDriverRegistry.register(createMockRegistration("test", 0x1234, 0x5678));
+      SDRDriverRegistry.register(
+        createMockRegistration("test", 0x1234, 0x5678),
+      );
 
       const device = createMockUSBDevice(0x1234, 0x5678);
       const driver = SDRDriverRegistry.getDriverForDevice(device);
@@ -179,7 +180,9 @@ describe("SDRDriverRegistry", () => {
     });
 
     it("should return undefined when no matching driver found", () => {
-      SDRDriverRegistry.register(createMockRegistration("test", 0x1234, 0x5678));
+      SDRDriverRegistry.register(
+        createMockRegistration("test", 0x1234, 0x5678),
+      );
 
       const device = createMockUSBDevice(0xabcd, 0xef01);
       const driver = SDRDriverRegistry.getDriverForDevice(device);
@@ -188,7 +191,9 @@ describe("SDRDriverRegistry", () => {
     });
 
     it("should not match when productId differs and is specified in filter", () => {
-      SDRDriverRegistry.register(createMockRegistration("test", 0x1234, 0x5678));
+      SDRDriverRegistry.register(
+        createMockRegistration("test", 0x1234, 0x5678),
+      );
 
       const device = createMockUSBDevice(0x1234, 0x9999);
       const driver = SDRDriverRegistry.getDriverForDevice(device);
@@ -199,7 +204,9 @@ describe("SDRDriverRegistry", () => {
 
   describe("createDevice", () => {
     it("should create device instance using matched driver", async () => {
-      SDRDriverRegistry.register(createMockRegistration("test", 0x1234, 0x5678));
+      SDRDriverRegistry.register(
+        createMockRegistration("test", 0x1234, 0x5678),
+      );
 
       const usbDevice = createMockUSBDevice(0x1234, 0x5678);
       const device = await SDRDriverRegistry.createDevice(usbDevice);
@@ -210,7 +217,9 @@ describe("SDRDriverRegistry", () => {
     });
 
     it("should throw error when no compatible driver found", async () => {
-      SDRDriverRegistry.register(createMockRegistration("test", 0x1234, 0x5678));
+      SDRDriverRegistry.register(
+        createMockRegistration("test", 0x1234, 0x5678),
+      );
 
       const usbDevice = createMockUSBDevice(0xabcd, 0xef01);
 

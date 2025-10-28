@@ -158,11 +158,13 @@ describe("DeviceDiscovery", () => {
 
       const onError = jest.fn();
 
-      const result = await discovery.discoverDevices({ onDeviceError: onError });
+      const result = await discovery.discoverDevices({
+        onDeviceError: onError,
+      });
 
       expect(result.devices).toHaveLength(0);
       expect(result.failedDevices).toHaveLength(1);
-      expect(result.failedDevices[0].error).toBe(error);
+      expect(result.failedDevices[0]?.error).toBe(error);
       expect(onError).toHaveBeenCalledWith(mockUSBDevice, error);
     });
 
@@ -200,7 +202,7 @@ describe("DeviceDiscovery", () => {
     });
 
     it("should filter devices by predicate", async () => {
-      const predicate = (device: ISDRDevice, usb: USBDevice): boolean => {
+      const predicate = (_device: ISDRDevice, usb: USBDevice): boolean => {
         return usb.vendorId === 0x1234;
       };
 
