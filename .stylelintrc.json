@@ -4,6 +4,23 @@
   "rules": {
     "color-no-hex": null,
     "color-named": null,
-    "scale-unlimited/declaration-strict-value": null
+    "scale-unlimited/declaration-strict-value": null,
+    "value-keyword-case": [
+      "lower",
+      {
+        "ignoreProperties": ["/font/"],
+        "ignoreKeywords": [
+          "Inter",
+          "Roboto",
+          "Ubuntu",
+          "Cantarell",
+          "Arial",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "SFMono-Regular"
+        ]
+      }
+    ]
   }
 }
