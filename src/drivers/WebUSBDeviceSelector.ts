@@ -205,7 +205,7 @@ export class WebUSBDeviceSelector {
       this.disconnectListener = (event: USBConnectionEvent): void => {
         onDisconnect(event.device);
       };
-      navigator.usb.removeEventListener("disconnect", this.disconnectListener);
+      navigator.usb.addEventListener("disconnect", this.disconnectListener);
     }
   }
 
