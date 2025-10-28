@@ -30,13 +30,14 @@ devices in the rad.io visualizer.
 **Specifications:**
 
 - **Frequency Range**: 24 MHz - 1.8 GHz
-- **Sample Rates**: 3 MS/s, 6 MS/s
+- **Sample Rates**: 3 MS/s, 6 MS/s _(see note below)_
 - **Resolution**: 12-bit ADC
 - **USB**: Vendor ID 0x1d50, Product ID 0x60a1 (same as R2)
 - **Size**: Compact form factor
 
 **Note**: Airspy Mini and R2 share the same USB IDs and can be distinguished by their capabilities and firmware.
 
+> **Warning:** The current rad.io implementation only supports the sample rates of Airspy R2 (2.5 MS/s, 10 MS/s) due to the shared USB VID/PID (0x1d50:0x60a1) and lack of device variant detection. Attempting to use Airspy Mini's native sample rates (3 MS/s, 6 MS/s) will fail. This limitation will be addressed in a future update.
 ### Airspy HF+
 
 **Specifications:**
