@@ -810,9 +810,8 @@ export class HackRFOne {
     // immediately when stopRx() is called, rather than waiting for timeouts.
     const stopPromise = new Promise<USBInTransferResult>((_, reject) => {
       this.stopReject = (): void => {
-        const abortErr = new Error("Aborted");
-        // Tag as AbortError for consumer logic/tests
-        (abortErr as Error & { name?: string }).name = "AbortError";
+        // Use DOMException with name 'AbortError' for standard abort signaling
+        const abortErr = new DOMException("Aborted", "AbortError");
         reject(abortErr);
       };
     });

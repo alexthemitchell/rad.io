@@ -949,6 +949,7 @@ export default function SpectrumExplorer({
               ref={combinedSpectrumRef}
               role="img"
               aria-label="Spectrum plot with interactive pan and zoom"
+              tabIndex={0}
               style={{
                 width: "100%",
                 height: spectrumHeight,
