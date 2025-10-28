@@ -15,8 +15,8 @@ import {
   type Sample as DSPSample,
 } from "../../utils/dsp";
 import { performanceMonitor } from "../../utils/performanceMonitor";
-import { Spectrogram } from "../index";
 import { WebGLSpectrum } from "../renderers/WebGLSpectrum";
+import { WebGLWaterfall } from "../renderers/WebGLWaterfall";
 
 type WindowType = "hann" | "blackman" | "rect";
 
@@ -110,7 +110,8 @@ export default function SpectrumExplorer({
   const [peakHold, setPeakHold] = useState<boolean>(false);
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [showGrid, setShowGrid] = useState<boolean>(true);
-  const [showRBW, setShowRBW] = useState<boolean>(true);
+  const [showRBW, setShowRBW] = useState(true);
+
   // Hover/cursor readout state
   const [hoverInfo, setHoverInfo] = useState<{
     freqHz: number;
@@ -118,8 +119,15 @@ export default function SpectrumExplorer({
     xCss: number;
   } | null>(null);
 
+  // Waterfall display settings
+  const [waterfallGain, _setWaterfallGain] = useState(1.0);
+  const [waterfallOffset, _setWaterfallOffset] = useState(0.2);
+  const [waterfallColormap, _setWaterfallColormap] =
+    useState<"viridis" | "inferno">("viridis");
+
   // Refs for overlays
   const webglCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const waterfallCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const dprRef = useRef<number>(window.devicePixelRatio || 1);
   const avgRef = useRef<Float32Array | null>(null);
@@ -366,20 +374,6 @@ export default function SpectrumExplorer({
 
   // Container width measurement for responsive Spectrogram
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [containerWidth, setContainerWidth] = useState<number>(() => {
-    try {
-      const raw = window.localStorage.getItem(WIDTH_KEY);
-      if (raw !== null) {
-        const v = parseInt(raw, 10);
-        if (Number.isFinite(v) && v > 0) {
-          return v;
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    return 900; // sensible default
-  });
   useEffect(() => {
     const el = containerRef.current;
     if (!el) {
@@ -387,7 +381,7 @@ export default function SpectrumExplorer({
     }
     const apply = (): void => {
       const w = Math.max(300, Math.floor(el.clientWidth));
-      setContainerWidth((prev) => (prev !== w ? w : prev));
+      // setContainerWidth((prev) => (prev !== w ? w : prev)); // this state is not used, so we can remove it
       try {
         window.localStorage.setItem(WIDTH_KEY, String(w));
       } catch {
@@ -415,6 +409,10 @@ export default function SpectrumExplorer({
 
   // --- WebGL Rendering ---
   const webglRendererRef = useRenderer(webglCanvasRef.current, WebGLSpectrum);
+  const waterfallRendererRef = useRenderer(
+    waterfallCanvasRef.current,
+    WebGLWaterfall,
+  );
 
   useEffect(() => {
     const renderer = webglRendererRef.current;
@@ -431,10 +429,36 @@ export default function SpectrumExplorer({
     });
     if (success) {
       renderTierManager.reportSuccess(RenderTier.WebGL2);
-      performanceMonitor.measure("render-spectrum-webgl", "render-spectrum-webgl-start");
+      performanceMonitor.measure(
+        "render-spectrum-webgl",
+        "render-spectrum-webgl-start",
+      );
     }
   }, [latestMagnitudes, webglRendererRef]);
 
+  useEffect(() => {
+    const renderer = waterfallRendererRef.current;
+    if (!renderer || spectrogramFeed.length === 0) {
+      return;
+    }
+    performanceMonitor.mark("render-waterfall-webgl-start");
+    renderer.render({
+      spectrogram: spectrogramFeed,
+      colormapName: waterfallColormap,
+      gain: waterfallGain,
+      offset: waterfallOffset,
+    });
+    performanceMonitor.measure(
+      "render-waterfall-webgl",
+      "render-waterfall-webgl-start",
+    );
+  }, [
+    spectrogramFeed,
+    waterfallRendererRef,
+    waterfallColormap,
+    waterfallGain,
+    waterfallOffset,
+  ]);
 
   // Draw overlays (grid, labels, markers) via requestAnimationFrame
   const lastCanvasSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -501,11 +525,33 @@ export default function SpectrumExplorer({
       for (const b of bands) {
         const lo = Math.max(b.lo, overlayStartHz);
         const hi = Math.min(b.hi, overlayEndHz);
-        if (hi <= lo) continue;
-        const kLo = (lo - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
-        const kHi = (hi - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
-        const xLo = margin.left + Math.max(0, Math.min(cw, transform.scale * ((kLo / (mags.length - 1)) * cw) + transform.offsetX));
-        const xHi = margin.left + Math.max(0, Math.min(cw, transform.scale * ((kHi / (mags.length - 1)) * cw) + transform.offsetX));
+        if (hi <= lo) {
+          continue;
+        }
+        const kLo =
+          (lo - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
+        const kHi =
+          (hi - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
+        const xLo =
+          margin.left +
+          Math.max(
+            0,
+            Math.min(
+              cw,
+              transform.scale * ((kLo / (mags.length - 1)) * cw) +
+                transform.offsetX,
+            ),
+          );
+        const xHi =
+          margin.left +
+          Math.max(
+            0,
+            Math.min(
+              cw,
+              transform.scale * ((kHi / (mags.length - 1)) * cw) +
+                transform.offsetX,
+            ),
+          );
         const x = Math.min(xLo, xHi);
         const w = Math.abs(xHi - xLo);
         ctx.fillRect(x, margin.top, w, ch);
@@ -513,11 +559,16 @@ export default function SpectrumExplorer({
       ctx.restore();
 
       // Compute dB range from magnitudes
-      let dbMin = Infinity, dbMax = -Infinity;
+      let dbMin = Infinity,
+        dbMax = -Infinity;
       for (const v of mags) {
         if (Number.isFinite(v)) {
-          if (v < dbMin) dbMin = v;
-          if (v > dbMax) dbMax = v;
+          if (v < dbMin) {
+            dbMin = v;
+          }
+          if (v > dbMax) {
+            dbMax = v;
+          }
         }
       }
       if (!Number.isFinite(dbMin) || !Number.isFinite(dbMax) || dbMax <= dbMin) {
@@ -525,14 +576,19 @@ export default function SpectrumExplorer({
         dbMax = 0;
       }
       const effMin = dbMin + (dbMax - dbMin) * 0.05;
-      const yForDb = (db: number): number => margin.top + ch * (1 - (db - effMin) / Math.max(1e-9, dbMax - effMin));
+      const yForDb = (db: number): number =>
+        margin.top + ch * (1 - (db - effMin) / Math.max(1e-9, dbMax - effMin));
 
       // Gridlines (dB)
       if (showGrid) {
         ctx.strokeStyle = "rgba(255,255,255,0.08)";
         ctx.lineWidth = 1;
         const dbStep = 10;
-        for (let d = Math.ceil(effMin / dbStep) * dbStep; d <= dbMax; d += dbStep) {
+        for (
+          let d = Math.ceil(effMin / dbStep) * dbStep;
+          d <= dbMax;
+          d += dbStep
+        ) {
           const y = yForDb(d);
           ctx.beginPath();
           ctx.moveTo(margin.left, y);
@@ -553,7 +609,9 @@ export default function SpectrumExplorer({
         const pow = Math.pow(10, Math.floor(Math.log10(target)));
         for (const s of steps) {
           const v = s * pow;
-          if (v >= target) return v;
+          if (v >= target) {
+            return v;
+          }
         }
         return 10 * pow;
       })();
@@ -570,11 +628,18 @@ export default function SpectrumExplorer({
       ctx.fillStyle = "rgba(255,255,255,0.8)";
       ctx.font = "10px system-ui, sans-serif";
       const fStartHz = centerFrequency - sampleRate / 2;
-      for (let f = Math.ceil(fStartHz / niceStepHz) * niceStepHz; f <= fStartHz + spanHz; f += niceStepHz) {
+      for (
+        let f = Math.ceil(fStartHz / niceStepHz) * niceStepHz;
+        f <= fStartHz + spanHz;
+        f += niceStepHz
+      ) {
         const k = (f - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
         const x = xForBin(k);
         ctx.fillRect(x, margin.top + ch, 1, 4);
-        const label = f >= 1e6 ? `${(f / 1e6).toFixed(3)} MHz` : `${Math.round(f / 1e3)} kHz`;
+        const label =
+          f >= 1e6
+            ? `${(f / 1e6).toFixed(3)} MHz`
+            : `${Math.round(f / 1e3)} kHz`;
         ctx.fillText(label, x + 2, margin.top + ch + 12);
       }
 
@@ -588,7 +653,8 @@ export default function SpectrumExplorer({
       ctx.strokeStyle = "rgba(255,80,80,0.9)";
       ctx.fillStyle = "rgba(255,80,80,0.9)";
       markers.forEach((m) => {
-        const k = (m.freqHz - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
+        const k =
+          (m.freqHz - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
         const x = xForBin(k);
         ctx.beginPath();
         ctx.moveTo(x, margin.top);
@@ -601,7 +667,8 @@ export default function SpectrumExplorer({
       // Detected signals overlay
       if (signals.length > 0) {
         signals.forEach((s) => {
-          const k = (s.freqHz - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
+          const k =
+            (s.freqHz - centerFrequency) / (sampleRate / fftSize) + fftSize / 2;
           const x = xForBin(k);
           ctx.save();
           ctx.shadowColor = "rgba(80,200,255,0.9)";
@@ -637,7 +704,9 @@ export default function SpectrumExplorer({
         ctx.lineTo(xCSS, margin.top + ch);
         ctx.stroke();
         ctx.setLineDash([]);
-        const label = `${(hoverInfo.freqHz / 1e6).toFixed(6)} MHz  •  ${hoverInfo.powerDb.toFixed(1)} dB`;
+        const label = `${(hoverInfo.freqHz / 1e6).toFixed(
+          6,
+        )} MHz  •  ${hoverInfo.powerDb.toFixed(1)} dB`;
         ctx.font = "11px system-ui, sans-serif";
         const tw = ctx.measureText(label).width + 10;
         const th = 18;
@@ -770,7 +839,9 @@ export default function SpectrumExplorer({
     [latestMagnitudes, sampleRate, centerFrequency, transform],
   );
 
-  const onSpectrumMouseLeave = useCallback(() => setHoverInfo(null), []);
+  const onSpectrumMouseLeave = useCallback(() => setHoverInfo(null), [
+    setHoverInfo,
+  ]);
 
   // UI Controls row
   const Controls = (
@@ -861,10 +932,61 @@ export default function SpectrumExplorer({
     </div>
   );
 
+  const WaterfallControls = showWaterfall ? (
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        flexWrap: "wrap",
+        alignItems: "center",
+        marginTop: 8,
+      }}
+    >
+      <label>
+        Colormap:
+        <select
+          value={waterfallColormap}
+          onChange={(e) =>
+            _setWaterfallColormap(e.target.value as "viridis" | "inferno")
+          }
+          style={{ marginLeft: 6 }}
+        >
+          <option value="viridis">Viridis</option>
+          <option value="inferno">Inferno</option>
+        </select>
+      </label>
+      <label>
+        Gain:
+        <input
+          type="range"
+          min={0.1}
+          max={5}
+          step={0.1}
+          value={waterfallGain}
+          onChange={(e) => _setWaterfallGain(parseFloat(e.target.value))}
+          style={{ marginLeft: 6 }}
+        />
+      </label>
+      <label>
+        Offset:
+        <input
+          type="range"
+          min={-1}
+          max={1}
+          step={0.05}
+          value={waterfallOffset}
+          onChange={(e) => _setWaterfallOffset(parseFloat(e.target.value))}
+          style={{ marginLeft: 6 }}
+        />
+      </label>
+    </div>
+  ) : null;
+
   return (
     <section aria-label="Spectrum Explorer">
       <h3 style={{ marginBottom: 6 }}>Spectrum Explorer</h3>
       {Controls}
+      {WaterfallControls}
       {showWaterfall ? (
         <div
           ref={containerRef}
@@ -933,15 +1055,18 @@ export default function SpectrumExplorer({
               splitRatio * 100,
             )} percent spectrum.`}
           />
-          <div>
-            {markers.length > 0 && (
-              <MarkerTable
-                markers={markers.map((m) => ({ id: m.id, freqHz: m.freqHz }))}
-                onRemove={(id: string) =>
-                  setMarkers((prev) => prev.filter((x) => x.id !== id))
-                }
-              />
-            )}
+          <div style={{ position: "relative" }}>
+            <canvas
+              ref={waterfallCanvasRef}
+              style={{
+                width: "100%",
+                height: "100%",
+                display: "block",
+                position: "absolute",
+                top: 0,
+                left: 0,
+              }}
+            />
           </div>
         </div>
       ) : (
@@ -976,7 +1101,7 @@ export default function SpectrumExplorer({
         </div>
       )}
 
-      {markers.length > 0 && !showWaterfall && (
+      {markers.length > 0 && (
         <div style={{ marginTop: 10 }}>
           <MarkerTable
             markers={markers.map((m) => ({ id: m.id, freqHz: m.freqHz }))}
