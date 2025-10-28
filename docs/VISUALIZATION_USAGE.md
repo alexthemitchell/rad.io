@@ -430,7 +430,10 @@ function SignalScanner() {
     });
 
     setup.source.startStreaming((newSamples) => {
-      setSamples(prev => [...prev, ...newSamples].slice(-8192));
+      setSamples(prev => {
+        const combined = prev.concat(newSamples);
+        return combined.length > 8192 ? combined.slice(-8192) : combined;
+      });
 
       // Detect signals above threshold
       if (setup.fftProcessor) {
