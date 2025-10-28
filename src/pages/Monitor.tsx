@@ -1,493 +1,357 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDevice } from "../contexts/DeviceContext";
-import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
+import { renderTierManager } from "../lib/render/RenderTierManager";
 import { formatFrequency } from "../utils/frequency";
-import FFTChart from "../visualization/components/FFTChart";
+import Spectrogram from "../visualization/components/Spectrogram";
 import type { IQSample } from "../models/SDRDevice";
-import type { Sample as DSPSample } from "../utils/dsp";
+import {
+  calculateSpectrogramRow,
+  type Sample as DSPSample,
+} from "../utils/dsp";
+import StatusBar from "../components/StatusBar";
+import { RenderTier } from "../types/rendering";
+import { performanceMonitor } from "../utils/performanceMonitor";
 
-// Expose minimal diagnostics on window for automated tests
 declare global {
   interface Window {
-    dbgAudioCtx?: AudioContext;
-    dbgAudioCtxTime?: number;
-    dbgLastAudioLength?: number;
     dbgReceiving?: boolean;
   }
 }
 
-/**
- * Monitor page - Primary workspace for real-time spectrum monitoring
- *
- * Purpose: Real-time spectrum+waterfall with VFO control for tuning and listening
- * Dependencies: ADR-0003, ADR-0015 (Visualization), ADR-0008 (Audio), ADR-0012 (FFT Worker Pool)
- *
- * Features implemented:
- * - SpectrumCanvas with waterfall
- * - VFO control for tuning
- * - S-Meter display
- * - AGC/Squelch controls
- * - Mode selector (AM, FM, USB, LSB, etc.)
- * - Click-to-tune, pan/zoom, marker placement
- * - Quick record toggle
- * - Bookmark current frequency
- *
- * Performance targets:
- * - 60 FPS at 8192 FFT bins
- * - <150ms click-to-audio latency (PRD)
- *
- * Accessibility:
- * - Keyboard tuning (arrow keys, +/- for gain)
- * - Focus order and proper announcements
- * - Screen reader labels for frequency/mode changes (ADR-0017)
- */
+const MAX_SAMPLES = 65536;
+const DEFAULT_SAMPLE_RATE = 2_048_000;
+const DEFAULT_FFT_SIZE = 4096;
+const MAX_FRAMES = 200;
 
-type DemodMode = "AM" | "FM" | "USB" | "LSB" | "CW" | "NFM" | "WFM";
-
-// Explicit conversion to DSPSample for visualization buffers to avoid
-// relying on structural typing casts.
-function convertIQToDSP(samples: IQSample[]): DSPSample[] {
-  return samples.map((s) => ({ I: s.I, Q: s.Q }) as DSPSample);
-}
-
-function Monitor(): React.JSX.Element {
+export default function Monitor(): React.JSX.Element {
   const { device, initialize, isCheckingPaired } = useDevice();
 
-  // UI state
-  const [frequency, setFrequency] = useState(100_000_000); // 100 MHz default
-  const [mode, setMode] = useState<DemodMode>("FM");
-  const [volume, setVolume] = useState(50);
-  const [squelch, setSquelch] = useState(0);
-  const [agcEnabled, setAgcEnabled] = useState(true);
-  const [signalStrength, setSignalStrength] = useState(-80);
-  const [sampleRate, setSampleRate] = useState<number>(2_000_000); // 2 MSPS
-  const [lnaGain, setLnaGain] = useState<number>(16); // dB
-  const [ampEnabled, setAmpEnabled] = useState<boolean>(false);
-  const [isReceiving, setIsReceiving] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<string>("");
-  // Visualization controls
-  const [fftSize, setFftSize] = useState<number>(2048);
-  const [vizMode, setVizMode] = useState<"spectrogram" | "waterfall">(
+  // Local frequency state (context removed in current repo state)
+  const [frequencyHz, setFrequencyHz] = useState<number>(100_000_000); // 100 MHz default
+
+  const [viewMode, setViewMode] = useState<"waterfall" | "spectrogram">(
     "waterfall",
   );
+  const [isReceiving, setIsReceiving] = useState<boolean>(false);
+  const [status, setStatus] = useState<string>("Idle");
+  const [fftSize] = useState<number>(DEFAULT_FFT_SIZE);
 
-  // Audio processing
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const processorRef = useRef<AudioStreamProcessor | null>(null);
-  const iqBufferRef = useRef<IQSample[]>([]);
-  // Visualization buffers (ring-buffered)
-  // Use DSPSample typing directly to avoid unsafe casts when rendering FFTChart
-  const vizBufferRef = useRef<DSPSample[]>([]);
-  const [vizSamples, setVizSamples] = useState<DSPSample[]>([]);
-  const lastVizUpdateRef = useRef<number>(0);
-
-  const canStart = useMemo(
-    () => Boolean(device && device.isOpen() && !isReceiving),
-    [device, isReceiving],
+  const [renderTier, setRenderTier] = useState<RenderTier>(() =>
+    renderTierManager.getTier(),
+  );
+  useEffect(
+    () => renderTierManager.subscribe((tier) => setRenderTier(tier)),
+    [],
   );
 
-  const ensureAudio = useCallback((): void => {
-    audioCtxRef.current ??= new AudioContext();
-    processorRef.current ??= new AudioStreamProcessor(sampleRate);
-    // Expose for automated testing/diagnostics
-    window.dbgAudioCtx = audioCtxRef.current;
-  }, [sampleRate]);
+  // Status bar metrics
+  const [fps, setFps] = useState<number>(0);
+  const [storageUsed, setStorageUsed] = useState<number>(0);
+  const [storageQuota, setStorageQuota] = useState<number>(0);
+  const [bufferHealth, setBufferHealth] = useState<number>(100);
 
-  // Simulate signal strength updates
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setSignalStrength(-100 + Math.random() * 60);
-    }, 500);
-    return (): void => clearInterval(interval);
+  const samplesRef = useRef<DSPSample[]>([]);
+  const [fftData, setFftData] = useState<Float32Array[]>([]);
+  const sampleRateRef = useRef<number>(DEFAULT_SAMPLE_RATE);
+  const receivingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    window.dbgReceiving = isReceiving;
+  }, [isReceiving]);
+
+  useEffect(() => {
+    return (): void => {
+      void (async (): Promise<void> => {
+        try {
+          if (device?.isReceiving()) {
+            await device.stopRx();
+          }
+        } finally {
+          receivingRef.current = false;
+          window.dbgReceiving = false;
+        }
+      })();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const tuneDevice = useCallback(async (): Promise<void> => {
-    if (!device) {
-      setStatusMsg("No device connected. Open the Devices panel to connect.");
+  // Update FPS every second
+  useEffect(() => {
+    const id = setInterval(() => {
+      setFps(performanceMonitor.getFPS());
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Poll Storage API every 5 seconds
+  useEffect(() => {
+    let cancelled = false;
+    async function poll(): Promise<void> {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (navigator?.storage?.estimate) {
+          const est = await navigator.storage.estimate();
+          if (!cancelled) {
+            setStorageUsed(est.usage ?? 0);
+            setStorageQuota(est.quota ?? 0);
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setStorageUsed(0);
+          setStorageQuota(0);
+        }
+      }
+    }
+    const id = setInterval(() => {
+      void poll();
+    }, 5000);
+    // initial fetch
+    void poll();
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  // Compute buffer health every second based on local sample buffer fill
+  useEffect(() => {
+    const id = setInterval(() => {
+      const pct = Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round((samplesRef.current.length / MAX_SAMPLES) * 100),
+        ),
+      );
+      setBufferHealth(pct);
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const appendSamples = useCallback((iq: IQSample[]): void => {
+    if (iq.length === 0) {
       return;
     }
+    const need = Math.min(iq.length, MAX_SAMPLES);
+    const start = Math.max(0, iq.length - need);
+    const nextChunk = iq
+      .slice(start, start + need)
+      .map((s) => ({ I: s.I, Q: s.Q }));
+    const prev = samplesRef.current;
+    const combined =
+      prev.length + nextChunk.length > MAX_SAMPLES
+        ? prev
+            .slice(prev.length + nextChunk.length - MAX_SAMPLES)
+            .concat(nextChunk)
+        : prev.concat(nextChunk);
+    samplesRef.current = combined;
+
+    // Opportunistically compute a single spectrogram row when we have enough samples
+    if (combined.length >= DEFAULT_FFT_SIZE) {
+      try {
+        const row = calculateSpectrogramRow(
+          combined.slice(combined.length - DEFAULT_FFT_SIZE),
+          DEFAULT_FFT_SIZE,
+        );
+        setFftData((prevRows) => {
+          const next =
+            prevRows.length >= MAX_FRAMES
+              ? prevRows.slice(prevRows.length - (MAX_FRAMES - 1)).concat([row])
+              : prevRows.concat([row]);
+          return next;
+        });
+      } catch (err) {
+        console.warn("spectrogram row calc failed", err);
+      }
+    }
+  }, []);
+
+  const handleStart = useCallback(async (): Promise<void> => {
     try {
+      if (!device) {
+        await initialize();
+      }
+      if (!device) {
+        setStatus("No device connected");
+        return;
+      }
       if (!device.isOpen()) {
         await device.open();
       }
-      await device.setSampleRate(sampleRate);
-      // Use nearest valid LNA step (adapter will adjust if needed)
-      await device.setLNAGain(lnaGain);
-      await device.setAmpEnable(ampEnabled);
-      // Use a conservative baseband filter if supported
-      if (device.setBandwidth) {
-        // HackRF supports >= 1.75 MHz, choose 2.5 MHz for FM broadcast
-        await device.setBandwidth(2_500_000);
+
+      const sr = await device.getSampleRate().catch(() => DEFAULT_SAMPLE_RATE);
+      sampleRateRef.current = sr > 0 ? sr : DEFAULT_SAMPLE_RATE;
+
+      await device.setFrequency(frequencyHz);
+      await device.setSampleRate(sampleRateRef.current);
+      if (device.isReceiving()) {
+        await device.stopRx();
       }
-      await device.setFrequency(frequency);
-      setStatusMsg(
-        `Tuned to ${formatFrequency(frequency)} @ ${(sampleRate / 1e6).toFixed(2)} MSPS`,
-      );
-    } catch (err) {
-      console.error("Tune failed", err);
-      setStatusMsg(
-        err instanceof Error ? `Tune failed: ${err.message}` : "Tune failed",
-      );
-    }
-  }, [ampEnabled, device, frequency, lnaGain, sampleRate]);
 
-  const handleStart = useCallback(async (): Promise<void> => {
-    if (!device) {
-      setStatusMsg("No device connected");
-      return;
-    }
-    try {
-      ensureAudio();
-      await tuneDevice();
-      iqBufferRef.current = [];
+      samplesRef.current = [];
+      setFftData([]);
+      receivingRef.current = true;
       setIsReceiving(true);
-
-      // Start streaming without awaiting to avoid blocking UI
-      void device.receive((dataView) => {
-        try {
-          const samples = device.parseSamples(dataView);
-          // Accumulate a modest chunk before demodulating for smoother audio
-          const buffer = iqBufferRef.current;
-          buffer.push(...samples);
-
-          // Feed visualization ring buffer
-          const vbuf = vizBufferRef.current;
-          vbuf.push(...convertIQToDSP(samples));
-          // Trim to a reasonable window for spectrogram computation
-          const maxVizSamples = fftSize * 64; // 64 frames worth of samples
-          if (vbuf.length > maxVizSamples) {
-            vbuf.splice(0, vbuf.length - maxVizSamples);
-          }
-          // Throttle UI updates to ~10fps
-          const now = performance.now();
-          if (now - (lastVizUpdateRef.current || 0) > 100) {
-            lastVizUpdateRef.current = now;
-            // Create a fresh array reference to trigger React updates
-            setVizSamples(vbuf.slice());
-          }
-
-          // Buffer chunk size tuned for ~25ms at 2 MSPS:
-          // 50_000 samples / 2_000_000 samples/sec = 0.025s (25ms)
-          // Balances low latency with smooth playback scheduling.
-          const MIN_IQ_SAMPLES = 50_000;
-          if (buffer.length >= MIN_IQ_SAMPLES) {
-            const chunk = buffer.splice(0, MIN_IQ_SAMPLES);
-            const proc = processorRef.current;
-            const ctx = audioCtxRef.current;
-            if (proc && ctx) {
-              const { audioBuffer } = proc.extractAudio(
-                chunk,
-                mode === "AM" ? DemodulationType.AM : DemodulationType.FM,
-                { sampleRate: 48_000, channels: 1 },
-              );
-              if (ctx.state === "suspended") {
-                void ctx.resume();
-              }
-              const src = ctx.createBufferSource();
-              src.buffer = audioBuffer;
-              // Volume: simple gain node for now
-              const gainNode = ctx.createGain();
-              gainNode.gain.value = volume / 100;
-              src.connect(gainNode).connect(ctx.destination);
-              src.start();
-              window.dbgAudioCtxTime = ctx.currentTime;
-              window.dbgLastAudioLength = audioBuffer.length;
-            }
-          }
-        } catch (e) {
-          console.error("Error in receive callback", e);
-        }
-      });
-      setStatusMsg("Receiving started");
-      window.dbgReceiving = true;
-    } catch (err) {
-      console.error("Start failed", err);
-      setIsReceiving(false);
-      setStatusMsg(
-        err instanceof Error ? `Start failed: ${err.message}` : "Start failed",
+      setStatus(
+        `Receiving started at ${formatFrequency(frequencyHz)} • ${(sampleRateRef.current / 1e6).toFixed(3)} MSPS`,
       );
+      window.dbgReceiving = true;
+
+      await device.receive(
+        (data: DataView) => {
+          if (!receivingRef.current) {
+            return;
+          }
+          try {
+            const iq = device.parseSamples(data);
+            appendSamples(iq);
+          } catch (err) {
+            console.warn("IQ parse error", err);
+          }
+        },
+        {
+          centerFrequency: frequencyHz,
+          sampleRate: sampleRateRef.current,
+        },
+      );
+    } catch (err) {
+      console.error("Failed to start reception", err);
+      setIsReceiving(false);
+      receivingRef.current = false;
+      setStatus("Failed to start reception");
+      window.dbgReceiving = false;
     }
-  }, [device, ensureAudio, fftSize, mode, tuneDevice, volume]);
+  }, [device, frequencyHz, initialize, appendSamples]);
 
   const handleStop = useCallback(async (): Promise<void> => {
-    if (!device) {
-      return;
-    }
     try {
-      await device.stopRx();
+      if (device?.isReceiving()) {
+        await device.stopRx();
+      }
+    } finally {
+      receivingRef.current = false;
       setIsReceiving(false);
-      setStatusMsg("Reception stopped");
+      setStatus("Reception stopped");
       window.dbgReceiving = false;
-      // Reset visualization buffers
-      vizBufferRef.current = [];
-      setVizSamples([]);
-    } catch (err) {
-      console.error("Stop failed", err);
-      setStatusMsg(
-        err instanceof Error ? `Stop failed: ${err.message}` : "Stop failed",
-      );
     }
   }, [device]);
 
-  return (
-    <main
-      className="page-container"
-      role="main"
-      aria-labelledby="monitor-heading"
-      id="main-content"
-      tabIndex={-1}
-    >
-      <h2 id="monitor-heading">Monitor - Live Signal Reception</h2>
+  // Top-level live region shows only high-level status; detailed metrics are in the bottom StatusBar
 
-      <section aria-label="Spectrum Visualization">
-        <h3>Spectrum &amp; Waterfall</h3>
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <label>
-            FFT Size:
-            <select
-              aria-label="FFT size"
-              value={fftSize}
-              onChange={(e): void => setFftSize(parseInt(e.target.value, 10))}
-              style={{ marginLeft: 8 }}
-            >
-              {[1024, 2048, 4096, 8192].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label style={{ marginLeft: 8 }}>
-            View:
-            <select
-              aria-label="Visualization mode"
-              value={vizMode}
-              onChange={(e): void =>
-                setVizMode(e.target.value as "spectrogram" | "waterfall")
-              }
-              style={{ marginLeft: 8 }}
-            >
-              <option value="spectrogram">Spectrogram</option>
-              <option value="waterfall">Waterfall</option>
-            </select>
-          </label>
+  return (
+    <main className="container" aria-labelledby="monitor-heading">
+      <h2 id="monitor-heading" className="visually-hidden">
+        Monitor
+      </h2>
+
+      <section aria-label="Controls" className="card" style={{ marginTop: 12 }}>
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">Live Monitor</h3>
+            <p className="card-subtitle">Tune, start/stop, and view spectrum</p>
+          </div>
         </div>
-        <div style={{ marginTop: 8 }}>
-          <FFTChart
-            samples={vizSamples}
-            width={900}
-            height={320}
-            fftSize={fftSize}
+        <div className="card-content">
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <label>
+              Frequency (MHz):
+              <input
+                type="number"
+                step={0.05}
+                min={0}
+                value={(frequencyHz / 1e6).toFixed(3)}
+                onChange={(e) => {
+                  const mhz = parseFloat(e.target.value);
+                  if (!Number.isNaN(mhz)) {
+                    setFrequencyHz(Math.round(mhz * 1e6));
+                  }
+                }}
+                className="control-input"
+                style={{ marginLeft: 6, width: 140 }}
+                aria-label="Frequency in megahertz"
+              />
+            </label>
+
+            <label htmlFor="viz-mode">Visualization mode</label>
+            <select
+              id="viz-mode"
+              className="control-input"
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as typeof viewMode)}
+            >
+              <option value="waterfall">waterfall</option>
+              <option value="spectrogram">spectrogram</option>
+            </select>
+
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                void handleStart();
+              }}
+              aria-label="Start reception"
+              disabled={isReceiving || isCheckingPaired}
+            >
+              ▶ Start
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={() => {
+                void handleStop();
+              }}
+              aria-label="Stop reception"
+              disabled={!isReceiving}
+            >
+              ■ Stop
+            </button>
+          </div>
+
+          <p role="status" aria-live="polite" style={{ marginTop: 8 }}>
+            <span>{status}</span>
+          </p>
+        </div>
+      </section>
+
+      <section
+        aria-label="Spectrum Visualization"
+        className="card"
+        style={{ marginTop: 12 }}
+      >
+        <div className="card-header">
+          <h3 className="card-title">Spectrum</h3>
+        </div>
+        <div className="card-content">
+          <Spectrogram
+            fftData={fftData}
+            width={750}
+            height={400}
             freqMin={0}
-            freqMax={fftSize - 1}
-            mode={vizMode}
-            maxWaterfallFrames={200}
+            freqMax={fftSize}
+            continueInBackground={false}
+            mode={viewMode}
+            maxWaterfallFrames={MAX_FRAMES}
           />
         </div>
       </section>
-
-      <section aria-label="Device Controls">
-        <h3>Device Controls</h3>
-        {/* Always-available frequency input for keyboard interaction */}
-        <div
-          style={{
-            display: "flex",
-            gap: "0.5rem",
-            flexWrap: "wrap",
-            marginBottom: "0.5rem",
-          }}
-        >
-          <label>
-            Frequency (MHz):
-            <input
-              type="number"
-              step="0.05"
-              min={0}
-              value={(frequency / 1e6).toFixed(3)}
-              onChange={(e): void => {
-                const mhz = parseFloat(e.target.value);
-                if (!Number.isNaN(mhz)) {
-                  setFrequency(Math.round(mhz * 1e6));
-                }
-              }}
-              style={{ marginLeft: "0.5rem", width: 120 }}
-              aria-label="Frequency in megahertz"
-            />
-          </label>
-        </div>
-
-        {!device && !isCheckingPaired && (
-          <div>
-            <p>No device connected.</p>
-            <button
-              aria-label="Connect SDR device"
-              onClick={(): void => {
-                void initialize();
-              }}
-            >
-              Connect Device
-            </button>
-          </div>
-        )}
-        {isCheckingPaired && <p>Checking for previously paired devices…</p>}
-        {device && (
-          <div className="device-controls">
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              {/* Frequency input moved above to be always available */}
-              <label>
-                Sample Rate (MSPS):
-                <select
-                  value={sampleRate}
-                  onChange={(e): void =>
-                    setSampleRate(parseInt(e.target.value, 10))
-                  }
-                  style={{ marginLeft: "0.5rem" }}
-                >
-                  {[2e6, 4e6, 8e6, 10e6, 12_500_000, 16e6, 20e6].map((sr) => (
-                    <option key={sr} value={sr}>
-                      {(sr / 1e6).toFixed(2)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                LNA Gain (dB):
-                <input
-                  type="number"
-                  step={8}
-                  min={0}
-                  max={40}
-                  value={lnaGain}
-                  onChange={(e): void =>
-                    setLnaGain(parseInt(e.target.value, 10))
-                  }
-                  style={{ marginLeft: "0.5rem", width: 80 }}
-                />
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={ampEnabled}
-                  onChange={(e): void => setAmpEnabled(e.target.checked)}
-                />
-                RF Amp
-              </label>
-              <button
-                onClick={(): void => void tuneDevice()}
-                aria-label="Tune device"
-              >
-                Tune
-              </button>
-              <button
-                onClick={(): void => void handleStart()}
-                disabled={!canStart}
-                aria-label="Start reception"
-              >
-                ▶ Start
-              </button>
-              <button
-                onClick={(): void => void handleStop()}
-                disabled={!isReceiving}
-                aria-label="Stop reception"
-              >
-                ■ Stop
-              </button>
-            </div>
-            <p role="status" aria-live="polite" style={{ marginTop: "0.5rem" }}>
-              {statusMsg}
-            </p>
-          </div>
-        )}
-      </section>
-
-      <section aria-label="Audio Controls">
-        <h3>Audio</h3>
-        <div>
-          <label>
-            Volume: {volume}%
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={volume}
-              onChange={(e): void => setVolume(parseInt(e.target.value, 10))}
-              style={{ marginLeft: "0.5rem" }}
-            />
-          </label>
-        </div>
-        <div>
-          <label>
-            Squelch: {squelch} dB
-            <input
-              type="range"
-              min="-100"
-              max="0"
-              value={squelch}
-              onChange={(e): void => setSquelch(parseInt(e.target.value, 10))}
-              style={{ marginLeft: "0.5rem" }}
-            />
-          </label>
-        </div>
-        <div>
-          <label>
-            <input
-              type="checkbox"
-              checked={agcEnabled}
-              onChange={(e): void => setAgcEnabled(e.target.checked)}
-            />
-            AGC (Automatic Gain Control)
-          </label>
-        </div>
-        <div>
-          <label>
-            Mode:
-            <select
-              value={mode}
-              onChange={(e): void => setMode(e.target.value as DemodMode)}
-              style={{ marginLeft: "0.5rem" }}
-            >
-              <option value="AM">AM</option>
-              <option value="FM">FM</option>
-              <option value="NFM">NFM (Narrowband FM)</option>
-              <option value="WFM">WFM (Wideband FM)</option>
-              <option value="USB">USB</option>
-              <option value="LSB">LSB</option>
-              <option value="CW">CW</option>
-            </select>
-          </label>
-        </div>
-      </section>
-
-      <section aria-label="Signal Information">
-        <h3>Signal Information</h3>
-        <div>
-          <strong>Frequency:</strong> {(frequency / 1e6).toFixed(3)} MHz
-        </div>
-        <div>
-          <strong>Signal Strength (S-Meter):</strong>{" "}
-          {signalStrength.toFixed(1)} dBm
-        </div>
-        <div>
-          <strong>Mode:</strong> {mode}
-        </div>
-        <div>
-          <strong>Bandwidth:</strong>{" "}
-          {mode === "WFM"
-            ? "200 kHz"
-            : mode === "NFM" || mode === "FM"
-              ? "12.5 kHz"
-              : "3 kHz"}
-        </div>
-      </section>
-
-      <aside aria-label="Quick Actions" style={{ marginTop: "1rem" }}>
-        <h3>Quick Actions</h3>
-        <button>📍 Bookmark Frequency</button>
-        <button style={{ marginLeft: "0.5rem" }}>⏺ Record</button>
-        <button style={{ marginLeft: "0.5rem" }}>📊 Add Marker</button>
-      </aside>
+      {/* Bottom status bar */}
+      <div style={{ marginTop: 12 }}>
+        <StatusBar
+          renderTier={renderTier}
+          fps={fps}
+          sampleRate={sampleRateRef.current}
+          bufferHealth={bufferHealth}
+          storageUsed={storageUsed}
+          storageQuota={storageQuota}
+          deviceConnected={Boolean(device)}
+        />
+      </div>
     </main>
   );
 }
-
-export default Monitor;
