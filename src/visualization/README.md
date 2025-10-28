@@ -157,7 +157,11 @@ The module includes comprehensive tests:
 
 - **SimulatedSource**: 14 tests covering all signal patterns and lifecycle
 - **ReplaySource**: 20 tests covering playback, controls, and edge cases
+- **FFTProcessor**: 13 tests covering FFT computation, windowing, configuration
+- **AGCProcessor**: 21 tests covering gain control, state management
+- **SpectrogramProcessor**: 19 tests covering overlap processing, buffering
 - **Component Tests**: Existing tests maintained for backward compatibility
+- **Total**: 1671 tests passing
 
 Run tests:
 
@@ -177,12 +181,121 @@ import IQConstellation from "./components/IQConstellation";
 import { IQConstellation } from "./visualization";
 ```
 
+## Frame Processors
+
+Frame processors transform IQ samples into visualization-ready data. Three implementations are available:
+
+### FFTProcessor
+
+Transforms IQ samples to frequency domain with windowing.
+
+**Features:**
+- Configurable FFT size (power of 2)
+- Multiple window functions (Hann, Hamming, Blackman, Kaiser, Rectangular)
+- WASM acceleration support
+- Frequency bin generation
+
+**Example Usage:**
+
+```typescript
+import { FFTProcessor } from "./visualization";
+
+const processor = new FFTProcessor({
+  type: "fft",
+  fftSize: 2048,
+  windowFunction: "hann",
+  useWasm: true,
+  sampleRate: 2048000,
+});
+
+// Process samples
+const output = processor.process(samples);
+console.log(output.magnitudes); // Float32Array of dB values
+console.log(output.frequencies); // Float32Array of frequency bins
+```
+
+### AGCProcessor
+
+Automatic gain control for signal normalization.
+
+**Features:**
+- Configurable attack and decay rates
+- Target level control
+- Maximum gain limiting
+- Stateful gain tracking with reset
+
+**Example Usage:**
+
+```typescript
+import { AGCProcessor } from "./visualization";
+
+const processor = new AGCProcessor({
+  type: "agc",
+  targetLevel: 0.7,
+  attackTime: 0.01,
+  decayTime: 0.1,
+  maxGain: 10.0,
+});
+
+// Process samples
+const output = processor.process(samples);
+console.log(output.samples); // Gain-adjusted IQ samples
+console.log(output.currentGain); // Current gain level
+```
+
+### SpectrogramProcessor
+
+Time-frequency representation with sliding window FFT.
+
+**Features:**
+- Configurable overlap (hopSize)
+- Buffered time slices
+- Time and frequency bin generation
+- Window function support
+
+**Example Usage:**
+
+```typescript
+import { SpectrogramProcessor } from "./visualization";
+
+const processor = new SpectrogramProcessor({
+  type: "spectrogram",
+  fftSize: 1024,
+  hopSize: 512, // 50% overlap
+  windowFunction: "hann",
+  useWasm: true,
+  sampleRate: 2048000,
+  maxTimeSlices: 100,
+});
+
+// Process samples
+const output = processor.process(samples);
+console.log(output.data); // 2D array: [time][frequency]
+console.log(output.times); // Time bins in seconds
+console.log(output.frequencies); // Frequency bins in Hz
+```
+
+### Chaining Processors
+
+Processors can be chained together for complex pipelines:
+
+```typescript
+import { AGCProcessor, FFTProcessor } from "./visualization";
+
+const agc = new AGCProcessor({ /* config */ });
+const fft = new FFTProcessor({ /* config */ });
+
+// Chain processors
+const agcOutput = agc.process(samples);
+const fftOutput = fft.process(agcOutput.samples);
+```
+
 ## Future Extensions
 
 The clean interface design enables:
 
 - **Custom Data Sources**: Implement `DataSource` for any signal source
-- **Advanced Processors**: Add specialized frame processors (demodulation, decoding, etc.)
+- **Custom Processors**: Implement `FrameProcessor` for specialized processing
 - **Alternative Renderers**: Implement custom rendering strategies
 - **Pipeline Composition**: Chain multiple processors in a visualization pipeline
 
@@ -198,7 +311,23 @@ src/visualization/
 │   ├── IQConstellation.tsx
 │   ├── Spectrogram.tsx
 │   ├── WaveformVisualizer.tsx
-│   └── FFTChart.tsx
+│   ├── FFTChart.tsx
+│   ├── Spectrum.tsx
+│   └── Waterfall.tsx
+├── processors/                # Frame processors
+│   ├── FFTProcessor.ts
+│   ├── AGCProcessor.ts
+│   ├── SpectrogramProcessor.ts
+│   ├── index.ts
+│   └── __tests__/
+│       ├── FFTProcessor.test.ts
+│       ├── AGCProcessor.test.ts
+│       └── SpectrogramProcessor.test.ts
+├── renderers/                 # Rendering backends
+│   ├── WebGLSpectrum.ts
+│   ├── WebGLWaterfall.ts
+│   ├── CanvasSpectrum.ts
+│   └── CanvasWaterfall.ts
 └── __tests__/                 # Test files
     ├── SimulatedSource.test.ts
     └── ReplaySource.test.ts
