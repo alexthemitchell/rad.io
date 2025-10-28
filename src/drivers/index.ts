@@ -8,28 +8,27 @@
  * Core Components:
  * - SDRDriverRegistry: Central registry for driver registration and discovery
  * - WebUSBDeviceSelector: User-friendly WebUSB device selection
+ * - DeviceDiscovery: Automatic device detection and enumeration
  * - registerBuiltinDrivers: One-line registration of built-in drivers
  *
  * Quick Start:
  * ```typescript
- * import { registerBuiltinDrivers, SDRDriverRegistry, WebUSBDeviceSelector } from './drivers';
+ * import { registerBuiltinDrivers, SDRDriverRegistry, DeviceDiscovery } from './drivers';
  *
  * // 1. Register built-in drivers at app startup
  * registerBuiltinDrivers();
  *
- * // 2. Request device from user
- * const selector = new WebUSBDeviceSelector();
- * const usbDevice = await selector.requestDevice();
+ * // 2. Automatically discover paired devices
+ * const discovery = new DeviceDiscovery();
+ * const result = await discovery.discoverDevices({ autoOpen: true });
  *
- * // 3. Create driver instance
- * const sdrDevice = await SDRDriverRegistry.createDevice(usbDevice);
- *
- * // 4. Use the device
- * await sdrDevice.open();
- * await sdrDevice.setFrequency(100e6);
- * await sdrDevice.receive((samples) => {
- *   // Process samples
- * });
+ * // 3. Use discovered devices
+ * for (const device of result.devices) {
+ *   await device.setFrequency(100e6);
+ *   await device.receive((samples) => {
+ *     // Process samples
+ *   });
+ * }
  * ```
  *
  * @module drivers
@@ -47,5 +46,11 @@ export {
   type DeviceSelectionOptions,
   type DeviceEnumerationResult,
 } from "./WebUSBDeviceSelector";
+
+export {
+  DeviceDiscovery,
+  type DeviceDiscoveryResult,
+  type DeviceDiscoveryOptions,
+} from "./DeviceDiscovery";
 
 export { registerBuiltinDrivers } from "./registerBuiltinDrivers";

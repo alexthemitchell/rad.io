@@ -165,19 +165,22 @@ await sdrDevice.receive((samples) => {
 src/drivers/
 ├── SDRDriverRegistry.ts          # Core registry
 ├── WebUSBDeviceSelector.ts       # WebUSB helper
+├── DeviceDiscovery.ts            # Automatic device detection
 ├── registerBuiltinDrivers.ts     # Built-in registrations
 ├── index.ts                      # Public API exports
 └── __tests__/
     ├── SDRDriverRegistry.test.ts
     ├── WebUSBDeviceSelector.test.ts
+    ├── DeviceDiscovery.test.ts
     └── registerBuiltinDrivers.test.ts
 ```
 
 ### Test Coverage
 - **SDRDriverRegistry**: 13 tests covering registration, matching, and factory
-- **WebUSBDeviceSelector**: 7 tests covering browser support and formatting
-- **registerBuiltinDrivers**: 12 tests verifying driver metadata and instantiation
-- **Total**: 32 tests with 100% coverage of new code
+- **WebUSBDeviceSelector**: 8 tests covering browser support and formatting
+- **DeviceDiscovery**: 14 tests covering automatic detection and enumeration
+- **registerBuiltinDrivers**: 16 tests verifying driver metadata and instantiation
+- **Total**: 51 tests with 100% coverage of new code
 
 ### Design Patterns Used
 1. **Registry Pattern**: Central driver storage and lookup
@@ -185,15 +188,23 @@ src/drivers/
 3. **Strategy Pattern**: Different drivers implement same interface
 4. **Adapter Pattern**: Existing adapters work with registry
 
+## Implemented Enhancements
+
+1. **✅ Dynamic Discovery** (`DeviceDiscovery` class): Auto-detect and enumerate previously paired devices on page load
+   - Automatic device detection from WebUSB paired devices
+   - Optional auto-open functionality
+   - Error handling for failed initializations
+   - Device filtering with custom predicates
+   - Event watching for connect/disconnect
+
 ## Future Enhancements
 
-1. **Dynamic Discovery**: Auto-detect connected devices on page load
-2. **Driver Hot-Reload**: Unregister and re-register drivers at runtime
-3. **Capability Negotiation**: Request specific capabilities and find matching drivers
-4. **Driver Versioning**: Support multiple versions of same driver
-5. **Class/Protocol Matching**: Enhanced USB descriptor matching beyond vendor/product IDs
-6. **Serial Number Filtering**: Support for device-specific serial number matching
-7. **Driver Priority**: Allow multiple drivers for same device with priority ordering
+1. **Driver Hot-Reload**: Unregister and re-register drivers at runtime
+2. **Capability Negotiation**: Request specific capabilities and find matching drivers
+3. **Driver Versioning**: Support multiple versions of same driver
+4. **Class/Protocol Matching**: Enhanced USB descriptor matching beyond vendor/product IDs
+5. **Serial Number Filtering**: Support for device-specific serial number matching (partially supported via predicates)
+6. **Driver Priority**: Allow multiple drivers for same device with priority ordering
 
 ## References
 
