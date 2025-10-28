@@ -64,8 +64,7 @@ export function registerBuiltinDrivers(): void {
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     factory: async (usbDevice: USBDevice) => {
-      const adapter = new HackRFOneAdapter(usbDevice);
-      return adapter;
+      return new HackRFOneAdapter(usbDevice);
     },
   });
 
@@ -107,8 +106,7 @@ export function registerBuiltinDrivers(): void {
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     factory: async (usbDevice: USBDevice) => {
-      const adapter = new RTLSDRDeviceAdapter(usbDevice);
-      return adapter;
+      return new RTLSDRDeviceAdapter(usbDevice);
     },
   });
 }
