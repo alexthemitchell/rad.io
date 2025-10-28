@@ -75,8 +75,10 @@ export class AGCProcessor implements FrameProcessor<Sample[], AGCOutput> {
     const error = this.config.targetLevel - rms;
     const timeConstant = error > 0 ? this.config.attackTime : this.config.decayTime;
     
+    // Clamp timeConstant to a small positive value to prevent division by zero
+    const safeTimeConstant = Math.max(timeConstant, 1e-6);
     // Exponential smoothing
-    const alpha = 1.0 - Math.exp(-1.0 / timeConstant);
+    const alpha = 1.0 - Math.exp(-1.0 / safeTimeConstant);
     const gainAdjustment = 1.0 + error / (rms + 1e-10);
     this.currentGain = this.currentGain * (1.0 - alpha) + this.currentGain * gainAdjustment * alpha;
 

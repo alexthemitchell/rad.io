@@ -60,6 +60,9 @@ function convertIQToDSP(samples: IQSample[]): DSPSample[] {
   return samples.map((s) => ({ I: s.I, Q: s.Q }) as DSPSample);
 }
 
+// Spectrogram overlap constant
+const SPECTROGRAM_OVERLAP = 0.5;
+
 function Monitor(): React.JSX.Element {
   const { device, initialize, isCheckingPaired } = useDevice();
 
@@ -167,19 +170,20 @@ function Monitor(): React.JSX.Element {
   );
 
   // Initialize SpectrogramProcessor with optimal settings
-  if (!spectrogramProcessorRef.current) {
-    const overlap = 0.5;
-    const hopSize = Math.floor(fftSize * (1 - overlap));
-    spectrogramProcessorRef.current = new SpectrogramProcessor({
-      type: "spectrogram",
-      fftSize,
-      hopSize,
-      windowFunction: "hann",
-      useWasm: true,
-      sampleRate,
-      maxTimeSlices: 200,
-    });
-  }
+  React.useEffect(() => {
+    if (!spectrogramProcessorRef.current) {
+      const hopSize = Math.floor(fftSize * (1 - SPECTROGRAM_OVERLAP));
+      spectrogramProcessorRef.current = new SpectrogramProcessor({
+        type: "spectrogram",
+        fftSize,
+        hopSize,
+        windowFunction: "hann",
+        useWasm: true,
+        sampleRate,
+        maxTimeSlices: 200,
+      });
+    }
+  }, [fftSize, sampleRate]);
 
   // Build spectrogram frames using optimized processor
   const spectroFrames = useMemo(() => {
@@ -190,8 +194,7 @@ function Monitor(): React.JSX.Element {
     // Update processor config if FFT size changed
     const currentConfig = spectrogramProcessorRef.current.getConfig();
     if (currentConfig.fftSize !== fftSize || currentConfig.sampleRate !== sampleRate) {
-      const overlap = 0.5;
-      const hopSize = Math.floor(fftSize * (1 - overlap));
+      const hopSize = Math.floor(fftSize * (1 - SPECTROGRAM_OVERLAP));
       spectrogramProcessorRef.current.updateConfig({
         fftSize,
         hopSize,
