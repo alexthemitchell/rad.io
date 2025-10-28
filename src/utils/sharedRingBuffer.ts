@@ -7,6 +7,16 @@
  */
 
 /**
+ * Helper to safely index Float32Array
+ * Float32Array elements are never undefined (initialized to 0)
+ * This helper encapsulates the non-null assertion in one place
+ */
+function safeFloatArrayIndex(arr: Float32Array, index: number): number {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return arr[index]!;
+}
+
+/**
  * Lock-free ring buffer using SharedArrayBuffer
  * Allows zero-copy streaming between main thread and workers
  */
@@ -55,9 +65,7 @@ export class SharedRingBuffer {
 
     // Write data
     for (let i = 0; i < toWrite; i++) {
-      // Float32Array elements are never undefined (initialized to 0)
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      this.data[(writePos + i) % this.size] = samples[i]!;
+      this.data[(writePos + i) % this.size] = safeFloatArrayIndex(samples, i);
     }
 
     // Update write position
@@ -104,9 +112,10 @@ export class SharedRingBuffer {
 
       // Read data
       for (let i = 0; i < toRead; i++) {
-        // Float32Array elements are never undefined (initialized to 0)
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        result[read + i] = this.data[(readPos + i) % this.size]!;
+        result[read + i] = safeFloatArrayIndex(
+          this.data,
+          (readPos + i) % this.size,
+        );
       }
 
       // Update read position
@@ -138,9 +147,7 @@ export class SharedRingBuffer {
     const result = new Float32Array(count);
 
     for (let i = 0; i < count; i++) {
-      // Float32Array elements are never undefined (initialized to 0)
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      result[i] = this.data[(readPos + i) % this.size]!;
+      result[i] = safeFloatArrayIndex(this.data, (readPos + i) % this.size);
     }
 
     const newReadPos = (readPos + count) % this.size;

@@ -156,8 +156,10 @@ describe("SharedRingBuffer", () => {
       const read = buffer.tryRead(100);
 
       expect(read).not.toBeNull();
-      for (let i = 0; i < samples.length; i++) {
-        expect(read?.[i]).toBeCloseTo(samples[i], 10);
+      if (read) {
+        for (let i = 0; i < samples.length; i++) {
+          expect(read[i]).toBeCloseTo(samples[i] ?? 0, 10);
+        }
       }
     });
 

@@ -10,20 +10,22 @@ This document tracks performance benchmarks, optimization implementations, and m
 
 ### Current Performance Status
 
-| Component           | Current Performance | Target           | Status                               |
-| ------------------- | ------------------- | ---------------- | ------------------------------------ |
-| FFT 2048            | ~3-5ms              | <2ms             | ✅ Meets minimum, target improvement |
-| FFT 4096            | ~8-10ms             | <5ms             | ✅ Meets minimum, target improvement |
-| Waterfall Rendering | 30-45 FPS           | 60 FPS           | ⚠️ Needs optimization                |
-| Memory Usage        | Stable              | <10MB/min growth | ✅ Good                              |
-| CPU Usage           | 40-60%              | <50%             | ⚠️ Variable                          |
+| Component           | Current Performance | Target           | Status                               | Next Steps                        |
+| ------------------- | ------------------- | ---------------- | ------------------------------------ | --------------------------------- |
+| FFT 2048            | ~3-5ms              | <2ms             | ✅ Meets minimum, target improvement | Integrate SIMD in production      |
+| FFT 4096            | ~8-10ms             | <5ms             | ✅ Meets minimum, target improvement | Integrate WebGPU for large FFTs   |
+| Waterfall Rendering | 30-45 FPS           | 60 FPS           | ⚠️ Needs optimization                | Complete WebGL/WebGPU integration |
+| Memory Usage        | Stable              | <10MB/min growth | ✅ Good                              | Monitor with SharedArrayBuffer    |
+| CPU Usage           | 40-60%              | <50%             | ⚠️ Variable                          | Offload work to GPU with WebGPU   |
 
 ### Optimization Opportunities
 
-1. **WASM SIMD**: 2-4x speedup for FFT operations
-2. **SharedArrayBuffer**: Zero-copy data transfer between workers
-3. **WebGPU Compute**: GPU-accelerated FFT and visualization
-4. **Adaptive Quality**: Dynamic quality adjustment based on performance
+Infrastructure is implemented for:
+
+1. **WASM SIMD**: 2-4x speedup for FFT operations (needs integration)
+2. **SharedArrayBuffer**: Zero-copy data transfer between workers (needs worker pool)
+3. **WebGPU Compute**: GPU-accelerated FFT and visualization (needs pipeline integration)
+4. **Adaptive Quality**: Dynamic quality adjustment based on performance (future)
 
 ## Baseline Performance Measurements
 
@@ -335,7 +337,7 @@ All three planned optimization phases have been implemented:
 2. ✅ **SharedArrayBuffer** (Phase 2) - Zero-copy transfers
 3. ✅ **WebGPU Compute** (Phase 3) - 8-15x speedup for large FFTs
 
-See [Implementation Results](./IMPLEMENTATION_RESULTS.md) for complete details.
+See commit 7ce9244 and related PRs for complete implementation details.
 
 ## Future Optimization Opportunities
 
@@ -555,10 +557,9 @@ Before merging performance-related changes:
 
 ## Version History
 
-| Date       | Version | Changes                                                                        |
-| ---------- | ------- | ------------------------------------------------------------------------------ |
-| 2025-10-28 | 1.0     | Initial baseline measurements and analysis                                     |
-| 2025-10-28 | 1.1     | Implemented Phase 1 (WASM SIMD), Phase 2 (SharedArrayBuffer), Phase 3 (WebGPU) |
+| Date       | Version | Changes                                                                                                                           |
+| ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 2025-10-28 | 1.0     | Initial baseline measurements, analysis, and implementation of Phase 1 (WASM SIMD), Phase 2 (SharedArrayBuffer), Phase 3 (WebGPU) |
 
 ## Contributing
 

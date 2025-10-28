@@ -215,8 +215,8 @@ export class WebGPUFFT {
         
         // Convert to dB scale using correct base-10 logarithm
         // dB = 20 * log10(magnitude) = 20 / ln(10) * ln(magnitude)
-        // where 20 / ln(10) ≈ 8.685889638
-        let db = 8.685889638 * log(magnitude + 1e-10);
+        const DB_SCALE_FACTOR = 8.685889638; // 20 / ln(10)
+        let db = DB_SCALE_FACTOR * log(magnitude + 1e-10);
         output[idx] = db;
       }
     `;
