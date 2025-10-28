@@ -712,10 +712,10 @@ import type {
 
 ## Next Steps
 
-- Explore the [API Reference](./API.md) for detailed documentation
+- Explore the [API Reference](./API.md) for detailed documentation (coming soon)
 - Check out [Examples](../examples/) for complete applications
-- Review [Performance Tips](./PERFORMANCE.md) for optimization
-- See [Testing Guide](./TESTING.md) for unit and integration tests
+- Review [Performance Tips](./PERFORMANCE.md) for optimization (coming soon)
+- See [Testing Guide](./TESTING.md) for unit and integration tests (coming soon)
 
 ## Support
 
