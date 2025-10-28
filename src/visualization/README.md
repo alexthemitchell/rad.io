@@ -401,54 +401,10 @@ const agc = createAGCPipeline({ targetLevel: 0.7 });
 const spec = createSpectrogramPipeline({ fftSize: 1024, hopSize: 512 });
 const source = createSimulatedSource({ pattern: "fm", sampleRate: 2048000 });
 
-// Chain processors
-const process = chainProcessors([
-  agc as { process: (input: unknown) => unknown },
-  fft as { process: (input: unknown) => unknown }
-]);
+// Chain processors (cast once for type compatibility)
+type ProcessorLike = { process: (input: unknown) => unknown };
+const process = chainProcessors([agc as ProcessorLike, fft as ProcessorLike]);
 ```
 
 See [Usage Guide](../../docs/VISUALIZATION_USAGE.md) for more examples.
 
-## Files
-
-```text
-src/visualization/
-├── interfaces.ts              # Core type definitions
-├── SimulatedSource.ts         # Simulated data source for testing
-├── ReplaySource.ts            # Recorded data playback source
-├── index.ts                   # Module exports
-├── components/                # Visualization components
-│   ├── IQConstellation.tsx
-│   ├── Spectrogram.tsx
-│   ├── WaveformVisualizer.tsx
-│   ├── FFTChart.tsx
-│   ├── Spectrum.tsx
-│   └── Waterfall.tsx
-├── processors/                # Frame processors
-│   ├── FFTProcessor.ts
-│   ├── AGCProcessor.ts
-│   ├── SpectrogramProcessor.ts
-│   ├── index.ts
-│   └── __tests__/
-│       ├── FFTProcessor.test.ts
-│       ├── AGCProcessor.test.ts
-│       └── SpectrogramProcessor.test.ts
-├── renderers/                 # Rendering backends
-│   ├── WebGLSpectrum.ts
-│   ├── WebGLWaterfall.ts
-│   ├── CanvasSpectrum.ts
-│   └── CanvasWaterfall.ts
-└── __tests__/                 # Test files
-    ├── SimulatedSource.test.ts
-    └── ReplaySource.test.ts
-```
-
-## Contributing
-
-When adding new visualizations:
-
-1. Create the component in `src/visualization/components/`
-2. Update `src/visualization/index.ts` to export it
-3. Add comprehensive tests
-4. Update this README with usage examples

@@ -185,9 +185,12 @@ await source.startStreaming((samples) => {
 const agc = createAGCPipeline();
 const fft = createFFTPipeline();
 
+// Cast once for type compatibility
+type ProcessorLike = { process: (input: unknown) => unknown };
+
 const process = chainProcessors([
-  agc as { process: (input: unknown) => unknown },
-  fft as { process: (input: unknown) => unknown }
+  agc as ProcessorLike,
+  fft as ProcessorLike
 ]);
 
 const result = process(samples);

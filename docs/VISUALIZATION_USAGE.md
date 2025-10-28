@@ -287,7 +287,7 @@ setup.spectrogramProcessor; // SpectrogramProcessor (if enabled)
 await setup.cleanup();
 ```
 
-### chainProcessors
+### Processor Chaining
 
 Utility for chaining multiple processors:
 
@@ -301,10 +301,13 @@ import {
 const agc = createAGCPipeline();
 const fft = createFFTPipeline();
 
+// Cast once for type compatibility
+type ProcessorLike = { process: (input: unknown) => unknown };
+
 // Create a processing chain
 const process = chainProcessors([
-  agc as { process: (input: unknown) => unknown },
-  fft as { process: (input: unknown) => unknown }
+  agc as ProcessorLike,
+  fft as ProcessorLike
 ]);
 
 // Process samples through entire chain
