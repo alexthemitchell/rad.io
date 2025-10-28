@@ -39,3 +39,5 @@ export { default as Spectrogram } from "./components/Spectrogram";
 export { default as WaveformVisualizer } from "./components/WaveformVisualizer";
 export { default as FFTChart } from "./components/FFTChart";
 export { default as SpectrumExplorer } from "./components/SpectrumExplorer";
+export { default as Spectrum } from "./components/Spectrum";
+export { default as Waterfall } from "./components/Waterfall";
