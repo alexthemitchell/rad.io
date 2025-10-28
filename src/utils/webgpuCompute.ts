@@ -241,14 +241,19 @@ export class WebGPUFFT {
 }
 
 /**
- * Get WebGPU capabilities and error info
+ * Describes the capabilities and error info for WebGPU.
  */
-export async function getWebGPUCapabilities(): Promise<{
+export interface WebGPUCapabilities {
   supported: boolean;
   adapter: boolean;
   device: boolean;
   error?: string;
-}> {
+}
+
+/**
+ * Get WebGPU capabilities and error info
+ */
+export async function getWebGPUCapabilities(): Promise<WebGPUCapabilities> {
   const supported = isWebGPUSupported();
 
   if (!supported) {

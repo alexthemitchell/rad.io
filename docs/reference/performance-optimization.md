@@ -405,13 +405,14 @@ WebAssembly SIMD (Single Instruction, Multiple Data) provides 2-4x additional sp
 **Feature Detection**:
 
 ```javascript
+// Example function - actual implementation uses isWasmSIMDSupported()
 function detectWasmSIMD() {
   try {
     // Minimal WASM module with SIMD instruction
     return WebAssembly.validate(
       new Uint8Array([
         0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 127, 3, 2, 1, 0, 10, 10,
-        1, 8, 0, 65, 0, 253, 15, 253, 98, 11,
+        1, 8, 0, 65, 0, 253, 12, 253, 98, 11,
       ]),
     );
   } catch {

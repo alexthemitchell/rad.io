@@ -7,11 +7,21 @@
  */
 
 /**
- * Helper to safely index Float32Array
+ * Helper to safely index Float32Array with bounds checking
  * Float32Array elements are never undefined (initialized to 0)
- * This helper encapsulates the non-null assertion in one place
+ * This helper encapsulates the non-null assertion and provides safety
+ *
+ * @param arr - The Float32Array to index
+ * @param index - The index to access
+ * @returns The value at the index
+ * @throws RangeError if index is out of bounds
  */
 function safeFloatArrayIndex(arr: Float32Array, index: number): number {
+  if (index < 0 || index >= arr.length) {
+    throw new RangeError(
+      `safeFloatArrayIndex: index ${index} out of bounds (length: ${arr.length})`,
+    );
+  }
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return arr[index]!;
 }
