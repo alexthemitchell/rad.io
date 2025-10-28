@@ -16,6 +16,10 @@ export function isWebGPUSupported(): boolean {
 /**
  * WebGPU FFT Compute Pipeline
  * Uses compute shaders for massively parallel FFT processing
+ *
+ * NOTE: Current implementation is a placeholder that computes magnitude only.
+ * A full Cooley-Tukey FFT implementation requires multiple shader passes
+ * with butterfly operations. This infrastructure is ready for that enhancement.
  */
 export class WebGPUFFT {
   private device: GPUDevice | null = null;
@@ -108,9 +112,16 @@ export class WebGPUFFT {
   }
 
   /**
-   * Compute FFT using GPU
+   * Compute magnitude from I/Q samples using GPU
+   *
+   * NOTE: This is a placeholder implementation that computes magnitude only.
+   * Full FFT computation requires implementing the Cooley-Tukey algorithm
+   * with multiple shader passes for butterfly operations.
    */
-  async compute(iSamples: Float32Array, qSamples: Float32Array): Promise<Float32Array | null> {
+  async compute(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+  ): Promise<Float32Array | null> {
     if (!this.device || !this.pipeline || !this.bindGroup) {
       return null;
     }
@@ -172,7 +183,14 @@ export class WebGPUFFT {
   }
 
   /**
-   * Get WGSL shader code for FFT computation
+   * Get WGSL shader code for magnitude computation
+   *
+   * NOTE: This computes magnitude only, not a full FFT.
+   * Full Cooley-Tukey FFT implementation would require:
+   * - Bit-reversal permutation pass
+   * - Multiple butterfly operation passes (log2(N) stages)
+   * - Twiddle factor computation
+   * - Complex number arithmetic throughout
    */
   private getFFTShaderCode(): string {
     return `
@@ -195,8 +213,10 @@ export class WebGPUFFT {
         let sample = data[idx];
         let magnitude = sqrt(sample.x * sample.x + sample.y * sample.y);
         
-        // Convert to dB scale
-        let db = 20.0 * log(magnitude + 1e-10);
+        // Convert to dB scale using correct base-10 logarithm
+        // dB = 20 * log10(magnitude) = 20 / ln(10) * ln(magnitude)
+        // where 20 / ln(10) ≈ 8.685889638
+        let db = 8.685889638 * log(magnitude + 1e-10);
         output[idx] = db;
       }
     `;

@@ -19,7 +19,6 @@ This directory contains comprehensive reference materials for both users and dev
 - **[Demodulation Algorithms](./demodulation-algorithms.md)** - Implementation details for various demodulators
 - **[Performance Optimization](./performance-optimization.md)** - Comprehensive optimization strategies and techniques
 - **[Performance Benchmarks](./performance-benchmarks.md)** - Baseline measurements and optimization results
-- **[Performance Implementation Plan](./performance-implementation-plan.md)** - Step-by-step guide for implementing optimizations
 - **[Hardware Integration](./hardware-integration.md)** - Working with SDR hardware devices
 - **[WebGL Visualization](./webgl-visualization.md)** - GPU-accelerated spectrum displays
 - **[WASM Runtime Flags](./wasm-runtime-flags.md)** - WebAssembly configuration options

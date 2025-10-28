@@ -49,14 +49,15 @@ export class SharedRingBuffer {
         : readPos - writePos - 1;
 
     const toWrite = Math.min(samples.length, available);
-    if (toWrite === 0) {return 0;}
+    if (toWrite === 0) {
+      return 0;
+    }
 
     // Write data
     for (let i = 0; i < toWrite; i++) {
-      const sample = samples[i];
-      if (sample !== undefined) {
-        this.data[(writePos + i) % this.size] = sample;
-      }
+      // Float32Array elements are never undefined (initialized to 0)
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      this.data[(writePos + i) % this.size] = samples[i]!;
     }
 
     // Update write position
@@ -103,10 +104,9 @@ export class SharedRingBuffer {
 
       // Read data
       for (let i = 0; i < toRead; i++) {
-        const value = this.data[(readPos + i) % this.size];
-        if (value !== undefined) {
-          result[read + i] = value;
-        }
+        // Float32Array elements are never undefined (initialized to 0)
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        result[read + i] = this.data[(readPos + i) % this.size]!;
       }
 
       // Update read position
@@ -131,15 +131,16 @@ export class SharedRingBuffer {
         ? writePos - readPos
         : this.size - (readPos - writePos);
 
-    if (available < count) {return null;}
+    if (available < count) {
+      return null;
+    }
 
     const result = new Float32Array(count);
 
     for (let i = 0; i < count; i++) {
-      const value = this.data[(readPos + i) % this.size];
-      if (value !== undefined) {
-        result[i] = value;
-      }
+      // Float32Array elements are never undefined (initialized to 0)
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      result[i] = this.data[(readPos + i) % this.size]!;
     }
 
     const newReadPos = (readPos + count) % this.size;
@@ -200,9 +201,7 @@ export function isSharedArrayBufferSupported(): boolean {
  * Check if cross-origin isolation is enabled
  */
 export function isCrossOriginIsolated(): boolean {
-  return (
-    typeof crossOriginIsolated !== "undefined" && crossOriginIsolated
-  );
+  return typeof crossOriginIsolated !== "undefined" && crossOriginIsolated;
 }
 
 /**

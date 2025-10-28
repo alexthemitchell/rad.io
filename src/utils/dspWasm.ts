@@ -214,13 +214,36 @@ export function isWasmSIMDSupported(): boolean {
     // Minimal WASM module with v128.const and i8x16.popcnt (SIMD instructions)
     return WebAssembly.validate(
       new Uint8Array([
-        0, 97, 115, 109, 1, 0, 0, 0, // WASM header
-        1, 5, 1, 96, 0, 1, 127, // Type section
-        3, 2, 1, 0, // Function section
-        10, 10, 1, 8, 0, // Code section start
-        65, 0, // i32.const 0
-        253, 15, // v128.const (SIMD instruction)
-        253, 98, // i8x16.popcnt
+        0,
+        97,
+        115,
+        109,
+        1,
+        0,
+        0,
+        0, // WASM header
+        1,
+        5,
+        1,
+        96,
+        0,
+        1,
+        127, // Type section
+        3,
+        2,
+        1,
+        0, // Function section
+        10,
+        10,
+        1,
+        8,
+        0, // Code section start
+        65,
+        0, // i32.const 0
+        253,
+        15, // v128.const (SIMD instruction)
+        253,
+        98, // i8x16.popcnt
         11, // end
       ]),
     );

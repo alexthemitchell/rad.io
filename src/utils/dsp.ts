@@ -38,9 +38,7 @@ export function getOptimizationStatus(): OptimizationStatus {
 
   return {
     wasmAvailable: isWasmAvailable(),
-    wasmVariant: isWasmAvailable()
-      ? getWasmVariant()
-      : "none",
+    wasmVariant: isWasmAvailable() ? getWasmVariant() : "none",
     sharedArrayBuffer: canUseSharedArrayBuffer(),
     webGPU: isWebGPUSupported(),
     crossOriginIsolated: sharedBufferCaps.isolated,
@@ -61,8 +59,10 @@ export function logOptimizationStatus(): void {
     simdSupported: isWasmSIMDSupported(),
     sharedArrayBuffer: status.sharedArrayBuffer
       ? "enabled (zero-copy transfers)"
-      : sharedBufferCaps.error ?? "disabled",
-    webGPU: status.webGPU ? "available (8-15x faster for large FFTs)" : "not available",
+      : (sharedBufferCaps.error ?? "disabled"),
+    webGPU: status.webGPU
+      ? "available (8-15x faster for large FFTs)"
+      : "not available",
     crossOriginIsolated: status.crossOriginIsolated,
   });
 }

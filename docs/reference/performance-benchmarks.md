@@ -10,13 +10,13 @@ This document tracks performance benchmarks, optimization implementations, and m
 
 ### Current Performance Status
 
-| Component | Current Performance | Target | Status |
-|-----------|-------------------|--------|--------|
-| FFT 2048 | ~3-5ms | <2ms | ✅ Meets minimum, target improvement |
-| FFT 4096 | ~8-10ms | <5ms | ✅ Meets minimum, target improvement |
-| Waterfall Rendering | 30-45 FPS | 60 FPS | ⚠️ Needs optimization |
-| Memory Usage | Stable | <10MB/min growth | ✅ Good |
-| CPU Usage | 40-60% | <50% | ⚠️ Variable |
+| Component           | Current Performance | Target           | Status                               |
+| ------------------- | ------------------- | ---------------- | ------------------------------------ |
+| FFT 2048            | ~3-5ms              | <2ms             | ✅ Meets minimum, target improvement |
+| FFT 4096            | ~8-10ms             | <5ms             | ✅ Meets minimum, target improvement |
+| Waterfall Rendering | 30-45 FPS           | 60 FPS           | ⚠️ Needs optimization                |
+| Memory Usage        | Stable              | <10MB/min growth | ✅ Good                              |
+| CPU Usage           | 40-60%              | <50%             | ⚠️ Variable                          |
 
 ### Optimization Opportunities
 
@@ -43,65 +43,65 @@ This document tracks performance benchmarks, optimization implementations, and m
 Current implementation uses WebAssembly-accelerated Cooley-Tukey FFT with automatic fallback to JavaScript DFT.
 
 | FFT Size | JavaScript (ms) | WASM (ms) | Speedup | Target (ms) |
-|----------|----------------|-----------|---------|-------------|
-| 256 | 0.8-1.2 | 0.3-0.5 | 2.4x | <0.5 |
-| 512 | 2.0-3.0 | 0.8-1.2 | 2.5x | <1.0 |
-| 1024 | 6-8 | 2-3 | 2.7x | <2.0 |
-| 2048 | 20-25 | 6-8 | 3.1x | <5.0 |
-| 4096 | 80-100 | 25-30 | 3.2x | <10.0 |
-| 8192 | 320-400 | 100-120 | 3.3x | <20.0 |
+| -------- | --------------- | --------- | ------- | ----------- |
+| 256      | 0.8-1.2         | 0.3-0.5   | 2.4x    | <0.5        |
+| 512      | 2.0-3.0         | 0.8-1.2   | 2.5x    | <1.0        |
+| 1024     | 6-8             | 2-3       | 2.7x    | <2.0        |
+| 2048     | 20-25           | 6-8       | 3.1x    | <5.0        |
+| 4096     | 80-100          | 25-30     | 3.2x    | <10.0       |
+| 8192     | 320-400         | 100-120   | 3.3x    | <20.0       |
 
 **Analysis**: WASM provides consistent 2.5-3.3x speedup. Further optimization with SIMD could achieve 4-5x.
 
 #### Windowing Functions
 
 | Window Type | Size | JavaScript (ms) | WASM (ms) | Speedup |
-|-------------|------|----------------|-----------|---------|
-| Hann | 1024 | 0.15-0.20 | 0.05-0.08 | 2.5x |
-| Hamming | 1024 | 0.15-0.20 | 0.05-0.08 | 2.5x |
-| Blackman | 1024 | 0.20-0.25 | 0.08-0.10 | 2.5x |
-| Hann | 2048 | 0.30-0.40 | 0.10-0.15 | 2.7x |
-| Hamming | 2048 | 0.30-0.40 | 0.10-0.15 | 2.7x |
-| Blackman | 2048 | 0.40-0.50 | 0.15-0.20 | 2.7x |
+| ----------- | ---- | --------------- | --------- | ------- |
+| Hann        | 1024 | 0.15-0.20       | 0.05-0.08 | 2.5x    |
+| Hamming     | 1024 | 0.15-0.20       | 0.05-0.08 | 2.5x    |
+| Blackman    | 1024 | 0.20-0.25       | 0.08-0.10 | 2.5x    |
+| Hann        | 2048 | 0.30-0.40       | 0.10-0.15 | 2.7x    |
+| Hamming     | 2048 | 0.30-0.40       | 0.10-0.15 | 2.7x    |
+| Blackman    | 2048 | 0.40-0.50       | 0.15-0.20 | 2.7x    |
 
 **Analysis**: Window caching is effective. Pre-computed windows eliminate repeated calculations.
 
 #### Waveform Analysis
 
 | Samples | JavaScript (ms) | WASM (ms) | Speedup |
-|---------|----------------|-----------|---------|
-| 1,000 | 0.05-0.08 | 0.02-0.03 | 2.5x |
-| 5,000 | 0.25-0.35 | 0.10-0.15 | 2.5x |
-| 10,000 | 0.50-0.70 | 0.20-0.30 | 2.5x |
-| 50,000 | 2.5-3.5 | 1.0-1.5 | 2.5x |
+| ------- | --------------- | --------- | ------- |
+| 1,000   | 0.05-0.08       | 0.02-0.03 | 2.5x    |
+| 5,000   | 0.25-0.35       | 0.10-0.15 | 2.5x    |
+| 10,000  | 0.50-0.70       | 0.20-0.30 | 2.5x    |
+| 50,000  | 2.5-3.5         | 1.0-1.5   | 2.5x    |
 
 #### Spectrogram Generation
 
 | Total Samples | FFT Size | Frames | JavaScript (ms) | WASM (ms) | Speedup |
-|--------------|----------|--------|----------------|-----------|---------|
-| 2048 | 256 | 8 | 8-10 | 3-4 | 2.5x |
-| 4096 | 512 | 8 | 25-30 | 10-12 | 2.5x |
-| 8192 | 1024 | 8 | 80-100 | 30-35 | 2.7x |
+| ------------- | -------- | ------ | --------------- | --------- | ------- |
+| 2048          | 256      | 8      | 8-10            | 3-4       | 2.5x    |
+| 4096          | 512      | 8      | 25-30           | 10-12     | 2.5x    |
+| 8192          | 1024     | 8      | 80-100          | 30-35     | 2.7x    |
 
 ### Visualization Performance
 
 #### Canvas 2D Rendering
 
-| Component | Resolution | FPS (Current) | FPS (Target) | Frame Time |
-|-----------|-----------|---------------|--------------|------------|
-| IQ Constellation | 750x400 | 45-60 | 60 | ~16-22ms |
-| Waveform | 750x300 | 50-60 | 60 | ~16-20ms |
-| Spectrogram | 750x800 | 25-35 | 60 | ~28-40ms |
-| FFT Chart | 750x300 | 40-55 | 60 | ~18-25ms |
+| Component        | Resolution | FPS (Current) | FPS (Target) | Frame Time |
+| ---------------- | ---------- | ------------- | ------------ | ---------- |
+| IQ Constellation | 750x400    | 45-60         | 60           | ~16-22ms   |
+| Waveform         | 750x300    | 50-60         | 60           | ~16-20ms   |
+| Spectrogram      | 750x800    | 25-35         | 60           | ~28-40ms   |
+| FFT Chart        | 750x300    | 40-55         | 60           | ~18-25ms   |
 
 **Analysis**: Spectrogram is the primary bottleneck due to large image data manipulation.
 
 #### WebGL Rendering
 
-| Component | Resolution | FPS (Current) | FPS (Target) | Frame Time |
-|-----------|-----------|---------------|--------------|------------|
-| Spectrum (WebGL) | 1920x400 | 60+ | 60 | ~8-12ms |
-| Waterfall (WebGL) | 1920x800 | 55-60 | 60 | ~16-18ms |
+| Component         | Resolution | FPS (Current) | FPS (Target) | Frame Time |
+| ----------------- | ---------- | ------------- | ------------ | ---------- |
+| Spectrum (WebGL)  | 1920x400   | 60+           | 60           | ~8-12ms    |
+| Waterfall (WebGL) | 1920x800   | 55-60         | 60           | ~16-18ms   |
 
 **Analysis**: WebGL provides excellent performance even at high resolutions.
 
@@ -109,21 +109,21 @@ Current implementation uses WebAssembly-accelerated Cooley-Tukey FFT with automa
 
 #### Memory Usage Over Time
 
-| Duration | Initial Heap | Peak Heap | Growth Rate | GC Events |
-|----------|-------------|-----------|-------------|-----------|
-| 1 minute | 50MB | 65MB | ~15MB/min | 2-3 |
-| 5 minutes | 50MB | 85MB | ~7MB/min | 8-12 |
-| 30 minutes | 50MB | 120MB | ~2.3MB/min | 35-50 |
+| Duration   | Initial Heap | Peak Heap | Growth Rate | GC Events |
+| ---------- | ------------ | --------- | ----------- | --------- |
+| 1 minute   | 50MB         | 65MB      | ~15MB/min   | 2-3       |
+| 5 minutes  | 50MB         | 85MB      | ~7MB/min    | 8-12      |
+| 30 minutes | 50MB         | 120MB     | ~2.3MB/min  | 35-50     |
 
 **Analysis**: Memory growth stabilizes after initial warmup. Buffer pooling is effective.
 
 #### Garbage Collection Impact
 
-| Scenario | GC Frequency | GC Duration | Impact |
-|----------|-------------|-------------|--------|
-| No optimization | ~5-8/sec | 5-15ms | Significant frame drops |
-| Buffer pooling | ~1-2/sec | 2-5ms | Minimal impact |
-| With WASM | ~0.5-1/sec | 1-3ms | Negligible |
+| Scenario        | GC Frequency | GC Duration | Impact                  |
+| --------------- | ------------ | ----------- | ----------------------- |
+| No optimization | ~5-8/sec     | 5-15ms      | Significant frame drops |
+| Buffer pooling  | ~1-2/sec     | 2-5ms       | Minimal impact          |
+| With WASM       | ~0.5-1/sec   | 1-3ms       | Negligible              |
 
 ## Optimization Implementations
 
@@ -373,10 +373,12 @@ See [Implementation Results](./IMPLEMENTATION_RESULTS.md) for complete details.
 ```javascript
 function detectWasmSIMD() {
   try {
-    return WebAssembly.validate(new Uint8Array([
-      0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,
-      3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11
-    ]));
+    return WebAssembly.validate(
+      new Uint8Array([
+        0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 127, 3, 2, 1, 0, 10, 10,
+        1, 8, 0, 65, 0, 253, 15, 253, 98, 11,
+      ]),
+    );
   } catch {
     return false;
   }
@@ -553,10 +555,10 @@ Before merging performance-related changes:
 
 ## Version History
 
-| Date | Version | Changes |
-|------|---------|---------|
-| 2025-10-28 | 1.0 | Initial baseline measurements and analysis |
-| 2025-10-28 | 1.1 | Implemented Phase 1 (WASM SIMD), Phase 2 (SharedArrayBuffer), Phase 3 (WebGPU) |
+| Date       | Version | Changes                                                                        |
+| ---------- | ------- | ------------------------------------------------------------------------------ |
+| 2025-10-28 | 1.0     | Initial baseline measurements and analysis                                     |
+| 2025-10-28 | 1.1     | Implemented Phase 1 (WASM SIMD), Phase 2 (SharedArrayBuffer), Phase 3 (WebGPU) |
 
 ## Contributing
 
