@@ -1,19 +1,19 @@
-@import url("./tokens.css");
-@import url("./base.css");
-@import url("./a11y.css");
-@import url("./utilities.css");
-@import url("./layout.css");
-@import url("./components/buttons.css");
-@import url("./components/cards.css");
-@import url("./components/controls.css");
-@import url("./components/playback.css");
-@import url("./components/dialog.css");
-@import url("./components/status-bar.css");
-@import url("./components/toast.css");
-@import url("./components/diagnostics.css");
-@import url("./components/rds.css");
-@import url("./components/tmc.css");
-@import url("./components/audio.css");
+@import url("./tokens.css") layer(tokens);
+@import url("./base.css") layer(base);
+@import url("./a11y.css") layer(a11y);
+@import url("./utilities.css") layer(utilities);
+@import url("./layout.css") layer(layout);
+@import url("./components/buttons.css") layer(buttons);
+@import url("./components/cards.css") layer(cards);
+@import url("./components/controls.css") layer(controls);
+@import url("./components/playback.css") layer(playback);
+@import url("./components/dialog.css") layer(dialog);
+@import url("./components/status-bar.css") layer(status-bar);
+@import url("./components/toast.css") layer(toast);
+@import url("./components/diagnostics.css") layer(diagnostics);
+@import url("./components/rds.css") layer(rds);
+@import url("./components/tmc.css") layer(tmc);
+@import url("./components/audio.css") layer(audio);
 
 /* Global base, accessibility, and focus styles moved to base.css and a11y.css */
 
