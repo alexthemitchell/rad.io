@@ -241,7 +241,7 @@ export function isWasmSIMDSupported(): boolean {
         65,
         0, // i32.const 0
         253,
-        15, // v128.const (SIMD instruction)
+        12, // v128.const (SIMD instruction)
         253,
         98, // i8x16.popcnt
         11, // end
