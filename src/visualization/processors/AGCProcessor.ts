@@ -1,4 +1,3 @@
-import { applyAGC } from "../../utils/dspProcessing";
 import type { Sample } from "../../utils/dsp";
 import type { FrameProcessor, FrameProcessorConfig } from "../interfaces";
 
@@ -85,13 +84,11 @@ export class AGCProcessor implements FrameProcessor<Sample[], AGCOutput> {
     this.currentGain = Math.min(this.currentGain, this.config.maxGain);
     this.currentGain = Math.max(this.currentGain, 0.1); // Minimum gain to prevent divide-by-zero
 
-    // Apply gain to samples
-    const processed = applyAGC(
-      samples,
-      this.config.targetLevel,
-      this.config.attackTime,
-      this.config.decayTime,
-    );
+    // Apply calculated gain to samples
+    const processed = samples.map((sample) => ({
+      I: sample.I * this.currentGain,
+      Q: sample.Q * this.currentGain,
+    }));
 
     return {
       samples: processed,

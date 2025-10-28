@@ -103,8 +103,7 @@ export class FFTProcessor implements FrameProcessor<Sample[], FFTOutput> {
     const freqStep = this.config.sampleRate / this.config.fftSize;
 
     for (let i = 0; i < this.config.fftSize; i++) {
-      // FFT output is from 0 to sampleRate
-      // After FFT shift, DC is at center
+      // FFT output is from 0 to sampleRate (DC at index 0, no FFT shift applied)
       bins[i] = i * freqStep;
     }
 
