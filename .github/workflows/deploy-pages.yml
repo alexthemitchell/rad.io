@@ -27,16 +27,71 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Restore build cache
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            build/
+            dist/
+          key: deploy-${{ runner.os }}-${{ hashFiles('package-lock.json', 'src/**/*.{ts,tsx,js,jsx,css}', 'assembly/**', 'webpack.config.ts') }}
+          restore-keys: |
+            deploy-${{ runner.os }}-
+
       - name: Install
+        if: steps.cache-build.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Build
-        run: npm run build
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: npm run build:prod
 
       # SPA fallback so client-side routes work on refresh
       - name: Add 404 fallback
         run: |
           if [ -f dist/index.html ]; then cp dist/index.html dist/404.html; fi
+
+      - name: Validate build output
+        run: |
+          echo "🔍 Validating build output..."
+
+          # Check required files exist
+          required_files=("dist/index.html" "dist/404.html")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "❌ Error: Required file $file not found"
+              exit 1
+            fi
+          done
+
+          # Check for WASM files
+          if ! ls dist/*.wasm 1> /dev/null 2>&1; then
+            echo "❌ Error: No WASM files found in dist/"
+            exit 1
+          fi
+
+          # Check for JS bundles
+          if ! ls dist/*.js 1> /dev/null 2>&1; then
+            echo "❌ Error: No JS bundles found in dist/"
+            exit 1
+          fi
+
+          # Report bundle sizes
+          echo "📦 Bundle sizes:"
+          du -h dist/*.js 2>/dev/null | sort -hr || echo "No JS files found"
+
+          # Calculate total size
+          total_size=$(du -sh dist/ | cut -f1)
+          echo "📊 Total deployment size: $total_size"
+
+          # Check if size is reasonable (warn if > 5MB)
+          size_bytes=$(du -sb dist/ | cut -f1)
+          if [ "$size_bytes" -gt 5242880 ]; then
+            echo "⚠️  Warning: Deployment size exceeds 5MB ($total_size)"
+          fi
+
+          echo "✅ Build validation passed"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
@@ -52,3 +107,20 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Validate deployment
+        run: |
+          echo "🔍 Validating deployment at ${{ steps.deployment.outputs.page_url }}"
+
+          # Wait a bit for CDN propagation
+          sleep 10
+
+          # Check if site is accessible
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.deployment.outputs.page_url }}")
+          if [ "$response" != "200" ]; then
+            echo "❌ Error: Site returned HTTP $response"
+            exit 1
+          fi
+
+          echo "✅ Deployment validation passed"
+          echo "🚀 Site is live at ${{ steps.deployment.outputs.page_url }}"

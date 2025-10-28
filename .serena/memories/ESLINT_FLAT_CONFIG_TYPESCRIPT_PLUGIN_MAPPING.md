@@ -1,4 +1,4 @@
-Purpose: Document reliable setup for ESLint v9 flat config with typescript-eslint v8 and other plugins in rad.io.
+Purpose: Document reliable setup for ESLint v9 flat config with TypeScript-eslint v8 and other plugins in rad.io.
 
 Key points
 

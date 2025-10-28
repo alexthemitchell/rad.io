@@ -1,7 +1,9 @@
-/** @type {import('jest').Config} */
-module.exports = {
+import type { Config } from "jest";
+
+const config: Config = {
   testEnvironment: "jsdom",
   testTimeout: 30000, // 30 seconds per test
+  maxWorkers: "50%", // Use half of available CPU cores for parallel execution
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
   },
@@ -16,38 +18,38 @@ module.exports = {
     "!src/workers/**",
   ],
   coverageThreshold: {
-    // Global thresholds - prevent coverage regression
+    // Global thresholds - updated to match current coverage levels
     global: {
-      statements: 38,
-      branches: 35,
-      functions: 39,
-      lines: 38,
-    },
-    // HackRF implementation - enforcing 80% patch coverage as per CodeCov
-    "./src/hackrf/HackRFOne.ts": {
-      statements: 72,
+      statements: 64,
       branches: 53,
-      functions: 94,
-      lines: 71,
+      functions: 67,
+      lines: 64,
+    },
+    // HackRF implementation - updated to current coverage
+    "./src/hackrf/HackRFOne.ts": {
+      statements: 76,
+      branches: 60,
+      functions: 95,
+      lines: 75,
     },
     "./src/hackrf/HackRFOneAdapter.ts": {
-      statements: 93,
-      branches: 83,
-      functions: 87,
-      lines: 93,
+      statements: 96,
+      branches: 85,
+      functions: 93,
+      lines: 96,
     },
-    // Critical DSP utilities - current baseline with improvement targets
+    // Critical DSP utilities - updated to current coverage
     "./src/utils/dsp.ts": {
-      statements: 70,
-      branches: 63,
-      functions: 82,
-      lines: 69,
+      statements: 86,
+      branches: 78,
+      functions: 96,
+      lines: 85,
     },
     "./src/utils/testMemoryManager.ts": {
-      statements: 95,
-      branches: 70,
+      statements: 100,
+      branches: 83,
       functions: 100,
-      lines: 95,
+      lines: 100,
     },
     // Core utilities - current baseline
     "./src/utils/audioStream.ts": {
@@ -81,7 +83,14 @@ module.exports = {
       lines: 94,
     },
   },
-  coverageReporters: ["text", "lcov", "json-summary"],
+  coverageReporters: ["text", "lcov", "json-summary", "html"],
+  // Custom reporters for performance tracking
+  reporters: [
+    "default",
+    ...(process.env["TRACK_PERFORMANCE"] === "1"
+      ? ["<rootDir>/jest-performance-reporter.mjs"]
+      : []),
+  ],
   transformIgnorePatterns: ["node_modules/(?!(webfft)/)"],
   transform: {
     "^.+\\.(t|j)sx?$": [
@@ -90,7 +99,6 @@ module.exports = {
         jsc: {
           parser: { syntax: "typescript", tsx: true },
           transform: { react: { runtime: "automatic" } },
-          target: "es2020",
         },
         module: { type: "commonjs" },
         sourceMaps: true,
@@ -98,3 +106,5 @@ module.exports = {
     ],
   },
 };
+
+export default config;

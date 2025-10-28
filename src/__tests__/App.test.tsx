@@ -18,9 +18,9 @@ jest.mock("../components/TopAppBar", () => {
   };
 });
 
-jest.mock("../components/StatusFooter", () => {
-  return function StatusFooter() {
-    return <div data-testid="status-footer">Status Footer</div>;
+jest.mock("../components/StatusBar", () => {
+  return function StatusBar() {
+    return <div data-testid="status-bar">Status Bar</div>;
   };
 });
 
@@ -31,7 +31,7 @@ jest.mock("../components/FrequencyDisplay", () => {
 });
 
 // Mock the page components to avoid their dependencies
-jest.mock("../pages/Monitor", () => {
+jest.mock("../pages/MonitorMerged", () => {
   return function Monitor() {
     return <div data-testid="monitor">Monitor Page</div>;
   };

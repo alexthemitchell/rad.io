@@ -403,12 +403,15 @@ describe("useHackRFDevice", () => {
   });
 
   describe("filter configuration", () => {
-    it("should request HackRF vendor ID in filter", () => {
+    it("should request HackRF vendor and product ID in filter", () => {
       renderHook(() => useHackRFDevice());
 
-      expect(mockUseUSBDevice).toHaveBeenCalledWith([
+      // Hook is called twice - once before registration (empty filters)
+      // and once after registration (with full filters from registry)
+      expect(mockUseUSBDevice).toHaveBeenLastCalledWith([
         {
           vendorId: 0x1d50, // HackRF vendor ID
+          productId: 0x6089, // HackRF One product ID
         },
       ]);
     });

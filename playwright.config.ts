@@ -1,6 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
+ * Test tag patterns for organizing e2e tests
+ */
+const REAL_TAG = /@real/;
+const SIMULATED_TAG = /@simulated/;
+const DEVICE_TAG = /@device/;
+
+/**
  * Playwright configuration for rad.io E2E tests
  * See https://playwright.dev/docs/test-configuration
  */
@@ -27,7 +34,7 @@ export default defineConfig({
   /* Reporter to use */
   // Include GitHub reporter for richer annotations in CI
   reporter: [
-    ["html", { outputFolder: "playwright-report" }],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
     ["list"],
     ["github"],
   ],
@@ -62,29 +69,71 @@ export default defineConfig({
     },
   },
 
-  /* Configure projects to separate mock vs real tests */
+  /* Configure projects to separate mock vs real vs device tests */
   projects: (() => {
-    const baseProject = {
+    const mockProject = {
       name: "mock-chromium",
       use: { ...devices["Desktop Chrome"] },
-      // Run everything except @real tests
-      grepInvert: /@real/,
-    } as const;
+      // Run everything except @real, @simulated, and @device tests
+      grepInvert: new RegExp(
+        `${REAL_TAG.source}|${SIMULATED_TAG.source}|${DEVICE_TAG.source}`,
+      ),
+    };
+
+    const simulatedProject = {
+      name: "simulated",
+      use: { ...devices["Desktop Chrome"] },
+      // Run only @simulated tests
+      grep: SIMULATED_TAG,
+    };
+
+    const projects = [mockProject, simulatedProject];
 
     // Only add the real device project when explicitly enabled to avoid spinning
     // up an extra Chrome instance that does no work but consumes memory.
     if (process.env["E2E_REAL_HACKRF"] === "1") {
-      return [
-        baseProject,
-        {
-          name: "real-chromium",
-          use: { ...devices["Desktop Chrome"] },
-          grep: /@real/,
-        },
-      ];
+      projects.push({
+        name: "real-chromium",
+        use: { ...devices["Desktop Chrome"] },
+        grep: REAL_TAG,
+      });
     }
 
-    return [baseProject];
+    // Add the device project when RADIO_E2E_DEVICE=1 is set
+    // This runs hardware-in-the-loop visualization tests with a physical device
+    if (process.env["RADIO_E2E_DEVICE"] === "1") {
+      projects.push({
+        name: "device",
+        use: { ...devices["Desktop Chrome"] },
+        grep: DEVICE_TAG,
+      });
+    }
+
+    // Optional GPU-accelerated local project.
+    // Enables WebGL/WebGPU in headed Chrome for richer visualization testing.
+    // Usage: RADIO_E2E_GPU=1 npm run test:e2e -- --project=gpu-chromium
+    if (process.env["RADIO_E2E_GPU"] === "1") {
+      projects.push({
+        name: "gpu-chromium",
+        use: {
+          ...(devices["Desktop Chrome"] as any),
+          headless: false as any,
+          launchOptions: {
+            args: [
+              "--ignore-gpu-blocklist",
+              "--enable-webgl",
+              "--enable-accelerated-2d-canvas",
+              "--use-gl=desktop",
+              // Enable WebGPU on browsers that gate it behind a flag
+              "--enable-unsafe-webgpu",
+            ],
+          } as any,
+        } as any,
+        grep: new RegExp(`${SIMULATED_TAG.source}|${DEVICE_TAG.source}`),
+      });
+    }
+
+    return projects;
   })(),
 
   /* Run your local dev server before starting the tests */

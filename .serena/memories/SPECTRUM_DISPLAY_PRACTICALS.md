@@ -23,7 +23,7 @@ UX
 Repo cross‑links
 
 - Components: src/components/Spectrogram.tsx, FFTChart.tsx
-- Utils: src/utils/dsp.ts (windowing/FFT), src/utils/webgl.ts (future GPU)
+- Utils: src/utils/dsp.ts (windowing/FFT), src/utils/WebGL.ts (future GPU)
 
 Performance tips
 

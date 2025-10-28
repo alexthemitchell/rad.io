@@ -487,10 +487,10 @@ await device.reset();          // Full reset (requires reconfig)
 
 **See Also**:
 
-- Memory: HACKRF_DEVICE_INITIALIZATION_BUG_FIX (initialization requirements)
-- Memory: HACKRF_PROTECTIVE_MEASURES_IMPLEMENTATION (timeout/recovery)
-- Memory: HACKRF_ERROR_HANDLING_ENHANCEMENT_2025 (health APIs)
-- Doc: docs/reference/hackrf-troubleshooting.md (user-facing guide)
+- Memory: HackRF_DEVICE_INITIALIZATION_BUG_FIX (initialization requirements)
+- Memory: HackRF_PROTECTIVE_MEASURES_IMPLEMENTATION (timeout/recovery)
+- Memory: HackRF_ERROR_HANDLING_ENHANCEMENT_2025 (health APIs)
+- Doc: docs/reference/HackRF-troubleshooting.md (user-facing guide)
 
 ---
 
@@ -790,7 +790,7 @@ useEffect(() => {
 
 - Lazy load heavy components
 - Dynamic imports for optional features
-- Tree shaking enabled in webpack
+- Tree shaking enabled in Webpack
 
 **Dependency Reduction**:
 

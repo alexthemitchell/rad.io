@@ -4,10 +4,12 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { SimulatedSource } from "../visualization";
-import FFTChart from "../visualization/components/FFTChart";
-import IQConstellation from "../visualization/components/IQConstellation";
-import WaveformVisualizer from "../visualization/components/WaveformVisualizer";
+import {
+  SimulatedSource,
+  FFTChart,
+  IQConstellation,
+  WaveformVisualizer,
+} from "../visualization";
 import type { Sample } from "../utils/dsp";
 import type { SimulatedSourceConfig } from "../visualization";
 import type { ReactElement } from "react";

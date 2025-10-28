@@ -239,7 +239,7 @@ Before submitting a PR:
 - [ ] Add new tests for new interactive components
 - [ ] Update ARIA labels if component behavior changes
 
-See [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) for the full PR checklist.
+See [.GitHub/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) for the full PR checklist.
 
 ## Known Limitations
 

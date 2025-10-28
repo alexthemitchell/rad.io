@@ -23,9 +23,9 @@ import React, {
   useRef,
   type ReactNode,
 } from "react";
+import { SDRDriverRegistry, registerBuiltinDrivers } from "../drivers";
 import { useUSBDevice } from "../hooks/useUSBDevice";
 import { MockSDRDevice } from "../models/MockSDRDevice";
-import { RTLSDRDeviceAdapter } from "../models/RTLSDRDeviceAdapter";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { deviceLogger } from "../utils/logger";
 import type { ISDRDevice } from "../models/SDRDevice";
@@ -104,17 +104,18 @@ export function DeviceProvider({
     devicesRef.current = devices;
   }, [devices]);
 
+  // Register built-in drivers on mount
+  useEffect(() => {
+    registerBuiltinDrivers();
+  }, []);
+
   // Use the existing useUSBDevice hook for device discovery
+  // Now gets all USB filters from the driver registry
   const {
     device: usbDevice,
     requestDevice,
     isCheckingPaired,
-  } = useUSBDevice([
-    {
-      // HackRF devices
-      vendorId: 0x1d50,
-    },
-  ]);
+  } = useUSBDevice(SDRDriverRegistry.getAllUSBFilters());
 
   /**
    * Initialize a USB device when it's connected
@@ -129,13 +130,15 @@ export function DeviceProvider({
       const deviceId = getDeviceId(usb);
 
       try {
-        // Create adapter based on device type (temporarily use RTL-SDR adapter as generic)
-        const adapter = new RTLSDRDeviceAdapter(usb);
+        // Use driver registry to automatically select the correct adapter
+        // based on USB VID/PID matching
+        const adapter = await SDRDriverRegistry.createDevice(usb);
 
-        // Open device if not already opened
-        if (!usb.opened) {
-          await adapter.open();
-        }
+        // Ensure device is ready: always invoke adapter.open(),
+        // which is idempotent for already-open devices.
+        // This guarantees claiming interfaces/alternate settings
+        // for drivers like HackRF that require it.
+        await adapter.open();
 
         // Add to devices map (functional update checks for duplicates)
         setDevices((prev) => {

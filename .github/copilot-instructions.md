@@ -19,19 +19,34 @@
 - Start every turn by using #oraios/serena/activate_project
 - When using #microsoftdocs/mcp/microsoft_docs_fetch to fetch documentation, you can specify a URL or a search query. If you provide a search query, the tool will return the most relevant documentation it can find.
 - Always check for #problems after making changes to the codebase.
-- Look for tools like #problems #runTasks #runTests #usages and #executePrompt to help you interact with the development environment
-- **Critical**: Prefer to use #runTests and #runTasks over #runCommands/runInTerminal Feel free to #runTasks/createAndRunTask
+- Look for tools like #problems #runTests #testFailure #usages and #executePrompt to help you interact with the development environment
+- **Critical**: Prefer to use #runTests and #testFailure to run tests (and see detailed failure output respectively)
 - Avoid using #runCommands/runInTerminal unless no other tool can provide the answer and the output is absolutely necessary
 - Use Playwright MCP browser tools to test your code in a browser environment. Take screenshots and analyze them to verify your work.
 - **Prefer to read symbol data with serena tools over reading entirety of files**: use #oraios/serena/find_referencing_symbols #oraios/serena/get_symbols_overview #oraios/serena/search_for_pattern
-- **Maintain Long Term Memory**: use #oraios/serena/read_memory when thinking about how to solve problems and #oraios/serena/write_memory when you have learned something new that will be valuable for a future Agent.
+  **Maintain Long Term Memory**: use #oraios/serena/read_memory when thinking about how to solve problems and #oraios/serena/write_memory when you have learned something new that will be valuable for a future Agent.
 - Before writing a memory, use #oraios/serena/read_memory to find "SERENA_MEMORY_BEST_PRACTICES". Follow those best practices to add helpful long-term memories before you end your turn. You may decide to update existing memories rather than creating new ones, remove outdated memories, or choose not to write any memories at all.
+  - Hard memory rules:
+  - Do not create memories that summarize a run, task, PR, or manual test session (e.g., “REAL_HARDWARE_E2E_2025-10-27”). These belong in PR descriptions, Issues, or chat.
+  - Do not store transient artifacts or metrics (logs, screenshots, per-run results, test counts, timings). Link to CI/test reports instead.
+  - Use only these prefixes for memory titles: ADR*, GUIDE*/PLAYBOOK*, POLICY*, REFERENCE\_. Date‑stamped or “SUMMARY/DAILY/TEST/RUN” prefixes are prohibited.
+  - If it won’t be useful 60–90 days from now, don’t write it.
 - The goal of this project includes the creation of TypeScript-first WebUSB drivers for SDR hardware. This is a complex task that requires careful planning and execution. Use the tools available to you to research and implement these drivers, and always keep the user in mind as a resource to help you solve problems.
 - If you can check the PR quality yourself before submitting, do so. Use #problems to identify any issues and fix them before creating a PR.
+- Always finish your turn by checking for #problems and fixing them before returning to the user
+- Keep track of best practices for interacting with the User in the USER_INTERACTION_GUIDE memory. The goal is to minimize the number of turns needed to complete tasks by learning the User's preferences and expectations.
 
 ## Agent performance & context hygiene
 
 Follow these practices to keep your context lean and optimize execution:
+
+### Memory workflow (enforcement)
+
+- Pre-commit gate: answer “Yes” to all — durable for 60–90 days, reusable pattern/invariant/decision, links to code/tests/PRs, no near-duplicate exists. Otherwise, do not write memory.
+- Prefer docs/ for general guides (apply Diátaxis: tutorials/how‑to/reference/explanation); use ADR for decisions, PLAYBOOK for repeatable debugging; PR/Issue comments for run summaries.
+- If you accidentally create a transient memory, delete it and move content to PR/Issue. Don’t retroactively “generalize” it.
+
+References: Microsoft Bot Framework state (persist preferences, not turns): https://learn.microsoft.com/en-us/azure/bot-service/bot-builder-concept-state • LangChain memory patterns (trim/summarize): https://python.langchain.com/docs/how_to/chatbots_memory/ • Diátaxis for docs organization: https://diataxis.fr/
 
 1. Retrieval before reading
 

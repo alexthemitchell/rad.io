@@ -162,6 +162,131 @@ export async function benchmarkSpectrogram(
 /**
  * Run comprehensive benchmark suite
  */
+/**
+ * Benchmark windowing functions
+ */
+export async function benchmarkWindowing(
+  sampleCount: number,
+  windowType: "hann" | "hamming" | "blackman",
+  iterations = 10,
+): Promise<BenchmarkResult> {
+  const samples = generateSineWave(1000, 1.0, sampleCount);
+
+  // Benchmark JavaScript
+  let jsDuration = 0;
+  if (windowType === "hann") {
+    const module = await import("./dspProcessing");
+    jsDuration = measureTime(() => {
+      module.applyHannWindow(samples);
+    }, iterations);
+  } else if (windowType === "hamming") {
+    const module = await import("./dspProcessing");
+    jsDuration = measureTime(() => {
+      module.applyHammingWindow(samples);
+    }, iterations);
+  } else {
+    const module = await import("./dspProcessing");
+    jsDuration = measureTime(() => {
+      module.applyBlackmanWindow(samples);
+    }, iterations);
+  }
+
+  // Benchmark WASM
+  let wasmDuration: number | null = null;
+  if (isWasmAvailable()) {
+    if (windowType === "hann") {
+      const { applyHannWindowWasm } = await import("./dspWasm");
+      wasmDuration = measureTime(() => {
+        applyHannWindowWasm([...samples]);
+      }, iterations);
+    } else if (windowType === "hamming") {
+      const { applyHammingWindowWasm } = await import("./dspWasm");
+      wasmDuration = measureTime(() => {
+        applyHammingWindowWasm([...samples]);
+      }, iterations);
+    } else {
+      const { applyBlackmanWindowWasm } = await import("./dspWasm");
+      wasmDuration = measureTime(() => {
+        applyBlackmanWindowWasm([...samples]);
+      }, iterations);
+    }
+  }
+
+  return {
+    operation: `Window (${windowType})`,
+    samples: sampleCount,
+    jsDuration,
+    wasmDuration,
+    speedup: wasmDuration ? jsDuration / wasmDuration : null,
+  };
+}
+
+/**
+ * Benchmark AGC
+ */
+export async function benchmarkAGC(
+  sampleCount: number,
+  iterations = 10,
+): Promise<BenchmarkResult> {
+  const samples = generateSineWave(1000, 0.5, sampleCount);
+  const module = await import("./dspProcessing");
+
+  const jsDuration = measureTime(() => {
+    module.applyAGC(samples);
+  }, iterations);
+
+  return {
+    operation: "AGC",
+    samples: sampleCount,
+    jsDuration,
+    wasmDuration: null, // No WASM implementation yet
+    speedup: null,
+  };
+}
+
+/**
+ * Benchmark decimation
+ */
+export async function benchmarkDecimation(
+  sampleCount: number,
+  factor: number,
+  iterations = 10,
+): Promise<BenchmarkResult> {
+  const samples = generateSineWave(1000, 1.0, sampleCount);
+  const module = await import("./dspProcessing");
+
+  const jsDuration = measureTime(() => {
+    module.decimate(samples, factor);
+  }, iterations);
+
+  return {
+    operation: `Decimation (factor: ${factor})`,
+    samples: sampleCount,
+    jsDuration,
+    wasmDuration: null,
+    speedup: null,
+  };
+}
+
+/**
+ * Generate simple sine wave for benchmarking
+ */
+function generateSineWave(
+  frequency: number,
+  amplitude: number,
+  sampleCount: number,
+): Sample[] {
+  const samples: Sample[] = [];
+  for (let i = 0; i < sampleCount; i++) {
+    const phase = (2 * Math.PI * frequency * i) / sampleCount;
+    samples.push({
+      I: amplitude * Math.cos(phase),
+      Q: amplitude * Math.sin(phase),
+    });
+  }
+  return samples;
+}
+
 export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
 
@@ -179,7 +304,53 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
     );
   }
 
+  // Windowing benchmarks
+  console.error("\nWindowing Benchmarks:");
+  const windowTypes: Array<"hann" | "hamming" | "blackman"> = [
+    "hann",
+    "hamming",
+    "blackman",
+  ];
+  const windowSizes = [1024, 2048, 4096];
+  for (const windowType of windowTypes) {
+    for (const size of windowSizes) {
+      console.error(`Benchmarking ${windowType} window (size: ${size})...`);
+      const result = await benchmarkWindowing(size, windowType, 10);
+      results.push(result);
+      console.error(
+        `  JS: ${result.jsDuration.toFixed(2)}ms, WASM: ${result.wasmDuration?.toFixed(2) ?? "N/A"}ms, Speedup: ${result.speedup?.toFixed(2) ?? "N/A"}x\n`,
+      );
+    }
+  }
+
+  // AGC benchmarks
+  console.error("\nAGC Benchmarks:");
+  const agcSizes = [1000, 5000, 10000];
+  for (const size of agcSizes) {
+    console.error(`Benchmarking AGC (samples: ${size})...`);
+    const result = await benchmarkAGC(size, 5);
+    results.push(result);
+    console.error(`  JS: ${result.jsDuration.toFixed(2)}ms\n`);
+  }
+
+  // Decimation benchmarks
+  console.error("\nDecimation Benchmarks:");
+  const decimationConfigs = [
+    { samples: 10000, factor: 2 },
+    { samples: 10000, factor: 4 },
+    { samples: 10000, factor: 8 },
+  ];
+  for (const config of decimationConfigs) {
+    console.error(
+      `Benchmarking Decimation (samples: ${config.samples}, factor: ${config.factor})...`,
+    );
+    const result = await benchmarkDecimation(config.samples, config.factor, 5);
+    results.push(result);
+    console.error(`  JS: ${result.jsDuration.toFixed(2)}ms\n`);
+  }
+
   // Waveform benchmarks with various sample counts
+  console.error("\nWaveform Benchmarks:");
   const waveformSizes = [1000, 5000, 10000, 50000];
   for (const size of waveformSizes) {
     console.error(`Benchmarking Waveform (samples: ${size})...`);
@@ -191,6 +362,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
   }
 
   // Spectrogram benchmarks
+  console.error("\nSpectrogram Benchmarks:");
   const spectrogramConfigs = [
     { samples: 2048, fftSize: 256 },
     { samples: 4096, fftSize: 512 },

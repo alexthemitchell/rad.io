@@ -170,12 +170,5 @@ describe("Scanner", () => {
     expect(screen.queryByTestId("talkgroup-status")).not.toBeInTheDocument();
   });
 
-  it("includes live region for screen reader announcements", () => {
-    render(
-      <BrowserRouter>
-        <Scanner />
-      </BrowserRouter>,
-    );
-    expect(screen.getByRole("status")).toBeInTheDocument();
-  });
+  // Live region is now centralized in ToastProvider at the app shell; page does not render its own.
 });

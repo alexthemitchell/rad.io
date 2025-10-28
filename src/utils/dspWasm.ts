@@ -52,6 +52,21 @@ export interface WasmDSPModule {
     rowCount: number,
   ) => Float32Array;
   allocateFloat32Array(size: number): Float32Array;
+  applyHannWindow(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ): void;
+  applyHammingWindow(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ): void;
+  applyBlackmanWindow(
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ): void;
 }
 
 function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
@@ -90,6 +105,10 @@ function getWasmModuleExportStatus(mod: Partial<WasmDSPModule>): {
 let wasmModule: WasmDSPModule | null = null;
 let wasmLoading: Promise<WasmDSPModule | null> | null = null;
 let wasmSupported = false;
+// One-time log flags to avoid flooding console on hot paths
+let loggedFFTChoice = false;
+let loggedWaveformChoice = false;
+let loggedSpectrogramChoice = false;
 
 // Test-only helpers to control internal module state
 // These are no-ops in production usage but exported for unit tests to inject fakes.
@@ -229,6 +248,9 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
           calculateWaveform: mod.calculateWaveform.bind(mod),
           calculateSpectrogram: mod.calculateSpectrogram.bind(mod),
           allocateFloat32Array: mod.allocateFloat32Array.bind(mod),
+          applyHannWindow: mod.applyHannWindow.bind(mod),
+          applyHammingWindow: mod.applyHammingWindow.bind(mod),
+          applyBlackmanWindow: mod.applyBlackmanWindow.bind(mod),
         };
         // Bind optional return-by-value APIs if present so callers can detect/use them
         const b1 = buildOptionalBinding(mod, "calculateFFTOut");
@@ -397,14 +419,20 @@ export function calculateFFTWasm(
 
     // Prefer return-by-value API if available (avoids copy-back issue)
     if (typeof wasmModule.calculateFFTOut === "function") {
-      dspLogger.debug("Using calculateFFTOut (return-by-value)");
+      if (!loggedFFTChoice) {
+        dspLogger.info("Using calculateFFTOut (return-by-value)");
+        loggedFFTChoice = true;
+      }
       return wasmModule.calculateFFTOut(iSamples, qSamples, fftSize);
     }
 
     // Fallback to output-parameter API; note that some loader versions
     // do not copy results back to JS when passing an output array.
     // We'll still use it and rely on higher-level sanity checks/fallbacks.
-    dspLogger.debug("Using calculateFFT with output parameter");
+    if (!loggedFFTChoice) {
+      dspLogger.info("Using calculateFFT with output parameter");
+      loggedFFTChoice = true;
+    }
     const output = wasmModule.allocateFloat32Array(fftSize);
     wasmModule.calculateFFT(iSamples, qSamples, fftSize, output);
     return output;
@@ -448,7 +476,10 @@ export function calculateWaveformWasm(
 
     // Prefer return-by-value if available
     if (typeof wasmModule.calculateWaveformOut === "function") {
-      dspLogger.debug("Using calculateWaveformOut (return-by-value)");
+      if (!loggedWaveformChoice) {
+        dspLogger.info("Using calculateWaveformOut (return-by-value)");
+        loggedWaveformChoice = true;
+      }
       const flat = wasmModule.calculateWaveformOut(iSamples, qSamples, count);
       // Split into amplitude and phase views
       const amplitude = flat.subarray(0, count);
@@ -505,7 +536,10 @@ export function calculateSpectrogramWasm(
 
     // Prefer return-by-value API if available to avoid copy-back issue
     if (typeof wasmModule.calculateSpectrogramOut === "function") {
-      dspLogger.debug("Using calculateSpectrogramOut (return-by-value)");
+      if (!loggedSpectrogramChoice) {
+        dspLogger.info("Using calculateSpectrogramOut (return-by-value)");
+        loggedSpectrogramChoice = true;
+      }
       const flat = wasmModule.calculateSpectrogramOut(
         iSamples,
         qSamples,
@@ -520,7 +554,10 @@ export function calculateSpectrogramWasm(
     }
 
     // Allocate output array in WASM memory and call legacy API
-    dspLogger.debug("Using calculateSpectrogram with output parameter");
+    if (!loggedSpectrogramChoice) {
+      dspLogger.info("Using calculateSpectrogram with output parameter");
+      loggedSpectrogramChoice = true;
+    }
     const output = wasmModule.allocateFloat32Array(rowCount * fftSize);
     wasmModule.calculateSpectrogram(
       iSamples,
@@ -546,6 +583,115 @@ export function calculateSpectrogramWasm(
     );
     return null;
   }
+}
+
+/**
+ * Helper function to separate I/Q samples into Float32Arrays
+ */
+function separateIQComponents(samples: Sample[]): {
+  iSamples: Float32Array;
+  qSamples: Float32Array;
+} {
+  const iSamples = new Float32Array(samples.length);
+  const qSamples = new Float32Array(samples.length);
+
+  for (let i = 0; i < samples.length; i++) {
+    iSamples[i] = samples[i]?.I ?? 0;
+    qSamples[i] = samples[i]?.Q ?? 0;
+  }
+
+  return { iSamples, qSamples };
+}
+
+/**
+ * Helper function to copy processed I/Q arrays back to samples
+ */
+function copyIQToSamples(
+  samples: Sample[],
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+): void {
+  for (let i = 0; i < samples.length; i++) {
+    const iVal = iSamples[i];
+    const qVal = qSamples[i];
+    if (iVal !== undefined && qVal !== undefined) {
+      // eslint-disable-next-line no-param-reassign
+      samples[i] = { I: iVal, Q: qVal };
+    }
+  }
+}
+
+/**
+ * Generic helper for applying WASM window functions
+ */
+function applyWasmWindow(
+  samples: Sample[],
+  windowFn: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ) => void,
+  windowName: string,
+): boolean {
+  if (!wasmModule || samples.length === 0) {
+    return false;
+  }
+
+  try {
+    const { iSamples, qSamples } = separateIQComponents(samples);
+    windowFn(iSamples, qSamples, samples.length);
+    copyIQToSamples(samples, iSamples, qSamples);
+    return true;
+  } catch (error) {
+    console.warn(`dspWasm: ${windowName} window failed`, error);
+    return false;
+  }
+}
+
+/**
+ * Apply Hann window using WASM if available
+ * Modifies samples in-place for efficiency
+ */
+export function applyHannWindowWasm(samples: Sample[]): boolean {
+  if (!wasmModule) {
+    return false;
+  }
+  const module = wasmModule;
+  return applyWasmWindow(
+    samples,
+    (i, q, s) => module.applyHannWindow(i, q, s),
+    "Hann",
+  );
+}
+
+/**
+ * Apply Hamming window using WASM if available
+ */
+export function applyHammingWindowWasm(samples: Sample[]): boolean {
+  if (!wasmModule) {
+    return false;
+  }
+  const module = wasmModule;
+  return applyWasmWindow(
+    samples,
+    (i, q, s) => module.applyHammingWindow(i, q, s),
+    "Hamming",
+  );
+}
+
+/**
+ * Apply Blackman window using WASM if available
+ */
+export function applyBlackmanWindowWasm(samples: Sample[]): boolean {
+  if (!wasmModule) {
+    return false;
+  }
+  const module = wasmModule;
+  return applyWasmWindow(
+    samples,
+    (i, q, s) => module.applyBlackmanWindow(i, q, s),
+    "Blackman",
+  );
 }
 
 /**

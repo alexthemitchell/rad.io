@@ -685,6 +685,6 @@ fileSdr.start();
 ## Resources
 
 - **WebUSB API**: developer.mozilla.org/en-US/docs/Web/API/WebUSB_API
-- **rtl-sdr.com**: Hardware info and drivers
+- **rtl-SDR.com**: Hardware info and drivers
 - **GNU Radio**: gnuradio.org - Reference implementations
 - **WebSDR**: websdr.org - Remote receiver network

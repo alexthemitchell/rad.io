@@ -1,0 +1,84 @@
+/* Toast notifications */
+.toast-container {
+  position: fixed;
+  right: var(--rad-space-5);
+  bottom: var(--rad-space-5);
+  z-index: var(--rad-z-toast);
+  display: grid;
+  gap: var(--rad-space-3);
+}
+
+.toast {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--rad-space-3);
+  min-width: 260px;
+  max-width: min(560px, 90vw);
+  padding: var(--rad-space-4) var(--rad-space-5);
+  border-radius: var(--rad-radius-5);
+  color: var(--rad-fg);
+  background: var(--rad-bg-elev-2);
+  box-shadow: var(--rad-shadow-2);
+  border: 1px solid var(--rad-border);
+  transition:
+    transform var(--rad-transition-medium) var(--rad-ease-standard),
+    opacity var(--rad-transition-medium) var(--rad-ease-standard);
+}
+
+.toast .toast-body {
+  font-size: var(--rad-font-size-2);
+  line-height: var(--rad-line-height-normal);
+}
+
+.toast .toast-dismiss {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--rad-radius-3);
+  cursor: pointer;
+}
+
+.toast .toast-dismiss:focus-visible {
+  outline: var(--rad-focus-ring-width) solid var(--rad-ring);
+  outline-offset: var(--rad-focus-ring-offset);
+}
+
+/* Tone variants */
+.toast.tone-success {
+  background: var(--rad-success);
+  color: var(--rad-success-foreground);
+  border-color: transparent;
+}
+
+.toast.tone-warning {
+  background: var(--rad-warning);
+  color: var(--rad-warning-foreground);
+  border-color: transparent;
+}
+
+.toast.tone-error {
+  background: var(--rad-danger);
+  color: var(--rad-danger-foreground);
+  border-color: transparent;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition: none;
+  }
+}
+
+/* High contrast / forced colors */
+@media (forced-colors: active) {
+  .toast {
+    background: Canvas;
+    color: CanvasText;
+    border: 1px solid CanvasText;
+    forced-color-adjust: auto;
+  }
+}

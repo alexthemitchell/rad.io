@@ -3,7 +3,7 @@
   "sourceMaps": true,
   "minify": false,
   "jsc": {
-    "target": "es2020",
+    "target": "es2022",
     "parser": {
       "syntax": "typescript",
       "tsx": true,
@@ -17,7 +17,9 @@
       }
     },
     "externalHelpers": false,
-    "keepClassNames": true
+    "keepClassNames": true,
+    "baseUrl": ".",
+    "paths": {}
   },
   "module": {
     "type": "es6"

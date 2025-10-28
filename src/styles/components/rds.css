@@ -1,0 +1,234 @@
+/* RDS Display Styles */
+.rds-display {
+  background: var(--rad-surface-2);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: var(--rad-shadow-2);
+  color: white;
+}
+
+.rds-display.rds-no-data {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.rds-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.rds-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.rds-message {
+  font-size: 20px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.rds-hint {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.rds-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--rad-border);
+}
+
+.rds-pi,
+.rds-quality {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rds-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.rds-value {
+  font-size: 16px;
+  font-weight: bold;
+  font-family: "Courier New", monospace;
+}
+
+.rds-country {
+  font-size: 14px;
+  padding: 2px 8px;
+  background: var(--rad-surface-2);
+  border-radius: 4px;
+}
+
+.rds-quality-bar {
+  width: 100px;
+  height: 8px;
+  background: var(--rad-overlay);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rds-quality-fill {
+  height: 100%;
+  transition:
+    width 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.rds-main {
+  text-align: center;
+  margin: 30px 0;
+}
+
+.rds-station-name {
+  font-size: 48px;
+  font-weight: bold;
+  font-family: "Courier New", monospace;
+  letter-spacing: 8px;
+  text-shadow: none;
+  padding: 20px;
+  background: linear-gradient(90deg, var(--rad-surface-2), var(--rad-surface));
+  border-radius: 8px;
+}
+
+.rds-radio-text {
+  margin: 20px 0;
+  padding: 15px;
+  background: var(--rad-overlay);
+  border-radius: 8px;
+  border-left: 4px solid var(--rad-primary);
+}
+
+.rds-rt-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.rds-rt-content {
+  font-size: 18px;
+  font-family: "Courier New", monospace;
+  letter-spacing: 1px;
+  line-height: 1.5;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.rds-metadata {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.rds-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  background: var(--rad-surface);
+  border-radius: 6px;
+}
+
+.rds-meta-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
+.rds-meta-value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.rds-stats {
+  display: flex;
+  justify-content: space-around;
+  padding: 15px;
+  margin-top: 20px;
+  background: var(--rad-overlay);
+  border-radius: 6px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.rds-stat {
+  font-family: "Courier New", monospace;
+}
+
+/* Compact RDS Display */
+.rds-display-compact {
+  padding: 10px;
+  background: var(--rad-surface-2);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  color: white;
+}
+
+.rds-display-compact.rds-no-data {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.6;
+}
+
+.rds-compact-ps {
+  font-size: 24px;
+  font-weight: bold;
+  font-family: "Courier New", monospace;
+  letter-spacing: 4px;
+  margin-bottom: 5px;
+}
+
+.rds-compact-rt {
+  font-size: 14px;
+  margin-bottom: 5px;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rds-compact-meta {
+  font-size: 11px;
+  opacity: 0.6;
+  text-transform: uppercase;
+}
+
+/* Responsive Design for RDS */
+@media (width <= 768px) {
+  .rds-station-name {
+    font-size: 32px;
+    letter-spacing: 4px;
+  }
+
+  .rds-rt-content {
+    font-size: 14px;
+  }
+
+  .rds-metadata {
+    grid-template-columns: 1fr;
+  }
+
+  .rds-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+}

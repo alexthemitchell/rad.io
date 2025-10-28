@@ -1,0 +1,21 @@
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Document and app scaffolding */
+body {
+  font-family: var(--rad-font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--rad-bg);
+  color: var(--rad-fg);
+  min-height: 100vh;
+  accent-color: var(--rad-accent);
+}
+
+#app {
+  min-height: 100vh;
+}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useLiveRegion } from "../hooks/useLiveRegion";
+import { notify } from "../lib/notifications";
 
 /**
  * Decode page for digital mode decoders (RTTY, PSK31/63/125, SSTV)
@@ -32,7 +32,7 @@ function Decode(): React.JSX.Element {
     "searching",
   );
   const outputRef = useRef<HTMLTextAreaElement>(null);
-  const { announce } = useLiveRegion();
+  // Unified notifications
 
   // Simulate decoder updates (replace with actual decoder integration)
   useEffect(() => {
@@ -50,13 +50,23 @@ function Decode(): React.JSX.Element {
   const handleModeChange = (newMode: DecoderMode): void => {
     setMode(newMode);
     setDecodedText("");
-    announce(`Decoder mode changed to ${newMode}`);
+    notify({
+      message: `Decoder mode changed to ${newMode}`,
+      sr: "polite",
+      visual: true,
+      tone: "info",
+    });
   };
 
   const handleCopy = (): void => {
     if (outputRef.current) {
       void navigator.clipboard.writeText(decodedText);
-      announce("Decoded text copied to clipboard");
+      notify({
+        message: "Decoded text copied to clipboard",
+        sr: "polite",
+        visual: true,
+        tone: "success",
+      });
     }
   };
 
@@ -68,12 +78,22 @@ function Decode(): React.JSX.Element {
     a.download = `decoded-${mode}-${new Date().toISOString()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    announce("Decoded text saved to file");
+    notify({
+      message: "Decoded text saved to file",
+      sr: "polite",
+      visual: true,
+      tone: "success",
+    });
   };
 
   const handleClear = (): void => {
     setDecodedText("");
-    announce("Decoded output cleared");
+    notify({
+      message: "Decoded output cleared",
+      sr: "polite",
+      visual: true,
+      tone: "info",
+    });
   };
 
   return (
@@ -114,7 +134,11 @@ function Decode(): React.JSX.Element {
               checked={afcEnabled}
               onChange={(e: React.ChangeEvent<HTMLInputElement>): void => {
                 setAfcEnabled(e.target.checked);
-                announce(`AFC ${e.target.checked ? "enabled" : "disabled"}`);
+                notify({
+                  message: `AFC ${e.target.checked ? "enabled" : "disabled"}`,
+                  sr: "polite",
+                  visual: false,
+                });
               }}
             />
             AFC (Automatic Frequency Control)
@@ -128,9 +152,11 @@ function Decode(): React.JSX.Element {
                 checked={varicodeEnabled}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>): void => {
                   setVaricodeEnabled(e.target.checked);
-                  announce(
-                    `Varicode ${e.target.checked ? "enabled" : "disabled"}`,
-                  );
+                  notify({
+                    message: `Varicode ${e.target.checked ? "enabled" : "disabled"}`,
+                    sr: "polite",
+                    visual: false,
+                  });
                 }}
               />
               Varicode

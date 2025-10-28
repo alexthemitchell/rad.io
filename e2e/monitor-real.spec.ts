@@ -1,40 +1,24 @@
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 
-// Real HackRF E2E (opt-in). Requires:
-// - Previously paired HackRF device (WebUSB permission saved)
-// - Physical device connected
-// - Launch with env E2E_REAL_HACKRF=1
-// This test is tagged as @real and will only run when grep or env enables it.
+// Real HackRF E2E tests are NOT SUPPORTED in Playwright.
+//
+// WebUSB API requires:
+// - User gestures for device pairing (cannot be automated)
+// - Native browser permissions (blocked in Playwright's sandbox)
+// - Real hardware access (not available in automation context)
+//
+// For real hardware testing:
+// 1. Use manual testing checklist in e2e/monitor-real-manual.md
+// 2. Or use Playwright MCP browser tools (semi-automated with user interaction)
+// 3. Integration tests with mocked WebUSB hooks (src/hooks/__tests__/useUSBDevice.test.ts)
+//
+// This test is permanently skipped to document the limitation.
+// DO NOT attempt to enable it - it will always fail due to WebUSB restrictions.
 
-test.use({ ignoreHTTPSErrors: true });
-
-const REAL_ENABLED = process.env["E2E_REAL_HACKRF"] === "1";
-
-(REAL_ENABLED ? test : test.skip)(
-  "@real monitor should start/stop with real HackRF (paired)",
-  async ({ page }) => {
-    await page.goto("https://localhost:8080/monitor");
-
-    // Wait for UI to check for paired devices; Start button should appear when device is present
-    const startBtn = page.getByRole("button", { name: "Start reception" });
-    await expect(startBtn).toBeVisible({ timeout: 15000 });
-    await expect(startBtn).toBeEnabled();
-
-    // Start streaming
-    await startBtn.click();
-
-    await page.waitForFunction(() => (window as any).dbgReceiving === true, {
-      timeout: 15000,
-    });
-
-    // Let it run briefly
-    await page.waitForTimeout(1000);
-
-    // Stop
-    const stopBtn = page.getByRole("button", { name: "Stop reception" });
-    await stopBtn.click();
-    await page.waitForFunction(() => (window as any).dbgReceiving === false, {
-      timeout: 10000,
-    });
-  },
-);
+test.skip("@real monitor should start/stop with real HackRF - NOT SUPPORTED", async () => {
+  // This test is skipped because WebUSB cannot be automated with Playwright.
+  // See e2e/monitor-real-manual.md for manual testing procedure.
+  throw new Error(
+    "WebUSB testing is not supported in Playwright automation. Use manual testing.",
+  );
+});

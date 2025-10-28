@@ -2,16 +2,23 @@ import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import FrequencyDisplay from "./components/FrequencyDisplay";
 import Navigation from "./components/Navigation";
+import ShortcutsOverlay from "./components/ShortcutsOverlay";
+import StatusBar from "./components/StatusBar";
+import ToastProvider from "./components/ToastProvider";
 import TopAppBar from "./components/TopAppBar";
-import { DeviceProvider } from "./contexts/DeviceContext";
+import VFOControl from "./components/VFOControl";
+import { FrequencyProvider, useFrequency } from "./contexts/FrequencyContext";
+import { useStatusMetrics } from "./hooks/useStatusMetrics";
 import Analysis from "./pages/Analysis";
 import Calibration from "./pages/Calibration";
 import Decode from "./pages/Decode";
 import Help from "./pages/Help";
 import Monitor from "./pages/Monitor";
 import Recordings from "./pages/Recordings";
+import RenderersDemo from "./pages/RenderersDemo";
 import Scanner from "./pages/Scanner";
 import Settings from "./pages/Settings";
+import VisualizationDemo from "./pages/VisualizationDemo";
 import Bookmarks from "./panels/Bookmarks";
 import Devices from "./panels/Devices";
 import Diagnostics from "./panels/Diagnostics";
@@ -24,76 +31,111 @@ function App(): React.JSX.Element {
     preloadWasmModule();
   }, []);
 
+  const metrics = useStatusMetrics();
+
   return (
     <Router>
-      <DeviceProvider>
-        <div className="app-shell">
-          {/* Skip link: first focusable element for keyboard users */}
-          <a href="#main-content" className="skip-link">
-            Skip to main content
-          </a>
+      <FrequencyProvider>
+        <ToastProvider>
+          <div className="app-shell">
+            {/* Skip link: first focusable element for keyboard users */}
+            <a href="#main-content" className="skip-link">
+              Skip to main content
+            </a>
 
-          {/* Global live region for announcements (visually hidden).
-              Use aria-live without role to avoid duplicate 'status' landmarks.
-          */}
-          <div
-            aria-live="polite"
-            aria-atomic="true"
-            className="visually-hidden"
-          />
+            {/* Live regions handled within ToastProvider */}
 
-          {/* Global top bar with connection status and quick actions */}
-          <TopAppBar asBanner={false} />
+            {/* Global top bar with connection status and quick actions */}
+            <TopAppBar asBanner={false} />
 
-          {/* Main header with title and navigation */}
-          <header className="header" role="banner">
-            <div className="header-content">
-              {/* Maintain accessible document title and subtitle */}
-              <h1 className="visually-hidden">rad.io</h1>
-              <p className="visually-hidden">
-                Software-Defined Radio Visualizer
-              </p>
-              {/* Always-visible frequency display */}
-              <FrequencyDisplay />
-            </div>
-            <Navigation />
-          </header>
+            {/* Main header with title and navigation */}
+            <header className="header" role="banner">
+              <div className="header-content">
+                {/* Maintain accessible document title and subtitle */}
+                <h1 className="visually-hidden">rad.io</h1>
+                <p className="visually-hidden">
+                  Software-Defined Radio Visualizer
+                </p>
+                {/* Always-visible frequency display + VFO control (shared state) */}
+                <SharedVFO />
+              </div>
+              <Navigation />
+            </header>
 
-          {/* Main content area for pages */}
-          <Routes>
-            {/* Primary workspaces */}
-            <Route path="/" element={<Monitor />} />
-            <Route path="/monitor" element={<Monitor />} />
-            <Route path="/scanner" element={<Scanner />} />
-            <Route path="/decode" element={<Decode />} />
-            <Route path="/analysis" element={<Analysis />} />
-            <Route path="/recordings" element={<Recordings />} />
+            {/* Main content area for pages */}
+            <Routes>
+              {/* Primary workspaces */}
+              <Route path="/" element={<Monitor />} />
+              <Route path="/monitor" element={<Monitor />} />
+              <Route path="/scanner" element={<Scanner />} />
+              <Route path="/decode" element={<Decode />} />
+              <Route path="/analysis" element={<Analysis />} />
+              <Route path="/recordings" element={<Recordings />} />
 
-            {/* Supporting panels (also accessible as full pages) */}
-            <Route path="/bookmarks" element={<Bookmarks isPanel={false} />} />
-            <Route path="/devices" element={<Devices isPanel={false} />} />
-            <Route
-              path="/measurements"
-              element={<Measurements isPanel={false} />}
+              {/* Supporting panels (also accessible as full pages) */}
+              <Route
+                path="/bookmarks"
+                element={<Bookmarks isPanel={false} />}
+              />
+              <Route path="/devices" element={<Devices isPanel={false} />} />
+              <Route
+                path="/measurements"
+                element={<Measurements isPanel={false} />}
+              />
+              <Route
+                path="/diagnostics"
+                element={<Diagnostics isPanel={false} />}
+              />
+
+              {/* Settings and configuration */}
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/calibration" element={<Calibration />} />
+
+              {/* Help and documentation */}
+              <Route path="/help" element={<Help />} />
+
+              {/* Demo pages */}
+              <Route path="/demo" element={<VisualizationDemo />} />
+              <Route path="/renderers-demo" element={<RenderersDemo />} />
+            </Routes>
+
+            {/* Global shortcuts help overlay (toggles with '?') */}
+            <ShortcutsOverlay />
+
+            {/* Bottom Status Bar with system metrics per UI spec */}
+            <StatusBar
+              deviceConnected={metrics.deviceConnected}
+              renderTier={metrics.renderTier}
+              fps={metrics.fps}
+              inputFps={metrics.inputFps}
+              renderP95Ms={metrics.renderP95Ms}
+              longTasks={metrics.longTasks}
+              sampleRate={metrics.sampleRate}
+              bufferHealth={metrics.bufferHealth}
+              bufferDetails={metrics.bufferDetails}
+              storageUsed={metrics.storageUsed}
+              storageQuota={metrics.storageQuota}
+              audioState={metrics.audio.state}
+              audioVolume={metrics.audio.volume}
+              audioClipping={metrics.audio.clipping}
             />
-            <Route
-              path="/diagnostics"
-              element={<Diagnostics isPanel={false} />}
-            />
-
-            {/* Settings and configuration */}
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/calibration" element={<Calibration />} />
-
-            {/* Help and documentation */}
-            <Route path="/help" element={<Help />} />
-          </Routes>
-
-          {/* Footer intentionally minimal to keep focus on primary tasks */}
-        </div>
-      </DeviceProvider>
+            {/* Footer intentionally minimal to keep focus on primary tasks */}
+          </div>
+        </ToastProvider>
+      </FrequencyProvider>
     </Router>
   );
 }
 
 export default App;
+
+// Small internal component to bridge FrequencyContext into header controls
+function SharedVFO(): React.JSX.Element {
+  const { frequencyHz, setFrequencyHz } = useFrequency();
+  return (
+    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+      <FrequencyDisplay frequency={frequencyHz} onChange={setFrequencyHz} />
+      <VFOControl frequencyHz={frequencyHz} onChange={setFrequencyHz} />
+    </div>
+  );
+}

@@ -29,4 +29,4 @@ Instrumentation/tips: PerformanceMetrics + performanceMonitor; Float32 end-to-en
 
 Healthy pipeline: FFT peak ≤1 bin error; centered after mix; no new images post-decim; clean demod audio, no dropouts.
 
-See also: DSP_STFT_SPECTROGRAM_GUIDE, FILTERING_DECIMATION_PATTERNS, DEMODULATION_BASICS_FM_AM, WEBUSB_STREAMING_DEBUG_GUIDE.
+See also: DSP_STFT_SPECTROGRAM_GUIDE, FILTERING_DECIMATION_PATTERNS, DEMODULATION_BASICS_FM_AM, WebUSB_STREAMING_DEBUG_GUIDE.

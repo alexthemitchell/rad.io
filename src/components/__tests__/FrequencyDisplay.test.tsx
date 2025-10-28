@@ -84,18 +84,18 @@ describe("FrequencyDisplay", () => {
 
   it("displays default frequency when no frequency prop", () => {
     render(<FrequencyDisplay onChange={mockOnChange} />);
-    const freqDisplay = screen.getByRole("button", {
+    const freqGroup = screen.getByRole("group", {
       name: /current frequency: 0 Hz/i,
     });
-    expect(freqDisplay).toBeInTheDocument();
+    expect(freqGroup).toBeInTheDocument();
   });
 
-  it("frequency display is clickable to edit", () => {
+  it("frequency display is accessible and labeled", () => {
     render(<FrequencyDisplay frequency={100000000} onChange={mockOnChange} />);
-    const freqDisplay = screen.getByRole("button", {
+    const freqGroup = screen.getByRole("group", {
       name: /current frequency/i,
     });
-    expect(freqDisplay).toBeInTheDocument();
+    expect(freqGroup).toBeInTheDocument();
   });
 
   it("shows all step size options", () => {
@@ -104,6 +104,7 @@ describe("FrequencyDisplay", () => {
       /tuning step size/i,
     ) as HTMLSelectElement;
     const options = Array.from(select.options).map((opt) => opt.text);
+    expect(options).toContain("Auto (context)");
     expect(options).toContain("1 Hz");
     expect(options).toContain("10 Hz");
     expect(options).toContain("100 Hz");
@@ -111,5 +112,17 @@ describe("FrequencyDisplay", () => {
     expect(options).toContain("10 kHz");
     expect(options).toContain("100 kHz");
     expect(options).toContain("1 MHz");
+  });
+
+  it("uses contextual step when 'Auto (context)' is selected", () => {
+    const startHz = 500_000; // 500 kHz -> auto step should be 100 Hz
+    render(<FrequencyDisplay frequency={startHz} onChange={mockOnChange} />);
+    const select = screen.getByLabelText(
+      /tuning step size/i,
+    ) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "0" } }); // select Auto
+    const tuneUpButton = screen.getByRole("button", { name: /tune up/i });
+    fireEvent.click(tuneUpButton);
+    expect(mockOnChange).toHaveBeenCalledWith(startHz + 100);
   });
 });

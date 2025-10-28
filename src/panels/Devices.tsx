@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDevice } from "../contexts/DeviceContext";
-import { useLiveRegion } from "../hooks/useLiveRegion";
+import { notify } from "../lib/notifications";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
 
@@ -33,7 +33,7 @@ interface DevicesProps {
 
 function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
   const { device, initialize, cleanup, isCheckingPaired } = useDevice();
-  const { announce } = useLiveRegion();
+  // Unified notifications
 
   const [sampleRate, setSampleRate] = useState<number | null>(null);
   const [frequency, setFrequency] = useState<number | null>(null);
@@ -71,22 +71,32 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
           });
         }
 
-        announce("Device connected successfully");
+        notify({
+          message: "Device connected successfully",
+          sr: "polite",
+          visual: true,
+          tone: "success",
+        });
       } catch (error) {
         console.error("Failed to load device info:", error);
       }
     };
 
     void loadDeviceInfo();
-  }, [device, announce]);
+  }, [device]);
 
   const handleScanForDevices = async (): Promise<void> => {
     try {
       await initialize();
-      announce("Device picker opened");
+      notify({ message: "Device picker opened", sr: "polite", visual: false });
     } catch (error) {
       console.error("Failed to initialize device:", error);
-      announce("Failed to open device picker");
+      notify({
+        message: "Failed to open device picker",
+        sr: "assertive",
+        visual: true,
+        tone: "error",
+      });
     }
   };
 
@@ -95,7 +105,12 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
     setSampleRate(null);
     setFrequency(null);
     setDeviceInfo({});
-    announce("Device disconnected");
+    notify({
+      message: "Device disconnected",
+      sr: "polite",
+      visual: true,
+      tone: "warning",
+    });
   };
 
   const containerClass = isPanel ? "panel-container" : "page-container";

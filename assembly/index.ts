@@ -11,4 +11,7 @@ export {
   calculateSpectrogram,
   calculateSpectrogramOut,
   allocateFloat32Array,
+  applyHannWindow,
+  applyHammingWindow,
+  applyBlackmanWindow,
 } from "./dsp";
