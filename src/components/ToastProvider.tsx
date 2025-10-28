@@ -55,6 +55,8 @@ export function ToastProvider({
               aria-hidden={ariaHidden}
               // inert removes focusability for non-assertive toasts announced via SR
               inert={Boolean(t.sr)}
+              aria-disabled={Boolean(t.sr) ? "true" : undefined}
+              tabIndex={Boolean(t.sr) ? -1 : undefined}
               role={role}
               data-testid="toast"
             >
