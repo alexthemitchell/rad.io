@@ -11,7 +11,7 @@ import TalkgroupScanner, {
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import { useDevice } from "../contexts/DeviceContext";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
-import { useLiveRegion } from "../hooks/useLiveRegion";
+import { notify } from "../lib/notifications";
 
 function Scanner(): React.JSX.Element {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ function Scanner(): React.JSX.Element {
   const scanner = useFrequencyScanner(device);
 
   // Live region for screen reader announcements
-  const { announce, liveRegion: LiveRegion } = useLiveRegion();
+  // Unified notifications
 
   // P25 Trunked Radio State
   const [talkgroups, setTalkgroups] = useState<Talkgroup[]>([
@@ -68,7 +68,11 @@ function Scanner(): React.JSX.Element {
 
   const handleSignalTypeChange = (type: SignalType): void => {
     setSignalType(type);
-    announce(`Signal type changed to ${type}`);
+    notify({
+      message: `Signal type changed to ${type}`,
+      sr: "polite",
+      visual: false,
+    });
   };
 
   const handleTalkgroupToggle = (id: string): void => {
@@ -97,7 +101,7 @@ function Scanner(): React.JSX.Element {
         Skip to main content
       </a>
 
-      <LiveRegion />
+      {null}
 
       <main id="main-content" role="main">
         <Card

@@ -69,7 +69,7 @@ The project uses **WebUSB-based testing** rather than external CLI tools:
 - ✅ Mock WebUSB device objects for unit tests
 - ✅ Test USB protocol formatting and state management
 - ✅ Document expected WebUSB patterns in hardware tests
-- ❌ No external hackrf_info or hackrf_transfer commands
+- ❌ No external HackRF_info or HackRF_transfer commands
 - ❌ No forking/exec of system processes
 
 This approach aligns with the project's goal of creating a pure browser-based SDR driver that doesn't depend on external native tools.

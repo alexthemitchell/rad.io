@@ -633,7 +633,7 @@ console.log(`Resolution: ${result.resolution} Hz/bin`);
 
 ## Resources
 
-- **fft.js**: github.com/indutny/fft.js
-- **dsp.js**: github.com/corbanbrook/dsp.js
+- **fft.js**: GitHub.com/indutny/fft.js
+- **dsp.js**: GitHub.com/corbanbrook/dsp.js
 - **Understanding DSP**: dspguide.com
-- **FFT Tutorial**: jakevdp.github.io/blog/2013/08/28/understanding-the-fft/
+- **FFT Tutorial**: jakevdp.GitHub.io/blog/2013/08/28/understanding-the-fft/

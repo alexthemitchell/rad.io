@@ -21,12 +21,15 @@ jest.mock("../../contexts/DeviceContext", () => ({
 }));
 
 import Monitor from "../Monitor";
+import { FrequencyProvider } from "../../contexts/FrequencyContext";
 
 describe("Monitor", () => {
   it("renders the monitor page", () => {
     render(
       <BrowserRouter>
-        <Monitor />
+        <FrequencyProvider initialHz={100_000_000}>
+          <Monitor />
+        </FrequencyProvider>
       </BrowserRouter>,
     );
     expect(screen.getByRole("main")).toBeInTheDocument();
@@ -35,7 +38,9 @@ describe("Monitor", () => {
   it("displays heading", () => {
     render(
       <BrowserRouter>
-        <Monitor />
+        <FrequencyProvider initialHz={100_000_000}>
+          <Monitor />
+        </FrequencyProvider>
       </BrowserRouter>,
     );
     expect(
@@ -46,7 +51,9 @@ describe("Monitor", () => {
   it("shows spectrum section", () => {
     render(
       <BrowserRouter>
-        <Monitor />
+        <FrequencyProvider initialHz={100_000_000}>
+          <Monitor />
+        </FrequencyProvider>
       </BrowserRouter>,
     );
     expect(
@@ -57,7 +64,9 @@ describe("Monitor", () => {
   it("shows audio controls section", () => {
     render(
       <BrowserRouter>
-        <Monitor />
+        <FrequencyProvider initialHz={100_000_000}>
+          <Monitor />
+        </FrequencyProvider>
       </BrowserRouter>,
     );
     expect(screen.getByLabelText(/audio controls/i)).toBeInTheDocument();
@@ -66,7 +75,9 @@ describe("Monitor", () => {
   it("shows signal info section", () => {
     render(
       <BrowserRouter>
-        <Monitor />
+        <FrequencyProvider initialHz={100_000_000}>
+          <Monitor />
+        </FrequencyProvider>
       </BrowserRouter>,
     );
     expect(screen.getByLabelText(/signal information/i)).toBeInTheDocument();

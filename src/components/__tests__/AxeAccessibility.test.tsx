@@ -29,6 +29,7 @@ const mockCanvasContext = (): void => {
     stroke: jest.fn(),
     arc: jest.fn(),
     fill: jest.fn(),
+    setTransform: jest.fn(),
     scale: jest.fn(),
     translate: jest.fn(),
     fillText: jest.fn(),

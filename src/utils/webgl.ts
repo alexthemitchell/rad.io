@@ -221,6 +221,99 @@ export function viridisMapScalarToRGBA(
   return [r, g, b, 255];
 }
 
+// Additional colormaps (approximate) and a unified accessor.
+// These are intentionally lightweight approximations suitable for visualization.
+export function infernoLUT256(): Uint8Array {
+  const stops: Array<[number, number, number]> = [
+    [0, 0, 4],
+    [31, 12, 72],
+    [85, 15, 109],
+    [136, 34, 106],
+    [186, 54, 85],
+    [227, 89, 51],
+    [249, 140, 10],
+    [252, 195, 58],
+    [252, 255, 164],
+  ];
+  const n = 256;
+  const out = new Uint8Array(n * 4);
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const x = t * (stops.length - 1);
+    const i0 = Math.floor(x);
+    const i1 = Math.min(stops.length - 1, i0 + 1);
+    const f = x - i0;
+    const [r0, g0, b0] = stops[i0] ?? [0, 0, 0];
+    const [r1, g1, b1] = stops[i1] ?? [0, 0, 0];
+    out[i * 4 + 0] = Math.round(r0 + (r1 - r0) * f);
+    out[i * 4 + 1] = Math.round(g0 + (g1 - g0) * f);
+    out[i * 4 + 2] = Math.round(b0 + (b1 - b0) * f);
+    out[i * 4 + 3] = 255;
+  }
+  return out;
+}
+
+export function turboLUT256(): Uint8Array {
+  // Turbo approximation via key stops (Google Turbo colormap)
+  const stops: Array<[number, number, number]> = [
+    [48, 18, 59],
+    [59, 32, 134],
+    [33, 144, 141],
+    [67, 190, 112],
+    [144, 215, 67],
+    [218, 226, 25],
+    [245, 181, 0],
+    [245, 96, 0],
+    [204, 0, 0],
+  ];
+  const n = 256;
+  const out = new Uint8Array(n * 4);
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const x = t * (stops.length - 1);
+    const i0 = Math.floor(x);
+    const i1 = Math.min(stops.length - 1, i0 + 1);
+    const f = x - i0;
+    const [r0, g0, b0] = stops[i0] ?? [0, 0, 0];
+    const [r1, g1, b1] = stops[i1] ?? [0, 0, 0];
+    out[i * 4 + 0] = Math.round(r0 + (r1 - r0) * f);
+    out[i * 4 + 1] = Math.round(g0 + (g1 - g0) * f);
+    out[i * 4 + 2] = Math.round(b0 + (b1 - b0) * f);
+    out[i * 4 + 3] = 255;
+  }
+  return out;
+}
+
+export function grayscaleLUT256(): Uint8Array {
+  const n = 256;
+  const out = new Uint8Array(n * 4);
+  for (let i = 0; i < n; i++) {
+    const v = i;
+    const base = i * 4;
+    out[base + 0] = v;
+    out[base + 1] = v;
+    out[base + 2] = v;
+    out[base + 3] = 255;
+  }
+  return out;
+}
+
+export type ColormapName = "viridis" | "inferno" | "turbo" | "gray";
+
+export function getColormapLUT256(name: ColormapName): Uint8Array {
+  switch (name) {
+    case "inferno":
+      return infernoLUT256();
+    case "turbo":
+      return turboLUT256();
+    case "gray":
+      return grayscaleLUT256();
+    case "viridis":
+    default:
+      return viridisLUT256();
+  }
+}
+
 export function setGLViewportForCanvas(
   gl: GL,
   width: number,

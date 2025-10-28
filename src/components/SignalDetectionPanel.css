@@ -17,8 +17,8 @@
 }
 
 .panel-header h3 {
-  margin: 0 0 8px 0;
-  color: var(--text-primary, #ffffff);
+  margin: 0 0 8px;
+  color: var(--text-primary, #fff);
   font-size: 18px;
   font-weight: 600;
 }
@@ -44,20 +44,20 @@
   background: var(--button-background, #333);
   border: 1px solid var(--border-color, #555);
   border-radius: 4px;
-  color: var(--text-primary, #ffffff);
+  color: var(--text-primary, #fff);
   cursor: pointer;
   font-size: 13px;
   transition: all 0.2s;
 }
 
-.clear-button:hover:not(:disabled) {
-  background: var(--button-hover, #444);
-  border-color: var(--border-hover, #666);
-}
-
 .clear-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.clear-button:hover:not(:disabled) {
+  background: var(--button-hover, #444);
+  border-color: var(--border-hover, #666);
 }
 
 .signals-list {
@@ -172,7 +172,7 @@
 }
 
 .detail-row .value {
-  color: var(--text-primary, #ffffff);
+  color: var(--text-primary, #fff);
   font-family: "Courier New", monospace;
 }
 

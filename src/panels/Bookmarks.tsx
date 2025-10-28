@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useLiveRegion } from "../hooks/useLiveRegion";
+import { notify } from "../lib/notifications";
 import { formatFrequency } from "../utils/frequency";
 import { generateBookmarkId } from "../utils/id";
 
@@ -58,7 +58,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   });
 
   const navigate = useNavigate();
-  const { announce } = useLiveRegion();
+  // Unified notifications
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -160,7 +160,12 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     const newBookmarks = bookmarks.filter((b) => b.id !== pendingDeleteId);
     saveBookmarks(newBookmarks);
     if (bookmark) {
-      announce(`Deleted bookmark: ${bookmark.name}`);
+      notify({
+        message: `Deleted bookmark: ${bookmark.name}`,
+        sr: "polite",
+        visual: true,
+        tone: "info",
+      });
     }
     setPendingDeleteId(null);
   };
@@ -203,7 +208,12 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
           : b,
       );
       saveBookmarks(newBookmarks);
-      announce(`Updated bookmark: ${formData.name}`);
+      notify({
+        message: `Updated bookmark: ${formData.name}`,
+        sr: "polite",
+        visual: true,
+        tone: "success",
+      });
       setEditingId(null);
     } else {
       // Add new
@@ -217,7 +227,12 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
         lastUsed: Date.now(),
       };
       saveBookmarks([...bookmarks, newBookmark]);
-      announce(`Added bookmark: ${formData.name}`);
+      notify({
+        message: `Added bookmark: ${formData.name}`,
+        sr: "polite",
+        visual: true,
+        tone: "success",
+      });
       setIsAdding(false);
     }
   };
@@ -238,9 +253,12 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     void navigate(
       `/monitor?frequency=${encodeURIComponent(bookmark.frequency)}`,
     );
-    announce(
-      `Tuning to ${bookmark.name} at ${formatFrequency(bookmark.frequency)}`,
-    );
+    notify({
+      message: `Tuning to ${bookmark.name} at ${formatFrequency(bookmark.frequency)}`,
+      sr: "polite",
+      visual: true,
+      tone: "info",
+    });
   };
 
   const containerClass = isPanel ? "panel-container" : "page-container";

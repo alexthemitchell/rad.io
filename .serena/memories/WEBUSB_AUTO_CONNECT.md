@@ -143,6 +143,7 @@ Tested in Chromium-based browsers (Chrome, Edge, Opera).
    ```
 
 4. **Browser Restart Test:**
+
    ```
    - Close browser completely
    - Reopen https://localhost:8080/

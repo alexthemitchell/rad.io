@@ -117,7 +117,7 @@ The following options enable incremental compilation:
 
 ### Webpack Configuration
 
-Key webpack optimizations:
+Key Webpack optimizations:
 
 ```typescript
 {
@@ -203,7 +203,7 @@ The message "Last converge was suboptimal" from AssemblyScript is informational 
 Potential future optimizations to consider:
 
 1. **Webpack Module Federation**: For micro-frontend architecture
-2. **esbuild Integration**: Faster bundling than webpack
+2. **esbuild Integration**: Faster bundling than Webpack
 3. **Persistent Jest Cache**: Cache test results between runs
 4. **Parallel WASM Builds**: Build debug and release simultaneously
 5. **Worker Threads for DSP**: Parallel FFT calculations

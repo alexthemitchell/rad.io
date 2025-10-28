@@ -42,7 +42,7 @@ Global shell
 - Main work area: Dockable panes (Spectrum, Waterfall, Constellation, Eye, Tools)
 - Left sidebar (collapsible): Devices, Bookmarks, Scanner, Recordings
 - Right sidebar (collapsible): Radio controls (Frequency, Mode, Filters, AGC, Squelch, Audio)
-- Bottom status bar: sample rate, buffer health, GPU mode (WebGPU/WebGL/2D), FPS, storage
+- Bottom status bar: sample rate, buffer health, GPU mode (WebGPU/WebGL/2D), FPS, storage, audio state (playing/muted/suspended, clipping)
 
 Primary routes
 
@@ -106,11 +106,14 @@ Theming and system integration
 - VFO markers in Spectrum/Waterfall; click‑to‑tune; drag to fine‑tune; right‑click context menu (set bandwidth, bookmark, record here).
 - Keyboard: ↑/↓ fine, PgUp/PgDn coarse, `[ / ]` step size, M to cycle modes.
 
+- Step size selector includes an "Auto (context)" option that adapts to the current band for beginner‑friendly defaults: <1 MHz → 100 Hz; 1–30 MHz → 1 kHz; 30–300 MHz → 10 kHz; 300 MHz–3 GHz → 100 kHz; >3 GHz → 1 MHz. Implemented in `FrequencyDisplay`.
+
   4.2 Spectrum analyzer
 
 - 60 FPS target with 8192 bins (ADR‑0015). WebGPU/WebGL primary; worker/2D fallback.
 - Pan/zoom on X; Zoom region via drag. Grid overlays with auto‑scaled units (Hz/kHz/MHz).
 - Markers: M1… Mn; delta display; peak hold trace; RBW indicator; calibrated power units per PRD.
+- Resizable split between Spectrum and Waterfall; drag the separator or use Arrow Up/Down when focused; layout persists across sessions.
 
   4.3 Waterfall
 
@@ -212,10 +215,10 @@ Foundations (existing components retained, refined)
 New/extended components
 
 - FrequencyDisplay (digit editing, unit auto‑scale)
-- VFOControl (dial + digit entry)
+- VFOControl (dial + digit entry) — wired via shared Frequency context
 - FilterShape editor (passband/stopband cursors)
 - MarkerTable (measurements with CSV export)
-- StatusBar (GPU tier, FPS, buffer health, storage)
+- StatusBar (GPU tier, FPS, buffer health with expandable details, storage, audio state)
 
 Design contracts (per component)
 
@@ -250,6 +253,12 @@ Tokens are defined in `src/styles/tokens.css` (OKLCH) and drive both light and d
 
 Adoption plan: incremental—map existing CSS to variables, enable dark theme via root class without breaking tests.
 
+Implementation status (2025‑10‑27)
+
+- `tokens.css` is present and in use with OKLCH tokens for color, typography, spacing, motion, and focus.
+- `:root` declares `color-scheme: dark light` for native control coherence.
+- Global `accent-color` is now sourced from `--rad-accent` to theme supported form controls consistently.
+
 ---
 
 ## 11. Error, empty, and offline states
@@ -276,8 +285,11 @@ Adoption plan: incremental—map existing CSS to variables, enable dark theme vi
 Phase A – Foundations
 
 - Introduce tokens.css; create StatusBar; add GPU tier/fps/buffer health; no visual breakage
+  - Status: Implemented (tokens present; StatusBar integrated in app shell with GPU tier/FPS/buffer/ storage; aria-live announced)
 - Add FrequencyDisplay and VFOControl components (not yet wired)
+  - Status: Implemented as components; wiring continues via `FrequencyContext`
 - Write keyboard shortcuts help (? overlay)
+  - Status: Implemented (`ShortcutsOverlay` toggled with `?`)
 
 Phase B – Layout and panes
 

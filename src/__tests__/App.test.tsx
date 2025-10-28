@@ -18,9 +18,9 @@ jest.mock("../components/TopAppBar", () => {
   };
 });
 
-jest.mock("../components/StatusFooter", () => {
-  return function StatusFooter() {
-    return <div data-testid="status-footer">Status Footer</div>;
+jest.mock("../components/StatusBar", () => {
+  return function StatusBar() {
+    return <div data-testid="status-bar">Status Bar</div>;
   };
 });
 

@@ -213,6 +213,13 @@ export function useVisualizationInteraction(
         return;
       }
 
+      // Require a modifier key to avoid accidental zooming while scrolling the page
+      const allowZoom = e.ctrlKey || e.metaKey;
+      if (!allowZoom) {
+        // Do not prevent default to allow normal page scroll
+        return;
+      }
+
       e.preventDefault();
 
       // Use deltaY for vertical scrolling (most common)

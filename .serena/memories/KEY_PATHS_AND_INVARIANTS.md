@@ -22,7 +22,7 @@ Debugging checkpoints
 
 CI expectations
 
-- Strict TypeScript (`tsconfig.json`), no `any`; ESLint clean; Prettier formatted; tests green; webpack build succeeds.
+- Strict TypeScript (`tsconfig.json`), no `any`; ESLint clean; Prettier formatted; tests green; Webpack build succeeds.
 
 Useful tests
 

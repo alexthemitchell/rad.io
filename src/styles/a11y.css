@@ -1,0 +1,66 @@
+/* Accessibility utilities and focus indicators */
+
+/* Visually hidden utility (kept alongside .rad-sr-only for compatibility) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--rad-primary);
+  color: var(--rad-primary-foreground);
+  padding: 8px;
+  text-decoration: none;
+  z-index: var(--rad-z-overlay);
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Enhanced Focus Indicators (token-driven) */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:where(:focus-visible) {
+  outline: var(--rad-focus-ring-width) solid var(--rad-ring);
+  outline-offset: var(--rad-focus-ring-offset);
+}
+
+/* Inputs additionally update border color on focus */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--rad-ring);
+}
+
+/* Live region for screen readers */
+.live-region {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Respect reduced motion preferences globally without breaking visuals */
+@media (prefers-reduced-motion: reduce) {
+  *:not([data-allow-motion]) {
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -9,16 +9,30 @@ export interface StatusBarProps {
   renderTier?: RenderTier;
   /** Frames per second (0-60+) */
   fps?: number;
+  /** Input data cadence FPS (viz-push) */
+  inputFps?: number;
+  /** p95 render duration for 'rendering' measures (ms) */
+  renderP95Ms?: number;
+  /** Count of long tasks observed (PerformanceObserver) */
+  longTasks?: number;
   /** Sample rate in Hz (e.g., 2048000) */
   sampleRate?: number;
   /** Buffer health percentage (0-100) */
   bufferHealth?: number;
+  /** Optional buffer details for expanded metrics */
+  bufferDetails?: { currentSamples: number; maxSamples: number };
   /** Storage used in bytes */
   storageUsed?: number;
   /** Storage quota in bytes */
   storageQuota?: number;
   /** Device connection status */
   deviceConnected?: boolean;
+  /** Audio state for speaker output */
+  audioState?: "unavailable" | "suspended" | "idle" | "playing" | "muted";
+  /** Current volume percent (0-100) */
+  audioVolume?: number;
+  /** Whether recent audio appeared to clip */
+  audioClipping?: boolean;
   /** Additional className for styling */
   className?: string;
 }
@@ -45,11 +59,18 @@ export interface StatusBarProps {
 function StatusBar({
   renderTier = RenderTier.Unknown,
   fps = 0,
+  inputFps = 0,
+  renderP95Ms = 0,
+  longTasks = 0,
   sampleRate = 0,
   bufferHealth = 100,
+  bufferDetails,
   storageUsed = 0,
   storageQuota = 0,
   deviceConnected = false,
+  audioState = "unavailable",
+  audioVolume,
+  audioClipping = false,
   className = "",
 }: StatusBarProps): React.JSX.Element {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -92,44 +113,65 @@ function StatusBar({
   const getRenderTierColor = (tier: RenderTier): string => {
     switch (tier) {
       case RenderTier.WebGPU:
-        return "#4ade80"; // Success green
+        return "var(--rad-success)"; // Success green
       case RenderTier.WebGL2:
-        return "#5aa3e8"; // Electric blue
+        return "var(--rad-primary)"; // Primary electric blue
       case RenderTier.WebGL1:
-        return "#fbbf24"; // Warning amber
+        return "var(--rad-warning)"; // Warning amber
       case RenderTier.Worker:
-        return "#fb923c"; // Orange
+        return "var(--rad-warning)"; // Map to warning
       case RenderTier.Canvas2D:
-        return "#f87171"; // Soft red
+        return "var(--rad-danger)"; // Critical
       case RenderTier.Unknown:
       default:
-        return "#9ca3af"; // Gray
+        return "var(--rad-fg-muted)"; // Muted
     }
   };
 
   const getBufferHealthColor = (health: number): string => {
     if (health >= 80) {
-      return "#4ade80"; // Good
+      return "var(--rad-success)"; // Good
     }
     if (health >= 50) {
-      return "#fbbf24"; // Warning
+      return "var(--rad-warning)"; // Warning
     }
-    return "#ef4444"; // Critical
+    return "var(--rad-danger)"; // Critical
   };
 
   const getStorageColor = (used: number, quota: number): string => {
     if (quota === 0) {
-      return "#9ca3af";
+      return "var(--rad-fg-muted)";
     }
     const percent = (used / quota) * 100;
     if (percent >= 90) {
-      return "#ef4444"; // Critical
+      return "var(--rad-danger)"; // Critical
     }
     if (percent >= 70) {
-      return "#fbbf24"; // Warning
+      return "var(--rad-warning)"; // Warning
     }
-    return "#4ade80"; // Good
+    return "var(--rad-success)"; // Good
   };
+
+  const getAudioColor = (
+    state: StatusBarProps["audioState"],
+    clipping: boolean,
+  ): string => {
+    if (state === "muted" || state === "unavailable") {
+      return "var(--rad-fg-muted)";
+    }
+    if (state === "suspended") {
+      return "var(--rad-warning)";
+    }
+    if (clipping) {
+      return "var(--rad-danger)";
+    }
+    if (state === "playing") {
+      return "var(--rad-success)";
+    }
+    return "var(--rad-fg-muted)";
+  };
+
+  const [showBufferDetails, setShowBufferDetails] = useState(false);
 
   return (
     <div
@@ -142,7 +184,9 @@ function StatusBar({
         <span className="status-bar-label">Device</span>
         <span
           className="status-bar-value"
-          style={{ color: deviceConnected ? "#4ade80" : "#ef4444" }}
+          style={{
+            color: deviceConnected ? "var(--rad-success)" : "var(--rad-danger)",
+          }}
         >
           {deviceConnected ? "Connected" : "Disconnected"}
         </span>
@@ -168,11 +212,75 @@ function StatusBar({
         <span
           className="status-bar-value status-bar-mono"
           style={{
-            color: fps >= 55 ? "#4ade80" : fps >= 30 ? "#fbbf24" : "#ef4444",
+            color:
+              fps >= 55
+                ? "var(--rad-success)"
+                : fps >= 30
+                  ? "var(--rad-warning)"
+                  : "var(--rad-danger)",
           }}
           title="Frames per second"
         >
           {fps.toFixed(0)}
+        </span>
+      </div>
+
+      {typeof inputFps === "number" && inputFps > 0 ? (
+        <>
+          <div className="status-bar-separator" aria-hidden="true" />
+
+          <div className="status-bar-item">
+            <span className="status-bar-label">Input</span>
+            <span
+              className="status-bar-value status-bar-mono"
+              style={{
+                color:
+                  inputFps >= 55
+                    ? "var(--rad-success)"
+                    : inputFps >= 30
+                      ? "var(--rad-warning)"
+                      : "var(--rad-danger)",
+              }}
+              title="Visualization input cadence (fps)"
+            >
+              {inputFps.toFixed(0)}
+            </span>
+          </div>
+        </>
+      ) : null}
+
+      <div className="status-bar-separator" aria-hidden="true" />
+
+      <div className="status-bar-item">
+        <span className="status-bar-label">Render p95</span>
+        <span
+          className="status-bar-value status-bar-mono"
+          style={{
+            color:
+              renderP95Ms <= 16
+                ? "var(--rad-success)"
+                : renderP95Ms <= 33
+                  ? "var(--rad-warning)"
+                  : "var(--rad-danger)",
+          }}
+          title="95th percentile render time (ms)"
+        >
+          {renderP95Ms.toFixed(1)} ms
+        </span>
+      </div>
+
+      <div className="status-bar-separator" aria-hidden="true" />
+
+      <div className="status-bar-item">
+        <span className="status-bar-label">Tasks</span>
+        <span
+          className="status-bar-value status-bar-mono"
+          style={{
+            color: longTasks > 0 ? "var(--rad-warning)" : "var(--rad-success)",
+          }}
+          title="Long tasks observed"
+        >
+          {longTasks}
         </span>
       </div>
 
@@ -199,6 +307,36 @@ function StatusBar({
         >
           {bufferHealth.toFixed(0)}%
         </span>
+        {bufferDetails ? (
+          <button
+            type="button"
+            aria-label="Show buffer details"
+            aria-expanded={showBufferDetails}
+            onClick={(): void => setShowBufferDetails((v) => !v)}
+            style={{
+              marginLeft: 4,
+              fontSize: "0.8em",
+              lineHeight: 1,
+              padding: "2px 6px",
+            }}
+            title={`${bufferDetails.currentSamples.toLocaleString()} / ${bufferDetails.maxSamples.toLocaleString()} samples (${Math.round((bufferDetails.currentSamples / bufferDetails.maxSamples) * 100)}%)`}
+          >
+            ⓘ
+          </button>
+        ) : null}
+        {showBufferDetails && bufferDetails ? (
+          <span
+            className="status-bar-value status-bar-mono"
+            style={{ marginLeft: 6, opacity: 0.9 }}
+          >
+            {bufferDetails.currentSamples.toLocaleString()} /
+            {bufferDetails.maxSamples.toLocaleString()} (
+            {Math.round(
+              (bufferDetails.currentSamples / bufferDetails.maxSamples) * 100,
+            )}
+            %)
+          </span>
+        ) : null}
       </div>
 
       <div className="status-bar-separator" aria-hidden="true" />
@@ -215,6 +353,39 @@ function StatusBar({
       </div>
 
       <div className="status-bar-spacer" />
+
+      <div className="status-bar-item">
+        <span className="status-bar-label">Audio</span>
+        <span
+          className="status-bar-value"
+          style={{ color: getAudioColor(audioState, audioClipping) }}
+          title={`Audio ${audioState}${typeof audioVolume === "number" ? ` • Vol ${audioVolume}%` : ""}${audioClipping ? " • Clipping" : ""}`}
+        >
+          {audioState === "muted"
+            ? "Muted"
+            : audioState === "playing"
+              ? "Playing"
+              : audioState === "suspended"
+                ? "Suspended"
+                : audioState === "idle"
+                  ? "Idle"
+                  : "Unavailable"}
+          {typeof audioVolume === "number" ? (
+            <span className="status-bar-mono" style={{ marginLeft: 6 }}>
+              {audioVolume}%
+            </span>
+          ) : null}
+          {audioClipping ? (
+            <span
+              aria-label="Audio clipping"
+              title="Audio clipping"
+              style={{ marginLeft: 6 }}
+            >
+              ⚠
+            </span>
+          ) : null}
+        </span>
+      </div>
 
       <div className="status-bar-item">
         <span

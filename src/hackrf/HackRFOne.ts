@@ -151,6 +151,8 @@ export class HackRFOne {
   private streaming = false;
   // New flag to indicate that shutdown has begun
   private closing = false;
+  // Stop controller to break out of pending USB transfers promptly
+  private stopReject: ((reason?: unknown) => void) | null = null;
 
   // Add a simple mutex to prevent concurrent USB state changes
   private transferMutex: Promise<void> = Promise.resolve();
@@ -319,20 +321,73 @@ export class HackRFOne {
     index = 0,
     length,
   }: ControlTransferInProps): Promise<USBInTransferResult> {
-    if (this.closing || !this.usbDevice.opened) {
-      throw new Error(
-        "Device is closing or closed. Aborting controlTransferIn.",
-      );
+    const release = await this.acquireLock();
+    try {
+      if (this.closing || !this.usbDevice.opened) {
+        throw new Error(
+          "Device is closing or closed. Aborting controlTransferIn.",
+        );
+      }
+      const options: USBControlTransferParameters = {
+        requestType: "vendor",
+        recipient: "device",
+        request: command,
+        value,
+        index,
+      };
+
+      let attempts = 3;
+      let lastError: unknown;
+      while (attempts > 0) {
+        try {
+          const result = await this.usbDevice.controlTransferIn(
+            options,
+            length,
+          );
+          // Small delay to allow the device state to settle
+          await this.delay(50);
+          return result;
+        } catch (err: unknown) {
+          const error = err as Error & { name?: string; message?: string };
+          // Retry on transient InvalidStateError or NetworkError
+          const isInvalidState = error.name === "InvalidStateError";
+          const msg = (error as { message?: string }).message;
+          const isNetworkError =
+            error.name === "NetworkError" || /transfer error/i.test(msg ?? "");
+
+          if (isInvalidState || isNetworkError) {
+            lastError = err;
+            // Attempt automatic recovery for NetworkError by closing/reopening
+            if (isNetworkError) {
+              try {
+                await this.usbDevice.close();
+              } catch {
+                // ignore
+              }
+              // Clear interface state so open() will re-claim
+              this.interfaceNumber = null;
+              this.inEndpointNumber = 1;
+              await this.delay(150);
+              try {
+                await this.open();
+              } catch {
+                // If re-open fails, fall through to retry decrement
+              }
+            } else {
+              // brief backoff for InvalidStateError
+              await this.delay(100);
+            }
+            attempts--;
+            continue;
+          }
+          // Non-retryable error
+          throw err;
+        }
+      }
+      throw lastError;
+    } finally {
+      release();
     }
-    const options: USBControlTransferParameters = {
-      requestType: "vendor",
-      recipient: "device",
-      request: command,
-      value,
-      index,
-    };
-    const result = await this.usbDevice.controlTransferIn(options, length);
-    return result;
   }
 
   private async acquireLock(): Promise<() => void> {
@@ -382,19 +437,41 @@ export class HackRFOne {
           await this.delay(50);
           return result;
         } catch (err: unknown) {
-          const error = err as Error & { name?: string };
-          if (error.name === "InvalidStateError") {
-            console.warn(
-              `controlTransferOut attempt failed with InvalidStateError, ${
-                attempts - 1
-              } attempts remaining.`,
-            );
+          const error = err as Error & { name?: string; message?: string };
+          const isInvalidState = error.name === "InvalidStateError";
+          const msg = (error as { message?: string }).message;
+          const isNetworkError =
+            error.name === "NetworkError" || /transfer error/i.test(msg ?? "");
+          if (isInvalidState || isNetworkError) {
             lastError = err;
-            await this.delay(100);
+            if (isNetworkError) {
+              // Attempt to recover by resetting and re-initializing interface
+              try {
+                await this.usbDevice.reset();
+              } catch {
+                // If reset fails, fall back to close/reopen
+                try {
+                  await this.usbDevice.close();
+                } catch {
+                  // ignore
+                }
+              }
+              // Clear cached interface info to force re-claim
+              this.interfaceNumber = null;
+              this.inEndpointNumber = 1;
+              await this.delay(150);
+              try {
+                await this.open();
+              } catch {
+                // ignore, will retry
+              }
+            } else {
+              await this.delay(100);
+            }
             attempts--;
-          } else {
-            throw err;
+            continue;
           }
+          throw err;
         }
       }
       throw lastError;
@@ -510,10 +587,20 @@ export class HackRFOne {
 
     const { freqHz, divider } = computeSampleRateParams(sampleRate);
     const payload = createUint32LEBuffer([freqHz, divider]);
-    await this.controlTransferOut({
-      command: RequestCommand.SAMPLE_RATE_SET,
-      data: payload,
-    });
+    try {
+      await this.controlTransferOut({
+        command: RequestCommand.SAMPLE_RATE_SET,
+        data: payload,
+      });
+    } catch (err: unknown) {
+      const msg = (err as { message?: string }).message ?? String(err);
+      // Provide actionable guidance for common Windows/WebUSB issues
+      throw new Error(
+        `Failed to set sample rate (${(sampleRate / 1e6).toFixed(2)} MSPS): ${msg}. ` +
+          `Try: 1) close other SDR apps (SDR#, hackrf_transfer), 2) replug the device, 3) use a direct USB 3.0 port, ` +
+          `4) ensure HackRF has WinUSB driver (Zadig) and up-to-date firmware.`,
+      );
+    }
     this.lastSampleRate = sampleRate;
 
     const isDev = process.env["NODE_ENV"] === "development";
@@ -719,6 +806,16 @@ export class HackRFOne {
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
     this.streaming = true;
 
+    // Create a stop signal that allows us to break out of a pending transfer
+    // immediately when stopRx() is called, rather than waiting for timeouts.
+    const stopPromise = new Promise<USBInTransferResult>((_, reject) => {
+      this.stopReject = (): void => {
+        // Use DOMException with name 'AbortError' for standard abort signaling
+        const abortErr = new DOMException("Aborted", "AbortError");
+        reject(abortErr);
+      };
+    });
+
     const isDev = process.env["NODE_ENV"] === "development";
     if (isDev) {
       console.warn("HackRFOne.receive: Starting streaming loop", {
@@ -759,6 +856,7 @@ export class HackRFOne {
             TIMEOUT_MS,
             `transferIn timeout after ${TIMEOUT_MS}ms - device may need reset`,
           ),
+          stopPromise,
         ]);
 
         // Reset timeout counter on successful transfer
@@ -890,6 +988,8 @@ export class HackRFOne {
         },
       });
     }
+    // Clear stop controller to avoid leaking references
+    this.stopReject = null;
     await this.setTransceiverMode(TransceiverMode.OFF);
     await this.controlTransferOut({
       command: RequestCommand.UI_ENABLE,
@@ -900,6 +1000,12 @@ export class HackRFOne {
   // New method to stop reception
   stopRx(): void {
     this.streaming = false;
+    // Trigger stop signal to break out of pending races immediately
+    if (this.stopReject) {
+      const reject = this.stopReject;
+      this.stopReject = null;
+      reject(new DOMException("Aborted", "AbortError"));
+    }
   }
 
   /**

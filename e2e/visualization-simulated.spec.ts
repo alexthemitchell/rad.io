@@ -173,7 +173,7 @@ test.describe("Visualization with Simulated Data @simulated", () => {
 });
 
 test.describe("Monitor Page with Simulated Data @simulated", () => {
-  test("should render all visualization modes with simulated data @simulated", async ({
+  test("should render spectrum and toggle waterfall with simulated data @simulated", async ({
     page,
   }) => {
     await page.goto("/monitor?mockSdr=1");
@@ -191,40 +191,36 @@ test.describe("Monitor Page with Simulated Data @simulated", () => {
       timeout: 10000,
     });
 
-    // Verify visualization canvas appears
-    const canvas = page.locator("canvas").first();
-    await expect(canvas).toBeVisible({ timeout: 5000 });
+    // Verify spectrum canvas appears
+    const spectrumCanvas = page
+      .locator('canvas[aria-label*="Spectrum"], canvas')
+      .first();
+    await expect(spectrumCanvas).toBeVisible({ timeout: 5000 });
 
-    // Test waterfall mode
-    const viewSelect = page.getByLabel("Visualization mode");
-    await expect(viewSelect).toBeVisible();
+    // Toggle on Waterfall and verify it's present (role img with name contains "Waterfall display")
+    const waterfallToggle = page.getByRole("checkbox", {
+      name: /Toggle waterfall visualization/i,
+    });
+    // Ensure it's checked (idempotent)
+    if (await waterfallToggle.isVisible()) {
+      await waterfallToggle.check();
+    }
 
-    await viewSelect.selectOption("waterfall");
-    await page.waitForTimeout(300);
-    const waterfallImg = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
-    );
-    expect(waterfallImg).toBeTruthy();
+    // Expect a second visualization (waterfall) to be present
+    const waterfallImgRole = page.getByRole("img", {
+      name: /Waterfall display/i,
+    });
+    await expect(waterfallImgRole).toBeVisible({ timeout: 5000 });
 
-    // Test spectrogram mode
-    await viewSelect.selectOption("spectrogram");
-    await page.waitForTimeout(300);
-    const spectrogramImg = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
-    );
-    expect(spectrogramImg).toBeTruthy();
+    // Count canvases should be >= 2 when waterfall is shown
+    const canvases = page.locator("canvas");
+    const canvasCountWithWaterfall = await canvases.count();
+    expect(canvasCountWithWaterfall).toBeGreaterThan(1);
 
-    // Test FFT mode
-    await viewSelect.selectOption("fft");
-    await page.waitForTimeout(300);
-    const fftImg = await canvas.evaluate((c: HTMLCanvasElement) =>
-      c.toDataURL(),
-    );
-    expect(fftImg).toBeTruthy();
-
-    // Verify all modes produced different images
-    expect(waterfallImg).not.toEqual(spectrogramImg);
-    expect(spectrogramImg).not.toEqual(fftImg);
+    // Toggle off Waterfall and expect it to disappear
+    await waterfallToggle.uncheck();
+    await expect(waterfallImgRole).toHaveCount(0);
+    await expect(canvases).toHaveCount(1);
 
     // Stop streaming
     const stopBtn = page.getByRole("button", { name: "Stop reception" });
@@ -232,7 +228,7 @@ test.describe("Monitor Page with Simulated Data @simulated", () => {
     await page.waitForFunction(() => (window as any).dbgReceiving === false);
   });
 
-  test("should maintain visualization continuity during mode switches @simulated", async ({
+  test("should maintain visualization continuity while toggling waterfall @simulated", async ({
     page,
   }) => {
     await page.goto("/monitor?mockSdr=1");
@@ -245,28 +241,52 @@ test.describe("Monitor Page with Simulated Data @simulated", () => {
       timeout: 10000,
     });
 
-    const viewSelect = page.getByLabel("Visualization mode");
+    const waterfallToggle = page.getByRole("checkbox", {
+      name: /Toggle waterfall visualization/i,
+    });
     const canvas = page.locator("canvas").first();
 
-    // Switch between modes multiple times and verify updates continue
-    const modes = ["waterfall", "spectrogram", "fft"];
-
-    for (const mode of modes) {
-      await viewSelect.selectOption(mode);
+    // Verify continuous updates while toggling the waterfall on/off
+    for (let i = 0; i < 3; i++) {
+      await waterfallToggle.check();
       await page.waitForTimeout(200);
-
-      // Capture two frames to verify continuous updates
       const frame1 = await canvas.evaluate((c: HTMLCanvasElement) =>
         c.toDataURL(),
       );
+
+      await waterfallToggle.uncheck();
       await page.waitForTimeout(200);
       const frame2 = await canvas.evaluate((c: HTMLCanvasElement) =>
         c.toDataURL(),
       );
 
-      // Frames should differ, indicating continuous updates
       expect(frame1).not.toEqual(frame2);
     }
+
+    const stopBtn = page.getByRole("button", { name: "Stop reception" });
+    await stopBtn.click();
+    await page.waitForFunction(() => (window as any).dbgReceiving === false);
+  });
+
+  test("should display rendering tier in status bar @simulated", async ({
+    page,
+  }) => {
+    await page.goto("/monitor?mockSdr=1");
+
+    const startBtn = page.getByRole("button", { name: "Start reception" });
+    await expect(startBtn).toBeVisible({ timeout: 10000 });
+    await startBtn.click();
+
+    await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+      timeout: 10000,
+    });
+
+    // Status bar should indicate rendering tier (GPU or fallback)
+    const statusRegion = page.getByRole("status");
+    const tierText = statusRegion.getByText(
+      /WebGPU|WebGL2|WebGL|Worker|Canvas2D/i,
+    );
+    await expect(tierText).toBeVisible({ timeout: 5000 });
 
     const stopBtn = page.getByRole("button", { name: "Stop reception" });
     await stopBtn.click();

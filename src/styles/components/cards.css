@@ -1,0 +1,59 @@
+/* Card Component */
+.card {
+  background: var(--rad-surface);
+  border-radius: var(--rad-radius-5);
+  padding: 1.5rem;
+  box-shadow: var(--rad-shadow-1);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--rad-border);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.card-header-collapsible {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--rad-transition-medium, 200ms)
+    var(--rad-ease-standard, ease);
+  margin: -1.5rem;
+  padding: 1.5rem;
+  border-radius: var(--rad-radius-5);
+}
+
+.card-header-collapsible:hover {
+  background-color: var(--rad-surface-2);
+}
+
+.card-header-collapsible:focus {
+  outline: 2px solid var(--rad-ring);
+  outline-offset: 2px;
+}
+
+.card-collapse-icon {
+  font-size: 1rem;
+  color: var(--rad-fg-muted);
+  margin-left: 1rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.card-content {
+  margin-top: 1rem;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--rad-fg);
+  margin-bottom: 0.5rem;
+}
+
+.card-subtitle {
+  font-size: 0.875rem;
+  color: var(--rad-fg-muted);
+  margin-bottom: 0;
+}

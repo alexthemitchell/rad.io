@@ -1,0 +1,78 @@
+/* Diagnostics and troubleshooting */
+.diagnostic-content {
+  flex: 1;
+  color: var(--rad-fg);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.diagnostic-content strong {
+  color: var(--rad-primary);
+  font-weight: 600;
+}
+
+.troubleshooting-guide,
+.info-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 6px;
+  background: var(--rad-surface-2);
+  border-left: 3px solid;
+}
+
+.troubleshooting-guide {
+  border-left-color: var(--rad-warning);
+}
+
+.troubleshooting-guide h4 {
+  color: var(--rad-warning);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.troubleshooting-guide ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--rad-fg);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.troubleshooting-guide li {
+  margin-bottom: 8px;
+}
+
+.troubleshooting-guide code {
+  background: var(--rad-surface-2);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  color: var(--rad-primary);
+  display: inline-block;
+  margin: 4px 0;
+}
+
+.troubleshooting-guide p {
+  color: var(--rad-fg);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.info-panel {
+  border-left-color: var(--rad-primary);
+}
+
+.info-panel p {
+  color: var(--rad-fg);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.info-panel strong {
+  color: var(--rad-primary);
+  font-weight: 600;
+}

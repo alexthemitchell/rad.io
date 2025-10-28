@@ -560,7 +560,7 @@ async function processRecording(recording: Recording) {
 - "TypeScript vs Zod: Clearing up validation confusion." LogRocket (2024). [Developer Guide](https://blog.logrocket.com/when-use-zod-typescript-both-developers-guide/) - When to use compile-time vs runtime validation
 - "Validating TypeScript Types in Runtime using Zod." Wisp CMS (2024). [Technical Tutorial](https://www.wisp.blog/blog/validating-typescript-types-in-runtime-using-zod) - Practical validation patterns
 - "End-to-End Type Safety: Development and Runtime Validation with TypeScript and Zod." Cem Karakurt (2024). [Technical Blog](https://cemkarakurt.com/blog/end-to-end-type-safety-development-and-runtime-validation-with-typescript-and-zod/) - Full-stack type safety architecture
-- CodeMentor. "Best way to enforce type-safety at runtime in Typescript." [Technical Discussion](https://www.codementor.io/@vsimko/best-way-to-enforcement-type-safety-at-runtime-in-typescript-1zwljs7d78) - Comparison of runtime validation approaches
+- CodeMentor. "Best way to enforce type-safety at runtime in TypeScript." [Technical Discussion](https://www.codementor.io/@vsimko/best-way-to-enforcement-type-safety-at-runtime-in-typescript-1zwljs7d78) - Comparison of runtime validation approaches
 
 #### Design Patterns
 

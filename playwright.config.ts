@@ -34,7 +34,7 @@ export default defineConfig({
   /* Reporter to use */
   // Include GitHub reporter for richer annotations in CI
   reporter: [
-    ["html", { outputFolder: "playwright-report" }],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
     ["list"],
     ["github"],
   ],
@@ -106,6 +106,30 @@ export default defineConfig({
         name: "device",
         use: { ...devices["Desktop Chrome"] },
         grep: DEVICE_TAG,
+      });
+    }
+
+    // Optional GPU-accelerated local project.
+    // Enables WebGL/WebGPU in headed Chrome for richer visualization testing.
+    // Usage: RADIO_E2E_GPU=1 npm run test:e2e -- --project=gpu-chromium
+    if (process.env["RADIO_E2E_GPU"] === "1") {
+      projects.push({
+        name: "gpu-chromium",
+        use: {
+          ...(devices["Desktop Chrome"] as any),
+          headless: false as any,
+          launchOptions: {
+            args: [
+              "--ignore-gpu-blocklist",
+              "--enable-webgl",
+              "--enable-accelerated-2d-canvas",
+              "--use-gl=desktop",
+              // Enable WebGPU on browsers that gate it behind a flag
+              "--enable-unsafe-webgpu",
+            ],
+          } as any,
+        } as any,
+        grep: new RegExp(`${SIMULATED_TAG.source}|${DEVICE_TAG.source}`),
       });
     }
 

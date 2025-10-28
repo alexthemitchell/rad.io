@@ -31,6 +31,23 @@ npm run test:e2e:ui
 npm run test:e2e:headed
 ```
 
+### Optional: GPU-accelerated local project
+
+Some visualization features can take advantage of GPU acceleration (WebGL/WebGPU) when available. You can opt into a headed Chromium project with GPU-friendly flags for local runs:
+
+```bash
+# Enable the GPU project and run only that project
+$env:RADIO_E2E_GPU = "1"; npm run test:e2e -- --project=gpu-chromium
+
+# Or use bash/zsh
+RADIO_E2E_GPU=1 npm run test:e2e -- --project=gpu-chromium
+```
+
+Notes:
+
+- This does not run in CI by default. It’s enabled only when `RADIO_E2E_GPU=1` is set.
+- Even without GPU, the tests will still run using Canvas2D/Worker fallbacks.
+
 The dev server automatically starts on `https://localhost:8080` with a self-signed certificate.
 
 ### Real Device Mode (Hardware Required)
@@ -92,6 +109,7 @@ Mock mode activates when **any** of the following is present:
    ```
 
 3. **Build-Time Environment**: `E2E_MOCK_SDR=1`
+
    ```bash
    E2E_MOCK_SDR=1 npm run build
    ```
@@ -146,26 +164,21 @@ await mockDevice.receive((samples) => {
 });
 ```
 
-## Real HackRF tests (local opt‑in)
+## Why No Real HackRF E2E Tests?
 
-Requirements:
+**WebUSB API cannot be automated with Playwright.** This is a fundamental limitation:
 
-- Chrome/Edge with WebUSB enabled (default)
-- HackRF One connected and previously paired on https://localhost:8080 (use the Connect Device button once)
+1. **User gestures required** - WebUSB device pairing requires manual user selection from a browser dialog
+2. **Sandboxed environment** - Playwright's automation context blocks native hardware APIs
+3. **Security restrictions** - Browser automation tools cannot access USB devices for security reasons
 
-Run:
+### Real Hardware Testing
 
-```powershell
-# Run Playwright with env flag (PowerShell)
-$env:E2E_REAL_HACKRF = "1"; npm run test:e2e
-# Remove the env var afterwards if desired
-Remove-Item Env:\E2E_REAL_HACKRF
-```
+For testing with actual HackRF devices, see:
 
-Notes:
-
-- Tests rely on previously paired devices to avoid the chooser dialog (`navigator.usb.getDevices()` path). See `WEBUSB_AUTO_CONNECT` memory.
-- If Start is disabled, wait a bit longer for auto-connect or click the Connect button manually and re-run.
+- **Manual testing checklist**: `e2e/monitor-real-manual.md`
+- **Integration tests**: `src/hooks/__tests__/useUSBDevice.test.ts` (mocked WebUSB)
+- **Playwright MCP tools**: Semi-automated browser control (requires user interaction for device pairing)
 
 Resource management:
 
@@ -185,7 +198,7 @@ Resource management:
 ## Test entries
 
 - `e2e/monitor-mock.spec.ts` — CI-friendly smoke test that starts/stops reception with the mock device
-- `e2e/monitor-real.spec.ts` — opt-in real device test (tagged `@real` and additionally gated by E2E_REAL_HACKRF)
+- `e2e/monitor-real.spec.ts` — opt-in real device test (tagged `@real` and additionally gated by E2E_REAL_HackRF)
 - `e2e/accessibility.spec.ts` — existing a11y coverage (unchanged)
 
 ## Writing E2E Tests
@@ -252,6 +265,7 @@ test.describe("My Feature", () => {
    ```
 
 5. **Clean Up After Tests**
+
    ```typescript
    test.afterEach(async ({ page }) => {
      // Stop any active streaming

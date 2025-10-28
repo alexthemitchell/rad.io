@@ -5,7 +5,11 @@ import { useVisualizationInteraction } from "../../hooks/useVisualizationInterac
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
 import { performanceMonitor } from "../../utils/performanceMonitor";
-import type { GL } from "../../utils/webgl";
+import {
+  type GL,
+  getColormapLUT256,
+  type ColormapName as GLColormapName,
+} from "../../utils/webgl";
 import type { WebGPUTextureRenderer } from "../../utils/webgpu";
 import type { ReactElement } from "react";
 
@@ -15,6 +19,11 @@ export type SpectrogramProps = {
   height?: number;
   freqMin?: number;
   freqMax?: number;
+  /** Optional colormap; defaults to "viridis" */
+  colorMap?: "viridis" | "inferno" | "turbo" | "gray";
+  /** Optional manual dynamic range override (in dB). When provided, auto-scaling is bypassed. */
+  dbMin?: number;
+  dbMax?: number;
   /**
    * When true, rendering continues even when the tab is hidden or element is off-screen.
    * Defaults to false for power efficiency.
@@ -38,6 +47,9 @@ export default function Spectrogram({
   height = 800,
   freqMin = 1000,
   freqMax = 1100,
+  colorMap = "viridis",
+  dbMin,
+  dbMax,
   continueInBackground = false,
   mode = "spectrogram",
   maxWaterfallFrames = 100,
@@ -245,13 +257,24 @@ export default function Spectrogram({
               }
             }
 
-            const effMin = gmin + (gmax - gmin) * adaptiveThreshold;
-            const range = Math.max(1e-9, gmax - effMin);
+            let effMin = gmin + (gmax - gmin) * adaptiveThreshold;
+            let range = Math.max(1e-9, gmax - effMin);
+            // Manual override if provided and valid
+            if (
+              typeof dbMin === "number" &&
+              typeof dbMax === "number" &&
+              isFinite(dbMin) &&
+              isFinite(dbMax) &&
+              dbMax > dbMin
+            ) {
+              effMin = dbMin;
+              range = Math.max(1e-9, dbMax - dbMin);
+            }
 
             // Build RGBA texture data
             const texW = Math.max(1, frames);
             const texH = Math.max(1, bins);
-            const lut = webgpu.getViridisLUT();
+            const lut = getColormapLUT256(colorMap as GLColormapName);
             const rgba = new Uint8Array(texW * texH * 4);
             for (let x = 0; x < texW; x++) {
               const row = displayData[x];
@@ -366,13 +389,23 @@ export default function Spectrogram({
             }
           }
 
-          const effMin = gmin + (gmax - gmin) * adaptiveThreshold;
-          const range = Math.max(1e-9, gmax - effMin);
+          let effMin = gmin + (gmax - gmin) * adaptiveThreshold;
+          let range = Math.max(1e-9, gmax - effMin);
+          if (
+            typeof dbMin === "number" &&
+            typeof dbMax === "number" &&
+            isFinite(dbMin) &&
+            isFinite(dbMax) &&
+            dbMax > dbMin
+          ) {
+            effMin = dbMin;
+            range = Math.max(1e-9, dbMax - dbMin);
+          }
 
           // Build RGBA texture data: width = frames, height = bins
           const texW = Math.max(1, frames);
           const texH = Math.max(1, bins);
-          const lut = webgl.viridisLUT256();
+          const lut = getColormapLUT256(colorMap as GLColormapName);
           const rgba = new Uint8Array(texW * texH * 4);
           for (let x = 0; x < texW; x++) {
             const row = displayData[x];
@@ -581,6 +614,8 @@ export default function Spectrogram({
       canvas.height = height * dpr;
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
+      // Reset transform before applying DPR scale to avoid cumulative scaling across frames
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
 
       ctx.save();
@@ -612,8 +647,18 @@ export default function Spectrogram({
       });
 
       const range = globalMax - globalMin;
-      const effectiveMin = globalMin + range * 0.05;
-      const effectiveMax = globalMax;
+      let effectiveMin = globalMin + range * 0.05;
+      let effectiveMax = globalMax;
+      if (
+        typeof dbMin === "number" &&
+        typeof dbMax === "number" &&
+        isFinite(dbMin) &&
+        isFinite(dbMax) &&
+        dbMax > dbMin
+      ) {
+        effectiveMin = dbMin;
+        effectiveMax = dbMax;
+      }
 
       displayData.forEach((row, frameIdx) => {
         const x = margin.left + frameIdx * frameWidth;
@@ -625,12 +670,16 @@ export default function Spectrogram({
           }
 
           const normalized =
-            (value - effectiveMin) / (effectiveMax - effectiveMin);
-
+            (value - effectiveMin) /
+            Math.max(1e-9, effectiveMax - effectiveMin);
           const t = Math.max(0, Math.min(1, normalized));
-          const r = Math.round(68 + 185 * t);
-          const g = Math.round(1 + 220 * t);
-          const b = Math.round(84 - 50 * t);
+          // Map via LUT for consistency with GL paths
+          const lut = getColormapLUT256(colorMap as GLColormapName);
+          const idx = Math.round(t * 255);
+          const base = (idx << 2) >>> 0;
+          const r = lut[base] ?? 0;
+          const g = lut[base + 1] ?? 0;
+          const b = lut[base + 2] ?? 0;
 
           const y = margin.top + chartHeight - (bin - freqMin) * binHeight;
           ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
@@ -651,6 +700,9 @@ export default function Spectrogram({
     height,
     freqMin,
     freqMax,
+    colorMap,
+    dbMin,
+    dbMax,
     transform,
     isPageVisible,
     isElementVisible,
@@ -742,6 +794,7 @@ export default function Spectrogram({
       <canvas
         ref={canvasRef}
         role="img"
+        tabIndex={0}
         aria-label={accessibleDescription}
         {...handlers}
         onDoubleClick={(): void => resetTransform()}

@@ -103,6 +103,7 @@ npm test -- --verbose --logHeapUsage
    - Keep tests fast and focused
 
 4. **Verify coverage**:
+
    ```bash
    npm test -- --coverage <your-test-file>
    ```

@@ -374,6 +374,8 @@ void main() {
       canvas.height = height * dpr;
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
+      // Reset transform before applying DPR scale to avoid cumulative scaling across frames
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
 
       // Apply user interaction transform (pan and zoom)
@@ -489,6 +491,7 @@ void main() {
       <canvas
         ref={canvasRef}
         role="img"
+        tabIndex={0}
         aria-label={accessibleDescription}
         {...handlers}
         onDoubleClick={(): void => resetTransform()}
