@@ -86,24 +86,35 @@ Adding a new device takes ~200 lines of code with the provided template and guid
 
 ### Accessibility ♿
 
-rad.io is committed to providing an accessible experience for all users, including those using assistive technologies. The application follows WCAG 2.1 AA standards.
+rad.io is committed to providing a fully accessible experience for all users, including those using assistive technologies. The application follows **WCAG 2.1 Level AA** standards and implements modern web accessibility best practices.
 
 #### Key Features
 
-- **Full Keyboard Navigation**: Complete control without a mouse, including arrow keys and shortcuts
-- **Screen Reader Support**: Comprehensive ARIA labels and live regions for all content
-- **Focus Management**: Clear visual indicators and logical tab order
-- **Skip Links**: Jump directly to main content
-- **Color Contrast**: WCAG AA compliant (4.5:1 for text, 3:1 for UI components)
-- **Responsive Design**: Works at 200% browser zoom without horizontal scrolling
+- **Full Keyboard Navigation**: Complete control without a mouse - all features accessible via keyboard shortcuts
+- **Screen Reader Support**: Comprehensive ARIA labels, semantic HTML, and live regions for real-time updates
+- **Focus Management**: Clear 3px cyan focus indicators (≥3:1 contrast) with logical tab order
+- **Skip Links**: Jump directly to main content (first tab stop)
+- **Color Accessibility**: WCAG AA compliant contrast (4.5:1 text, 3:1 UI) with colorblind-safe palettes (Viridis)
+- **Responsive & Scalable**: Works at 200% browser zoom, touch targets ≥44×44px on mobile
+- **Reduced Motion**: Respects `prefers-reduced-motion` for users sensitive to animations
 
 #### Testing & Compliance
 
-- **36 Automated Tests**: Jest-axe and manual accessibility tests
+- **36 Automated Tests**: jest-axe + manual ARIA/keyboard tests (all passing)
+- **E2E Testing**: @axe-core/playwright for full-page accessibility scans
 - **ESLint Enforcement**: 25+ jsx-a11y rules enforced in CI/CD
-- **Continuous Validation**: All PRs require accessibility checks to pass
+- **Zero Critical Violations**: Continuous monitoring with automated tools
+- **Manual Testing**: Quarterly screen reader testing (NVDA, VoiceOver)
+- **Continuous Compliance**: Documented processes for ongoing accessibility (ADR-0023)
 
-**Learn More**: See [ACCESSIBILITY.md](./ACCESSIBILITY.md) for complete documentation.
+#### Documentation
+
+- **[ACCESSIBILITY.md](./ACCESSIBILITY.md)** - Feature documentation and user guide
+- **[ACCESSIBILITY-TESTING-GUIDE.md](./docs/ACCESSIBILITY-TESTING-GUIDE.md)** - Testing procedures for contributors
+- **[ADR-0017](./docs/decisions/0017-comprehensive-accessibility-patterns.md)** - Accessibility patterns
+- **[ADR-0023](./docs/decisions/0023-continuous-accessibility-compliance-modern-web-standards.md)** - Continuous compliance process
+
+**Compliance Badge**: WCAG 2.1 AA Compliant ✓
 
 ## Quick Start
 
