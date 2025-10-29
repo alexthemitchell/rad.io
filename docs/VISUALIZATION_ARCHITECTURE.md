@@ -61,7 +61,7 @@ The visualization system consists of four main layers:
 
 React components that integrate visualizations into pages:
 
-- **Monitor Page** (`src/pages/Monitor.tsx`): Main reception interface
+- **Monitor Page** (`src/pages/MonitorMerged.tsx`): Main reception interface
 - **Analysis Page** (`src/pages/Analysis.tsx`): Signal analysis tools
 - **Visualization Demo** (`src/pages/VisualizationDemo.tsx`): Test/demo page
 

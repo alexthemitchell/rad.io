@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDeviceContext } from "../contexts/DeviceContext";
+import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
 import { RenderTier } from "../types/rendering";
+import { extractUSBDevice, formatUsbId } from "../utils/usb";
 /** Rendering tier detected for visualization components */
 // Re-export for backward compatibility with existing imports/tests
 export { RenderTier } from "../types/rendering";
@@ -11,6 +14,8 @@ export interface StatusBarProps {
   fps?: number;
   /** Input data cadence FPS (viz-push) */
   inputFps?: number;
+  /** Estimated dropped frames over recent window */
+  droppedFrames?: number;
   /** p95 render duration for 'rendering' measures (ms) */
   renderP95Ms?: number;
   /** Count of long tasks observed (PerformanceObserver) */
@@ -35,6 +40,36 @@ export interface StatusBarProps {
   audioClipping?: boolean;
   /** Additional className for styling */
   className?: string;
+  /** Open the Rendering Settings modal */
+  onOpenRenderingSettings?: () => void;
+}
+
+// Custom hook to safely consume DeviceContext, returning defaults if provider is missing
+function useOptionalDeviceContext(): {
+  primaryDevice: unknown;
+  connectPairedUSBDevice: (usb: USBDevice) => Promise<void>;
+  requestDevice: () => Promise<void>;
+  isCheckingPaired: boolean;
+} {
+  try {
+    return useDeviceContext();
+  } catch {
+    return {
+      primaryDevice: undefined,
+      connectPairedUSBDevice: async (_usb: USBDevice): Promise<void> => {
+        await Promise.resolve();
+      },
+      requestDevice: async (): Promise<void> => {
+        await Promise.resolve();
+      },
+      isCheckingPaired: false,
+    };
+  }
+}
+
+// Helper to compute a stable key for a USB device
+function deviceKey(usb: USBDevice): string {
+  return `${usb.vendorId}:${usb.productId}:${usb.serialNumber ?? "__no_serial__"}`;
 }
 
 /**
@@ -60,6 +95,7 @@ function StatusBar({
   renderTier = RenderTier.Unknown,
   fps = 0,
   inputFps = 0,
+  droppedFrames,
   renderP95Ms = 0,
   longTasks = 0,
   sampleRate = 0,
@@ -72,8 +108,57 @@ function StatusBar({
   audioVolume,
   audioClipping = false,
   className = "",
+  onOpenRenderingSettings,
 }: StatusBarProps): React.JSX.Element {
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  const {
+    primaryDevice,
+    connectPairedUSBDevice,
+    requestDevice,
+    isCheckingPaired,
+  } = useOptionalDeviceContext();
+
+  // Enumerated list of previously paired and supported USB devices
+  const [pairedUSBDevices, setPairedUSBDevices] = useState<USBDevice[] | null>(
+    null,
+  );
+
+  // Selected device key in the dropdown (tracks current primary device)
+  const selectedKey = useMemo(() => {
+    const usb = extractUSBDevice(primaryDevice);
+    return usb ? deviceKey(usb) : "";
+  }, [primaryDevice]);
+
+  const primaryUSB = useMemo(
+    () => extractUSBDevice(primaryDevice),
+    [primaryDevice],
+  );
+
+  // Enumerate paired devices (similar to Devices panel)
+  useEffect(() => {
+    const enumerate = async (): Promise<void> => {
+      if (isCheckingPaired) {
+        setPairedUSBDevices(null);
+        return;
+      }
+      try {
+        const selector = new WebUSBDeviceSelector();
+        const paired = await selector.getDevices();
+        const supported = paired.filter((usb) =>
+          Boolean(SDRDriverRegistry.getDriverForDevice(usb)),
+        );
+        setPairedUSBDevices(supported);
+      } catch (err) {
+        console.error(
+          "StatusBar: Failed to enumerate paired USB devices:",
+          err,
+        );
+        setPairedUSBDevices([]);
+      }
+    };
+    void enumerate();
+  }, [isCheckingPaired, primaryDevice]);
 
   // Update clock every second
   useEffect((): (() => void) => {
@@ -172,6 +257,7 @@ function StatusBar({
   };
 
   const [showBufferDetails, setShowBufferDetails] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   return (
     <div
@@ -182,27 +268,137 @@ function StatusBar({
     >
       <div className="status-bar-item">
         <span className="status-bar-label">Device</span>
-        <span
-          className="status-bar-value"
-          style={{
-            color: deviceConnected ? "var(--rad-success)" : "var(--rad-danger)",
-          }}
-        >
-          {deviceConnected ? "Connected" : "Disconnected"}
-        </span>
+        {Array.isArray(pairedUSBDevices) && pairedUSBDevices.length > 1 ? (
+          <select
+            aria-label="Select SDR device"
+            className="status-bar-value"
+            value={selectedKey}
+            onChange={(e): void => {
+              const key = e.target.value;
+              const next = pairedUSBDevices.find((u) => deviceKey(u) === key);
+              if (next) {
+                void connectPairedUSBDevice(next);
+              }
+            }}
+            style={{
+              marginLeft: 6,
+              padding: "2px 6px",
+              background: "transparent",
+              border: "1px solid var(--rad-border)",
+              color: deviceConnected
+                ? "var(--rad-success)"
+                : "var(--rad-danger)",
+            }}
+            title={
+              deviceConnected
+                ? "Switch between paired SDR devices"
+                : "Select a paired SDR device to connect"
+            }
+          >
+            {/* Placeholder when no device is currently selected */}
+            {!deviceConnected && (
+              <option value="" disabled>
+                Select device…
+              </option>
+            )}
+            {/* Ensure the current selection is present even if enumeration is slow */}
+            {selectedKey &&
+            !pairedUSBDevices.some((u) => deviceKey(u) === selectedKey) ? (
+              <option value={selectedKey}>Current device</option>
+            ) : null}
+            {pairedUSBDevices.map((usb) => {
+              const visible = `${usb.productName ?? "Unknown Device"} (${formatUsbId(usb.vendorId, usb.productId)})`;
+              const tooltip = `${usb.productName ?? "Unknown Device"} • ${formatUsbId(usb.vendorId, usb.productId)}${usb.serialNumber ? ` • SN: ${usb.serialNumber}` : ""}`;
+              return (
+                <option
+                  key={deviceKey(usb)}
+                  value={deviceKey(usb)}
+                  title={tooltip}
+                >
+                  {visible}
+                </option>
+              );
+            })}
+          </select>
+        ) : (
+          <span
+            className="status-bar-value"
+            style={{
+              color: deviceConnected
+                ? "var(--rad-success)"
+                : "var(--rad-danger)",
+            }}
+            title={
+              primaryUSB
+                ? `${primaryUSB.productName ?? "Unknown Device"} • ${formatUsbId(primaryUSB.vendorId, primaryUSB.productId)}${primaryUSB.serialNumber ? ` • SN: ${primaryUSB.serialNumber}` : ""}`
+                : undefined
+            }
+          >
+            {deviceConnected ? "Connected" : "Disconnected"}
+          </span>
+        )}
+
+        {/* Connect affordance lives in the StatusBar when not connected */}
+        {!deviceConnected ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setIsConnecting(true);
+              void requestDevice()
+                .catch((err: unknown) => {
+                  console.error("StatusBar: Failed to request device", err);
+                })
+                .finally(() => {
+                  setIsConnecting(false);
+                });
+            }}
+            disabled={isCheckingPaired || isConnecting}
+            aria-label="Connect SDR device via WebUSB"
+            title={
+              isCheckingPaired
+                ? "Checking for previously paired devices..."
+                : "Click to connect your SDR device via WebUSB"
+            }
+            style={{ marginLeft: 8, padding: "2px 8px" }}
+          >
+            {isConnecting ? "Connecting…" : "Connect…"}
+          </button>
+        ) : null}
       </div>
 
       <div className="status-bar-separator" aria-hidden="true" />
 
       <div className="status-bar-item">
         <span className="status-bar-label">GPU</span>
-        <span
-          className="status-bar-value"
-          style={{ color: getRenderTierColor(renderTier) }}
-          title={`Rendering with ${renderTier}`}
-        >
-          {renderTier}
-        </span>
+        {typeof onOpenRenderingSettings === "function" ? (
+          <button
+            type="button"
+            className="status-bar-value"
+            onClick={onOpenRenderingSettings}
+            style={{
+              color: getRenderTierColor(renderTier),
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              textDecoration: "underline",
+              textUnderlineOffset: 2,
+            }}
+            aria-label={`Rendering with ${renderTier}. Open rendering settings.`}
+            title={`Rendering with ${renderTier} • Click for settings`}
+          >
+            {renderTier}
+          </button>
+        ) : (
+          <span
+            className="status-bar-value"
+            style={{ color: getRenderTierColor(renderTier) }}
+            title={`Rendering with ${renderTier}`}
+          >
+            {renderTier}
+          </span>
+        )}
       </div>
 
       <div className="status-bar-separator" aria-hidden="true" />
@@ -283,6 +479,27 @@ function StatusBar({
           {longTasks}
         </span>
       </div>
+
+      {typeof droppedFrames === "number" ? (
+        <>
+          <div className="status-bar-separator" aria-hidden="true" />
+          <div className="status-bar-item">
+            <span className="status-bar-label">Dropped</span>
+            <span
+              className="status-bar-value status-bar-mono"
+              style={{
+                color:
+                  droppedFrames > 0
+                    ? "var(--rad-warning)"
+                    : "var(--rad-success)",
+              }}
+              title="Estimated dropped frames (last 60s)"
+            >
+              {Math.max(0, Math.round(droppedFrames))}
+            </span>
+          </div>
+        </>
+      ) : null}
 
       <div className="status-bar-separator" aria-hidden="true" />
 

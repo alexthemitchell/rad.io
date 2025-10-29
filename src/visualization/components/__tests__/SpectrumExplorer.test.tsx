@@ -82,8 +82,8 @@ describe("SpectrumExplorer", () => {
       />,
     );
 
-    // Only the spectrum canvas should be present
+    // The spectrum and interaction canvases should be present
     const canvases = container.querySelectorAll("canvas");
-    expect(canvases.length).toBe(1);
+    expect(canvases.length).toBe(2);
   });
 });
