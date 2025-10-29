@@ -17,9 +17,14 @@ This directory contains comprehensive reference materials for both users and dev
 - **[DSP Fundamentals](./dsp-fundamentals.md)** - Digital Signal Processing concepts and algorithms
 - **[FFT Implementation](./fft-implementation.md)** - Fast Fourier Transform in browser environments
 - **[Demodulation Algorithms](./demodulation-algorithms.md)** - Implementation details for various demodulators
-- **[Performance Optimization](./performance-optimization.md)** - Optimizing real-time signal processing
+- **[Performance Optimization](./performance-optimization.md)** - Comprehensive optimization strategies and techniques
+- **[Performance Benchmarks](./performance-benchmarks.md)** - Baseline measurements and optimization results
 - **[Hardware Integration](./hardware-integration.md)** - Working with SDR hardware devices
 - **[WebGL Visualization](./webgl-visualization.md)** - GPU-accelerated spectrum displays
+- **[WASM Runtime Flags](./wasm-runtime-flags.md)** - WebAssembly configuration options
+- **[Airspy Integration](./airspy-integration.md)** - Airspy device implementation details
+- **[Digital Modes](./digital-modes.md)** - Decoding digital communication protocols
+- **[Audio Demodulation Pipeline](./audio-demodulation-pipeline.md)** - Real-time audio processing architecture
 
 ## Quick Reference
 

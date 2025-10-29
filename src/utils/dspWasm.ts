@@ -202,6 +202,65 @@ export function isWasmSupported(): boolean {
 }
 
 /**
+ * Check if WebAssembly SIMD is supported
+ * Tests with a minimal WASM module containing SIMD instructions
+ */
+export function isWasmSIMDSupported(): boolean {
+  if (!isWasmSupported()) {
+    return false;
+  }
+
+  try {
+    // Minimal WASM module with v128.const and i8x16.popcnt (SIMD instructions)
+    return WebAssembly.validate(
+      new Uint8Array([
+        0,
+        97,
+        115,
+        109,
+        1,
+        0,
+        0,
+        0, // WASM header
+        1,
+        5,
+        1,
+        96,
+        0,
+        1,
+        127, // Type section
+        3,
+        2,
+        1,
+        0, // Function section
+        10,
+        10,
+        1,
+        8,
+        0, // Code section start
+        65,
+        0, // i32.const 0
+        253,
+        12,
+        253,
+        98, // v128.const and i8x16.popcnt (SIMD instructions for feature test)
+        11, // end
+      ]),
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Determine which WASM module variant to load
+ * Returns 'simd' if SIMD is supported, otherwise 'standard'
+ */
+export function getWasmVariant(): "simd" | "standard" {
+  return isWasmSIMDSupported() ? "simd" : "standard";
+}
+
+/**
  * Load and initialize the WASM module
  * Returns a promise that resolves when the module is ready
  */
@@ -226,15 +285,33 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
     return null;
   }
 
-  const candidateUrls = [
-    makeUrl("release.js"),
-    makeUrl("/release.js"),
-    makeUrl("dsp.js"),
-    makeUrl("/dsp.js"),
-  ];
+  // Determine which variant to load (SIMD or standard)
+  const variant = getWasmVariant();
+  const useSIMD = variant === "simd";
+
+  // Try SIMD variant first if supported, then fall back to standard
+  const candidateUrls = useSIMD
+    ? [
+        makeUrl("release-simd.js"),
+        makeUrl("/release-simd.js"),
+        makeUrl("dsp-simd.js"),
+        makeUrl("/dsp-simd.js"),
+        // Fallback to standard if SIMD not found
+        makeUrl("release.js"),
+        makeUrl("/release.js"),
+        makeUrl("dsp.js"),
+        makeUrl("/dsp.js"),
+      ]
+    : [
+        makeUrl("release.js"),
+        makeUrl("/release.js"),
+        makeUrl("dsp.js"),
+        makeUrl("/dsp.js"),
+      ];
 
   const loadPromise = (async (): Promise<WasmDSPModule | null> => {
     let lastError: unknown;
+    let loadedWithSIMD = false;
 
     for (const url of candidateUrls) {
       try {
@@ -242,6 +319,9 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
         if (!isValidModule(mod)) {
           throw new Error("Invalid WASM module exports");
         }
+
+        // Check if this is a SIMD module
+        loadedWithSIMD = url.includes("simd");
 
         wasmModule = {
           calculateFFT: mod.calculateFFT.bind(mod),
@@ -269,10 +349,15 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
         wasmSupported = true;
         // One-time visibility into loaded exports
         try {
-          dspLogger.info("WASM module loaded", {
-            url,
-            exports: getWasmModuleExportStatus(mod),
-          });
+          dspLogger.info(
+            `WASM module loaded${loadedWithSIMD ? " (SIMD-optimized)" : ""}`,
+            {
+              url,
+              variant: loadedWithSIMD ? "simd" : "standard",
+              simdSupported: isWasmSIMDSupported(),
+              exports: getWasmModuleExportStatus(mod),
+            },
+          );
         } catch {
           // ignore logging errors
         }

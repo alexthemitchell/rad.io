@@ -5,14 +5,67 @@ import {
   isWasmAvailable,
   isWasmRuntimeEnabled,
   isWasmValidationEnabled,
+  isWasmSIMDSupported,
+  getWasmVariant,
 } from "./dspWasm";
 import { dspLogger } from "./logger";
 import { performanceMonitor } from "./performanceMonitor";
+import {
+  canUseSharedArrayBuffer,
+  getSharedBufferCapabilities,
+} from "./sharedRingBuffer";
+import { isWebGPUSupported } from "./webgpuCompute";
 
 export type Sample = {
   I: number;
   Q: number;
 };
+
+// Performance optimization status
+export interface OptimizationStatus {
+  wasmAvailable: boolean;
+  wasmVariant: "simd" | "standard" | "none";
+  sharedArrayBuffer: boolean;
+  webGPU: boolean;
+  crossOriginIsolated: boolean;
+}
+
+/**
+ * Get current optimization status
+ */
+export function getOptimizationStatus(): OptimizationStatus {
+  const sharedBufferCaps = getSharedBufferCapabilities();
+
+  return {
+    wasmAvailable: isWasmAvailable(),
+    wasmVariant: isWasmAvailable() ? getWasmVariant() : "none",
+    sharedArrayBuffer: canUseSharedArrayBuffer(),
+    webGPU: isWebGPUSupported(),
+    crossOriginIsolated: sharedBufferCaps.isolated,
+  };
+}
+
+/**
+ * Log optimization status (call once at startup)
+ */
+export function logOptimizationStatus(): void {
+  const status = getOptimizationStatus();
+  const sharedBufferCaps = getSharedBufferCapabilities();
+
+  dspLogger.info("DSP Optimization Status", {
+    wasm: status.wasmAvailable
+      ? `enabled (${status.wasmVariant}${status.wasmVariant === "simd" ? " - 2-4x faster" : ""})`
+      : "disabled",
+    simdSupported: isWasmSIMDSupported(),
+    sharedArrayBuffer: status.sharedArrayBuffer
+      ? "enabled (zero-copy transfers)"
+      : (sharedBufferCaps.error ?? "disabled"),
+    webGPU: status.webGPU
+      ? "available (8-15x faster for large FFTs)"
+      : "not available",
+    crossOriginIsolated: status.crossOriginIsolated,
+  });
+}
 
 // Module-level flag to avoid spamming warnings when WASM spectrogram output
 // validation fails; prefer a single warning per session.
