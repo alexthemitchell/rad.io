@@ -68,8 +68,28 @@ class PerformanceMonitor {
         }
       });
 
-      // Observe long tasks plus measures/marks for completeness
-      this.observer.observe({ entryTypes: ["measure", "mark", "longtask"] });
+      // Observe long tasks plus measures/marks for completeness, but only
+      // include 'longtask' if supported by this browser/environment.
+      // We feature-detect supportedEntryTypes in a type-safe way to satisfy lint rules.
+      const getSupportedEntryTypes = (): readonly string[] | undefined => {
+        const poUnknown = PerformanceObserver as unknown;
+        const isObjOrFunc =
+          (typeof poUnknown === "object" && poUnknown !== null) ||
+          typeof poUnknown === "function";
+        if (isObjOrFunc && "supportedEntryTypes" in (poUnknown as Record<string, unknown>)) {
+          const set = (poUnknown as { supportedEntryTypes?: unknown }).supportedEntryTypes;
+          if (Array.isArray(set) && set.every((x) => typeof x === "string")) {
+            return set as readonly string[];
+          }
+        }
+        return undefined;
+      };
+      const supported = getSupportedEntryTypes();
+      const entryTypes: string[] = ["measure", "mark"];
+      if (supported?.includes("longtask")) {
+        entryTypes.push("longtask");
+      }
+      this.observer.observe({ entryTypes });
     } catch {
       // Silently skip observer initialization failures
     }

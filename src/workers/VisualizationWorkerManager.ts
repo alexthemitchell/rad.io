@@ -139,12 +139,12 @@ export class VisualizationWorkerManager {
 
     try {
       // Create worker
-      const workerUrl =
-        typeof window !== "undefined" && typeof URL !== "undefined"
-          ? new URL("./visualization-renderer.worker.ts", window.location.href)
-          : ("./visualization-renderer.worker.ts" as unknown as URL);
-
-      this.worker = new Worker(workerUrl);
+      // Use bundler-friendly URL so webpack packs the worker correctly
+      const workerUrl = new URL(
+        "./visualization-renderer.worker.ts",
+        import.meta.url,
+      );
+      this.worker = new Worker(workerUrl, { type: "module" });
 
       // Set up message handler
       this.worker.onmessage = (ev: MessageEvent<WorkerMessage>): void => {

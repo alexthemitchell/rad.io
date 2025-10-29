@@ -36,15 +36,6 @@ class Complex {
 }
 
 /**
- * Calculate FFT using Cooley-Tukey algorithm (radix-2 DIT)
- * Much faster than naive DFT: O(N log N) vs O(N²)
- *
- * @param iSamples - I (in-phase) component samples
- * @param qSamples - Q (quadrature) component samples
- * @param fftSize - FFT size (must be power of 2)
- * @param output - Pre-allocated output array for magnitude spectrum in dB
- */
-/**
  * Apply Hann window to I/Q samples in-place
  * Hann window: w(n) = 0.5 * (1 - cos(2π*n/(N-1)))
  *
@@ -111,6 +102,15 @@ export function applyBlackmanWindow(
   }
 }
 
+/**
+ * Calculate FFT using Cooley-Tukey algorithm (radix-2 DIT)
+ * Much faster than naive DFT: O(N log N) vs O(N²)
+ *
+ * @param iSamples - I (in-phase) component samples
+ * @param qSamples - Q (quadrature) component samples
+ * @param fftSize - FFT size (must be power of 2)
+ * @param output - Pre-allocated output array for magnitude spectrum in dB
+ */
 export function calculateFFT(
   iSamples: Float32Array,
   qSamples: Float32Array,
