@@ -57,7 +57,7 @@ export class PluginRegistry implements IPluginRegistry {
       // Emit registration event
       this.emitEvent({
         plugin,
-        event: "registered" as PluginEvent,
+        event: PluginEvent.REGISTERED,
         timestamp: Date.now(),
       });
     } catch (error) {
