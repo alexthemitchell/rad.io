@@ -57,10 +57,6 @@ export class WebGLWaterfall implements Renderer {
 
       const { gl } = this;
       this.program = webgl.createProgram(gl, webgl.FULLSCREEN_VS, WATERFALL_FS);
-      if (!this.program) {
-        this.error("Failed to create WebGL program");
-        return false;
-      }
 
       this.aPosition = gl.getAttribLocation(this.program, "a_position");
       this.aTexCoord = gl.getAttribLocation(this.program, "a_texCoord");

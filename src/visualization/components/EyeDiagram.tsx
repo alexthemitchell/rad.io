@@ -104,7 +104,9 @@ export default function EyeDiagram({
       ctx.lineWidth = 1.25 * dpr;
       for (let k = 0; k < periodSamples && start + k < end; k++) {
         const s = samples[start + k];
-        if (!s) continue;
+        if (!s) {
+          continue;
+        }
         const I = s.I;
         const x = (k / (periodSamples - 1)) * canvas.width;
         const yNorm = (I - minI) / ampSpan; // 0..1

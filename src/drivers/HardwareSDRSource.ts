@@ -30,7 +30,7 @@ export class HardwareSDRSource implements DataSource {
      * Start receiving IQ samples from the SDR device.
      * The device must implement a `receive(callback: (samples: IQSample[]) => void)` method
      * that continuously calls the callback with new sample data until stopStreaming() is called.
-     * 
+     *
      * @see ISDRDevice interface for the expected contract
      */
     await this.device.receive(this.handleData);
