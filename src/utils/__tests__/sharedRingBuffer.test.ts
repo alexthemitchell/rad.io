@@ -193,17 +193,14 @@ describe("SharedRingBuffer", () => {
     (runTest ? it : it.skip)(
       "should throw error on out-of-bounds access",
       () => {
-        const buffer = new SharedRingBuffer(10);
-        const invalidSamples = new Float32Array(5);
-
         // Try to write with an invalid index - accessing beyond array bounds
         expect(() => {
           const hugeArray = new Float32Array(1);
           // Access element at index 100 which is out of bounds
-          const _ = hugeArray[100];
+          hugeArray[100];
         }).not.toThrow(); // TypedArray returns undefined, doesn't throw
 
-        // But our safeFloatArrayIndex should throw
+        // But our safeFloatArrayIndex should throw when bounds checking is enabled
         // This is tested implicitly in write operations
       },
     );

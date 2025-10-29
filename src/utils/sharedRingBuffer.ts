@@ -73,9 +73,15 @@ export class SharedRingBuffer {
       return 0;
     }
 
-    // Write data
-    for (let i = 0; i < toWrite; i++) {
-      this.data[(writePos + i) % this.size] = safeFloatArrayIndex(samples, i);
+    // Write data (split into two parts to avoid repeated modulo)
+    const firstPart = Math.min(toWrite, this.size - writePos);
+    // Write contiguous part
+    for (let i = 0; i < firstPart; i++) {
+      this.data[writePos + i] = safeFloatArrayIndex(samples, i);
+    }
+    // Write wrapped part (if any)
+    for (let i = firstPart; i < toWrite; i++) {
+      this.data[i - firstPart] = safeFloatArrayIndex(samples, i);
     }
 
     // Update write position
@@ -120,12 +126,15 @@ export class SharedRingBuffer {
 
       const toRead = Math.min(count - read, available);
 
-      // Read data
-      for (let i = 0; i < toRead; i++) {
-        result[read + i] = safeFloatArrayIndex(
-          this.data,
-          (readPos + i) % this.size,
-        );
+      // Split read into two parts to minimize modulo operations
+      const firstPart = Math.min(toRead, this.size - readPos);
+      // Copy first contiguous block
+      for (let i = 0; i < firstPart; i++) {
+        result[read + i] = safeFloatArrayIndex(this.data, readPos + i);
+      }
+      // Copy wrapped block if needed
+      for (let i = firstPart; i < toRead; i++) {
+        result[read + i] = safeFloatArrayIndex(this.data, i - firstPart);
       }
 
       // Update read position
@@ -156,8 +165,15 @@ export class SharedRingBuffer {
 
     const result = new Float32Array(count);
 
-    for (let i = 0; i < count; i++) {
-      result[i] = safeFloatArrayIndex(this.data, (readPos + i) % this.size);
+    // Split read into two parts to minimize modulo operations
+    const firstPart = Math.min(count, this.size - readPos);
+    // Copy first contiguous block
+    for (let i = 0; i < firstPart; i++) {
+      result[i] = safeFloatArrayIndex(this.data, readPos + i);
+    }
+    // Copy wrapped block if needed
+    for (let i = firstPart; i < count; i++) {
+      result[i] = safeFloatArrayIndex(this.data, i - firstPart);
     }
 
     const newReadPos = (readPos + count) % this.size;

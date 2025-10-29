@@ -373,7 +373,7 @@ See commit 7ce9244 and related PRs for complete implementation details.
 **Detection Code**:
 
 ```javascript
-// Example function - actual implementation uses isWasmSIMDSupported()
+// Example function - actual implementation: isWasmSIMDSupported() in src/utils/dspWasm.ts
 function detectWasmSIMD() {
   try {
     return WebAssembly.validate(

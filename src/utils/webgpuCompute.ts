@@ -128,6 +128,8 @@ export class WebGPUFFT {
 
     try {
       // Interleave I/Q samples for GPU
+      // Note: When I or Q samples are undefined, corresponding elements remain at 0 (zero-filled)
+      // This is acceptable for missing data as it won't contribute to magnitude calculations
       const interleavedData = new Float32Array(this.fftSize * 2);
       for (let i = 0; i < this.fftSize; i++) {
         const iSample = iSamples[i];
@@ -215,7 +217,8 @@ export class WebGPUFFT {
         
         // Convert to dB scale using correct base-10 logarithm
         // dB = 20 * log10(magnitude) = 20 / ln(10) * ln(magnitude)
-        const DB_SCALE_FACTOR = 8.685889638065036; // 20 / ln(10)
+        // where ln(10) ≈ 2.302585093, so 20 / ln(10) ≈ 8.685889638065036
+        const DB_SCALE_FACTOR = 8.685889638065036;
         let db = DB_SCALE_FACTOR * log(magnitude + 1e-10);
         output[idx] = db;
       }
