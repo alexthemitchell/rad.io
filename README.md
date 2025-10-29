@@ -116,6 +116,45 @@ rad.io is committed to providing a fully accessible experience for all users, in
 
 **Compliance Badge**: WCAG 2.1 AA Compliant ✓
 
+## Documentation
+
+rad.io uses the **[Diátaxis framework](https://diataxis.fr/)** to organize documentation by user needs. Find exactly what you need:
+
+### 📚 [Tutorials](docs/tutorials/) - Learn by Doing
+
+Step-by-step guides for beginners:
+
+- [Getting Started](docs/tutorials/01-getting-started.md) - Set up and run rad.io
+- [Your First Visualization](docs/tutorials/02-first-visualization.md) - Build a spectrum analyzer
+- [More tutorials →](docs/tutorials/)
+
+### 🔧 [How-To Guides](docs/how-to/) - Solve Problems
+
+Task-focused guides for specific goals:
+
+- [Add a New SDR Device](docs/how-to/add-new-sdr-device.md)
+- [Implement Demodulation](docs/how-to/implement-demodulation.md)
+- [More how-tos →](docs/how-to/)
+
+### 📖 [Reference](docs/reference/) - Look Up Details
+
+Technical specifications and API docs:
+
+- [SDR Basics](docs/reference/sdr-basics.md)
+- [DSP Fundamentals](docs/reference/dsp-fundamentals.md)
+- [More reference docs →](docs/reference/)
+
+### 💡 [Explanation](docs/explanation/) - Understand Why
+
+Design rationale and concepts:
+
+- [SDR Architecture Overview](docs/explanation/sdr-architecture-overview.md)
+- [WebUSB Integration](docs/explanation/webusb-browser-integration.md)
+- [Architecture Decision Records](docs/decisions/)
+- [More explanations →](docs/explanation/)
+
+**Complete documentation index:** [docs/README.md](docs/README.md)
+
 ## Quick Start
 
 ### For New Contributors 🚀
