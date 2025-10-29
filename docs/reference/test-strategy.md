@@ -17,26 +17,26 @@ graph TB
         MODELS[Device Models]
         UTILS[Utilities]
     end
-    
+
     subgraph "Integration Tests (Jest)"
         IT[Integration Tests]
         PIPELINE[DSP Pipeline]
         HOOKS[React Hooks + Context]
         DEVICE[Device State Management]
     end
-    
+
     subgraph "E2E Tests (Playwright)"
         MOCK[Mock Device Tests<br/>CI-friendly]
         SIM[Simulated Data Tests]
         REAL[Real Hardware Tests<br/>Opt-in]
         A11Y[Accessibility Tests]
     end
-    
+
     UT --> IT
     IT --> MOCK
     IT --> SIM
     MOCK -.Optional.-> REAL
-    
+
     style MOCK fill:#90EE90
     style SIM fill:#90EE90
     style REAL fill:#FFE4B5
@@ -116,7 +116,7 @@ graph TB
 
    ```typescript
    // Tests: connect → configure → stream → stop workflow
-   test('device lifecycle completes successfully', async () => {
+   test("device lifecycle completes successfully", async () => {
      await device.open();
      await device.setFrequency(100e6);
      await device.setSampleRate(2048000);
@@ -164,7 +164,7 @@ graph TB
 
 #### E2E Test Modes
 
-**1. Mock Device Tests** (CI-default)
+##### 1. Mock Device Tests (CI-default)
 
 ```bash
 npm run test:e2e
@@ -175,7 +175,7 @@ npm run test:e2e
 - Fast and deterministic
 - Runs in CI/CD automatically
 
-### 2. Simulated Data Tests
+##### 2. Simulated Data Tests
 
 ```bash
 npm run test:e2e:sim
@@ -186,7 +186,7 @@ npm run test:e2e:sim
 - Validates frequency sweeps, modulation patterns
 - Included in default CI runs
 
-**3. Real Hardware Tests** (Opt-in)
+##### 3. Real Hardware Tests (Opt-in)
 
 ```bash
 E2E_REAL_HACKRF=1 npm run test:e2e       # Legacy @real tests
@@ -198,7 +198,7 @@ npm run test:e2e:device                   # Modern @device tests
 - Hardware-in-the-loop validation
 - Manual execution only (not in CI)
 
-### 4. Accessibility Tests
+##### 4. Accessibility Tests
 
 ```bash
 npm run test:e2e  # Included in default run
@@ -291,7 +291,7 @@ Comprehensive signal generation for deterministic testing:
 **Basic Signals**:
 
 ```typescript
-import { generateIQSamples } from '../utils/signalGenerator';
+import { generateIQSamples } from "../utils/signalGenerator";
 
 // Pure sinusoid
 const samples = generateIQSamples({
@@ -305,7 +305,7 @@ const samples = generateIQSamples({
 **Multi-tone Signals**:
 
 ```typescript
-import { generateMultiToneIQ } from '../utils/signalGenerator';
+import { generateMultiToneIQ } from "../utils/signalGenerator";
 
 // Multiple frequencies for FFT testing
 const samples = generateMultiToneIQ({
@@ -321,7 +321,7 @@ const samples = generateMultiToneIQ({
 **Modulated Signals**:
 
 ```typescript
-import { generateFMIQ, generateAMIQ } from '../utils/signalGenerator';
+import { generateFMIQ, generateAMIQ } from "../utils/signalGenerator";
 
 // FM modulation
 const fmSignal = generateFMIQ({
@@ -590,7 +590,7 @@ Use `clearMemoryPools()` from `testMemoryManager` in `afterEach`.
 
 ```typescript
 // Use waitFor from React Testing Library
-import { waitFor } from '@testing-library/react';
+import { waitFor } from "@testing-library/react";
 await waitFor(() => expect(element).toBeInTheDocument());
 ```
 
@@ -608,7 +608,7 @@ npm test -- --maxWorkers=1
 
 ```typescript
 // Increase timeout for specific test
-test('slow test', async () => {
+test("slow test", async () => {
   // test code
 }, 10000); // 10 second timeout
 ```

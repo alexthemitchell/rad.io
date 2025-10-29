@@ -30,7 +30,7 @@ devices in the rad.io visualizer.
 **Specifications:**
 
 - **Frequency Range**: 24 MHz - 1.8 GHz
-- **Sample Rates**: 3 MS/s, 6 MS/s *(see note below)*
+- **Sample Rates**: 3 MS/s, 6 MS/s _(see note below)_
 - **Resolution**: 12-bit ADC
 - **USB**: Vendor ID 0x1d50, Product ID 0x60a1 (same as R2)
 - **Size**: Compact form factor

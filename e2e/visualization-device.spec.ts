@@ -410,9 +410,7 @@ test.describe("Visualization with Physical Device @device", () => {
       await expect(control).toBeVisible();
 
       // Change bandwidth if possible
-      const tagName = await control.evaluate((el) =>
-        el.tagName.toLowerCase(),
-      );
+      const tagName = await control.evaluate((el) => el.tagName.toLowerCase());
 
       if (tagName === "select") {
         const options = await control.locator("option").all();

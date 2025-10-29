@@ -83,9 +83,7 @@ test.describe("Scanner with Physical Device @device", () => {
     await stopBtn.click();
   });
 
-  test("should detect and display active signals @device", async ({
-    page,
-  }) => {
+  test("should detect and display active signals @device", async ({ page }) => {
     test.slow(); // Signal detection can take time
 
     await page.goto("/scanner");

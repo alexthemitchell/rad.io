@@ -143,9 +143,7 @@ test.describe("Recordings with Physical Device @device", () => {
       // Look for delete button
       const deleteBtn = recordings
         .first()
-        .locator(
-          'button:has-text("Delete"), button[aria-label*="delete" i]',
-        );
+        .locator('button:has-text("Delete"), button[aria-label*="delete" i]');
 
       if ((await deleteBtn.count()) > 0) {
         await deleteBtn.first().click();

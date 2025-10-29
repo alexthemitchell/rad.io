@@ -131,7 +131,7 @@ rad.io is committed to providing a fully accessible experience for all users, in
 
 - Modern web browser with WebUSB support (Chrome 61+, Edge 79+, Opera 48+)
 - HTTPS context (required for WebUSB)
-- Compatible SDR device (HackRF One, RTL-SDR, etc.) - *optional for development*
+- Compatible SDR device (HackRF One, RTL-SDR, etc.) - _optional for development_
 
 ### Installation
 
