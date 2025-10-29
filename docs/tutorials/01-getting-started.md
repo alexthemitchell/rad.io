@@ -9,6 +9,7 @@ Welcome! This tutorial will guide you through setting up your development enviro
 ## What You'll Build
 
 You'll set up a complete rad.io development environment and:
+
 1. Install dependencies
 2. Run the development server
 3. Open the application in your browser
@@ -44,6 +45,7 @@ npm install
 ```
 
 **What's happening?** npm reads `package.json` and installs:
+
 - React 19 for UI
 - TypeScript for type safety
 - Webpack for bundling
@@ -63,6 +65,7 @@ npm test
 ```
 
 **Expected output**:
+
 - ✅ Lint: No errors
 - ✅ Type check: No type errors
 - ✅ Tests: All tests passing
@@ -78,12 +81,14 @@ npm start
 ```
 
 **What's happening?** Webpack is:
+
 1. Compiling TypeScript to JavaScript
 2. Bundling all modules
 3. Starting an HTTPS server on port 8080
 4. Watching for file changes
 
 **Expected output**:
+
 ```
 webpack 5.x.x compiled successfully in X ms
 Server running at https://localhost:8080
@@ -107,6 +112,7 @@ https://localhost:8080/#/
 - **Opera**: Click "Help me understand" → "Continue anyway"
 
 **What you should see:**
+
 - The rad.io interface
 - "Connect Device" button
 - Visualization panels (IQ Constellation, Spectrogram, Waterfall, Waveform)

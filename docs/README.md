@@ -61,21 +61,25 @@ Welcome to the rad.io documentation! This documentation is organized using the [
 ## Quick Links
 
 ### For New Contributors
+
 - 🚀 **[New Contributor Onboarding](./ONBOARDING.md)** - Get started in minutes
 - 📝 **[Contributing Guide](../CONTRIBUTING.md)** - Development workflow and standards
 - 🏗️ **[Architecture Overview](../ARCHITECTURE.md)** - System design and components
 
 ### For Users
+
 - ⚡ **[Quick Start](../README.md#quick-start)** - Get up and running
 - 📻 **[Usage Guide](../README.md#usage-guide)** - How to use the application
 - ♿ **[Accessibility Guide](../ACCESSIBILITY.md)** - Keyboard shortcuts and screen reader support
 
 ### For Testers
+
 - 🧪 **[Testing Documentation](./testing/)** - Comprehensive testing guide
 - 🎯 **[E2E Testing](./e2e-tests.md)** - End-to-end test setup
 - ✅ **[Accessibility Testing](./ACCESSIBILITY-TESTING-GUIDE.md)** - Testing for WCAG compliance
 
 ### Specialized Topics
+
 - 🎨 **[Visualization Architecture](./VISUALIZATION_ARCHITECTURE.md)** - GPU-accelerated rendering
 - 🔊 **[Audio Pipeline](./reference/audio-demodulation-pipeline.md)** - Web Audio integration
 - 🚀 **[Deployment Guide](./DEPLOYMENT.md)** - Production deployment
@@ -85,12 +89,12 @@ Welcome to the rad.io documentation! This documentation is organized using the [
 
 This documentation follows the **Diátaxis** framework, which organizes documentation into four distinct types based on user needs:
 
-| Type | Purpose | Analogy |
-|------|---------|---------|
-| **Tutorials** | Learning by doing | Teaching a child to cook |
-| **How-To Guides** | Solving specific problems | A recipe for a specific dish |
-| **Reference** | Technical specifications | Encyclopedia article |
-| **Explanation** | Understanding concepts | A conversation about cooking theory |
+| Type              | Purpose                   | Analogy                             |
+| ----------------- | ------------------------- | ----------------------------------- |
+| **Tutorials**     | Learning by doing         | Teaching a child to cook            |
+| **How-To Guides** | Solving specific problems | A recipe for a specific dish        |
+| **Reference**     | Technical specifications  | Encyclopedia article                |
+| **Explanation**   | Understanding concepts    | A conversation about cooking theory |
 
 ### Which Section Should I Read?
 
@@ -140,6 +144,7 @@ All code examples are in TypeScript and should be runnable without modification 
 ### Accessibility
 
 Documentation follows the same accessibility standards as the application:
+
 - Descriptive link text (no "click here")
 - Logical heading hierarchy (H1 → H2 → H3)
 - Alt text for images

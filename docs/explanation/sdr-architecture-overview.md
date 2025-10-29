@@ -13,6 +13,7 @@ rad.io is a browser-based Software-Defined Radio (SDR) application that enables 
 **Decision**: Build entirely with web technologies rather than creating a desktop application.
 
 **Why?**
+
 - **Universal Access**: Works on any device with a modern browser
 - **No Installation**: Users can start analyzing signals immediately
 - **Automatic Updates**: Deploy once, all users get updates instantly
@@ -20,6 +21,7 @@ rad.io is a browser-based Software-Defined Radio (SDR) application that enables 
 - **Cross-Platform**: Same experience on Windows, macOS, Linux
 
 **Trade-offs**:
+
 - ✅ Easier distribution and deployment
 - ✅ Built-in security through browser sandbox
 - ⚠️ Limited to WebUSB-supporting browsers (Chrome, Edge, Opera)
@@ -62,6 +64,7 @@ The architecture is layered with clear boundaries:
 ```
 
 **Why this structure?**
+
 - **Testability**: Each layer can be tested independently
 - **Flexibility**: Swap implementations without affecting other layers
 - **Maintainability**: Clear boundaries reduce coupling
@@ -72,6 +75,7 @@ The architecture is layered with clear boundaries:
 **Decision**: Use TypeScript with strict mode enabled throughout.
 
 **Why?**
+
 - **Catch Errors Early**: Type errors found at compile time, not runtime
 - **Better Tooling**: IDE autocomplete, refactoring tools, inline documentation
 - **Self-Documenting**: Types serve as always-up-to-date documentation
@@ -112,6 +116,7 @@ await tuneToStation(rtlsdr, 100e6);
 ```
 
 **Benefits**:
+
 - UI code doesn't know or care about hardware specifics
 - Add new devices without changing UI
 - Test with simulated devices
@@ -142,6 +147,7 @@ Main Thread          Web Worker           WASM Module
 ```
 
 **Why this matters**:
+
 - UI stays responsive even with high sample rates
 - Multi-core CPUs are utilized effectively
 - Performance approaches native SDR applications
@@ -159,6 +165,7 @@ See [ADR-0002: Web Worker DSP Architecture](../decisions/0002-web-worker-dsp-arc
 3. **Canvas 2D** (last resort): Works everywhere, acceptable performance
 
 **Why three backends?**
+
 - **Compatibility**: Works on maximum number of devices
 - **Performance**: Use fastest available option
 - **Future-Proof**: Adopt new technologies as they become available
@@ -193,6 +200,7 @@ function FrequencyControl() {
 ```
 
 **Benefits**:
+
 - Single source of truth
 - Automatic UI updates when state changes
 - No prop drilling

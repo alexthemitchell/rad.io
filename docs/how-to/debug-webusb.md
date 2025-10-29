@@ -9,6 +9,7 @@ This guide helps you troubleshoot common WebUSB problems when working with SDR d
 ## Overview
 
 WebUSB issues typically fall into these categories:
+
 1. Device not detected
 2. Permission errors
 3. Transfer failures
@@ -21,14 +22,15 @@ WebUSB issues typically fall into these categories:
 
 ```typescript
 // Test if WebUSB is available
-if ('usb' in navigator) {
-  console.log('✅ WebUSB supported');
+if ("usb" in navigator) {
+  console.log("✅ WebUSB supported");
 } else {
-  console.error('❌ WebUSB not supported - use Chrome, Edge, or Opera');
+  console.error("❌ WebUSB not supported - use Chrome, Edge, or Opera");
 }
 ```
 
 **Supported browsers:**
+
 - ✅ Chrome 61+
 - ✅ Edge 79+
 - ✅ Opera 48+
@@ -42,8 +44,10 @@ if ('usb' in navigator) {
 const devices = await navigator.usb.getDevices();
 console.log(`Found ${devices.length} authorized devices`);
 
-devices.forEach(device => {
-  console.log(`Device: ${device.productName} (VID: 0x${device.vendorId.toString(16)})`);
+devices.forEach((device) => {
+  console.log(
+    `Device: ${device.productName} (VID: 0x${device.vendorId.toString(16)})`,
+  );
 });
 ```
 
@@ -60,6 +64,7 @@ devices.forEach(device => {
 ### Problem 1: Device Not Appearing in Picker
 
 **Symptoms:**
+
 - Click "Connect Device" but device not listed
 - Empty device picker dialog
 
@@ -70,12 +75,12 @@ devices.forEach(device => {
 ```typescript
 // ❌ Wrong - typo in VID
 await navigator.usb.requestDevice({
-  filters: [{ vendorId: 0x1d51, productId: 0x6089 }] // Should be 0x1d50
+  filters: [{ vendorId: 0x1d51, productId: 0x6089 }], // Should be 0x1d50
 });
 
 // ✅ Correct
 await navigator.usb.requestDevice({
-  filters: [{ vendorId: 0x1d50, productId: 0x6089 }] // HackRF One
+  filters: [{ vendorId: 0x1d50, productId: 0x6089 }], // HackRF One
 });
 ```
 
@@ -91,7 +96,8 @@ lsusb | grep -i hackrf
 # Bus 001 Device 005: ID 1d50:6089 Great Scott Gadgets HackRF One
 ```
 
-**Fix:** 
+**Fix:**
+
 - Check USB cable
 - Try different USB port
 - Restart device
@@ -129,6 +135,7 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="60a1", MODE="0666"
 ### Problem 2: "Device not found" Error
 
 **Symptoms:**
+
 ```
 NotFoundError: No device selected
 ```
@@ -141,15 +148,15 @@ NotFoundError: No device selected
 async function connectDeviceWithRetry() {
   try {
     const device = await navigator.usb.requestDevice({
-      filters: [{ vendorId: 0x1d50 }]
+      filters: [{ vendorId: 0x1d50 }],
     });
     return device;
   } catch (error) {
-    if (error.name === 'NotFoundError') {
+    if (error.name === "NotFoundError") {
       alert(
-        'No device selected. Please:\n' +
-        '1. Connect your SDR device\n' +
-        '2. Try again and select it from the list'
+        "No device selected. Please:\n" +
+          "1. Connect your SDR device\n" +
+          "2. Try again and select it from the list",
       );
     }
     throw error;
@@ -160,6 +167,7 @@ async function connectDeviceWithRetry() {
 ### Problem 3: "Failed to open device" Error
 
 **Symptoms:**
+
 ```
 NetworkError: Failed to open the device
 ```
@@ -169,6 +177,7 @@ NetworkError: Failed to open the device
 #### Cause A: Device In Use by Another Application
 
 **Check:**
+
 ```bash
 # Linux - list processes using USB device
 lsof | grep usb
@@ -178,6 +187,7 @@ kill <PID>
 ```
 
 **Fix:** Close other applications using the device:
+
 - Other browser tabs
 - Native SDR applications (GQRX, SDR#, etc.)
 - Background services
@@ -188,20 +198,20 @@ kill <PID>
 class SafeDevice {
   private device: USBDevice;
   private isOpen = false;
-  
+
   async open() {
     if (this.isOpen) {
-      console.warn('Device already open');
+      console.warn("Device already open");
       return;
     }
-    
+
     await this.device.open();
     this.isOpen = true;
   }
-  
+
   async close() {
     if (!this.isOpen) return;
-    
+
     await this.device.close();
     this.isOpen = false;
   }
@@ -211,6 +221,7 @@ class SafeDevice {
 ### Problem 4: Transfer Failures
 
 **Symptoms:**
+
 ```
 NetworkError: A transfer error has occurred
 ```
@@ -220,12 +231,16 @@ NetworkError: A transfer error has occurred
 #### Cause A: Device Unplugged During Transfer
 
 ```typescript
-async function robustTransfer(device: USBDevice, endpoint: number, size: number) {
+async function robustTransfer(
+  device: USBDevice,
+  endpoint: number,
+  size: number,
+) {
   try {
     return await device.transferIn(endpoint, size);
   } catch (error) {
-    if (error.name === 'NetworkError') {
-      console.error('Device disconnected or transfer failed');
+    if (error.name === "NetworkError") {
+      console.error("Device disconnected or transfer failed");
       await handleDisconnection(device);
     }
     throw error;
@@ -242,9 +257,13 @@ async function listEndpoints(device: USBDevice) {
     console.log(`Configuration ${config.configurationValue}:`);
     for (const iface of config.interfaces) {
       for (const alt of iface.alternates) {
-        console.log(`  Interface ${iface.interfaceNumber}, Alt ${alt.alternateSetting}:`);
+        console.log(
+          `  Interface ${iface.interfaceNumber}, Alt ${alt.alternateSetting}:`,
+        );
         for (const endpoint of alt.endpoints) {
-          console.log(`    Endpoint ${endpoint.endpointNumber} (${endpoint.direction})`);
+          console.log(
+            `    Endpoint ${endpoint.endpointNumber} (${endpoint.direction})`,
+          );
         }
       }
     }
@@ -263,12 +282,14 @@ await device.transferIn(1, 256 * 1024); // 256 KB
 ```
 
 **Recommended buffer sizes:**
+
 - Bulk transfers: 64 KB - 256 KB
 - Control transfers: < 4 KB
 
 ### Problem 5: Data Corruption
 
 **Symptoms:**
+
 - Garbled visualizations
 - Unexpected values in I/Q samples
 - Crashes when parsing data
@@ -281,7 +302,7 @@ function validateSamples(data: DataView): boolean {
   for (let i = 0; i < data.byteLength; i += 2) {
     const i_val = data.getInt8(i);
     const q_val = data.getInt8(i + 1);
-    
+
     // I/Q samples should be in range [-128, 127]
     if (i_val < -128 || i_val > 127 || q_val < -128 || q_val > 127) {
       console.error(`Invalid sample at offset ${i}: I=${i_val}, Q=${q_val}`);
@@ -293,12 +314,15 @@ function validateSamples(data: DataView): boolean {
 
 // Use in transfer handler
 const result = await device.transferIn(1, bufferSize);
-if (result.status === 'ok' && result.data) {
+if (result.status === "ok" && result.data) {
   if (!validateSamples(result.data)) {
-    console.error('Data corruption detected!');
+    console.error("Data corruption detected!");
     // Log first few bytes for debugging
     const bytes = new Uint8Array(result.data.buffer, 0, 16);
-    console.error('First 16 bytes:', Array.from(bytes).map(b => b.toString(16)));
+    console.error(
+      "First 16 bytes:",
+      Array.from(bytes).map((b) => b.toString(16)),
+    );
   }
 }
 ```
@@ -314,7 +338,7 @@ function parseHackRF(data: DataView): IQSample[] {
   for (let i = 0; i < data.byteLength; i += 2) {
     samples.push({
       i: data.getInt8(i) / 127.0,
-      q: data.getInt8(i + 1) / 127.0
+      q: data.getInt8(i + 1) / 127.0,
     });
   }
   return samples;
@@ -326,7 +350,7 @@ function parseRTLSDR(data: DataView): IQSample[] {
   for (let i = 0; i < data.byteLength; i += 2) {
     samples.push({
       i: (data.getUint8(i) - 127.5) / 127.5,
-      q: (data.getUint8(i + 1) - 127.5) / 127.5
+      q: (data.getUint8(i + 1) - 127.5) / 127.5,
     });
   }
   return samples;
@@ -336,6 +360,7 @@ function parseRTLSDR(data: DataView): IQSample[] {
 ### Problem 6: Permission Denied
 
 **Symptoms:**
+
 ```
 SecurityError: Access to the device was denied
 ```
@@ -347,8 +372,8 @@ SecurityError: Access to the device was denied
 WebUSB requires HTTPS (except localhost):
 
 ```typescript
-if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-  alert('WebUSB requires HTTPS. Please use https://');
+if (location.protocol !== "https:" && location.hostname !== "localhost") {
+  alert("WebUSB requires HTTPS. Please use https://");
 }
 ```
 
@@ -358,12 +383,12 @@ Must be called from user gesture:
 
 ```typescript
 // ❌ Won't work - not from user gesture
-window.addEventListener('load', async () => {
+window.addEventListener("load", async () => {
   await navigator.usb.requestDevice({ filters: [] }); // Throws!
 });
 
 // ✅ Works - from button click
-button.addEventListener('click', async () => {
+button.addEventListener("click", async () => {
   await navigator.usb.requestDevice({ filters: [] }); // OK
 });
 ```
@@ -377,26 +402,28 @@ class VerboseDevice {
   constructor(private device: USBDevice) {
     this.wrapMethods();
   }
-  
+
   private wrapMethods() {
     const originalOpen = this.device.open.bind(this.device);
     this.device.open = async () => {
-      console.log('[USB] Opening device...');
+      console.log("[USB] Opening device...");
       const result = await originalOpen();
-      console.log('[USB] Device opened');
+      console.log("[USB] Device opened");
       return result;
     };
-    
+
     const originalTransferIn = this.device.transferIn.bind(this.device);
     this.device.transferIn = async (endpoint, length) => {
       console.log(`[USB] transferIn(${endpoint}, ${length})`);
       const start = performance.now();
       const result = await originalTransferIn(endpoint, length);
       const duration = performance.now() - start;
-      console.log(`[USB] transferIn completed in ${duration.toFixed(2)}ms, status: ${result.status}`);
+      console.log(
+        `[USB] transferIn completed in ${duration.toFixed(2)}ms, status: ${result.status}`,
+      );
       return result;
     };
-    
+
     // Wrap other methods similarly...
   }
 }
@@ -407,28 +434,30 @@ class VerboseDevice {
 ```typescript
 class TransferStats {
   private transfers: number[] = [];
-  
+
   recordTransfer(bytesReceived: number, durationMs: number) {
-    const mbps = (bytesReceived * 8 / 1000000) / (durationMs / 1000);
+    const mbps = (bytesReceived * 8) / 1000000 / (durationMs / 1000);
     this.transfers.push(mbps);
-    
+
     // Keep last 100 transfers
     if (this.transfers.length > 100) {
       this.transfers.shift();
     }
   }
-  
+
   getStats() {
     const avg = this.transfers.reduce((a, b) => a + b) / this.transfers.length;
     const min = Math.min(...this.transfers);
     const max = Math.max(...this.transfers);
-    
+
     return { avg, min, max };
   }
-  
+
   report() {
     const { avg, min, max } = this.getStats();
-    console.log(`Transfer speed: avg=${avg.toFixed(2)} Mbps, min=${min.toFixed(2)}, max=${max.toFixed(2)}`);
+    console.log(
+      `Transfer speed: avg=${avg.toFixed(2)} Mbps, min=${min.toFixed(2)}, max=${max.toFixed(2)}`,
+    );
   }
 }
 ```
@@ -436,22 +465,26 @@ class TransferStats {
 ### Capture Raw USB Data
 
 ```typescript
-async function captureRawData(device: USBDevice, endpoint: number, count: number) {
+async function captureRawData(
+  device: USBDevice,
+  endpoint: number,
+  count: number,
+) {
   const captures: Uint8Array[] = [];
-  
+
   for (let i = 0; i < count; i++) {
     const result = await device.transferIn(endpoint, 256 * 1024);
-    if (result.status === 'ok' && result.data) {
+    if (result.status === "ok" && result.data) {
       captures.push(new Uint8Array(result.data.buffer.slice(0)));
     }
   }
-  
+
   // Save to file for analysis
   const blob = new Blob(captures);
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
-  a.download = 'usb-capture.bin';
+  a.download = "usb-capture.bin";
   a.click();
 }
 ```
@@ -463,23 +496,26 @@ async function captureRawData(device: USBDevice, endpoint: number, count: number
 ```typescript
 class MockUSBDevice implements USBDevice {
   // Implement USBDevice interface with test data
-  
-  async transferIn(endpoint: number, length: number): Promise<USBInTransferResult> {
+
+  async transferIn(
+    endpoint: number,
+    length: number,
+  ): Promise<USBInTransferResult> {
     // Return test data
     const buffer = new ArrayBuffer(length);
     const view = new Uint8Array(buffer);
-    
+
     // Fill with test pattern
     for (let i = 0; i < length; i++) {
       view[i] = i % 256;
     }
-    
+
     return {
       data: new DataView(buffer),
-      status: 'ok'
+      status: "ok",
     };
   }
-  
+
   // Implement other methods...
 }
 ```
@@ -490,27 +526,32 @@ class MockUSBDevice implements USBDevice {
 class ResilientDevice {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
-  
+
   async withAutoReconnect<T>(operation: () => Promise<T>): Promise<T> {
     try {
       return await operation();
     } catch (error) {
-      if (error.name === 'NetworkError' && this.reconnectAttempts < this.maxReconnectAttempts) {
-        console.warn(`Transfer failed, reconnecting (attempt ${this.reconnectAttempts + 1})...`);
+      if (
+        error.name === "NetworkError" &&
+        this.reconnectAttempts < this.maxReconnectAttempts
+      ) {
+        console.warn(
+          `Transfer failed, reconnecting (attempt ${this.reconnectAttempts + 1})...`,
+        );
         this.reconnectAttempts++;
-        
+
         await this.close();
         await this.delay(1000);
         await this.open();
-        
+
         return this.withAutoReconnect(operation);
       }
       throw error;
     }
   }
-  
+
   private delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 ```
@@ -539,13 +580,13 @@ When debugging WebUSB issues, check:
 async function gatherDebugInfo() {
   const info = {
     browser: navigator.userAgent,
-    webUSBSupported: 'usb' in navigator,
+    webUSBSupported: "usb" in navigator,
     platform: navigator.platform,
     devices: await navigator.usb.getDevices(),
-    permissions: await navigator.permissions.query({ name: 'usb' as any })
+    permissions: await navigator.permissions.query({ name: "usb" as any }),
   };
-  
-  console.log('Debug Info:', JSON.stringify(info, null, 2));
+
+  console.log("Debug Info:", JSON.stringify(info, null, 2));
   return info;
 }
 ```
@@ -553,6 +594,7 @@ async function gatherDebugInfo() {
 ### Report Issues
 
 When reporting WebUSB issues, include:
+
 1. Browser version
 2. Operating system
 3. Device model (VID/PID)

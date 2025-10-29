@@ -9,6 +9,7 @@ In this tutorial, you'll create a simple real-time spectrum visualization from s
 ## What You'll Build
 
 A simple real-time frequency spectrum analyzer that:
+
 - Displays frequency vs amplitude
 - Updates in real-time as data arrives
 - Uses Canvas 2D for rendering
@@ -23,6 +24,7 @@ Data Source → DSP Processing → Visualization Component → Renderer → Canv
 ```
 
 **Key principles:**
+
 1. **Separation of concerns**: Visualization components don't know where data comes from
 2. **Renderer abstraction**: Same component works with Canvas 2D, WebGL, or WebGPU
 3. **React integration**: Standard React patterns with hooks
@@ -45,7 +47,7 @@ interface SimpleSpectrumProps {
 
 /**
  * A simple spectrum visualization that displays frequency vs amplitude.
- * 
+ *
  * This component demonstrates the core pattern for rad.io visualizations:
  * 1. Receive data as props
  * 2. Use a canvas for rendering
@@ -75,12 +77,12 @@ export const SimpleSpectrum: React.FC<SimpleSpectrumProps> = ({
     ctx.beginPath();
 
     const binWidth = width / fftData.length;
-    
+
     for (let i = 0; i < fftData.length; i++) {
       const x = i * binWidth;
       // Flip Y axis (canvas origin is top-left)
       const y = height - (fftData[i] * height);
-      
+
       if (i === 0) {
         ctx.moveTo(x, y);
       } else {
@@ -117,17 +119,17 @@ Create `src/utils/testDataGenerator.ts`:
 ```typescript
 /**
  * Generates simulated FFT data for testing visualizations.
- * 
+ *
  * Creates a spectrum with a few frequency peaks to simulate signals.
  */
 export function generateTestFFT(size: number = 512): Float32Array {
   const data = new Float32Array(size);
-  
+
   // Add noise floor
   for (let i = 0; i < size; i++) {
     data[i] = Math.random() * 0.1; // 10% noise
   }
-  
+
   // Add some signal peaks
   // Peak 1: Strong signal at 1/4 of spectrum
   const peak1 = Math.floor(size * 0.25);
@@ -137,7 +139,7 @@ export function generateTestFFT(size: number = 512): Float32Array {
       data[idx] += 0.7 * Math.exp(-(i * i) / 8);
     }
   }
-  
+
   // Peak 2: Weaker signal at 3/4 of spectrum
   const peak2 = Math.floor(size * 0.75);
   for (let i = -3; i <= 3; i++) {
@@ -146,7 +148,7 @@ export function generateTestFFT(size: number = 512): Float32Array {
       data[idx] += 0.4 * Math.exp(-(i * i) / 4);
     }
   }
-  
+
   return data;
 }
 
@@ -154,20 +156,23 @@ export function generateTestFFT(size: number = 512): Float32Array {
  * Generates animated FFT data that changes over time.
  * Useful for testing real-time visualization updates.
  */
-export function generateAnimatedFFT(size: number = 512, time: number = 0): Float32Array {
+export function generateAnimatedFFT(
+  size: number = 512,
+  time: number = 0,
+): Float32Array {
   const data = generateTestFFT(size);
-  
+
   // Animate the peaks by shifting them slightly
   const shift = Math.sin(time * 0.001) * 20;
   const result = new Float32Array(size);
-  
+
   for (let i = 0; i < size; i++) {
     const srcIdx = Math.floor(i + shift);
     if (srcIdx >= 0 && srcIdx < size) {
       result[i] = data[srcIdx];
     }
   }
-  
+
   return result;
 }
 ```
@@ -183,14 +188,14 @@ import { generateAnimatedFFT } from '../utils/testDataGenerator';
 
 /**
  * Demo page for the SimpleSpectrum component.
- * 
+ *
  * This page demonstrates how to:
  * 1. Generate test data
  * 2. Update visualizations in real-time
  * 3. Control animation with React state
  */
 export const SimpleSpectrumDemo: React.FC = () => {
-  const [fftData, setFftData] = useState<Float32Array>(() => 
+  const [fftData, setFftData] = useState<Float32Array>(() =>
     generateAnimatedFFT(512, 0)
   );
   const [isAnimating, setIsAnimating] = useState(true);
@@ -217,9 +222,9 @@ export const SimpleSpectrumDemo: React.FC = () => {
   return (
     <div style={{ padding: '20px', backgroundColor: '#111', minHeight: '100vh' }}>
       <h1 style={{ color: '#fff' }}>Simple Spectrum Visualization</h1>
-      
+
       <div style={{ marginBottom: '20px' }}>
-        <button 
+        <button
           onClick={() => setIsAnimating(!isAnimating)}
           style={{
             padding: '10px 20px',
@@ -232,15 +237,15 @@ export const SimpleSpectrumDemo: React.FC = () => {
       </div>
 
       <SimpleSpectrum fftData={fftData} width={800} height={400} />
-      
+
       <div style={{ color: '#888', marginTop: '20px', maxWidth: '800px' }}>
         <h2>What You're Seeing</h2>
         <p>
-          This is a real-time frequency spectrum visualization. The x-axis represents 
+          This is a real-time frequency spectrum visualization. The x-axis represents
           frequency (left = low, right = high) and the y-axis represents signal amplitude.
         </p>
         <p>
-          The two peaks represent simulated radio signals. In a real SDR application, 
+          The two peaks represent simulated radio signals. In a real SDR application,
           these would be actual radio transmissions you're receiving.
         </p>
         <p>
@@ -267,11 +272,13 @@ import { SimpleSpectrumDemo } from './pages/SimpleSpectrumDemo';
 ## Step 5: Run and Test
 
 1. Start the development server (if not already running):
+
    ```bash
    npm start
    ```
 
 2. Navigate to your demo:
+
    ```
    https://localhost:8080/#/demo/simple-spectrum
    ```
@@ -284,6 +291,7 @@ import { SimpleSpectrumDemo } from './pages/SimpleSpectrumDemo';
    - A Play/Pause button
 
 **Try this:**
+
 - Click Pause - the animation stops
 - Click Play - it resumes
 - Open DevTools - no errors in console
@@ -330,7 +338,7 @@ Add frequency grid lines to help read values:
 
 ```typescript
 // After clearing canvas, before drawing spectrum
-ctx.strokeStyle = '#333';
+ctx.strokeStyle = "#333";
 ctx.lineWidth = 1;
 for (let i = 0; i < 10; i++) {
   const x = (i / 10) * width;
@@ -346,8 +354,8 @@ for (let i = 0; i < 10; i++) {
 Display frequency values on the x-axis:
 
 ```typescript
-ctx.fillStyle = '#888';
-ctx.font = '12px monospace';
+ctx.fillStyle = "#888";
+ctx.font = "12px monospace";
 for (let i = 0; i <= 10; i++) {
   const x = (i / 10) * width;
   const freq = (i / 10) * 100; // Assuming 100 MHz range
@@ -372,8 +380,8 @@ for (let i = 0; i < fftData.length; i++) {
 
 // Draw peak marker
 const peakX = peakIdx * binWidth;
-const peakY = height - (peakValue * height);
-ctx.fillStyle = '#f00';
+const peakY = height - peakValue * height;
+ctx.fillStyle = "#f00";
 ctx.beginPath();
 ctx.arc(peakX, peakY, 5, 0, Math.PI * 2);
 ctx.fill();
@@ -399,6 +407,7 @@ ctx.fill();
 ### Canvas is Blank
 
 Check:
+
 - Canvas ref is connected: `canvasRef.current !== null`
 - Context exists: `getContext('2d')` returns valid context
 - FFT data has values: Log `fftData` in console
@@ -412,6 +421,7 @@ Check:
 ### TypeScript Errors
 
 Make sure all imports are correct and types match:
+
 ```bash
 npm run type-check
 ```

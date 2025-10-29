@@ -9,6 +9,7 @@ This guide walks you through implementing support for a new SDR hardware device 
 ## Overview
 
 Adding a new SDR device involves:
+
 1. Implementing the `ISDRDevice` interface
 2. Creating WebUSB descriptors
 3. Writing device-specific command protocols
@@ -30,14 +31,14 @@ export interface ISDRDevice {
   setFrequency(frequency: number): Promise<void>;
   setSampleRate(sampleRate: number): Promise<void>;
   setGain(gain: number): Promise<void>;
-  
+
   // Data streaming
   startReceiving(): Promise<void>;
   stopReceiving(): Promise<void>;
-  
+
   // Data callback
   onData(callback: (samples: IQSample[]) => void): void;
-  
+
   // Device info
   getName(): string;
   getCapabilities(): DeviceCapabilities;
@@ -49,11 +50,11 @@ export interface ISDRDevice {
 Create a new file: `src/models/YourDevice.ts`
 
 ```typescript
-import { ISDRDevice, IQSample, DeviceCapabilities } from './interfaces';
+import { ISDRDevice, IQSample, DeviceCapabilities } from "./interfaces";
 
 /**
  * Driver for YourDevice SDR.
- * 
+ *
  * Vendor: YourCompany
  * USB VID: 0x1234
  * USB PID: 0x5678
@@ -72,24 +73,24 @@ export class YourDevice implements ISDRDevice {
   private static readonly USB_PRODUCT_ID = 0x5678;
   private static readonly INTERFACE_NUMBER = 0;
   private static readonly ENDPOINT_IN = 1; // Bulk IN endpoint
-  
+
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice;
   }
 
   async open(): Promise<void> {
     if (this.isDeviceOpen) {
-      throw new Error('Device already open');
+      throw new Error("Device already open");
     }
 
     try {
       await this.usbDevice.open();
       await this.usbDevice.selectConfiguration(1);
       await this.usbDevice.claimInterface(YourDevice.INTERFACE_NUMBER);
-      
+
       // Initialize device (device-specific)
       await this.initializeDevice();
-      
+
       this.isDeviceOpen = true;
     } catch (error) {
       throw new Error(`Failed to open device: ${error}`);
@@ -105,7 +106,7 @@ export class YourDevice implements ISDRDevice {
       await this.usbDevice.close();
       this.isDeviceOpen = false;
     } catch (error) {
-      console.error('Error closing device:', error);
+      console.error("Error closing device:", error);
     }
   }
 
@@ -115,57 +116,57 @@ export class YourDevice implements ISDRDevice {
 
   async setFrequency(frequency: number): Promise<void> {
     this.validateOpen();
-    
+
     // Validate frequency range
     const caps = this.getCapabilities();
     if (frequency < caps.minFrequency || frequency > caps.maxFrequency) {
       throw new Error(
         `Frequency ${frequency} Hz out of range ` +
-        `(${caps.minFrequency}-${caps.maxFrequency} Hz)`
+          `(${caps.minFrequency}-${caps.maxFrequency} Hz)`,
       );
     }
 
     // Send device-specific command
     await this.sendCommand({
-      command: 'SET_FREQ',
+      command: "SET_FREQ",
       value: frequency,
     });
   }
 
   async setSampleRate(sampleRate: number): Promise<void> {
     this.validateOpen();
-    
+
     const caps = this.getCapabilities();
     if (!caps.supportedSampleRates.includes(sampleRate)) {
       throw new Error(`Sample rate ${sampleRate} not supported`);
     }
 
     await this.sendCommand({
-      command: 'SET_SAMPLE_RATE',
+      command: "SET_SAMPLE_RATE",
       value: sampleRate,
     });
   }
 
   async setGain(gain: number): Promise<void> {
     this.validateOpen();
-    
+
     // Clamp to valid range
     const clampedGain = Math.max(0, Math.min(gain, 50));
-    
+
     await this.sendCommand({
-      command: 'SET_GAIN',
+      command: "SET_GAIN",
       value: clampedGain,
     });
   }
 
   async startReceiving(): Promise<void> {
     this.validateOpen();
-    
+
     if (this.isReceiving) {
-      throw new Error('Already receiving');
+      throw new Error("Already receiving");
     }
 
-    await this.sendCommand({ command: 'START_RX' });
+    await this.sendCommand({ command: "START_RX" });
     this.isReceiving = true;
     this.transferLoop = this.startTransferLoop();
   }
@@ -175,7 +176,7 @@ export class YourDevice implements ISDRDevice {
 
     this.isReceiving = false;
     await this.transferLoop; // Wait for loop to finish
-    await this.sendCommand({ command: 'STOP_RX' });
+    await this.sendCommand({ command: "STOP_RX" });
   }
 
   onData(callback: (samples: IQSample[]) => void): void {
@@ -183,19 +184,19 @@ export class YourDevice implements ISDRDevice {
   }
 
   getName(): string {
-    return 'YourDevice SDR';
+    return "YourDevice SDR";
   }
 
   getCapabilities(): DeviceCapabilities {
     return {
-      minFrequency: 50e6,      // 50 MHz
-      maxFrequency: 2e9,       // 2 GHz
+      minFrequency: 50e6, // 50 MHz
+      maxFrequency: 2e9, // 2 GHz
       supportedSampleRates: [
-        1e6,   // 1 MS/s
-        2e6,   // 2 MS/s
-        5e6,   // 5 MS/s
-        10e6,  // 10 MS/s
-        20e6,  // 20 MS/s
+        1e6, // 1 MS/s
+        2e6, // 2 MS/s
+        5e6, // 5 MS/s
+        10e6, // 10 MS/s
+        20e6, // 20 MS/s
       ],
       maxGain: 50,
       hasAmplifier: true,
@@ -207,14 +208,14 @@ export class YourDevice implements ISDRDevice {
 
   private validateOpen(): void {
     if (!this.isDeviceOpen) {
-      throw new Error('Device not open');
+      throw new Error("Device not open");
     }
   }
 
   private async initializeDevice(): Promise<void> {
     // Device-specific initialization
     // Read device info, set defaults, etc.
-    
+
     // Example: Read firmware version
     const version = await this.readFirmwareVersion();
     console.log(`YourDevice firmware version: ${version}`);
@@ -223,35 +224,38 @@ export class YourDevice implements ISDRDevice {
   private async sendCommand(command: DeviceCommand): Promise<void> {
     // Convert command to device-specific protocol
     const buffer = this.encodeCommand(command);
-    
+
     // Send via control transfer
-    await this.usbDevice.controlTransferOut({
-      requestType: 'vendor',
-      recipient: 'device',
-      request: command.command === 'SET_FREQ' ? 0x01 : 0x02,
-      value: 0,
-      index: 0,
-    }, buffer);
+    await this.usbDevice.controlTransferOut(
+      {
+        requestType: "vendor",
+        recipient: "device",
+        request: command.command === "SET_FREQ" ? 0x01 : 0x02,
+        value: 0,
+        index: 0,
+      },
+      buffer,
+    );
   }
 
   private encodeCommand(command: DeviceCommand): ArrayBuffer {
     // Device-specific command encoding
     const buffer = new ArrayBuffer(8);
     const view = new DataView(buffer);
-    
+
     switch (command.command) {
-      case 'SET_FREQ':
+      case "SET_FREQ":
         // Encode frequency (example: 64-bit little-endian)
         // Defensive check: setFrequency() already validates range,
         // but we verify value exists for type safety
         if (command.value === undefined) {
-          throw new Error('SET_FREQ command requires a value');
+          throw new Error("SET_FREQ command requires a value");
         }
         view.setBigUint64(0, BigInt(command.value), true);
         break;
       // ... other commands
     }
-    
+
     return buffer;
   }
 
@@ -262,17 +266,17 @@ export class YourDevice implements ISDRDevice {
       try {
         const result = await this.usbDevice.transferIn(
           YourDevice.ENDPOINT_IN,
-          bufferSize
+          bufferSize,
         );
 
-        if (result.status === 'ok' && result.data) {
+        if (result.status === "ok" && result.data) {
           const samples = this.parseIQData(result.data);
           if (this.dataCallback) {
             this.dataCallback(samples);
           }
         }
       } catch (error) {
-        console.error('Transfer error:', error);
+        console.error("Transfer error:", error);
         this.isReceiving = false;
         break;
       }
@@ -285,35 +289,38 @@ export class YourDevice implements ISDRDevice {
     // - Signed 8-bit I/Q pairs
     // - Signed 16-bit I/Q pairs
     // - Float32 I/Q pairs
-    
+
     const samples: IQSample[] = [];
-    
+
     // Example: 8-bit signed I/Q
     for (let i = 0; i < data.byteLength; i += 2) {
       const i_val = data.getInt8(i) / 127.0;
       const q_val = data.getInt8(i + 1) / 127.0;
       samples.push({ i: i_val, q: q_val });
     }
-    
+
     return samples;
   }
 
   private async readFirmwareVersion(): Promise<string> {
     // Device-specific version read
-    const result = await this.usbDevice.controlTransferIn({
-      requestType: 'vendor',
-      recipient: 'device',
-      request: 0xFF, // GET_VERSION command
-      value: 0,
-      index: 0,
-    }, 16);
+    const result = await this.usbDevice.controlTransferIn(
+      {
+        requestType: "vendor",
+        recipient: "device",
+        request: 0xff, // GET_VERSION command
+        value: 0,
+        index: 0,
+      },
+      16,
+    );
 
-    if (result.status === 'ok' && result.data) {
+    if (result.status === "ok" && result.data) {
       const decoder = new TextDecoder();
       return decoder.decode(result.data);
     }
-    
-    return 'unknown';
+
+    return "unknown";
   }
 
   /**
@@ -323,10 +330,12 @@ export class YourDevice implements ISDRDevice {
   static async requestDevice(): Promise<YourDevice> {
     try {
       const device = await navigator.usb.requestDevice({
-        filters: [{
-          vendorId: YourDevice.USB_VENDOR_ID,
-          productId: YourDevice.USB_PRODUCT_ID,
-        }],
+        filters: [
+          {
+            vendorId: YourDevice.USB_VENDOR_ID,
+            productId: YourDevice.USB_PRODUCT_ID,
+          },
+        ],
       });
       return new YourDevice(device);
     } catch (error) {
@@ -337,7 +346,7 @@ export class YourDevice implements ISDRDevice {
 
 // Internal types
 interface DeviceCommand {
-  command: 'SET_FREQ' | 'SET_SAMPLE_RATE' | 'SET_GAIN' | 'START_RX' | 'STOP_RX';
+  command: "SET_FREQ" | "SET_SAMPLE_RATE" | "SET_GAIN" | "START_RX" | "STOP_RX";
   value?: number;
 }
 ```
@@ -347,9 +356,9 @@ interface DeviceCommand {
 Create `src/models/__tests__/YourDevice.test.ts`:
 
 ```typescript
-import { YourDevice } from '../YourDevice';
+import { YourDevice } from "../YourDevice";
 
-describe('YourDevice', () => {
+describe("YourDevice", () => {
   let mockUSBDevice: any;
   let device: YourDevice;
 
@@ -363,11 +372,11 @@ describe('YourDevice', () => {
       releaseInterface: jest.fn().mockResolvedValue(undefined),
       controlTransferOut: jest.fn().mockResolvedValue({}),
       controlTransferIn: jest.fn().mockResolvedValue({
-        status: 'ok',
+        status: "ok",
         data: new DataView(new ArrayBuffer(16)),
       }),
       transferIn: jest.fn().mockResolvedValue({
-        status: 'ok',
+        status: "ok",
         data: new DataView(new ArrayBuffer(1024)),
       }),
     };
@@ -375,65 +384,67 @@ describe('YourDevice', () => {
     device = new YourDevice(mockUSBDevice);
   });
 
-  describe('open', () => {
-    it('should open device successfully', async () => {
+  describe("open", () => {
+    it("should open device successfully", async () => {
       await device.open();
-      
+
       expect(mockUSBDevice.open).toHaveBeenCalled();
       expect(mockUSBDevice.selectConfiguration).toHaveBeenCalledWith(1);
       expect(mockUSBDevice.claimInterface).toHaveBeenCalledWith(0);
       expect(device.isOpen()).toBe(true);
     });
 
-    it('should throw if already open', async () => {
+    it("should throw if already open", async () => {
       await device.open();
-      await expect(device.open()).rejects.toThrow('already open');
+      await expect(device.open()).rejects.toThrow("already open");
     });
   });
 
-  describe('setFrequency', () => {
+  describe("setFrequency", () => {
     beforeEach(async () => {
       await device.open();
     });
 
-    it('should set valid frequency', async () => {
+    it("should set valid frequency", async () => {
       await device.setFrequency(100e6);
       expect(mockUSBDevice.controlTransferOut).toHaveBeenCalled();
     });
 
-    it('should reject frequency out of range', async () => {
-      await expect(device.setFrequency(10e6)).rejects.toThrow('out of range');
-      await expect(device.setFrequency(3e9)).rejects.toThrow('out of range');
+    it("should reject frequency out of range", async () => {
+      await expect(device.setFrequency(10e6)).rejects.toThrow("out of range");
+      await expect(device.setFrequency(3e9)).rejects.toThrow("out of range");
     });
 
-    it('should throw if device not open', async () => {
+    it("should throw if device not open", async () => {
       const closedDevice = new YourDevice(mockUSBDevice);
-      await expect(closedDevice.setFrequency(100e6)).rejects.toThrow('not open');
+      await expect(closedDevice.setFrequency(100e6)).rejects.toThrow(
+        "not open",
+      );
     });
   });
 
-  describe('data streaming', () => {
+  describe("data streaming", () => {
     beforeEach(async () => {
       await device.open();
     });
 
-    it('should start and stop receiving', async () => {
+    it("should start and stop receiving", async () => {
       await device.startReceiving();
       await device.stopReceiving();
-      
+
       expect(mockUSBDevice.controlTransferOut).toHaveBeenCalledTimes(4); // init + start + stop
     });
 
-    it('should call data callback with samples', async () => {
+    it("should call data callback with samples", async () => {
       const dataCallback = jest.fn();
       device.onData(dataCallback);
-      
+
       await device.startReceiving();
-      
+
       // Wait for at least one transfer
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       await device.stopReceiving();
-      
+
       expect(dataCallback).toHaveBeenCalled();
       expect(dataCallback.mock.calls[0][0]).toBeInstanceOf(Array);
     });
@@ -446,9 +457,9 @@ describe('YourDevice', () => {
 Create `src/hooks/useYourDevice.ts`:
 
 ```typescript
-import { useState, useCallback, useEffect } from 'react';
-import { YourDevice } from '../models/YourDevice';
-import { IQSample } from '../models/interfaces';
+import { useState, useCallback, useEffect } from "react";
+import { YourDevice } from "../models/YourDevice";
+import { IQSample } from "../models/interfaces";
 
 export function useYourDevice() {
   const [device, setDevice] = useState<YourDevice | null>(null);
@@ -460,16 +471,16 @@ export function useYourDevice() {
     try {
       const dev = await YourDevice.requestDevice();
       await dev.open();
-      
+
       dev.onData((newSamples) => {
         setSamples(newSamples);
       });
-      
+
       setDevice(dev);
       setIsOpen(true);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : "Unknown error");
     }
   }, []);
 
@@ -506,8 +517,8 @@ export function useYourDevice() {
 Add your device to `src/models/index.ts`:
 
 ```typescript
-export { YourDevice } from './YourDevice';
-export { useYourDevice } from '../hooks/useYourDevice';
+export { YourDevice } from "./YourDevice";
+export { useYourDevice } from "../hooks/useYourDevice";
 ```
 
 ## Step 6: Add to UI
@@ -535,11 +546,13 @@ import { YourDevice } from '../models';
 ## Testing Your Device
 
 ### Unit Tests
+
 ```bash
 npm test -- YourDevice.test.ts
 ```
 
 ### Manual Testing
+
 1. Connect your hardware
 2. Start dev server: `npm start`
 3. Click "Connect YourDevice"
@@ -552,16 +565,19 @@ npm test -- YourDevice.test.ts
 ### Common Issues
 
 **Device not detected:**
+
 - Check USB VID/PID match your hardware
 - Verify device has correct permissions (Linux: udev rules)
 - Check browser supports WebUSB
 
 **Transfer errors:**
+
 - Verify endpoint numbers
 - Check buffer sizes
 - Validate data format parsing
 
 **Performance problems:**
+
 - Use larger transfer buffers
 - Optimize data parsing
 - Consider WebAssembly for parsing
@@ -569,6 +585,7 @@ npm test -- YourDevice.test.ts
 ## Best Practices
 
 ✅ **DO:**
+
 - Validate all parameters
 - Handle USB errors gracefully
 - Clean up resources in `close()`
@@ -576,6 +593,7 @@ npm test -- YourDevice.test.ts
 - Document device-specific quirks
 
 ❌ **DON'T:**
+
 - Block the UI thread with long operations
 - Ignore USB transfer errors
 - Leave device in invalid state
