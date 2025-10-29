@@ -61,14 +61,23 @@ export function useDsp(
       return;
     }
 
-    const sampleCallback: IQSampleCallback = (samples) => {
-      dspWorkerPool.postMessage({
-        type: 'process',
-        payload: {
-          samples,
-          fftSize,
-        },
-      });
+    const sampleCallback: IQSampleCallback = (raw) => {
+      // Convert transport format (DataView) to IQSample[] using device's parser
+      try {
+        const iq = device?.parseSamples(raw);
+        if (iq && Array.isArray(iq)) {
+          dspWorkerPool.postMessage({
+            type: 'process',
+            payload: {
+              samples: iq,
+              fftSize,
+            },
+          });
+        }
+      } catch (err) {
+        // Swallow parsing errors to avoid breaking stream; logging optional
+        // console.warn('Failed to parse IQ samples', err);
+      }
     };
 
     await device.receive(sampleCallback);

@@ -8,6 +8,7 @@ import {
   validateFrequency,
   validateSampleRate,
   convertInt8ToIQ,
+  type SDRStreamConfig,
 } from "./SDRDevice";
 
 /**
@@ -155,7 +156,10 @@ export class MockSDRDevice implements ISDRDevice {
     return this._bandwidth;
   }
 
-  async receive(callback: (data: DataView) => void): Promise<void> {
+  async receive(
+    callback: (data: DataView) => void,
+    _config?: Partial<SDRStreamConfig>,
+  ): Promise<void> {
     await Promise.resolve();
     if (!this._isOpen) {
       throw new Error("Device not open");
@@ -205,6 +209,7 @@ export class MockSDRDevice implements ISDRDevice {
         }
       }
 
+      // Emit raw interleaved IQ bytes; downstream layers convert via parseSamples()
       callback(view);
     }, 200); // Increased from 100ms to reduce memory pressure
   }
