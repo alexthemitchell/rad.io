@@ -158,13 +158,57 @@ export class PluginRegistry implements IPluginRegistry {
   }
 
   /**
+   * Topologically sort plugin IDs so that dependents come before dependencies.
+   * Throws an error if there is a cyclic dependency.
+   */
+  private getTopologicalPluginOrder(): string[] {
+    // Build dependency graph: pluginId -> Set of dependencies
+    const graph = new Map<string, Set<string>>();
+    for (const [id, plugin] of this.plugins.entries()) {
+      graph.set(id, new Set(plugin.metadata.dependencies ?? []));
+    }
+
+    // Kahn's algorithm for topological sort
+    const sorted: string[] = [];
+    const noDeps: string[] = Array.from(graph.entries())
+      .filter(([, deps]) => deps.size === 0)
+      .map(([id]) => id);
+
+    const graphCopy = new Map<string, Set<string>>(
+      Array.from(graph.entries()).map(([id, deps]) => [id, new Set(deps)]),
+    );
+
+    while (noDeps.length > 0) {
+      const id = noDeps.pop();
+      if (!id) {
+        break;
+      }
+      sorted.push(id);
+      for (const [otherId, deps] of graphCopy.entries()) {
+        if (deps.has(id)) {
+          deps.delete(id);
+          if (deps.size === 0) {
+            noDeps.push(otherId);
+          }
+        }
+      }
+      graphCopy.delete(id);
+    }
+
+    if (graphCopy.size > 0) {
+      throw new Error(
+        "Cyclic plugin dependencies detected; cannot clear registry safely.",
+      );
+    }
+    return sorted.reverse(); // dependents before dependencies
+  }
+
+  /**
    * Clear all plugins
    */
   async clear(): Promise<void> {
-    const pluginIds = Array.from(this.plugins.keys());
-
-    // Unregister all plugins in reverse order to handle dependencies
-    for (const id of pluginIds.reverse()) {
+    const pluginIds = this.getTopologicalPluginOrder();
+    for (const id of pluginIds) {
       await this.unregister(id);
     }
   }

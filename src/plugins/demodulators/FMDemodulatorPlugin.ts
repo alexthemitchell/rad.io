@@ -72,7 +72,9 @@ export class FMDemodulatorPlugin
 
     for (let i = 0; i < samples.length; i++) {
       const sample = samples[i];
-      if (!sample) {continue;}
+      if (!sample) {
+        continue;
+      }
 
       // Calculate instantaneous phase
       const phase = Math.atan2(sample.Q, sample.I);

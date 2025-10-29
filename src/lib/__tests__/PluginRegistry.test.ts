@@ -279,5 +279,63 @@ describe("PluginRegistry", () => {
 
       expect(registry.getAllPlugins()).toHaveLength(0);
     });
+
+    it("should unregister plugins in topological order (dependents first)", async () => {
+      const base = new MockPlugin("base");
+      const middle = new MockPlugin("middle", ["base"]);
+      const top = new MockPlugin("top", ["middle"]);
+
+      await registry.register(base);
+      await registry.register(middle);
+      await registry.register(top);
+
+      const unregisterOrder: string[] = [];
+      registry.addEventListener((event) => {
+        if (event.event === "unregistered") {
+          unregisterOrder.push(event.plugin.metadata.id);
+        }
+      });
+
+      await registry.clear();
+
+      // Should unregister in order: top -> middle -> base
+      expect(unregisterOrder).toEqual(["top", "middle", "base"]);
+      expect(registry.getAllPlugins()).toHaveLength(0);
+    });
+
+    it("should handle complex dependency chains", async () => {
+      // Create a multi-level dependency chain
+      const level1a = new MockPlugin("level1a");
+      const level1b = new MockPlugin("level1b");
+      const level2 = new MockPlugin("level2", ["level1a", "level1b"]);
+      const level3 = new MockPlugin("level3", ["level2"]);
+
+      await registry.register(level1a);
+      await registry.register(level1b);
+      await registry.register(level2);
+      await registry.register(level3);
+
+      const unregisterOrder: string[] = [];
+      registry.addEventListener((event) => {
+        if (event.event === "unregistered") {
+          unregisterOrder.push(event.plugin.metadata.id);
+        }
+      });
+
+      await registry.clear();
+
+      // level3 must be unregistered before level2
+      const level3Index = unregisterOrder.indexOf("level3");
+      const level2Index = unregisterOrder.indexOf("level2");
+      expect(level3Index).toBeLessThan(level2Index);
+
+      // level2 must be unregistered before level1a and level1b
+      const level1aIndex = unregisterOrder.indexOf("level1a");
+      const level1bIndex = unregisterOrder.indexOf("level1b");
+      expect(level2Index).toBeLessThan(level1aIndex);
+      expect(level2Index).toBeLessThan(level1bIndex);
+
+      expect(registry.getAllPlugins()).toHaveLength(0);
+    });
   });
 });

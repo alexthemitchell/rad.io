@@ -164,7 +164,9 @@ export class WaterfallVisualizationPlugin
       const idx = i * step;
       if (idx < samples.length) {
         const sample = samples[idx];
-        if (!sample) {continue;}
+        if (!sample) {
+          continue;
+        }
         const magnitude = Math.sqrt(sample.I * sample.I + sample.Q * sample.Q);
         fft[i] = 20 * Math.log10(magnitude + 1e-10);
       }
@@ -190,13 +192,17 @@ export class WaterfallVisualizationPlugin
 
     for (let y = 0; y < this.history.length; y++) {
       const fft = this.history[y];
-      if (!fft) {continue;}
+      if (!fft) {
+        continue;
+      }
       const rowY = Math.floor(y * rowHeight);
 
       for (let x = 0; x < width; x++) {
         const fftIndex = Math.floor((x / width) * fft.length);
         const value = fft[fftIndex];
-        if (value === undefined) {continue;}
+        if (value === undefined) {
+          continue;
+        }
 
         // Map dB value to color (simple grayscale)
         const normalized = Math.max(0, Math.min(1, (value + 100) / 100));

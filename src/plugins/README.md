@@ -159,8 +159,12 @@ export class AMDemodulatorPlugin
     
     // AM demodulation: extract magnitude
     for (let i = 0; i < samples.length; i++) {
+      const sample = samples[i];
+      if (!sample) {
+        continue;
+      }
       const magnitude = Math.sqrt(
-        samples[i].I ** 2 + samples[i].Q ** 2
+        sample.I ** 2 + sample.Q ** 2
       );
       output[i] = magnitude;
     }
