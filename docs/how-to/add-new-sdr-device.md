@@ -242,8 +242,8 @@ export class YourDevice implements ISDRDevice {
     switch (command.command) {
       case 'SET_FREQ':
         // Encode frequency (example: 64-bit little-endian)
-        // Note: Additional validation should be performed in setFrequency()
-        // before calling this method (range checking, NaN validation, etc.)
+        // Defensive check: setFrequency() already validates range,
+        // but we verify value exists for type safety
         if (command.value === undefined) {
           throw new Error('SET_FREQ command requires a value');
         }

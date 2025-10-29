@@ -472,7 +472,8 @@ class CachedFFT {
   private cache = new Map<string, Float32Array>();
   
   compute(samples: IQSample[], size: number): Float32Array {
-    const key = hashSamples(samples);
+    // Include FFT size in cache key to avoid incorrect cache hits
+    const key = `${hashSamples(samples)}-${size}`;
     
     if (this.cache.has(key)) {
       return this.cache.get(key)!;
