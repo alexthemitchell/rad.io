@@ -449,11 +449,25 @@ requestIdleCallback(() => {
 Cache expensive computations:
 
 ```typescript
+// Simple hash function for sample data
+function hashSamples(samples: IQSample[]): string {
+  // Hash based on first, middle, and last samples for speed
+  // For production use, consider more robust hashing
+  const len = samples.length;
+  if (len === 0) return '0';
+  
+  const first = samples[0];
+  const mid = samples[Math.floor(len / 2)];
+  const last = samples[len - 1];
+  
+  return `${len}-${first.i.toFixed(3)},${first.q.toFixed(3)}-${mid.i.toFixed(3)},${mid.q.toFixed(3)}-${last.i.toFixed(3)},${last.q.toFixed(3)}`;
+}
+
 class CachedFFT {
   private cache = new Map<string, Float32Array>();
   
   compute(samples: IQSample[], size: number): Float32Array {
-    const key = hashSamples(samples); // Simple hash
+    const key = hashSamples(samples);
     
     if (this.cache.has(key)) {
       return this.cache.get(key)!;

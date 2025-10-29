@@ -242,6 +242,9 @@ export class YourDevice implements ISDRDevice {
     switch (command.command) {
       case 'SET_FREQ':
         // Encode frequency (example: 64-bit little-endian)
+        if (command.value === undefined) {
+          throw new Error('SET_FREQ command requires a value');
+        }
         view.setBigUint64(0, BigInt(command.value), true);
         break;
       // ... other commands

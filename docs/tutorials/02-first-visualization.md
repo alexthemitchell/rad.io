@@ -276,6 +276,8 @@ import { SimpleSpectrumDemo } from './pages/SimpleSpectrumDemo';
    https://localhost:8080/#/demo/simple-spectrum
    ```
 
+   **Note**: The URL uses HTTPS (required for WebUSB support). The route `/demo/simple-spectrum` is created in Step 4 when you add it to `App.tsx`. Make sure you've completed Step 4 to add the route configuration.
+
 3. You should see:
    - A black canvas with a cyan spectrum line
    - Two peaks that slowly move
