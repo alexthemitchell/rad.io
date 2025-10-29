@@ -103,6 +103,42 @@ The device test suite validates:
 
 - Starting, stopping, and restarting streaming
 - Verifying device can be reused across sessions
+- Maintaining connection across page navigation
+
+### 9. Scanner Functionality
+
+- Initializing scanner with physical device
+- Scanning frequency ranges with real hardware
+- Detecting and displaying active signals
+- Navigating to monitor from detected signals
+- Handling different signal types (FM, AM, etc.)
+- Real-time scanner result updates
+
+### 10. Recording Features
+
+- Starting/stopping recording from monitor
+- Recording IQ data with physical device
+- Displaying recording metadata (frequency, duration, timestamp)
+- Playing back recorded IQ data
+- Deleting and exporting recordings
+- Filtering recordings by criteria
+
+### 11. Advanced Device Controls
+
+- Sample rate changes during streaming
+- Bandwidth adjustments with device
+- Frequency display in status bar
+- Error recovery and graceful degradation
+
+## Test Files
+
+The device test suite consists of:
+
+- **`e2e/visualization-device.spec.ts`**: Core visualization and device interaction tests (13 tests)
+- **`e2e/scanner-device.spec.ts`**: Frequency scanning functionality tests (6 tests)
+- **`e2e/recordings-device.spec.ts`**: Recording and playback tests (7 tests)
+
+Total: 26 device tests covering end-to-end hardware integration
 
 ## Test Gating
 
