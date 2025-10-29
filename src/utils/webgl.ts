@@ -96,8 +96,10 @@ export function createBuffer(
   usage: number = gl.STATIC_DRAW,
 ): WebGLBuffer {
   const buffer = gl.createBuffer();
-  if (!buffer) {
-    throw new Error("Failed to create WebGL buffer");
+  // createBuffer returns null if context is lost
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (buffer === null) {
+    throw new Error("Failed to create WebGL buffer (context lost?)");
   }
   gl.bindBuffer(target, buffer);
   gl.bufferData(target, data, usage);
@@ -111,8 +113,10 @@ export function createTextureLuminanceF32(
   data: Float32Array | null,
 ): WebGLTexture {
   const tex = gl.createTexture();
-  if (!tex) {
-    throw new Error("Failed to create WebGL texture");
+  // createTexture returns null if context is lost
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (tex === null) {
+    throw new Error("Failed to create WebGL texture (context lost?)");
   }
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -132,7 +136,7 @@ export function createTextureLuminanceF32(
     type === gl.FLOAT
       ? data
       : data
-        ? (() => {
+        ? ((): Uint8Array => {
             // Convert Float32Array values in [0,1] to Uint8Array in [0,255]
             const arr = new Uint8Array(data.length);
             for (let i = 0; i < data.length; ++i) {

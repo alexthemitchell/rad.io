@@ -260,9 +260,9 @@ export default function Monitor(): React.JSX.Element {
   }, [volume, isMuted]);
 
   // Recording duration timer
-  useEffect((): (() => void) | void => {
+  useEffect((): (() => void) | undefined => {
     if (recordingState !== "recording") {
-      return;
+      return undefined;
     }
     const interval = setInterval((): void => {
       setRecordingDuration(Date.now() - recordingStartTimeRef.current);
@@ -1052,11 +1052,13 @@ export default function Monitor(): React.JSX.Element {
         <div style={{ fontSize: "0.9em", lineHeight: "1.6" }}>
           <p>
             <strong>Spectrum Explorer:</strong> Click to tune, drag to pan,
-            scroll to zoom. Markers can be added by clicking "Add Marker".
+            scroll to zoom. Markers can be added by clicking &quot;Add
+            Marker&quot;.
           </p>
           <p>
             <strong>Scanner:</strong> Automatically finds active signals with
-            optional RDS decoding. Click "Tune" on found signals to listen.
+            optional RDS decoding. Click &quot;Tune&quot; on found signals to
+            listen.
           </p>
           <p>
             <strong>Signal Measurements:</strong> Real-time SNR, power levels,

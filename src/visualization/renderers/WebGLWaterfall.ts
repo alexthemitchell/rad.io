@@ -40,6 +40,7 @@ export class WebGLWaterfall implements Renderer {
   };
   private currentRow = 0;
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
     try {
       this.gl = canvas.getContext("webgl", {

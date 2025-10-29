@@ -61,6 +61,7 @@ export class ReplaySource implements DataSource {
     return this.playback?.getIsPlaying() ?? false;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async getMetadata(): Promise<DataSourceMetadata> {
     const metadata = this.recording.metadata;
     return {

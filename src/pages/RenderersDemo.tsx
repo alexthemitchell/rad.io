@@ -10,9 +10,9 @@ import {
   Spectrum,
   Waterfall,
   type DataSourceMetadata,
+  type SimulatedSourceConfig,
 } from "../visualization";
 import type { Sample } from "../utils/dsp";
-import type { SimulatedSourceConfig } from "../visualization";
 import type { ReactElement } from "react";
 
 /**
