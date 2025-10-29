@@ -4,7 +4,8 @@ This document describes the hardware-in-the-loop E2E tests for the rad.io visual
 
 ## Overview
 
-The device E2E tests validate the visualization functionality with a physical HackRF One device connected via WebUSB. These tests ensure that:
+The device E2E tests validate the visualization functionality with a physical HackRF One device connected via
+WebUSB. These tests ensure that:
 
 - Device connection works correctly
 - Tuning to different frequencies operates as expected
@@ -144,7 +145,8 @@ Total: 26 device tests covering end-to-end hardware integration
 
 The device tests are gated in two ways:
 
-1. **Playwright Project Level**: The "device" project is only added to the Playwright config when `RADIO_E2E_DEVICE=1` is set
+1. **Playwright Project Level**: The "device" project is only added to the Playwright config when
+   `RADIO_E2E_DEVICE=1` is set
 2. **Test Level**: Tests are skipped if `RADIO_E2E_DEVICE` is not set to `1`
 
 This ensures:

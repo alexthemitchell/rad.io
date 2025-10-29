@@ -48,7 +48,7 @@ Define plugin interfaces and registry, plugins registered at compile time.
 - No security risks
 - Simple implementation
 - Easy to test and debug
-- Works well with webpack bundling
+- Works well with Webpack bundling
 
 **Cons:**
 
@@ -220,7 +220,7 @@ await plugin.activate();
 
 - Plugin discovery handled at compile time
 - Configuration through TypeScript objects
-- Dependency resolution manual (not NPM-based)
+- Dependency resolution manual (not npm-based)
 
 ## Implementation Notes
 
@@ -294,7 +294,7 @@ For existing features that could become plugins:
 - Dynamic module loading (with security review)
 - WebAssembly plugin support
 - Cross-origin plugin loading
-- NPM-based plugin distribution
+- npm-based plugin distribution
 - Plugin versioning and updates
 
 ### Security Considerations

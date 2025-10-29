@@ -1,46 +1,9 @@
-import { test, expect, Page, Locator } from "@playwright/test";
-
-/**
- * Helper function to wait for the start button to be ready
- */
-async function waitForStartButton(page: Page) {
-  const startBtn = page.getByRole("button", { name: "Start reception" });
-  await expect(startBtn).toBeVisible({ timeout: 15000 });
-  await expect(startBtn).toBeEnabled({ timeout: 5000 });
-  return startBtn;
-}
-
-/**
- * Helper function to wait for canvas to update (render a new frame)
- */
-async function waitForCanvasUpdate(
-  page: Page,
-  canvas: Locator,
-  timeout = 5000,
-) {
-  const currentFrame = await canvas.evaluate((c: HTMLCanvasElement) =>
-    c.toDataURL(),
-  );
-  await page.waitForFunction(
-    ([currentFrame]) => {
-      const c = document.querySelector("canvas") as HTMLCanvasElement;
-      return c && c.toDataURL() !== currentFrame;
-    },
-    [currentFrame],
-    { timeout },
-  );
-}
-
-/**
- * Helper function to stop streaming and wait for it to stop
- */
-async function stopStreaming(page: Page) {
-  const stopBtn = page.getByRole("button", { name: "Stop reception" });
-  await stopBtn.click();
-  await page.waitForFunction(() => (window as any).dbgReceiving === false, {
-    timeout: 10000,
-  });
-}
+import { test, expect } from "@playwright/test";
+import {
+  waitForStartButton,
+  waitForCanvasUpdate,
+  stopStreaming,
+} from "./helpers/device-helpers";
 
 /**
  * E2E tests for visualization with physical SDR device
@@ -373,7 +336,7 @@ test.describe("Visualization with Physical Device @device", () => {
 
     // Look for sample rate control
     const sampleRateSelect = page.locator(
-      'select[aria-label*="sample rate" i], select:has-text("Sample Rate")'
+      'select[aria-label*="sample rate" i], select:has-text("Sample Rate")',
     );
 
     if ((await sampleRateSelect.count()) > 0) {
@@ -439,7 +402,7 @@ test.describe("Visualization with Physical Device @device", () => {
 
     // Look for bandwidth selector
     const bandwidthSelect = page.locator(
-      'select[aria-label*="bandwidth" i], input[aria-label*="bandwidth" i]'
+      'select[aria-label*="bandwidth" i], input[aria-label*="bandwidth" i]',
     );
 
     if ((await bandwidthSelect.count()) > 0) {
@@ -448,20 +411,19 @@ test.describe("Visualization with Physical Device @device", () => {
 
       // Change bandwidth if possible
       const tagName = await control.evaluate((el) =>
-        el.tagName.toLowerCase()
+        el.tagName.toLowerCase(),
       );
 
       if (tagName === "select") {
         const options = await control.locator("option").all();
         if (options.length > 1) {
           await control.selectOption({ index: 1 });
-          await page.waitForTimeout(1000);
+
+          // Wait for canvas to update after bandwidth change
+          const canvas = page.locator("canvas").first();
+          await waitForCanvasUpdate(page, canvas);
         }
       }
-
-      // Verify rendering continues
-      const canvas = page.locator("canvas").first();
-      await waitForCanvasUpdate(page, canvas);
     }
 
     await stopStreaming(page);
@@ -500,7 +462,6 @@ test.describe("Visualization with Physical Device @device", () => {
     });
 
     // Force an error condition by attempting invalid operation
-    // (This is implementation-specific and may need adjustment)
     await page.evaluate(() => {
       // Try to trigger an error in the device context
       const deviceContext = (window as any).deviceContext;
@@ -510,8 +471,17 @@ test.describe("Visualization with Physical Device @device", () => {
       }
     });
 
-    // Wait a bit to see if app handles error
-    await page.waitForTimeout(2000);
+    // Wait for error to be handled
+    await page.waitForFunction(
+      () => {
+        // Check if error message is displayed or app is still responsive
+        const hasError =
+          document.querySelector('[role="alert"]') !== null ||
+          (window as any).dbgReceiving === false;
+        return hasError;
+      },
+      { timeout: 5000 },
+    );
 
     // Verify app didn't crash - UI should still be responsive
     const stopBtn = page.getByRole("button", { name: "Stop reception" });

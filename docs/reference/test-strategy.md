@@ -2,7 +2,9 @@
 
 ## Overview
 
-This reference document provides a comprehensive overview of the rad.io automated test suite, covering unit tests, integration tests, and end-to-end (E2E) tests. It complements the detailed testing guides in [`docs/testing/`](../testing/) with SDR-specific context and hardware integration patterns.
+This reference document provides a comprehensive overview of the rad.io automated test suite, covering unit tests,
+integration tests, and end-to-end (E2E) tests. It complements the detailed testing guides in
+[`docs/testing/`](../testing/) with SDR-specific context and hardware integration patterns.
 
 ## Test Architecture
 
@@ -52,6 +54,7 @@ graph TB
 **Test Count**: 1887 tests across 136 test suites
 
 **Coverage Requirements**:
+
 - Global minimum: 64% statements, 52% branches, 67% functions, 64% lines
 - Critical modules: Higher thresholds (see [Coverage Thresholds](#coverage-thresholds))
 
@@ -82,6 +85,7 @@ graph TB
    - Memory management
 
 **Best Practices**:
+
 - Keep tests fast (<100ms per test)
 - Mock expensive operations (WebUSB, WebGL, WASM)
 - Test behavior, not implementation
@@ -96,6 +100,7 @@ graph TB
 **Examples**:
 
 1. **DSP Pipeline Integration**
+
    ```typescript
    // Tests data flow: IQ samples → FFT → filtering → demodulation
    test('complete DSP pipeline processes samples correctly', () => {
@@ -108,6 +113,7 @@ graph TB
    ```
 
 2. **Device State Management**
+
    ```typescript
    // Tests: connect → configure → stream → stop workflow
    test('device lifecycle completes successfully', async () => {
@@ -120,6 +126,7 @@ graph TB
    ```
 
 3. **React Hooks with Context**
+
    ```typescript
    // Tests hooks interacting with DeviceContext
    test('useHackRFDevice updates on context changes', () => {
@@ -135,6 +142,7 @@ graph TB
    ```
 
 **Best Practices**:
+
 - Minimize scope: test 2-3 components together
 - Use real implementations where possible (avoid over-mocking)
 - Test critical user flows and data pipelines
@@ -149,6 +157,7 @@ graph TB
 **Test Count**: 26+ tests (mock + simulated), 8+ device tests (opt-in)
 
 **Tools**:
+
 - Playwright (browser automation)
 - @axe-core/playwright (accessibility)
 - MockSDRDevice (CI-friendly testing)
@@ -156,43 +165,52 @@ graph TB
 #### E2E Test Modes
 
 **1. Mock Device Tests** (CI-default)
+
 ```bash
 npm run test:e2e
 ```
+
 - No hardware required
 - Uses `MockSDRDevice` for realistic IQ data generation
 - Fast and deterministic
 - Runs in CI/CD automatically
 
-**2. Simulated Data Tests**
+### 2. Simulated Data Tests
+
 ```bash
 npm run test:e2e:sim
 ```
+
 - Uses `SimulatedSource` for pre-generated data
 - Tests visualization rendering with known patterns
 - Validates frequency sweeps, modulation patterns
 - Included in default CI runs
 
 **3. Real Hardware Tests** (Opt-in)
+
 ```bash
 E2E_REAL_HACKRF=1 npm run test:e2e       # Legacy @real tests
 npm run test:e2e:device                   # Modern @device tests
 ```
+
 - Requires physical HackRF One device
 - Tests actual WebUSB integration
 - Hardware-in-the-loop validation
 - Manual execution only (not in CI)
 
-**4. Accessibility Tests**
+### 4. Accessibility Tests
+
 ```bash
 npm run test:e2e  # Included in default run
 ```
+
 - Automated WCAG 2.1 AA compliance checks
 - ARIA label validation
 - Keyboard navigation testing
 - Color contrast verification
 
 **Key E2E Test Files**:
+
 - `e2e/monitor-mock.spec.ts` - Mock device smoke tests
 - `e2e/visualization-simulated.spec.ts` - Simulated data visualization
 - `e2e/visualization-device.spec.ts` - Real hardware integration
@@ -215,6 +233,7 @@ global: {
 ### Critical Module Thresholds
 
 **HackRF Implementation**:
+
 ```javascript
 "./src/hackrf/HackRFOne.ts": {
   statements: 76%, branches: 60%, functions: 95%, lines: 75%
@@ -225,6 +244,7 @@ global: {
 ```
 
 **DSP Core**:
+
 ```javascript
 "./src/utils/dsp.ts": {
   statements: 87%, branches: 75%, functions: 100%, lines: 86%
@@ -235,6 +255,7 @@ global: {
 ```
 
 **Audio Processing**:
+
 ```javascript
 "./src/utils/audioStream.ts": {
   statements: 93%, branches: 78%, functions: 93%, lines: 93%
@@ -242,6 +263,7 @@ global: {
 ```
 
 **Test Infrastructure**:
+
 ```javascript
 "./src/utils/testMemoryManager.ts": {
   statements: 100%, branches: 83%, functions: 100%, lines: 100%
@@ -251,6 +273,7 @@ global: {
 ### Codecov Patch Coverage
 
 New code must meet patch coverage requirements:
+
 - **Default**: 80% (threshold 5%)
 - **UI pages**: 70% patch
 - **DSP utils**: 80% patch
@@ -266,6 +289,7 @@ Coverage reports: https://app.codecov.io/gh/alexthemitchell/rad.io
 Comprehensive signal generation for deterministic testing:
 
 **Basic Signals**:
+
 ```typescript
 import { generateIQSamples } from '../utils/signalGenerator';
 
@@ -279,6 +303,7 @@ const samples = generateIQSamples({
 ```
 
 **Multi-tone Signals**:
+
 ```typescript
 import { generateMultiToneIQ } from '../utils/signalGenerator';
 
@@ -294,6 +319,7 @@ const samples = generateMultiToneIQ({
 ```
 
 **Modulated Signals**:
+
 ```typescript
 import { generateFMIQ, generateAMIQ } from '../utils/signalGenerator';
 
@@ -323,12 +349,14 @@ See [Test Data Generators](../testing/TEST_DATA_GENERATORS.md) for complete refe
 ### Mock Devices
 
 **MockSDRDevice** (`src/models/MockSDRDevice.ts`):
+
 - Implements `ISDRDevice` interface
 - Generates realistic IQ samples
 - Configurable signal patterns
 - Used for E2E tests without hardware
 
 **Usage**:
+
 ```typescript
 const mockDevice = new MockSDRDevice();
 await mockDevice.open();
@@ -339,6 +367,7 @@ await mockDevice.receive((samples) => {
 ```
 
 **Activation Methods**:
+
 1. URL query parameter: `?mockSdr=1`
 2. localStorage: `radio:e2e:mockSdr = "1"`
 3. Build-time env: `E2E_MOCK_SDR=1`
@@ -348,11 +377,13 @@ await mockDevice.receive((samples) => {
 ### Real Device Testing Strategy
 
 **Requirements**:
+
 - Physical HackRF One device
 - WebUSB-compatible browser (Chrome/Edge)
 - Pre-paired device (one-time setup)
 
 **Setup**:
+
 ```bash
 # 1. Connect HackRF via USB
 # 2. Visit https://localhost:8080/monitor
@@ -361,6 +392,7 @@ await mockDevice.receive((samples) => {
 ```
 
 **Running Hardware Tests**:
+
 ```bash
 # Legacy real hardware tests
 E2E_REAL_HACKRF=1 npm run test:e2e
@@ -370,6 +402,7 @@ npm run test:e2e:device
 ```
 
 **Test Coverage with Real Hardware**:
+
 - Device connection and auto-reconnection
 - Frequency tuning across bands
 - Sample rate changes
@@ -379,6 +412,7 @@ npm run test:e2e:device
 - Device error recovery
 
 **Limitations**:
+
 - Cannot be automated in CI (WebUSB requires user gestures)
 - Manual pairing required
 - Environment-dependent (RF signal availability)
@@ -391,12 +425,14 @@ See [E2E Testing Guide](../e2e-tests.md#real-device-mode-hardware-required) for 
 ### GitHub Actions Workflows
 
 **Quality Checks** (`.github/workflows/quality-checks.yml`):
+
 - Runs on every PR and push to main
 - Executes all unit and integration tests
 - Enforces coverage thresholds
 - Uploads coverage to Codecov
 
 **E2E Tests** (`.github/workflows/e2e.yml`):
+
 - Runs mock and simulated E2E tests
 - Accessibility validation
 - Headless Chromium execution
@@ -405,12 +441,14 @@ See [E2E Testing Guide](../e2e-tests.md#real-device-mode-hardware-required) for 
 ### CI Configuration
 
 **Test Execution**:
+
 - Parallel: 50% of CPU cores (Jest)
 - Workers: 1 (Playwright, prevents OOM)
 - Timeout: 30 seconds per E2E test
 - Retries: 2 retries for E2E tests
 
 **Performance**:
+
 - Total test time: ~90 seconds (unit + integration)
 - E2E test time: ~60 seconds (mock + simulated)
 - Coverage upload: ~10 seconds
@@ -464,6 +502,7 @@ npm test -- -u
 ### General Testing Principles
 
 ✅ **Do**:
+
 - Write tests for all new features
 - Keep tests fast and focused
 - Use descriptive test names
@@ -474,6 +513,7 @@ npm test -- -u
 - Clean up in `afterEach`
 
 ❌ **Don't**:
+
 - Write flaky tests
 - Test implementation details
 - Share state between tests
@@ -484,24 +524,28 @@ npm test -- -u
 ### SDR-Specific Testing
 
 **DSP Testing**:
+
 - Use `testMemoryManager` for memory pool cleanup
 - Generate deterministic signals with `signalGenerator`
 - Test both optimized and fallback code paths
 - Verify numerical accuracy with tolerance ranges
 
 **Device Testing**:
+
 - Mock WebUSB API for unit tests
 - Use `MockSDRDevice` for integration tests
 - Test error recovery and reconnection
 - Validate frequency/sample rate constraints
 
 **Visualization Testing**:
+
 - Mock Canvas2D/WebGL contexts
 - Test with known signal patterns
 - Verify accessibility attributes
 - Check rendering performance
 
 **E2E Testing**:
+
 - Always use `?mockSdr=1` for CI tests
 - Wait for streaming before checking visualizations
 - Use accessible selectors (`getByRole`, `getByLabel`)
@@ -535,12 +579,15 @@ npm test -- -u
 ### Common Issues
 
 **Memory Leaks**:
+
 ```bash
 npm test -- --detectLeaks
 ```
+
 Use `clearMemoryPools()` from `testMemoryManager` in `afterEach`.
 
 **Race Conditions**:
+
 ```typescript
 // Use waitFor from React Testing Library
 import { waitFor } from '@testing-library/react';
@@ -548,6 +595,7 @@ await waitFor(() => expect(element).toBeInTheDocument());
 ```
 
 **Flaky Tests**:
+
 ```bash
 # Run test multiple times to reproduce
 for i in {1..20}; do npm test -- path/to/test.test.ts || break; done
@@ -557,6 +605,7 @@ npm test -- --maxWorkers=1
 ```
 
 **Timeout Issues**:
+
 ```typescript
 // Increase timeout for specific test
 test('slow test', async () => {
@@ -581,6 +630,7 @@ open coverage/lcov-report/index.html
 ## Test Reliability
 
 For comprehensive guidance on identifying and fixing flaky tests, see:
+
 - [Test Reliability Guide](../testing/TEST_RELIABILITY.md)
 - [CI Optimization Guide](../testing/CI_OPTIMIZATION.md)
 
@@ -603,6 +653,7 @@ For comprehensive guidance on identifying and fixing flaky tests, see:
 ## Related Documentation
 
 ### Testing Documentation
+
 - [Test Strategy Overview](../testing/TEST_STRATEGY.md) - Detailed testing guide
 - [E2E Testing Guide](../e2e-tests.md) - End-to-end testing reference
 - [Test Data Generators](../testing/TEST_DATA_GENERATORS.md) - Signal generation
@@ -610,36 +661,43 @@ For comprehensive guidance on identifying and fixing flaky tests, see:
 - [CI Optimization](../testing/CI_OPTIMIZATION.md) - Performance optimization
 
 ### SDR References
+
 - [DSP Fundamentals](./dsp-fundamentals.md) - Signal processing basics
 - [Hardware Integration](./hardware-integration.md) - Device testing patterns
 - [Performance Optimization](./performance-optimization.md) - Optimization guide
 
 ### Project Documentation
+
 - [Architecture](../../ARCHITECTURE.md) - System architecture
 - [Contributing](../../CONTRIBUTING.md) - Contribution guidelines
 - [Accessibility](../../ACCESSIBILITY.md) - Accessibility standards
 
 ## Metrics and Goals
 
-### Current State (as of 2025)
+### Current State
 
-**Test Count**:
-- Unit tests: 1887
-- Integration tests: ~100 (mixed with unit tests)
-- E2E tests: 34 (26 CI, 8 device)
-- Total: ~2000 tests
+**Test Organization**:
 
-**Coverage**:
-- Global: 64% statements, 52% branches
-- Critical modules: 76-96% statements
-- New code: 80% patch coverage
+- Unit tests in `src/**/__tests__/` - Individual function and component tests
+- Integration tests mixed with unit tests - Multi-module interaction tests
+- E2E tests in `e2e/` - Mock tests run in CI, device tests opt-in with hardware
+- Use `npm test` to see current test count and coverage statistics
+
+**Coverage Enforcement**:
+
+- Global minimums enforced by Jest (see jest.config.ts)
+- Critical modules have higher thresholds
+- New code requires 80% patch coverage (Codecov)
+- Run `npm test -- --coverage` to view current coverage
 
 **Performance**:
-- Unit test suite: ~90 seconds
-- E2E test suite: ~60 seconds (CI)
-- Total CI time: ~3-5 minutes
+
+- Tests run in parallel where possible
+- CI optimized for speed and reliability
+- Run `npm run test:perf` to measure current performance
 
 **Quality Gates**:
+
 - ✅ All tests must pass
 - ✅ Coverage thresholds enforced
 - ✅ Accessibility tests required
@@ -656,6 +714,9 @@ For comprehensive guidance on identifying and fixing flaky tests, see:
 
 ## Conclusion
 
-The rad.io test suite provides comprehensive coverage across unit, integration, and E2E testing levels. The dual-mode E2E strategy (mock + real hardware) ensures CI reliability while maintaining hardware validation capability. Continuous monitoring of coverage, performance, and reliability metrics keeps the test suite effective and maintainable.
+The rad.io test suite provides comprehensive coverage across unit, integration, and E2E testing levels. The
+dual-mode E2E strategy (mock + real hardware) ensures CI reliability while maintaining hardware validation
+capability. Continuous monitoring of coverage, performance, and reliability metrics keeps the test suite
+effective and maintainable.
 
 For questions or improvements, see [Contributing Guide](../../CONTRIBUTING.md).

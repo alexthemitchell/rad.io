@@ -1,17 +1,5 @@
-import { test, expect, Page } from "@playwright/test";
-
-/**
- * Helper function to wait for the device to be ready
- */
-async function waitForDeviceReady(page: Page) {
-  await page.waitForFunction(
-    () => {
-      const deviceContext = (window as any).deviceContext;
-      return deviceContext?.device !== null && deviceContext?.device !== undefined;
-    },
-    { timeout: 15000 }
-  );
-}
+import { test, expect } from "@playwright/test";
+import { waitForDeviceReady } from "./helpers/device-helpers";
 
 /**
  * E2E tests for Recording functionality with physical SDR device
@@ -101,9 +89,7 @@ test.describe("Recordings with Physical Device @device", () => {
     await page.goto("/recordings");
 
     // Look for recordings in the list
-    const recordings = page.locator(
-      '[role="listitem"], tr, .recording-item'
-    );
+    const recordings = page.locator('[role="listitem"], tr, .recording-item');
 
     if ((await recordings.count()) > 0) {
       const firstRecording = recordings.first();
@@ -121,9 +107,7 @@ test.describe("Recordings with Physical Device @device", () => {
     await page.goto("/recordings");
 
     // Look for recordings
-    const recordings = page.locator(
-      '[role="listitem"], tr, .recording-item'
-    );
+    const recordings = page.locator('[role="listitem"], tr, .recording-item');
 
     if ((await recordings.count()) > 0) {
       // Look for play/replay button
@@ -141,7 +125,7 @@ test.describe("Recordings with Physical Device @device", () => {
           // Verify playback indicator
           await page.waitForFunction(
             () => (window as any).dbgReceiving === true,
-            { timeout: 10000 }
+            { timeout: 10000 },
           );
         }
       }
@@ -152,16 +136,16 @@ test.describe("Recordings with Physical Device @device", () => {
     await page.goto("/recordings");
 
     // Look for recordings
-    const recordings = page.locator(
-      '[role="listitem"], tr, .recording-item'
-    );
+    const recordings = page.locator('[role="listitem"], tr, .recording-item');
     const initialCount = await recordings.count();
 
     if (initialCount > 0) {
       // Look for delete button
       const deleteBtn = recordings
         .first()
-        .locator('button:has-text("Delete"), button[aria-label*="delete" i]');
+        .locator(
+          'button:has-text("Delete"), button[aria-label*="delete" i]',
+        );
 
       if ((await deleteBtn.count()) > 0) {
         await deleteBtn.first().click();
@@ -190,15 +174,13 @@ test.describe("Recordings with Physical Device @device", () => {
     await page.goto("/recordings");
 
     // Look for recordings
-    const recordings = page.locator(
-      '[role="listitem"], tr, .recording-item'
-    );
+    const recordings = page.locator('[role="listitem"], tr, .recording-item');
 
     if ((await recordings.count()) > 0) {
-      // Look for export/download button
+      // Look for export/download button using accessible selectors
       const exportBtn = recordings
         .first()
-        .locator('button:has-text("Export"), button:has-text("Download"), a[download]');
+        .getByRole("button", { name: /export|download/i });
 
       if ((await exportBtn.count()) > 0) {
         // Listen for download event
@@ -222,7 +204,7 @@ test.describe("Recordings with Physical Device @device", () => {
 
     // Look for filter controls
     const filterInput = page.locator(
-      'input[type="search"], input[placeholder*="filter" i], input[placeholder*="search" i]'
+      'input[type="search"], input[placeholder*="filter" i], input[placeholder*="search" i]',
     );
 
     if ((await filterInput.count()) > 0) {
@@ -234,9 +216,7 @@ test.describe("Recordings with Physical Device @device", () => {
       await page.waitForTimeout(1000);
 
       // Verify results are filtered
-      const recordings = page.locator(
-        '[role="listitem"], tr, .recording-item'
-      );
+      const recordings = page.locator('[role="listitem"], tr, .recording-item');
       if ((await recordings.count()) > 0) {
         // At least one result should remain (if any matched)
         await expect(recordings.first()).toBeVisible();

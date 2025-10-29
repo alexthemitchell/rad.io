@@ -1,6 +1,7 @@
 # SDR Reference Documentation
 
-This directory contains comprehensive reference materials for both users and developers working with Software Defined Radio (SDR) technology in WebSDR Pro.
+This directory contains comprehensive reference materials for both users and developers working with Software
+Defined Radio (SDR) technology in WebSDR Pro.
 
 ## For Users
 

@@ -1,18 +1,5 @@
-import { test, expect, Page } from "@playwright/test";
-
-/**
- * Helper function to wait for the device to be ready
- */
-async function waitForDeviceReady(page: Page) {
-  // Wait for device auto-connect
-  await page.waitForFunction(
-    () => {
-      const deviceContext = (window as any).deviceContext;
-      return deviceContext?.device !== null && deviceContext?.device !== undefined;
-    },
-    { timeout: 15000 }
-  );
-}
+import { test, expect } from "@playwright/test";
+import { waitForDeviceReady } from "./helpers/device-helpers";
 
 /**
  * E2E tests for Scanner functionality with physical SDR device
@@ -133,8 +120,10 @@ test.describe("Scanner with Physical Device @device", () => {
     await waitForDeviceReady(page);
 
     // Look for navigation elements or tune buttons
-    const navLinks = page.locator('a[href*="monitor"], button:has-text("Tune")');
-    
+    const navLinks = page.locator(
+      'a[href*="monitor"], button:has-text("Tune")',
+    );
+
     if ((await navLinks.count()) > 0) {
       const firstLink = navLinks.first();
       await firstLink.click();
@@ -152,7 +141,7 @@ test.describe("Scanner with Physical Device @device", () => {
 
     // Look for signal type selector (FM, AM, etc.)
     const signalTypeSelect = page.locator('select, [role="combobox"]').first();
-    
+
     if ((await signalTypeSelect.count()) > 0) {
       await expect(signalTypeSelect).toBeVisible();
 
@@ -163,7 +152,7 @@ test.describe("Scanner with Physical Device @device", () => {
       const options = await signalTypeSelect.locator("option").all();
       if (options.length > 1) {
         await signalTypeSelect.selectOption({ index: 1 });
-        
+
         // Verify change
         const newType = await signalTypeSelect.inputValue();
         expect(newType).not.toBe(initialType);
@@ -197,7 +186,7 @@ test.describe("Scanner with Physical Device @device", () => {
 
     // Verify results changed (real-time updates)
     const updatedHTML = await resultsArea.innerHTML().catch(() => "");
-    
+
     // If scanner is active, results should update
     if (initialHTML !== "" && updatedHTML !== "") {
       // We expect some change in the results over time

@@ -21,4 +21,4 @@ Notes
 
 - Keep heavy DSP in WASM/workers, not React state.
 - If FPS < 30 sustained, consider disabling waterfall and/or lowering fftSize.
-- WebUSB pairing cannot be automated in Playwright (see PLAYWRIGHT_WEBUSB_LIMITATION_2025).
+- WebUSB pairing cannot be automated in Playwright (see PLAYWRIGHT_WebUSB_LIMITATION_2025).
