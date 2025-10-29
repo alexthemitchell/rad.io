@@ -146,9 +146,15 @@ describe("FMDemodulatorPlugin", () => {
 
       await plugin.deactivate();
 
-      // After deactivation, phase should be reset
+      // After deactivation, previousPhase is reset to 0.
+      // For the sample {I: 1, Q: 0}, phase = atan2(0, 1) = 0, so phase difference is 0 - 0 = 0.
       const audio = plugin.demodulate(samples);
-      expect(audio[0]).toBe(0); // First sample after reset should be 0
+      expect(audio[0]).toBe(0); // For {I: 1, Q: 0}, output is 0 after reset
+
+      // Additional check: for a sample with non-zero phase, output after reset is not zero
+      const nonZeroPhaseSample: IQSample[] = [{ I: 0, Q: 1 }]; // phase = pi/2
+      const audio2 = plugin.demodulate(nonZeroPhaseSample);
+      expect(audio2[0]).toBeCloseTo(Math.PI / 2); // phase difference = pi/2 - 0
     });
   });
 });
