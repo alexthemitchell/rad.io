@@ -452,7 +452,12 @@ Cache expensive computations:
 // Simple hash function for sample data
 function hashSamples(samples: IQSample[]): string {
   // Hash based on first, middle, and last samples for speed
-  // For production use, consider more robust hashing
+  // 
+  // WARNING: This simple sampling approach may have collisions if many buffers
+  // have similar start/middle/end values. For production use, consider:
+  // - MurmurHash3 for fast, good distribution
+  // - XXHash for extreme performance
+  // - CityHash for quality hashing of larger datasets
   const len = samples.length;
   if (len === 0) return '0';
   

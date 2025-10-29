@@ -96,8 +96,10 @@ Server running at https://localhost:8080
 Open your browser and navigate to:
 
 ```
-https://localhost:8080
+https://localhost:8080/#/
 ```
+
+**Note:** rad.io uses hash-based routing (the `#/` in the URL). As you navigate the app, you'll see URLs like `https://localhost:8080/#/spectrum` or `https://localhost:8080/#/settings`. The hash routing helps the app manage navigation and page state within the single-page application.
 
 **You'll see a security warning** because we're using a self-signed certificate. This is normal for local development:
 
