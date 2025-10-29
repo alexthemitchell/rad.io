@@ -1,5 +1,7 @@
 # rad.io - SDR Visualizer Project Guide
 
+Check output of `npm start` to get deployed server URL (usually https://localhost:8080)
+
 **Take as long as you need to do research using all of the tools available to you. Prioritize correctness and quality over speed.**
 
 **Always use #problems as a first line of quality check. Fix all problems before submitting changes.**
@@ -19,7 +21,7 @@
 - Start every turn by using #oraios/serena/activate_project
 - When using #microsoftdocs/mcp/microsoft_docs_fetch to fetch documentation, you can specify a URL or a search query. If you provide a search query, the tool will return the most relevant documentation it can find.
 - Always check for #problems after making changes to the codebase.
-- Look for tools like #problems #runTests #testFailure #usages and #executePrompt to help you interact with the development environment
+- Look for tools like #problems #runTests #testFailure #usages and #runSubagent to help you interact with the development environment
 - **Critical**: Prefer to use #runTests and #testFailure to run tests (and see detailed failure output respectively)
 - Avoid using #runCommands/runInTerminal unless no other tool can provide the answer and the output is absolutely necessary
 - Use Playwright MCP browser tools to test your code in a browser environment. Take screenshots and analyze them to verify your work.

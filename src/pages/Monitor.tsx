@@ -124,6 +124,11 @@ const Monitor: React.FC = () => {
       setStatusMsg("No device connected or setup not initialized");
       return;
     }
+    // Guard against re-entrant calls to prevent infinite loops
+    if (isReceiving) {
+      console.warn("Already receiving, skipping start");
+      return;
+    }
     try {
       scanner.stopScan();
       await tuneDevice();
@@ -137,7 +142,7 @@ const Monitor: React.FC = () => {
         err instanceof Error ? `Start failed: ${err.message}` : "Start failed",
       );
     }
-  }, [device, tuneDevice, startDsp, scanner]);
+  }, [device, tuneDevice, startDsp, scanner, isReceiving]);
 
   const handleStop = useCallback(async (): Promise<void> => {
     try {
@@ -154,7 +159,7 @@ const Monitor: React.FC = () => {
       return;
     }
     void handleStart();
-  }, [device, isReceiving, handleStart, scanner.state]);
+  }, [device, isReceiving, scanner.state, handleStart]);
 
   // Ensure RX is stopped when leaving the page
   useEffect(() => {

@@ -115,18 +115,10 @@ export class VisualizationWorkerManager {
       return false;
     }
 
-    // Check if canvas can be transferred
-    const hasContext =
-      canvas.getContext("2d") !== null ||
-      canvas.getContext("webgl") !== null ||
-      canvas.getContext("webgl2") !== null ||
-      canvas.getContext("webgpu") !== null;
-
-    if (hasContext) {
-      // Canvas already has a context, can't transfer
-      return false;
-    }
-
+    // Check if transferControlToOffscreen is available
+    // Note: We cannot reliably check if a canvas already has a context
+    // without calling getContext(), which would create one.
+    // Instead, we'll try to transfer and handle failure gracefully.
     const transferFn = (
       canvas as HTMLCanvasElement & {
         transferControlToOffscreen?: () => OffscreenCanvas;

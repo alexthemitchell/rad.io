@@ -25,8 +25,21 @@ export function useDsp(
   const handleWorkerMessage = useCallback(
     (event: MessageEvent<DspWorkerMessage>) => {
       if (event.data.type === 'fft') {
-        const newMagnitudes = new Float32Array(event.data.payload as ArrayBuffer);
-        setMagnitudes(newMagnitudes);
+        // Reuse existing buffer instead of creating new one to prevent memory accumulation
+        const payload = event.data.payload as ArrayBuffer;
+        const newMagnitudes = new Float32Array(payload);
+        
+        // Only update state if magnitudes reference changes (avoid unnecessary re-renders)
+        setMagnitudes(prevMagnitudes => {
+          // If size changed, need new buffer
+          if (prevMagnitudes.length !== newMagnitudes.length) {
+            return newMagnitudes;
+          }
+          // Reuse existing buffer by copying data
+          prevMagnitudes.set(newMagnitudes);
+          return prevMagnitudes;
+        });
+        
         // Mark a visualization data push for performance cadence metrics
         performanceMonitor.mark('viz-push');
         performanceMonitor.measure('viz-push', 'viz-push');

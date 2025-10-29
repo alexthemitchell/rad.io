@@ -29,7 +29,7 @@ export class MockSDRDevice implements ISDRDevice {
   // Memory tracking
   private sampleBuffers: DataView[] = [];
   private totalBufferSize = 0;
-  private readonly maxBufferSize = 8 * 1024 * 1024; // 8 MB
+  private readonly maxBufferSize = 2 * 1024 * 1024; // 2 MB (reduced from 8MB)
 
   private readonly deviceInfo: SDRDeviceInfo = {
     type: SDRDeviceType.GENERIC,
@@ -166,12 +166,13 @@ export class MockSDRDevice implements ISDRDevice {
     this._isReceiving = true;
 
     // Generate IQ sample chunks periodically
+    // Reduced frequency and size to prevent memory accumulation
     this.receiveInterval = setInterval(() => {
       if (!this._isReceiving) {
         return;
       }
 
-      const samplesPerChunk = 16384;
+      const samplesPerChunk = 8192; // Reduced from 16384 to limit memory
       const buffer = new ArrayBuffer(samplesPerChunk * 2);
       const view = new DataView(buffer);
 
@@ -193,23 +194,19 @@ export class MockSDRDevice implements ISDRDevice {
         view.setInt8(i * 2 + 1, Math.round(Q * 127));
       }
 
-      // Track memory (trim if needed)
+      // Track memory (trim aggressively to prevent OOM)
       this.sampleBuffers.push(view);
       this.totalBufferSize += view.byteLength;
-      if (this.totalBufferSize > this.maxBufferSize) {
-        while (
-          this.totalBufferSize > this.maxBufferSize / 2 &&
-          this.sampleBuffers.length
-        ) {
-          const old = this.sampleBuffers.shift();
-          if (old) {
-            this.totalBufferSize -= old.byteLength;
-          }
+      // Keep only last 10 buffers (~160KB) to prevent memory accumulation
+      while (this.sampleBuffers.length > 10) {
+        const old = this.sampleBuffers.shift();
+        if (old) {
+          this.totalBufferSize -= old.byteLength;
         }
       }
 
       callback(view);
-    }, 100);
+    }, 200); // Increased from 100ms to reduce memory pressure
   }
 
   async stopRx(): Promise<void> {
@@ -218,6 +215,9 @@ export class MockSDRDevice implements ISDRDevice {
       clearInterval(this.receiveInterval);
       this.receiveInterval = undefined;
     }
+    // Clear sample buffers to free memory
+    this.sampleBuffers = [];
+    this.totalBufferSize = 0;
     await Promise.resolve();
   }
 

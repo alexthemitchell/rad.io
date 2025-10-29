@@ -3,8 +3,8 @@ import { performanceMonitor } from '../../utils/performanceMonitor';
 import {
   WebGLSpectrum,
   WebGLWaterfall,
-  type RenderTransform,
 } from '../../visualization';
+import type { RenderTransform } from '../../visualization';
 import { VisualizationWorkerManager } from '../../workers/VisualizationWorkerManager';
 import type { WATERFALL_COLORMAPS } from '../../constants';
 
@@ -93,72 +93,14 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
       return cleanup as unknown as () => void;
     }
 
-    // Prefer off-main-thread spectrogram rendering when supported
-    if (VisualizationWorkerManager.isSupported()) {
-      const mgr = new VisualizationWorkerManager();
-      workerManagerRef.current = mgr;
-
-      // Initialize with current layout size (fallback to attributes if not laid out yet)
-      const rect = canvas.getBoundingClientRect();
-      const width = Math.max(1, Math.floor(rect.width || canvas.width || 900));
-      const height = Math.max(1, Math.floor(rect.height || canvas.height || 320));
-      void mgr
-        .initialize(canvas, 'spectrogram', {
-          width,
-          height,
-          dpr: window.devicePixelRatio || 1,
-        })
-        .then((ok) => {
-          if (!ok) {
-            // Fallback to main-thread WebGL waterfall
-            const renderer = new WebGLWaterfall();
-            void renderer.initialize(canvas).then((success) => {
-              if (success) {
-                waterfallRendererRef.current = renderer;
-              }
-            });
-            return;
-          }
-
-          // Wire performance metrics
-          mgr.onMetrics(() => {
-            // Approximate: each completed frame = one render cycle
-            performanceMonitor.mark('render-start');
-            performanceMonitor.measure('rendering', 'render-start');
-          });
-        });
-
-      // Observe resizes to keep worker canvas sized correctly
-      const ro = new ResizeObserver((entries: ResizeObserverEntry[]): void => {
-        const entry = entries[0];
-        if (!entry || !workerManagerRef.current) {
-          return;
-        }
-        const cr = entry.contentRect;
-        try {
-          workerManagerRef.current.resize({
-            width: Math.max(1, Math.floor(cr.width)),
-            height: Math.max(1, Math.floor(cr.height)),
-            dpr: window.devicePixelRatio || 1,
-          });
-        } catch {
-          // ignore if worker not ready
-        }
-      });
-      ro.observe(canvas);
-      resizeObserverRef.current = ro;
-      cleanup = (): void => {
-        ro.disconnect();
-      };
-    } else {
-      // Fallback to main-thread WebGL waterfall
-      const renderer = new WebGLWaterfall();
-      void renderer.initialize(canvas).then((success) => {
-        if (success) {
-          waterfallRendererRef.current = renderer;
-        }
-      });
-    }
+    // For now, use main-thread WebGL waterfall directly
+    // Worker-based rendering has issues with canvas transfer in some environments
+    const renderer = new WebGLWaterfall();
+    void renderer.initialize(canvas).then((success) => {
+      if (success) {
+        waterfallRendererRef.current = renderer;
+      }
+    });
 
     return (): void => {
       // Detach resize observer if set locally
