@@ -76,7 +76,19 @@ const Monitor: React.FC = () => {
 
   const [foundSignals, setFoundSignals] = useState<ActiveSignal[]>([]);
   const scanner = useFrequencyScanner(device, (signal: ActiveSignal) => {
-    setFoundSignals((prev) => [...prev, signal]);
+    setFoundSignals((prev) => {
+      // Check if a signal with the same frequency already exists
+      const idx = prev.findIndex(s => s.frequency === signal.frequency);
+      if (idx !== -1) {
+        // Replace the existing signal with the new one
+        const updated = [...prev];
+        updated[idx] = signal;
+        return updated;
+      } else {
+        // Append the new signal
+        return [...prev, signal];
+      }
+    });
   });
 
   useEffect(() => {
@@ -364,6 +376,8 @@ const Monitor: React.FC = () => {
                 if (isReceiving) {
                   void handleStop();
                 }
+                // Manual clearing is necessary because scanner hook does not own the signal list
+                // This allows the parent component to manage and display found signals
                 setFoundSignals([]);
                 void scanner.startScan();
                 setStatusMsg("Scanning for active signals…");

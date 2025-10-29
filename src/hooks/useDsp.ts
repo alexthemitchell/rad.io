@@ -35,9 +35,9 @@ export function useDsp(
           if (prevMagnitudes.length !== newMagnitudes.length) {
             return newMagnitudes;
           }
-          // Reuse existing buffer by copying data
+          // Copy data and return new reference for React to detect the change
           prevMagnitudes.set(newMagnitudes);
-          return prevMagnitudes;
+          return new Float32Array(prevMagnitudes);
         });
         
         // Mark a visualization data push for performance cadence metrics
@@ -62,10 +62,11 @@ export function useDsp(
     }
 
     const sampleCallback: IQSampleCallback = (raw) => {
-      // Convert transport format (DataView) to IQSample[] using device's parser
+      // IQSampleCallback receives DataView from device transport layer
+      // Convert to IQSample[] format expected by DSP worker using device's parser
       try {
-        const iq = device?.parseSamples(raw);
-        if (iq && Array.isArray(iq)) {
+        const iq = device.parseSamples(raw);
+        if (Array.isArray(iq)) {
           dspWorkerPool.postMessage({
             type: 'process',
             payload: {
@@ -74,9 +75,8 @@ export function useDsp(
             },
           });
         }
-      } catch (err) {
+      } catch {
         // Swallow parsing errors to avoid breaking stream; logging optional
-        // console.warn('Failed to parse IQ samples', err);
       }
     };
 

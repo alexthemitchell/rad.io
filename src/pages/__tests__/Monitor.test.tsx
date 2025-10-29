@@ -1,6 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 
+// Mock the DSP worker pool to avoid Worker issues in tests
+jest.mock("../../workers/dspWorkerPool", () => ({
+  dspWorkerPool: {
+    postMessage: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  },
+}));
+
 // Mock the DeviceContext to avoid requiring a real provider in tests
 jest.mock("../../contexts/DeviceContext", () => ({
   DeviceProvider: ({ children }: any) => <>{children}</>,
