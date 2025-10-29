@@ -22,6 +22,30 @@ import {
 } from "../visualization";
 import type { MarkerRow } from "../components/MarkerTable";
 
+/**
+ * Type guard to check if an unknown value is a valid MarkerRow
+ */
+function isMarkerRow(value: unknown): value is MarkerRow {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "frequency" in value &&
+    typeof (value as { frequency: unknown }).frequency === "number"
+  );
+}
+
+/**
+ * Asserts that an array contains only MarkerRow objects
+ */
+function assertMarkerRowArray(value: unknown): asserts value is MarkerRow[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError("Expected an array");
+  }
+  if (!value.every(isMarkerRow)) {
+    throw new TypeError("Array contains invalid MarkerRow objects");
+  }
+}
+
 const DEFAULT_MAX_BUFFER_SAMPLES = 32768;
 const DEFAULT_UPDATE_INTERVAL_MS = 33; // ~30 FPS
 
@@ -473,12 +497,12 @@ function Analysis(): React.JSX.Element {
         if (!raw || cancelled) {
           return;
         }
-        const parsed = JSON.parse(raw) as MarkerRow[];
-        if (Array.isArray(parsed)) {
-          setSharedMarkers(parsed);
-        }
+        const parsed: unknown = JSON.parse(raw);
+        // Validate using type guard and assertion
+        assertMarkerRowArray(parsed);
+        setSharedMarkers(parsed);
       } catch {
-        // ignore
+        // ignore - invalid data or parsing error
       }
     };
     load();

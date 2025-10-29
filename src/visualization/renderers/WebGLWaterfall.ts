@@ -108,12 +108,12 @@ export class WebGLWaterfall implements Renderer {
     transform?: unknown;
   }): boolean {
     const { gl, program } = this;
-    const spectrogram = data.spectrogram || data.frames;
+    const spectrogram = data.spectrogram ?? data.frames;
     if (!gl || !program || !spectrogram || spectrogram.length === 0) {
       return false;
     }
 
-    const colormapName = data.colormapName || "viridis";
+    const colormapName = data.colormapName ?? "viridis";
     const gain = data.gain ?? 1.0;
     const offset = data.offset ?? 0.0;
 
@@ -124,16 +124,22 @@ export class WebGLWaterfall implements Renderer {
     const colormapRGBA = new Uint8Array(colormapData.length * 4);
     for (let i = 0; i < colormapData.length; i++) {
       const rgb = colormapData[i];
-      if (!rgb || rgb.length < 3) continue;
+      if (!rgb || rgb.length < 3) {
+        continue;
+      }
       colormapRGBA[i * 4 + 0] = Math.round((rgb[0] ?? 0) * 255);
       colormapRGBA[i * 4 + 1] = Math.round((rgb[1] ?? 0) * 255);
       colormapRGBA[i * 4 + 2] = Math.round((rgb[2] ?? 0) * 255);
       colormapRGBA[i * 4 + 3] = 255; // Alpha
     }
 
+    if (!this.colormapTexture) {
+      return false;
+    }
+
     webgl.updateTextureRGBA(
       gl,
-      this.colormapTexture!,
+      this.colormapTexture,
       colormapData.length,
       1,
       colormapRGBA,
@@ -146,7 +152,9 @@ export class WebGLWaterfall implements Renderer {
       if (row.length !== this.textureSize.width) {
         // Resize texture if FFT size changes
         this.textureSize.width = row.length;
-        if (this.spectrogramTexture) gl.deleteTexture(this.spectrogramTexture);
+        if (this.spectrogramTexture) {
+          gl.deleteTexture(this.spectrogramTexture);
+        }
         this.spectrogramTexture = webgl.createTextureLuminanceF32(
           gl,
           this.textureSize.width,
@@ -199,12 +207,24 @@ export class WebGLWaterfall implements Renderer {
 
   cleanup(): void {
     const { gl } = this;
-    if (!gl) return;
-    if (this.program) gl.deleteProgram(this.program);
-    if (this.spectrogramTexture) gl.deleteTexture(this.spectrogramTexture);
-    if (this.colormapTexture) gl.deleteTexture(this.colormapTexture);
-    if (this.vertexBuffer) gl.deleteBuffer(this.vertexBuffer);
-    if (this.textureBuffer) gl.deleteBuffer(this.textureBuffer);
+    if (!gl) {
+      return;
+    }
+    if (this.program) {
+      gl.deleteProgram(this.program);
+    }
+    if (this.spectrogramTexture) {
+      gl.deleteTexture(this.spectrogramTexture);
+    }
+    if (this.colormapTexture) {
+      gl.deleteTexture(this.colormapTexture);
+    }
+    if (this.vertexBuffer) {
+      gl.deleteBuffer(this.vertexBuffer);
+    }
+    if (this.textureBuffer) {
+      gl.deleteBuffer(this.textureBuffer);
+    }
     this.gl = null;
     this.program = null;
   }

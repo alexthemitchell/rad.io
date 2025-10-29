@@ -69,7 +69,7 @@ function useOptionalDeviceContext(): {
 
 // Helper to compute a stable key for a USB device
 function deviceKey(usb: USBDevice): string {
-  return `${usb.vendorId}:${usb.productId}:${usb.serialNumber ?? ""}`;
+  return `${usb.vendorId}:${usb.productId}:${usb.serialNumber ?? "__no_serial__"}`;
 }
 
 /**

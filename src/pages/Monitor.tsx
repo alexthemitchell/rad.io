@@ -441,7 +441,7 @@ export default function Monitor(): React.JSX.Element {
           const maxVizFrames = highPerfMode ? 16 : 64;
           const maxVizSamples = fftSize * maxVizFrames;
           if (vbuf.length > maxVizSamples) {
-            vbuf.splice(0, vbuf.length - maxVizSamples);
+            vizBufferRef.current = vbuf.slice(-maxVizSamples);
           }
 
           // Throttle UI updates and avoid copying entire buffers
