@@ -1,5 +1,9 @@
 import type { ISDRDevice } from "../models/SDRDevice";
-import type { DataSource, Sample, DataSourceMetadata } from "../visualization/interfaces";
+import type {
+  DataSource,
+  Sample,
+  DataSourceMetadata,
+} from "../visualization/interfaces";
 
 export class HardwareSDRSource implements DataSource {
   private device: ISDRDevice;
@@ -63,6 +67,6 @@ export class HardwareSDRSource implements DataSource {
     }
 
     const samples = this.device.parseSamples(dataView);
-    this.streamCallback(samples.map(s => ({ I: s.I, Q: s.Q })));
+    this.streamCallback(samples.map((s) => ({ I: s.I, Q: s.Q })));
   };
 }

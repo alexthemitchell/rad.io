@@ -1,4 +1,10 @@
-import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+} from "react";
 import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
@@ -27,7 +33,7 @@ function Analysis(): React.JSX.Element {
   const [deviceError, setDeviceError] = useState<Error | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [samples, setSamples] = useState<Sample[]>([]);
-  const [_currentFPS, setCurrentFPS] = useState<number>(0);
+  const [currentFPSMetric, setCurrentFPSMetric] = useState<number>(0);
 
   // Analysis controls
   const [isFrozen, setIsFrozen] = useState(false);
@@ -75,7 +81,7 @@ function Analysis(): React.JSX.Element {
     fpsLastUpdateRef.current = 0;
     cancelScheduledUpdate();
     setSamples([]);
-    setCurrentFPS(0);
+    setCurrentFPSMetric(0);
   }, [cancelScheduledUpdate]);
 
   const scheduleVisualizationUpdate = useCallback((): void => {
@@ -103,7 +109,7 @@ function Analysis(): React.JSX.Element {
       // Update FPS counter every second
       if (elapsed >= 1000) {
         const fps = (frameCountRef.current / elapsed) * 1000;
-        setCurrentFPS(Math.round(fps));
+        setCurrentFPSMetric(Math.round(fps));
         frameCountRef.current = 0;
         fpsLastUpdateRef.current = now;
       }
@@ -409,7 +415,10 @@ function Analysis(): React.JSX.Element {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "SELECT")) {
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "SELECT")
+      ) {
         return;
       }
       if (e.key.toLowerCase() === "f") {
@@ -529,22 +538,34 @@ function Analysis(): React.JSX.Element {
           )}
 
           {/* Analysis controls */}
-          <div className="controls-panel" role="region" aria-label="Analysis controls">
+          <div
+            className="controls-panel"
+            role="region"
+            aria-label="Analysis controls"
+          >
             <div className="control-group">
-              <label className="control-label" htmlFor="freeze-toggle">Live view</label>
+              <label className="control-label" htmlFor="freeze-toggle">
+                Live view
+              </label>
               <button
                 id="freeze-toggle"
                 className={`btn ${isFrozen ? "btn-secondary" : "btn-primary"}`}
                 onClick={() => setIsFrozen((v) => !v)}
                 aria-pressed={isFrozen}
-                title={isFrozen ? "Unfreeze to resume live updates (F)" : "Freeze the visualizations (F)"}
+                title={
+                  isFrozen
+                    ? "Unfreeze to resume live updates (F)"
+                    : "Freeze the visualizations (F)"
+                }
               >
                 {isFrozen ? "❄️ Frozen" : "🟢 Live"}
               </button>
             </div>
 
             <div className="control-group">
-              <label className="control-label" htmlFor="fps-cap">Refresh rate</label>
+              <label className="control-label" htmlFor="fps-cap">
+                Refresh rate
+              </label>
               <select
                 id="fps-cap"
                 className="control-select"
@@ -559,7 +580,9 @@ function Analysis(): React.JSX.Element {
             </div>
 
             <div className="control-group">
-              <label className="control-label" htmlFor="buffer-size">Buffer window</label>
+              <label className="control-label" htmlFor="buffer-size">
+                Buffer window
+              </label>
               <select
                 id="buffer-size"
                 className="control-select"
@@ -575,13 +598,19 @@ function Analysis(): React.JSX.Element {
             </div>
 
             <div className="control-group">
-              <label className="control-label" htmlFor="bg-render">Background</label>
+              <label className="control-label" htmlFor="bg-render">
+                Background
+              </label>
               <button
                 id="bg-render"
                 className="btn btn-secondary"
                 onClick={() => setRenderInBackground((v) => !v)}
                 aria-pressed={renderInBackground}
-                title={renderInBackground ? "Rendering continues when tab is hidden" : "Pause rendering when tab is hidden"}
+                title={
+                  renderInBackground
+                    ? "Rendering continues when tab is hidden"
+                    : "Pause rendering when tab is hidden"
+                }
               >
                 {renderInBackground ? "On" : "Auto-pause"}
               </button>
@@ -589,10 +618,18 @@ function Analysis(): React.JSX.Element {
 
             <div className="control-group" style={{ alignSelf: "end" }}>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                <button className="btn btn-secondary" onClick={handleClear} title="Clear current buffer and counters">
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleClear}
+                  title="Clear current buffer and counters"
+                >
                   🧹 Clear
                 </button>
-                <button className="btn btn-secondary" onClick={handleSnapshotCSV} title="Export current buffer as CSV (E)">
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleSnapshotCSV}
+                  title="Export current buffer as CSV (E)"
+                >
                   ⬇️ Export CSV
                 </button>
               </div>
@@ -671,7 +708,7 @@ function Analysis(): React.JSX.Element {
           collapsible
           defaultExpanded={false}
         >
-          <PerformanceMetrics currentFPS={_currentFPS} />
+          <PerformanceMetrics currentFPS={currentFPSMetric} />
         </Card>
       </main>
     </div>

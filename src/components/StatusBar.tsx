@@ -67,6 +67,11 @@ function useOptionalDeviceContext(): {
   }
 }
 
+// Helper to compute a stable key for a USB device
+function deviceKey(usb: USBDevice): string {
+  return `${usb.vendorId}:${usb.productId}:${usb.serialNumber ?? ""}`;
+}
+
 /**
  * StatusBar displays critical system metrics at the bottom of the application.
  * Shows GPU rendering tier, FPS, sample rate, buffer health, and storage quota.
@@ -113,10 +118,6 @@ function StatusBar({
     requestDevice,
     isCheckingPaired,
   } = useOptionalDeviceContext();
-
-  // Helper to compute a stable key for a USB device
-  const deviceKey = (usb: USBDevice): string =>
-    `${usb.vendorId}:${usb.productId}:${usb.serialNumber ?? ""}`;
 
   // Enumerated list of previously paired and supported USB devices
   const [pairedUSBDevices, setPairedUSBDevices] = useState<USBDevice[] | null>(

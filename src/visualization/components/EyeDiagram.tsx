@@ -97,13 +97,15 @@ export default function EyeDiagram({
 
     for (let o = 0; o < overlays; o++) {
       const start = o * periodSamples;
+      const end = Math.min(start + periodSamples, samples.length);
       ctx.beginPath();
       // Slightly vary hue/alpha for depth perception
       ctx.strokeStyle = `rgba(79, 195, 247, ${Math.max(0.08, 0.4 - o / (overlays * 2))})`;
       ctx.lineWidth = 1.25 * dpr;
-      for (let k = 0; k < periodSamples && start + k < samples.length; k++) {
-        const s: Sample | undefined = samples[start + k];
-        const I = s?.I ?? 0;
+      for (let k = 0; k < periodSamples && start + k < end; k++) {
+        const s = samples[start + k];
+        if (!s) continue;
+        const I = s.I;
         const x = (k / (periodSamples - 1)) * canvas.width;
         const yNorm = (I - minI) / ampSpan; // 0..1
         const y = (1 - yNorm) * canvas.height; // invert so higher is up

@@ -101,7 +101,14 @@ export default function RenderingSettingsModal({
           zIndex: 1,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
           <h2 id="rendering-settings-title" style={{ margin: 0, fontSize: 18 }}>
             Rendering Settings
           </h2>
@@ -118,7 +125,8 @@ export default function RenderingSettingsModal({
 
         <div style={{ fontSize: 14, lineHeight: 1.5 }}>
           <p style={{ marginTop: 0 }}>
-            Configure visualization backends and performance options. This is a placeholder UI; controls will be wired in a follow-up.
+            Configure visualization backends and performance options. This is a
+            placeholder UI; controls will be wired in a follow-up.
           </p>
           <ul style={{ marginTop: 8 }}>
             <li>Backend: Auto / WebGPU / WebGL2 / WebGL1 / Worker / 2D</li>

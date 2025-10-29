@@ -122,8 +122,9 @@ export default function SpectrumExplorer({
   // Waterfall display settings
   const [waterfallGain, _setWaterfallGain] = useState(1.0);
   const [waterfallOffset, _setWaterfallOffset] = useState(0.2);
-  const [waterfallColormap, _setWaterfallColormap] =
-    useState<"viridis" | "inferno">("viridis");
+  const [waterfallColormap, _setWaterfallColormap] = useState<
+    "viridis" | "inferno"
+  >("viridis");
 
   // Refs for overlays
   const webglCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -571,7 +572,11 @@ export default function SpectrumExplorer({
           }
         }
       }
-      if (!Number.isFinite(dbMin) || !Number.isFinite(dbMax) || dbMax <= dbMin) {
+      if (
+        !Number.isFinite(dbMin) ||
+        !Number.isFinite(dbMax) ||
+        dbMax <= dbMin
+      ) {
         dbMin = -120;
         dbMax = 0;
       }

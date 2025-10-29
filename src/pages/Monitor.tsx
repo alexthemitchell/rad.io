@@ -13,7 +13,10 @@ import StatusBar from "../components/StatusBar";
 import { useDevice } from "../contexts/DeviceContext";
 import { useFrequency } from "../contexts/FrequencyContext";
 import { HardwareSDRSource } from "../drivers/HardwareSDRSource";
-import { useFrequencyScanner, type ActiveSignal } from "../hooks/useFrequencyScanner";
+import {
+  useFrequencyScanner,
+  type ActiveSignal,
+} from "../hooks/useFrequencyScanner";
 import { notify } from "../lib/notifications";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
@@ -28,6 +31,26 @@ import {
 } from "../visualization";
 import type { IQSample } from "../models/SDRDevice";
 import type { RenderTier } from "../types/rendering";
+
+// Consolidated debug object to avoid polluting global namespace
+declare global {
+  interface Window {
+    radDebug?: {
+      audioCtx?: AudioContext;
+      volume?: number;
+      audioCtxTime?: number;
+      lastAudioLength?: number;
+      audioClipping?: boolean;
+      lastAudioAt?: number;
+      receiving?: boolean;
+    };
+  }
+}
+
+// Initialize debug object
+if (typeof window !== "undefined") {
+  window.radDebug = window.radDebug ?? {};
+}
 
 declare global {
   interface Window {
@@ -72,9 +95,11 @@ export default function Monitor(): React.JSX.Element {
   >("viridis");
   const [dbMin, setDbMin] = useState<number | undefined>(undefined);
   const [dbMax, setDbMax] = useState<number | undefined>(undefined);
-  
+
   // Recording state
-  const [recordingState, setRecordingState] = useState<"idle" | "recording" | "playback">("idle");
+  const [recordingState, setRecordingState] = useState<
+    "idle" | "recording" | "playback"
+  >("idle");
   const [recordedSamples, setRecordedSamples] = useState<DSPSample[]>([]);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingStartTimeRef = useRef<number>(0);
@@ -207,11 +232,11 @@ export default function Monitor(): React.JSX.Element {
         const avgPower = sumPower / vizSamples.length;
         const avgPowerDb = 10 * Math.log10(avgPower + 1e-10);
         const peakPowerDb = 10 * Math.log10(peakPower + 1e-10);
-        
+
         // Simple SNR estimate: assume noise floor is -80dBm
         const noiseFloor = -80;
         const snr = Math.max(0, avgPowerDb - noiseFloor);
-        
+
         setSignalQuality({
           snr: Math.round(snr * 10) / 10,
           peakPower: Math.round(peakPowerDb * 10) / 10,
@@ -225,11 +250,13 @@ export default function Monitor(): React.JSX.Element {
   const ensureAudio = useCallback((): void => {
     audioCtxRef.current ??= new AudioContext();
     processorRef.current ??= new AudioStreamProcessor(sampleRate);
-    window.dbgAudioCtx = audioCtxRef.current;
+    window.radDebug = window.radDebug ?? {};
+    window.radDebug.audioCtx = audioCtxRef.current;
   }, [sampleRate]);
 
   useEffect(() => {
-    window.dbgVolume = isMuted ? 0 : volume;
+    window.radDebug = window.radDebug ?? {};
+    window.radDebug.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
 
   // Recording duration timer
@@ -348,9 +375,9 @@ export default function Monitor(): React.JSX.Element {
       }
       await device.setFrequency(frequency);
       setStatusMsg(
-        `Tuned to ${formatFrequency(frequency)} @ ${(
-          sampleRate / 1e6
-        ).toFixed(2)} MSPS`,
+        `Tuned to ${formatFrequency(frequency)} @ ${(sampleRate / 1e6).toFixed(
+          2,
+        )} MSPS`,
       );
     } catch (err) {
       console.error("Tune failed", err);
@@ -472,8 +499,9 @@ export default function Monitor(): React.JSX.Element {
               gainNode.gain.value = isMuted ? 0 : volume / 100;
               src.connect(gainNode).connect(ctx.destination);
               src.start();
-              window.dbgAudioCtxTime = ctx.currentTime;
-              window.dbgLastAudioLength = audioBuffer.length;
+              window.radDebug = window.radDebug ?? {};
+              window.radDebug.audioCtxTime = ctx.currentTime;
+              window.radDebug.lastAudioLength = audioBuffer.length;
               try {
                 const data = audioBuffer.getChannelData(0);
                 let maxAbs = 0;
@@ -483,11 +511,11 @@ export default function Monitor(): React.JSX.Element {
                     maxAbs = v;
                   }
                 }
-                window.dbgAudioClipping = maxAbs >= 0.98;
+                window.radDebug.audioClipping = maxAbs >= 0.98;
               } catch {
                 // ignore
               }
-              window.dbgLastAudioAt = performance.now();
+              window.radDebug.lastAudioAt = performance.now();
             }
           }
         } catch (e) {
@@ -496,7 +524,8 @@ export default function Monitor(): React.JSX.Element {
       });
 
       setStatusMsg("Receiving started");
-      window.dbgReceiving = true;
+      window.radDebug = window.radDebug ?? {};
+      window.radDebug.receiving = true;
     } catch (err) {
       console.error("Start failed", err);
       setIsReceiving(false);
@@ -524,7 +553,8 @@ export default function Monitor(): React.JSX.Element {
     } finally {
       setIsReceiving(false);
       setStatusMsg("Reception stopped");
-      window.dbgReceiving = false;
+      window.radDebug = window.radDebug ?? {};
+      window.radDebug.receiving = false;
       vizBufferRef.current = [];
       setVizSamples([]);
     }
@@ -555,9 +585,11 @@ export default function Monitor(): React.JSX.Element {
     return (): void => {
       try {
         if (vizSetupRef.current?.source.isStreaming()) {
-          void vizSetupRef.current.source.stopStreaming().catch((e: unknown) => {
-            console.warn("Stop on unmount failed", e);
-          });
+          void vizSetupRef.current.source
+            .stopStreaming()
+            .catch((e: unknown) => {
+              console.warn("Stop on unmount failed", e);
+            });
         }
       } catch (e) {
         console.warn("Error during unmount cleanup", e);
@@ -573,17 +605,28 @@ export default function Monitor(): React.JSX.Element {
       id="main-content"
       tabIndex={-1}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-        <h2 id="monitor-heading" style={{ margin: 0 }}>Monitor - Live Signal Reception</h2>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "16px",
+        }}
+      >
+        <h2 id="monitor-heading" style={{ margin: 0 }}>
+          Monitor - Live Signal Reception
+        </h2>
         <div style={{ fontSize: "0.9em", opacity: 0.8 }}>
-          <span title="Keyboard shortcuts: F to freeze, E to export CSV">⌨️ Shortcuts available</span>
+          <span title="Keyboard shortcuts: F to freeze, E to export CSV">
+            ⌨️ Shortcuts available
+          </span>
         </div>
       </div>
       <p role="status" aria-live="polite" style={{ marginBottom: 8 }}>
         {statusMsg}
       </p>
 
-      <section 
+      <section
         aria-label="Spectrum Visualization"
         style={{
           backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
@@ -852,7 +895,7 @@ export default function Monitor(): React.JSX.Element {
       </section>
 
       {/* Professional audio controls with real-time VU meter */}
-      <section 
+      <section
         aria-label="Audio Controls"
         style={{
           backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
@@ -874,7 +917,7 @@ export default function Monitor(): React.JSX.Element {
         />
       </section>
 
-      <section 
+      <section
         aria-label="Signal Information"
         style={{
           backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
@@ -884,23 +927,27 @@ export default function Monitor(): React.JSX.Element {
         }}
       >
         <h3 style={{ marginTop: 0 }}>Signal Information</h3>
-        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "16px" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: "16px",
+            flexWrap: "wrap",
+            marginBottom: "16px",
+          }}
+        >
           <div style={{ flex: "1 1 300px" }}>
             <SignalStrengthMeter samples={vizSamples} />
           </div>
           {foundSignals.length > 0 && foundSignals[0]?.rdsData && (
             <div style={{ flex: "1 1 300px" }}>
-              <RDSDisplay 
-                rdsData={foundSignals[0].rdsData} 
-                stats={null}
-              />
+              <RDSDisplay rdsData={foundSignals[0].rdsData} stats={null} />
             </div>
           )}
         </div>
-        
+
         {/* Professional signal measurements */}
         {vizSamples.length > 0 && (
-          <div 
+          <div
             className="signal-measurements"
             style={{
               display: "grid",
@@ -933,7 +980,9 @@ export default function Monitor(): React.JSX.Element {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: "0.85em", opacity: 0.7 }}>Sample Rate</div>
+              <div style={{ fontSize: "0.85em", opacity: 0.7 }}>
+                Sample Rate
+              </div>
               <div style={{ fontSize: "1.2em", fontWeight: "bold" }}>
                 {(sampleRate / 1e6).toFixed(2)} MSPS
               </div>
@@ -942,7 +991,7 @@ export default function Monitor(): React.JSX.Element {
         )}
       </section>
 
-      <section 
+      <section
         aria-label="Recording"
         style={{
           backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
@@ -987,7 +1036,7 @@ export default function Monitor(): React.JSX.Element {
       </section>
 
       {/* Quick reference card */}
-      <details 
+      <details
         style={{
           backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
           padding: "12px",
@@ -995,21 +1044,48 @@ export default function Monitor(): React.JSX.Element {
           marginBottom: "16px",
         }}
       >
-        <summary style={{ cursor: "pointer", fontWeight: "bold", marginBottom: "8px" }}>
+        <summary
+          style={{ cursor: "pointer", fontWeight: "bold", marginBottom: "8px" }}
+        >
           ℹ️ Monitor Page Features & Controls
         </summary>
         <div style={{ fontSize: "0.9em", lineHeight: "1.6" }}>
-          <p><strong>Spectrum Explorer:</strong> Click to tune, drag to pan, scroll to zoom. Markers can be added by clicking "Add Marker".</p>
-          <p><strong>Scanner:</strong> Automatically finds active signals with optional RDS decoding. Click "Tune" on found signals to listen.</p>
-          <p><strong>Signal Measurements:</strong> Real-time SNR, power levels, and sample rate. S-meter shows signal strength quality.</p>
-          <p><strong>Audio:</strong> Play/pause, volume control, and mute. Audio demodulation happens in real-time from IQ samples.</p>
-          <p><strong>Recording:</strong> Capture IQ samples for later analysis or playback. Recordings can be saved and loaded.</p>
-          <p><strong>Keyboard Shortcuts:</strong></p>
+          <p>
+            <strong>Spectrum Explorer:</strong> Click to tune, drag to pan,
+            scroll to zoom. Markers can be added by clicking "Add Marker".
+          </p>
+          <p>
+            <strong>Scanner:</strong> Automatically finds active signals with
+            optional RDS decoding. Click "Tune" on found signals to listen.
+          </p>
+          <p>
+            <strong>Signal Measurements:</strong> Real-time SNR, power levels,
+            and sample rate. S-meter shows signal strength quality.
+          </p>
+          <p>
+            <strong>Audio:</strong> Play/pause, volume control, and mute. Audio
+            demodulation happens in real-time from IQ samples.
+          </p>
+          <p>
+            <strong>Recording:</strong> Capture IQ samples for later analysis or
+            playback. Recordings can be saved and loaded.
+          </p>
+          <p>
+            <strong>Keyboard Shortcuts:</strong>
+          </p>
           <ul>
-            <li><code>F</code> - Freeze/unfreeze visualization</li>
-            <li><code>E</code> - Export current buffer to CSV</li>
-            <li><code>↑/↓</code> - Adjust frequency</li>
-            <li><code>M</code> - Add marker at current frequency</li>
+            <li>
+              <code>F</code> - Freeze/unfreeze visualization
+            </li>
+            <li>
+              <code>E</code> - Export current buffer to CSV
+            </li>
+            <li>
+              <code>↑/↓</code> - Adjust frequency
+            </li>
+            <li>
+              <code>M</code> - Add marker at current frequency
+            </li>
           </ul>
         </div>
       </details>
@@ -1038,7 +1114,7 @@ export default function Monitor(): React.JSX.Element {
                   : "idle"
           }
           audioVolume={volume}
-          audioClipping={Boolean(window.dbgAudioClipping)}
+          audioClipping={Boolean(window.radDebug?.audioClipping)}
         />
       </div>
     </main>

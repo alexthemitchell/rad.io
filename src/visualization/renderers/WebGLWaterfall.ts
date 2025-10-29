@@ -17,6 +17,10 @@ void main() {
 }
 `;
 
+// Default texture dimensions for spectrogram data
+const DEFAULT_SPECTROGRAM_WIDTH = 2048;
+const DEFAULT_SPECTROGRAM_HEIGHT = 512;
+
 export class WebGLWaterfall implements Renderer {
   private gl: WebGLRenderingContext | null = null;
   private program: WebGLProgram | null = null;
@@ -65,7 +69,10 @@ export class WebGLWaterfall implements Renderer {
       this.uGain = gl.getUniformLocation(this.program, "uGain");
       this.uOffset = gl.getUniformLocation(this.program, "uOffset");
 
-      this.textureSize = { width: 2048, height: 512 }; // Default size
+      this.textureSize = {
+        width: DEFAULT_SPECTROGRAM_WIDTH,
+        height: DEFAULT_SPECTROGRAM_HEIGHT,
+      };
       this.spectrogramTexture = webgl.createTextureLuminanceF32(
         gl,
         this.textureSize.width,
@@ -75,14 +82,13 @@ export class WebGLWaterfall implements Renderer {
       this.colormapTexture = webgl.createTextureRGBA(gl, 256, 1, null);
 
       this.vertexBuffer = webgl.createBuffer(gl, webgl.QUAD_VERTICES);
-      this.textureBuffer = webgl.createBuffer(
-        gl,
-        webgl.TEX_COORDS,
-      );
+      this.textureBuffer = webgl.createBuffer(gl, webgl.TEX_COORDS);
 
       return true;
     } catch (error) {
-      this.error(`Initialization failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.error(
+        `Initialization failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return false;
     }
   }
@@ -180,9 +186,7 @@ export class WebGLWaterfall implements Renderer {
 
     // We need to adjust texture coordinates to achieve the scrolling effect
     const y = this.currentRow / this.textureSize.height;
-    const textureCoords = new Float32Array([
-      0, y, 1, y, 0, y - 1, 1, y - 1,
-    ]);
+    const textureCoords = new Float32Array([0, y, 1, y, 0, y - 1, 1, y - 1]);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.textureBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, textureCoords, gl.DYNAMIC_DRAW);
     gl.vertexAttribPointer(this.aTexCoord, 2, gl.FLOAT, false, 0, 0);

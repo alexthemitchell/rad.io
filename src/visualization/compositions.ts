@@ -281,7 +281,9 @@ export interface VisualizationSetup<T extends DataSource = DataSource> {
  * await setup.cleanup();
  * ```
  */
-export function createVisualizationSetup<T extends DataSource = SimulatedSource>(options?: {
+export function createVisualizationSetup<
+  T extends DataSource = SimulatedSource,
+>(options?: {
   /** Use a preset configuration */
   preset?: keyof typeof VisualizationPresets;
   /** Custom data source. If not provided, a simulated source will be created. */

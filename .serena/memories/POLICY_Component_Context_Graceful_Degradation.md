@@ -8,7 +8,6 @@ Policy
 Implementation pattern
 
 - Wrap context access in a small try/catch to tolerate missing providers:
-
   - Example: `src/components/StatusBar.tsx`
     - Try to read with `const ctx = useDeviceContext()` inside a try/catch.
     - If it throws (no provider), fall back to safe defaults:
