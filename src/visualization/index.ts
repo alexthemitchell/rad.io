@@ -43,6 +43,7 @@ export type { SpectrumExplorerProps } from "./components/SpectrumExplorer";
 export { default as Spectrum } from "./components/Spectrum";
 export type { SpectrumProps } from "./components/Spectrum";
 export { default as Waterfall } from "./components/Waterfall";
+export { default as EyeDiagram } from "./components/EyeDiagram";
 export type { WaterfallProps } from "./components/Waterfall";
 
 // Renderers (for custom rendering or advanced use cases)

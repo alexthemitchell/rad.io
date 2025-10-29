@@ -665,6 +665,19 @@ try {
 await setup.source.startStreaming(callback);
 ```
 
+### 7. Analysis Page Controls (UI)
+
+The Analysis page provides lightweight controls to tune performance and workflow:
+
+- Live view toggle (F): Freeze/unfreeze visualization updates without stopping device reception.
+- Refresh rate: Cap rendering at ~15/30/60 FPS to balance smoothness and CPU/GPU usage.
+- Buffer window: Choose how many recent IQ samples are kept for analysis (8K–64K).
+- Background rendering: Let visualizations continue updating when the tab is hidden, or auto‑pause to save power.
+- Clear: Reset buffers and counters instantly.
+- Export CSV (E): Download the current IQ buffer as `I,Q` rows for offline analysis.
+
+All controls are accessible via keyboard and use the design tokens defined in `src/styles/tokens.css`.
+
 ## TypeScript Support
 
 All components, processors, and helpers are fully typed:

@@ -76,6 +76,11 @@ interface DeviceContextValue {
    * Close all devices
    */
   closeAllDevices: () => Promise<void>;
+
+  /**
+   * Connect to a previously paired USB device without opening the native picker
+   */
+  connectPairedUSBDevice: (usbDevice: USBDevice) => Promise<void>;
 }
 
 const DeviceContext = createContext<DeviceContextValue | undefined>(undefined);
@@ -157,6 +162,13 @@ export function DeviceProvider({
           deviceId,
           deviceInfo: await adapter.getDeviceInfo(),
         });
+
+        // Persist last-used device for future preference when multiple are present
+        try {
+          window.localStorage.setItem("rad.io:lastDeviceId", deviceId);
+        } catch {
+          // ignore storage failures (private mode, etc.)
+        }
       } catch (err) {
         deviceLogger.error("Failed to initialize device", err, {
           deviceId,
@@ -243,6 +255,20 @@ export function DeviceProvider({
     void initializeDevice(usbDevice);
   }, [usbDevice, initializeDevice]);
 
+  // In multi-device scenarios, selection is deferred to the UI (Devices panel)
+
+  /**
+   * Connect a previously paired USB device without opening the native picker
+   */
+  const connectPairedUSBDevice = useCallback(
+    async (usb: USBDevice): Promise<void> => {
+      // Ensure we switch the primary device to the selected one
+      await closeAllDevices();
+      await initializeDevice(usb);
+    },
+    [initializeDevice, closeAllDevices],
+  );
+
   /**
    * E2E/CI mock mode: create a mock SDR device when flag is enabled
    */
@@ -299,6 +325,7 @@ export function DeviceProvider({
     requestDevice,
     closeDevice,
     closeAllDevices,
+    connectPairedUSBDevice,
   };
 
   return (

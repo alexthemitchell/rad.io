@@ -47,6 +47,19 @@
   border: 2px solid transparent;
 }
 
+/* Analysis page: responsive grid for primary visuals */
+.analysis-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (width >= 1024px) {
+  .analysis-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .nav-link:hover {
   background: var(--rad-surface-2);
   color: var(--rad-fg);

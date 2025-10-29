@@ -121,6 +121,7 @@
     "node_modules",
     "assembly",
     "src/models/templates",
+
     "jest.setup.ts",
     "jest.config.ts",
     "playwright.config.ts",

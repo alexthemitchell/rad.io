@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useDevice } from "../contexts/DeviceContext";
+import { useDevice, useDeviceContext } from "../contexts/DeviceContext";
+import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
 import { notify } from "../lib/notifications";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
@@ -33,6 +34,7 @@ interface DevicesProps {
 
 function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
   const { device, initialize, cleanup, isCheckingPaired } = useDevice();
+  const { connectPairedUSBDevice } = useDeviceContext();
   // Unified notifications
 
   const [sampleRate, setSampleRate] = useState<number | null>(null);
@@ -43,6 +45,9 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
     vendorId?: number;
     productId?: number;
   }>({});
+  const [pairedUSBDevices, setPairedUSBDevices] = useState<USBDevice[] | null>(
+    null,
+  );
 
   // Load device info and settings when device connects
   useEffect(() => {
@@ -85,6 +90,29 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
     void loadDeviceInfo();
   }, [device]);
 
+  // Enumerate previously paired devices for selection in multi-device scenarios
+  useEffect(() => {
+    const enumeratePaired = async (): Promise<void> => {
+      if (device || isCheckingPaired) {
+        setPairedUSBDevices(null);
+        return;
+      }
+      try {
+        const selector = new WebUSBDeviceSelector();
+        const paired = await selector.getDevices();
+        // Keep only devices that have a registered driver
+        const supported = paired.filter((usb) =>
+          Boolean(SDRDriverRegistry.getDriverForDevice(usb)),
+        );
+        setPairedUSBDevices(supported);
+      } catch (err) {
+        console.error("Failed to enumerate paired USB devices:", err);
+        setPairedUSBDevices([]);
+      }
+    };
+    void enumeratePaired();
+  }, [device, isCheckingPaired]);
+
   const handleScanForDevices = async (): Promise<void> => {
     try {
       await initialize();
@@ -126,10 +154,42 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
       {!device && !isCheckingPaired && (
         <section aria-label="Device Discovery">
           <h3>Available Devices</h3>
-          <p>
-            Click the button below to open the device picker and select your SDR
-            device.
-          </p>
+          {pairedUSBDevices && pairedUSBDevices.length > 0 ? (
+            <>
+              <p>
+                Multiple paired SDR devices detected. Choose one to connect, or
+                use the device picker to pair a new device.
+              </p>
+              <ul aria-label="Paired SDR devices">
+                {pairedUSBDevices.map((usb) => (
+                  <li
+                    key={`${usb.vendorId}:${usb.productId}:${usb.serialNumber ?? ""}`}
+                  >
+                    <div>
+                      <strong>{usb.productName ?? "Unknown Device"}</strong> (
+                      <code>
+                        {usb.vendorId}:{usb.productId}
+                      </code>
+                      ) {usb.serialNumber ? `• S/N ${usb.serialNumber}` : ""}
+                    </div>
+                    <button
+                      onClick={(): void => {
+                        void connectPairedUSBDevice(usb);
+                      }}
+                    >
+                      Connect
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <hr />
+            </>
+          ) : (
+            <p>
+              Click the button below to open the device picker and select your
+              SDR device.
+            </p>
+          )}
           <button
             onClick={(): void => {
               void handleScanForDevices();
@@ -217,7 +277,8 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
           Currently supported devices:
         </p>
         <ul>
-          <li>HackRF One (VID 0x1d50)</li>
+          <li>HackRF One (VID 0x1d50, PID 0x6089)</li>
+          <li>RTL-SDR (RTL2832U-based) (VID 0x0bda, PID 0x2838/0x2832)</li>
         </ul>
         <p>
           <strong>Note:</strong> WebUSB requires HTTPS (or localhost for

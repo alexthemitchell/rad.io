@@ -51,8 +51,8 @@ export const useUSBDevice = (
     try {
       const devices = await navigator.usb.getDevices();
 
-      // Find first device matching our filters
-      const matchedDevice = devices.find((dev) =>
+      // Collect all devices matching our filters
+      const matchedDevices = devices.filter((dev) =>
         filters.some((filter) => {
           const vendorMatch =
             !filter.vendorId || dev.vendorId === filter.vendorId;
@@ -64,8 +64,10 @@ export const useUSBDevice = (
         }),
       );
 
-      if (matchedDevice) {
-        setDevice(matchedDevice);
+      // If exactly one matched device, auto-select it for seamless reconnect
+      // If multiple matched devices are present, defer selection to the UI
+      if (matchedDevices.length === 1) {
+        setDevice(matchedDevices[0]);
       }
     } catch (error) {
       console.error("Error checking for paired devices:", error);

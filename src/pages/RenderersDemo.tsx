@@ -5,9 +5,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { calculateSpectrogram } from "../utils/dsp";
-import { SimulatedSource, Spectrum, Waterfall } from "../visualization";
+import {
+  SimulatedSource,
+  Spectrum,
+  Waterfall,
+  type DataSourceMetadata,
+  type SimulatedSourceConfig,
+} from "../visualization";
 import type { Sample } from "../utils/dsp";
-import type { SimulatedSourceConfig } from "../visualization";
 import type { ReactElement } from "react";
 
 /**
@@ -25,6 +30,8 @@ export default function RenderersDemo(): ReactElement {
   const FFT_SIZE = 1024;
   const MAX_WATERFALL_FRAMES = 100;
 
+  const [metadata, setMetadata] = useState<DataSourceMetadata | null>(null);
+
   // Initialize SimulatedSource
   useEffect(() => {
     const config: Partial<SimulatedSourceConfig> = {
@@ -35,6 +42,7 @@ export default function RenderersDemo(): ReactElement {
       amplitude: 0.8,
     };
     sourceRef.current = new SimulatedSource(config);
+    sourceRef.current.getMetadata().then(setMetadata).catch(console.error);
 
     return (): void => {
       if (sourceRef.current?.isStreaming()) {
@@ -91,8 +99,6 @@ export default function RenderersDemo(): ReactElement {
     waterfallFrames.length > 0
       ? waterfallFrames[waterfallFrames.length - 1]
       : new Float32Array(FFT_SIZE);
-
-  const metadata = sourceRef.current?.getMetadata();
 
   return (
     <div style={{ padding: "20px", fontFamily: "sans-serif" }}>

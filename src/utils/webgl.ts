@@ -89,6 +89,82 @@ export function createProgram(
   return prog;
 }
 
+export function createBuffer(
+  gl: GL,
+  data: Float32Array | Uint16Array,
+  target: number = gl.ARRAY_BUFFER,
+  usage: number = gl.STATIC_DRAW,
+): WebGLBuffer {
+  const buffer = gl.createBuffer();
+  // createBuffer returns null if context is lost
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (buffer === null) {
+    throw new Error("Failed to create WebGL buffer (context lost?)");
+  }
+  gl.bindBuffer(target, buffer);
+  gl.bufferData(target, data, usage);
+  return buffer;
+}
+
+export function createTextureLuminanceF32(
+  gl: GL,
+  width: number,
+  height: number,
+  data: Float32Array | null,
+): WebGLTexture {
+  const tex = gl.createTexture();
+  // createTexture returns null if context is lost
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (tex === null) {
+    throw new Error("Failed to create WebGL texture (context lost?)");
+  }
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+
+  // Use FLOAT texture extension if available
+  const ext = gl.getExtension("OES_texture_float");
+  const internalFormat =
+    gl instanceof WebGL2RenderingContext ? gl.R32F : gl.LUMINANCE;
+  const srcFormat =
+    gl instanceof WebGL2RenderingContext ? gl.RED : gl.LUMINANCE;
+  const type = ext ? gl.FLOAT : gl.UNSIGNED_BYTE;
+  const dataForUpload =
+    type === gl.FLOAT
+      ? data
+      : data
+        ? ((): Uint8Array => {
+            // Convert Float32Array values in [0,1] to Uint8Array in [0,255]
+            const arr = new Uint8Array(data.length);
+            for (let i = 0; i < data.length; ++i) {
+              // Clamp and round
+              arr[i] = Math.max(
+                0,
+                Math.min(255, Math.round((data[i] ?? 0) * 255)),
+              );
+            }
+            return arr;
+          })()
+        : null;
+
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    internalFormat,
+    width,
+    height,
+    0,
+    srcFormat,
+    type,
+    dataForUpload,
+  );
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  return tex;
+}
+
 export function createTextureRGBA(
   gl: GL,
   width: number,

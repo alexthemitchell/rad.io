@@ -6,6 +6,8 @@
 
 import type { Sample } from "../utils/dsp";
 
+export type { Sample };
+
 /**
  * Data source interface for providing IQ samples to visualizations.
  * Implementations can be real hardware devices, simulated sources, or recorded data.
@@ -32,7 +34,7 @@ export interface DataSource {
   /**
    * Get metadata about the data source.
    */
-  getMetadata(): DataSourceMetadata;
+  getMetadata(): Promise<DataSourceMetadata>;
 }
 
 /**
