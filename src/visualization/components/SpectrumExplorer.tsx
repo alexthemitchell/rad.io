@@ -839,9 +839,7 @@ export default function SpectrumExplorer({
     [latestMagnitudes, sampleRate, centerFrequency, transform],
   );
 
-  const onSpectrumMouseLeave = useCallback(() => setHoverInfo(null), [
-    setHoverInfo,
-  ]);
+  const onSpectrumMouseLeave = useCallback(() => setHoverInfo(null), []);
 
   // UI Controls row
   const Controls = (

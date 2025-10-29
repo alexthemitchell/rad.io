@@ -79,7 +79,7 @@ if (typeof (global as any).GPUBufferUsage === "undefined") {
 }
 
 // Mock ResizeObserver
-if (typeof (global as any).ResizeObserver === 'undefined') {
+if (typeof (global as any).ResizeObserver === "undefined") {
   (global as any).ResizeObserver = jest.fn().mockImplementation(() => ({
     observe: jest.fn(),
     unobserve: jest.fn(),

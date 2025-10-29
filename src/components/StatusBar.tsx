@@ -44,6 +44,29 @@ export interface StatusBarProps {
   onOpenRenderingSettings?: () => void;
 }
 
+// Custom hook to safely consume DeviceContext, returning defaults if provider is missing
+function useOptionalDeviceContext(): {
+  primaryDevice: unknown;
+  connectPairedUSBDevice: (usb: USBDevice) => Promise<void>;
+  requestDevice: () => Promise<void>;
+  isCheckingPaired: boolean;
+} {
+  try {
+    return useDeviceContext();
+  } catch {
+    return {
+      primaryDevice: undefined,
+      connectPairedUSBDevice: async (_usb: USBDevice): Promise<void> => {
+        await Promise.resolve();
+      },
+      requestDevice: async (): Promise<void> => {
+        await Promise.resolve();
+      },
+      isCheckingPaired: false,
+    };
+  }
+}
+
 /**
  * StatusBar displays critical system metrics at the bottom of the application.
  * Shows GPU rendering tier, FPS, sample rate, buffer health, and storage quota.
@@ -83,28 +106,13 @@ function StatusBar({
   onOpenRenderingSettings,
 }: StatusBarProps): React.JSX.Element {
   const [currentTime, setCurrentTime] = useState(new Date());
-  // Tolerate missing DeviceProvider in isolated tests by gracefully degrading
-  let primaryDevice: unknown = undefined;
-  let connectPairedUSBDevice: (usb: USBDevice) => Promise<void> = async (
-    _usb: USBDevice,
-  ): Promise<void> => {
-    // intentional noop when no DeviceProvider is present (unit tests)
-    await Promise.resolve();
-  };
-  let requestDevice: () => Promise<void> = async (): Promise<void> => {
-    // intentional noop when no DeviceProvider is present (unit tests)
-    await Promise.resolve();
-  };
-  let isCheckingPaired = false;
-  try {
-    const ctx = useDeviceContext();
-    primaryDevice = ctx.primaryDevice;
-    connectPairedUSBDevice = ctx.connectPairedUSBDevice;
-    requestDevice = ctx.requestDevice;
-    isCheckingPaired = ctx.isCheckingPaired;
-  } catch {
-    // No provider: leave defaults; component will render in read-only mode
-  }
+
+  const {
+    primaryDevice,
+    connectPairedUSBDevice,
+    requestDevice,
+    isCheckingPaired,
+  } = useOptionalDeviceContext();
 
   // Helper to compute a stable key for a USB device
   const deviceKey = (usb: USBDevice): string =>

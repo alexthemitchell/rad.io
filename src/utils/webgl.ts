@@ -126,7 +126,20 @@ export function createTextureLuminanceF32(
   const internalFormat = gl instanceof WebGL2RenderingContext ? gl.R32F : gl.LUMINANCE;
   const srcFormat = gl instanceof WebGL2RenderingContext ? gl.RED : gl.LUMINANCE;
   const type = ext ? gl.FLOAT : gl.UNSIGNED_BYTE;
-  const dataForUpload = type === gl.FLOAT ? data : (data ? new Uint8Array(data.buffer) : null);
+  const dataForUpload =
+    type === gl.FLOAT
+      ? data
+      : (data
+          ? (() => {
+              // Convert Float32Array values in [0,1] to Uint8Array in [0,255]
+              const arr = new Uint8Array(data.length);
+              for (let i = 0; i < data.length; ++i) {
+                // Clamp and round
+                arr[i] = Math.max(0, Math.min(255, Math.round((data[i] ?? 0) * 255)));
+              }
+              return arr;
+            })()
+          : null);
 
   gl.texImage2D(
     gl.TEXTURE_2D,
