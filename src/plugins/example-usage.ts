@@ -147,12 +147,12 @@ function DemodulatorComponent() {
     return () => {
       void (async () => {
         if (plugin) {
-        plugin.deactivate().then(() => {
-          pluginRegistry.unregister(plugin.metadata.id);
-        });
-      }
+          await plugin.deactivate();
+          await pluginRegistry.unregister(plugin.metadata.id);
+        }
+      })();
     };
-  }, []);
+  }, [plugin]);
 
   const handleDemodulate = (samples: IQSample[]) => {
     if (!plugin) return;

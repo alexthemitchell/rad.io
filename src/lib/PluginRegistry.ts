@@ -4,13 +4,12 @@
  * Central registry for managing plugin lifecycle and discovery.
  */
 
+import { PluginEvent, PluginState } from "../types/plugin";
 import type {
   Plugin,
   PluginRegistry as IPluginRegistry,
   PluginEventListener,
   PluginEventData,
-  PluginEvent,
-  PluginState,
   PluginType,
 } from "../types/plugin";
 
@@ -90,7 +89,7 @@ export class PluginRegistry implements IPluginRegistry {
 
     try {
       // Deactivate if active
-      if (plugin.state === ("active" as PluginState)) {
+      if (plugin.state === PluginState.ACTIVE) {
         await plugin.deactivate();
       }
 
@@ -103,7 +102,7 @@ export class PluginRegistry implements IPluginRegistry {
       // Emit unregistration event
       this.emitEvent({
         plugin,
-        event: "unregistered" as PluginEvent,
+        event: PluginEvent.UNREGISTERED,
         timestamp: Date.now(),
       });
     } catch (error) {
