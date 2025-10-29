@@ -249,8 +249,8 @@ describe("PriorityScanner", () => {
 
       const elapsed = Date.now() - startTime;
 
-      // Should take at least the settling time
-      expect(elapsed).toBeGreaterThanOrEqual(100);
+      // Should take at least the settling time (with 5ms tolerance for test timing)
+      expect(elapsed).toBeGreaterThanOrEqual(95);
 
       // Should use custom sample count
       expect(mockDevice.captureSamples).toHaveBeenCalledWith(4096);

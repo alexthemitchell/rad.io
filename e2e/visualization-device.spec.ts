@@ -1,46 +1,9 @@
-import { test, expect, Page, Locator } from "@playwright/test";
-
-/**
- * Helper function to wait for the start button to be ready
- */
-async function waitForStartButton(page: Page) {
-  const startBtn = page.getByRole("button", { name: "Start reception" });
-  await expect(startBtn).toBeVisible({ timeout: 15000 });
-  await expect(startBtn).toBeEnabled({ timeout: 5000 });
-  return startBtn;
-}
-
-/**
- * Helper function to wait for canvas to update (render a new frame)
- */
-async function waitForCanvasUpdate(
-  page: Page,
-  canvas: Locator,
-  timeout = 5000,
-) {
-  const currentFrame = await canvas.evaluate((c: HTMLCanvasElement) =>
-    c.toDataURL(),
-  );
-  await page.waitForFunction(
-    ([currentFrame]) => {
-      const c = document.querySelector("canvas") as HTMLCanvasElement;
-      return c && c.toDataURL() !== currentFrame;
-    },
-    [currentFrame],
-    { timeout },
-  );
-}
-
-/**
- * Helper function to stop streaming and wait for it to stop
- */
-async function stopStreaming(page: Page) {
-  const stopBtn = page.getByRole("button", { name: "Stop reception" });
-  await stopBtn.click();
-  await page.waitForFunction(() => (window as any).dbgReceiving === false, {
-    timeout: 10000,
-  });
-}
+import { test, expect } from "@playwright/test";
+import {
+  waitForStartButton,
+  waitForCanvasUpdate,
+  stopStreaming,
+} from "./helpers/device-helpers";
 
 /**
  * E2E tests for visualization with physical SDR device
@@ -357,5 +320,173 @@ test.describe("Visualization with Physical Device @device", () => {
 
     // Final stop
     await stopStreaming(page);
+  });
+
+  test("should handle sample rate changes with device @device", async ({
+    page,
+  }) => {
+    await page.goto("/monitor");
+
+    const startBtn = await waitForStartButton(page);
+    await startBtn.click();
+
+    await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+      timeout: 15000,
+    });
+
+    // Look for sample rate control
+    const sampleRateSelect = page.locator(
+      'select[aria-label*="sample rate" i], select:has-text("Sample Rate")',
+    );
+
+    if ((await sampleRateSelect.count()) > 0) {
+      const initialValue = await sampleRateSelect.inputValue();
+
+      // Change sample rate
+      const options = await sampleRateSelect.locator("option").all();
+      if (options.length > 1) {
+        await sampleRateSelect.selectOption({ index: 1 });
+
+        // Wait for sample rate to change
+        await expect(sampleRateSelect).not.toHaveValue(initialValue, {
+          timeout: 5000,
+        });
+
+        // Verify rendering continues with new sample rate
+        const canvas = page.locator("canvas").first();
+        await waitForCanvasUpdate(page, canvas);
+      }
+    }
+
+    await stopStreaming(page);
+  });
+
+  test("should display correct frequency in status bar @device", async ({
+    page,
+  }) => {
+    await page.goto("/monitor");
+
+    const startBtn = await waitForStartButton(page);
+    await startBtn.click();
+
+    await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+      timeout: 15000,
+    });
+
+    // Look for frequency display in status bar
+    const statusBar = page.locator('[role="status"], .status-bar, footer');
+    await expect(statusBar.first()).toBeVisible();
+
+    // Tune to known frequency
+    const freqInput = page.locator('input[type="number"]').first();
+    await freqInput.fill("100000000"); // 100 MHz
+    await freqInput.press("Enter");
+
+    // Verify frequency is displayed
+    await expect(statusBar.first()).toContainText(/100/i, { timeout: 5000 });
+
+    await stopStreaming(page);
+  });
+
+  test("should handle bandwidth changes with device @device", async ({
+    page,
+  }) => {
+    await page.goto("/monitor");
+
+    const startBtn = await waitForStartButton(page);
+    await startBtn.click();
+
+    await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+      timeout: 15000,
+    });
+
+    // Look for bandwidth selector
+    const bandwidthSelect = page.locator(
+      'select[aria-label*="bandwidth" i], input[aria-label*="bandwidth" i]',
+    );
+
+    if ((await bandwidthSelect.count()) > 0) {
+      const control = bandwidthSelect.first();
+      await expect(control).toBeVisible();
+
+      // Change bandwidth if possible
+      const tagName = await control.evaluate((el) => el.tagName.toLowerCase());
+
+      if (tagName === "select") {
+        const options = await control.locator("option").all();
+        if (options.length > 1) {
+          await control.selectOption({ index: 1 });
+
+          // Wait for canvas to update after bandwidth change
+          const canvas = page.locator("canvas").first();
+          await waitForCanvasUpdate(page, canvas);
+        }
+      }
+    }
+
+    await stopStreaming(page);
+  });
+
+  test("should maintain device connection across page navigation @device", async ({
+    page,
+  }) => {
+    // Start on monitor page
+    await page.goto("/monitor");
+    await waitForStartButton(page);
+
+    // Navigate to scanner
+    await page.click('a[href*="scanner"], nav >> text=Scanner');
+    await page.waitForURL(/scanner/);
+
+    // Navigate back to monitor
+    await page.click('a[href*="monitor"], nav >> text=Monitor');
+    await page.waitForURL(/monitor/);
+
+    // Verify device is still connected
+    const startBtn = await waitForStartButton(page);
+    await expect(startBtn).toBeEnabled();
+  });
+
+  test("should recover from device errors gracefully @device", async ({
+    page,
+  }) => {
+    await page.goto("/monitor");
+
+    const startBtn = await waitForStartButton(page);
+    await startBtn.click();
+
+    await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+      timeout: 15000,
+    });
+
+    // Force an error condition by attempting invalid operation
+    await page.evaluate(() => {
+      // Try to trigger an error in the device context
+      const deviceContext = (window as any).deviceContext;
+      if (deviceContext?.device?.setFrequency) {
+        // Attempt to set invalid frequency
+        void deviceContext.device.setFrequency(-1);
+      }
+    });
+
+    // Wait for error to be handled
+    await page.waitForFunction(
+      () => {
+        // Check if error message is displayed or app is still responsive
+        const hasError =
+          document.querySelector('[role="alert"]') !== null ||
+          (window as any).dbgReceiving === false;
+        return hasError;
+      },
+      { timeout: 5000 },
+    );
+
+    // Verify app didn't crash - UI should still be responsive
+    const stopBtn = page.getByRole("button", { name: "Stop reception" });
+    await expect(stopBtn).toBeVisible();
+    await stopBtn.click();
+
+    // Verify we can restart streaming
+    await expect(startBtn).toBeEnabled({ timeout: 5000 });
   });
 });

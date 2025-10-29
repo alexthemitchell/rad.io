@@ -1,6 +1,7 @@
 # SDR Reference Documentation
 
-This directory contains comprehensive reference materials for both users and developers working with Software Defined Radio (SDR) technology in WebSDR Pro.
+This directory contains comprehensive reference materials for both users and developers working with Software
+Defined Radio (SDR) technology in WebSDR Pro.
 
 ## For Users
 
@@ -14,6 +15,7 @@ This directory contains comprehensive reference materials for both users and dev
 
 ## For Developers
 
+- **[Test Strategy](./test-strategy.md)** - Comprehensive automated test suite guide (unit, integration, E2E)
 - **[DSP Fundamentals](./dsp-fundamentals.md)** - Digital Signal Processing concepts and algorithms
 - **[FFT Implementation](./fft-implementation.md)** - Fast Fourier Transform in browser environments
 - **[Demodulation Algorithms](./demodulation-algorithms.md)** - Implementation details for various demodulators

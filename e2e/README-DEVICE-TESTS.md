@@ -4,7 +4,8 @@ This document describes the hardware-in-the-loop E2E tests for the rad.io visual
 
 ## Overview
 
-The device E2E tests validate the visualization functionality with a physical HackRF One device connected via WebUSB. These tests ensure that:
+The device E2E tests validate the visualization functionality with a physical HackRF One device connected via
+WebUSB. These tests ensure that:
 
 - Device connection works correctly
 - Tuning to different frequencies operates as expected
@@ -103,12 +104,49 @@ The device test suite validates:
 
 - Starting, stopping, and restarting streaming
 - Verifying device can be reused across sessions
+- Maintaining connection across page navigation
+
+### 9. Scanner Functionality
+
+- Initializing scanner with physical device
+- Scanning frequency ranges with real hardware
+- Detecting and displaying active signals
+- Navigating to monitor from detected signals
+- Handling different signal types (FM, AM, etc.)
+- Real-time scanner result updates
+
+### 10. Recording Features
+
+- Starting/stopping recording from monitor
+- Recording IQ data with physical device
+- Displaying recording metadata (frequency, duration, timestamp)
+- Playing back recorded IQ data
+- Deleting and exporting recordings
+- Filtering recordings by criteria
+
+### 11. Advanced Device Controls
+
+- Sample rate changes during streaming
+- Bandwidth adjustments with device
+- Frequency display in status bar
+- Error recovery and graceful degradation
+
+## Test Files
+
+The device test suite consists of:
+
+- **`e2e/visualization-device.spec.ts`**: Core visualization and device interaction tests (13 tests)
+- **`e2e/scanner-device.spec.ts`**: Frequency scanning functionality tests (6 tests)
+- **`e2e/recordings-device.spec.ts`**: Recording and playback tests (7 tests)
+
+Total: 26 device tests covering end-to-end hardware integration
 
 ## Test Gating
 
 The device tests are gated in two ways:
 
-1. **Playwright Project Level**: The "device" project is only added to the Playwright config when `RADIO_E2E_DEVICE=1` is set
+1. **Playwright Project Level**: The "device" project is only added to the Playwright config when
+   `RADIO_E2E_DEVICE=1` is set
 2. **Test Level**: Tests are skipped if `RADIO_E2E_DEVICE` is not set to `1`
 
 This ensures:
