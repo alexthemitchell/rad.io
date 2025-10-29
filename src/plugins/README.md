@@ -43,6 +43,7 @@ Plugin System
 Extract audio or data from IQ samples. Examples: FM, AM, SSB, PSK31, RTTY.
 
 **Use cases:**
+
 - Broadcast radio demodulation (FM/AM)
 - Digital mode decoding (PSK, RTTY, etc.)
 - Custom modulation schemes
@@ -53,6 +54,7 @@ Extract audio or data from IQ samples. Examples: FM, AM, SSB, PSK31, RTTY.
 Create custom displays for signal analysis. Examples: Waterfall, Constellation, Eye diagram.
 
 **Use cases:**
+
 - Frequency domain displays
 - Time domain waveforms
 - Signal quality indicators
@@ -63,6 +65,7 @@ Create custom displays for signal analysis. Examples: Waterfall, Constellation, 
 Add support for new SDR hardware. Examples: RTL-SDR variants, custom devices.
 
 **Use cases:**
+
 - Supporting new SDR hardware
 - Custom device protocols
 - Device-specific optimizations
@@ -73,6 +76,7 @@ Add support for new SDR hardware. Examples: RTL-SDR variants, custom devices.
 General integrations and tools. Examples: Logging, Recording, Network streaming.
 
 **Use cases:**
+
 - Data recording and playback
 - Network streaming protocols
 - Signal processing utilities
@@ -83,7 +87,7 @@ General integrations and tools. Examples: Logging, Recording, Network streaming.
 ### Installing and Using a Plugin
 
 ```typescript
-import { pluginRegistry, FMDemodulatorPlugin } from './plugins';
+import { pluginRegistry, FMDemodulatorPlugin } from "./plugins";
 
 // Create and register plugin
 const fmPlugin = new FMDemodulatorPlugin();
@@ -109,7 +113,7 @@ const allPlugins = pluginRegistry.getAllPlugins();
 const demodulators = pluginRegistry.getPluginsByType(PluginType.DEMODULATOR);
 
 // Get specific plugin
-const plugin = pluginRegistry.getPlugin('fm-demodulator');
+const plugin = pluginRegistry.getPlugin("fm-demodulator");
 ```
 
 ## Creating Plugins
@@ -117,10 +121,10 @@ const plugin = pluginRegistry.getPlugin('fm-demodulator');
 ### 1. Create a Demodulator Plugin
 
 ```typescript
-import { BasePlugin } from '../lib/BasePlugin';
-import type { DemodulatorPlugin, PluginMetadata } from '../types/plugin';
-import { PluginType } from '../types/plugin';
-import type { IQSample } from '../models/SDRDevice';
+import { BasePlugin } from "../lib/BasePlugin";
+import type { DemodulatorPlugin, PluginMetadata } from "../types/plugin";
+import { PluginType } from "../types/plugin";
+import type { IQSample } from "../models/SDRDevice";
 
 export class AMDemodulatorPlugin
   extends BasePlugin
@@ -128,11 +132,11 @@ export class AMDemodulatorPlugin
 {
   constructor() {
     const metadata: PluginMetadata = {
-      id: 'am-demodulator',
-      name: 'AM Demodulator',
-      version: '1.0.0',
-      author: 'Your Name',
-      description: 'Amplitude Modulation demodulator',
+      id: "am-demodulator",
+      name: "AM Demodulator",
+      version: "1.0.0",
+      author: "Your Name",
+      description: "Amplitude Modulation demodulator",
       type: PluginType.DEMODULATOR,
     };
     super(metadata);
@@ -156,24 +160,22 @@ export class AMDemodulatorPlugin
 
   demodulate(samples: IQSample[]): Float32Array {
     const output = new Float32Array(samples.length);
-    
+
     // AM demodulation: extract magnitude
     for (let i = 0; i < samples.length; i++) {
       const sample = samples[i];
       if (!sample) {
         continue;
       }
-      const magnitude = Math.sqrt(
-        sample.I ** 2 + sample.Q ** 2
-      );
+      const magnitude = Math.sqrt(sample.I ** 2 + sample.Q ** 2);
       output[i] = magnitude;
     }
-    
+
     return output;
   }
 
   getSupportedModes(): string[] {
-    return ['am', 'dsb', 'usb', 'lsb'];
+    return ["am", "dsb", "usb", "lsb"];
   }
 
   setMode(mode: string): void {
@@ -196,9 +198,9 @@ export class AMDemodulatorPlugin
 ### 2. Create a Visualization Plugin
 
 ```typescript
-import { BasePlugin } from '../lib/BasePlugin';
-import type { VisualizationPlugin, PluginMetadata } from '../types/plugin';
-import { PluginType } from '../types/plugin';
+import { BasePlugin } from "../lib/BasePlugin";
+import type { VisualizationPlugin, PluginMetadata } from "../types/plugin";
+import { PluginType } from "../types/plugin";
 
 export class ConstellationPlugin
   extends BasePlugin
@@ -209,11 +211,11 @@ export class ConstellationPlugin
 
   constructor() {
     const metadata: PluginMetadata = {
-      id: 'constellation-viz',
-      name: 'Constellation Diagram',
-      version: '1.0.0',
-      author: 'Your Name',
-      description: 'IQ constellation visualization',
+      id: "constellation-viz",
+      name: "Constellation Diagram",
+      version: "1.0.0",
+      author: "Your Name",
+      description: "IQ constellation visualization",
       type: PluginType.VISUALIZATION,
     };
     super(metadata);
@@ -238,8 +240,8 @@ export class ConstellationPlugin
 
   render(canvas: HTMLCanvasElement, dataSource: DataSource): void {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-    
+    this.ctx = canvas.getContext("2d");
+
     void dataSource.startStreaming((samples) => {
       this.update(samples);
     });
@@ -247,15 +249,15 @@ export class ConstellationPlugin
 
   update(samples: IQSample[]): void {
     if (!this.ctx) return;
-    
+
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas!.width, this.canvas!.height);
-    
+
     // Plot IQ points
-    samples.forEach(sample => {
-      const x = (sample.I + 1) * this.canvas!.width / 2;
-      const y = (sample.Q + 1) * this.canvas!.height / 2;
-      
+    samples.forEach((sample) => {
+      const x = ((sample.I + 1) * this.canvas!.width) / 2;
+      const y = ((sample.Q + 1) * this.canvas!.height) / 2;
+
       this.ctx!.fillRect(x, y, 2, 2);
     });
   }
@@ -282,21 +284,18 @@ export class ConstellationPlugin
 ### 3. Create a Device Driver Plugin
 
 ```typescript
-import { BasePlugin } from '../lib/BasePlugin';
-import type { DeviceDriverPlugin, PluginMetadata } from '../types/plugin';
-import { PluginType } from '../types/plugin';
+import { BasePlugin } from "../lib/BasePlugin";
+import type { DeviceDriverPlugin, PluginMetadata } from "../types/plugin";
+import { PluginType } from "../types/plugin";
 
-export class CustomSDRDriver
-  extends BasePlugin
-  implements DeviceDriverPlugin
-{
+export class CustomSDRDriver extends BasePlugin implements DeviceDriverPlugin {
   constructor() {
     const metadata: PluginMetadata = {
-      id: 'custom-sdr-driver',
-      name: 'Custom SDR Driver',
-      version: '1.0.0',
-      author: 'Your Name',
-      description: 'Driver for custom SDR hardware',
+      id: "custom-sdr-driver",
+      name: "Custom SDR Driver",
+      version: "1.0.0",
+      author: "Your Name",
+      description: "Driver for custom SDR hardware",
       type: PluginType.DEVICE_DRIVER,
     };
     super(metadata);
@@ -337,8 +336,8 @@ export class CustomSDRDriver
 
   async getDeviceInfo(device: USBDevice) {
     return {
-      manufacturer: 'Custom',
-      model: 'SDR-1000',
+      manufacturer: "Custom",
+      model: "SDR-1000",
       serialNumber: device.serialNumber,
     };
   }
@@ -353,12 +352,12 @@ export class CustomSDRDriver
 interface Plugin {
   readonly metadata: PluginMetadata;
   readonly state: PluginState;
-  
+
   initialize(): Promise<void>;
   activate(): Promise<void>;
   deactivate(): Promise<void>;
   dispose(): Promise<void>;
-  
+
   getConfigSchema?(): PluginConfigSchema;
   updateConfig?(config: Record<string, unknown>): Promise<void>;
 }
@@ -371,17 +370,17 @@ class PluginRegistry {
   // Registration
   register(plugin: Plugin): Promise<void>;
   unregister(pluginId: string): Promise<void>;
-  
+
   // Discovery
   getPlugin(pluginId: string): Plugin | undefined;
   getAllPlugins(): Plugin[];
   getPluginsByType(type: PluginType): Plugin[];
   hasPlugin(pluginId: string): boolean;
-  
+
   // Events
   addEventListener(listener: PluginEventListener): void;
   removeEventListener(listener: PluginEventListener): void;
-  
+
   // Cleanup
   clear(): Promise<void>;
 }
@@ -392,7 +391,7 @@ class PluginRegistry {
 ```typescript
 abstract class BasePlugin implements Plugin {
   constructor(metadata: PluginMetadata);
-  
+
   protected abstract onInitialize(): Promise<void>;
   protected abstract onActivate(): Promise<void>;
   protected abstract onDeactivate(): Promise<void>;
@@ -414,25 +413,28 @@ See the [examples directory](../src/plugins/) for complete implementations:
 ### Unit Testing Plugins
 
 ```typescript
-import { FMDemodulatorPlugin } from '../FMDemodulatorPlugin';
-import { PluginState } from '../../../types/plugin';
+import { FMDemodulatorPlugin } from "../FMDemodulatorPlugin";
+import { PluginState } from "../../../types/plugin";
 
-describe('FMDemodulatorPlugin', () => {
+describe("FMDemodulatorPlugin", () => {
   let plugin: FMDemodulatorPlugin;
 
   beforeEach(() => {
     plugin = new FMDemodulatorPlugin();
   });
 
-  it('should initialize successfully', async () => {
+  it("should initialize successfully", async () => {
     await plugin.initialize();
     expect(plugin.state).toBe(PluginState.INITIALIZED);
   });
 
-  it('should demodulate IQ samples', () => {
-    const samples = [{ I: 1, Q: 0 }, { I: 0, Q: 1 }];
+  it("should demodulate IQ samples", () => {
+    const samples = [
+      { I: 1, Q: 0 },
+      { I: 0, Q: 1 },
+    ];
     const audio = plugin.demodulate(samples);
-    
+
     expect(audio).toBeInstanceOf(Float32Array);
     expect(audio.length).toBe(samples.length);
   });
@@ -442,19 +444,19 @@ describe('FMDemodulatorPlugin', () => {
 ### Integration Testing
 
 ```typescript
-describe('Plugin Registry Integration', () => {
-  it('should register and use plugin', async () => {
+describe("Plugin Registry Integration", () => {
+  it("should register and use plugin", async () => {
     const registry = new PluginRegistry();
     const plugin = new FMDemodulatorPlugin();
-    
+
     await registry.register(plugin);
     await plugin.activate();
-    
+
     const samples = generateTestSamples();
     const audio = plugin.demodulate(samples);
-    
+
     expect(audio.length).toBeGreaterThan(0);
-    
+
     await plugin.deactivate();
     await registry.unregister(plugin.metadata.id);
   });
@@ -493,10 +495,10 @@ protected async onDispose(): Promise<void> {
   // Release references
   this.canvas = null;
   this.ctx = null;
-  
+
   // Clear buffers
   this.buffer = [];
-  
+
   // Remove event listeners
   this.listeners.clear();
 }
@@ -509,7 +511,7 @@ demodulate(samples: IQSample[]): Float32Array {
   if (!samples || samples.length === 0) {
     return new Float32Array(0);
   }
-  
+
   // Process samples
 }
 ```
@@ -547,13 +549,13 @@ getConfigSchema() {
 
 Include JSDoc comments:
 
-```typescript
+````typescript
 /**
  * FM Demodulator Plugin
- * 
+ *
  * Provides frequency modulation demodulation for broadcast radio.
  * Supports both wide-band (WBFM) and narrow-band (NBFM) modes.
- * 
+ *
  * @example
  * ```typescript
  * const fm = new FMDemodulatorPlugin();
@@ -564,7 +566,7 @@ Include JSDoc comments:
 export class FMDemodulatorPlugin extends BasePlugin {
   // ...
 }
-```
+````
 
 ### 8. Follow TypeScript Best Practices
 
@@ -583,6 +585,7 @@ export class FMDemodulatorPlugin extends BasePlugin {
 ### 10. Version Your Plugin
 
 Follow semantic versioning:
+
 - Major: Breaking changes
 - Minor: New features (backward compatible)
 - Patch: Bug fixes

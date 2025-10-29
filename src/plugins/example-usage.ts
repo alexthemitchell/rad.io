@@ -85,8 +85,12 @@ async function initializePlugins(): Promise<void> {
 
   // Use visualization (would render to canvas in real app)
   const capabilities = waterfallViz.getCapabilities();
-  console.log(`   Visualization supports realtime: ${capabilities.supportsRealtime}`);
-  console.log(`   Update rate range: ${capabilities.minUpdateRate}-${capabilities.maxUpdateRate} Hz\n`);
+  console.log(
+    `   Visualization supports realtime: ${capabilities.supportsRealtime}`,
+  );
+  console.log(
+    `   Update rate range: ${capabilities.minUpdateRate}-${capabilities.maxUpdateRate} Hz\n`,
+  );
 
   // 6. Configure plugins
   console.log("6. Configuring plugins...");

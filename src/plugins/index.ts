@@ -22,10 +22,17 @@ export type {
   PluginEventListener,
 } from "../types/plugin";
 
-export { PluginType, PluginState as PluginStateEnum, PluginEvent } from "../types/plugin";
+export {
+  PluginType,
+  PluginState as PluginStateEnum,
+  PluginEvent,
+} from "../types/plugin";
 
 // Plugin registry
-export { PluginRegistry as PluginRegistryClass, pluginRegistry } from "../lib/PluginRegistry";
+export {
+  PluginRegistry as PluginRegistryClass,
+  pluginRegistry,
+} from "../lib/PluginRegistry";
 
 // Base plugin class
 export { BasePlugin } from "../lib/BasePlugin";

@@ -245,9 +245,7 @@ export class WaterfallVisualizationPlugin
   /**
    * Handle configuration updates
    */
-  protected override onConfigUpdate(
-    config: Record<string, unknown>,
-  ): void {
+  protected override onConfigUpdate(config: Record<string, unknown>): void {
     if (typeof config["fftSize"] === "number") {
       this.fftSize = config["fftSize"];
     }

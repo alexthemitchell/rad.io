@@ -8,10 +8,7 @@
 import { BasePlugin } from "../../lib/BasePlugin";
 import { PluginType } from "../../types/plugin";
 import type { ISDRDevice } from "../../models/SDRDevice";
-import type {
-  DeviceDriverPlugin,
-  PluginMetadata,
-} from "../../types/plugin";
+import type { DeviceDriverPlugin, PluginMetadata } from "../../types/plugin";
 
 /**
  * Example Custom SDR Device Driver Plugin

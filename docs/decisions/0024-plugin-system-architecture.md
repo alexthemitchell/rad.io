@@ -1,7 +1,7 @@
 # Plugin System Architecture
 
 - Status: accepted
-- Date: 2024-01-XX
+- Date: 2025-10-29
 - Deciders: Development Team
 - Technical Story: Implement extensible plugin system for SDR features
 
@@ -26,11 +26,13 @@ As rad.io grows, the monolithic architecture can become tightly coupled and diff
 Use dynamic `import()` to load plugins at runtime from URLs or local files.
 
 **Pros:**
+
 - True dynamic loading
 - Can load plugins from external sources
 - Standard ES6 feature
 
 **Cons:**
+
 - Security risks (arbitrary code execution)
 - TypeScript type checking limited
 - Bundle size management complex
@@ -41,6 +43,7 @@ Use dynamic `import()` to load plugins at runtime from URLs or local files.
 Define plugin interfaces and registry, plugins registered at compile time.
 
 **Pros:**
+
 - Full TypeScript type safety
 - No security risks
 - Simple implementation
@@ -48,6 +51,7 @@ Define plugin interfaces and registry, plugins registered at compile time.
 - Works well with webpack bundling
 
 **Cons:**
+
 - Requires recompilation for new plugins
 - Not truly "dynamic" at runtime
 - Less flexible than runtime loading
@@ -57,11 +61,13 @@ Define plugin interfaces and registry, plugins registered at compile time.
 Compile plugins to WebAssembly modules for sandboxed execution.
 
 **Pros:**
+
 - Strong sandboxing
 - Performance benefits
 - Language-agnostic plugins
 
 **Cons:**
+
 - Complex implementation
 - Limited browser APIs access
 - Steep learning curve
@@ -107,6 +113,7 @@ REGISTERED → initialize() → INITIALIZED → activate() → ACTIVE
 ### Key Interfaces
 
 **Base Plugin Interface:**
+
 ```typescript
 interface Plugin {
   metadata: PluginMetadata;
@@ -121,6 +128,7 @@ interface Plugin {
 ```
 
 **Demodulator Plugin Interface:**
+
 ```typescript
 interface DemodulatorPlugin extends Plugin {
   demodulate(samples: IQSample[]): Float32Array;
@@ -132,6 +140,7 @@ interface DemodulatorPlugin extends Plugin {
 ```
 
 **Visualization Plugin Interface:**
+
 ```typescript
 interface VisualizationPlugin extends Plugin {
   render(canvas: HTMLCanvasElement, dataSource: DataSource): void;
@@ -143,6 +152,7 @@ interface VisualizationPlugin extends Plugin {
 ```
 
 **Device Driver Plugin Interface:**
+
 ```typescript
 interface DeviceDriverPlugin extends Plugin {
   createDevice(usbDevice: USBDevice): Promise<ISDRDevice>;
@@ -167,10 +177,10 @@ interface DeviceDriverPlugin extends Plugin {
 class FMDemodulatorPlugin extends BasePlugin implements DemodulatorPlugin {
   constructor() {
     super({
-      id: 'fm-demodulator',
-      name: 'FM Demodulator',
-      version: '1.0.0',
-      type: PluginType.DEMODULATOR
+      id: "fm-demodulator",
+      name: "FM Demodulator",
+      version: "1.0.0",
+      type: PluginType.DEMODULATOR,
     });
   }
 
@@ -190,6 +200,7 @@ await plugin.activate();
 ### Consequences
 
 **Good:**
+
 - Full TypeScript type safety across plugin system
 - Simple, understandable architecture
 - Easy to test (unit tests for each plugin)
@@ -199,12 +210,14 @@ await plugin.activate();
 - Clear separation of concerns
 
 **Bad:**
+
 - Requires recompilation to add new plugins
 - Cannot load plugins dynamically from URLs
 - All plugins bundled (affects initial load time)
 - Limited to JavaScript/TypeScript plugins
 
 **Neutral:**
+
 - Plugin discovery handled at compile time
 - Configuration through TypeScript objects
 - Dependency resolution manual (not NPM-based)
@@ -243,6 +256,7 @@ src/
 ### Configuration
 
 Plugins support optional configuration through:
+
 - `getConfigSchema()`: JSON Schema for validation
 - `updateConfig(config)`: Update configuration at runtime
 - Type-safe config objects in TypeScript
@@ -259,6 +273,7 @@ Plugins support optional configuration through:
 ### Migration Path
 
 For existing features that could become plugins:
+
 1. Define appropriate plugin interface
 2. Implement existing feature as plugin
 3. Register plugin in global registry
@@ -268,12 +283,14 @@ For existing features that could become plugins:
 ### Future Enhancements
 
 **Near Term (Current Architecture):**
+
 - Hot reload during development
 - Plugin marketplace/catalog UI
 - Configuration UI for plugins
 - Plugin sandboxing (resource limits)
 
 **Long Term (Architecture Evolution):**
+
 - Dynamic module loading (with security review)
 - WebAssembly plugin support
 - Cross-origin plugin loading
@@ -283,12 +300,14 @@ For existing features that could become plugins:
 ### Security Considerations
 
 Current implementation:
+
 - All plugins compiled into bundle
 - No runtime code execution
 - TypeScript type checking enforced
 - Dependency validation at registration
 
 Future considerations:
+
 - If dynamic loading added: CSP policies, origin validation
 - Plugin permissions system
 - Resource usage limits

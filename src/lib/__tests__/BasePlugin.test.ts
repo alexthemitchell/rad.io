@@ -200,7 +200,9 @@ describe("BasePlugin", () => {
       await plugin.updateConfig({ setting2: "value2" });
 
       // Access protected config via type assertion for testing
-      const configAccess = plugin as unknown as { config: Record<string, unknown> };
+      const configAccess = plugin as unknown as {
+        config: Record<string, unknown>;
+      };
       expect(configAccess.config).toEqual({
         setting1: "value1",
         setting2: "value2",
