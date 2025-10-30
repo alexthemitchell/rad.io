@@ -57,23 +57,25 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   children,
 }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [nextId, setNextId] = useState(0);
+  const [, setNextId] = useState(0);
   const timeoutIdsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   const notify = useCallback(
     (notification: Omit<Notification, 'id'> & { duration?: number }) => {
-      const id = nextId;
-      setNextId((prevId) => prevId + 1);
-      setNotifications((prev) => [...prev, { ...notification, id }]);
+      setNextId((prevId) => {
+        const id = prevId;
+        setNotifications((prev) => [...prev, { ...notification, id }]);
 
-      const timeoutId = setTimeout(() => {
-        setNotifications((prev) => prev.filter((n) => n.id !== id));
-        timeoutIdsRef.current.delete(timeoutId);
-      }, notification.duration ?? 5000);
-      
-      timeoutIdsRef.current.add(timeoutId);
+        const timeoutId = setTimeout(() => {
+          setNotifications((prev) => prev.filter((n) => n.id !== id));
+          timeoutIdsRef.current.delete(timeoutId);
+        }, notification.duration ?? 5000);
+        
+        timeoutIdsRef.current.add(timeoutId);
+        return prevId + 1;
+      });
     },
-    [nextId],
+    [],
   );
 
   // Cleanup all timeouts on unmount to prevent memory leaks

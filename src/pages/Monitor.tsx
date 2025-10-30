@@ -79,7 +79,7 @@ const Monitor: React.FC = () => {
   const scanner = useFrequencyScanner(device, (signal: ActiveSignal) => {
     setFoundSignals((prev) => {
       // Check if signal already exists at this frequency and update it
-      const idx = prev.findIndex(s => s.frequency === signal.frequency);
+      const idx = prev.findIndex((s) => s.frequency === signal.frequency);
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = signal;

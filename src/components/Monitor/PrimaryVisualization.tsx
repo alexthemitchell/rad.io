@@ -11,12 +11,15 @@ import type { VisualizationWorkerManager } from '../../workers/VisualizationWork
 interface PrimaryVisualizationProps {
   fftData: Float32Array;
   fftSize: number;
+  // TODO(rad.io): sampleRate not yet used in this refactored version, will be needed for frequency axis labels
   sampleRate: number;
+  // TODO(rad.io): centerFrequency not yet used in this refactored version, will be needed for frequency axis labels
   centerFrequency: number;
   mode: 'fft' | 'waterfall' | 'spectrogram';
   colorMap?: keyof typeof WATERFALL_COLORMAPS;
   dbMin?: number;
   dbMax?: number;
+  // TODO(rad.io): onTune callback not yet implemented in this refactored version, will enable click-to-tune
   onTune: (frequency: number) => void;
 }
 
