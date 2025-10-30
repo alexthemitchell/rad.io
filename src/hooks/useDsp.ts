@@ -29,15 +29,17 @@ export function useDsp(
         const payload = event.data.payload as ArrayBuffer;
         const newMagnitudes = new Float32Array(payload);
         
-        // Only update state if magnitudes reference changes (avoid unnecessary re-renders)
+        // Reuse buffer to minimize allocations (copy data in-place)
+        // Note: We rely on the onNewFft callback to trigger downstream updates,
+        // not React state change detection on the magnitudes array itself
         setMagnitudes(prevMagnitudes => {
           // If size changed, need new buffer
           if (prevMagnitudes.length !== newMagnitudes.length) {
             return newMagnitudes;
           }
-          // Reuse existing buffer by copying data and return new reference to trigger React update
+          // Reuse existing buffer by copying data, return same reference to avoid allocations
           prevMagnitudes.set(newMagnitudes);
-          return new Float32Array(prevMagnitudes);
+          return prevMagnitudes;
         });
         
         // Mark a visualization data push for performance cadence metrics

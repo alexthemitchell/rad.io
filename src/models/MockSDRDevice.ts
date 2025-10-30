@@ -201,7 +201,7 @@ export class MockSDRDevice implements ISDRDevice {
       // Track memory (trim aggressively to prevent OOM)
       this.sampleBuffers.push(view);
       this.totalBufferSize += view.byteLength;
-      // Keep only last 10 buffers (~160KB) to prevent memory accumulation
+      // Keep only last 10 buffers (10 × 8192 samples × 2 bytes = ~160KB) to prevent memory accumulation
       while (this.sampleBuffers.length > 10) {
         const old = this.sampleBuffers.shift();
         if (old) {

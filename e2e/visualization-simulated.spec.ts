@@ -6,6 +6,13 @@ import { test, expect, type Page } from "@playwright/test";
  * Usage: npm run test:e2e -- --grep @simulated
  */
 
+// Type augmentation for debug flag accessed in tests
+declare global {
+  interface Window {
+    dbgReceiving?: boolean;
+  }
+}
+
 // Performance thresholds
 const MAX_MEMORY_GROWTH_MB = 50;
 
@@ -19,7 +26,7 @@ test.use({
 async function ensureReceiving(page: Page): Promise<void> {
   // Try to detect quickly; if receiving, we're done
   const gotIt = await page
-    .waitForFunction(() => (window as any).dbgReceiving === true, { timeout: 1500 })
+    .waitForFunction(() => window.dbgReceiving === true, { timeout: 1500 })
     .catch(() => null);
   if (gotIt) return;
 
@@ -33,7 +40,7 @@ async function ensureReceiving(page: Page): Promise<void> {
   const startBtn = page.getByRole("button", { name: "Start reception" });
   if (await startBtn.count().then((c: number) => c > 0)) {
     await startBtn.click();
-    await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+    await page.waitForFunction(() => window.dbgReceiving === true, {
       timeout: 5000,
     });
   }

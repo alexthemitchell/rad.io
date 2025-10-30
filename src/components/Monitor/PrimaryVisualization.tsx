@@ -23,10 +23,13 @@ interface PrimaryVisualizationProps {
 const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   fftData,
   fftSize,
+  sampleRate: _sampleRate,
+  centerFrequency: _centerFrequency,
   mode,
   colorMap = 'viridis',
   dbMin = -100,
   dbMax = 0,
+  onTune: _onTune,
 }) => {
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
   const waterfallCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -88,7 +91,6 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
 
   useEffect((): (() => void) => {
     const canvas = waterfallCanvasRef.current;
-    let cleanup: (() => void) | undefined;
     if (!canvas) {
       return () => {
         // No-op cleanup when canvas ref is not available
@@ -105,10 +107,6 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     });
 
     return (): void => {
-      // Detach resize observer if set locally
-      if (cleanup) {
-        cleanup();
-      }
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
       workerManagerRef.current?.cleanup();

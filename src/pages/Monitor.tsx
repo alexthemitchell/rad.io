@@ -17,6 +17,7 @@ import { useDsp } from "../hooks/useDsp";
 import { useFrequencyScanner, type ActiveSignal } from "../hooks/useFrequencyScanner";
 import { RenderTier } from "../types/rendering";
 import { formatFrequency } from "../utils/frequency";
+import type { IQSample } from "../models/SDRDevice";
 
 declare global {
   interface Window {
@@ -76,7 +77,17 @@ const Monitor: React.FC = () => {
 
   const [foundSignals, setFoundSignals] = useState<ActiveSignal[]>([]);
   const scanner = useFrequencyScanner(device, (signal: ActiveSignal) => {
-    setFoundSignals((prev) => [...prev, signal]);
+    setFoundSignals((prev) => {
+      // Check if signal already exists at this frequency and update it
+      const idx = prev.findIndex(s => s.frequency === signal.frequency);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = signal;
+        return updated;
+      }
+      // Otherwise append new signal
+      return [...prev, signal];
+    });
   });
 
   useEffect(() => {
@@ -179,7 +190,8 @@ const Monitor: React.FC = () => {
 
   // Dummy state for components that are not yet fully integrated
   const [recordingState, setRecordingState] = useState<"idle" | "recording" | "playback">("idle");
-  const [recordedSamples, setRecordedSamples] = useState<unknown[]>([]);
+  // TODO(rad.io): Temporary placeholder for recordedSamples. Replace with proper IQSample[] when recording is implemented.
+  const [recordedSamples, setRecordedSamples] = useState<IQSample[]>([]);
   // TODO(rad.io): Temporary placeholder for recordingDuration. Refactor consuming components to accept optional props or implement feature properly.
   const [recordingDuration, _setRecordingDuration] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
