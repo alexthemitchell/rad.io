@@ -121,6 +121,7 @@
     "node_modules",
     "assembly",
     "src/models/templates",
+    "dist",
 
     "jest.setup.ts",
     "jest.config.ts",

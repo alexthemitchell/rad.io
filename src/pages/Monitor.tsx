@@ -8,16 +8,15 @@ import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
 import RecordingControls from "../components/RecordingControls";
 import SignalStrengthMeter from "../components/SignalStrengthMeter";
-import StatusBar from "../components/StatusBar";
 import { WATERFALL_COLORMAPS } from "../constants";
 import { useDevice } from "../contexts/DeviceContext";
 import { useFrequency } from "../contexts/FrequencyContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useDsp } from "../hooks/useDsp";
 import { useFrequencyScanner, type ActiveSignal } from "../hooks/useFrequencyScanner";
-import { RenderTier } from "../types/rendering";
 import { formatFrequency } from "../utils/frequency";
 import type { IQSample } from "../models/SDRDevice";
+import { shouldUseMockSDR } from "../utils/e2e";
 
 declare global {
   interface Window {
@@ -28,6 +27,7 @@ declare global {
 const Monitor: React.FC = () => {
   const { device } = useDevice();
   const { notify } = useNotifications();
+  const useMock = shouldUseMockSDR();
 
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
@@ -132,7 +132,7 @@ const Monitor: React.FC = () => {
 
   // Reception control
   const handleStart = useCallback(async (): Promise<void> => {
-    if (!device) {
+    if (!device && !useMock) {
       setStatusMsg("No device connected or setup not initialized");
       return;
     }
@@ -143,7 +143,9 @@ const Monitor: React.FC = () => {
     }
     try {
       scanner.stopScan();
-      await tuneDevice();
+      if (device) {
+        await tuneDevice();
+      }
       await startDsp();
       setIsReceiving(true);
       setStatusMsg("Receiving started");
@@ -168,12 +170,16 @@ const Monitor: React.FC = () => {
   // Auto-start reception if a previously paired device is already connected/opened.
   // Note: handleStart is intentionally omitted from deps to prevent infinite loop (see PLAYBOOK_MONITOR_INFINITE_LOOP_2025_10)
   useEffect(() => {
+    // In mock/e2e mode, let tests control start to avoid races
+    if (useMock) {
+      return;
+    }
     if (!device || !device.isOpen() || isReceiving || scanner.state !== "idle") {
       return;
     }
     void handleStart();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [device, isReceiving, scanner.state]);
+  }, [device, isReceiving, scanner.state, useMock]);
 
   // Ensure RX is stopped when leaving the page
   useEffect(() => {
@@ -200,16 +206,7 @@ const Monitor: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   // TODO(rad.io): Temporary placeholder for signalQuality. Refactor consuming components to accept optional props or implement feature properly.
   const [signalQuality, _setSignalQuality] = useState({ snr: 0, peakPower: 0, avgPower: 0 });
-  // TODO(rad.io): Temporary placeholder for renderTier. Refactor consuming components to accept optional props or implement feature properly.
-  const [renderTier, _setRenderTier] = useState<RenderTier>(RenderTier.Unknown);
-  // TODO(rad.io): Temporary placeholder for fps. Refactor consuming components to accept optional props or implement feature properly.
-  const [_fps, _setFps] = useState(0);
-  // TODO(rad.io): Temporary placeholder for bufferHealth. Refactor consuming components to accept optional props or implement feature properly.
-  const [_bufferHealth, _setBufferHealth] = useState(0);
-  // TODO(rad.io): Temporary placeholder for storageUsed. Refactor consuming components to accept optional props or implement feature properly.
-  const [_storageUsed, _setStorageUsed] = useState(0);
-  // TODO(rad.io): Temporary placeholder for storageQuota. Refactor consuming components to accept optional props or implement feature properly.
-  const [_storageQuota, _setStorageQuota] = useState(0);
+  // Render metrics are shown in the global StatusBar (App)
 
   const handleStartRecording = (): void => setRecordingState("recording");
   const handleStopRecording = (): void => setRecordingState("idle");
@@ -235,7 +232,7 @@ const Monitor: React.FC = () => {
         </p>
       </section>
 
-      <section aria-labelledby="visualization-heading">
+      <section aria-labelledby="visualization-heading" role="region" aria-label="Spectrum visualization">
         <h2 id="visualization-heading">Visualization</h2>
         <div
           role="group"
@@ -248,7 +245,7 @@ const Monitor: React.FC = () => {
                 onClick={() => void handleStart()}
                 aria-label="Start reception"
                 title="Start receiving IQ samples from the SDR device"
-                disabled={!device}
+                disabled={!device && !useMock}
               >
                 ▶ Start reception
               </button>
@@ -699,25 +696,7 @@ const Monitor: React.FC = () => {
         </div>
       </details>
 
-      {/* Bottom status bar */}
-      <div style={{ marginTop: 12 }}>
-        <StatusBar
-          renderTier={renderTier}
-          fps={_fps}
-          sampleRate={sampleRate}
-          bufferHealth={_bufferHealth}
-          bufferDetails={{
-            currentSamples: 0,
-            maxSamples: 0,
-          }}
-          storageUsed={_storageUsed}
-          storageQuota={_storageQuota}
-          deviceConnected={Boolean(device)}
-          audioState={"idle"}
-          audioVolume={volume}
-          audioClipping={false}
-        />
-      </div>
+      {/* Global StatusBar is rendered by App; no page-level duplicate */}
     </div>
   );
 };

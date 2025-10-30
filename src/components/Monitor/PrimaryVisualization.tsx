@@ -43,6 +43,9 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   // Keep latest props in refs to avoid restarting RAF loop on every change
+  // Note: fftData is a stable reference whose contents are updated in-place by useDsp for performance.
+  // We intentionally read directly from the prop inside the RAF loop to always use the freshest data
+  // without depending on React state/reference changes.
   const fftDataRef = useRef<Float32Array>(fftData);
   const modeRef = useRef<typeof mode>(mode);
   const dbMinRef = useRef<number>(dbMin);
@@ -50,6 +53,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   const colorMapRef = useRef<keyof typeof WATERFALL_COLORMAPS>(colorMap);
   const fftSizeRef = useRef<number>(fftSize);
 
+  // Keep ref in sync on initial mount; subsequent in-place mutations do not require updates here.
   useEffect((): void => {
     fftDataRef.current = fftData;
   }, [fftData]);
@@ -130,6 +134,9 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
       }
 
       const m = modeRef.current;
+      // Read directly from prop: the underlying Float32Array is mutated in-place by the DSP pipeline
+      // so this always reflects the latest magnitudes without reallocations.
+      // Use ref to avoid adding fftData as an effect dependency; the underlying buffer is mutated in place
       const data = fftDataRef.current;
       const size = fftSizeRef.current;
       const min = dbMinRef.current;
@@ -153,7 +160,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         if (workerManagerRef.current?.isReady()) {
           try {
             workerManagerRef.current.render({
-              fftData: [data],
+              'fftData': [data],
               transform,
             });
           } catch {

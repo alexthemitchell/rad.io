@@ -323,11 +323,6 @@ function StatusBar({
         ) : (
           <span
             className="status-bar-value"
-            style={{
-              color: deviceConnected
-                ? "var(--rad-success)"
-                : "var(--rad-danger)",
-            }}
             title={
               primaryUSB
                 ? `${primaryUSB.productName ?? "Unknown Device"} • ${formatUsbId(primaryUSB.vendorId, primaryUSB.productId)}${primaryUSB.serialNumber ? ` • SN: ${primaryUSB.serialNumber}` : ""}`
@@ -407,14 +402,6 @@ function StatusBar({
         <span className="status-bar-label">FPS</span>
         <span
           className="status-bar-value status-bar-mono"
-          style={{
-            color:
-              fps >= 55
-                ? "var(--rad-success)"
-                : fps >= 30
-                  ? "var(--rad-warning)"
-                  : "var(--rad-danger)",
-          }}
           title="Frames per second"
         >
           {fps.toFixed(0)}
@@ -429,14 +416,6 @@ function StatusBar({
             <span className="status-bar-label">Input</span>
             <span
               className="status-bar-value status-bar-mono"
-              style={{
-                color:
-                  inputFps >= 55
-                    ? "var(--rad-success)"
-                    : inputFps >= 30
-                      ? "var(--rad-warning)"
-                      : "var(--rad-danger)",
-              }}
               title="Visualization input cadence (fps)"
             >
               {inputFps.toFixed(0)}
@@ -451,14 +430,6 @@ function StatusBar({
         <span className="status-bar-label">Render p95</span>
         <span
           className="status-bar-value status-bar-mono"
-          style={{
-            color:
-              renderP95Ms <= 16
-                ? "var(--rad-success)"
-                : renderP95Ms <= 33
-                  ? "var(--rad-warning)"
-                  : "var(--rad-danger)",
-          }}
           title="95th percentile render time (ms)"
         >
           {renderP95Ms.toFixed(1)} ms
@@ -471,9 +442,6 @@ function StatusBar({
         <span className="status-bar-label">Tasks</span>
         <span
           className="status-bar-value status-bar-mono"
-          style={{
-            color: longTasks > 0 ? "var(--rad-warning)" : "var(--rad-success)",
-          }}
           title="Long tasks observed"
         >
           {longTasks}
@@ -487,12 +455,6 @@ function StatusBar({
             <span className="status-bar-label">Dropped</span>
             <span
               className="status-bar-value status-bar-mono"
-              style={{
-                color:
-                  droppedFrames > 0
-                    ? "var(--rad-warning)"
-                    : "var(--rad-success)",
-              }}
               title="Estimated dropped frames (last 60s)"
             >
               {Math.max(0, Math.round(droppedFrames))}
@@ -519,7 +481,6 @@ function StatusBar({
         <span className="status-bar-label">Buffer</span>
         <span
           className="status-bar-value status-bar-mono"
-          style={{ color: getBufferHealthColor(bufferHealth) }}
           title={`Buffer health: ${bufferHealth}%`}
         >
           {bufferHealth.toFixed(0)}%
@@ -562,7 +523,6 @@ function StatusBar({
         <span className="status-bar-label">Storage</span>
         <span
           className="status-bar-value status-bar-mono"
-          style={{ color: getStorageColor(storageUsed, storageQuota) }}
           title="Storage used / quota"
         >
           {formatStorage(storageUsed, storageQuota)}
@@ -575,7 +535,6 @@ function StatusBar({
         <span className="status-bar-label">Audio</span>
         <span
           className="status-bar-value"
-          style={{ color: getAudioColor(audioState, audioClipping) }}
           title={`Audio ${audioState}${typeof audioVolume === "number" ? ` • Vol ${audioVolume}%` : ""}${audioClipping ? " • Clipping" : ""}`}
         >
           {audioState === "muted"

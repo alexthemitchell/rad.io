@@ -54,10 +54,8 @@ function App(): React.JSX.Element {
             <header className="header" role="banner">
               <div className="header-content">
                 {/* Maintain accessible document title and subtitle */}
-                <h1 className="visually-hidden">rad.io</h1>
-                <p className="visually-hidden">
-                  Software-Defined Radio Visualizer
-                </p>
+                <h1>rad.io</h1>
+                <p>Software-Defined Radio Visualizer</p>
                 {/* Always-visible frequency display + VFO control (shared state) */}
                 <SharedVFO />
               </div>
@@ -65,6 +63,7 @@ function App(): React.JSX.Element {
             </header>
 
             {/* Main content area for pages */}
+            <main id="main-content" tabIndex={-1}>
             <Routes>
               {/* Primary workspaces */}
               <Route path="/" element={<Monitor />} />
@@ -100,6 +99,7 @@ function App(): React.JSX.Element {
               <Route path="/demo" element={<VisualizationDemo />} />
               <Route path="/renderers-demo" element={<RenderersDemo />} />
             </Routes>
+            </main>
 
             {/* Global shortcuts help overlay (toggles with '?') */}
             <ShortcutsOverlay />
