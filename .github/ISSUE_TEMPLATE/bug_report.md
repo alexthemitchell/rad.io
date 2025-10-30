@@ -1,40 +1,75 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: ""
-labels: ""
+name: Bug Report
+about: Report a problem to help us improve rad.io
+title: "[Bug] "
+labels: bug
 assignees: ""
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Bug Description
 
-**To Reproduce**
-Steps to reproduce the behavior:
+A clear and concise description of the bug.
+
+## Steps to Reproduce
+
+Detailed steps to reproduce the behavior:
 
 1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
+2. Click on '...'
+3. Scroll down to '...'
 4. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Expected Behavior
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+What should happen instead?
 
-**Desktop (please complete the following information):**
+## Actual Behavior
 
-- OS: [e.g. iOS]
-- Browser [e.g. chrome, safari]
-- Version [e.g. 22]
+What actually happens? Include error messages if applicable.
 
-**Smartphone (please complete the following information):**
+## Screenshots
 
-- Device: [e.g. iPhone6]
-- OS: [e.g. iOS8.1]
-- Browser [e.g. stock browser, safari]
-- Version [e.g. 22]
+If applicable, add screenshots or recordings to demonstrate the problem.
 
-**Additional context**
-Add any other context about the problem here.
+## Environment
+
+**Desktop:**
+
+- OS: [e.g. macOS 14.0, Windows 11, Ubuntu 22.04]
+- Browser: [e.g. Chrome 120, Edge 119, Firefox 121]
+- Browser Version: [e.g. 120.0.6099.129]
+- rad.io Version/Commit: [e.g. v0.0.1 or commit hash]
+
+**SDR Hardware (if applicable):**
+
+- Device: [e.g. HackRF One, RTL-SDR v3, or N/A for simulated mode]
+- Firmware Version: [if known]
+
+**Mobile (if applicable):**
+
+- Device: [e.g. iPhone 14, Pixel 7]
+- OS: [e.g. iOS 17.1, Android 14]
+- Browser: [e.g. Safari, Chrome]
+
+## Console Errors
+
+If you see errors in the browser console (F12), paste them here:
+
+```
+[Paste console errors here]
+```
+
+## Additional Context
+
+- Does this happen consistently or intermittently?
+- Have you tried in a different browser?
+- Any recent changes to your system or browser?
+- Any other context about the problem
+
+## Possible Fix (optional)
+
+If you have ideas on how to fix this bug, share them here!
+
+---
+
+**New to contributing?** Check out our [Contributing Guide](../../CONTRIBUTING.md) - we welcome bug fix PRs!
