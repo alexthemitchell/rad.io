@@ -79,5 +79,5 @@ class DspWorkerPool {
 }
 
 export const dspWorkerPool = new DspWorkerPool(
-  navigator.hardwareConcurrency || 4,
+  typeof navigator !== 'undefined' && navigator.hardwareConcurrency || 4,
 );

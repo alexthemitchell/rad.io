@@ -30,9 +30,9 @@ export function useDsp(
         const newMagnitudes = new Float32Array(payload);
         
         // Reuse buffer to minimize allocations (copy data in-place)
-        // IMPORTANT: Returns same reference to avoid allocations, which means React won't
-        // detect state changes. Consumers MUST rely on the onNewFft callback for updates,
-        // NOT on React state change detection for the magnitudes array.
+        // IMPORTANT: Returns same reference to avoid allocations. setState will still trigger
+        // re-renders, but consumers should rely on the onNewFft callback for immediate updates
+        // rather than depending on React state changes, as the buffer contents change in-place.
         setMagnitudes(prevMagnitudes => {
           // If size changed, need new buffer
           if (prevMagnitudes.length !== newMagnitudes.length) {
@@ -68,15 +68,13 @@ export function useDsp(
       // Convert transport format (DataView) to IQSample[] using device's parser
       try {
         const iq = device.parseSamples(raw);
-        if (Array.isArray(iq)) {
-          dspWorkerPool.postMessage({
-            type: 'process',
-            payload: {
-              samples: iq,
-              fftSize,
-            },
-          });
-        }
+        dspWorkerPool.postMessage({
+          type: 'process',
+          payload: {
+            samples: iq,
+            fftSize,
+          },
+        });
       } catch {
         // Swallow parsing errors to avoid breaking stream; logging optional
       }

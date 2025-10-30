@@ -92,12 +92,10 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     };
   }, []);
 
-  useEffect((): (() => void) => {
+  useEffect(() => {
     const canvas = waterfallCanvasRef.current;
     if (!canvas) {
-      return () => {
-        // No-op cleanup when canvas ref is not available
-      };
+      return;
     }
 
     // For now, use main-thread WebGL waterfall directly

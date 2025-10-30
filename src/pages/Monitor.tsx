@@ -36,9 +36,10 @@ const Monitor: React.FC = () => {
   const [statusMsg, setStatusMsg] = useState<string>("");
 
   // Tuning state
-  const [sampleRate, _setSampleRate] = useState(2_000_000); // 2 MSPS
-  const [lnaGain, _setLnaGain] = useState(16); // dB
-  const [vgaGain, _setVgaGain] = useState(30); // dB
+  // Hardware configuration - currently hardcoded, could be made configurable in future
+  const sampleRate = 2_000_000; // 2 MSPS
+  const lnaGain = 16; // dB
+  const vgaGain = 30; // dB
   const [fftSize, setFftSize] = useState(4096);
 
   // Deprecated: spectrogram frames are streamed directly to the renderer now.

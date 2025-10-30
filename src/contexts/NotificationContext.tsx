@@ -66,12 +66,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         const id = prevId;
         setNotifications((prev) => [...prev, { ...notification, id }]);
 
+        // Add timeout ID to set before scheduling timeout to avoid race condition
         const timeoutId = setTimeout(() => {
           setNotifications((prev) => prev.filter((n) => n.id !== id));
           timeoutIdsRef.current.delete(timeoutId);
         }, notification.duration ?? 5000);
-        
         timeoutIdsRef.current.add(timeoutId);
+        
         return prevId + 1;
       });
     },

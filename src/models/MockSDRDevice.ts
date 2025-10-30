@@ -18,6 +18,10 @@ import {
  * - Implements a minimal subset of device behavior used by the app
  * - Avoids any WebUSB dependency so it runs in headless CI reliably
  */
+
+// Maximum number of sample buffers to retain in memory
+const MAX_BUFFER_COUNT = 10;
+
 export class MockSDRDevice implements ISDRDevice {
   private _isOpen = false;
   private _isReceiving = false;
@@ -176,7 +180,11 @@ export class MockSDRDevice implements ISDRDevice {
         return;
       }
 
-      const samplesPerChunk = 8192; // Reduced from 16384 to limit memory
+      // Reduced from 16384 to limit memory.
+      // Rationale: 8192 is chosen to balance memory usage and FFT processing.
+      // Typical FFT size is 4096, so this provides ~2 FFT windows per chunk.
+      // Each buffer is ~16KB (8192 samples × 2 bytes), which helps prevent memory accumulation in CI/E2E runs.
+      const samplesPerChunk = 8192;
       const buffer = new ArrayBuffer(samplesPerChunk * 2);
       const view = new DataView(buffer);
 
@@ -201,8 +209,8 @@ export class MockSDRDevice implements ISDRDevice {
       // Track memory (trim aggressively to prevent OOM)
       this.sampleBuffers.push(view);
       this.totalBufferSize += view.byteLength;
-      // Keep only last 10 buffers (10 × 8192 samples × 2 bytes = ~160KB) to prevent memory accumulation
-      while (this.sampleBuffers.length > 10) {
+      // Keep only last 10 buffers (10 × 8192 samples × 2 bytes = ~163KB) to prevent memory accumulation
+      while (this.sampleBuffers.length > MAX_BUFFER_COUNT) {
         const old = this.sampleBuffers.shift();
         if (old) {
           this.totalBufferSize -= old.byteLength;
