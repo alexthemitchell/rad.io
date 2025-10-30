@@ -3,6 +3,8 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useEffect,
+  useRef,
   type ReactNode,
 } from 'react';
 import { notify as busNotify } from '../lib/notifications';
@@ -56,6 +58,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [nextId, setNextId] = useState(0);
+  const timeoutIdsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   const notify = useCallback(
     (notification: Omit<Notification, 'id'> & { duration?: number }) => {
@@ -63,12 +66,24 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       setNextId((prevId) => prevId + 1);
       setNotifications((prev) => [...prev, { ...notification, id }]);
 
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         setNotifications((prev) => prev.filter((n) => n.id !== id));
+        timeoutIdsRef.current.delete(timeoutId);
       }, notification.duration ?? 5000);
+      
+      timeoutIdsRef.current.add(timeoutId);
     },
     [nextId],
   );
+
+  // Cleanup all timeouts on unmount to prevent memory leaks
+  useEffect(() => {
+    const timeouts = timeoutIdsRef.current;
+    return (): void => {
+      timeouts.forEach(clearTimeout);
+      timeouts.clear();
+    };
+  }, []);
 
   return (
     <NotificationContext.Provider value={{ notifications, notify }}>

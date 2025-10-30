@@ -26,8 +26,8 @@ class DspWorkerPool {
     const worker = this.workers[this.nextWorker];
     if (worker) {
       worker.postMessage(message);
+      this.nextWorker = (this.nextWorker + 1) % this.workers.length;
     }
-    this.nextWorker = (this.nextWorker + 1) % this.workers.length;
   }
 
   // Typed overload for message events carrying DspWorkerMessage

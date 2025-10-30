@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 /**
  * E2E tests for visualization features using simulated data sources
@@ -16,7 +16,7 @@ test.use({
 
 
 // Helper to ensure reception is running, accommodating auto-start on /monitor
-async function ensureReceiving(page: any): Promise<void> {
+async function ensureReceiving(page: Page): Promise<void> {
   // Try to detect quickly; if receiving, we're done
   const gotIt = await page
     .waitForFunction(() => (window as any).dbgReceiving === true, { timeout: 1500 })

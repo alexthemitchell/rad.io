@@ -4,9 +4,9 @@ import {
   WebGLSpectrum,
   WebGLWaterfall,
 } from '../../visualization';
-import type { RenderTransform } from '../../visualization';
-import { VisualizationWorkerManager } from '../../workers/VisualizationWorkerManager';
 import type { WATERFALL_COLORMAPS } from '../../constants';
+import type { RenderTransform } from '../../visualization';
+import type { VisualizationWorkerManager } from '../../workers/VisualizationWorkerManager';
 
 interface PrimaryVisualizationProps {
   fftData: Float32Array;
@@ -90,7 +90,9 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     const canvas = waterfallCanvasRef.current;
     let cleanup: (() => void) | undefined;
     if (!canvas) {
-      return cleanup as unknown as () => void;
+      return () => {
+        // No-op cleanup when canvas ref is not available
+      };
     }
 
     // For now, use main-thread WebGL waterfall directly

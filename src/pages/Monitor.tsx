@@ -154,12 +154,14 @@ const Monitor: React.FC = () => {
   }, [stopDsp]);
 
   // Auto-start reception if a previously paired device is already connected/opened.
+  // Note: handleStart is intentionally omitted from deps to prevent infinite loop (see PLAYBOOK_MONITOR_INFINITE_LOOP_2025_10)
   useEffect(() => {
     if (!device || !device.isOpen() || isReceiving || scanner.state !== "idle") {
       return;
     }
     void handleStart();
-  }, [device, isReceiving, scanner.state, handleStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [device, isReceiving, scanner.state]);
 
   // Ensure RX is stopped when leaving the page
   useEffect(() => {
@@ -178,15 +180,22 @@ const Monitor: React.FC = () => {
   // Dummy state for components that are not yet fully integrated
   const [recordingState, setRecordingState] = useState<"idle" | "recording" | "playback">("idle");
   const [recordedSamples, setRecordedSamples] = useState<unknown[]>([]);
+  // TODO(rad.io): Temporary placeholder for recordingDuration. Refactor consuming components to accept optional props or implement feature properly.
   const [recordingDuration, _setRecordingDuration] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [volume, setVolume] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
+  // TODO(rad.io): Temporary placeholder for signalQuality. Refactor consuming components to accept optional props or implement feature properly.
   const [signalQuality, _setSignalQuality] = useState({ snr: 0, peakPower: 0, avgPower: 0 });
+  // TODO(rad.io): Temporary placeholder for renderTier. Refactor consuming components to accept optional props or implement feature properly.
   const [renderTier, _setRenderTier] = useState<RenderTier>(RenderTier.Unknown);
+  // TODO(rad.io): Temporary placeholder for fps. Refactor consuming components to accept optional props or implement feature properly.
   const [_fps, _setFps] = useState(0);
+  // TODO(rad.io): Temporary placeholder for bufferHealth. Refactor consuming components to accept optional props or implement feature properly.
   const [_bufferHealth, _setBufferHealth] = useState(0);
+  // TODO(rad.io): Temporary placeholder for storageUsed. Refactor consuming components to accept optional props or implement feature properly.
   const [_storageUsed, _setStorageUsed] = useState(0);
+  // TODO(rad.io): Temporary placeholder for storageQuota. Refactor consuming components to accept optional props or implement feature properly.
   const [_storageQuota, _setStorageQuota] = useState(0);
 
   const handleStartRecording = (): void => setRecordingState("recording");

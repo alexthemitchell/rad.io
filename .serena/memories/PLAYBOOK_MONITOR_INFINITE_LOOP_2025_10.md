@@ -6,8 +6,8 @@ Browser hangs with `Monitor.tsx:134 Start failed` logging thousands of times per
 ## Root Cause
 Circular dependency in `useEffect` causing infinite re-render loop:
 
-1. **Auto-start effect** (line 151-157) depends on `[device, isReceiving, handleStart, scanner.state]`
-2. **handleStart callback** (line 121-139) depends on `[device, tuneDevice, startDsp, scanner]`
+1. **Auto-start effect** (line 156-164) depends on `[device, isReceiving, handleStart, scanner.state]`
+2. **handleStart callback** (line 122-145) depends on `[device, tuneDevice, startDsp, scanner]`
 3. **scanner** object (line 77) is returned by `useFrequencyScanner(device, callback)` and may be recreated on renders
 
 ### The Loop:
@@ -63,6 +63,6 @@ if (isReceiving) {
 - Test auto-start scenarios with mock devices in e2e
 
 ## Related Files
-- `src/pages/Monitor.tsx` (lines 121-157)
+- `src/pages/Monitor.tsx` (lines 122-164)
 - `src/hooks/useFrequencyScanner.ts`
 - `src/models/MockSDRDevice.ts`
