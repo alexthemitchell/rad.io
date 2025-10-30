@@ -147,34 +147,40 @@ We maintain a quarterly health check:
 ## Q[N] YYYY Community Health Report
 
 ### Contributor Stats
+
 - Unique contributors: [N]
 - First-time contributors: [N]
 - Returning contributors: [N]
 - Top contributors: [list]
 
 ### Activity Stats
+
 - Issues opened/closed: [N/N]
 - PRs opened/merged: [N/N]
 - Discussion posts: [N]
 - Comments: [N]
 
 ### Response Times
+
 - Avg time-to-first-response (issues): [N] days
 - Avg time-to-first-review (PRs): [N] days
 - Avg issue resolution time: [N] days
 - Avg PR merge time: [N] days
 
 ### Quality Metrics
+
 - Test coverage: [N]%
 - CI success rate: [N]%
 - Code review participation: [N]%
 
 ### Highlights
+
 - [Significant contributions]
 - [Community milestones]
 - [Areas of improvement]
 
 ### Action Items
+
 - [ ] [Action 1]
 - [ ] [Action 2]
 ```

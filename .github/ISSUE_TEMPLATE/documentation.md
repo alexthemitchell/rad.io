@@ -27,7 +27,7 @@ What would make this documentation better?
 - [ ] Add examples or code snippets
 - [ ] Improve structure or organization
 - [ ] Add diagrams or screenshots
-- [ ] Other: ___________
+- [ ] Other: ****\_\_\_****
 
 ## Proposed Content (optional)
 

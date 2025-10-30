@@ -59,7 +59,7 @@ Your estimate of implementation difficulty (optional):
 
 ## Additional Context
 
-- Related issues or PRs: #___
+- Related issues or PRs: #\_\_\_
 - External references or examples
 - Any other relevant information
 
