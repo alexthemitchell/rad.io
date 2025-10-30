@@ -263,7 +263,7 @@ We track community health through:
 
 - **Issue Response Time**: Target < 3 days for initial response
 - **PR Review Time**: Target < 7 days for initial review
-- **Test Coverage**: Maintain > 38% coverage (see CONTRIBUTING.md)
+- **Test Coverage**: Maintain global minimum coverage (see [CONTRIBUTING.md](./CONTRIBUTING.md#test-coverage-goals) for thresholds)
 - **Community Growth**: Monthly active contributors
 - **Documentation**: Completeness and accessibility
 

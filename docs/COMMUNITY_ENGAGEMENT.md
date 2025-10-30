@@ -32,7 +32,7 @@ We track these metrics quarterly:
 
 #### Quality Metrics
 
-- Test coverage (maintain > 38%)
+- Test coverage (maintain global minimum of 38% for statements/lines; see [docs/ONBOARDING.md](./ONBOARDING.md#coverage-requirements))
 - Code review thoroughness
 - Documentation completeness
 - CI/CD success rate

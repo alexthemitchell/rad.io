@@ -50,6 +50,9 @@ Welcome! This checklist will guide you through making your first contribution to
   ```
 
 - [ ] Visit https://localhost:8080 and explore the app
+
+  > **Note:** HTTPS is required for WebUSB functionality. The development server uses a self-signed certificate; you will need to accept this certificate in your browser to access the site and use WebUSB features.
+
 - [ ] Try the demo page: https://localhost:8080/demo
 - [ ] Run tests to see everything works:
 
