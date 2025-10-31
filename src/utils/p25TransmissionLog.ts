@@ -103,18 +103,24 @@ export class P25TransmissionLogger {
   }
 
   /**
+   * Get the database instance, throwing an error if not initialized
+   */
+  private getDb(): IDBDatabase {
+    if (!this.db) {
+      throw new Error("Database not initialized");
+    }
+    return this.db;
+  }
+
+  /**
    * Log a transmission record
    */
   async logTransmission(record: TransmissionRecord): Promise<number> {
     await this.init();
-
-    if (!this.db) {
-      throw new Error("Database not initialized");
-    }
+    const db = this.getDb();
 
     return new Promise((resolve, reject) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const transaction = this.db!.transaction([STORE_NAME], "readwrite");
+      const transaction = db.transaction([STORE_NAME], "readwrite");
       const objectStore = transaction.objectStore(STORE_NAME);
       const request = objectStore.add(record);
 
@@ -135,14 +141,10 @@ export class P25TransmissionLogger {
     options: TransmissionQueryOptions = {},
   ): Promise<TransmissionRecord[]> {
     await this.init();
-
-    if (!this.db) {
-      throw new Error("Database not initialized");
-    }
+    const db = this.getDb();
 
     return new Promise((resolve, reject) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const transaction = this.db!.transaction([STORE_NAME], "readonly");
+      const transaction = db.transaction([STORE_NAME], "readonly");
       const objectStore = transaction.objectStore(STORE_NAME);
       const records: TransmissionRecord[] = [];
 
@@ -221,10 +223,7 @@ export class P25TransmissionLogger {
    */
   async getCount(options: TransmissionQueryOptions = {}): Promise<number> {
     await this.init();
-
-    if (!this.db) {
-      throw new Error("Database not initialized");
-    }
+    const db = this.getDb();
 
     // If no filters, use count directly
     if (
@@ -235,8 +234,7 @@ export class P25TransmissionLogger {
       !options.minQuality
     ) {
       return new Promise((resolve, reject) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const transaction = this.db!.transaction([STORE_NAME], "readonly");
+        const transaction = db.transaction([STORE_NAME], "readonly");
         const objectStore = transaction.objectStore(STORE_NAME);
         const request = objectStore.count();
 
@@ -263,14 +261,10 @@ export class P25TransmissionLogger {
    */
   async deleteOlderThan(timestamp: number): Promise<number> {
     await this.init();
-
-    if (!this.db) {
-      throw new Error("Database not initialized");
-    }
+    const db = this.getDb();
 
     return new Promise((resolve, reject) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const transaction = this.db!.transaction([STORE_NAME], "readwrite");
+      const transaction = db.transaction([STORE_NAME], "readwrite");
       const objectStore = transaction.objectStore(STORE_NAME);
       const index = objectStore.index("timestamp");
       const request = index.openCursor(
@@ -302,14 +296,10 @@ export class P25TransmissionLogger {
    */
   async clear(): Promise<void> {
     await this.init();
-
-    if (!this.db) {
-      throw new Error("Database not initialized");
-    }
+    const db = this.getDb();
 
     return new Promise((resolve, reject) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const transaction = this.db!.transaction([STORE_NAME], "readwrite");
+      const transaction = db.transaction([STORE_NAME], "readwrite");
       const objectStore = transaction.objectStore(STORE_NAME);
       const request = objectStore.clear();
 

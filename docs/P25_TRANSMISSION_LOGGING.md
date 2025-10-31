@@ -253,9 +253,9 @@ Potential future improvements:
 ## Testing
 
 Comprehensive test coverage:
-- `src/utils/__tests__/p25TransmissionLog.test.ts` - Logger tests (16 tests)
-- `src/components/__tests__/TalkgroupScanner.test.tsx` - Scanner tests (9 tests)
-- `src/components/__tests__/TransmissionLogViewer.test.tsx` - Viewer tests (6 tests)
+- `src/utils/__tests__/p25TransmissionLog.test.ts` - Logger tests
+- `src/components/__tests__/TalkgroupScanner.test.tsx` - Scanner tests
+- `src/components/__tests__/TransmissionLogViewer.test.tsx` - Viewer tests
 
 Run tests:
 ```bash
