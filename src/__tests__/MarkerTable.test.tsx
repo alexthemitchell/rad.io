@@ -3,8 +3,8 @@ import MarkerTable, { type MarkerRow } from "../components/MarkerTable";
 
 describe("MarkerTable", () => {
   const markers: MarkerRow[] = [
-    { id: "a", freqHz: 100_000_000 },
-    { id: "b", freqHz: 162_550_000 },
+    { id: "a", freqHz: 100_000_000, powerDb: -50.5 },
+    { id: "b", freqHz: 162_550_000, powerDb: -45.2 },
   ];
 
   it("renders rows and supports remove and tune actions", () => {
@@ -38,5 +38,65 @@ describe("MarkerTable", () => {
   it("renders nothing for empty list", () => {
     const { container } = render(<MarkerTable markers={[]} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("displays power levels and deltas correctly", () => {
+    render(<MarkerTable markers={markers} />);
+
+    // Check power levels are displayed
+    expect(screen.getByText("-50.50")).toBeInTheDocument();
+    expect(screen.getByText("-45.20")).toBeInTheDocument();
+
+    // Check delta frequency is displayed for second marker
+    expect(screen.getByText("62550000")).toBeInTheDocument(); // 162550000 - 100000000
+
+    // Check delta power is displayed for second marker
+    expect(screen.getByText("+5.30")).toBeInTheDocument(); // -45.2 - (-50.5)
+  });
+
+  it("exports CSV with power and delta data", () => {
+    render(<MarkerTable markers={markers} />);
+
+    // Mock URL methods
+    global.URL.createObjectURL = jest.fn(() => "blob:mock-url");
+    global.URL.revokeObjectURL = jest.fn();
+    
+    // Mock anchor element
+    const mockClick = jest.fn();
+    const mockAppendChild = jest.spyOn(document.body, "appendChild").mockImplementation(() => document.createElement("a"));
+    const mockRemoveChild = jest.spyOn(document.body, "removeChild").mockImplementation(() => document.createElement("a"));
+    
+    // Override createElement to inject click spy
+    const originalCreateElement = document.createElement.bind(document);
+    jest.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      const element = originalCreateElement(tag);
+      if (tag === "a") {
+        element.click = mockClick;
+      }
+      return element;
+    });
+
+    const exportBtn = screen.getByRole("button", { name: /Export markers as CSV/i });
+    fireEvent.click(exportBtn);
+
+    expect(global.URL.createObjectURL).toHaveBeenCalled();
+    expect(mockClick).toHaveBeenCalled();
+    expect(global.URL.revokeObjectURL).toHaveBeenCalled();
+
+    mockAppendChild.mockRestore();
+    mockRemoveChild.mockRestore();
+  });
+
+  it("handles missing power data gracefully", () => {
+    const markersWithoutPower: MarkerRow[] = [
+      { id: "a", freqHz: 100_000_000 },
+      { id: "b", freqHz: 162_550_000 },
+    ];
+
+    render(<MarkerTable markers={markersWithoutPower} />);
+
+    // Check em-dashes are displayed for missing power data
+    const cells = screen.getAllByText("—");
+    expect(cells.length).toBeGreaterThan(0);
   });
 });

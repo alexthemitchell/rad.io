@@ -341,6 +341,48 @@ All visualizations support advanced pointer and wheel events for intuitive explo
 
 Interactive controls are implemented via `src/hooks/useVisualizationInteraction.ts` and used across visualization components such as `Spectrogram`, `IQConstellation`, and `WaveformVisualizer`.
 
+### Advanced Analysis Tools
+
+The Spectrum Explorer includes professional-grade measurement and analysis capabilities:
+
+**Interactive Markers** 📍
+
+- **Single Click** on spectrum to place a marker at the nearest peak
+- Markers automatically display:
+  - Exact frequency (MHz with 6 decimal places)
+  - Power level (dB)
+  - Delta frequency between consecutive markers
+  - Delta power between consecutive markers (color-coded: blue for gain, red for loss)
+- **Remove Individual Markers**: Click "Remove" button in the marker table
+- **Clear All Markers**: Click "Clear Markers" button
+- **Export to CSV**: Save all marker measurements for analysis in spreadsheet software
+
+**Peak Hold Mode** 📈
+
+- Enable with the "Peak Hold" checkbox
+- Captures and displays the maximum power detected at each frequency bin over time
+- Essential for:
+  - Identifying intermittent signals
+  - Measuring peak power of burst transmissions
+  - Finding hidden signals in noisy environments
+- **Clear Peak Hold**: Reset accumulated peak data with the "Clear Peak Hold" button
+- **Keyboard Shortcut**: Press `P` to toggle peak hold
+
+**Measurement Workflow Example:**
+
+1. Enable Peak Hold to capture signal peaks
+2. Click on signals of interest to place markers
+3. Review frequency spacing and power differences in the marker table
+4. Export measurements to CSV for documentation or further analysis
+
+These tools are particularly useful for:
+
+- Bandwidth measurement (mark signal edges and read delta frequency)
+- Channel spacing verification
+- Relative signal strength comparison
+- Interference analysis
+- Spectrum occupancy studies
+
 ### Speech Recognition
 
 #### Basic Transcription
