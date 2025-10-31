@@ -91,7 +91,7 @@ function findLocalPeak(
   return bestIdx;
 }
 
-type Marker = { id: string; freqHz: number; label?: string };
+type Marker = { id: string; freqHz: number; powerDb: number; label?: string };
 
 export default function SpectrumExplorer({
   samples,
@@ -772,8 +772,9 @@ export default function SpectrumExplorer({
         sampleRate,
         centerFrequency,
       );
+      const powerDb = mags[peakIdx] ?? 0;
       setMarkers((prev) =>
-        prev.concat({ id: `${Date.now()}-${peakIdx}`, freqHz }),
+        prev.concat({ id: `${Date.now()}-${peakIdx}`, freqHz, powerDb }),
       );
     },
     [latestMagnitudes, sampleRate, centerFrequency, transform],
@@ -888,6 +889,17 @@ export default function SpectrumExplorer({
         />
         Peak Hold
       </label>
+      {peakHold && (
+        <button
+          onClick={() => {
+            peakRef.current = null;
+          }}
+          aria-label="Clear peak hold data"
+          style={{ fontSize: 12 }}
+        >
+          Clear Peak Hold
+        </button>
+      )}
       <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
         <input
           type="checkbox"
@@ -907,6 +919,15 @@ export default function SpectrumExplorer({
       <button onClick={() => resetTransform()} aria-label="Reset spectrum view">
         Reset View
       </button>
+      {markers.length > 0 && (
+        <button
+          onClick={() => setMarkers([])}
+          aria-label="Clear all markers"
+          style={{ fontSize: 12 }}
+        >
+          Clear Markers
+        </button>
+      )}
       <button
         onClick={() => {
           const canvas = overlayCanvasRef.current;
@@ -1106,7 +1127,12 @@ export default function SpectrumExplorer({
       {markers.length > 0 && (
         <div style={{ marginTop: 10 }}>
           <MarkerTable
-            markers={markers.map((m) => ({ id: m.id, freqHz: m.freqHz }))}
+            markers={markers.map((m) => ({
+              id: m.id,
+              freqHz: m.freqHz,
+              powerDb: m.powerDb,
+              label: m.label,
+            }))}
             onRemove={(id: string) =>
               setMarkers((prev) => prev.filter((x) => x.id !== id))
             }

@@ -3,6 +3,7 @@ import React from "react";
 export type MarkerRow = {
   id: string;
   freqHz: number;
+  powerDb?: number;
   label?: string;
 };
 
@@ -26,10 +27,36 @@ export default function MarkerTable({
   }
 
   const exportCsv = (): void => {
-    const header = ["id", "freqHz", "freqMHz", "label"].join(",");
-    const rows = markers.map((m) =>
-      [m.id, String(m.freqHz), formatMHz(m.freqHz), m.label ?? ""].join(","),
-    );
+    const header = [
+      "id",
+      "freqHz",
+      "freqMHz",
+      "powerDb",
+      "deltaFreqHz",
+      "deltaPowerDb",
+      "label",
+    ].join(",");
+    const rows = markers.map((m, idx) => {
+      const deltaFreqHz =
+        idx > 0 ? m.freqHz - (markers[idx - 1]?.freqHz ?? 0) : "";
+      const deltaPowerDb =
+        idx > 0 &&
+        m.powerDb !== undefined &&
+        markers[idx - 1]?.powerDb !== undefined
+          ? m.powerDb - (markers[idx - 1]?.powerDb ?? 0)
+          : "";
+      return [
+        m.id,
+        String(m.freqHz),
+        formatMHz(m.freqHz),
+        m.powerDb?.toFixed(2) ?? "",
+        String(deltaFreqHz),
+        typeof deltaPowerDb === "number"
+          ? deltaPowerDb.toFixed(2)
+          : deltaPowerDb,
+        m.label ?? "",
+      ].join(",");
+    });
     const csv = [header, ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -77,49 +104,102 @@ export default function MarkerTable({
             <tr>
               <th style={thStyle}>#</th>
               <th style={thStyle}>Frequency (MHz)</th>
+              <th style={thStyle}>Power (dB)</th>
+              <th style={thStyle}>Δ Freq (Hz)</th>
+              <th style={thStyle}>Δ Power (dB)</th>
               {onTune ? <th style={thStyle}>Tune</th> : null}
               {onRemove ? <th style={thStyle}>Remove</th> : null}
             </tr>
           </thead>
           <tbody>
-            {markers.map((m, idx) => (
-              <tr key={m.id}>
-                <td style={tdStyle}>{idx + 1}</td>
-                <td
-                  style={{
-                    ...tdStyle,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-                  }}
-                >
-                  {formatMHz(m.freqHz)}
-                </td>
-                {onTune ? (
-                  <td style={tdStyle}>
-                    <button
-                      type="button"
-                      onClick={() => onTune(m.freqHz)}
-                      aria-label={`Tune to ${formatMHz(m.freqHz)} megahertz`}
-                      style={btnStyle}
-                    >
-                      Tune
-                    </button>
+            {markers.map((m, idx) => {
+              const prevMarker = idx > 0 ? markers[idx - 1] : null;
+              const deltaFreqHz = prevMarker
+                ? m.freqHz - prevMarker.freqHz
+                : null;
+              const deltaPowerDb =
+                prevMarker &&
+                m.powerDb !== undefined &&
+                prevMarker.powerDb !== undefined
+                  ? m.powerDb - prevMarker.powerDb
+                  : null;
+
+              return (
+                <tr key={m.id}>
+                  <td style={tdStyle}>{idx + 1}</td>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                    }}
+                  >
+                    {formatMHz(m.freqHz)}
                   </td>
-                ) : null}
-                {onRemove ? (
-                  <td style={tdStyle}>
-                    <button
-                      type="button"
-                      onClick={() => onRemove(m.id)}
-                      aria-label={`Remove marker ${idx + 1}`}
-                      style={btnDangerStyle}
-                    >
-                      Remove
-                    </button>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                    }}
+                  >
+                    {m.powerDb !== undefined ? m.powerDb.toFixed(2) : "—"}
                   </td>
-                ) : null}
-              </tr>
-            ))}
+                  <td
+                    style={{
+                      ...tdStyle,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                    }}
+                  >
+                    {deltaFreqHz !== null ? deltaFreqHz.toFixed(0) : "—"}
+                  </td>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                      color:
+                        deltaPowerDb !== null
+                          ? deltaPowerDb > 0
+                            ? "#4fc3f7"
+                            : deltaPowerDb < 0
+                              ? "#ff8080"
+                              : "#e8f2ff"
+                          : "#e8f2ff",
+                    }}
+                  >
+                    {deltaPowerDb !== null
+                      ? (deltaPowerDb > 0 ? "+" : "") + deltaPowerDb.toFixed(2)
+                      : "—"}
+                  </td>
+                  {onTune ? (
+                    <td style={tdStyle}>
+                      <button
+                        type="button"
+                        onClick={() => onTune(m.freqHz)}
+                        aria-label={`Tune to ${formatMHz(m.freqHz)} megahertz`}
+                        style={btnStyle}
+                      >
+                        Tune
+                      </button>
+                    </td>
+                  ) : null}
+                  {onRemove ? (
+                    <td style={tdStyle}>
+                      <button
+                        type="button"
+                        onClick={() => onRemove(m.id)}
+                        aria-label={`Remove marker ${idx + 1}`}
+                        style={btnDangerStyle}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  ) : null}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
