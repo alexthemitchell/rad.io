@@ -419,3 +419,66 @@ export function extractTalkgroupInfo(_bits: number[]): {
   // For now, return empty object
   return {};
 }
+
+/**
+ * Decode P25 Phase 2 with automatic transmission logging
+ *
+ * This wrapper around decodeP25Phase2 automatically logs completed transmissions
+ * to IndexedDB for historical tracking and analysis.
+ *
+ * @param samples - IQ samples to decode
+ * @param config - Decoder configuration
+ * @param options - Logging options
+ * @returns Decoded P25 data
+ */
+export async function decodeP25Phase2WithLogging(
+  samples: Sample[],
+  config: P25DecoderConfig = DEFAULT_P25_CONFIG,
+  options: {
+    logger?: {
+      logTransmission: (
+        record: {
+          timestamp: number;
+          talkgroupId?: number;
+          sourceId?: number;
+          duration: number;
+          signalQuality: number;
+          slot: number;
+          isEncrypted: boolean;
+          errorRate: number;
+        },
+      ) => Promise<number>;
+    };
+    transmissionStartTime?: number;
+  } = {},
+): Promise<P25DecodedData> {
+  const decoded = decodeP25Phase2(samples, config);
+
+  // If we have frames and a logger, log the transmission
+  if (
+    decoded.frames.length > 0 &&
+    options.logger &&
+    options.transmissionStartTime
+  ) {
+    const endTime = Date.now();
+    const duration = endTime - options.transmissionStartTime;
+
+    // Log each slot as a separate transmission
+    for (const frame of decoded.frames) {
+      const talkgroupInfo = extractTalkgroupInfo(frame.bits);
+
+      await options.logger.logTransmission({
+        timestamp: frame.timestamp,
+        talkgroupId: talkgroupInfo.talkgroupId ?? decoded.talkgroupId,
+        sourceId: talkgroupInfo.sourceId ?? decoded.sourceId,
+        duration,
+        signalQuality: frame.signalQuality,
+        slot: frame.slot,
+        isEncrypted: decoded.isEncrypted,
+        errorRate: decoded.errorRate,
+      });
+    }
+  }
+
+  return decoded;
+}

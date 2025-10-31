@@ -12,16 +12,19 @@ type TalkgroupScannerProps = {
   talkgroups: Talkgroup[];
   onTalkgroupToggle: (id: string) => void;
   onAddTalkgroup: (talkgroup: Omit<Talkgroup, "enabled">) => void;
+  onUpdatePriority?: (id: string, priority: number) => void;
 };
 
 export default function TalkgroupScanner({
   talkgroups,
   onTalkgroupToggle,
   onAddTalkgroup,
+  onUpdatePriority,
 }: TalkgroupScannerProps): React.JSX.Element {
   const [newTgId, setNewTgId] = useState("");
   const [newTgName, setNewTgName] = useState("");
   const [newTgCategory, setNewTgCategory] = useState("General");
+  const [newTgPriority, setNewTgPriority] = useState(5);
 
   const handleAddTalkgroup = (): void => {
     if (newTgId && newTgName) {
@@ -29,11 +32,12 @@ export default function TalkgroupScanner({
         id: newTgId,
         name: newTgName,
         category: newTgCategory,
-        priority: 5,
+        priority: newTgPriority,
       });
       setNewTgId("");
       setNewTgName("");
       setNewTgCategory("General");
+      setNewTgPriority(5);
     }
   };
 
@@ -81,6 +85,21 @@ export default function TalkgroupScanner({
               </option>
             ))}
           </select>
+          <label className="talkgroup-priority-label">
+            <span>Priority: {newTgPriority}</span>
+            <input
+              type="range"
+              className="talkgroup-priority-slider"
+              min="1"
+              max="10"
+              value={newTgPriority}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                setNewTgPriority(parseInt(e.target.value))
+              }
+              title="Set priority level (1=lowest, 10=highest). Higher priority talkgroups will be monitored preferentially."
+              aria-label="Talkgroup priority"
+            />
+          </label>
           <button
             className="btn btn-primary talkgroup-add-btn"
             onClick={handleAddTalkgroup}
@@ -122,10 +141,26 @@ export default function TalkgroupScanner({
                   <div className="talkgroup-info">
                     <div className="talkgroup-name">{tg.name}</div>
                     <div className="talkgroup-details">
-                      ID: {tg.id} • {tg.category}
+                      ID: {tg.id} • {tg.category} • Priority: {tg.priority}
                     </div>
                   </div>
                 </label>
+                {onUpdatePriority && (
+                  <div className="talkgroup-priority-control">
+                    <input
+                      type="range"
+                      className="talkgroup-priority-slider"
+                      min="1"
+                      max="10"
+                      value={tg.priority}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                        onUpdatePriority(tg.id, parseInt(e.target.value))
+                      }
+                      title={`Adjust priority for ${tg.name} (1=lowest, 10=highest)`}
+                      aria-label={`Priority for ${tg.name}`}
+                    />
+                  </div>
+                )}
               </div>
             ))
           )}
