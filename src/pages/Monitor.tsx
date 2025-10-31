@@ -461,7 +461,8 @@ const Monitor: React.FC = () => {
               />
               RDS
             </label>
-            <span aria-live="polite" style={{ opacity: 0.8 }}>
+            {/* Avoid multiple live regions; StatusBar provides the single polite live region per UI spec */}
+            <span style={{ opacity: 0.8 }}>
               {scanner.state !== "idle"
                 ? `Progress: ${Math.round(scanner.progress)}%`
                 : ""}

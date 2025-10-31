@@ -17,6 +17,8 @@ export interface FrequencyScanConfig {
   startFrequency: number;
   /** End frequency in Hz */
   endFrequency: number;
+  /** Optional scan step size in Hz (channel spacing). UI-configurable; algorithm may adapt based on device bandwidth. */
+  stepSizeHz?: number;
   /** Signal threshold in dB above noise floor for detection */
   thresholdDb: number;
   /** Dwell time per frequency chunk in ms */
@@ -80,6 +82,7 @@ export function useFrequencyScanner(
   const [config, setConfig] = useState<FrequencyScanConfig>({
     startFrequency: 88e6, // 88 MHz (FM radio start)
     endFrequency: 108e6, // 108 MHz (FM radio end)
+    stepSizeHz: 100e3, // Default 100 kHz channel spacing (UI in MHz)
     thresholdDb: 10, // 10 dB above noise floor
     dwellTime: 100, // 100ms per frequency chunk
     fftSize: 2048, // 2048-point FFT for good resolution

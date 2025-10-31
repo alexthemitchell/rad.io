@@ -154,6 +154,27 @@ function FrequencyScanner({
         </div>
 
         <div className="form-group">
+          <label htmlFor="step-size">
+            Step Size (MHz):
+            <input
+              id="step-size"
+              type="number"
+              value={(config.stepSizeHz ?? 100000) / 1e6}
+              onChange={(e) =>
+                onConfigChange({
+                  stepSizeHz: parseFloat(e.target.value) * 1e6,
+                })
+              }
+              disabled={!isIdle}
+              step="0.01"
+              min="0.001"
+              max="100"
+              aria-label="Step size (scan step) in MHz"
+            />
+          </label>
+        </div>
+
+        <div className="form-group">
           <label htmlFor="fft-size">
             FFT Size (frequency resolution):
             <input

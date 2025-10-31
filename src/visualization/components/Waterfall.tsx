@@ -111,6 +111,8 @@ export default function Waterfall({
     <div style={{ position: "relative", display: "inline-block" }}>
       <canvas
         ref={canvasRef}
+        role="img"
+        tabIndex={0}
         width={width}
         height={height}
         style={{

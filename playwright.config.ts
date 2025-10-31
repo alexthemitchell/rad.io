@@ -18,9 +18,7 @@ export default defineConfig({
   timeout: 30 * 1000,
 
   /* Run tests in files in parallel */
-  // Parallelism can spike Chromium memory usage due to multiple renderers.
-  // Keep per-file parallelism off to reduce peak memory.
-  fullyParallel: false,
+  fullyParallel: true,
 
   /* Fail the build on CI if you accidentally left test.only in the source code */
   forbidOnly: !!process.env["CI"],
@@ -28,8 +26,10 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env["CI"] ? 2 : 0,
 
-  /* Constrain workers to prevent local OOM from too many Chromium instances */
-  workers: process.env["CI"] ? 1 : 2,
+  /* Constrain workers; allow local override via PW_WORKERS, default 2 locally and 1 on CI */
+  workers: process.env["CI"]
+    ? 1
+    : (Number(process.env["PW_WORKERS"]) > 0 ? Number(process.env["PW_WORKERS"]) : 2),
 
   /* Reporter to use */
   // Include GitHub reporter for richer annotations in CI
