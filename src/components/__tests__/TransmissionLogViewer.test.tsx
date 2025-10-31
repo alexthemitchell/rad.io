@@ -118,10 +118,14 @@ describe("TransmissionLogViewer", () => {
       .length;
 
     // First click sets field to talkgroup with default desc (▼)
-    await act(async () => { sortTalkgroupBtn.click(); });
+    await act(async () => {
+      sortTalkgroupBtn.click();
+    });
 
     // Second click toggles to asc (▲)
-    await act(async () => { sortTalkgroupBtn.click(); });
+    await act(async () => {
+      sortTalkgroupBtn.click();
+    });
 
     // Expect logger to be re-initialized/re-fetched due to sort changes
     const afterCalls = (getP25TransmissionLogger as jest.Mock).mock.calls

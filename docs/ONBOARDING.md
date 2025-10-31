@@ -401,7 +401,7 @@ interface IQSample {
 }
 ```
 
-**Why I/Q?**
+#### Why I/Q?
 
 - Represents both amplitude and phase
 - Required for digital modulation (QPSK, QAM, etc.)

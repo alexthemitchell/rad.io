@@ -105,7 +105,7 @@ export const SimpleSpectrum: React.FC<SimpleSpectrumProps> = ({
 };
 ```
 
-**What's happening here?**
+### What's happening here?
 
 - `useRef` creates a reference to the canvas element
 - `useEffect` runs when `fftData` changes, redrawing the visualization
