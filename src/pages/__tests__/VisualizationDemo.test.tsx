@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import VisualizationDemo from "../VisualizationDemo";
+import { SettingsProvider } from "../../contexts";
 
 // Mock the visualization components
 jest.mock("../../visualization/components/IQConstellation", () => {
@@ -44,7 +45,9 @@ describe("VisualizationDemo", () => {
   const renderComponent = () => {
     return render(
       <BrowserRouter>
-        <VisualizationDemo />
+        <SettingsProvider>
+          <VisualizationDemo />
+        </SettingsProvider>
       </BrowserRouter>,
     );
   };

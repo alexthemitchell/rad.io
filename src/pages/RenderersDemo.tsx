@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { useSettings } from "../contexts";
 import { calculateSpectrogram } from "../utils/dsp";
 import {
   SimulatedSource,
@@ -19,6 +20,7 @@ import type { ReactElement } from "react";
  * Demo page showing new Canvas2D and WebGL renderers
  */
 export default function RenderersDemo(): ReactElement {
+  const { settings } = useSettings();
   const [samples, setSamples] = useState<Sample[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [pattern, setPattern] = useState<
@@ -27,7 +29,7 @@ export default function RenderersDemo(): ReactElement {
   const [waterfallFrames, setWaterfallFrames] = useState<Float32Array[]>([]);
   const sourceRef = useRef<SimulatedSource | null>(null);
 
-  const FFT_SIZE = 1024;
+  const FFT_SIZE = settings.fftSize;
   const MAX_WATERFALL_FRAMES = 100;
 
   const [metadata, setMetadata] = useState<DataSourceMetadata | null>(null);

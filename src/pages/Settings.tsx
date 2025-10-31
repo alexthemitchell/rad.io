@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { WATERFALL_COLORMAPS } from "../constants";
+import { useSettings } from "../contexts";
 
 /**
  * Settings page with tabbed interface
@@ -32,6 +34,11 @@ function Settings(): React.JSX.Element {
     "display" | "radio" | "audio" | "calibration" | "advanced"
   >("display");
   // Notifications will be integrated when actions are implemented
+  const { settings, setSettings, resetSettings } = useSettings();
+  const colorNames = useMemo<string[]>(
+    () => Object.keys(WATERFALL_COLORMAPS as Record<string, unknown>),
+    [],
+  );
 
   return (
     <main className="page-container" aria-labelledby="settings-heading">
@@ -89,12 +96,131 @@ function Settings(): React.JSX.Element {
           aria-labelledby="display-tab"
         >
           <h3>Display Settings</h3>
-          {/* TODO: Theme selector (light/dark/auto) */}
-          {/* TODO: Colormap selection (Viridis, Plasma, etc.) */}
-          {/* TODO: FFT size selector */}
-          {/* TODO: Window function selector */}
-          {/* TODO: dB range controls (min/max) */}
-          <p>Display settings coming soon</p>
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              alignItems: "center",
+              maxWidth: 720,
+            }}
+          >
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span>Visualization mode:</span>
+              <select
+                aria-label="Visualization mode"
+                value={settings.vizMode}
+                onChange={(e) =>
+                  setSettings({
+                    vizMode: e.target.value as
+                      | "fft"
+                      | "waterfall"
+                      | "spectrogram",
+                  })
+                }
+              >
+                <option value="fft">FFT</option>
+                <option value="waterfall">Waterfall</option>
+                <option value="spectrogram">Spectrogram</option>
+              </select>
+            </label>
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span>FFT Size:</span>
+              <select
+                aria-label="FFT size"
+                value={settings.fftSize}
+                onChange={(e) =>
+                  setSettings({ fftSize: parseInt(e.target.value, 10) })
+                }
+              >
+                {[1024, 2048, 4096, 8192].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {settings.vizMode === "fft" && (
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  checked={settings.showWaterfall}
+                  onChange={(e) =>
+                    setSettings({ showWaterfall: e.target.checked })
+                  }
+                  aria-label="Toggle waterfall visualization"
+                />
+                <span>Show Waterfall</span>
+              </label>
+            )}
+            {settings.vizMode !== "fft" && (
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span>Colormap:</span>
+                <select
+                  aria-label="Spectrogram colormap"
+                  value={settings.colorMap}
+                  onChange={(e) =>
+                    setSettings({
+                      colorMap: e.target
+                        .value as keyof typeof WATERFALL_COLORMAPS,
+                    })
+                  }
+                >
+                  {colorNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>dB Floor:</span>
+                <input
+                  type="number"
+                  placeholder="auto"
+                  value={settings.dbMin ?? ""}
+                  onChange={(e) =>
+                    setSettings({
+                      dbMin:
+                        e.target.value === ""
+                          ? undefined
+                          : parseFloat(e.target.value),
+                    })
+                  }
+                  aria-label="Manual dB floor (leave blank for auto)"
+                  style={{ width: 100 }}
+                />
+              </label>
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span>dB Ceil:</span>
+                <input
+                  type="number"
+                  placeholder="auto"
+                  value={settings.dbMax ?? ""}
+                  onChange={(e) =>
+                    setSettings({
+                      dbMax:
+                        e.target.value === ""
+                          ? undefined
+                          : parseFloat(e.target.value),
+                    })
+                  }
+                  aria-label="Manual dB ceiling (leave blank for auto)"
+                  style={{ width: 100 }}
+                />
+              </label>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => resetSettings()}
+                aria-label="Reset rendering settings to defaults"
+              >
+                Restore Display Defaults
+              </button>
+            </div>
+          </div>
         </section>
       )}
 
@@ -146,13 +272,34 @@ function Settings(): React.JSX.Element {
           {/* TODO: GPU mode selector (WebGL2/WebGPU/Auto) */}
           {/* TODO: Debug logging toggle */}
           {/* TODO: Experimental features */}
-          <p>Advanced settings coming soon</p>
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              alignItems: "center",
+              maxWidth: 720,
+            }}
+          >
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={settings.highPerf}
+                onChange={(e) => setSettings({ highPerf: e.target.checked })}
+                aria-label="High performance mode"
+              />
+              <span>High performance mode</span>
+            </label>
+          </div>
         </section>
       )}
 
       <section aria-label="Actions">
-        <button disabled title="Not implemented yet">Save Settings</button>
-        <button disabled title="Not implemented yet">Reset to Defaults</button>
+        <button disabled title="Not implemented yet">
+          Save Settings
+        </button>
+        <button disabled title="Not implemented yet">
+          Reset to Defaults
+        </button>
         {/* TODO: Export/import settings profile (future) */}
       </section>
     </main>

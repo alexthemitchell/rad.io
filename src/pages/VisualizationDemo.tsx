@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { useSettings } from "../contexts";
 import {
   SimulatedSource,
   FFTChart,
@@ -19,6 +20,7 @@ import type { ReactElement } from "react";
  * Demo page showing all visualization components with SimulatedSource
  */
 export default function VisualizationDemo(): ReactElement {
+  const { settings } = useSettings();
   const [samples, setSamples] = useState<Sample[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [pattern, setPattern] = useState<
@@ -172,9 +174,9 @@ export default function VisualizationDemo(): ReactElement {
             samples={samples}
             width={750}
             height={600}
-            fftSize={1024}
+            fftSize={settings.fftSize}
             freqMin={0}
-            freqMax={1024}
+            freqMax={settings.fftSize}
           />
         </div>
       </div>

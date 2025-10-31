@@ -82,7 +82,9 @@ function TopAppBar({ asBanner = true }: TopAppBarProps): React.JSX.Element {
 
         <span className="status-item">
           <span className="status-label">Sample Rate:</span>
-          <span className="status-value">{formatSampleRate(metrics.sampleRate)}</span>
+          <span className="status-value">
+            {formatSampleRate(metrics.sampleRate)}
+          </span>
         </span>
 
         <span className="status-item">

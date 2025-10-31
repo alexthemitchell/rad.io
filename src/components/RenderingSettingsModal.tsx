@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useSettings } from "../contexts/SettingsContext";
 
 export interface RenderingSettingsModalProps {
   isOpen: boolean;
@@ -16,10 +17,11 @@ export interface RenderingSettingsModalProps {
 export default function RenderingSettingsModal({
   isOpen,
   onClose,
-  currentHighPerf = false,
-  onChangeHighPerf,
 }: RenderingSettingsModalProps): React.JSX.Element | null {
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  const { settings, setSettings } = useSettings();
+
+  // No-op effect retained for focus management below. High-perf state comes from SettingsContext.
 
   useEffect(() => {
     if (!isOpen) {
@@ -120,65 +122,62 @@ export default function RenderingSettingsModal({
           </h2>
           <button
             type="button"
-            aria-label="Close settings"
-            className="btn btn-secondary"
+            aria-label="Close"
             onClick={onClose}
-            style={{ padding: "4px 8px" }}
+            className="btn btn-ghost"
           >
-            Close
+            ✕
           </button>
         </div>
-
-        <div style={{ fontSize: 14, lineHeight: 1.5 }}>
-          <p style={{ marginTop: 0 }}>
-            Configure visualization backends and performance options. This is a
-            placeholder UI; controls will be wired in a follow-up.
-          </p>
+        <p style={{ opacity: 0.85, marginTop: 0 }}>
+          Configure visualization performance and rendering behavior.
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr",
+            gap: 12,
+          }}
+        >
           <div
-            role="group"
-            aria-label="Rendering configuration"
-            style={{ display: "grid", gap: 12 }}
+            style={{
+              padding: 12,
+              border: "1px solid var(--rad-border)",
+              borderRadius: 6,
+              background: "var(--rad-bg-elev, #111726)",
+            }}
           >
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ width: 160 }}>Backend</span>
-              <select aria-label="Rendering backend" defaultValue="auto" disabled>
-                <option value="auto">Auto (recommended)</option>
-                <option value="webgpu" disabled>
-                  WebGPU
-                </option>
-                <option value="webgl2" disabled>
-                  WebGL2
-                </option>
-                <option value="webgl1" disabled>
-                  WebGL1
-                </option>
-                <option value="worker" disabled>
-                  Worker
-                </option>
-                <option value="2d" disabled>
-                  Canvas 2D
-                </option>
-              </select>
-            </label>
-
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ width: 160 }}>Target FPS</span>
-              <select aria-label="Target frames per second" defaultValue={60} disabled>
-                <option value={30}>30</option>
-                <option value={60}>60</option>
-                <option value={120}>120</option>
-              </select>
-            </label>
-
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ width: 160 }}>High performance mode</span>
+            <strong>Performance</strong>
+            <p style={{ marginTop: 6, opacity: 0.85 }}>
+              High performance mode reduces history to improve frame pacing.
+            </p>
+            <label
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
               <input
                 type="checkbox"
-                aria-label="High performance mode (lower latency, less history)"
-                defaultChecked={currentHighPerf}
-                onChange={(e) => onChangeHighPerf?.(e.target.checked)}
+                aria-label="High performance mode"
+                checked={settings.highPerf}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setSettings({ highPerf: next });
+                }}
               />
+              High performance mode
             </label>
+          </div>
+          <div
+            style={{
+              padding: 12,
+              border: "1px solid var(--rad-border)",
+              borderRadius: 6,
+              background: "var(--rad-bg-elev, #111726)",
+            }}
+          >
+            <strong>Rendering Backend</strong>
+            <p style={{ marginTop: 6, opacity: 0.85 }}>
+              WebGPU/WebGL2 selection coming soon.
+            </p>
           </div>
         </div>
       </div>
