@@ -1,4 +1,5 @@
 ---
+name: ToolAgent
 description: "Tool Optimized Agent for Codebase Modifications"
 ---
 

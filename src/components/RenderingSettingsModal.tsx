@@ -3,6 +3,10 @@ import { useEffect, useRef } from "react";
 export interface RenderingSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Reflect current High Performance toggle value (optional; defaults to false) */
+  currentHighPerf?: boolean;
+  /** Called when High Performance toggle is changed */
+  onChangeHighPerf?: (enabled: boolean) => void;
 }
 
 /**
@@ -12,6 +16,8 @@ export interface RenderingSettingsModalProps {
 export default function RenderingSettingsModal({
   isOpen,
   onClose,
+  currentHighPerf = false,
+  onChangeHighPerf,
 }: RenderingSettingsModalProps): React.JSX.Element | null {
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
@@ -128,11 +134,52 @@ export default function RenderingSettingsModal({
             Configure visualization backends and performance options. This is a
             placeholder UI; controls will be wired in a follow-up.
           </p>
-          <ul style={{ marginTop: 8 }}>
-            <li>Backend: Auto / WebGPU / WebGL2 / WebGL1 / Worker / 2D</li>
-            <li>Target FPS: 30 / 60 / 120</li>
-            <li>High performance mode toggle</li>
-          </ul>
+          <div
+            role="group"
+            aria-label="Rendering configuration"
+            style={{ display: "grid", gap: 12 }}
+          >
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ width: 160 }}>Backend</span>
+              <select aria-label="Rendering backend" defaultValue="auto" disabled>
+                <option value="auto">Auto (recommended)</option>
+                <option value="webgpu" disabled>
+                  WebGPU
+                </option>
+                <option value="webgl2" disabled>
+                  WebGL2
+                </option>
+                <option value="webgl1" disabled>
+                  WebGL1
+                </option>
+                <option value="worker" disabled>
+                  Worker
+                </option>
+                <option value="2d" disabled>
+                  Canvas 2D
+                </option>
+              </select>
+            </label>
+
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ width: 160 }}>Target FPS</span>
+              <select aria-label="Target frames per second" defaultValue={60} disabled>
+                <option value={30}>30</option>
+                <option value={60}>60</option>
+                <option value={120}>120</option>
+              </select>
+            </label>
+
+            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ width: 160 }}>High performance mode</span>
+              <input
+                type="checkbox"
+                aria-label="High performance mode (lower latency, less history)"
+                defaultChecked={currentHighPerf}
+                onChange={(e) => onChangeHighPerf?.(e.target.checked)}
+              />
+            </label>
+          </div>
         </div>
       </div>
     </div>

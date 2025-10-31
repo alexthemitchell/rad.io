@@ -13,14 +13,13 @@ How do we store diverse data types efficiently while ensuring offline capability
 - Technical constraint: Browser storage quotas vary (10 MB localStorage vs GB+ IndexedDB)
 - Performance requirement: IQ sample recording must stream without blocking UI
 - Privacy requirement: Users must be able to clear all data easily
-- Spark platform: Native `spark.kv` API available for reactive state management
 - Data volume: IQ recordings can be 100 MB+, require async/streaming access
 - Access patterns: Frequent small reads (preferences) vs. rare large reads (recordings)
 - Type safety: All stored data must validate against schemas (ADR-0007)
 
 ## Considered Options
 
-- **Option 1**: Multi-tier strategy (spark.kv + IndexedDB + File System Access API)
+- **Option 1**: Multi-tier strategy (Zustand persist (localStorage) + IndexedDB + File System Access API)
 - **Option 2**: localStorage for everything
 - **Option 3**: IndexedDB only for all data
 - **Option 4**: Cache API for recordings
@@ -29,14 +28,14 @@ How do we store diverse data types efficiently while ensuring offline capability
 
 ## Decision Outcome
 
-Chosen option: **"Option 1: Multi-tier storage strategy"** because it optimizes each storage tier for its specific use case—spark.kv for reactive application state (leveraging Spark platform), IndexedDB for large binary recordings (async, GB+ quota), and File System Access API for optional native file integration. This approach achieves offline-first capability, handles diverse data sizes efficiently, and provides the best performance for each data access pattern.
+Chosen option: **"Option 1: Multi-tier storage strategy"** because it optimizes each storage tier for its specific use case—Zustand persist (localStorage) for small reactive application state, IndexedDB for large binary recordings (async, GB+ quota), and File System Access API for optional native file integration. This approach achieves offline-first capability, handles diverse data sizes efficiently, and provides the best performance for each data access pattern.
 
 This aligns with PRD "professional" quality (reliable data persistence) and "precision" quality (type-safe validated storage).
 
 ### Consequences
 
 - Good, because each storage tier optimized for its data characteristics
-- Good, because spark.kv provides reactive state updates with React hooks
+- Good, because Zustand persist provides reactive state persistence with minimal code
 - Good, because IndexedDB handles large recordings without blocking UI
 - Good, because all storage APIs work offline
 - Good, because can store hours of IQ recordings (GB+ capacity)
@@ -56,7 +55,7 @@ Storage strategy validated through:
 
 1. **Write Performance**: Save 1 MB recording < 100ms, 100 MB recording < 5s
 2. **Read Performance**: List 100 recordings < 50ms, load recording metadata < 10ms
-3. **spark.kv Operations**: < 5ms for preference reads/writes
+3. **Local preference operations**: < 5ms for localStorage reads/writes via Zustand persist
 4. **Quota Handling**: Graceful degradation when quota exceeded, user notification
 5. **Data Integrity**: Zero corrupted recordings after 1000 record/playback cycles
 6. **Load Test**: 10+ GB stored without performance degradation
@@ -68,7 +67,7 @@ Chrome DevTools Application panel used for storage inspection. Automated tests v
 ### Option 1: Multi-Tier Strategy (Chosen)
 
 - Good, because each tier optimized for data characteristics
-- Good, because spark.kv provides reactive state with minimal code
+- Good, because Zustand persist provides reactive state with minimal code
 - Good, because IndexedDB async API doesn't block UI during large writes
 - Good, because File System Access API enables professional workflows (import/export)
 - Good, because all tiers work offline
@@ -97,9 +96,9 @@ Chrome DevTools Application panel used for storage inspection. Automated tests v
 - Good, because handles both small and large data
 - Good, because GB+ quota available
 - Neutral, because can store structured and binary data
-- Bad, because verbose API for simple state (spark.kv simpler)
+- Bad, because verbose API for simple state (localStorage simpler)
 - Bad, because no reactive updates (manual change detection required)
-- Bad, because harder to debug than spark.kv
+- Bad, because harder to debug than localStorage
 
 ### Option 4: Cache API for Recordings
 
@@ -131,39 +130,39 @@ Chrome DevTools Application panel used for storage inspection. Automated tests v
 
 ## More Information
 
-### Tier 1: spark.kv Implementation
+### Tier 1: Zustand Persist (localStorage) Implementation
 
 ```typescript
-// src/hooks/use-radio-state.ts
-import { useKV } from "@github/spark/hooks";
+// src/store/index.ts
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-export function useRadioState() {
-  const [preferences, setPreferences] = useKV("sdr-preferences", {
-    theme: "dark",
-    fftSize: 2048,
-    waterfallSpeed: 10,
-    colorScheme: "viridis",
-  });
-
-  const [bookmarks, setBookmarks] = useKV<Bookmark[]>(
-    "frequency-bookmarks",
-    [],
-  );
-
-  const [deviceConfigs, setDeviceConfigs] = useKV<Record<string, DeviceConfig>>(
-    "device-configs",
-    {},
-  );
-
-  return {
-    preferences,
-    setPreferences,
-    bookmarks,
-    setBookmarks,
-    deviceConfigs,
-    setDeviceConfigs,
-  };
+interface PreferencesState {
+  theme: "dark" | "light";
+  fftSize: number;
+  waterfallSpeed: number;
+  colorScheme: "viridis" | "plasma" | "inferno" | "turbo";
+  setPreferences: (p: Partial<PreferencesState>) => void;
 }
+
+export const usePreferencesStore = create<PreferencesState>()(
+  persist(
+    (set) => ({
+      theme: "dark",
+      fftSize: 2048,
+      waterfallSpeed: 10,
+      colorScheme: "viridis",
+      setPreferences: (p) => set(p),
+    }),
+    {
+      name: "sdr-preferences", // saved in localStorage
+      version: 1,
+    },
+  ),
+);
+
+// Note: Large/structured data such as recordings and extensive bookmark libraries
+// should use IndexedDB (see Tier 2 below) to avoid localStorage size limits.
 ```
 
 **Benefits**:

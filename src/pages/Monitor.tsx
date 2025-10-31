@@ -3,6 +3,7 @@ import AudioControls from "../components/AudioControls";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
 import RecordingControls from "../components/RecordingControls";
+import RenderingSettingsModal from "../components/RenderingSettingsModal";
 import SignalStrengthMeter from "../components/SignalStrengthMeter";
 import StatusBar from "../components/StatusBar";
 import { WATERFALL_COLORMAPS } from "../constants";
@@ -34,6 +35,7 @@ const Monitor: React.FC = () => {
     useFrequency();
   const [isReceiving, setIsReceiving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string>("");
+  const [showRenderingSettings, setShowRenderingSettings] = useState(false);
 
   // Tuning state
   // Hardware configuration - currently hardcoded, could be made configurable in future
@@ -615,6 +617,7 @@ const Monitor: React.FC = () => {
       </section>
 
       <section
+        id="recording"
         aria-label="Recording"
         style={{
           backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
@@ -724,8 +727,15 @@ const Monitor: React.FC = () => {
           audioState={"idle"}
           audioVolume={volume}
           audioClipping={false}
+          onOpenRenderingSettings={() => setShowRenderingSettings(true)}
         />
       </div>
+      <RenderingSettingsModal
+        isOpen={showRenderingSettings}
+        onClose={() => setShowRenderingSettings(false)}
+        currentHighPerf={highPerfMode}
+        onChangeHighPerf={(enabled) => setHighPerfMode(enabled)}
+      />
     </div>
   );
 };

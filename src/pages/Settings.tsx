@@ -31,6 +31,7 @@ function Settings(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<
     "display" | "radio" | "audio" | "calibration" | "advanced"
   >("display");
+  // Notifications will be integrated when actions are implemented
 
   return (
     <main className="page-container" aria-labelledby="settings-heading">
@@ -150,12 +151,8 @@ function Settings(): React.JSX.Element {
       )}
 
       <section aria-label="Actions">
-        <button disabled title="Not implemented yet">
-          Save Settings
-        </button>
-        <button disabled title="Not implemented yet">
-          Reset to Defaults
-        </button>
+        <button disabled title="Not implemented yet">Save Settings</button>
+        <button disabled title="Not implemented yet">Reset to Defaults</button>
         {/* TODO: Export/import settings profile (future) */}
       </section>
     </main>

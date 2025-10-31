@@ -267,7 +267,7 @@ export function useOnlineStatus() {
 Works with ADR-0005 (Storage Strategy):
 
 - **IndexedDB**: All recordings and exports stored locally
-- **spark.kv**: Configuration and state persisted locally
+- **Zustand persist (localStorage)**: Configuration and small UI/state persisted locally
 - **Cache API**: Static assets cached via Service Worker
 - **File System Access API**: Optional export to native filesystem
 
