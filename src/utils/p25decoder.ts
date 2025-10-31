@@ -409,14 +409,22 @@ export function getFrameDescription(frame: P25Frame): string {
 /**
  * Extract talkgroup information from P25 frame bits
  * (Simplified - real implementation would parse the full frame structure)
+ *
+ * TODO: Implement full Link Control Word (LCW) parsing to extract:
+ * - Talkgroup ID from bits 48-63 of voice header
+ * - Source ID from bits 64-87 of voice header
+ * - Parse frame header structure per TIA-102 CAAB specification
+ * This requires understanding the complete P25 Phase 2 frame structure
+ * including sync patterns, network identifiers, and control fields.
  */
 export function extractTalkgroupInfo(_bits: number[]): {
   talkgroupId?: number;
   sourceId?: number;
 } {
-  // This is a placeholder - real implementation would parse the
-  // Link Control Word (LCW) from the frame to extract talkgroup info
-  // For now, return empty object
+  // Placeholder implementation - returns empty object until full
+  // P25 frame parsing is implemented. Talkgroup and source IDs should
+  // be passed explicitly to decodeP25Phase2WithLogging if available
+  // from other sources (e.g., system configuration or network metadata).
   return {};
 }
 

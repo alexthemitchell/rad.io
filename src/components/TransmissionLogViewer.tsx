@@ -49,11 +49,17 @@ export default function TransmissionLogViewer(): React.JSX.Element {
       };
 
       if (talkgroupFilter) {
-        queryOptions.talkgroupId = parseInt(talkgroupFilter);
+        const talkgroupId = parseInt(talkgroupFilter, 10);
+        if (!isNaN(talkgroupId)) {
+          queryOptions.talkgroupId = talkgroupId;
+        }
       }
 
       if (sourceFilter) {
-        queryOptions.sourceId = parseInt(sourceFilter);
+        const sourceId = parseInt(sourceFilter, 10);
+        if (!isNaN(sourceId)) {
+          queryOptions.sourceId = sourceId;
+        }
       }
 
       if (minQualityFilter > 0) {
