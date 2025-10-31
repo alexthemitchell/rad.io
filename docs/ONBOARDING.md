@@ -343,11 +343,11 @@ test("receives real signals from HackRF", async ({ page }) => {
 
 ### Using the Demo Page
 
-The visualization demo page is useful for visual testing:
+The Monitor page is useful for visual testing:
 
 ```bash
 npm run dev
-# Visit https://localhost:8080/demo
+# Visit https://localhost:8080/monitor
 ```
 
 Features:
@@ -415,7 +415,7 @@ interface IQSample {
 1. Create component in `src/visualization/components/`
 2. Add tests in `__tests__/` subdirectory
 3. Export from `src/visualization/components/index.ts`
-4. Add to demo page (`src/pages/VisualizationDemo.tsx`)
+4. Integrate into Monitor (or your page). For app usage, wire into `src/components/Monitor/PrimaryVisualization` or add a feature toggle in `src/pages/Monitor.tsx`.
 
 See: [Extending Visualizations](./VISUALIZATION_ARCHITECTURE.md#extending-visualizations)
 
@@ -546,7 +546,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for contribution guidelines.
 Now that you're set up:
 
 1. **Explore the codebase**: Start with `src/visualization/`
-2. **Run the demo**: Visit https://localhost:8080/demo
+2. **Open Monitor**: Visit https://localhost:8080/monitor (append `?mockSdr=1` to force simulated mode)
 3. **Try the tests**: Run `npm test` and `npm run test:e2e`
 4. **Read the architecture docs**: Understand the design patterns
 5. **Pick an issue**: Find "good first issue" labels

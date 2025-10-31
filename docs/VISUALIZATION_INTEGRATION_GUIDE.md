@@ -531,7 +531,7 @@ Benefits of the new pattern:
 ## Resources
 
 - **API Reference**: `src/visualization/README.md`
-- **Examples**: `src/pages/VisualizationDemo.tsx`
+- **Examples**: `src/components/Monitor/PrimaryVisualization.tsx`
 - **Tests**: `src/visualization/processors/__tests__/`
 - **Architecture**: `docs/VISUALIZATION_ARCHITECTURE.md`
 - **DSP Utilities**: `src/utils/dsp.ts`, `src/utils/dspProcessing.ts`

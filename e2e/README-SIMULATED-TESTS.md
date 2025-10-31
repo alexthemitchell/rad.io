@@ -13,7 +13,7 @@ Comprehensive tests tagged with `@simulated` for isolated execution in the "simu
 **Test Suites:**
 
 1. **Visualization with Simulated Data** (4 tests)
-   - Render visualizations on demo page
+   - Render visualizations on the Monitor page
    - Display different signal patterns
    - Show continuous updates when streaming
    - Handle start/stop cycles correctly
@@ -66,9 +66,7 @@ The Playwright configuration defines three projects:
 
 ### Test Routes
 
-- **Demo Page**: `/demo`
-  - Uses `SimulatedSource` directly
-  - Tests fundamental visualization rendering
+// Demo page removed
 
 - **Monitor Page**: `/monitor?mockSdr=1`
   - Uses `MockSDRDevice` via query parameter
@@ -127,9 +125,8 @@ The `SimulatedSource` supports multiple signal patterns:
    });
    ```
 
-2. Use either:
-   - Demo page: `/demo` for `SimulatedSource` tests
-   - Monitor page: `/monitor?mockSdr=1` for `MockSDRDevice` tests
+2. Use:
+   - Monitor page: `/monitor?mockSdr=1` for simulated (`MockSDRDevice`) and device tests
 
 ### Debugging Tests
 

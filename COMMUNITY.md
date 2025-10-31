@@ -63,7 +63,7 @@ For contributing code and documentation:
 
 3. **Explore the Project**
    - Browse the [docs/](./docs/) directory
-   - Try the demo at `https://localhost:8080/demo`
+   - Try the app at `https://localhost:8080/monitor` (append `?mockSdr=1` to simulate)
    - Run tests: `npm test`
 
 4. **Find Your First Issue**

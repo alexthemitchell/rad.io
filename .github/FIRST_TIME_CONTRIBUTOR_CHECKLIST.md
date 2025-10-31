@@ -53,7 +53,7 @@ Welcome! This checklist will guide you through making your first contribution to
 
   > **Note:** HTTPS is required for WebUSB functionality. The development server uses a self-signed certificate; you will need to accept this certificate in your browser to access the site and use WebUSB features.
 
-- [ ] Try the demo page: https://localhost:8080/demo
+- [ ] Open Monitor: https://localhost:8080/monitor (use `?mockSdr=1` for simulated mode)
 - [ ] Run tests to see everything works:
 
   ```bash
