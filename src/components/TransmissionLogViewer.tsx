@@ -180,8 +180,8 @@ export default function TransmissionLogViewer(): React.JSX.Element {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    // Revoke immediately after triggering download to avoid leaks
-    URL.revokeObjectURL(url);
+    // Revoke shortly after click to ensure some browsers complete the download
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   };
 
   const formatDuration = (ms: number): string => {

@@ -171,7 +171,7 @@ Design rationale and concepts:
 
 - Modern web browser with WebUSB support (Chrome 61+, Edge 79+, Opera 48+)
 - HTTPS context (required for WebUSB)
-- Compatible SDR device (HackRF One, RTL-SDR, etc.) - _optional for development_
+- Compatible SDR device (HackRF One, RTL-SDR, etc.) - *optional for development*
 
 ### Installation
 
@@ -225,13 +225,13 @@ npm run build
 
 ### Tuning to a Station
 
-**Method 1: Preset Stations**
+#### Method 1: Preset Stations
 
 1. Select signal type (FM/AM)
 2. Click a preset station button
 3. Device automatically tunes to the frequency
 
-**Method 2: Manual Entry**
+#### Method 2: Manual Entry
 
 1. Enter frequency in the input field
 2. Units automatically adjust (MHz for FM, kHz for AM)

@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD036 -->
 # Formula Reference
 
 ## Frequency and Wavelength

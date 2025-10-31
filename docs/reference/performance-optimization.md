@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD036 -->
 # Performance Optimization for Browser-Based SDR
 
 ## Overview

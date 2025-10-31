@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { WATERFALL_COLORMAPS } from "../constants";
+import {
+  WATERFALL_COLORMAP_NAMES,
+  type WaterfallColormapName,
+} from "../constants";
 import { useSettings } from "../contexts";
 
 /**
@@ -35,8 +38,8 @@ function Settings(): React.JSX.Element {
   >("display");
   // Notifications will be integrated when actions are implemented
   const { settings, setSettings, resetSettings } = useSettings();
-  const colorNames = useMemo<string[]>(
-    () => Object.keys(WATERFALL_COLORMAPS as Record<string, unknown>),
+  const colorNames = useMemo<WaterfallColormapName[]>(
+    () => WATERFALL_COLORMAP_NAMES,
     [],
   );
 
@@ -158,12 +161,7 @@ function Settings(): React.JSX.Element {
                 <select
                   aria-label="Spectrogram colormap"
                   value={settings.colorMap}
-                  onChange={(e) =>
-                    setSettings({
-                      colorMap: e.target
-                        .value as keyof typeof WATERFALL_COLORMAPS,
-                    })
-                  }
+                  onChange={(e) => setSettings({ colorMap: e.target.value })}
                 >
                   {colorNames.map((name) => (
                     <option key={name} value={name}>

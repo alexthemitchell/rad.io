@@ -148,7 +148,7 @@ export class P25TransmissionLogger {
       const objectStore = transaction.objectStore(STORE_NAME);
       const records: TransmissionRecord[] = [];
 
-      let request: IDBRequest;
+      let request: IDBRequest<IDBCursorWithValue | null>;
 
       // Use index if filtering by specific field
       if (options.talkgroupId !== undefined) {
@@ -171,39 +171,38 @@ export class P25TransmissionLogger {
       const offset = options.offset ?? 0;
 
       request.onsuccess = (event: Event): void => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>)
+          .result;
+        if (cursor === null) {
+          resolve(records);
+          return;
+        }
+        const record = cursor.value as TransmissionRecord;
 
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (cursor) {
-          const record = cursor.value as TransmissionRecord;
+        // Apply filters
+        let include = true;
 
-          // Apply filters
-          let include = true;
+        if (options.startTime && record.timestamp < options.startTime) {
+          include = false;
+        }
 
-          if (options.startTime && record.timestamp < options.startTime) {
-            include = false;
+        if (options.endTime && record.timestamp > options.endTime) {
+          include = false;
+        }
+
+        if (options.minQuality && record.signalQuality < options.minQuality) {
+          include = false;
+        }
+
+        if (include) {
+          if (count >= offset && records.length < limit) {
+            records.push(record);
           }
+          count++;
+        }
 
-          if (options.endTime && record.timestamp > options.endTime) {
-            include = false;
-          }
-
-          if (options.minQuality && record.signalQuality < options.minQuality) {
-            include = false;
-          }
-
-          if (include) {
-            if (count >= offset && records.length < limit) {
-              records.push(record);
-            }
-            count++;
-          }
-
-          if (records.length < limit) {
-            cursor.continue();
-          } else {
-            resolve(records);
-          }
+        if (records.length < limit) {
+          cursor.continue();
         } else {
           resolve(records);
         }
@@ -278,51 +277,51 @@ export class P25TransmissionLogger {
       }
 
       request.onsuccess = (event: Event): void => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (cursor) {
-          const record = cursor.value as TransmissionRecord;
-          // Apply remaining filters
-          let matches = true;
-
-          if (
-            options.talkgroupId !== undefined &&
-            record.talkgroupId !== options.talkgroupId
-          ) {
-            matches = false;
-          }
-          if (
-            options.sourceId !== undefined &&
-            record.sourceId !== options.sourceId
-          ) {
-            matches = false;
-          }
-          if (
-            options.startTime !== undefined &&
-            record.timestamp < options.startTime
-          ) {
-            matches = false;
-          }
-          if (
-            options.endTime !== undefined &&
-            record.timestamp > options.endTime
-          ) {
-            matches = false;
-          }
-          if (
-            options.minQuality !== undefined &&
-            record.signalQuality < options.minQuality
-          ) {
-            matches = false;
-          }
-
-          if (matches) {
-            count++;
-          }
-          cursor.continue();
-        } else {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>)
+          .result;
+        if (cursor === null) {
           resolve(count);
+          return;
         }
+        const record = cursor.value as TransmissionRecord;
+        // Apply remaining filters
+        let matches = true;
+
+        if (
+          options.talkgroupId !== undefined &&
+          record.talkgroupId !== options.talkgroupId
+        ) {
+          matches = false;
+        }
+        if (
+          options.sourceId !== undefined &&
+          record.sourceId !== options.sourceId
+        ) {
+          matches = false;
+        }
+        if (
+          options.startTime !== undefined &&
+          record.timestamp < options.startTime
+        ) {
+          matches = false;
+        }
+        if (
+          options.endTime !== undefined &&
+          record.timestamp > options.endTime
+        ) {
+          matches = false;
+        }
+        if (
+          options.minQuality !== undefined &&
+          record.signalQuality < options.minQuality
+        ) {
+          matches = false;
+        }
+
+        if (matches) {
+          count++;
+        }
+        cursor.continue();
       };
 
       request.onerror = (): void => {
@@ -346,16 +345,15 @@ export class P25TransmissionLogger {
       let deletedCount = 0;
 
       request.onsuccess = (event: Event): void => {
-        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
-
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (cursor) {
-          cursor.delete();
-          deletedCount++;
-          cursor.continue();
-        } else {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue | null>)
+          .result;
+        if (cursor === null) {
           resolve(deletedCount);
+          return;
         }
+        cursor.delete();
+        deletedCount++;
+        cursor.continue();
       };
 
       request.onerror = (): void => {

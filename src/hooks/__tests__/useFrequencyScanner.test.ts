@@ -146,6 +146,7 @@ describe("useFrequencyScanner", () => {
       expect(result.current.config).toEqual({
         startFrequency: 88e6,
         endFrequency: 108e6,
+        stepSizeHz: 100e3,
         thresholdDb: 10,
         dwellTime: 100,
         fftSize: 2048,

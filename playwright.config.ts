@@ -29,7 +29,9 @@ export default defineConfig({
   /* Constrain workers; allow local override via PW_WORKERS, default 2 locally and 1 on CI */
   workers: process.env["CI"]
     ? 1
-    : (Number(process.env["PW_WORKERS"]) > 0 ? Number(process.env["PW_WORKERS"]) : 2),
+    : Number(process.env["PW_WORKERS"]) > 0
+      ? Number(process.env["PW_WORKERS"])
+      : 2,
 
   /* Reporter to use */
   // Include GitHub reporter for richer annotations in CI

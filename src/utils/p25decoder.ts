@@ -23,6 +23,7 @@ import { type Sample } from "./dsp";
 // Minimum bits required to parse a basic Group Voice LCW (format + TGID + partial source)
 const MIN_GVCHU_BITS = 48;
 
+// Note: Assumes MSB-first bit ordering in the input array (bits[0] is the most significant)
 function extractBitsAsNumber(
   bits: number[],
   start: number,

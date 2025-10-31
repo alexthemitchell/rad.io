@@ -11,8 +11,8 @@
     "lint:fix": "eslint src --fix",
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
-    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#coverage\" \"#dist\" \"#build\"",
-    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#coverage\" \"#dist\" \"#build\"",
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#coverage\" \"#dist\" \"#build\" \"#test-results\" \"#playwright-report\"",
+    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#coverage\" \"#dist\" \"#build\" \"#test-results\" \"#playwright-report\"",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:components": "jest --coverage src/components/__tests__/",
@@ -38,6 +38,11 @@
   "author": "Alex Mitchell <alex@alexmitchelltech.com>",
   "license": "UNLICENSED",
   "private": true,
+  "markdownlint-cli2": {
+    "config": {
+      "MD036": false
+    }
+  },
   "devDependencies": {
     "@assemblyscript/loader": "^0.28.8",
     "@axe-core/playwright": "^4.11.0",
