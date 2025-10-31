@@ -292,7 +292,32 @@ export function useFrequencyScanner(
         for (const peak of peaks) {
           // Classify the signal
           const classifiedSignal = signalClassifierRef.current.classify(
-            peak,
+            {
+              binIndex: peak.binIndex,
+              frequency: peak.frequency,
+              power: peak.powerDb,
+              bandwidth: ((): number => {
+                const bin = peak.binIndex;
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const peakPower = powerSpectrum[bin]!;
+                const halfPower = peakPower - 3; // -3 dB width approximation
+                let left = bin;
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                while (left > 0 && powerSpectrum[left]! > halfPower) {
+                  left--;
+                }
+                let right = bin;
+                const len = powerSpectrum.length;
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                while (right < len - 1 && powerSpectrum[right]! > halfPower) {
+                  right++;
+                }
+                const binsWidth = Math.max(1, right - left);
+                const freqRes = sampleRate / len;
+                return binsWidth * freqRes;
+              })(),
+              snr: peak.powerDb - noiseFloor,
+            },
             powerSpectrum,
           );
 

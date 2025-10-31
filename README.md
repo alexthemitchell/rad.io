@@ -171,7 +171,7 @@ Design rationale and concepts:
 
 - Modern web browser with WebUSB support (Chrome 61+, Edge 79+, Opera 48+)
 - HTTPS context (required for WebUSB)
-- Compatible SDR device (HackRF One, RTL-SDR, etc.) - _optional for development_
+- Compatible SDR device (HackRF One, RTL-SDR, etc.) - *optional for development*
 
 ### Installation
 
@@ -362,7 +362,7 @@ Interactive controls are implemented via `src/hooks/useVisualizationInteraction.
 
 ### P25 Phase 2 Digital Radio
 
-**Monitoring P25 Systems**
+#### Monitoring P25 Systems
 
 1. Select "P25" signal type
 2. Configure system parameters:
@@ -373,7 +373,7 @@ Interactive controls are implemented via `src/hooks/useVisualizationInteraction.
 3. Add talkgroups to monitor
 4. Start reception to decode transmissions
 
-**Understanding P25 Indicators**
+#### Understanding P25 Indicators
 
 - **Phase**: Shows P25 Phase 2 when decoding TDMA signals
 - **TDMA Slot**: Indicates which time slot (1 or 2) is active

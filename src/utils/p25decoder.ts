@@ -421,11 +421,8 @@ export function extractTalkgroupInfo(bits: number[]): {
   talkgroupId?: number;
   sourceId?: number;
 } {
-  // Placeholder implementation - returns empty object until full
-  // P25 frame parsing is implemented. Talkgroup and source IDs should
-  // be passed explicitly to decodeP25Phase2WithLogging if available
-  // from other sources (e.g., system configuration or network metadata).
-  return {};
+  // Note: Simplified LCW parsing below; real systems should implement
+  // full format detection and error correction.
   // P25 Phase 2 Link Control Word (LCW) parsing
   // This is a simplified implementation focusing on Group Voice Channel User (GVCHU) format
   //

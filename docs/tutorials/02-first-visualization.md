@@ -274,7 +274,9 @@ import { SimpleSpectrumExample } from './pages/SimpleSpectrumExample';
 2. Navigate to your example:
 
    ```
+
   https://localhost:8080/#/examples/simple-spectrum
+
    ```
 
   **Note**: The URL uses HTTPS (required for WebUSB support) and hash-based routing (`#/`). The `/examples/*` routes are for local development only and should not be committed to navigation for production.
@@ -298,6 +300,7 @@ Let's break down the key concepts:
 ### Data Flow
 
 ```
+
 generateAnimatedFFT()
     ↓
 fftData (state)
@@ -307,6 +310,7 @@ SimpleSpectrum component
 useEffect (on data change)
     ↓
 Canvas rendering
+
 ```
 
 ### React Patterns

@@ -43,6 +43,7 @@ The scanner UI now includes a "Type" column that displays:
 - **Confidence**: Percentage indicating classification certainty (e.g., "WFM (90%)")
 
 Example table row:
+
 ```
 Frequency  | Strength | Type       | Station | RDS Info | Time
 98.100 MHz | 85.0%    | WFM (90%)  | WXYZ    | Rock 98  | 12:34:56
@@ -80,6 +81,7 @@ Comprehensive test coverage includes:
 - Integration tests in scanner hook (`src/hooks/__tests__/useFrequencyScanner.test.ts`)
 
 Test scenarios:
+
 - Classification of known signal types
 - Display of type and confidence in UI
 - Unknown signal handling

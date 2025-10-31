@@ -32,7 +32,7 @@ All contributors who have:
   - Specific contribution 2
 -->
 
-_Your name could be here! Submit your first PR and add yourself to this list._
+*Your name could be here! Submit your first PR and add yourself to this list.*
 
 ## Contribution Types
 
@@ -88,4 +88,4 @@ If you've contributed but don't see your name here, please add yourself or let u
 
 ---
 
-_Last updated: 2025-10-30_
+*Last updated: 2025-10-30*

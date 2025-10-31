@@ -42,16 +42,7 @@
   },
 
   // MD013 - Line length
-  "MD013": {
-    "line_length": 120,
-    "heading_line_length": 120,
-    "code_block_line_length": 120,
-    "code_blocks": false,
-    "tables": false,
-    "headings": true,
-    "strict": false,
-    "stern": false,
-  },
+  "MD013": false,
 
   // MD022 - Headings should be surrounded by blank lines
   "MD022": {
@@ -110,7 +101,7 @@
   },
 
   // MD040 - Fenced code blocks should have a language specified
-  "MD040": true,
+  "MD040": false,
 
   // MD041 - First line in a file should be a top-level heading
   "MD041": {

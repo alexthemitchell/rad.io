@@ -236,6 +236,7 @@ The transmission logs are stored in an IndexedDB database with the following str
 ## Browser Compatibility
 
 IndexedDB is supported in all modern browsers:
+
 - Chrome/Edge 24+
 - Firefox 16+
 - Safari 10+
@@ -244,6 +245,7 @@ IndexedDB is supported in all modern browsers:
 ## Future Enhancements
 
 Potential future improvements:
+
 1. **Priority Scanning Logic**: Implement automatic switching to high-priority talkgroups
 2. **Real-time Alerts**: Notify when specific talkgroups become active
 3. **Statistical Analysis**: Aggregate transmission patterns and metrics
@@ -253,11 +255,13 @@ Potential future improvements:
 ## Testing
 
 Comprehensive test coverage:
+
 - `src/utils/__tests__/p25TransmissionLog.test.ts` - Logger tests
 - `src/components/__tests__/TalkgroupScanner.test.tsx` - Scanner tests
 - `src/components/__tests__/TransmissionLogViewer.test.tsx` - Viewer tests
 
 Run tests:
+
 ```bash
 npm test -- --testPathPatterns=p25
 ```
