@@ -61,7 +61,7 @@ const decoded = await decodeP25Phase2WithLogging(
   samples,
   config,
   {
-    logger: logger,
+    logger,
     transmissionStartTime: transmissionStartTime
   }
 );
