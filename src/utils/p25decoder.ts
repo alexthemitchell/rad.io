@@ -409,11 +409,23 @@ export function getFrameDescription(frame: P25Frame): string {
 /**
  * Extract talkgroup information from P25 frame bits
  * (Simplified - real implementation would parse the full frame structure)
+ *
+ * TODO: Implement full Link Control Word (LCW) parsing to extract:
+ * - Talkgroup ID from bits 48-63 of voice header
+ * - Source ID from bits 64-87 of voice header
+ * - Parse frame header structure per TIA-102 CAAB specification
+ * This requires understanding the complete P25 Phase 2 frame structure
+ * including sync patterns, network identifiers, and control fields.
  */
 export function extractTalkgroupInfo(bits: number[]): {
   talkgroupId?: number;
   sourceId?: number;
 } {
+  // Placeholder implementation - returns empty object until full
+  // P25 frame parsing is implemented. Talkgroup and source IDs should
+  // be passed explicitly to decodeP25Phase2WithLogging if available
+  // from other sources (e.g., system configuration or network metadata).
+  return {};
   // P25 Phase 2 Link Control Word (LCW) parsing
   // This is a simplified implementation focusing on Group Voice Channel User (GVCHU) format
   //
@@ -474,4 +486,67 @@ export function extractTalkgroupInfo(bits: number[]): {
     talkgroupId: talkgroupId !== 0 ? talkgroupId : undefined,
     sourceId: sourceId !== 0 ? sourceId : undefined,
   };
+}
+
+/**
+ * Decode P25 Phase 2 with automatic transmission logging
+ *
+ * This wrapper around decodeP25Phase2 automatically logs completed transmissions
+ * to IndexedDB for historical tracking and analysis.
+ *
+ * @param samples - IQ samples to decode
+ * @param config - Decoder configuration
+ * @param options - Logging options
+ * @returns Decoded P25 data
+ */
+export async function decodeP25Phase2WithLogging(
+  samples: Sample[],
+  config: P25DecoderConfig = DEFAULT_P25_CONFIG,
+  options: {
+    logger?: {
+      logTransmission: (
+        record: {
+          timestamp: number;
+          talkgroupId?: number;
+          sourceId?: number;
+          duration: number;
+          signalQuality: number;
+          slot: number;
+          isEncrypted: boolean;
+          errorRate: number;
+        },
+      ) => Promise<number>;
+    };
+    transmissionStartTime?: number;
+  } = {},
+): Promise<P25DecodedData> {
+  const decoded = decodeP25Phase2(samples, config);
+
+  // If we have frames and a logger, log the transmission
+  if (
+    decoded.frames.length > 0 &&
+    options.logger &&
+    options.transmissionStartTime
+  ) {
+    const endTime = Date.now();
+    const duration = endTime - options.transmissionStartTime;
+
+    // Log each slot as a separate transmission
+    for (const frame of decoded.frames) {
+      const talkgroupInfo = extractTalkgroupInfo(frame.bits);
+
+      await options.logger.logTransmission({
+        timestamp: frame.timestamp,
+        talkgroupId: talkgroupInfo.talkgroupId ?? decoded.talkgroupId,
+        sourceId: talkgroupInfo.sourceId ?? decoded.sourceId,
+        duration,
+        signalQuality: frame.signalQuality,
+        slot: frame.slot,
+        isEncrypted: decoded.isEncrypted,
+        errorRate: decoded.errorRate,
+      });
+    }
+  }
+
+  return decoded;
 }
