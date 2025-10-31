@@ -256,6 +256,8 @@ test.describe("Monitor - Waterfall Display", () => {
         
         // Frequency may have changed (depends on implementation)
         const newFreq = await freqInput.inputValue();
+        // Assert that frequency has changed after click (click-to-tune)
+        expect(newFreq).not.toEqual(initialFreq);
         // Note: Test documents intended behavior; may not be implemented yet
       }
     }

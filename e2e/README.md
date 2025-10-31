@@ -21,7 +21,7 @@ The test suite serves multiple purposes:
 
 ### Primary Workspace Tests
 
-#### 1. `monitor-comprehensive.spec.ts` (507 lines, ~42 tests)
+#### 1. `monitor-comprehensive.spec.ts` (594 lines, ~42 tests)
 **Monitor workspace** - The default/primary view for real-time spectrum analysis
 
 **Coverage:**
@@ -41,7 +41,7 @@ The test suite serves multiple purposes:
 - WCAG 2.1 AA compliance (ADR-0017, ADR-0023)
 - Keyboard-first operation (UI Design Spec)
 
-#### 2. `scanner-comprehensive.spec.ts` (430 lines, ~35 tests)
+#### 2. `scanner-comprehensive.spec.ts` (514 lines, ~35 tests)
 **Scanner workspace** - Automated frequency scanning and activity logging
 
 **Coverage:**
@@ -62,7 +62,7 @@ The test suite serves multiple purposes:
 - Detection reliability >95% above squelch (PRD)
 - Activity log with waterfall thumbnails (PRD)
 
-#### 3. `workspaces-comprehensive.spec.ts` (653 lines, ~62 tests)
+#### 3. `workspaces-comprehensive.spec.ts` (640 lines, ~62 tests)
 **Decode, Analysis, and Recordings workspaces**
 
 **Decode Workspace Coverage:**
@@ -96,7 +96,7 @@ The test suite serves multiple purposes:
 
 ### Global UI and Navigation Tests
 
-#### 4. `navigation-and-panels.spec.ts` (859 lines, ~87 tests)
+#### 4. `navigation-and-panels.spec.ts` (708 lines, ~87 tests)
 **Navigation, panels, keyboard shortcuts, and settings**
 
 **Coverage:**

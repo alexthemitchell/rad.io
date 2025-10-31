@@ -147,7 +147,6 @@ test.describe("Decode - RTTY Decoder", () => {
     
     // Look for copy/save buttons
     const copyBtn = page.getByRole("button", { name: /copy/i });
-    const saveBtn = page.getByRole("button", { name: /save.*text|export.*text/i });
     
     if (await copyBtn.count() > 0) {
       await expect(copyBtn.first()).toBeVisible();
@@ -245,7 +244,6 @@ test.describe("Decode - General Controls", () => {
     await page.goto("/decode");
     
     const startBtn = page.getByRole("button", { name: /start.*decode/i });
-    const stopBtn = page.getByRole("button", { name: /stop.*decode/i });
     
     if (await startBtn.count() > 0) {
       await expect(startBtn.first()).toBeVisible();
@@ -370,6 +368,9 @@ test.describe("Analysis - Measurements", () => {
     // Look for cursor controls or keyboard hints
     const cursorHint = page.getByText(/cursor|marker/i);
     
+    if (await cursorHint.count() > 0) {
+      await expect(cursorHint.first()).toBeVisible();
+    }
     // Documents expected interactive measurement capability
   });
 
@@ -397,10 +398,6 @@ test.describe("Analysis - Measurements", () => {
 test.describe("Analysis - Spectrogram Zoom", () => {
   test("should support deep zoom into spectrum", async ({ page }) => {
     await page.goto("/analysis?mockSdr=1");
-    
-    // Look for zoom controls
-    const zoomInBtn = page.getByRole("button", { name: /zoom.*in|\+/i });
-    const zoomOutBtn = page.getByRole("button", { name: /zoom.*out|\-/i });
     
     // Keyboard shortcuts per UI Design Spec: Z for zoom to selection
     await page.keyboard.press("z");
@@ -490,6 +487,11 @@ test.describe("Recordings - Library Display", () => {
     const freqCol = page.getByRole("columnheader", { name: /frequency/i });
     
     // Documents expected metadata display per PRD
+    if (await timestampCol.count() > 0) {
+      await expect(timestampCol.first()).toBeVisible();
+      await expect(durationCol.first()).toBeVisible();
+      await expect(freqCol.first()).toBeVisible();
+    }
   });
 });
 
@@ -614,6 +616,9 @@ test.describe("Recordings - Management", () => {
     
     // Per PRD: warnings at 70%/85%/95%
     // Documents expected quota management
+    if (await storageWarning.count() > 0) {
+      await expect(storageWarning.first()).toBeVisible();
+    }
   });
 });
 
