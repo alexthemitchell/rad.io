@@ -79,6 +79,7 @@
   --rad-surface-2: oklch(22% 0.02 240deg);
   --rad-fg: oklch(90% 0.005 240deg);
   --rad-fg-muted: oklch(62% 0.01 240deg);
+
   /* Increase contrast for text on brand backgrounds */
   --rad-primary: oklch(47% 0.18 240deg); /* Electric Blue (darker for AA contrast) */
   --rad-primary-foreground: oklch(98% 0 0deg);

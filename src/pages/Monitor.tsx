@@ -4,20 +4,20 @@ import React, {
   useState,
 } from "react";
 import AudioControls from "../components/AudioControls";
-import StatusBar from "../components/StatusBar";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
 import RecordingControls from "../components/RecordingControls";
 import SignalStrengthMeter from "../components/SignalStrengthMeter";
+import StatusBar from "../components/StatusBar";
 import { WATERFALL_COLORMAPS } from "../constants";
 import { useDevice } from "../contexts/DeviceContext";
 import { useFrequency } from "../contexts/FrequencyContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useDsp } from "../hooks/useDsp";
 import { useFrequencyScanner, type ActiveSignal } from "../hooks/useFrequencyScanner";
+import { shouldUseMockSDR } from "../utils/e2e";
 import { formatFrequency } from "../utils/frequency";
 import type { IQSample } from "../models/SDRDevice";
-import { shouldUseMockSDR } from "../utils/e2e";
 
 declare global {
   interface Window {
@@ -157,7 +157,7 @@ const Monitor: React.FC = () => {
         err instanceof Error ? `Start failed: ${err.message}` : "Start failed",
       );
     }
-  }, [device, tuneDevice, startDsp, scanner, isReceiving]);
+  }, [device, tuneDevice, startDsp, scanner, isReceiving, useMock]);
 
   const handleStop = useCallback(async (): Promise<void> => {
     try {
@@ -228,7 +228,7 @@ const Monitor: React.FC = () => {
 
       {/* Page status message will be surfaced via the StatusBar below to maintain a single status region. */}
 
-      <section aria-labelledby="visualization-heading" role="region" aria-label="Spectrum visualization">
+      <section aria-labelledby="visualization-heading" aria-label="Spectrum visualization">
         <h2 id="visualization-heading">Visualization</h2>
         <div
           role="group"

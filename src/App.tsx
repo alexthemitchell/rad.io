@@ -31,7 +31,7 @@ function App(): React.JSX.Element {
     preloadWasmModule();
   }, []);
 
-  const metrics = useStatusMetrics();
+  const _metrics = useStatusMetrics();
   const [showRenderingSettings, setShowRenderingSettings] = useState(false);
 
   return (

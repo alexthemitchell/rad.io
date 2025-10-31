@@ -216,7 +216,7 @@ function StatusBar({
     }
   };
 
-  const getBufferHealthColor = (health: number): string => {
+  const _getBufferHealthColor = (health: number): string => {
     if (health >= 80) {
       return "var(--rad-success)"; // Good
     }
@@ -226,7 +226,7 @@ function StatusBar({
     return "var(--rad-danger)"; // Critical
   };
 
-  const getStorageColor = (used: number, quota: number): string => {
+  const _getStorageColor = (used: number, quota: number): string => {
     if (quota === 0) {
       return "var(--rad-fg-muted)";
     }
@@ -274,7 +274,7 @@ function StatusBar({
     return "status-ok";
   };
 
-  const getAudioColor = (
+  const _getAudioColor = (
     state: StatusBarProps["audioState"],
     clipping: boolean,
   ): string => {
