@@ -182,20 +182,28 @@ export function useDSPPipeline(
     const rfResult = processRFInput(device, rawSamples);
 
     // Stage 2: Tuner
-    const tunerParams = (initialStages[1]?.parameters ?? {}) as {
+    const tunerParamsBase = (initialStages[1]?.parameters ?? {}) as {
       frequency: number;
       bandwidth: number;
       loOffset: number;
     };
-    const tunerResult = processTuner(rfResult.output, tunerParams);
-
-    // Stage 3: IQ Sampling
     const iqParams = (initialStages[2]?.parameters ?? {}) as {
       sampleRate: number;
       dcCorrection: boolean;
       iqBalance: boolean;
     };
-    const iqResult = processIQSampling(tunerResult.output, iqParams);
+    const tunerResult = processTuner(rfResult.output, {
+      ...tunerParamsBase,
+      sampleRate: iqParams.sampleRate,
+    });
+
+    // Stage 3: IQ Sampling
+    const iqParams2 = (initialStages[2]?.parameters ?? {}) as {
+      sampleRate: number;
+      dcCorrection: boolean;
+      iqBalance: boolean;
+    };
+    const iqResult = processIQSampling(tunerResult.output, iqParams2);
 
     // Stage 4: FFT
     const fftParams = (initialStages[3]?.parameters ?? {}) as {

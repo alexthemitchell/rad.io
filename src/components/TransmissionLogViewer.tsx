@@ -176,8 +176,12 @@ export default function TransmissionLogViewer(): React.JSX.Element {
     const a = document.createElement("a");
     a.href = url;
     a.download = `p25-transmissions-${Date.now()}.csv`;
+    // Append to DOM to ensure click works in all browsers
+    document.body.appendChild(a);
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    document.body.removeChild(a);
+    // Revoke immediately after triggering download to avoid leaks
+    URL.revokeObjectURL(url);
   };
 
   const formatDuration = (ms: number): string => {

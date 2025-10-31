@@ -375,5 +375,8 @@ export default defineConfig([
       "prettier/prettier": "error",
     },
   },
-  eslintConfigPrettier,
+  {
+    name: "rad.io/config-prettier",
+    ...eslintConfigPrettier,
+  },
 ]);

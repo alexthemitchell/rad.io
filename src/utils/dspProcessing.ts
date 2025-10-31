@@ -8,6 +8,12 @@ import {
 import type { Sample } from "./dsp";
 import type { ISDRDevice } from "../models/SDRDevice";
 
+// Threshold constants (avoid magic numbers)
+const DC_OFFSET_THRESHOLD = 1e-3; // Minimum absolute DC component to correct
+const MIN_RMS_THRESHOLD = 1e-10; // Avoid divide-by-zero/instability
+const GAIN_ERROR_THRESHOLD = 1e-2; // Minimum gain error to warrant correction
+const PHASE_ERROR_THRESHOLD = 1e-2; // Minimum phase error (radians) to warrant correction
+
 /**
  * Windowing Functions for DSP
  * Used to reduce spectral leakage in FFT analysis
@@ -322,14 +328,24 @@ export function processRFInput(
 
 export function processTuner(
   samples: Sample[],
-  params: { frequency: number; bandwidth: number; loOffset: number },
+  params: {
+    frequency: number;
+    bandwidth: number;
+    loOffset: number;
+    /**
+     * Optional sample rate. If provided, LO offset normalization will use this rather than bandwidth.
+     * Using sampleRate is the correct normalization for digital frequency shifting.
+     */
+    sampleRate?: number;
+  },
 ): { output: Sample[]; metrics: { actualFreq: number } } {
   // Apply frequency shift if LO offset is specified
   // Frequency shifting is done by multiplying samples with complex exponential: e^(j*2π*f*t)
   // This shifts the spectrum by the LO offset frequency
   if (params.loOffset !== 0 && samples.length > 0) {
     const shifted: Sample[] = [];
-    const normalizedOffset = params.loOffset / params.bandwidth; // Normalize to sample rate
+    const denom = params.sampleRate ?? params.bandwidth;
+    const normalizedOffset = denom !== 0 ? params.loOffset / denom : 0; // Normalize by sample rate when available
 
     for (let i = 0; i < samples.length; i++) {
       const sample = samples[i];
@@ -382,8 +398,11 @@ export function processIQSampling(
     const dcOffsetI = sumI / samples.length;
     const dcOffsetQ = sumQ / samples.length;
 
-    // Only apply correction if DC offset is significant (> 0.001)
-    if (Math.abs(dcOffsetI) > 0.001 || Math.abs(dcOffsetQ) > 0.001) {
+    // Only apply correction if DC offset is significant
+    if (
+      Math.abs(dcOffsetI) > DC_OFFSET_THRESHOLD ||
+      Math.abs(dcOffsetQ) > DC_OFFSET_THRESHOLD
+    ) {
       // Remove DC offset
       output = output.map((sample) => ({
         I: sample.I - dcOffsetI,
@@ -410,7 +429,7 @@ export function processIQSampling(
     const rmsQ = Math.sqrt(sumQ2 / output.length);
 
     // Avoid division by zero
-    if (rmsI > 1e-10 && rmsQ > 1e-10) {
+    if (rmsI > MIN_RMS_THRESHOLD && rmsQ > MIN_RMS_THRESHOLD) {
       // Gain imbalance correction factor
       const gainImbalance = rmsI / rmsQ;
 
@@ -424,7 +443,7 @@ export function processIQSampling(
       const gainError = Math.abs(gainImbalance - 1.0);
       const phaseError = Math.abs(phaseImbalance);
 
-      if (gainError > 0.01 || phaseError > 0.01) {
+      if (gainError > GAIN_ERROR_THRESHOLD || phaseError > PHASE_ERROR_THRESHOLD) {
         // Apply corrections
         output = output.map((sample) => {
           // Correct gain imbalance

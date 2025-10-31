@@ -25,8 +25,9 @@ const DEFAULTS: SettingsState = {
   showWaterfall: true,
   fftSize: 4096,
   colorMap: "turbo",
-  dbMin: -100,
-  dbMax: 0,
+  // Leave dB range undefined to allow auto-scaling by default
+  dbMin: undefined,
+  dbMax: undefined,
 };
 
 type SettingsContextValue = {
@@ -53,11 +54,25 @@ function loadFromStorage(): SettingsState | null {
     if (!allowedFft.includes(next.fftSize)) {
       next.fftSize = DEFAULTS.fftSize;
     }
-    if (next.dbMin !== undefined && typeof next.dbMin !== "number") {
-      next.dbMin = DEFAULTS.dbMin;
+    // Normalize dB range: allow undefined (auto). Coerce non-number/NaN to undefined.
+    if (next.dbMin !== undefined) {
+      if (typeof next.dbMin !== "number" || Number.isNaN(next.dbMin)) {
+        next.dbMin = undefined;
+      }
     }
-    if (next.dbMax !== undefined && typeof next.dbMax !== "number") {
-      next.dbMax = DEFAULTS.dbMax;
+    if (next.dbMax !== undefined) {
+      if (typeof next.dbMax !== "number" || Number.isNaN(next.dbMax)) {
+        next.dbMax = undefined;
+      }
+    }
+    if (
+      next.dbMin !== undefined &&
+      next.dbMax !== undefined &&
+      !(next.dbMin < next.dbMax)
+    ) {
+      // Invalid manual range; fall back to auto
+      next.dbMin = undefined;
+      next.dbMax = undefined;
     }
     return next;
   } catch {
@@ -88,7 +103,45 @@ export function SettingsProvider({
   }, [settings]);
 
   const setSettings = useCallback((partial: Partial<SettingsState>) => {
-    setSettingsState((prev) => ({ ...prev, ...partial }));
+    setSettingsState((prev) => {
+      const next: SettingsState = { ...prev, ...partial } as SettingsState;
+
+      // Enforce valid fftSize
+      const allowedFft = [1024, 2048, 4096, 8192];
+      if (!allowedFft.includes(next.fftSize)) {
+        next.fftSize = prev.fftSize;
+      }
+
+      // Normalize dB range entries (permit undefined)
+      if (Object.prototype.hasOwnProperty.call(partial, "dbMin")) {
+        const v = (partial as Partial<SettingsState>).dbMin;
+        if (v === undefined) {
+          next.dbMin = undefined;
+        } else if (typeof v !== "number" || Number.isNaN(v)) {
+          next.dbMin = prev.dbMin;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(partial, "dbMax")) {
+        const v = (partial as Partial<SettingsState>).dbMax;
+        if (v === undefined) {
+          next.dbMax = undefined;
+        } else if (typeof v !== "number" || Number.isNaN(v)) {
+          next.dbMax = prev.dbMax;
+        }
+      }
+
+      // Ensure dbMin < dbMax when both defined; otherwise fall back to auto
+      if (
+        next.dbMin !== undefined &&
+        next.dbMax !== undefined &&
+        !(next.dbMin < next.dbMax)
+      ) {
+        next.dbMin = undefined;
+        next.dbMax = undefined;
+      }
+
+      return next;
+    });
   }, []);
 
   const resetSettings = useCallback(() => {

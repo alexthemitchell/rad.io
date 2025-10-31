@@ -20,6 +20,17 @@
 
 import { type Sample } from "./dsp";
 
+// Minimum bits required to parse a basic Group Voice LCW (format + TGID + partial source)
+const MIN_GVCHU_BITS = 48;
+
+function extractBitsAsNumber(bits: number[], start: number, length: number): number {
+  let value = 0;
+  for (let i = start; i < start + length; i++) {
+    value = (value << 1) | (bits[i] ?? 0);
+  }
+  return value;
+}
+
 /**
  * P25 Phase 2 symbol mapping
  * H-DQPSK uses 4 phase shifts corresponding to 2 bits per symbol
@@ -439,8 +450,8 @@ export function extractTalkgroupInfo(bits: number[]): {
   // - CRC-16 verification
   // - Support for all LCW format types
 
-  // Need at least 48 bits for a minimal Group Voice LCW (format + talkgroup + partial source)
-  if (bits.length < 48) {
+  // Need at least minimal number of bits for Group Voice LCW parsing
+  if (bits.length < MIN_GVCHU_BITS) {
     return {};
   }
 
@@ -449,10 +460,7 @@ export function extractTalkgroupInfo(bits: number[]): {
   // 0x00 = Group Voice Channel User (GVCHU)
   // 0x03 = Unit to Unit Voice Channel User
   // 0x40 = Group Voice Channel Update (GVCHU)
-  let lcwFormat = 0;
-  for (let i = 0; i < 8; i++) {
-    lcwFormat = (lcwFormat << 1) | (bits[i] ?? 0);
-  }
+  const lcwFormat = extractBitsAsNumber(bits, 0, 8);
 
   // Only process Group Voice formats (0x00 and 0x40 are most common)
   if (lcwFormat !== 0x00 && lcwFormat !== 0x40) {
@@ -460,19 +468,11 @@ export function extractTalkgroupInfo(bits: number[]): {
   }
 
   // Extract talkgroup ID (16 bits, following the format byte)
-  let talkgroupId = 0;
-  for (let i = 8; i < 24; i++) {
-    talkgroupId = (talkgroupId << 1) | (bits[i] ?? 0);
-  }
+  const talkgroupId = extractBitsAsNumber(bits, 8, 16);
 
   // Extract source ID (24 bits, following the talkgroup ID)
   // Need at least 48 bits total
-  let sourceId = 0;
-  if (bits.length >= 48) {
-    for (let i = 24; i < 48; i++) {
-      sourceId = (sourceId << 1) | (bits[i] ?? 0);
-    }
-  }
+  const sourceId = bits.length >= MIN_GVCHU_BITS ? extractBitsAsNumber(bits, 24, 24) : 0;
 
   // Validate that we got meaningful values (not all zeros, which often indicates no data)
   if (talkgroupId === 0 && sourceId === 0) {
