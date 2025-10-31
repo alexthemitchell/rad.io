@@ -71,11 +71,11 @@ rad.io features a **comprehensive device integration framework** that enables pl
 
 **Developer Resources:**
 
-- 📖 [Device Integration Guide](docs/DEVICE_INTEGRATION.md) - Step-by-step instructions
+- 📖 [Add a New SDR Device Guide](docs/how-to/add-new-sdr-device.md) - Step-by-step instructions
 - 📚 [Architecture Documentation](ARCHITECTURE.md) - Framework design and patterns
-- 📝 [Device Template](src/models/templates/DeviceTemplate.ts) - Starter template for new devices
+- � See existing device implementations in `src/models/` for reference
 
-Adding a new device takes ~200 lines of code with the provided template and guide.
+Adding a new device takes ~200 lines of code following the patterns in existing implementations.
 
 ### Quality Assurance ✅
 
@@ -133,7 +133,8 @@ Step-by-step guides for beginners:
 Task-focused guides for specific goals:
 
 - [Add a New SDR Device](docs/how-to/add-new-sdr-device.md)
-- [Implement Demodulation](docs/how-to/implement-demodulation.md)
+- [Debug WebUSB Issues](docs/how-to/debug-webusb.md)
+- [Optimize DSP Performance](docs/how-to/optimize-dsp-performance.md)
 - [More how-tos →](docs/how-to/)
 
 ### 📖 [Reference](docs/reference/) - Look Up Details

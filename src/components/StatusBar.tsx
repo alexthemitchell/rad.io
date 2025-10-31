@@ -404,7 +404,9 @@ function StatusBar({
         ) : (
           <span
             className="status-bar-value"
-            style={{ color: getRenderTierColor(maxTier(renderTier, detectedTier)) }}
+            style={{
+              color: getRenderTierColor(maxTier(renderTier, detectedTier)),
+            }}
             title={`Rendering with ${maxTier(renderTier, detectedTier)}`}
           >
             {maxTier(renderTier, detectedTier)}

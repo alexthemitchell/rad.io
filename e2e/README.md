@@ -526,6 +526,7 @@ test.describe("Feature Name", () => {
    ```
 
 5. **Clean Up After Tests**
+
    ```typescript
    test.afterEach(async ({ page }) => {
      // Stop streaming

@@ -159,9 +159,7 @@ export class MockSDRDevice implements ISDRDevice {
     return this._bandwidth;
   }
 
-  async receive(
-    callback: (data: DataView) => void,
-  ): Promise<void> {
+  async receive(callback: (data: DataView) => void): Promise<void> {
     await Promise.resolve();
     if (!this._isOpen) {
       throw new Error("Device not open");

@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { dspWorkerPool } from "../workers/dspWorkerPool";
-import type { ISDRDevice, IQSampleCallback , IQSample } from "../models/SDRDevice";
+import type {
+  ISDRDevice,
+  IQSampleCallback,
+  IQSample,
+} from "../models/SDRDevice";
 import type { DspWorkerMessage } from "../workers/dspWorkerPool";
 
 interface UseDspOptions {
@@ -85,7 +89,7 @@ export function useDsp(
           const qSample = Math.cos(2 * Math.PI * (f2 * t));
           samples[i] = { I: iSample, Q: qSample };
         }
-        simPhaseRef.current = (t0 + N) % (1e9); // keep bounded
+        simPhaseRef.current = (t0 + N) % 1e9; // keep bounded
         dspWorkerPool.postMessage({
           type: "process",
           payload: {

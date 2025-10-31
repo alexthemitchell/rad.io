@@ -115,9 +115,7 @@ export class AirspyDeviceAdapter implements ISDRDevice {
     return Promise.resolve();
   }
 
-  async receive(
-    callback: IQSampleCallback,
-  ): Promise<void> {
+  async receive(callback: IQSampleCallback): Promise<void> {
     return this.device.receive((samples) => {
       // Convert IQSample[] to DataView for callback
       const buffer = new ArrayBuffer(samples.length * 4); // 4 bytes per sample (2 bytes I + 2 bytes Q)

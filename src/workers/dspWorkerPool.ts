@@ -93,7 +93,7 @@ class DspWorkerPool {
 // Constrain worker count under test automation to reduce resource pressure and improve stability.
 // Playwright and other automation set navigator.webdriver = true.
 const DEFAULT_POOL = 4;
-const workerCount = (((): number => {
+const workerCount = ((): number => {
   if (typeof navigator !== "undefined") {
     if (navigator.webdriver === true) {
       return 1;
@@ -101,6 +101,6 @@ const workerCount = (((): number => {
     return navigator.hardwareConcurrency || DEFAULT_POOL;
   }
   return DEFAULT_POOL;
-})());;
+})();
 
 export const dspWorkerPool = new DspWorkerPool(workerCount);
