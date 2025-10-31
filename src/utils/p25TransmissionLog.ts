@@ -231,7 +231,7 @@ export class P25TransmissionLogger {
       !options.sourceId &&
       !options.startTime &&
       !options.endTime &&
-      !options.minQuality
+      options.minQuality === undefined
     ) {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], "readonly");
