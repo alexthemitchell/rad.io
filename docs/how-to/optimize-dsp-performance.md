@@ -305,16 +305,28 @@ export function applyHannWindowWasm(samples: Sample[]): boolean {
 **Verify SIMD Usage:**
 
 ```typescript
-import { getOptimizationStatus } from "@/utils/dsp";
+import { getOptimizationStatus, isWasmSIMDSupported } from "@/utils/dsp";
 
 const status = getOptimizationStatus();
 console.log(status);
 // {
 //   wasmAvailable: true,
-//   wasmVariant: "simd",
-//   simdSupported: true,
-//   workersAvailable: true
+//   wasmVariant: "simd",  // "simd" | "standard" | "none"
+//   sharedArrayBuffer: true,
+//   webGPU: false,
+//   crossOriginIsolated: true
 // }
+
+// Check if SIMD is being used
+if (status.wasmVariant === "simd") {
+  console.log("✓ SIMD acceleration active - 2-4x speedup!");
+} else if (status.wasmVariant === "standard") {
+  console.log("✓ Standard WASM active - still faster than JS!");
+}
+
+// Or use direct detection
+const simdSupported = isWasmSIMDSupported();
+console.log(`Browser supports SIMD: ${simdSupported}`);
 ```
 
 ## Step 4: Memory Optimization

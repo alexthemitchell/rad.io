@@ -169,7 +169,21 @@ localStorage.removeItem("radio.wasm.validate");
 import { isWasmSIMDSupported, getOptimizationStatus } from "@/utils/dsp";
 
 console.log("SIMD supported:", isWasmSIMDSupported());
-console.log("Optimization status:", getOptimizationStatus());
+
+const status = getOptimizationStatus();
+console.log("Optimization status:", status);
+// {
+//   wasmAvailable: true,
+//   wasmVariant: "simd",  // "simd" | "standard" | "none"
+//   sharedArrayBuffer: true,
+//   webGPU: false,
+//   crossOriginIsolated: true
+// }
+
+// Check if SIMD is being used
+if (status.wasmVariant === "simd") {
+  console.log("✓ SIMD acceleration active!");
+}
 ```
 
 These settings take effect on next page load

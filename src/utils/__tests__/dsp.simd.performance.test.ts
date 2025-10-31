@@ -8,21 +8,7 @@ import {
   isWasmSIMDSupported,
   isWasmAvailable,
 } from "../dspWasm";
-// Sample type available if needed in future
-// import type { Sample } from "../dsp";
 
-// Note: generateTestSamples available if needed for future tests
-// function generateTestSamples(count: number): Sample[] {
-//   const samples: Sample[] = [];
-//   for (let i = 0; i < count; i++) {
-//     const t = i / count;
-//     samples.push({
-//       I: Math.cos(2 * Math.PI * 5 * t) * 0.8,
-//       Q: Math.sin(2 * Math.PI * 5 * t) * 0.8,
-//     });
-//   }
-//   return samples;
-// }
 
 // Measure execution time
 function measureTime(fn: () => void, iterations = 10): number {
