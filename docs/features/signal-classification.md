@@ -25,13 +25,13 @@ The classifier uses a heuristic-based approach with priority-ordered rules:
 
 ### Signal Types
 
-| Type | Bandwidth | Confidence | Common Uses |
-|------|-----------|------------|-------------|
-| WFM (Wideband FM) | 150-250 kHz | 90% | Commercial FM radio (88-108 MHz) |
-| NFM (Narrowband FM) | 12-30 kHz | 80% | Two-way radio, repeaters, amateur |
-| AM | 4-12 kHz | 70% | AM radio, aviation, amateur bands |
-| Digital | 1-5 kHz (sharp edges) | 60% | Digital voice, data modes (DMR, P25) |
-| Unknown | Outside ranges | 0% | Unrecognized modulation patterns |
+| Type                | Bandwidth             | Confidence | Common Uses                          |
+| ------------------- | --------------------- | ---------- | ------------------------------------ |
+| WFM (Wideband FM)   | 150-250 kHz           | 90%        | Commercial FM radio (88-108 MHz)     |
+| NFM (Narrowband FM) | 12-30 kHz             | 80%        | Two-way radio, repeaters, amateur    |
+| AM                  | 4-12 kHz              | 70%        | AM radio, aviation, amateur bands    |
+| Digital             | 1-5 kHz (sharp edges) | 60%        | Digital voice, data modes (DMR, P25) |
+| Unknown             | Outside ranges        | 0%         | Unrecognized modulation patterns     |
 
 ## UI Integration
 

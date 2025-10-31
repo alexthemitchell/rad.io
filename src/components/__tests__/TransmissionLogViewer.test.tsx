@@ -67,7 +67,9 @@ describe("TransmissionLogViewer", () => {
     expect(screen.getByLabelText(/Sort by timestamp/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Sort by talkgroup ID/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Sort by duration/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Sort by signal quality/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Sort by signal quality/i),
+    ).toBeInTheDocument();
   });
 
   it("should display filter controls", async () => {
@@ -75,9 +77,13 @@ describe("TransmissionLogViewer", () => {
       render(<TransmissionLogViewer />);
     });
 
-    expect(screen.getByLabelText(/Filter by talkgroup ID/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Filter by talkgroup ID/i),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/Filter by source ID/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Minimum signal quality filter/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Minimum signal quality filter/i),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/Start date filter/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/End date filter/i)).toBeInTheDocument();
   });
@@ -86,7 +92,9 @@ describe("TransmissionLogViewer", () => {
     await act(async () => {
       render(<TransmissionLogViewer />);
     });
-    expect(screen.getByLabelText(/Export transmissions to CSV/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Export transmissions to CSV/i),
+    ).toBeInTheDocument();
   });
 
   it("should have clear filters button", async () => {

@@ -180,8 +180,8 @@ describe("VisualizationWorkerManager", () => {
       // Simulate initialization response on the event listener path that the
       // manager awaits for resolve (addEventListener('message', handler))
       setTimeout(() => {
-        const addListenerCalls = (mockWorker.addEventListener as jest.Mock)
-          .mock.calls;
+        const addListenerCalls = (mockWorker.addEventListener as jest.Mock).mock
+          .calls;
         const messageHandler = addListenerCalls.find(
           (call) => call[0] === "message",
         )?.[1] as ((ev: MessageEvent) => void) | undefined;

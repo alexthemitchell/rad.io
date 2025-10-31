@@ -228,8 +228,12 @@ const Monitor: React.FC = () => {
   const handleVolumeChange = (vol: number): void => setVolume(vol * 100);
   const handleToggleMute = (): void => setIsMuted(!isMuted);
 
-  // Type helper for JSX prop inference
-  const colorKey = settings.colorMap as keyof typeof WATERFALL_COLORMAPS;
+  // Type helper for JSX prop inference - validate colorMap exists in WATERFALL_COLORMAPS
+  const colorKey = (
+    Object.keys(WATERFALL_COLORMAPS).includes(settings.colorMap)
+      ? settings.colorMap
+      : "turbo"
+  ) as keyof typeof WATERFALL_COLORMAPS;
 
   return (
     <div className="monitor-page" role="main">

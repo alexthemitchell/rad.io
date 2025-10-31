@@ -33,7 +33,10 @@ describe("p25decoder extras", () => {
   test("decodeP25Phase2WithLogging returns decoded result for empty input", async () => {
     const result = await decoder.decodeP25Phase2WithLogging([], undefined, {});
     expect(result).toEqual(
-      expect.objectContaining({ frames: expect.any(Array), isEncrypted: false })
+      expect.objectContaining({
+        frames: expect.any(Array),
+        isEncrypted: false,
+      }),
     );
   });
 

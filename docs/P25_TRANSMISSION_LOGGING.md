@@ -49,7 +49,7 @@ The TransmissionLogViewer component provides:
 ### Basic Transmission Logging
 
 ```typescript
-import { decodeP25Phase2WithLogging, getP25TransmissionLogger } from './utils';
+import { decodeP25Phase2WithLogging, getP25TransmissionLogger } from "./utils";
 
 // Get the logger instance
 const logger = getP25TransmissionLogger();
@@ -57,20 +57,16 @@ await logger.init();
 
 // Decode samples with automatic logging
 const transmissionStartTime = Date.now();
-const decoded = await decodeP25Phase2WithLogging(
-  samples,
-  config,
-  {
-    logger,
-    transmissionStartTime: transmissionStartTime
-  }
-);
+const decoded = await decodeP25Phase2WithLogging(samples, config, {
+  logger,
+  transmissionStartTime: transmissionStartTime,
+});
 ```
 
 ### Manual Transmission Logging
 
 ```typescript
-import { getP25TransmissionLogger } from './utils/p25TransmissionLog';
+import { getP25TransmissionLogger } from "./utils/p25TransmissionLog";
 
 const logger = getP25TransmissionLogger();
 await logger.init();
@@ -84,14 +80,14 @@ await logger.logTransmission({
   signalQuality: 85,
   slot: 1,
   isEncrypted: false,
-  errorRate: 0.05
+  errorRate: 0.05,
 });
 ```
 
 ### Querying Logs
 
 ```typescript
-import { getP25TransmissionLogger } from './utils/p25TransmissionLog';
+import { getP25TransmissionLogger } from "./utils/p25TransmissionLog";
 
 const logger = getP25TransmissionLogger();
 await logger.init();
@@ -99,18 +95,18 @@ await logger.init();
 // Get all transmissions for a specific talkgroup
 const transmissions = await logger.queryTransmissions({
   talkgroupId: 101,
-  limit: 100
+  limit: 100,
 });
 
 // Get transmissions within a time range
 const recentTransmissions = await logger.queryTransmissions({
   startTime: Date.now() - 3600000, // Last hour
-  endTime: Date.now()
+  endTime: Date.now(),
 });
 
 // Get high-quality transmissions
 const qualityTransmissions = await logger.queryTransmissions({
-  minQuality: 80
+  minQuality: 80,
 });
 ```
 
@@ -167,13 +163,13 @@ function LogsPage() {
 ### Clearing Old Logs
 
 ```typescript
-import { getP25TransmissionLogger } from './utils/p25TransmissionLog';
+import { getP25TransmissionLogger } from "./utils/p25TransmissionLog";
 
 const logger = getP25TransmissionLogger();
 await logger.init();
 
 // Delete logs older than 30 days
-const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 const deletedCount = await logger.deleteOlderThan(thirtyDaysAgo);
 console.log(`Deleted ${deletedCount} old transmissions`);
 ```
@@ -181,7 +177,7 @@ console.log(`Deleted ${deletedCount} old transmissions`);
 ### Getting Log Counts
 
 ```typescript
-import { getP25TransmissionLogger } from './utils/p25TransmissionLog';
+import { getP25TransmissionLogger } from "./utils/p25TransmissionLog";
 
 const logger = getP25TransmissionLogger();
 await logger.init();
@@ -196,7 +192,7 @@ const talkgroupCount = await logger.getCount({ talkgroupId: 101 });
 ### Clearing All Logs
 
 ```typescript
-import { getP25TransmissionLogger } from './utils/p25TransmissionLog';
+import { getP25TransmissionLogger } from "./utils/p25TransmissionLog";
 
 const logger = getP25TransmissionLogger();
 await logger.init();

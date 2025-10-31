@@ -912,10 +912,10 @@ function adaptiveDownsample(
 
 4. **Integrate into Monitor (or your page)**
 
-  ```typescript
-  // Example: inside Monitor's visualization area
-  <MyVisualization samples={samples} width={750} height={400} />
-  ```
+```typescript
+// Example: inside Monitor's visualization area
+<MyVisualization samples={samples} width={750} height={400} />
+```
 
 ### Adding a New Data Source
 

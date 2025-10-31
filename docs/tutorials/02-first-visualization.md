@@ -275,16 +275,18 @@ import { SimpleSpectrumExample } from './pages/SimpleSpectrumExample';
 
    ```
 
-  https://localhost:8080/#/examples/simple-spectrum
-
    ```
 
-  **Note**: The URL uses HTTPS (required for WebUSB support) and hash-based routing (`#/`). The `/examples/*` routes are for local development only and should not be committed to navigation for production.
+https://localhost:8080/#/examples/simple-spectrum
+
+```
+
+**Note**: The URL uses HTTPS (required for WebUSB support) and hash-based routing (`#/`). The `/examples/*` routes are for local development only and should not be committed to navigation for production.
 
 3. You should see:
-   - A black canvas with a cyan spectrum line
-   - Two peaks that slowly move
-   - A Play/Pause button
+- A black canvas with a cyan spectrum line
+- Two peaks that slowly move
+- A Play/Pause button
 
 **Try this:**
 
@@ -302,16 +304,16 @@ Let's break down the key concepts:
 ```
 
 generateAnimatedFFT()
-    ↓
+↓
 fftData (state)
-    ↓
+↓
 SimpleSpectrum component
-    ↓
+↓
 useEffect (on data change)
-    ↓
+↓
 Canvas rendering
 
-```
+````
 
 ### React Patterns
 
@@ -345,7 +347,7 @@ for (let i = 0; i < 10; i++) {
   ctx.lineTo(x, height);
   ctx.stroke();
 }
-```
+````
 
 ### Challenge 2: Show Frequency Labels
 

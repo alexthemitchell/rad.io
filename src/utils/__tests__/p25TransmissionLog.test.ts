@@ -27,7 +27,9 @@ const mockIndexedDB = (() => {
         error: null as unknown,
         onsuccess: null as ((event: Event) => void) | null,
         onerror: null as ((event: Event) => void) | null,
-        onupgradeneeded: null as ((event: IDBVersionChangeEvent) => void) | null,
+        onupgradeneeded: null as
+          | ((event: IDBVersionChangeEvent) => void)
+          | null,
       };
 
       // Simulate async operation
@@ -36,7 +38,10 @@ const mockIndexedDB = (() => {
           objectStoreNames: {
             contains: (name: string) => stores.has(name),
           },
-          createObjectStore: (name: string, _options: IDBObjectStoreParameters) => {
+          createObjectStore: (
+            name: string,
+            _options: IDBObjectStoreParameters,
+          ) => {
             mockStore(name);
             return {
               createIndex: () => {},
@@ -91,7 +96,10 @@ const mockIndexedDB = (() => {
                   },
                   index: (indexName: string) => {
                     return {
-                      openCursor: (range: unknown | null, direction?: IDBCursorDirection) => {
+                      openCursor: (
+                        range: unknown | null,
+                        direction?: IDBCursorDirection,
+                      ) => {
                         const req = {
                           result: null as unknown,
                           onsuccess: null as ((event: Event) => void) | null,
@@ -99,28 +107,52 @@ const mockIndexedDB = (() => {
                         };
                         setTimeout(() => {
                           let records = Array.from(store.values());
-                          
+
                           // Filter by range if provided
                           if (range && typeof range === "object") {
-                            const keyRange = range as { lower?: number; upper?: number; open?: boolean };
-                            if (indexName === "talkgroupId" && keyRange.lower !== undefined) {
-                              records = records.filter((r) => r.talkgroupId === keyRange.lower);
-                            } else if (indexName === "sourceId" && keyRange.lower !== undefined) {
-                              records = records.filter((r) => r.sourceId === keyRange.lower);
-                            } else if (indexName === "timestamp" && keyRange.upper !== undefined) {
+                            const keyRange = range as {
+                              lower?: number;
+                              upper?: number;
+                              open?: boolean;
+                            };
+                            if (
+                              indexName === "talkgroupId" &&
+                              keyRange.lower !== undefined
+                            ) {
+                              records = records.filter(
+                                (r) => r.talkgroupId === keyRange.lower,
+                              );
+                            } else if (
+                              indexName === "sourceId" &&
+                              keyRange.lower !== undefined
+                            ) {
+                              records = records.filter(
+                                (r) => r.sourceId === keyRange.lower,
+                              );
+                            } else if (
+                              indexName === "timestamp" &&
+                              keyRange.upper !== undefined
+                            ) {
                               if (keyRange.open) {
-                                records = records.filter((r) => r.timestamp < keyRange.upper!);
+                                records = records.filter(
+                                  (r) => r.timestamp < keyRange.upper!,
+                                );
                               } else {
-                                records = records.filter((r) => r.timestamp <= keyRange.upper!);
+                                records = records.filter(
+                                  (r) => r.timestamp <= keyRange.upper!,
+                                );
                               }
                             }
                           }
-                          
+
                           // Sort by timestamp descending if using timestamp index
-                          if (indexName === "timestamp" && direction === "prev") {
+                          if (
+                            indexName === "timestamp" &&
+                            direction === "prev"
+                          ) {
                             records.sort((a, b) => b.timestamp - a.timestamp);
                           }
-                          
+
                           let index = 0;
                           const createCursor = () => {
                             if (index < records.length) {
@@ -128,7 +160,10 @@ const mockIndexedDB = (() => {
                                 value: records[index],
                                 continue: () => {
                                   index++;
-                                  req.result = index < records.length ? createCursor() : null;
+                                  req.result =
+                                    index < records.length
+                                      ? createCursor()
+                                      : null;
                                   if (req.onsuccess) {
                                     req.onsuccess({
                                       target: { result: req.result },
@@ -145,7 +180,7 @@ const mockIndexedDB = (() => {
                             }
                             return null;
                           };
-                          
+
                           req.result = createCursor();
                           if (req.onsuccess) {
                             req.onsuccess({

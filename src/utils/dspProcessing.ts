@@ -332,11 +332,7 @@ export function processTuner(
     frequency: number;
     bandwidth: number;
     loOffset: number;
-    /**
-     * Optional sample rate. If provided, LO offset normalization will use this rather than bandwidth.
-     * Using sampleRate is the correct normalization for digital frequency shifting.
-     */
-    sampleRate?: number;
+    sampleRate: number;
   },
 ): { output: Sample[]; metrics: { actualFreq: number } } {
   // Apply frequency shift if LO offset is specified
@@ -344,8 +340,9 @@ export function processTuner(
   // This shifts the spectrum by the LO offset frequency
   if (params.loOffset !== 0 && samples.length > 0) {
     const shifted: Sample[] = [];
-    const denom = params.sampleRate ?? params.bandwidth;
-    const normalizedOffset = denom !== 0 ? params.loOffset / denom : 0; // Normalize by sample rate when available
+    // For frequency shifting, the offset must be normalized by the sample rate (not bandwidth)
+    // This converts the frequency offset to the correct angular increment per sample
+    const normalizedOffset = params.loOffset / params.sampleRate;
 
     for (let i = 0; i < samples.length; i++) {
       const sample = samples[i];

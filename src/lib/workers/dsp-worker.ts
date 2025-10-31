@@ -86,6 +86,9 @@ function demodulate(
   const output = new Float32Array(samples.length / 2);
 
   // FM demodulation gain factor based on sample rate
+  // Converts phase difference (radians) to frequency deviation (Hz)
+  // Phase difference per sample = 2π * (frequency_deviation / sample_rate)
+  // Therefore: frequency_deviation = (phase_difference * sample_rate) / (2π)
   const fmGain = sampleRate / (2 * Math.PI);
 
   switch (mode) {

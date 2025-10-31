@@ -152,7 +152,9 @@ describe("TalkgroupScanner", () => {
       />,
     );
 
-    expect(screen.getByText(/Monitored Talkgroups \(1\/2\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Monitored Talkgroups \(1\/2\)/i),
+    ).toBeInTheDocument();
   });
 
   it("should show empty state when no talkgroups", () => {
@@ -164,8 +166,6 @@ describe("TalkgroupScanner", () => {
       />,
     );
 
-    expect(
-      screen.getByText(/No talkgroups configured/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No talkgroups configured/i)).toBeInTheDocument();
   });
 });

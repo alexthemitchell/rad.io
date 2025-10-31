@@ -423,23 +423,27 @@ export function getFrameDescription(frame: P25Frame): string {
 
 /**
  * Extract talkgroup information from P25 frame bits
- * (Simplified - real implementation would parse the full frame structure)
  *
- * TODO: Implement full Link Control Word (LCW) parsing to extract:
- * - Talkgroup ID from bits 48-63 of voice header
- * - Source ID from bits 64-87 of voice header
- * - Parse frame header structure per TIA-102 CAAB specification
- * This requires understanding the complete P25 Phase 2 frame structure
- * including sync patterns, network identifiers, and control fields.
+ * Implements basic Link Control Word (LCW) parsing for Group Voice Channel User (GVCHU) format.
+ * Currently supports format types 0x00 and 0x40 (most common group voice formats).
+ *
+ * @param bits - Frame bits to parse (minimum 48 bits required for GVCHU parsing)
+ * @returns Object containing talkgroupId and sourceId if found, empty object otherwise
+ *
+ * @remarks
+ * This is a simplified implementation. Production systems would need:
+ * - Full LCW format identification and handling for all format types
+ * - Reed-Solomon error correction
+ * - CRC-16 verification
+ * - Support for Unit-to-Unit and other LCW formats
+ *
+ * TODO: Implement full frame header structure per TIA-102 CAAB specification
  */
 export function extractTalkgroupInfo(bits: number[]): {
   talkgroupId?: number;
   sourceId?: number;
 } {
-  // Note: Simplified LCW parsing below; real systems should implement
-  // full format detection and error correction.
-  // P25 Phase 2 Link Control Word (LCW) parsing
-  // This is a simplified implementation focusing on Group Voice Channel User (GVCHU) format
+  // P25 Phase 2 Link Control Word (LCW) parsing for Group Voice Channel User (GVCHU) format
   //
   // Full P25 Phase 2 LCW structure (after frame sync):
   // - LCW Format: 8 bits (identifies the type of link control)
@@ -447,12 +451,6 @@ export function extractTalkgroupInfo(bits: number[]): {
   //   - Talkgroup Address: 16 bits
   //   - Source Address: 24 bits
   //   - Additional fields and CRC
-  //
-  // Note: This is a basic implementation. Production systems would need:
-  // - Full LCW format identification and handling
-  // - Reed-Solomon error correction
-  // - CRC-16 verification
-  // - Support for all LCW format types
 
   // Need at least minimal number of bits for Group Voice LCW parsing
   if (bits.length < MIN_GVCHU_BITS) {
