@@ -84,6 +84,7 @@
   --rad-primary: oklch(
     47% 0.18 240deg
   ); /* Electric Blue (darker for AA contrast) */
+
   --rad-primary-foreground: oklch(98% 0 0deg);
   --rad-accent: oklch(78% 0.14 195deg); /* Cyan for tuning */
   --rad-accent-foreground: oklch(12% 0.01 240deg);

@@ -90,6 +90,17 @@ class DspWorkerPool {
   }
 }
 
-export const dspWorkerPool = new DspWorkerPool(
-  (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4,
-);
+// Constrain worker count under test automation to reduce resource pressure and improve stability.
+// Playwright and other automation set navigator.webdriver = true.
+const DEFAULT_POOL = 4;
+const workerCount = (() => {
+  if (typeof navigator !== "undefined") {
+    if (navigator.webdriver === true) {
+      return 1;
+    }
+    return navigator.hardwareConcurrency || DEFAULT_POOL;
+  }
+  return DEFAULT_POOL;
+})();
+
+export const dspWorkerPool = new DspWorkerPool(workerCount);

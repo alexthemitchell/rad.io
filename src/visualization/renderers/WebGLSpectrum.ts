@@ -4,6 +4,8 @@
  */
 
 import type { Renderer, SpectrumData } from "./types";
+import { renderTierManager } from "../../lib/render/RenderTierManager";
+import { RenderTier } from "../../types/rendering";
 
 type GL = WebGL2RenderingContext | WebGLRenderingContext;
 
@@ -104,6 +106,19 @@ export class WebGLSpectrum implements Renderer {
 
     // Create position buffer
     this.positionBuffer = gl.createBuffer();
+
+    // Report successful renderer initialization tier
+    try {
+      // WebGL2 contexts have a different constructor in browsers
+      const isWebGL2 =
+        typeof WebGL2RenderingContext !== "undefined" &&
+        gl instanceof WebGL2RenderingContext;
+      renderTierManager.reportSuccess(
+        isWebGL2 ? RenderTier.WebGL2 : RenderTier.WebGL1,
+      );
+    } catch {
+      // ignore environment issues (SSR/tests)
+    }
 
     return await Promise.resolve(true);
   }

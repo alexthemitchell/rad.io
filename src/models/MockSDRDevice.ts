@@ -219,7 +219,7 @@ export class MockSDRDevice implements ISDRDevice {
 
       // Emit raw interleaved IQ bytes; downstream layers convert via parseSamples()
       callback(view);
-    }, 200); // Increased from 100ms to reduce memory pressure
+    }, 200); // Reduced frequency from 10Hz (100ms) to 5Hz (200ms) to reduce memory pressure
   }
 
   async stopRx(): Promise<void> {

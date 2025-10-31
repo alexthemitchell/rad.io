@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDeviceContext } from "../contexts/DeviceContext";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
-import { RenderTier } from "../types/rendering";
+import { RenderTier, maxTier } from "../types/rendering";
+import { renderTierManager } from "../lib/render/RenderTierManager";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
 /** Rendering tier detected for visualization components */
 // Re-export for backward compatibility with existing imports/tests
@@ -114,6 +115,9 @@ function StatusBar({
   onOpenRenderingSettings,
 }: StatusBarProps): React.JSX.Element {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [detectedTier, setDetectedTier] = useState<RenderTier>(
+    renderTierManager.getTier(),
+  );
 
   const {
     primaryDevice,
@@ -171,6 +175,13 @@ function StatusBar({
     return (): void => clearInterval(interval);
   }, []);
 
+  // Subscribe to global render tier updates so GPU tier displays in StatusBar
+  useEffect(() => {
+    return renderTierManager.subscribe((tier) => {
+      setDetectedTier(tier);
+    });
+  }, []);
+
   const formatSampleRate = (rate: number): string => {
     if (rate === 0) {
       return "—";
@@ -203,7 +214,8 @@ function StatusBar({
       case RenderTier.WebGPU:
         return "var(--rad-success)"; // Success green
       case RenderTier.WebGL2:
-        return "var(--rad-primary)"; // Primary electric blue
+        // Use high-contrast foreground to satisfy WCAG contrast in dark theme
+        return "var(--rad-fg)";
       case RenderTier.WebGL1:
         return "var(--rad-warning)"; // Warning amber
       case RenderTier.Worker:
@@ -216,29 +228,8 @@ function StatusBar({
     }
   };
 
-  const _getBufferHealthColor = (health: number): string => {
-    if (health >= 80) {
-      return "var(--rad-success)"; // Good
-    }
-    if (health >= 50) {
-      return "var(--rad-warning)"; // Warning
-    }
-    return "var(--rad-danger)"; // Critical
-  };
-
-  const _getStorageColor = (used: number, quota: number): string => {
-    if (quota === 0) {
-      return "var(--rad-fg-muted)";
-    }
-    const percent = (used / quota) * 100;
-    if (percent >= 90) {
-      return "var(--rad-danger)"; // Critical
-    }
-    if (percent >= 70) {
-      return "var(--rad-warning)"; // Warning
-    }
-    return "var(--rad-success)"; // Good
-  };
+  // Removed unused color helpers (_getBufferHealthColor, _getStorageColor) per type-check
+  // These can be restored if we decide to colorize by CSS variables instead of classes
 
   const getFpsClass = (fps: number): string => {
     if (fps > 50) {
@@ -274,24 +265,7 @@ function StatusBar({
     return "status-ok";
   };
 
-  const _getAudioColor = (
-    state: StatusBarProps["audioState"],
-    clipping: boolean,
-  ): string => {
-    if (state === "muted" || state === "unavailable") {
-      return "var(--rad-fg-muted)";
-    }
-    if (state === "suspended") {
-      return "var(--rad-warning)";
-    }
-    if (clipping) {
-      return "var(--rad-danger)";
-    }
-    if (state === "playing") {
-      return "var(--rad-success)";
-    }
-    return "var(--rad-fg-muted)";
-  };
+  // Removed unused _getAudioColor helper per type-check
 
   const [showBufferDetails, setShowBufferDetails] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -422,18 +396,18 @@ function StatusBar({
               textDecoration: "underline",
               textUnderlineOffset: 2,
             }}
-            aria-label={`Rendering with ${renderTier}. Open rendering settings.`}
-            title={`Rendering with ${renderTier} • Click for settings`}
+            aria-label={`Rendering with ${maxTier(renderTier, detectedTier)}. Open rendering settings.`}
+            title={`Rendering with ${maxTier(renderTier, detectedTier)} • Click for settings`}
           >
-            {renderTier}
+            {maxTier(renderTier, detectedTier)}
           </button>
         ) : (
           <span
             className="status-bar-value"
-            style={{ color: getRenderTierColor(renderTier) }}
-            title={`Rendering with ${renderTier}`}
+            style={{ color: getRenderTierColor(maxTier(renderTier, detectedTier)) }}
+            title={`Rendering with ${maxTier(renderTier, detectedTier)}`}
           >
-            {renderTier}
+            {maxTier(renderTier, detectedTier)}
           </span>
         )}
       </div>

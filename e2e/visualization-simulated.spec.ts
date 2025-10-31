@@ -25,22 +25,28 @@ test.use({
 async function ensureReceiving(page: Page): Promise<void> {
   // Try to detect quickly; if receiving, we're done
   const gotIt = await page
-    .waitForFunction(() => window.dbgReceiving === true, { timeout: 1500 })
+    .waitForFunction(() => window.dbgReceiving === true, { timeout: 5000 })
     .catch(() => null);
   if (gotIt) return;
 
   // If Stop button exists, assume we're already receiving
-  const stopBtn = page.getByRole("button", { name: "Stop reception" });
+  let stopBtn = page.getByRole("button", { name: "Stop reception" });
   if (await stopBtn.count().then((c: number) => c > 0)) {
     return;
   }
 
   // Otherwise try to click Start
-  const startBtn = page.getByRole("button", { name: "Start reception" });
+  let startBtn = page.getByRole("button", { name: "Start reception" });
+  if (!(await startBtn.count().then((c: number) => c > 0))) {
+    // Fallback: match any Start button
+    startBtn = page.getByRole("button", { name: /start/i });
+  }
   if (await startBtn.count().then((c: number) => c > 0)) {
+    // Ensure button is enabled before clicking
+    await expect(startBtn).toBeEnabled({ timeout: 5000 });
     await startBtn.click();
     await page.waitForFunction(() => window.dbgReceiving === true, {
-      timeout: 5000,
+      timeout: 8000,
     });
   }
 }

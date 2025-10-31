@@ -192,6 +192,19 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     };
   }, [transform]);
 
+  const handleCanvasClick = (evt: React.MouseEvent<HTMLCanvasElement>): void => {
+    if (!_onTune || !_sampleRate || !_centerFrequency) {
+      return;
+    }
+    const canvas = evt.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    const x = evt.clientX - rect.left;
+    const frac = Math.min(1, Math.max(0, x / rect.width));
+    const span = _sampleRate; // Hz across the view
+    const tuned = _centerFrequency - span / 2 + frac * span;
+    _onTune(tuned);
+  };
+
   return (
     <div>
       <canvas
@@ -201,7 +214,9 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         style={{
           display: mode === "fft" || mode === "spectrogram" ? "block" : "none",
         }}
+        role="img"
         aria-label="Spectrum Analyzer"
+        onClick={handleCanvasClick}
       />
       <canvas
         ref={waterfallCanvasRef}
@@ -212,7 +227,9 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
             mode === "waterfall" || mode === "spectrogram" ? "block" : "none",
           marginTop: "8px",
         }}
+        role="img"
         aria-label="Waterfall Display"
+        onClick={handleCanvasClick}
       />
     </div>
   );

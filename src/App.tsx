@@ -31,7 +31,8 @@ function App(): React.JSX.Element {
     preloadWasmModule();
   }, []);
 
-  const _metrics = useStatusMetrics();
+  // Initialize status metrics collection (hook manages its own subscriptions)
+  useStatusMetrics();
   const [showRenderingSettings, setShowRenderingSettings] = useState(false);
 
   return (
