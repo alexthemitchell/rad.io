@@ -4,6 +4,7 @@ import React, {
   useState,
 } from "react";
 import AudioControls from "../components/AudioControls";
+import StatusBar from "../components/StatusBar";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
 import RecordingControls from "../components/RecordingControls";
@@ -225,12 +226,7 @@ const Monitor: React.FC = () => {
         </p>
       </header>
 
-      <section aria-labelledby="status-heading">
-        <h2 id="status-heading">Status</h2>
-        <p role="status" aria-live="polite">
-          {statusMsg}
-        </p>
-      </section>
+      {/* Page status message will be surfaced via the StatusBar below to maintain a single status region. */}
 
       <section aria-labelledby="visualization-heading" role="region" aria-label="Spectrum visualization">
         <h2 id="visualization-heading">Visualization</h2>
@@ -696,7 +692,17 @@ const Monitor: React.FC = () => {
         </div>
       </details>
 
-      {/* Global StatusBar is rendered by App; no page-level duplicate */}
+      {/* Bottom status bar */}
+      <div style={{ marginTop: 12 }}>
+        <StatusBar
+          message={statusMsg}
+          sampleRate={sampleRate}
+          deviceConnected={Boolean(device)}
+          audioState={"idle"}
+          audioVolume={volume}
+          audioClipping={false}
+        />
+      </div>
     </div>
   );
 };

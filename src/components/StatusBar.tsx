@@ -8,6 +8,8 @@ import { extractUSBDevice, formatUsbId } from "../utils/usb";
 export { RenderTier } from "../types/rendering";
 
 export interface StatusBarProps {
+  /** Optional high-level status message (e.g., from current page) */
+  message?: string;
   /** Current rendering tier (WebGPU, WebGL2, etc.) */
   renderTier?: RenderTier;
   /** Frames per second (0-60+) */
@@ -92,6 +94,7 @@ function deviceKey(usb: USBDevice): string {
  * ```
  */
 function StatusBar({
+  message,
   renderTier = RenderTier.Unknown,
   fps = 0,
   inputFps = 0,
@@ -266,6 +269,11 @@ function StatusBar({
       aria-live="polite"
       aria-atomic="false"
     >
+      {message ? (
+        <div className="status-bar-item">
+          <span className="status-bar-value">{message}</span>
+        </div>
+      ) : null}
       <div className="status-bar-item">
         <span className="status-bar-label">Device</span>
         {Array.isArray(pairedUSBDevices) && pairedUSBDevices.length > 1 ? (

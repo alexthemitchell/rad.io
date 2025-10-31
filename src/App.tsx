@@ -4,7 +4,6 @@ import FrequencyDisplay from "./components/FrequencyDisplay";
 import Navigation from "./components/Navigation";
 import RenderingSettingsModal from "./components/RenderingSettingsModal";
 import ShortcutsOverlay from "./components/ShortcutsOverlay";
-import StatusBar from "./components/StatusBar";
 import ToastProvider from "./components/ToastProvider";
 import TopAppBar from "./components/TopAppBar";
 import VFOControl from "./components/VFOControl";
@@ -104,25 +103,7 @@ function App(): React.JSX.Element {
             {/* Global shortcuts help overlay (toggles with '?') */}
             <ShortcutsOverlay />
 
-            {/* Bottom Status Bar with system metrics per UI spec */}
-            <StatusBar
-              deviceConnected={metrics.deviceConnected}
-              renderTier={metrics.renderTier}
-              fps={metrics.fps}
-              inputFps={metrics.inputFps}
-              droppedFrames={metrics.droppedFrames}
-              renderP95Ms={metrics.renderP95Ms}
-              longTasks={metrics.longTasks}
-              sampleRate={metrics.sampleRate}
-              bufferHealth={metrics.bufferHealth}
-              bufferDetails={metrics.bufferDetails}
-              storageUsed={metrics.storageUsed}
-              storageQuota={metrics.storageQuota}
-              audioState={metrics.audio.state}
-              audioVolume={metrics.audio.volume}
-              audioClipping={metrics.audio.clipping}
-              onOpenRenderingSettings={() => setShowRenderingSettings(true)}
-            />
+            {/* Page-level StatusBar components provide status; no global duplicate here */}
             <RenderingSettingsModal
               isOpen={showRenderingSettings}
               onClose={() => setShowRenderingSettings(false)}
