@@ -1,0 +1,100 @@
+name: Contributor Recognition
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  recognize:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Thank contributor
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            
+            // Get all merged PRs by this author
+            const mergedPRs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: author,
+              state: 'closed'
+            }).then(res => res.data.filter(pr => pr.merged_at !== null));
+            
+            const prCount = mergedPRs.length;
+            let message = '';
+            
+            if (prCount === 1) {
+              // First merged PR
+              message = `🎉 **Congratulations on your first merged PR, @${author}!** 🎉
+
+Thank you for your contribution to rad.io! You're now officially part of the rad.io community.
+
+**What's next?**
+- You're now listed in [CONTRIBUTORS.md](https://github.com/${context.repo.owner}/${context.repo.repo}/blob/main/CONTRIBUTORS.md)
+- Look for more [good first issues](https://github.com/${context.repo.owner}/${context.repo.repo}/labels/good%20first%20issue)
+- Help others in [Discussions](https://github.com/${context.repo.owner}/${context.repo.repo}/discussions)
+- Consider becoming a regular contributor
+
+We look forward to your future contributions! 🚀`;
+            } else if (prCount === 5) {
+              // 5th merged PR
+              message = `⭐ **Milestone achieved: 5 merged PRs, @${author}!** ⭐
+
+You're becoming a core member of the rad.io community. Thank you for your continued contributions!
+
+**Recognition:**
+- 5 merged contributions 🏆
+- Growing impact on the project
+- Valuable community member
+
+Keep up the great work! Your contributions make rad.io better. 🌟`;
+            } else if (prCount === 10) {
+              // 10th merged PR
+              message = `🌟 **Outstanding achievement: 10 merged PRs, @${author}!** 🌟
+
+You're a key contributor to rad.io! Your dedication and quality contributions are truly appreciated.
+
+**Recognition:**
+- 10 merged contributions 🏆🏆
+- Significant project impact
+- Core community member
+
+Consider:
+- Mentoring new contributors
+- Reviewing pull requests
+- Participating in architecture discussions
+- The maintainer track
+
+Thank you for being an essential part of rad.io! 🚀`;
+            } else if (prCount % 25 === 0) {
+              // Every 25th PR
+              message = `💎 **Incredible milestone: ${prCount} merged PRs, @${author}!** 💎
+
+You're a pillar of the rad.io project! Your sustained contributions have shaped the project significantly.
+
+**Recognition:**
+- ${prCount} merged contributions 🏆🏆🏆
+- Major project influence
+- Essential team member
+
+Your expertise and dedication inspire the entire community. Thank you for everything you do! 🌟`;
+            } else {
+              // Regular thank you
+              message = `Thank you for your contribution, @${author}! 🙏
+
+This is your ${prCount}${prCount === 2 ? 'nd' : prCount === 3 ? 'rd' : 'th'} merged PR. Your continued contributions help make rad.io better for everyone.`;
+            }
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: message
+            });

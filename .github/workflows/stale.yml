@@ -1,0 +1,72 @@
+name: Stale Issues and PRs
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Run daily at midnight UTC
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark stale issues and PRs
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Issue configuration
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          stale-issue-message: |
+            👋 This issue has been inactive for 60 days and will be closed in 14 days if there's no further activity.
+            
+            **Is this still relevant?**
+            - Comment to keep it open
+            - Provide updates if you're working on it
+            - Close it if it's no longer needed
+            
+            Thanks for your contributions to rad.io!
+          stale-issue-label: 'stale'
+          close-issue-message: |
+            🔒 This issue has been automatically closed due to inactivity.
+            
+            If this is still relevant, please reopen it or create a new issue with updated information.
+            
+            Thank you for your understanding!
+          
+          # PR configuration
+          days-before-pr-stale: 30
+          days-before-pr-close: 7
+          stale-pr-message: |
+            👋 This PR has been inactive for 30 days and will be closed in 7 days if there's no further activity.
+            
+            **Next steps:**
+            - Update the PR if you're still working on it
+            - Comment to keep it open
+            - Close it if you've abandoned it
+            
+            We appreciate your contribution and understand that life happens. Feel free to reopen later!
+          stale-pr-label: 'stale'
+          close-pr-message: |
+            🔒 This PR has been automatically closed due to inactivity.
+            
+            If you'd like to continue this work, please reopen or create a new PR.
+            
+            Thank you for your contribution!
+          
+          # Exempt labels
+          exempt-issue-labels: 'pinned,security,in-progress,blocked'
+          exempt-pr-labels: 'pinned,security,in-progress,blocked,dependencies'
+          
+          # Don't mark as stale if there are milestones
+          exempt-all-milestones: true
+          
+          # Operations per run (rate limiting)
+          operations-per-run: 100
+          
+          # Remove stale label when updated
+          remove-stale-when-updated: true

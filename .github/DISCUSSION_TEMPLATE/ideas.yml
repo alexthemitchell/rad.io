@@ -1,0 +1,63 @@
+labels: [enhancement]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 💡 Share Your Idea
+
+        Thank you for taking the time to suggest an improvement to rad.io!
+        
+        This template helps you structure your idea so the community can provide meaningful feedback.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the problem or limitation you're experiencing.
+      placeholder: |
+        Example: "When using rad.io with multiple SDR devices, I can't easily switch between them without reconnecting..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like to see this problem solved?
+      placeholder: |
+        Example: "Add a device selector dropdown in the UI that allows switching between paired devices..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other solutions have you thought about?
+      placeholder: |
+        Example: "Could use browser tabs, but that's clunky. Could add keyboard shortcuts..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Any other information, mockups, or examples that would help
+      placeholder: |
+        Screenshots, links to similar features in other projects, technical considerations...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you like to help implement this?
+      description: We welcome contributions! No pressure though.
+      options:
+        - "Yes, I'd like to work on this"
+        - "Maybe, with guidance"
+        - "No, just suggesting"
+    validations:
+      required: false

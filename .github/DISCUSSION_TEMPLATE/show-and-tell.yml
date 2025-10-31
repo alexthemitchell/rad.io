@@ -1,0 +1,61 @@
+labels: [showcase]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🎉 Show and Tell
+
+        Share what you've built with rad.io or how you're using it!
+        
+        The community loves seeing creative uses of the software.
+
+  - type: textarea
+    id: showcase
+    attributes:
+      label: What did you build or discover?
+      description: Tell us about your project, experiment, or finding
+      placeholder: |
+        Example: "I used rad.io to decode NOAA weather satellite images..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: Technical details
+      description: Share technical details that might help others replicate or learn
+      placeholder: |
+        - Hardware used (SDR device, antenna, etc.)
+        - Frequencies monitored
+        - Settings or configurations
+        - Challenges overcome
+    validations:
+      required: false
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or recordings
+      description: Add images, videos, or links (drag and drop works!)
+      placeholder: |
+        Paste images here or add links to videos/recordings
+    validations:
+      required: false
+
+  - type: textarea
+    id: learned
+    attributes:
+      label: What did you learn?
+      description: Share insights or lessons learned that could help others
+    validations:
+      required: false
+
+  - type: input
+    id: links
+    attributes:
+      label: Links
+      description: GitHub repo, blog post, video, or other relevant links
+      placeholder: https://github.com/yourname/project
+    validations:
+      required: false

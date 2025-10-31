@@ -1,0 +1,97 @@
+name: Auto-label Issues
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-label based on content
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+            const labelsToAdd = [];
+
+            // Documentation
+            if (title.includes('doc') || title.includes('readme') || 
+                body.includes('documentation') || body.includes('typo')) {
+              labelsToAdd.push('documentation');
+            }
+
+            // Testing
+            if (title.includes('test') || body.includes('test coverage') || 
+                body.includes('unit test') || body.includes('e2e test')) {
+              labelsToAdd.push('testing');
+            }
+
+            // Hardware/Device
+            if (body.includes('hackrf') || body.includes('rtl-sdr') || 
+                body.includes('airspy') || body.includes('device') || 
+                body.includes('sdr')) {
+              labelsToAdd.push('hardware');
+            }
+
+            // Performance
+            if (body.includes('performance') || body.includes('slow') || 
+                body.includes('memory') || body.includes('lag') || 
+                body.includes('optimization')) {
+              labelsToAdd.push('performance');
+            }
+
+            // Accessibility
+            if (body.includes('accessibility') || body.includes('a11y') || 
+                body.includes('screen reader') || body.includes('keyboard')) {
+              labelsToAdd.push('accessibility');
+            }
+
+            // DSP/Visualization
+            if (body.includes('fft') || body.includes('spectrogram') || 
+                body.includes('waterfall') || body.includes('constellation') || 
+                body.includes('visualization') || body.includes('dsp')) {
+              labelsToAdd.push('visualization');
+            }
+
+            // Browser/WebUSB
+            if (body.includes('webusb') || body.includes('browser') || 
+                body.includes('chrome') || body.includes('edge')) {
+              labelsToAdd.push('browser');
+            }
+
+            // Good first issue detection
+            if (title.includes('typo') || title.includes('link') || 
+                (body.includes('simple') && body.includes('fix'))) {
+              labelsToAdd.push('good first issue');
+            }
+
+            // Help wanted
+            if (body.includes('help wanted') || body.includes('contribution welcome')) {
+              labelsToAdd.push('help wanted');
+            }
+
+            // Add labels if any were detected
+            if (labelsToAdd.length > 0) {
+              // Get existing labels
+              const existingLabels = issue.labels.map(label => label.name);
+              
+              // Only add new labels that don't already exist
+              const newLabels = labelsToAdd.filter(label => !existingLabels.includes(label));
+              
+              if (newLabels.length > 0) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  labels: newLabels
+                });
+                
+                console.log(`Added labels: ${newLabels.join(', ')}`);
+              }
+            }

@@ -115,7 +115,40 @@ We track these metrics quarterly:
 - Burnout prevention
 - Shared decision-making
 
-## Tracking Methods
+## Automated Tracking
+
+### GitHub Actions Workflows
+
+We've implemented several automation workflows to improve community engagement:
+
+**1. Welcome Bot (`.github/workflows/welcome.yml`)**
+- Greets first-time issue authors with helpful resources
+- Welcomes first-time PR contributors with onboarding checklist
+- Provides links to documentation and community channels
+
+**2. Auto-labeling (`.github/workflows/label-issues.yml`)**
+- Automatically categorizes issues based on content
+- Labels: documentation, testing, hardware, performance, accessibility, visualization, etc.
+- Identifies good first issues for newcomers
+- Helps contributors find relevant issues faster
+
+**3. Stale Management (`.github/workflows/stale.yml`)**
+- Identifies inactive issues (60 days) and PRs (30 days)
+- Sends gentle reminders before closing
+- Respects exempt labels (pinned, security, in-progress, blocked)
+- Removes stale label when updated
+
+**4. Contributor Recognition (`.github/workflows/contributor-recognition.yml`)**
+- Celebrates milestone PRs (1st, 5th, 10th, 25th, etc.)
+- Thanks all contributors after merge
+- Encourages continued participation
+- Builds community culture
+
+**5. Community Metrics (`.github/workflows/community-metrics.yml`)**
+- Generates monthly health reports automatically
+- Tracks contributors, issues, PRs, response times
+- Saves reports to `.github/metrics/`
+- Provides data for continuous improvement
 
 ### GitHub Insights
 
@@ -248,64 +281,63 @@ We maintain a quarterly health check:
 - More thorough code reviews
 - Additional CI checks
 
-## Community Events (Planned)
+## Community Events
+
+We host regular community events to foster collaboration and learning. Full details available in [Community Meetings Guide](../.github/COMMUNITY_MEETINGS.md).
 
 ### Monthly Community Calls
 
+**Schedule:** First Tuesday of each month at 6:00 PM UTC
+
 **Format:**
+- 60-minute video calls
+- Open to all community members
+- Meeting links posted in GitHub Discussions
+- Recordings and notes shared afterward
 
-- First Tuesday of each month, 6 PM UTC
-- 60 minutes duration
-- Open to all
-- Recorded (with consent)
-
-**Agenda Template:**
-
+**Typical Agenda:**
 1. Welcome & introductions (5 min)
 2. Project updates (10 min)
 3. Featured topic/demo (20 min)
 4. Open discussion (20 min)
-5. Next steps (5 min)
+5. Next steps & action items (5 min)
 
-**Topics:**
-
+**Topics Include:**
 - Technical deep-dives
-- Feature planning
+- Feature planning and demos
 - Contributor showcases
 - Q&A sessions
 - Architecture discussions
 
-### Virtual Office Hours (Planned)
+### Virtual Office Hours (Q1 2026)
 
-**Format:**
-
-- Weekly or bi-weekly
-- 1-hour sessions
-- Video call
-- Drop-in style
+**Planned Format:**
+- Weekly or bi-weekly sessions
+- 1-hour drop-in style
+- Video call platform
+- Informal and welcoming
 
 **Purpose:**
+- Real-time Q&A
+- Pair programming support
+- Code review assistance
+- Onboarding help
 
-- Answer questions
-- Pair programming
-- Code review help
-- Onboarding assistance
-
-### Contribution Sprints (Planned)
+### Contribution Sprints (Quarterly)
 
 **Format:**
+- Weekend-long focused events
+- Specific theme or goal
+- Coordinated via Discussions
+- Optional video hangouts
 
-- Quarterly events
-- Weekend-long
-- Focus on specific area
-- Prizes/recognition
-
-**Examples:**
-
+**Possible Themes:**
 - Documentation sprint
 - Bug bash
 - Testing marathon
 - Accessibility audit
+- Performance optimization
+- Device support expansion
 
 ## Communication Channels
 

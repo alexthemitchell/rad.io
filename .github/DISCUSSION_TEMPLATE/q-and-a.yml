@@ -1,0 +1,71 @@
+labels: [question]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ❓ Question
+
+        Ask questions about using rad.io, contributing, or SDR in general.
+        
+        Before asking, please:
+        - Check existing documentation in `/docs`
+        - Search existing discussions and issues
+        - Include relevant details to help others help you
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What would you like to know?
+      placeholder: |
+        Example: "How do I configure rad.io to work with RTL-SDR v4?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What are you trying to accomplish?
+      placeholder: |
+        Example: "I'm trying to receive FM radio signals, but I'm getting errors..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Steps you've already taken or documentation you've consulted
+      placeholder: |
+        - Read ONBOARDING.md
+        - Tried connecting device with WebUSB
+        - Checked browser console for errors
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Relevant system information
+      placeholder: |
+        - Browser: Chrome 120
+        - OS: Windows 11
+        - SDR Device: HackRF One
+        - rad.io version: main branch
+    validations:
+      required: false
+
+  - type: textarea
+    id: errors
+    attributes:
+      label: Error messages or logs
+      description: Any error messages, console output, or relevant logs
+      placeholder: |
+        ```
+        Paste error messages or logs here
+        ```
+    validations:
+      required: false

@@ -1,0 +1,180 @@
+name: Community Health Metrics
+
+on:
+  schedule:
+    - cron: '0 0 1 * *' # Run on the 1st of each month at midnight UTC
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  issues: read
+  pull-requests: read
+  contents: write
+
+jobs:
+  generate-metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate community metrics
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Calculate date range (last 30 days)
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+            
+            // Fetch issues
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              since: startDate.toISOString(),
+              per_page: 100
+            });
+            
+            // Fetch pull requests
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100
+            });
+            
+            // Filter by date range
+            const recentIssues = issues.filter(i => 
+              !i.pull_request && new Date(i.created_at) >= startDate
+            );
+            const recentPRs = pulls.filter(pr => 
+              new Date(pr.created_at) >= startDate
+            );
+            
+            // Calculate metrics
+            const uniqueContributors = new Set([
+              ...recentIssues.map(i => i.user.login),
+              ...recentPRs.map(pr => pr.user.login)
+            ]);
+            
+            const firstTimeContributors = new Set();
+            for (const contributor of uniqueContributors) {
+              const allContributions = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                creator: contributor,
+                state: 'all',
+                per_page: 1
+              });
+              if (allContributions.data.length === 1) {
+                firstTimeContributors.add(contributor);
+              }
+            }
+            
+            const closedIssues = recentIssues.filter(i => i.state === 'closed');
+            const mergedPRs = recentPRs.filter(pr => pr.merged_at);
+            
+            // Calculate average response times
+            let totalResponseTime = 0;
+            let responseTimes = 0;
+            
+            for (const issue of recentIssues) {
+              const comments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                per_page: 1
+              });
+              
+              if (comments.data.length > 0) {
+                const firstComment = comments.data[0];
+                const responseTime = new Date(firstComment.created_at) - new Date(issue.created_at);
+                totalResponseTime += responseTime;
+                responseTimes++;
+              }
+            }
+            
+            const avgResponseTime = responseTimes > 0 
+              ? Math.round(totalResponseTime / responseTimes / (1000 * 60 * 60)) // Convert to hours
+              : 0;
+            
+            // Generate report
+            const report = `# Community Health Metrics - ${endDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+
+## Summary
+**Period:** ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}
+
+## Contributor Metrics
+- **Unique Contributors:** ${uniqueContributors.size}
+- **First-time Contributors:** ${firstTimeContributors.size}
+- **Returning Contributors:** ${uniqueContributors.size - firstTimeContributors.size}
+
+## Activity Metrics
+- **Issues Opened:** ${recentIssues.length}
+- **Issues Closed:** ${closedIssues.length}
+- **PRs Opened:** ${recentPRs.length}
+- **PRs Merged:** ${mergedPRs.length}
+
+## Response Metrics
+- **Average Time to First Response:** ${avgResponseTime} hours
+- **Issues with Responses:** ${responseTimes}
+
+## Top Contributors
+${Array.from(uniqueContributors).slice(0, 10).map((c, i) => `${i + 1}. @${c}`).join('\n')}
+
+## Notes
+This report is automatically generated monthly. For more detailed analytics, see [GitHub Insights](https://github.com/${context.repo.owner}/${context.repo.repo}/pulse).
+
+**Action Items:**
+- Review response times and improve if needed
+- Engage with first-time contributors
+- Plan community events or calls
+- Recognize top contributors
+
+---
+*Generated: ${endDate.toISOString()}*
+`;
+            
+            // Save to file
+            const metricsDir = path.join(process.env.GITHUB_WORKSPACE, '.github', 'metrics');
+            if (!fs.existsSync(metricsDir)) {
+              fs.mkdirSync(metricsDir, { recursive: true });
+            }
+            
+            const filename = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}.md`;
+            const filepath = path.join(metricsDir, filename);
+            fs.writeFileSync(filepath, report);
+            
+            console.log(`Metrics report saved to: ${filepath}`);
+            console.log(report);
+            
+            // Output summary
+            core.summary
+              .addHeading('Community Metrics')
+              .addTable([
+                [{data: 'Metric', header: true}, {data: 'Value', header: true}],
+                ['Unique Contributors', String(uniqueContributors.size)],
+                ['First-time Contributors', String(firstTimeContributors.size)],
+                ['Issues Opened', String(recentIssues.length)],
+                ['Issues Closed', String(closedIssues.length)],
+                ['PRs Opened', String(recentPRs.length)],
+                ['PRs Merged', String(mergedPRs.length)],
+                ['Avg Response Time', `${avgResponseTime} hours`]
+              ])
+              .write();
+
+      - name: Commit metrics report
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .github/metrics/
+          git diff --staged --quiet || git commit -m "chore: add community metrics for $(date +%Y-%m)"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}

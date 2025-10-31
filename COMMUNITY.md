@@ -17,10 +17,11 @@ rad.io aims to make software-defined radio accessible through professional brows
 
 Our primary forum for community interaction:
 
-- **💡 Ideas**: Propose new features or improvements
-- **❓ Q&A**: Get help with usage, development, or contributions
-- **📢 Announcements**: Stay updated on releases and major changes
-- **💬 General**: Community chat, show-and-tell, off-topic
+- **💡 Ideas:** Propose new features or improvements ([template available](./.github/DISCUSSION_TEMPLATE/ideas.yml))
+- **❓ Q&A:** Get help with usage, development, or contributions ([template available](./.github/DISCUSSION_TEMPLATE/q-and-a.yml))
+- **🎉 Show and Tell:** Share what you've built ([template available](./.github/DISCUSSION_TEMPLATE/show-and-tell.yml))
+- **📢 Announcements:** Stay updated on releases and major changes
+- **💬 General:** Community chat, off-topic
 
 Visit: [GitHub Discussions](https://github.com/alexthemitchell/rad.io/discussions)
 
@@ -179,36 +180,36 @@ Significant contributions are highlighted in release notes.
 
 ## Community Meetings
 
-### Schedule
+We hold regular community gatherings to connect, collaborate, and build together.
 
-**Monthly Community Call** (proposed)
+### Monthly Community Call
 
-- First Tuesday of each month, 6 PM UTC
-- Open to all community members
-- Agenda posted in Discussions beforehand
-- Meeting notes shared afterward
+- **Schedule:** First Tuesday of each month at 6:00 PM UTC
+- **Duration:** 60 minutes
+- **Format:** Video call (link posted in Discussions)
+- **Open to:** All community members
 
-### Format
+**Topics include:**
+- Project updates and roadmap
+- Feature demos and technical deep-dives
+- Q&A and open discussion
+- Community showcases
 
-1. **Welcome & Introductions** (5 min)
-2. **Project Updates** (10 min)
-   - Recent releases
-   - Roadmap progress
-3. **Community Topics** (30 min)
-   - Issues discussion
-   - Feature planning
-   - Technical deep-dives
-4. **Open Floor** (15 min)
-   - Questions
-   - Feedback
-   - Show and tell
+**How to participate:**
+- Meeting links posted 24 hours before in [Discussions](https://github.com/alexthemitchell/rad.io/discussions)
+- Recordings and notes shared after each meeting
+- Propose topics in advance or join discussion live
+- Can't attend? Watch recordings or participate async in Discussions
 
-### Participation
+### Virtual Office Hours
 
-- Meetings recorded and shared (if participants consent)
-- Written summaries posted for those who can't attend
-- Async participation via GitHub Discussions
-- No attendance requirement - come when you can!
+**Coming in Q1 2026** - Drop-in sessions for questions, pair programming, and code review help.
+
+### Contribution Sprints
+
+**Quarterly events** focusing on specific themes like documentation, bug fixes, or new features.
+
+For full details, see [Community Meetings Guide](./.github/COMMUNITY_MEETINGS.md).
 
 ## Governance
 
@@ -257,17 +258,31 @@ Maintainers review PRs, triage issues, and steward the project. Current maintain
 - **Security**: See [SECURITY.md](./SECURITY.md)
 - **Email**: alex+github@alexmitchelltech.com (maintainer contact)
 
-## Engagement Metrics
+## Engagement Metrics & Automation
 
-We track community health through:
+We track community health to identify areas for improvement and celebrate growth:
 
-- **Issue Response Time**: Target < 3 days for initial response
-- **PR Review Time**: Target < 7 days for initial review
-- **Test Coverage**: Maintain global minimum coverage (see [CONTRIBUTING.md](./CONTRIBUTING.md#test-coverage-goals) for thresholds)
-- **Community Growth**: Monthly active contributors
-- **Documentation**: Completeness and accessibility
+- **Issue Response Time:** Target < 3 days for initial response
+- **PR Review Time:** Target < 7 days for initial review
+- **Test Coverage:** Maintain global minimum coverage (see [CONTRIBUTING.md](./CONTRIBUTING.md#test-coverage-goals))
+- **Community Growth:** Monthly active contributors
+- **Documentation:** Completeness and accessibility
 
-These metrics help us improve, not pressure contributors. Community health matters more than numbers.
+**Monthly metrics reports** are automatically generated and available in `.github/metrics/`.
+
+### Helpful Automation
+
+We use GitHub Actions to support the community:
+
+- **Welcome Bot:** Greets first-time contributors with helpful resources
+- **Auto-labeling:** Categorizes issues based on content for easier discovery
+- **Stale Management:** Identifies inactive issues/PRs (kept open if still relevant)
+- **Contributor Recognition:** Celebrates milestones (1st, 5th, 10th merged PRs!)
+- **Community Metrics:** Monthly health reports to track engagement
+
+These automations help maintain a healthy, responsive community while recognizing valuable contributions.
+
+**Note:** Metrics help us improve, not pressure contributors. Community health matters more than numbers.
 
 ## Code of Conduct
 
