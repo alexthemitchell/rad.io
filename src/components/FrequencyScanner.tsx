@@ -4,6 +4,19 @@ import type {
   FrequencyScanConfig,
 } from "../hooks/useFrequencyScanner";
 
+/**
+ * Map of signal types to display names
+ */
+/* eslint-disable @typescript-eslint/naming-convention */
+const SIGNAL_TYPE_MAP: Record<string, string> = {
+  "narrowband-fm": "NFM",
+  "wideband-fm": "WFM",
+  am: "AM",
+  digital: "Digital",
+  pulsed: "Pulsed",
+};
+/* eslint-enable @typescript-eslint/naming-convention */
+
 export interface FrequencyScannerProps {
   /** Current scanner state */
   state: ScannerState;
@@ -73,16 +86,7 @@ function FrequencyScanner({
     if (!type || type === "unknown") {
       return "Unknown";
     }
-    const typeMap: Record<string, string> = {
-      /* eslint-disable @typescript-eslint/naming-convention */
-      "narrowband-fm": "NFM",
-      "wideband-fm": "WFM",
-      /* eslint-enable @typescript-eslint/naming-convention */
-      am: "AM",
-      digital: "Digital",
-      pulsed: "Pulsed",
-    };
-    const displayType = typeMap[type] ?? type;
+    const displayType = SIGNAL_TYPE_MAP[type] ?? type;
     if (confidence !== undefined) {
       return `${displayType} (${(confidence * 100).toFixed(0)}%)`;
     }
