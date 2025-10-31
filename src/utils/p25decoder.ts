@@ -410,12 +410,68 @@ export function getFrameDescription(frame: P25Frame): string {
  * Extract talkgroup information from P25 frame bits
  * (Simplified - real implementation would parse the full frame structure)
  */
-export function extractTalkgroupInfo(_bits: number[]): {
+export function extractTalkgroupInfo(bits: number[]): {
   talkgroupId?: number;
   sourceId?: number;
 } {
-  // This is a placeholder - real implementation would parse the
-  // Link Control Word (LCW) from the frame to extract talkgroup info
-  // For now, return empty object
-  return {};
+  // P25 Phase 2 Link Control Word (LCW) parsing
+  // This is a simplified implementation focusing on Group Voice Channel User (GVCHU) format
+  // 
+  // Full P25 Phase 2 LCW structure (after frame sync):
+  // - LCW Format: 8 bits (identifies the type of link control)
+  // - For Group Voice (0x00): 
+  //   - Talkgroup Address: 16 bits
+  //   - Source Address: 24 bits
+  //   - Additional fields and CRC
+  //
+  // Note: This is a basic implementation. Production systems would need:
+  // - Full LCW format identification and handling
+  // - Reed-Solomon error correction
+  // - CRC-16 verification
+  // - Support for all LCW format types
+  
+  // Need at least 48 bits for a minimal Group Voice LCW (format + talkgroup + partial source)
+  if (bits.length < 48) {
+    return {};
+  }
+  
+  // Extract LCW format (first 8 bits after sync)
+  // Common formats:
+  // 0x00 = Group Voice Channel User (GVCHU)
+  // 0x03 = Unit to Unit Voice Channel User
+  // 0x40 = Group Voice Channel Update (GVCHU)
+  let lcwFormat = 0;
+  for (let i = 0; i < 8; i++) {
+    lcwFormat = (lcwFormat << 1) | (bits[i] ?? 0);
+  }
+  
+  // Only process Group Voice formats (0x00 and 0x40 are most common)
+  if (lcwFormat !== 0x00 && lcwFormat !== 0x40) {
+    return {}; // Not a group voice transmission
+  }
+  
+  // Extract talkgroup ID (16 bits, following the format byte)
+  let talkgroupId = 0;
+  for (let i = 8; i < 24; i++) {
+    talkgroupId = (talkgroupId << 1) | (bits[i] ?? 0);
+  }
+  
+  // Extract source ID (24 bits, following the talkgroup ID)
+  // Need at least 48 bits total
+  let sourceId = 0;
+  if (bits.length >= 48) {
+    for (let i = 24; i < 48; i++) {
+      sourceId = (sourceId << 1) | (bits[i] ?? 0);
+    }
+  }
+  
+  // Validate that we got meaningful values (not all zeros, which often indicates no data)
+  if (talkgroupId === 0 && sourceId === 0) {
+    return {};
+  }
+  
+  return {
+    talkgroupId: talkgroupId !== 0 ? talkgroupId : undefined,
+    sourceId: sourceId !== 0 ? sourceId : undefined,
+  };
 }

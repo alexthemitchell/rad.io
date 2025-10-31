@@ -324,7 +324,40 @@ export function processTuner(
   samples: Sample[],
   params: { frequency: number; bandwidth: number; loOffset: number },
 ): { output: Sample[]; metrics: { actualFreq: number } } {
-  // Placeholder: pass-through, but could apply frequency shift/filter
+  // Apply frequency shift if LO offset is specified
+  // Frequency shifting is done by multiplying samples with complex exponential: e^(j*2π*f*t)
+  // This shifts the spectrum by the LO offset frequency
+  if (params.loOffset !== 0 && samples.length > 0) {
+    const shifted: Sample[] = [];
+    const normalizedOffset = params.loOffset / params.bandwidth; // Normalize to sample rate
+    
+    for (let i = 0; i < samples.length; i++) {
+      const sample = samples[i];
+      if (!sample) {
+        continue;
+      }
+      
+      // Complex exponential: e^(j*θ) = cos(θ) + j*sin(θ)
+      const theta = 2 * Math.PI * normalizedOffset * i;
+      const cosTheta = Math.cos(theta);
+      const sinTheta = Math.sin(theta);
+      
+      // Complex multiplication: (I + jQ) * (cos + j*sin)
+      // Real part: I*cos - Q*sin
+      // Imag part: I*sin + Q*cos
+      shifted.push({
+        I: sample.I * cosTheta - sample.Q * sinTheta,
+        Q: sample.I * sinTheta + sample.Q * cosTheta,
+      });
+    }
+    
+    return {
+      output: shifted,
+      metrics: { actualFreq: params.frequency + params.loOffset },
+    };
+  }
+  
+  // Pass through if no offset
   return {
     output: samples,
     metrics: { actualFreq: params.frequency },
@@ -335,9 +368,82 @@ export function processIQSampling(
   samples: Sample[],
   params: { sampleRate: number; dcCorrection: boolean; iqBalance: boolean },
 ): { output: Sample[]; metrics: { sampleRate: number } } {
-  // Placeholder: pass-through, could apply DC/IQ correction
+  // Apply DC offset removal and IQ balance correction if requested
+  let output = samples;
+  
+  if (params.dcCorrection && samples.length > 0) {
+    // Calculate DC offset (mean of I and Q)
+    let sumI = 0;
+    let sumQ = 0;
+    for (const sample of samples) {
+      sumI += sample.I;
+      sumQ += sample.Q;
+    }
+    const dcOffsetI = sumI / samples.length;
+    const dcOffsetQ = sumQ / samples.length;
+    
+    // Only apply correction if DC offset is significant (> 0.001)
+    if (Math.abs(dcOffsetI) > 0.001 || Math.abs(dcOffsetQ) > 0.001) {
+      // Remove DC offset
+      output = output.map(sample => ({
+        I: sample.I - dcOffsetI,
+        Q: sample.Q - dcOffsetQ,
+      }));
+    }
+  }
+  
+  if (params.iqBalance && output.length > 0) {
+    // Calculate IQ imbalance
+    // Gain imbalance: ratio of Q amplitude to I amplitude
+    // Phase imbalance: correlation between I and Q
+    let sumI2 = 0; // Sum of I^2
+    let sumQ2 = 0; // Sum of Q^2
+    let sumIQ = 0; // Sum of I*Q
+    
+    for (const sample of output) {
+      sumI2 += sample.I * sample.I;
+      sumQ2 += sample.Q * sample.Q;
+      sumIQ += sample.I * sample.Q;
+    }
+    
+    const rmsI = Math.sqrt(sumI2 / output.length);
+    const rmsQ = Math.sqrt(sumQ2 / output.length);
+    
+    // Avoid division by zero
+    if (rmsI > 1e-10 && rmsQ > 1e-10) {
+      // Gain imbalance correction factor
+      const gainImbalance = rmsI / rmsQ;
+      
+      // Phase imbalance estimation (simplified)
+      // Correlation coefficient normalized by RMS values
+      const correlation = sumIQ / (output.length * rmsI * rmsQ);
+      const phaseImbalance = Math.asin(Math.max(-1, Math.min(1, correlation)));
+      
+      // Only apply correction if imbalance is significant
+      // Gain ratio should be close to 1.0, phase should be close to 0
+      const gainError = Math.abs(gainImbalance - 1.0);
+      const phaseError = Math.abs(phaseImbalance);
+      
+      if (gainError > 0.01 || phaseError > 0.01) {
+        // Apply corrections
+        output = output.map(sample => {
+          // Correct gain imbalance
+          const Q = sample.Q * gainImbalance;
+          
+          // Correct phase imbalance (rotate Q component)
+          const QCorrected = Q * Math.cos(phaseImbalance) - sample.I * Math.sin(phaseImbalance);
+          
+          return {
+            I: sample.I,
+            Q: QCorrected,
+          };
+        });
+      }
+    }
+  }
+  
   return {
-    output: samples,
+    output,
     metrics: { sampleRate: params.sampleRate },
   };
 }
@@ -393,15 +499,18 @@ export function processFFT(
 }
 
 export function processDemodulation(
-  _samples: Sample[],
-  _params: {
+  samples: Sample[],
+  params: {
     demod: string;
     fmDeviation: number;
     amDepth: number;
     audioBandwidth: number;
   },
 ): { output: null; metrics: object } {
-  // Placeholder: just return null for now
+  // Placeholder implementation - demodulation is currently handled in dsp-worker
+  // This function exists for future migration of demodulation logic
+  void samples;
+  void params;
   return {
     output: null,
     metrics: {},
@@ -409,15 +518,18 @@ export function processDemodulation(
 }
 
 export function processAudioOutput(
-  _samples: Sample[] | null,
-  _params: {
+  samples: Sample[] | null,
+  params: {
     volume: number;
     mute: boolean;
     audioFilter: string;
     cutoff: number;
   },
 ): { output: null; metrics: object } {
-  // Placeholder: just return null for now
+  // Placeholder implementation - audio processing is currently handled elsewhere
+  // This function exists for future audio output pipeline
+  void samples;
+  void params;
   return {
     output: null,
     metrics: {},
