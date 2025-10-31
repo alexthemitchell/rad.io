@@ -607,9 +607,7 @@ export function calculateWaveformWasm(
     // Prefer SIMD return-by-value if available (best performance)
     if (typeof wasmModule.calculateWaveformOutSIMD === "function") {
       if (!loggedWaveformChoice) {
-        dspLogger.info(
-          "Using calculateWaveformOutSIMD (SIMD return-by-value)",
-        );
+        dspLogger.info("Using calculateWaveformOutSIMD (SIMD return-by-value)");
         loggedWaveformChoice = true;
       }
       const flat = wasmModule.calculateWaveformOutSIMD(
@@ -817,8 +815,16 @@ export function applyHannWindowWasm(samples: Sample[]): boolean {
   }
   const module = wasmModule;
   // Use SIMD version if available, otherwise fall back to standard
-  const windowFn = module.applyHannWindowSIMD || module.applyHannWindow;
-  return applyWasmWindow(samples, (i, q, s) => windowFn(i, q, s), "Hann");
+  const simdFn = module.applyHannWindowSIMD?.bind(module);
+  const standardFn = module.applyHannWindow.bind(module);
+  const windowFn = simdFn ?? standardFn;
+  return applyWasmWindow(
+    samples,
+    (i, q, s) => {
+      windowFn(i, q, s);
+    },
+    "Hann",
+  );
 }
 
 /**
@@ -830,8 +836,16 @@ export function applyHammingWindowWasm(samples: Sample[]): boolean {
   }
   const module = wasmModule;
   // Use SIMD version if available, otherwise fall back to standard
-  const windowFn = module.applyHammingWindowSIMD || module.applyHammingWindow;
-  return applyWasmWindow(samples, (i, q, s) => windowFn(i, q, s), "Hamming");
+  const simdFn = module.applyHammingWindowSIMD?.bind(module);
+  const standardFn = module.applyHammingWindow.bind(module);
+  const windowFn = simdFn ?? standardFn;
+  return applyWasmWindow(
+    samples,
+    (i, q, s) => {
+      windowFn(i, q, s);
+    },
+    "Hamming",
+  );
 }
 
 /**
@@ -843,9 +857,16 @@ export function applyBlackmanWindowWasm(samples: Sample[]): boolean {
   }
   const module = wasmModule;
   // Use SIMD version if available, otherwise fall back to standard
-  const windowFn =
-    module.applyBlackmanWindowSIMD || module.applyBlackmanWindow;
-  return applyWasmWindow(samples, (i, q, s) => windowFn(i, q, s), "Blackman");
+  const simdFn = module.applyBlackmanWindowSIMD?.bind(module);
+  const standardFn = module.applyBlackmanWindow.bind(module);
+  const windowFn = simdFn ?? standardFn;
+  return applyWasmWindow(
+    samples,
+    (i, q, s) => {
+      windowFn(i, q, s);
+    },
+    "Blackman",
+  );
 }
 
 /**

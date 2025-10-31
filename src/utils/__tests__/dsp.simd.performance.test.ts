@@ -8,20 +8,21 @@ import {
   isWasmSIMDSupported,
   isWasmAvailable,
 } from "../dspWasm";
-import type { Sample } from "../dsp";
+// Sample type available if needed in future
+// import type { Sample } from "../dsp";
 
-// Generate test samples
-function generateTestSamples(count: number): Sample[] {
-  const samples: Sample[] = [];
-  for (let i = 0; i < count; i++) {
-    const t = i / count;
-    samples.push({
-      I: Math.cos(2 * Math.PI * 5 * t) * 0.8,
-      Q: Math.sin(2 * Math.PI * 5 * t) * 0.8,
-    });
-  }
-  return samples;
-}
+// Note: generateTestSamples available if needed for future tests
+// function generateTestSamples(count: number): Sample[] {
+//   const samples: Sample[] = [];
+//   for (let i = 0; i < count; i++) {
+//     const t = i / count;
+//     samples.push({
+//       I: Math.cos(2 * Math.PI * 5 * t) * 0.8,
+//       Q: Math.sin(2 * Math.PI * 5 * t) * 0.8,
+//     });
+//   }
+//   return samples;
+// }
 
 // Measure execution time
 function measureTime(fn: () => void, iterations = 10): number {
@@ -59,9 +60,7 @@ describe("SIMD Performance Tests", () => {
       if (wasmAvailable) {
         console.log("✓ WASM module loaded successfully");
       } else {
-        console.log(
-          "✗ WASM not available (expected in Jest test environment)",
-        );
+        console.log("✗ WASM not available (expected in Jest test environment)");
       }
     });
   });
@@ -151,9 +150,6 @@ describe("SIMD Performance Tests", () => {
 
         // Only test if SIMD version is available
         if (module.calculateWaveformSIMD) {
-          const amplitude = new Float32Array(size);
-          const phase = new Float32Array(size);
-
           const standardTime = measureTime(() => {
             const amp = new Float32Array(size);
             const ph = new Float32Array(size);
