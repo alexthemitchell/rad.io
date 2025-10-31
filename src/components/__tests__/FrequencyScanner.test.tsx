@@ -437,6 +437,73 @@ describe("FrequencyScanner", () => {
 
       expect(mockHandlers.onClearSignals).toHaveBeenCalledTimes(1);
     });
+
+    it("displays signal type and confidence when available", () => {
+      const signalsWithType: ActiveSignal[] = [
+        {
+          frequency: 98.1e6,
+          strength: 0.85,
+          timestamp: new Date("2024-01-01T12:00:00Z"),
+          type: "wideband-fm",
+          confidence: 0.9,
+        },
+        {
+          frequency: 146.5e6,
+          strength: 0.65,
+          timestamp: new Date("2024-01-01T12:00:01Z"),
+          type: "narrowband-fm",
+          confidence: 0.8,
+        },
+        {
+          frequency: 1.2e6,
+          strength: 0.55,
+          timestamp: new Date("2024-01-01T12:00:02Z"),
+          type: "am",
+          confidence: 0.7,
+        },
+      ];
+
+      render(
+        <FrequencyScanner
+          state="idle"
+          config={defaultConfig}
+          currentFrequency={null}
+          activeSignals={signalsWithType}
+          progress={0}
+          deviceAvailable={true}
+          {...mockHandlers}
+        />,
+      );
+
+      // Check that signal types are displayed
+      expect(screen.getByText("WFM (90%)")).toBeInTheDocument();
+      expect(screen.getByText("NFM (80%)")).toBeInTheDocument();
+      expect(screen.getByText("AM (70%)")).toBeInTheDocument();
+    });
+
+    it("displays Unknown for signals without type", () => {
+      const signalsWithoutType: ActiveSignal[] = [
+        {
+          frequency: 100.3e6,
+          strength: 0.75,
+          timestamp: new Date("2024-01-01T12:00:00Z"),
+        },
+      ];
+
+      render(
+        <FrequencyScanner
+          state="idle"
+          config={defaultConfig}
+          currentFrequency={null}
+          activeSignals={signalsWithoutType}
+          progress={0}
+          deviceAvailable={true}
+          {...mockHandlers}
+        />,
+      );
+
+      expect(screen.getByText("Unknown")).toBeInTheDocument();
+    });
   });
 
   describe("Accessibility", () => {

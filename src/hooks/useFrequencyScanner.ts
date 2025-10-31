@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { SignalClassifier } from "../lib/detection/signal-classifier";
 import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
 import {
@@ -44,6 +45,10 @@ export interface ActiveSignal {
   rdsData?: RDSStationData;
   /** RDS decoder statistics (FM signals only) */
   rdsStats?: RDSDecoderStats;
+  /** Signal type classification */
+  type?: string;
+  /** Classification confidence (0-1 scale) */
+  confidence?: number;
 }
 
 /**
@@ -280,8 +285,14 @@ export function useFrequencyScanner(
           });
         }
 
+        // Initialize signal classifier
+        const classifier = new SignalClassifier();
+
         // Process each detected peak
         for (const peak of peaks) {
+          // Classify the signal
+          const classifiedSignal = classifier.classify(peak, powerSpectrum);
+
           // Convert power dB to 0-1 strength scale (relative to dynamic range)
           // Assume typical dynamic range of 60 dB
           const dynamicRangeDb = 60;
@@ -294,6 +305,8 @@ export function useFrequencyScanner(
             frequency: peak.frequency,
             strength: strengthNormalized,
             timestamp: new Date(),
+            type: classifiedSignal.type,
+            confidence: classifiedSignal.confidence,
           };
 
           // For FM frequencies, optionally decode RDS

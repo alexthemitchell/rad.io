@@ -67,6 +67,29 @@ function FrequencyScanner({
   };
 
   /**
+   * Format signal type for display
+   */
+  const formatSignalType = (type?: string, confidence?: number): string => {
+    if (!type || type === "unknown") {
+      return "Unknown";
+    }
+    const typeMap: Record<string, string> = {
+      /* eslint-disable @typescript-eslint/naming-convention */
+      "narrowband-fm": "NFM",
+      "wideband-fm": "WFM",
+      /* eslint-enable @typescript-eslint/naming-convention */
+      am: "AM",
+      digital: "Digital",
+      pulsed: "Pulsed",
+    };
+    const displayType = typeMap[type] ?? type;
+    if (confidence !== undefined) {
+      return `${displayType} (${(confidence * 100).toFixed(0)}%)`;
+    }
+    return displayType;
+  };
+
+  /**
    * Export signals to JSON
    */
   const handleExport = (): void => {
@@ -278,6 +301,7 @@ function FrequencyScanner({
                 <tr>
                   <th>Frequency</th>
                   <th>Strength</th>
+                  <th>Type</th>
                   <th>Station</th>
                   <th>RDS Info</th>
                   <th>Time</th>
@@ -305,6 +329,11 @@ function FrequencyScanner({
                             }}
                           />
                           <span>{(signal.strength * 100).toFixed(1)}%</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="signal-type">
+                          {formatSignalType(signal.type, signal.confidence)}
                         </div>
                       </td>
                       <td>
@@ -490,6 +519,13 @@ function FrequencyScanner({
           min-width: 2rem;
           border-radius: 0.25rem;
           transition: width 0.3s ease;
+        }
+
+        .signal-type {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #a78bfa;
+          font-family: monospace;
         }
 
         .rds-station {
