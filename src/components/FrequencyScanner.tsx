@@ -4,6 +4,19 @@ import type {
   FrequencyScanConfig,
 } from "../hooks/useFrequencyScanner";
 
+/**
+ * Map of signal types to display names
+ */
+/* eslint-disable @typescript-eslint/naming-convention */
+const SIGNAL_TYPE_MAP: Record<string, string> = {
+  "narrowband-fm": "NFM",
+  "wideband-fm": "WFM",
+  am: "AM",
+  digital: "Digital",
+  pulsed: "Pulsed",
+};
+/* eslint-enable @typescript-eslint/naming-convention */
+
 export interface FrequencyScannerProps {
   /** Current scanner state */
   state: ScannerState;
@@ -67,6 +80,20 @@ function FrequencyScanner({
   };
 
   /**
+   * Format signal type for display
+   */
+  const formatSignalType = (type?: string, confidence?: number): string => {
+    if (!type || type === "unknown") {
+      return "Unknown";
+    }
+    const displayType = SIGNAL_TYPE_MAP[type] ?? type;
+    if (confidence !== undefined) {
+      return `${displayType} (${(confidence * 100).toFixed(0)}%)`;
+    }
+    return displayType;
+  };
+
+  /**
    * Export signals to JSON
    */
   const handleExport = (): void => {
@@ -122,6 +149,27 @@ function FrequencyScanner({
               step="0.1"
               min="0.01"
               max="6000"
+            />
+          </label>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="step-size">
+            Step Size (MHz):
+            <input
+              id="step-size"
+              type="number"
+              value={(config.stepSizeHz ?? 100000) / 1e6}
+              onChange={(e) =>
+                onConfigChange({
+                  stepSizeHz: parseFloat(e.target.value) * 1e6,
+                })
+              }
+              disabled={!isIdle}
+              step="0.01"
+              min="0.001"
+              max="100"
+              aria-label="Step size (scan step) in MHz"
             />
           </label>
         </div>
@@ -278,6 +326,7 @@ function FrequencyScanner({
                 <tr>
                   <th>Frequency</th>
                   <th>Strength</th>
+                  <th>Type</th>
                   <th>Station</th>
                   <th>RDS Info</th>
                   <th>Time</th>
@@ -305,6 +354,11 @@ function FrequencyScanner({
                             }}
                           />
                           <span>{(signal.strength * 100).toFixed(1)}%</span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="signal-type">
+                          {formatSignalType(signal.type, signal.confidence)}
                         </div>
                       </td>
                       <td>
@@ -490,6 +544,13 @@ function FrequencyScanner({
           min-width: 2rem;
           border-radius: 0.25rem;
           transition: width 0.3s ease;
+        }
+
+        .signal-type {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #a78bfa;
+          font-family: monospace;
         }
 
         .rds-station {

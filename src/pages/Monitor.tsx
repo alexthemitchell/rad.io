@@ -3,9 +3,11 @@ import AudioControls from "../components/AudioControls";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
 import RecordingControls from "../components/RecordingControls";
+import RenderingSettingsModal from "../components/RenderingSettingsModal";
 import SignalStrengthMeter from "../components/SignalStrengthMeter";
 import StatusBar from "../components/StatusBar";
 import { WATERFALL_COLORMAPS } from "../constants";
+import { useSettings } from "../contexts";
 import { useDevice } from "../contexts/DeviceContext";
 import { useFrequency } from "../contexts/FrequencyContext";
 import { useNotifications } from "../contexts/NotificationContext";
@@ -34,13 +36,15 @@ const Monitor: React.FC = () => {
     useFrequency();
   const [isReceiving, setIsReceiving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string>("");
+  const [showRenderingSettings, setShowRenderingSettings] = useState(false);
+  const { settings, setSettings } = useSettings();
 
   // Tuning state
   // Hardware configuration - currently hardcoded, could be made configurable in future
   const sampleRate = 2_000_000; // 2 MSPS
   const lnaGain = 16; // dB
   const vgaGain = 30; // dB
-  const [fftSize, setFftSize] = useState(4096);
+  // Visualization/DSP configuration comes from SettingsContext
 
   // Deprecated: spectrogram frames are streamed directly to the renderer now.
   // Keeping a React state history is unnecessary and adds GC pressure.
@@ -51,7 +55,7 @@ const Monitor: React.FC = () => {
     start: startDsp,
     stop: stopDsp,
   } = useDsp(device, {
-    fftSize,
+    fftSize: settings.fftSize,
     onNewFft: () => {
       // No-op here; PrimaryVisualization consumes latest fftData directly.
       // This avoids React state churn for history frames.
@@ -59,15 +63,7 @@ const Monitor: React.FC = () => {
   });
 
   // State for visualization settings
-  const [vizMode, setVizMode] = useState<"fft" | "waterfall" | "spectrogram">(
-    "fft",
-  );
-  const [highPerfMode, setHighPerfMode] = useState(false);
-  const [showWaterfall, setShowWaterfall] = useState(true);
-  const [colorMap, setColorMap] =
-    useState<keyof typeof WATERFALL_COLORMAPS>("turbo");
-  const [dbMin, setDbMin] = useState<number | undefined>(-100);
-  const [dbMax, setDbMax] = useState<number | undefined>(0);
+  // Settings values come from context: settings.{vizMode, highPerf, showWaterfall, colorMap, dbMin, dbMax, fftSize}
 
   // Stable list of available colormap names for the dropdown
   const colorNames = React.useMemo<string[]>(() => {
@@ -232,6 +228,13 @@ const Monitor: React.FC = () => {
   const handleVolumeChange = (vol: number): void => setVolume(vol * 100);
   const handleToggleMute = (): void => setIsMuted(!isMuted);
 
+  // Type helper for JSX prop inference - validate colorMap exists in WATERFALL_COLORMAPS
+  const colorKey = (
+    Object.keys(WATERFALL_COLORMAPS).includes(settings.colorMap)
+      ? settings.colorMap
+      : "turbo"
+  ) as keyof typeof WATERFALL_COLORMAPS;
+
   return (
     <div className="monitor-page" role="main">
       <header className="page-header">
@@ -281,11 +284,14 @@ const Monitor: React.FC = () => {
             Visualization mode:
             <select
               aria-label="Visualization mode"
-              value={vizMode}
+              value={settings.vizMode}
               onChange={(e) =>
-                setVizMode(
-                  e.target.value as "fft" | "waterfall" | "spectrogram",
-                )
+                setSettings({
+                  vizMode: e.target.value as
+                    | "fft"
+                    | "waterfall"
+                    | "spectrogram",
+                })
               }
               style={{ marginLeft: 8 }}
             >
@@ -297,8 +303,8 @@ const Monitor: React.FC = () => {
           <label>
             <input
               type="checkbox"
-              checked={highPerfMode}
-              onChange={(e) => setHighPerfMode(e.target.checked)}
+              checked={settings.highPerf}
+              onChange={(e) => setSettings({ highPerf: e.target.checked })}
               aria-label="High performance mode (lower latency, less history)"
               style={{ marginLeft: 8, marginRight: 4 }}
             />
@@ -308,8 +314,10 @@ const Monitor: React.FC = () => {
             FFT Size:
             <select
               aria-label="FFT size"
-              value={fftSize}
-              onChange={(e) => setFftSize(parseInt(e.target.value, 10))}
+              value={settings.fftSize}
+              onChange={(e) =>
+                setSettings({ fftSize: parseInt(e.target.value, 10) })
+              }
               style={{ marginLeft: 8 }}
             >
               {[1024, 2048, 4096, 8192].map((n) => (
@@ -319,17 +327,18 @@ const Monitor: React.FC = () => {
               ))}
             </select>
           </label>
-          {vizMode !== "fft" && (
+          {settings.vizMode !== "fft" && (
             <>
               <label>
                 Colormap:
                 <select
                   aria-label="Spectrogram colormap"
-                  value={colorMap}
+                  value={settings.colorMap}
                   onChange={(e) =>
-                    setColorMap(
-                      e.target.value as keyof typeof WATERFALL_COLORMAPS,
-                    )
+                    setSettings({
+                      colorMap: e.target
+                        .value as keyof typeof WATERFALL_COLORMAPS,
+                    })
                   }
                   style={{ marginLeft: 6 }}
                 >
@@ -348,13 +357,14 @@ const Monitor: React.FC = () => {
                 <input
                   type="number"
                   placeholder="auto"
-                  value={dbMin ?? ""}
+                  value={settings.dbMin ?? ""}
                   onChange={(e) =>
-                    setDbMin(
-                      e.target.value === ""
-                        ? undefined
-                        : parseFloat(e.target.value),
-                    )
+                    setSettings({
+                      dbMin:
+                        e.target.value === ""
+                          ? undefined
+                          : parseFloat(e.target.value),
+                    })
                   }
                   style={{ width: 80, marginLeft: 6 }}
                   aria-label="Manual dB floor (leave blank for auto)"
@@ -365,13 +375,14 @@ const Monitor: React.FC = () => {
                 <input
                   type="number"
                   placeholder="auto"
-                  value={dbMax ?? ""}
+                  value={settings.dbMax ?? ""}
                   onChange={(e) =>
-                    setDbMax(
-                      e.target.value === ""
-                        ? undefined
-                        : parseFloat(e.target.value),
-                    )
+                    setSettings({
+                      dbMax:
+                        e.target.value === ""
+                          ? undefined
+                          : parseFloat(e.target.value),
+                    })
                   }
                   style={{ width: 80, marginLeft: 6 }}
                   aria-label="Manual dB ceiling (leave blank for auto)"
@@ -379,12 +390,14 @@ const Monitor: React.FC = () => {
               </label>
             </>
           )}
-          {vizMode === "fft" && (
+          {settings.vizMode === "fft" && (
             <label>
               <input
                 type="checkbox"
-                checked={showWaterfall}
-                onChange={(e) => setShowWaterfall(e.target.checked)}
+                checked={settings.showWaterfall}
+                onChange={(e) =>
+                  setSettings({ showWaterfall: e.target.checked })
+                }
                 aria-label="Toggle waterfall visualization"
                 style={{ marginLeft: 8, marginRight: 4 }}
               />
@@ -448,7 +461,8 @@ const Monitor: React.FC = () => {
               />
               RDS
             </label>
-            <span aria-live="polite" style={{ opacity: 0.8 }}>
+            {/* Avoid multiple live regions; StatusBar provides the single polite live region per UI spec */}
+            <span style={{ opacity: 0.8 }}>
               {scanner.state !== "idle"
                 ? `Progress: ${Math.round(scanner.progress)}%`
                 : ""}
@@ -458,19 +472,19 @@ const Monitor: React.FC = () => {
         <div style={{ marginTop: 8 }}>
           <PrimaryVisualization
             fftData={fftData}
-            fftSize={fftSize}
+            fftSize={settings.fftSize}
             sampleRate={sampleRate}
             centerFrequency={frequency}
             mode={
-              vizMode === "fft" && showWaterfall
+              settings.vizMode === "fft" && settings.showWaterfall
                 ? "spectrogram"
-                : vizMode === "fft"
+                : settings.vizMode === "fft"
                   ? "fft"
-                  : vizMode
+                  : settings.vizMode
             }
-            colorMap={colorMap}
-            dbMin={dbMin}
-            dbMax={dbMax}
+            colorMap={colorKey}
+            dbMin={settings.dbMin}
+            dbMax={settings.dbMax}
             onTune={(fHz) => {
               const snapped = Math.round(fHz / 1_000) * 1_000;
               setFrequency(snapped);
@@ -615,6 +629,7 @@ const Monitor: React.FC = () => {
       </section>
 
       <section
+        id="recording"
         aria-label="Recording"
         style={{
           backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
@@ -724,8 +739,13 @@ const Monitor: React.FC = () => {
           audioState={"idle"}
           audioVolume={volume}
           audioClipping={false}
+          onOpenRenderingSettings={() => setShowRenderingSettings(true)}
         />
       </div>
+      <RenderingSettingsModal
+        isOpen={showRenderingSettings}
+        onClose={() => setShowRenderingSettings(false)}
+      />
     </div>
   );
 };

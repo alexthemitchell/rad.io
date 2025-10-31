@@ -151,8 +151,9 @@ export abstract class BasePlugin implements Plugin {
    * Override this in subclasses if configuration is supported
    */
   protected onConfigUpdate(
-    _config: Record<string, unknown>,
+    config: Record<string, unknown>,
   ): void | Promise<void> {
     // Default implementation does nothing
+    void config;
   }
 }

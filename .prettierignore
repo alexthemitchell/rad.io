@@ -7,5 +7,3 @@ coverage
 .cache
 .DS_Store
 package-lock.json
-# Template files with placeholder syntax
-src/models/templates/

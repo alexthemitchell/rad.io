@@ -61,9 +61,9 @@ The visualization system consists of four main layers:
 
 React components that integrate visualizations into pages:
 
-- **Monitor Page** (`src/pages/MonitorMerged.tsx`): Main reception interface
+- **Monitor Page** (`src/pages/Monitor.tsx`): Main reception interface
 - **Analysis Page** (`src/pages/Analysis.tsx`): Signal analysis tools
-- **Visualization Demo** (`src/pages/VisualizationDemo.tsx`): Test/demo page
+  (Former demo page has been removed; use Monitor for live examples.)
 
 #### 2. Visualization Components Layer
 
@@ -90,7 +90,7 @@ Abstract data providers in `src/visualization/` and `src/models/`:
 
 - **HackRF Device** (`src/hackrf/HackRFOne.ts`): Real hardware
 - **MockSDRDevice** (`src/models/MockSDRDevice.ts`): E2E testing
-- **SimulatedSource** (`src/visualization/SimulatedSource.ts`): Development/demo
+- **SimulatedSource** (`src/visualization/SimulatedSource.ts`): Development/testing
 - **ReplaySource** (`src/visualization/ReplaySource.ts`): Recorded data playback
 
 ## Data Flow
@@ -910,17 +910,12 @@ function adaptiveDownsample(
    export { MyVisualization } from "./MyVisualization";
    ```
 
-4. **Add to Demo Page**
+4. **Integrate into Monitor (or your page)**
 
-   ```typescript
-   // src/pages/VisualizationDemo.tsx
-   <MyVisualization
-     samples={samples}
-     width={750}
-     height={400}
-     sampleRate={sampleRate}
-   />
-   ```
+```typescript
+// Example: inside Monitor's visualization area
+<MyVisualization samples={samples} width={750} height={400} />
+```
 
 ### Adding a New Data Source
 
@@ -1011,7 +1006,7 @@ function adaptiveDownsample(
 
 ### Code Examples
 
-- Visualization Demo: `src/pages/VisualizationDemo.tsx`
+- Live integration: `src/components/Monitor/PrimaryVisualization.tsx`
 - Signal Generator: `src/utils/signalGenerator.ts`
 - WebGL Utilities: `src/utils/webgl.ts`
 - Mock Device: `src/models/MockSDRDevice.ts`
@@ -1061,6 +1056,6 @@ When contributing visualization features:
 3. Update this documentation with new patterns
 4. Ensure accessibility (ARIA labels, keyboard nav)
 5. Profile performance (maintain 30+ FPS)
-6. Add examples to demo page
+6. Integrate examples into Monitor or a local-only examples route
 
 For questions or issues, see [CONTRIBUTING.md](../CONTRIBUTING.md).

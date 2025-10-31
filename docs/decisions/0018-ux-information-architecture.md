@@ -109,7 +109,7 @@ Adopt the following UX Information Architecture and page map. Organize the app i
 
 - Settings (/settings)
   - Tabs: Display, Radio, Audio, Calibration, Advanced (Roadmap Iteration 10)
-  - Patterns: Persist via spark.kv; validation via Zod; profiles export/import
+  - Patterns: Persist via Zustand persist (localStorage); validation via Zod; profiles export/import
 
 - Calibration (/calibration)
   - Frequency PPM correction, gain offset (dB), IQ balance, DC offset; wizard flow

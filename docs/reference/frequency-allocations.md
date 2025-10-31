@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD036 -->
+
 # Frequency Allocations
 
 ## Overview

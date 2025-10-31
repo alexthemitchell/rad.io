@@ -263,7 +263,7 @@ We maintain a quarterly health check:
 
 1. Welcome & introductions (5 min)
 2. Project updates (10 min)
-3. Featured topic/demo (20 min)
+3. Featured topic (20 min)
 4. Open discussion (20 min)
 5. Next steps (5 min)
 

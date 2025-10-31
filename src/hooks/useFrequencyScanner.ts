@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { SignalClassifier } from "../lib/detection/signal-classifier";
 import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
 import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
 import {
@@ -16,6 +17,8 @@ export interface FrequencyScanConfig {
   startFrequency: number;
   /** End frequency in Hz */
   endFrequency: number;
+  /** Optional scan step size in Hz (channel spacing). UI-configurable; algorithm may adapt based on device bandwidth. */
+  stepSizeHz?: number;
   /** Signal threshold in dB above noise floor for detection */
   thresholdDb: number;
   /** Dwell time per frequency chunk in ms */
@@ -44,6 +47,10 @@ export interface ActiveSignal {
   rdsData?: RDSStationData;
   /** RDS decoder statistics (FM signals only) */
   rdsStats?: RDSDecoderStats;
+  /** Signal type classification */
+  type?: string;
+  /** Classification confidence (0-1 scale) */
+  confidence?: number;
 }
 
 /**
@@ -75,6 +82,7 @@ export function useFrequencyScanner(
   const [config, setConfig] = useState<FrequencyScanConfig>({
     startFrequency: 88e6, // 88 MHz (FM radio start)
     endFrequency: 108e6, // 108 MHz (FM radio end)
+    stepSizeHz: 100e3, // Default 100 kHz channel spacing (UI in MHz)
     thresholdDb: 10, // 10 dB above noise floor
     dwellTime: 100, // 100ms per frequency chunk
     fftSize: 2048, // 2048-point FFT for good resolution
@@ -96,6 +104,7 @@ export function useFrequencyScanner(
   const isScanningRef = useRef<boolean>(false);
   const receivePromiseRef = useRef<Promise<void> | null>(null);
   const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
+  const signalClassifierRef = useRef<SignalClassifier | null>(null);
 
   const clearPendingTimers = useCallback((): void => {
     if (scanTimeoutRef.current) {
@@ -281,7 +290,40 @@ export function useFrequencyScanner(
         }
 
         // Process each detected peak
+        // Initialize signal classifier once (reuse across scans)
+        signalClassifierRef.current ??= new SignalClassifier();
         for (const peak of peaks) {
+          // Classify the signal
+          const classifiedSignal = signalClassifierRef.current.classify(
+            {
+              binIndex: peak.binIndex,
+              frequency: peak.frequency,
+              power: peak.powerDb,
+              bandwidth: ((): number => {
+                const bin = peak.binIndex;
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const peakPower = powerSpectrum[bin]!;
+                const halfPower = peakPower - 3; // -3 dB width approximation
+                let left = bin;
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                while (left > 0 && powerSpectrum[left]! > halfPower) {
+                  left--;
+                }
+                let right = bin;
+                const len = powerSpectrum.length;
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                while (right < len - 1 && powerSpectrum[right]! > halfPower) {
+                  right++;
+                }
+                const binsWidth = Math.max(1, right - left);
+                const freqRes = sampleRate / len;
+                return binsWidth * freqRes;
+              })(),
+              snr: peak.powerDb - noiseFloor,
+            },
+            powerSpectrum,
+          );
+
           // Convert power dB to 0-1 strength scale (relative to dynamic range)
           // Assume typical dynamic range of 60 dB
           const dynamicRangeDb = 60;
@@ -294,6 +336,8 @@ export function useFrequencyScanner(
             frequency: peak.frequency,
             strength: strengthNormalized,
             timestamp: new Date(),
+            type: classifiedSignal.type,
+            confidence: classifiedSignal.confidence,
           };
 
           // For FM frequencies, optionally decode RDS

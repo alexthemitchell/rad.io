@@ -1,8 +1,10 @@
 import js from "@eslint/js";
 import json from "@eslint/json";
 import { defineConfig, globalIgnores } from "eslint/config";
+import eslintConfigPrettier from "eslint-config-prettier";
 import pluginImport from "eslint-plugin-import";
 import jsxA11y from "eslint-plugin-jsx-a11y";
+import prettier from "eslint-plugin-prettier";
 import pluginReact from "eslint-plugin-react";
 import pluginReactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
@@ -361,4 +363,20 @@ export default defineConfig([
     files: ["**/*.jsonc"],
     language: "json/jsonc",
   })),
+
+  // Prettier integration - must be last to override other configs
+  {
+    name: "rad.io/prettier",
+    files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx,json,jsonc}"],
+    plugins: {
+      prettier,
+    },
+    rules: {
+      "prettier/prettier": "error",
+    },
+  },
+  {
+    name: "rad.io/config-prettier",
+    ...eslintConfigPrettier,
+  },
 ]);

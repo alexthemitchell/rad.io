@@ -20,6 +20,22 @@
 
 import { type Sample } from "./dsp";
 
+// Minimum bits required to parse a basic Group Voice LCW (format + TGID + partial source)
+const MIN_GVCHU_BITS = 48;
+
+// Note: Assumes MSB-first bit ordering in the input array (bits[0] is the most significant)
+function extractBitsAsNumber(
+  bits: number[],
+  start: number,
+  length: number,
+): number {
+  let value = 0;
+  for (let i = start; i < start + length; i++) {
+    value = (value << 1) | (bits[i] ?? 0);
+  }
+  return value;
+}
+
 /**
  * P25 Phase 2 symbol mapping
  * H-DQPSK uses 4 phase shifts corresponding to 2 bits per symbol
@@ -408,14 +424,128 @@ export function getFrameDescription(frame: P25Frame): string {
 
 /**
  * Extract talkgroup information from P25 frame bits
- * (Simplified - real implementation would parse the full frame structure)
+ *
+ * Implements basic Link Control Word (LCW) parsing for Group Voice Channel User (GVCHU) format.
+ * Currently supports format types 0x00 and 0x40 (most common group voice formats).
+ *
+ * @param bits - Frame bits to parse (minimum 48 bits required for GVCHU parsing)
+ * @returns Object containing talkgroupId and sourceId if found, empty object otherwise
+ *
+ * @remarks
+ * This is a simplified implementation. Production systems would need:
+ * - Full LCW format identification and handling for all format types
+ * - Reed-Solomon error correction
+ * - CRC-16 verification
+ * - Support for Unit-to-Unit and other LCW formats
+ *
+ * TODO: Implement full frame header structure per TIA-102 CAAB specification
  */
-export function extractTalkgroupInfo(_bits: number[]): {
+export function extractTalkgroupInfo(bits: number[]): {
   talkgroupId?: number;
   sourceId?: number;
 } {
-  // This is a placeholder - real implementation would parse the
-  // Link Control Word (LCW) from the frame to extract talkgroup info
-  // For now, return empty object
-  return {};
+  // P25 Phase 2 Link Control Word (LCW) parsing for Group Voice Channel User (GVCHU) format
+  //
+  // Full P25 Phase 2 LCW structure (after frame sync):
+  // - LCW Format: 8 bits (identifies the type of link control)
+  // - For Group Voice (0x00):
+  //   - Talkgroup Address: 16 bits
+  //   - Source Address: 24 bits
+  //   - Additional fields and CRC
+
+  // Need at least minimal number of bits for Group Voice LCW parsing
+  if (bits.length < MIN_GVCHU_BITS) {
+    return {};
+  }
+
+  // Extract LCW format (first 8 bits after sync)
+  // Common formats:
+  // 0x00 = Group Voice Channel User (GVCHU)
+  // 0x03 = Unit to Unit Voice Channel User
+  // 0x40 = Group Voice Channel Update (GVCHU)
+  const lcwFormat = extractBitsAsNumber(bits, 0, 8);
+
+  // Only process Group Voice formats (0x00 and 0x40 are most common)
+  if (lcwFormat !== 0x00 && lcwFormat !== 0x40) {
+    return {}; // Not a group voice transmission
+  }
+
+  // Extract talkgroup ID (16 bits, following the format byte)
+  const talkgroupId = extractBitsAsNumber(bits, 8, 16);
+
+  // Extract source ID (24 bits, following the talkgroup ID)
+  // Need at least 48 bits total
+  const sourceId =
+    bits.length >= MIN_GVCHU_BITS ? extractBitsAsNumber(bits, 24, 24) : 0;
+
+  // Validate that we got meaningful values (not all zeros, which often indicates no data)
+  if (talkgroupId === 0 && sourceId === 0) {
+    return {};
+  }
+
+  return {
+    talkgroupId: talkgroupId !== 0 ? talkgroupId : undefined,
+    sourceId: sourceId !== 0 ? sourceId : undefined,
+  };
+}
+
+/**
+ * Decode P25 Phase 2 with automatic transmission logging
+ *
+ * This wrapper around decodeP25Phase2 automatically logs completed transmissions
+ * to IndexedDB for historical tracking and analysis.
+ *
+ * @param samples - IQ samples to decode
+ * @param config - Decoder configuration
+ * @param options - Logging options
+ * @returns Decoded P25 data
+ */
+export async function decodeP25Phase2WithLogging(
+  samples: Sample[],
+  config: P25DecoderConfig = DEFAULT_P25_CONFIG,
+  options: {
+    logger?: {
+      logTransmission: (record: {
+        timestamp: number;
+        talkgroupId?: number;
+        sourceId?: number;
+        duration: number;
+        signalQuality: number;
+        slot: number;
+        isEncrypted: boolean;
+        errorRate: number;
+      }) => Promise<number>;
+    };
+    transmissionStartTime?: number;
+  } = {},
+): Promise<P25DecodedData> {
+  const decoded = decodeP25Phase2(samples, config);
+
+  // If we have frames and a logger, log the transmission
+  if (
+    decoded.frames.length > 0 &&
+    options.logger &&
+    options.transmissionStartTime
+  ) {
+    const endTime = Date.now();
+    const duration = endTime - options.transmissionStartTime;
+
+    // Log each slot as a separate transmission
+    for (const frame of decoded.frames) {
+      const talkgroupInfo = extractTalkgroupInfo(frame.bits);
+
+      await options.logger.logTransmission({
+        timestamp: frame.timestamp,
+        talkgroupId: talkgroupInfo.talkgroupId ?? decoded.talkgroupId,
+        sourceId: talkgroupInfo.sourceId ?? decoded.sourceId,
+        duration,
+        signalQuality: frame.signalQuality,
+        slot: frame.slot,
+        isEncrypted: decoded.isEncrypted,
+        errorRate: decoded.errorRate,
+      });
+    }
+  }
+
+  return decoded;
 }

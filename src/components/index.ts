@@ -22,3 +22,4 @@ export { default as TrunkedRadioControls } from "./TrunkedRadioControls";
 export { default as TalkgroupScanner } from "./TalkgroupScanner";
 export { default as TalkgroupStatus } from "./TalkgroupStatus";
 export { default as P25SystemPresets } from "./P25SystemPresets";
+export { default as TransmissionLogViewer } from "./TransmissionLogViewer";

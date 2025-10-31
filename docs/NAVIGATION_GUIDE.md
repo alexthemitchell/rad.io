@@ -245,4 +245,4 @@ This documentation follows the **[Diátaxis framework](https://diataxis.fr/)**:
 
 ---
 
-**Happy documenting! 📚✨**
+### Happy documenting! 📚✨

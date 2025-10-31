@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useDevice } from "../contexts/DeviceContext";
+import { useStatusMetrics } from "../hooks/useStatusMetrics";
 
 /**
  * TopAppBar component - Global status and quick actions
@@ -26,30 +28,10 @@ type TopAppBarProps = {
 
 function TopAppBar({ asBanner = true }: TopAppBarProps): React.JSX.Element {
   const { device } = useDevice();
-  const [sampleRate, setSampleRate] = useState<number | null>(null);
-  const [bufferHealth, setBufferHealth] = useState<number>(100);
+  const navigate = useNavigate();
+  // Reuse the centralized status metrics used by StatusBar for consistency
+  const metrics = useStatusMetrics();
   const [isRecording] = useState(false);
-
-  // Get sample rate from device
-  useEffect(() => {
-    if (device?.getSampleRate) {
-      device
-        .getSampleRate()
-        .then(setSampleRate)
-        .catch(() => setSampleRate(null));
-    }
-  }, [device]);
-
-  // Buffer health monitoring (simplified for now)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // TODO: Connect to actual buffer monitoring system
-      setBufferHealth(100);
-    }, 1000);
-    return (): void => {
-      clearInterval(interval);
-    };
-  }, []);
 
   const formatSampleRate = (rate: number | null): string => {
     if (!rate) {
@@ -72,7 +54,14 @@ function TopAppBar({ asBanner = true }: TopAppBarProps): React.JSX.Element {
   };
 
   const handleQuickRecord = (): void => {
-    // TODO: Implement quick record toggle
+    // Navigate to Monitor page and focus the Recording panel
+    void navigate("/monitor#recording");
+    // Fire a lightweight custom event to allow pages to optionally react
+    try {
+      window.dispatchEvent(new CustomEvent("rad:focus-recording"));
+    } catch {
+      // no-op
+    }
   };
 
   const status = getConnectionStatus();
@@ -93,15 +82,17 @@ function TopAppBar({ asBanner = true }: TopAppBarProps): React.JSX.Element {
 
         <span className="status-item">
           <span className="status-label">Sample Rate:</span>
-          <span className="status-value">{formatSampleRate(sampleRate)}</span>
+          <span className="status-value">
+            {formatSampleRate(metrics.sampleRate)}
+          </span>
         </span>
 
         <span className="status-item">
           <span className="status-label">Buffer:</span>
           <span
-            className={`status-value ${bufferHealth < 80 ? "status-warning" : ""}`}
+            className={`status-value ${metrics.bufferHealth < 80 ? "status-warning" : ""}`}
           >
-            {bufferHealth}%
+            {metrics.bufferHealth}%
           </span>
         </span>
       </section>

@@ -11,7 +11,7 @@ The visualization module provides a clean, decoupled architecture for signal vis
 Provides IQ samples to visualizations. Implementations can be:
 
 - Real hardware devices (HackRF, RTL-SDR)
-- Simulated sources (for testing/demos)
+- Simulated sources (for testing)
 - Recorded data playback
 
 ```typescript
@@ -142,14 +142,14 @@ console.log(`Sample rate: ${metadata.sampleRate} Hz`);
 await source.stopStreaming();
 ```
 
-## Demo Page
+## Where to see it
 
-Visit `/demo` in the application to see all visualizations working with SimulatedSource. The demo includes:
+Use the Monitor page to see visualizations working live with your device or in simulated mode. The Monitor workspace includes:
 
-- Interactive signal pattern selection
-- Real-time visualization updates
-- Metadata display
-- Architecture documentation
+- Visualization mode selection (FFT, Waterfall, Spectrogram)
+- Real-time updates with configurable FFT size and color maps
+- Device status and metadata
+- Links to deeper documentation
 
 ## Documentation
 

@@ -14,9 +14,9 @@ If you're new to rad.io, start here:
 
 Once you're comfortable with the basics:
 
-4. **[Adding a Custom Demodulator](./04-custom-demodulator.md)** - Implement your own demodulation algorithm
-5. **[Creating Custom Visualizations](./05-custom-visualizations.md)** - Build new visualization components
-6. **[Working with Real Hardware](./06-real-hardware.md)** - Connect and control SDR hardware devices
+1. **[Adding a Custom Demodulator](./04-custom-demodulator.md)** - Implement your own demodulation algorithm
+2. **[Creating Custom Visualizations](./05-custom-visualizations.md)** - Build new visualization components
+3. **[Working with Real Hardware](./06-real-hardware.md)** - Connect and control SDR hardware devices
 
 ## About These Tutorials
 

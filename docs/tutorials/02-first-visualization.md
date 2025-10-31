@@ -105,7 +105,7 @@ export const SimpleSpectrum: React.FC<SimpleSpectrumProps> = ({
 };
 ```
 
-**What's happening here?**
+### What's happening here?
 
 - `useRef` creates a reference to the canvas element
 - `useEffect` runs when `fftData` changes, redrawing the visualization
@@ -177,24 +177,16 @@ export function generateAnimatedFFT(
 }
 ```
 
-## Step 3: Create a Demo Page
+## Step 3: Integrate into Monitor (or your page)
 
-Create `src/pages/SimpleSpectrumDemo.tsx`:
+Create a small component and integrate it into your page (the main app uses the Monitor page):
 
 ```typescript
 import React, { useEffect, useState } from 'react';
 import { SimpleSpectrum } from '../components/SimpleSpectrum';
 import { generateAnimatedFFT } from '../utils/testDataGenerator';
 
-/**
- * Demo page for the SimpleSpectrum component.
- *
- * This page demonstrates how to:
- * 1. Generate test data
- * 2. Update visualizations in real-time
- * 3. Control animation with React state
- */
-export const SimpleSpectrumDemo: React.FC = () => {
+export const SimpleSpectrumExample: React.FC = () => {
   const [fftData, setFftData] = useState<Float32Array>(() =>
     generateAnimatedFFT(512, 0)
   );
@@ -257,16 +249,18 @@ export const SimpleSpectrumDemo: React.FC = () => {
 };
 ```
 
-## Step 4: Add a Route for Your Demo
+## Step 4: Use It in the App
 
-Open `src/App.tsx` and add a route for your new demo page:
+Option A (recommended): integrate into the Monitor page’s visualization area or behind a feature flag.
+
+Option B: create a temporary route for local development:
 
 ```typescript
 // Add import at top
-import { SimpleSpectrumDemo } from './pages/SimpleSpectrumDemo';
+import { SimpleSpectrumExample } from './pages/SimpleSpectrumExample';
 
 // Inside your Router configuration, add:
-<Route path="/demo/simple-spectrum" element={<SimpleSpectrumDemo />} />
+<Route path="/examples/simple-spectrum" element={<SimpleSpectrumExample />} />
 ```
 
 ## Step 5: Run and Test
@@ -277,18 +271,22 @@ import { SimpleSpectrumDemo } from './pages/SimpleSpectrumDemo';
    npm start
    ```
 
-2. Navigate to your demo:
+2. Navigate to your example:
 
    ```
-   https://localhost:8080/#/demo/simple-spectrum
+
    ```
 
-   **Note**: The URL uses HTTPS (required for WebUSB support) and hash-based routing (`#/`). rad.io uses hash routing to manage application state and navigation within the single-page app. The route `/demo/simple-spectrum` is created in Step 4 when you add it to `App.tsx`. Make sure you've completed Step 4 to add the route configuration.
+https://localhost:8080/#/examples/simple-spectrum
+
+```
+
+**Note**: The URL uses HTTPS (required for WebUSB support) and hash-based routing (`#/`). The `/examples/*` routes are for local development only and should not be committed to navigation for production.
 
 3. You should see:
-   - A black canvas with a cyan spectrum line
-   - Two peaks that slowly move
-   - A Play/Pause button
+- A black canvas with a cyan spectrum line
+- Two peaks that slowly move
+- A Play/Pause button
 
 **Try this:**
 
@@ -304,16 +302,18 @@ Let's break down the key concepts:
 ### Data Flow
 
 ```
+
 generateAnimatedFFT()
-    ↓
+↓
 fftData (state)
-    ↓
+↓
 SimpleSpectrum component
-    ↓
+↓
 useEffect (on data change)
-    ↓
+↓
 Canvas rendering
-```
+
+````
 
 ### React Patterns
 
@@ -347,7 +347,7 @@ for (let i = 0; i < 10; i++) {
   ctx.lineTo(x, height);
   ctx.stroke();
 }
-```
+````
 
 ### Challenge 2: Show Frequency Labels
 

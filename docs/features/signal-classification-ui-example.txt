@@ -1,0 +1,95 @@
+# Signal Classification UI Example
+
+## Active Signals Table - Before
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ Frequency Scanner                                                               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│ Active Signals (3)                                                              │
+│                                                                                 │
+│ ┌───────────┬──────────┬─────────┬──────────┬──────────┐                      │
+│ │ Frequency │ Strength │ Station │ RDS Info │ Time     │                      │
+│ ├───────────┼──────────┼─────────┼──────────┼──────────┤                      │
+│ │ 98.1 MHz  │ ████ 85% │ WXYZ    │ Rock 98  │ 12:34:56 │                      │
+│ │ 100.3 MHz │ ███  75% │ WABC    │ Mix 100  │ 12:34:57 │                      │
+│ │ 146.5 MHz │ ██   45% │ —       │ No RDS   │ 12:34:58 │                      │
+│ └───────────┴──────────┴─────────┴──────────┴──────────┘                      │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Active Signals Table - After (With Classification)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ Frequency Scanner                                                                   │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                     │
+│ Active Signals (3)                                                                  │
+│                                                                                     │
+│ ┌───────────┬──────────┬────────────┬─────────┬──────────┬──────────┐            │
+│ │ Frequency │ Strength │ Type       │ Station │ RDS Info │ Time     │            │
+│ ├───────────┼──────────┼────────────┼─────────┼──────────┼──────────┤            │
+│ │ 98.1 MHz  │ ████ 85% │ WFM (90%)  │ WXYZ    │ Rock 98  │ 12:34:56 │ ← NEW!    │
+│ │ 100.3 MHz │ ███  75% │ WFM (90%)  │ WABC    │ Mix 100  │ 12:34:57 │ ← NEW!    │
+│ │ 146.5 MHz │ ██   45% │ NFM (80%)  │ —       │ No RDS   │ 12:34:58 │ ← NEW!    │
+│ └───────────┴──────────┴────────────┴─────────┴──────────┴──────────┘            │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Signal Type Legend
+
+- **WFM (Wideband FM)**: 150-250 kHz bandwidth
+  - Commercial FM radio broadcasts (88-108 MHz)
+  - High confidence (typically 90%)
+  
+- **NFM (Narrowband FM)**: 12-30 kHz bandwidth
+  - Two-way radio, amateur repeaters
+  - High confidence (typically 80%)
+  
+- **AM**: 4-12 kHz bandwidth
+  - AM radio, aviation, amateur bands
+  - Good confidence (typically 70%)
+  
+- **Digital**: 1-5 kHz with sharp edges
+  - Digital voice modes (DMR, P25, D-STAR)
+  - Moderate confidence (typically 60%)
+  
+- **Unknown**: Signals outside known patterns
+  - Unrecognized modulation types
+  - Zero confidence
+
+## JSON Export Example
+
+Before:
+```json
+{
+  "frequency": 98100000,
+  "strength": 0.85,
+  "timestamp": "2024-01-01T12:34:56.000Z"
+}
+```
+
+After (with classification):
+```json
+{
+  "frequency": 98100000,
+  "strength": 0.85,
+  "timestamp": "2024-01-01T12:34:56.000Z",
+  "type": "wideband-fm",
+  "confidence": 0.9,
+  "rdsData": {
+    "ps": "WXYZ",
+    "rt": "Rock 98"
+  }
+}
+```
+
+## Key Features
+
+1. **Automatic Classification**: No manual intervention needed
+2. **Confidence Scores**: Shows reliability of classification
+3. **Compact Display**: Fits naturally in existing UI
+4. **Color Coded**: Purple monospace font for signal types
+5. **Export Ready**: JSON exports include classification data

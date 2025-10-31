@@ -20,7 +20,7 @@ If you need help using or contributing to rad.io, we're here to support you!
 - Share your use cases and get feedback
 - Connect with other users
 
-**Search First**
+#### Search First
 
 - Check [existing discussions](https://github.com/alexthemitchell/rad.io/discussions)
 - Search [closed issues](https://github.com/alexthemitchell/rad.io/issues?q=is%3Aissue+is%3Aclosed)

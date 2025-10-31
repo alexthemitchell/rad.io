@@ -218,11 +218,15 @@ export class ChannelPowerMeasurement {
     linearPower: number[],
     frequencies: Float32Array,
     startIdx: number,
-    _endIdx: number,
+    endIdx: number,
   ): number {
     if (linearPower.length < 2) {
       return linearPower[0] ?? 0;
     }
+
+    // endIdx is provided for potential future use in frequency-dependent calculations
+    // Currently the integration is performed over the entire linearPower array
+    void endIdx;
 
     let sum = 0;
     for (let i = 0; i < linearPower.length - 1; i++) {

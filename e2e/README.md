@@ -71,7 +71,7 @@ The test suite serves multiple purposes:
 
 #### 3. `workspaces-comprehensive.spec.ts` (640 lines, ~62 tests)
 
-**Decode, Analysis, and Recordings workspaces**
+##### Decode, Analysis, and Recordings workspaces
 
 **Decode Workspace Coverage:**
 
@@ -110,7 +110,7 @@ The test suite serves multiple purposes:
 
 #### 4. `navigation-and-panels.spec.ts` (708 lines, ~87 tests)
 
-**Navigation, panels, keyboard shortcuts, and settings**
+##### Navigation, panels, keyboard shortcuts, and settings
 
 **Coverage:**
 
@@ -177,7 +177,7 @@ The test suite serves multiple purposes:
 
 #### 5. `accessibility.spec.ts` (Updated documentation)
 
-**WCAG 2.1 AA compliance validation**
+##### WCAG 2.1 AA compliance validation
 
 **Coverage:**
 

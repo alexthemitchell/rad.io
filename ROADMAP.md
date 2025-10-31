@@ -391,7 +391,7 @@ Understanding our users is critical to building the right features in the right 
 - ✅ Large frequency display with click-to-edit
 - ✅ Keyboard arrow key tuning with step control
 - ✅ Selectable tuning steps (1 Hz to 1 MHz)
-- ✅ State persistence via spark.kv
+- ✅ State persistence via Zustand persist (localStorage)
 - ✅ Click-to-tune from spectrum view
 - ✅ PageUp/PageDown for step size changes
 - ⚠️ Multiple VFO support deferred to future iteration
@@ -420,7 +420,7 @@ Understanding our users is critical to building the right features in the right 
 - ✅ Category and tag organization
 - ✅ Tune to bookmark with one click
 - ✅ Usage tracking (last used, usage count)
-- ✅ Persistence via spark.kv
+- ✅ Persistence via Zustand persist (localStorage)
 - ⚠️ CSV import/export deferred to future iteration
 - ⚠️ Visual markers on spectrum/waterfall deferred
 - ⚠️ Drag-and-drop reordering deferred
@@ -635,7 +635,7 @@ Understanding our users is critical to building the right features in the right 
 - ✅ Display settings: Color scheme, waterfall speed, grid overlay
 - ✅ Radio settings: FFT size, AGC, Noise blanker
 - ✅ Advanced settings: Storage management placeholder, About info
-- ✅ All settings persist via spark.kv
+- ✅ All settings persist via Zustand persist (localStorage)
 - ⚠️ Calibration wizard deferred to future iteration
 - ⚠️ PPM correction UI deferred
 - ⚠️ Keyboard shortcut configuration deferred
@@ -679,7 +679,7 @@ Understanding our users is critical to building the right features in the right 
 
 - ✅ Zustand store with devtools integration
 - ✅ Store slices: Device, Radio, UI
-- ✅ Persistence integration with spark.kv
+- ✅ Persistence integration with Zustand persist (localStorage)
 - ✅ Type-safe state with branded types
 - ✅ Selective subscriptions for performance
 - ✅ State hydration on app startup

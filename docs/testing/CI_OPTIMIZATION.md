@@ -37,7 +37,7 @@ Split tests across multiple CI jobs for faster feedback.
 
 #### Recommended Implementation
 
-**Option A: Manual Sharding by Directory**
+##### Option A: Manual Sharding by Directory
 
 ```yaml
 # .github/workflows/quality-checks.yml
@@ -69,7 +69,7 @@ test:
 - Per-component coverage tracking
 - Early failure detection
 
-**Option B: Jest's Built-in Sharding**
+##### Option B: Jest's Built-in Sharding
 
 ```yaml
 # .github/workflows/quality-checks.yml

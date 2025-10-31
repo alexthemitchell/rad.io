@@ -51,3 +51,11 @@ export const WATERFALL_COLORMAPS = {
     [1.0, 1.0, 1.0],
   ],
 };
+
+// Export a type-safe union of available colormap names
+export type WaterfallColormapName = keyof typeof WATERFALL_COLORMAPS;
+
+// Convenience: stable list of colormap names
+export const WATERFALL_COLORMAP_NAMES = Object.keys(
+  WATERFALL_COLORMAPS,
+) as WaterfallColormapName[];

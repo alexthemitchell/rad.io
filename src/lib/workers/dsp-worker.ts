@@ -80,10 +80,16 @@ function computeFFT(samples: Float32Array, fftSize: number): Float32Array {
 function demodulate(
   samples: Float32Array,
   mode: "am" | "fm" | "usb" | "lsb",
-  _sampleRate: number,
+  sampleRate: number,
 ): Float32Array {
   // Basic demodulation implementation
   const output = new Float32Array(samples.length / 2);
+
+  // FM demodulation gain factor based on sample rate
+  // Converts phase difference (radians) to frequency deviation (Hz)
+  // Phase difference per sample = 2π * (frequency_deviation / sample_rate)
+  // Therefore: frequency_deviation = (phase_difference * sample_rate) / (2π)
+  const fmGain = sampleRate / (2 * Math.PI);
 
   switch (mode) {
     case "am": {
@@ -112,7 +118,7 @@ function demodulate(
           diff += 2 * Math.PI;
         }
 
-        output[i / 2] = diff;
+        output[i / 2] = diff * fmGain;
         prevPhase = phase;
       }
       break;

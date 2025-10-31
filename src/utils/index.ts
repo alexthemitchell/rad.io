@@ -9,6 +9,7 @@ export * from "./testMemoryManager";
 export * from "./audioStream";
 export * from "./performanceMonitor";
 export * from "./p25decoder";
+export * from "./p25TransmissionLog";
 export * from "./logger";
 export * from "./id";
 export * from "./usb";

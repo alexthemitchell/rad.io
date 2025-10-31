@@ -39,7 +39,7 @@ SDR application state is complex and distributed:
 
 ## Decision
 
-We will use **Zustand** for global state management with **spark.kv for persistence**.
+We will use **Zustand** for global state management with **Zustand persist (localStorage) for persistence**.
 
 ### Why Zustand?
 
@@ -214,79 +214,39 @@ function DeviceList() {
 
 ### Persistence Integration
 
-Persist selected state to spark.kv:
+Persist selected state using Zustand's persist middleware (backed by localStorage by default):
 
 ```typescript
-// src/store/persistence.ts
-import { useKV } from '@github/spark/hooks'
-import { useStore } from './index'
-import { useEffect } from 'react'
+// src/store/index.ts
+import { create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
 
-export function usePersistence() {
-  const [savedState, setSavedState] = useKV('radio-state', {
-    frequency: 100_000_000,
-    mode: 'fm',
-    bandwidth: 200_000,
-    gain: 20
-  })
+export const useStore = create<AppStore>()(
+  devtools(
+    persist(
+      immer((set, get) => ({
+        // ... same state and actions as above ...
+      })),
+      {
+        name: "sdr-app-store", // storage key in localStorage
+        partialize: (state) => ({
+          // Persist only small, user-facing preferences
+          frequency: state.frequency,
+          mode: state.mode,
+          bandwidth: state.bandwidth,
+          gain: state.gain,
+          theme: state.theme,
+          colorScheme: state.colorScheme,
+          waterfallSpeed: state.waterfallSpeed,
+        }),
+        version: 1,
+      },
+    ),
+  ),
+);
 
-  const [uiState, setUIState] = useKV('ui-state', {
-    theme: 'dark',
-    colorScheme: 'viridis',
-    waterfallSpeed: 10
-  })
-
-  // Hydrate store on mount
-  useEffect(() => {
-    useStore.setState({
-      frequency: savedState.frequency as FrequencyHz,
-      mode: savedState.mode,
-      bandwidth: savedState.bandwidth,
-      gain: savedState.gain as GainDB,
-      theme: uiState.theme,
-      colorScheme: uiState.colorScheme,
-      waterfallSpeed: uiState.waterfallSpeed
-    })
-  }, [])
-
-  // Subscribe to changes and persist
-  useEffect(() => {
-    const unsubscribe = useStore.subscribe(
-      (state) => ({
-        frequency: state.frequency,
-        mode: state.mode,
-        bandwidth: state.bandwidth,
-        gain: state.gain
-      }),
-      (radioState) => {
-        setSavedState(radioState)
-      }
-    )
-
-    return unsubscribe
-  }, [setSavedState])
-
-  useEffect(() => {
-    const unsubscribe = useStore.subscribe(
-      (state) => ({
-        theme: state.theme,
-        colorScheme: state.colorScheme,
-        waterfallSpeed: state.waterfallSpeed
-      }),
-      (ui) => {
-        setUIState(ui)
-      }
-    )
-
-    return unsubscribe
-  }, [setUIState])
-}
-
-// In App.tsx
-export default function App() {
-  usePersistence()
-  return <Router />
-}
+// Optional: custom storage (e.g., IndexedDB) can be wired later if needed
 ```
 
 ### Async Actions
@@ -520,5 +480,5 @@ useStore.setState({ waterfallOffset: offset }, true); // true = transient
 
 #### Related ADRs
 
-- ADR-0005: Storage Strategy for Recordings and State (persistence integration with spark.kv)
+- ADR-0005: Storage Strategy for Recordings and State (persistence via Zustand persist)
 - ADR-0007: Type Safety and Validation Approach (type-safe state definitions)

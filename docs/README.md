@@ -160,4 +160,4 @@ See [Writing Accessible Docs](../CONTRIBUTING.md#writing-accessible-docs-in-this
 
 ---
 
-**Happy learning, building, and exploring! 📻✨**
+### Happy learning, building, and exploring! 📻✨
