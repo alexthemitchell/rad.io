@@ -443,7 +443,10 @@ export function processIQSampling(
       const gainError = Math.abs(gainImbalance - 1.0);
       const phaseError = Math.abs(phaseImbalance);
 
-      if (gainError > GAIN_ERROR_THRESHOLD || phaseError > PHASE_ERROR_THRESHOLD) {
+      if (
+        gainError > GAIN_ERROR_THRESHOLD ||
+        phaseError > PHASE_ERROR_THRESHOLD
+      ) {
         // Apply corrections
         output = output.map((sample) => {
           // Correct gain imbalance

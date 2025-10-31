@@ -23,7 +23,11 @@ import { type Sample } from "./dsp";
 // Minimum bits required to parse a basic Group Voice LCW (format + TGID + partial source)
 const MIN_GVCHU_BITS = 48;
 
-function extractBitsAsNumber(bits: number[], start: number, length: number): number {
+function extractBitsAsNumber(
+  bits: number[],
+  start: number,
+  length: number,
+): number {
   let value = 0;
   for (let i = start; i < start + length; i++) {
     value = (value << 1) | (bits[i] ?? 0);
@@ -472,7 +476,8 @@ export function extractTalkgroupInfo(bits: number[]): {
 
   // Extract source ID (24 bits, following the talkgroup ID)
   // Need at least 48 bits total
-  const sourceId = bits.length >= MIN_GVCHU_BITS ? extractBitsAsNumber(bits, 24, 24) : 0;
+  const sourceId =
+    bits.length >= MIN_GVCHU_BITS ? extractBitsAsNumber(bits, 24, 24) : 0;
 
   // Validate that we got meaningful values (not all zeros, which often indicates no data)
   if (talkgroupId === 0 && sourceId === 0) {

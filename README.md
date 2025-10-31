@@ -284,7 +284,7 @@ The automated frequency scanner sweeps through a user-defined range to detect an
 
 ### Understanding the Visualizations
 
-**IQ Constellation Diagram**
+#### IQ Constellation Diagram
 
 - Shows I (in-phase) and Q (quadrature) signal components
 - Density-based coloring: blue (sparse) → cyan → white (dense)
@@ -292,7 +292,7 @@ The automated frequency scanner sweeps through a user-defined range to detect an
 - Varying magnitude = AM modulation
 - Distinct points = Digital modulation
 
-**Amplitude Waveform**
+#### Amplitude Waveform
 
 - Time-domain signal envelope
 - Red line = Maximum amplitude
@@ -300,7 +300,7 @@ The automated frequency scanner sweeps through a user-defined range to detect an
 - Green line = Minimum amplitude
 - Useful for: AM detection, signal strength monitoring
 
-**Spectrogram (Power Spectral Density)**
+#### Spectrogram (Power Spectral Density)
 
 - Frequency spectrum over time
 - Color scale: Purple (low power) → Yellow (high power)
@@ -308,7 +308,7 @@ The automated frequency scanner sweeps through a user-defined range to detect an
 - Vertical axis = Frequency
 - Bright bands = Strong signals
 
-**Waterfall Display**
+#### Waterfall Display
 
 - Real-time scrolling frequency spectrum visualization
 - New FFT frames appear at the top and scroll down
@@ -343,7 +343,7 @@ Interactive controls are implemented via `src/hooks/useVisualizationInteraction.
 
 ### Speech Recognition
 
-**Basic Transcription**
+#### Basic Transcription
 
 1. Tune to a voice transmission (FM/AM)
 2. Ensure good signal strength

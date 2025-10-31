@@ -114,7 +114,7 @@ export function SettingsProvider({
 
       // Normalize dB range entries (permit undefined)
       if (Object.prototype.hasOwnProperty.call(partial, "dbMin")) {
-        const v = (partial as Partial<SettingsState>).dbMin;
+        const v = partial.dbMin;
         if (v === undefined) {
           next.dbMin = undefined;
         } else if (typeof v !== "number" || Number.isNaN(v)) {
@@ -122,7 +122,7 @@ export function SettingsProvider({
         }
       }
       if (Object.prototype.hasOwnProperty.call(partial, "dbMax")) {
-        const v = (partial as Partial<SettingsState>).dbMax;
+        const v = partial.dbMax;
         if (v === undefined) {
           next.dbMax = undefined;
         } else if (typeof v !== "number" || Number.isNaN(v)) {
