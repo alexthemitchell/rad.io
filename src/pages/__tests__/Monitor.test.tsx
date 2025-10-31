@@ -1,6 +1,27 @@
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 
+// Mock the worker pool to avoid Worker initialization errors in Jest
+jest.mock("../../workers/dspWorkerPool", () => ({
+  dspWorkerPool: {
+    postMessage: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  },
+}));
+
+// Mock WebGL renderers to avoid WebGL initialization errors in Jest
+jest.mock("../../visualization", () => ({
+  WebGLSpectrum: jest.fn().mockImplementation(() => ({
+    initialize: jest.fn().mockResolvedValue(false),
+    cleanup: jest.fn(),
+  })),
+  WebGLWaterfall: jest.fn().mockImplementation(() => ({
+    initialize: jest.fn().mockResolvedValue(false),
+    cleanup: jest.fn(),
+  })),
+}));
+
 // Mock the DeviceContext to avoid requiring a real provider in tests
 jest.mock("../../contexts/DeviceContext", () => ({
   DeviceProvider: ({ children }: any) => <>{children}</>,

@@ -4,7 +4,6 @@ import FrequencyDisplay from "./components/FrequencyDisplay";
 import Navigation from "./components/Navigation";
 import RenderingSettingsModal from "./components/RenderingSettingsModal";
 import ShortcutsOverlay from "./components/ShortcutsOverlay";
-import StatusBar from "./components/StatusBar";
 import ToastProvider from "./components/ToastProvider";
 import TopAppBar from "./components/TopAppBar";
 import VFOControl from "./components/VFOControl";
@@ -32,7 +31,8 @@ function App(): React.JSX.Element {
     preloadWasmModule();
   }, []);
 
-  const metrics = useStatusMetrics();
+  // Initialize status metrics collection (hook manages its own subscriptions)
+  useStatusMetrics();
   const [showRenderingSettings, setShowRenderingSettings] = useState(false);
 
   return (
@@ -54,10 +54,8 @@ function App(): React.JSX.Element {
             <header className="header" role="banner">
               <div className="header-content">
                 {/* Maintain accessible document title and subtitle */}
-                <h1 className="visually-hidden">rad.io</h1>
-                <p className="visually-hidden">
-                  Software-Defined Radio Visualizer
-                </p>
+                <h1>rad.io</h1>
+                <p>Software-Defined Radio Visualizer</p>
                 {/* Always-visible frequency display + VFO control (shared state) */}
                 <SharedVFO />
               </div>
@@ -65,64 +63,48 @@ function App(): React.JSX.Element {
             </header>
 
             {/* Main content area for pages */}
-            <Routes>
-              {/* Primary workspaces */}
-              <Route path="/" element={<Monitor />} />
-              <Route path="/monitor" element={<Monitor />} />
-              <Route path="/scanner" element={<Scanner />} />
-              <Route path="/decode" element={<Decode />} />
-              <Route path="/analysis" element={<Analysis />} />
-              <Route path="/recordings" element={<Recordings />} />
+            <main id="main-content" tabIndex={-1}>
+              <Routes>
+                {/* Primary workspaces */}
+                <Route path="/" element={<Monitor />} />
+                <Route path="/monitor" element={<Monitor />} />
+                <Route path="/scanner" element={<Scanner />} />
+                <Route path="/decode" element={<Decode />} />
+                <Route path="/analysis" element={<Analysis />} />
+                <Route path="/recordings" element={<Recordings />} />
 
-              {/* Supporting panels (also accessible as full pages) */}
-              <Route
-                path="/bookmarks"
-                element={<Bookmarks isPanel={false} />}
-              />
-              <Route path="/devices" element={<Devices isPanel={false} />} />
-              <Route
-                path="/measurements"
-                element={<Measurements isPanel={false} />}
-              />
-              <Route
-                path="/diagnostics"
-                element={<Diagnostics isPanel={false} />}
-              />
+                {/* Supporting panels (also accessible as full pages) */}
+                <Route
+                  path="/bookmarks"
+                  element={<Bookmarks isPanel={false} />}
+                />
+                <Route path="/devices" element={<Devices isPanel={false} />} />
+                <Route
+                  path="/measurements"
+                  element={<Measurements isPanel={false} />}
+                />
+                <Route
+                  path="/diagnostics"
+                  element={<Diagnostics isPanel={false} />}
+                />
 
-              {/* Settings and configuration */}
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/calibration" element={<Calibration />} />
+                {/* Settings and configuration */}
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/calibration" element={<Calibration />} />
 
-              {/* Help and documentation */}
-              <Route path="/help" element={<Help />} />
+                {/* Help and documentation */}
+                <Route path="/help" element={<Help />} />
 
-              {/* Demo pages */}
-              <Route path="/demo" element={<VisualizationDemo />} />
-              <Route path="/renderers-demo" element={<RenderersDemo />} />
-            </Routes>
+                {/* Demo pages */}
+                <Route path="/demo" element={<VisualizationDemo />} />
+                <Route path="/renderers-demo" element={<RenderersDemo />} />
+              </Routes>
+            </main>
 
             {/* Global shortcuts help overlay (toggles with '?') */}
             <ShortcutsOverlay />
 
-            {/* Bottom Status Bar with system metrics per UI spec */}
-            <StatusBar
-              deviceConnected={metrics.deviceConnected}
-              renderTier={metrics.renderTier}
-              fps={metrics.fps}
-              inputFps={metrics.inputFps}
-              droppedFrames={metrics.droppedFrames}
-              renderP95Ms={metrics.renderP95Ms}
-              longTasks={metrics.longTasks}
-              sampleRate={metrics.sampleRate}
-              bufferHealth={metrics.bufferHealth}
-              bufferDetails={metrics.bufferDetails}
-              storageUsed={metrics.storageUsed}
-              storageQuota={metrics.storageQuota}
-              audioState={metrics.audio.state}
-              audioVolume={metrics.audio.volume}
-              audioClipping={metrics.audio.clipping}
-              onOpenRenderingSettings={() => setShowRenderingSettings(true)}
-            />
+            {/* Page-level StatusBar components provide status; no global duplicate here */}
             <RenderingSettingsModal
               isOpen={showRenderingSettings}
               onClose={() => setShowRenderingSettings(false)}

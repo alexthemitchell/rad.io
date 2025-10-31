@@ -78,6 +78,7 @@ function FrequencyDisplay({
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editValue, setEditValue] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const backingInputRef = useRef<HTMLInputElement>(null);
   const [activeDigit, setActiveDigit] = useState<number>(2); // default to 1 MHz place
 
   const handleTune = useCallback(
@@ -191,6 +192,17 @@ function FrequencyDisplay({
         return;
       }
 
+      // Global shortcut: Ctrl/Cmd+F focuses frequency input (backing numeric input)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        const el = backingInputRef.current;
+        if (el) {
+          el.focus();
+          el.select();
+        }
+        return;
+      }
+
       // Digit-mode navigation
       if (e.key === "ArrowLeft") {
         e.preventDefault();
@@ -220,6 +232,13 @@ function FrequencyDisplay({
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
         adjustAtActiveDigit(-1, multiplier);
+      } else if (e.key === "PageUp") {
+        e.preventDefault();
+        // Coarse tuning step: use a larger multiplier (e.g., ×100 of digit place)
+        adjustAtActiveDigit(1, 100);
+      } else if (e.key === "PageDown") {
+        e.preventDefault();
+        adjustAtActiveDigit(-1, 100);
       }
     };
 
@@ -252,6 +271,34 @@ function FrequencyDisplay({
       <h2 className="visually-hidden">Frequency Control</h2>
 
       <div className="frequency-value">
+        {/* Backing numeric input (Hz) for keyboard-driven tests and focus shortcut. Visually hidden but focusable. */}
+        <input
+          ref={backingInputRef}
+          id="frequency-backing-hz"
+          type="number"
+          className="visually-hidden"
+          aria-label="Frequency"
+          value={frequency}
+          step={1000}
+          onKeyDown={(e): void => {
+            if (!onChange) {
+              return;
+            }
+            if (e.key === "PageUp") {
+              e.preventDefault();
+              onChange(Math.max(0, Math.round(frequency + 100000)));
+            } else if (e.key === "PageDown") {
+              e.preventDefault();
+              onChange(Math.max(0, Math.round(frequency - 100000)));
+            }
+          }}
+          onChange={(e): void => {
+            const next = parseFloat(e.target.value);
+            if (!Number.isNaN(next) && onChange) {
+              onChange(Math.max(0, Math.round(next)));
+            }
+          }}
+        />
         {/* Visually hidden full formatted value for screen readers and tests */}
         <span className="visually-hidden">{formatFrequency(frequency)}</span>
         {isEditing ? (

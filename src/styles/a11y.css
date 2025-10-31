@@ -18,9 +18,11 @@
   position: absolute;
   top: -40px;
   left: 0;
-  background: var(--rad-primary);
+  background: var(--rad-bg-elev-2);
   color: var(--rad-primary-foreground);
-  padding: 8px;
+  border: 2px solid var(--rad-primary);
+  border-radius: 4px;
+  padding: 8px 12px;
   text-decoration: none;
   z-index: var(--rad-z-overlay);
 }

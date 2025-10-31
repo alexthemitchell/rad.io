@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDeviceContext } from "../contexts/DeviceContext";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
-import { RenderTier } from "../types/rendering";
+import { renderTierManager } from "../lib/render/RenderTierManager";
+import { RenderTier, maxTier } from "../types/rendering";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
 /** Rendering tier detected for visualization components */
 // Re-export for backward compatibility with existing imports/tests
 export { RenderTier } from "../types/rendering";
 
 export interface StatusBarProps {
+  /** Optional high-level status message (e.g., from current page) */
+  message?: string;
   /** Current rendering tier (WebGPU, WebGL2, etc.) */
   renderTier?: RenderTier;
   /** Frames per second (0-60+) */
@@ -56,7 +59,7 @@ function useOptionalDeviceContext(): {
   } catch {
     return {
       primaryDevice: undefined,
-      connectPairedUSBDevice: async (_usb: USBDevice): Promise<void> => {
+      connectPairedUSBDevice: async (): Promise<void> => {
         await Promise.resolve();
       },
       requestDevice: async (): Promise<void> => {
@@ -92,6 +95,7 @@ function deviceKey(usb: USBDevice): string {
  * ```
  */
 function StatusBar({
+  message,
   renderTier = RenderTier.Unknown,
   fps = 0,
   inputFps = 0,
@@ -111,6 +115,9 @@ function StatusBar({
   onOpenRenderingSettings,
 }: StatusBarProps): React.JSX.Element {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [detectedTier, setDetectedTier] = useState<RenderTier>(
+    renderTierManager.getTier(),
+  );
 
   const {
     primaryDevice,
@@ -168,6 +175,13 @@ function StatusBar({
     return (): void => clearInterval(interval);
   }, []);
 
+  // Subscribe to global render tier updates so GPU tier displays in StatusBar
+  useEffect(() => {
+    return renderTierManager.subscribe((tier) => {
+      setDetectedTier(tier);
+    });
+  }, []);
+
   const formatSampleRate = (rate: number): string => {
     if (rate === 0) {
       return "—";
@@ -200,7 +214,8 @@ function StatusBar({
       case RenderTier.WebGPU:
         return "var(--rad-success)"; // Success green
       case RenderTier.WebGL2:
-        return "var(--rad-primary)"; // Primary electric blue
+        // Use high-contrast foreground to satisfy WCAG contrast in dark theme
+        return "var(--rad-fg)";
       case RenderTier.WebGL1:
         return "var(--rad-warning)"; // Warning amber
       case RenderTier.Worker:
@@ -213,48 +228,44 @@ function StatusBar({
     }
   };
 
-  const getBufferHealthColor = (health: number): string => {
-    if (health >= 80) {
-      return "var(--rad-success)"; // Good
+  // Removed unused color helpers (_getBufferHealthColor, _getStorageColor) per type-check
+  // These can be restored if we decide to colorize by CSS variables instead of classes
+
+  const getFpsClass = (fps: number): string => {
+    if (fps > 50) {
+      return "status-ok";
     }
-    if (health >= 50) {
-      return "var(--rad-warning)"; // Warning
+    if (fps > 25) {
+      return "status-warn";
     }
-    return "var(--rad-danger)"; // Critical
+    return "status-crit";
   };
 
-  const getStorageColor = (used: number, quota: number): string => {
+  const getBufferHealthClass = (health: number): string => {
+    if (health >= 80) {
+      return "status-ok";
+    }
+    if (health >= 50) {
+      return "status-warn";
+    }
+    return "status-crit";
+  };
+
+  const getStorageClass = (used: number, quota: number): string => {
     if (quota === 0) {
-      return "var(--rad-fg-muted)";
+      return "";
     }
     const percent = (used / quota) * 100;
     if (percent >= 90) {
-      return "var(--rad-danger)"; // Critical
+      return "status-crit";
     }
     if (percent >= 70) {
-      return "var(--rad-warning)"; // Warning
+      return "status-warn";
     }
-    return "var(--rad-success)"; // Good
+    return "status-ok";
   };
 
-  const getAudioColor = (
-    state: StatusBarProps["audioState"],
-    clipping: boolean,
-  ): string => {
-    if (state === "muted" || state === "unavailable") {
-      return "var(--rad-fg-muted)";
-    }
-    if (state === "suspended") {
-      return "var(--rad-warning)";
-    }
-    if (clipping) {
-      return "var(--rad-danger)";
-    }
-    if (state === "playing") {
-      return "var(--rad-success)";
-    }
-    return "var(--rad-fg-muted)";
-  };
+  // Removed unused _getAudioColor helper per type-check
 
   const [showBufferDetails, setShowBufferDetails] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -266,6 +277,11 @@ function StatusBar({
       aria-live="polite"
       aria-atomic="false"
     >
+      {message ? (
+        <div className="status-bar-item">
+          <span className="status-bar-value">{message}</span>
+        </div>
+      ) : null}
       <div className="status-bar-item">
         <span className="status-bar-label">Device</span>
         {Array.isArray(pairedUSBDevices) && pairedUSBDevices.length > 1 ? (
@@ -323,11 +339,6 @@ function StatusBar({
         ) : (
           <span
             className="status-bar-value"
-            style={{
-              color: deviceConnected
-                ? "var(--rad-success)"
-                : "var(--rad-danger)",
-            }}
             title={
               primaryUSB
                 ? `${primaryUSB.productName ?? "Unknown Device"} • ${formatUsbId(primaryUSB.vendorId, primaryUSB.productId)}${primaryUSB.serialNumber ? ` • SN: ${primaryUSB.serialNumber}` : ""}`
@@ -385,18 +396,20 @@ function StatusBar({
               textDecoration: "underline",
               textUnderlineOffset: 2,
             }}
-            aria-label={`Rendering with ${renderTier}. Open rendering settings.`}
-            title={`Rendering with ${renderTier} • Click for settings`}
+            aria-label={`Rendering with ${maxTier(renderTier, detectedTier)}. Open rendering settings.`}
+            title={`Rendering with ${maxTier(renderTier, detectedTier)} • Click for settings`}
           >
-            {renderTier}
+            {maxTier(renderTier, detectedTier)}
           </button>
         ) : (
           <span
             className="status-bar-value"
-            style={{ color: getRenderTierColor(renderTier) }}
-            title={`Rendering with ${renderTier}`}
+            style={{
+              color: getRenderTierColor(maxTier(renderTier, detectedTier)),
+            }}
+            title={`Rendering with ${maxTier(renderTier, detectedTier)}`}
           >
-            {renderTier}
+            {maxTier(renderTier, detectedTier)}
           </span>
         )}
       </div>
@@ -406,15 +419,7 @@ function StatusBar({
       <div className="status-bar-item">
         <span className="status-bar-label">FPS</span>
         <span
-          className="status-bar-value status-bar-mono"
-          style={{
-            color:
-              fps >= 55
-                ? "var(--rad-success)"
-                : fps >= 30
-                  ? "var(--rad-warning)"
-                  : "var(--rad-danger)",
-          }}
+          className={`status-bar-value status-bar-mono ${getFpsClass(fps)}`}
           title="Frames per second"
         >
           {fps.toFixed(0)}
@@ -429,14 +434,6 @@ function StatusBar({
             <span className="status-bar-label">Input</span>
             <span
               className="status-bar-value status-bar-mono"
-              style={{
-                color:
-                  inputFps >= 55
-                    ? "var(--rad-success)"
-                    : inputFps >= 30
-                      ? "var(--rad-warning)"
-                      : "var(--rad-danger)",
-              }}
               title="Visualization input cadence (fps)"
             >
               {inputFps.toFixed(0)}
@@ -451,14 +448,6 @@ function StatusBar({
         <span className="status-bar-label">Render p95</span>
         <span
           className="status-bar-value status-bar-mono"
-          style={{
-            color:
-              renderP95Ms <= 16
-                ? "var(--rad-success)"
-                : renderP95Ms <= 33
-                  ? "var(--rad-warning)"
-                  : "var(--rad-danger)",
-          }}
           title="95th percentile render time (ms)"
         >
           {renderP95Ms.toFixed(1)} ms
@@ -471,9 +460,6 @@ function StatusBar({
         <span className="status-bar-label">Tasks</span>
         <span
           className="status-bar-value status-bar-mono"
-          style={{
-            color: longTasks > 0 ? "var(--rad-warning)" : "var(--rad-success)",
-          }}
           title="Long tasks observed"
         >
           {longTasks}
@@ -487,12 +473,6 @@ function StatusBar({
             <span className="status-bar-label">Dropped</span>
             <span
               className="status-bar-value status-bar-mono"
-              style={{
-                color:
-                  droppedFrames > 0
-                    ? "var(--rad-warning)"
-                    : "var(--rad-success)",
-              }}
               title="Estimated dropped frames (last 60s)"
             >
               {Math.max(0, Math.round(droppedFrames))}
@@ -518,8 +498,7 @@ function StatusBar({
       <div className="status-bar-item">
         <span className="status-bar-label">Buffer</span>
         <span
-          className="status-bar-value status-bar-mono"
-          style={{ color: getBufferHealthColor(bufferHealth) }}
+          className={`status-bar-value status-bar-mono ${getBufferHealthClass(bufferHealth)}`}
           title={`Buffer health: ${bufferHealth}%`}
         >
           {bufferHealth.toFixed(0)}%
@@ -561,8 +540,7 @@ function StatusBar({
       <div className="status-bar-item">
         <span className="status-bar-label">Storage</span>
         <span
-          className="status-bar-value status-bar-mono"
-          style={{ color: getStorageColor(storageUsed, storageQuota) }}
+          className={`status-bar-value status-bar-mono ${getStorageClass(storageUsed, storageQuota)}`}
           title="Storage used / quota"
         >
           {formatStorage(storageUsed, storageQuota)}
@@ -575,7 +553,6 @@ function StatusBar({
         <span className="status-bar-label">Audio</span>
         <span
           className="status-bar-value"
-          style={{ color: getAudioColor(audioState, audioClipping) }}
           title={`Audio ${audioState}${typeof audioVolume === "number" ? ` • Vol ${audioVolume}%` : ""}${audioClipping ? " • Clipping" : ""}`}
         >
           {audioState === "muted"

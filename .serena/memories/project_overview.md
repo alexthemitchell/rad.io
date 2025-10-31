@@ -1,3 +1,5 @@
 - rad.io is a browser-based software-defined radio (SDR) visualizer built with React 19 and TypeScript.
 - Communicates with SDR hardware (HackRF One, RTL-SDR, Airspy, etc.) via the WebUSB API and renders IQ/spectrum/waveform visualizations with HTML Canvas and WebAudio-based DSP.
 - Strict quality gates: lint, format, type-check, Jest tests, and Webpack build all required to pass in CI.
+- Use `docs/decisions/` for ADRs
+- Use `docs/reference/` for domain-specific knowledge

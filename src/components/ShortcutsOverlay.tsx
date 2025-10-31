@@ -23,11 +23,18 @@ function ShortcutsOverlay(): React.JSX.Element | null {
       if (e.key === "?" || (e.key === "/" && e.shiftKey)) {
         e.preventDefault();
         setOpen((prev) => !prev);
+        return;
+      }
+
+      // Close with Escape when open
+      if (e.key === "Escape" && open) {
+        e.preventDefault();
+        setOpen(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return (): void => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [open]);
 
   // Focus first control on open
   useEffect(() => {
