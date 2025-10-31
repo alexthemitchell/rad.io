@@ -23,6 +23,17 @@ describe("VisualizationWorkerManager", () => {
     (global as never)["Worker"] = jest.fn(() => new MockWorker()) as never;
     // Mock OffscreenCanvas
     (global as never)["OffscreenCanvas"] = jest.fn() as never;
+    // Mock URL constructor used when creating worker URL to avoid import.meta.url issues in Jest
+    class MockURL {
+      href: string;
+      constructor(path: string) {
+        this.href = path;
+      }
+      toString() {
+        return this.href;
+      }
+    }
+    (global as any).URL = MockURL;
     // Ensure window.location is available
     if (typeof window !== "undefined" && !window.location) {
       Object.defineProperty(window, "location", {
@@ -166,10 +177,16 @@ describe("VisualizationWorkerManager", () => {
       mockWorker = (Worker as jest.MockedClass<typeof Worker>).mock
         .instances[0] as unknown as MockWorker;
 
-      // Simulate initialization response
+      // Simulate initialization response on the event listener path that the
+      // manager awaits for resolve (addEventListener('message', handler))
       setTimeout(() => {
-        if (mockWorker.onmessage) {
-          mockWorker.onmessage(
+        const addListenerCalls = (mockWorker.addEventListener as jest.Mock)
+          .mock.calls;
+        const messageHandler = addListenerCalls.find(
+          (call) => call[0] === "message",
+        )?.[1] as ((ev: MessageEvent) => void) | undefined;
+        if (messageHandler) {
+          messageHandler(
             new MessageEvent("message", {
               data: {
                 type: "initialized",
@@ -219,7 +236,7 @@ describe("VisualizationWorkerManager", () => {
 
       expect(mockWorker.postMessage).toHaveBeenCalledWith({
         type: "resize",
-        config: { width: 1024, height: 768, dpr: 2 },
+        renderConfig: { width: 1024, height: 768, dpr: 2 },
       });
     });
 

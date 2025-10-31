@@ -1,4 +1,4 @@
-describe.skip("Removed demo placeholder", () => {
+describe("Removed demo placeholder", () => {
 	it("placeholder", () => {
 		expect(true).toBe(true);
 	});

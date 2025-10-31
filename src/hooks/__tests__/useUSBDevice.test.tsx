@@ -62,7 +62,7 @@ function TestHook({
   );
 }
 
-describe.skip("useUSBDevice paired device behavior", () => {
+describe("useUSBDevice paired device behavior", () => {
   const originalNavigatorUSB = (navigator as any).usb;
 
   beforeEach(() => {
@@ -75,8 +75,11 @@ describe.skip("useUSBDevice paired device behavior", () => {
   });
 
   afterEach(() => {
-    (navigator as any).usb = originalNavigatorUSB;
     jest.restoreAllMocks();
+  });
+
+  afterAll(() => {
+    (navigator as any).usb = originalNavigatorUSB;
   });
 
   it("auto-selects when exactly one matched device is present", async () => {

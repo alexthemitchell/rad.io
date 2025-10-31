@@ -9,6 +9,68 @@ import {
 } from "../webgpuCompute";
 
 describe("WebGPU Compute", () => {
+  // Provide a minimal WebGPU mock so these tests can run in Jest without real GPU
+  // The mock simulates device/queue/compute pipeline behavior and returns a
+  // Float32Array buffer with finite, reasonable dB values.
+  beforeAll(() => {
+    const existingNavigator = (global as any).navigator ?? {};
+
+    class MockGPUBuffer {
+      size: number;
+      private _backing: ArrayBuffer;
+      constructor(size: number) {
+        this.size = size;
+        this._backing = new ArrayBuffer(size);
+      }
+      destroy = jest.fn();
+      async mapAsync() {
+        // no-op
+        return Promise.resolve();
+      }
+      getMappedRange() {
+        // Fill with a safe finite value (e.g., -100 dB) encoded as f32
+        const f32 = new Float32Array(this._backing);
+        f32.fill(-100);
+        return this._backing;
+      }
+      unmap = jest.fn();
+    }
+
+    const mockDevice: any = {
+      createBuffer: ({ size }: { size: number }) => new MockGPUBuffer(size),
+      createShaderModule: jest.fn(() => ({})),
+      createComputePipeline: jest.fn(() => ({
+        getBindGroupLayout: jest.fn(() => ({})),
+      })),
+      createBindGroup: jest.fn(() => ({})),
+      createCommandEncoder: jest.fn(() => ({
+        beginComputePass: jest.fn(() => ({
+          setPipeline: jest.fn(),
+          setBindGroup: jest.fn(),
+          dispatchWorkgroups: jest.fn(),
+          end: jest.fn(),
+        })),
+        copyBufferToBuffer: jest.fn(),
+        finish: jest.fn(() => ({})),
+      })),
+      queue: {
+        writeBuffer: jest.fn(),
+        submit: jest.fn(),
+      },
+      destroy: jest.fn(),
+    };
+
+    const mockAdapter: any = {
+      requestDevice: jest.fn(async () => mockDevice),
+    };
+
+    const mockGPU = {
+      requestAdapter: jest.fn(async () => mockAdapter),
+    };
+
+    (global as any).navigator = { ...existingNavigator, gpu: mockGPU };
+  });
+
   describe("Feature Detection", () => {
     it("should detect WebGPU support", () => {
       const supported = isWebGPUSupported();
