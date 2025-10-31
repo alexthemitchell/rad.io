@@ -240,6 +240,40 @@ function StatusBar({
     return "var(--rad-success)"; // Good
   };
 
+  const getFpsClass = (fps: number): string => {
+    if (fps > 50) {
+      return "status-ok";
+    }
+    if (fps > 25) {
+      return "status-warn";
+    }
+    return "status-crit";
+  };
+
+  const getBufferHealthClass = (health: number): string => {
+    if (health >= 80) {
+      return "status-ok";
+    }
+    if (health >= 50) {
+      return "status-warn";
+    }
+    return "status-crit";
+  };
+
+  const getStorageClass = (used: number, quota: number): string => {
+    if (quota === 0) {
+      return "";
+    }
+    const percent = (used / quota) * 100;
+    if (percent >= 90) {
+      return "status-crit";
+    }
+    if (percent >= 70) {
+      return "status-warn";
+    }
+    return "status-ok";
+  };
+
   const getAudioColor = (
     state: StatusBarProps["audioState"],
     clipping: boolean,
@@ -409,7 +443,7 @@ function StatusBar({
       <div className="status-bar-item">
         <span className="status-bar-label">FPS</span>
         <span
-          className="status-bar-value status-bar-mono"
+          className={`status-bar-value status-bar-mono ${getFpsClass(fps)}`}
           title="Frames per second"
         >
           {fps.toFixed(0)}
@@ -488,7 +522,7 @@ function StatusBar({
       <div className="status-bar-item">
         <span className="status-bar-label">Buffer</span>
         <span
-          className="status-bar-value status-bar-mono"
+          className={`status-bar-value status-bar-mono ${getBufferHealthClass(bufferHealth)}`}
           title={`Buffer health: ${bufferHealth}%`}
         >
           {bufferHealth.toFixed(0)}%
@@ -530,7 +564,7 @@ function StatusBar({
       <div className="status-bar-item">
         <span className="status-bar-label">Storage</span>
         <span
-          className="status-bar-value status-bar-mono"
+          className={`status-bar-value status-bar-mono ${getStorageClass(storageUsed, storageQuota)}`}
           title="Storage used / quota"
         >
           {formatStorage(storageUsed, storageQuota)}

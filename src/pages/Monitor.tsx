@@ -218,7 +218,7 @@ const Monitor: React.FC = () => {
   const handleToggleMute = (): void => setIsMuted(!isMuted);
 
   return (
-    <div className="monitor-page">
+    <div className="monitor-page" role="main">
       <header className="page-header">
         <h1>Signal Monitor</h1>
         <p>

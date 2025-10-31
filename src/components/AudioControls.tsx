@@ -105,8 +105,8 @@ export default function AudioControls({
         </div>
       </div>
 
-      {/* Status Information (live region without additional status role to avoid duplicates) */}
-      <div className="audio-status" aria-live="polite">
+      {/* Status Information */}
+      <div className="audio-status" role="status" aria-live="polite">
         {isPlaying ? (
           <span className="audio-status-active">
             🎵 Playing {signalType} audio

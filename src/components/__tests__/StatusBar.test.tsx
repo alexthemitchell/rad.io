@@ -83,35 +83,35 @@ describe("StatusBar", () => {
     expect(tierElement).toHaveStyle({ color: "var(--rad-fg-muted)" });
   });
 
-  it("applies correct color for FPS", () => {
+  it("applies correct class for FPS", () => {
     const { rerender } = render(<StatusBar fps={60} />);
     let fpsElement = screen.getByText("60");
-    expect(fpsElement).toHaveStyle({ color: "var(--rad-success)" }); // Good
+    expect(fpsElement).toHaveClass("status-ok"); // Good
 
     rerender(<StatusBar fps={45} />);
     fpsElement = screen.getByText("45");
-    expect(fpsElement).toHaveStyle({ color: "var(--rad-warning)" }); // Warning
+    expect(fpsElement).toHaveClass("status-warn"); // Warning
 
     rerender(<StatusBar fps={20} />);
     fpsElement = screen.getByText("20");
-    expect(fpsElement).toHaveStyle({ color: "var(--rad-danger)" }); // Critical
+    expect(fpsElement).toHaveClass("status-crit"); // Critical
   });
 
-  it("applies correct color for buffer health", () => {
+  it("applies correct class for buffer health", () => {
     const { rerender } = render(<StatusBar bufferHealth={95} />);
     let bufferElement = screen.getByText("95%");
-    expect(bufferElement).toHaveStyle({ color: "var(--rad-success)" }); // Good
+    expect(bufferElement).toHaveClass("status-ok"); // Good
 
     rerender(<StatusBar bufferHealth={65} />);
     bufferElement = screen.getByText("65%");
-    expect(bufferElement).toHaveStyle({ color: "var(--rad-warning)" }); // Warning
+    expect(bufferElement).toHaveClass("status-warn"); // Warning
 
     rerender(<StatusBar bufferHealth={35} />);
     bufferElement = screen.getByText("35%");
-    expect(bufferElement).toHaveStyle({ color: "var(--rad-danger)" }); // Critical
+    expect(bufferElement).toHaveClass("status-crit"); // Critical
   });
 
-  it("applies correct color for storage quota", () => {
+  it("applies correct class for storage quota", () => {
     const { rerender } = render(
       <StatusBar
         storageUsed={50 * 1024 * 1024}
@@ -119,7 +119,7 @@ describe("StatusBar", () => {
       />,
     );
     let storageElement = screen.getByText(/50.0 \/ 100 MB/);
-    expect(storageElement).toHaveStyle({ color: "var(--rad-success)" }); // Good (<70%)
+    expect(storageElement).toHaveClass("status-ok"); // Good (<70%)
 
     rerender(
       <StatusBar
@@ -128,7 +128,7 @@ describe("StatusBar", () => {
       />,
     );
     storageElement = screen.getByText(/75.0 \/ 100 MB/);
-    expect(storageElement).toHaveStyle({ color: "var(--rad-warning)" }); // Warning (>=70%)
+    expect(storageElement).toHaveClass("status-warn"); // Warning (>=70%)
 
     rerender(
       <StatusBar
@@ -137,7 +137,7 @@ describe("StatusBar", () => {
       />,
     );
     storageElement = screen.getByText(/95.0 \/ 100 MB/);
-    expect(storageElement).toHaveStyle({ color: "var(--rad-danger)" }); // Critical (>=90%)
+    expect(storageElement).toHaveClass("status-crit"); // Critical (>=90%)
   });
 
   it("displays current time", () => {
