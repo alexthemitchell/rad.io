@@ -472,16 +472,49 @@ rad.io is automatically deployed to GitHub Pages on every push to `main`. The de
 - Rollback procedures
 - Troubleshooting guides
 
-## Community health
+## Community
 
-This repository includes community health files to help guide contributors and users:
+### Join the Community
 
-- Code of Conduct: `CODE_OF_CONDUCT.md`
-- Security Policy: `SECURITY.md`
-- Support: `SUPPORT.md`
-- Governance: `GOVERNANCE.md`
+We welcome contributors of all experience levels!
 
-You can also find issue templates and the pull request template under `.github/`.
+- 💬 **[GitHub Discussions](https://github.com/alexthemitchell/rad.io/discussions)** - Ask questions, share ideas, and connect with other users
+- 🐛 **[Report Issues](https://github.com/alexthemitchell/rad.io/issues)** - Found a bug? Let us know!
+- ✨ **[Request Features](https://github.com/alexthemitchell/rad.io/issues/new?template=feature_request.md)** - Suggest new functionality
+- 🤝 **[Contribute](./CONTRIBUTING.md)** - Help improve rad.io
+
+### Getting Started
+
+**New Contributors:**
+
+1. Read the [Community Guidelines](./COMMUNITY.md) - Learn how we work together
+2. Follow the [First-Time Contributor Checklist](./.github/FIRST_TIME_CONTRIBUTOR_CHECKLIST.md) - Step-by-step guide
+3. Check the [Onboarding Guide](./docs/ONBOARDING.md) - Technical setup and walkthrough
+4. Find a [`good first issue`](https://github.com/alexthemitchell/rad.io/labels/good%20first%20issue) - Start contributing!
+
+**Contributors are recognized in [CONTRIBUTORS.md](./CONTRIBUTORS.md)**
+
+### Community Resources
+
+- **[Community Guidelines](./COMMUNITY.md)** - How we work together and communicate
+- **[Contributing Guide](./CONTRIBUTING.md)** - Detailed contribution guidelines
+- **[Code of Conduct](./CODE_OF_CONDUCT.md)** - Our community standards
+- **[Support](./SUPPORT.md)** - Getting help and support resources
+- **[Governance](./GOVERNANCE.md)** - How decisions are made
+- **[Security Policy](./SECURITY.md)** - Reporting security vulnerabilities
+
+**Issue & PR Templates:**
+
+- [Bug Report](./.github/ISSUE_TEMPLATE/bug_report.md)
+- [Feature Request](./.github/ISSUE_TEMPLATE/feature_request.md)
+- [Documentation](./.github/ISSUE_TEMPLATE/documentation.md)
+- [Question](./.github/ISSUE_TEMPLATE/question.md)
+- [Pull Request Template](./.github/pull_request_template.md)
+
+### Community Meetings
+
+We're planning monthly community calls!
+Stay tuned for announcements in [Discussions](https://github.com/alexthemitchell/rad.io/discussions).
 
 ## Additional accessibility resources
 
