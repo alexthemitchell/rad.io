@@ -3,9 +3,9 @@
  * Uses LINE_STRIP primitive for efficient GPU-accelerated rendering
  */
 
-import type { Renderer, SpectrumData } from "./types";
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
+import type { Renderer, SpectrumData } from "./types";
 
 type GL = WebGL2RenderingContext | WebGLRenderingContext;
 

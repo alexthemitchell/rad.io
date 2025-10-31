@@ -193,7 +193,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   }, [transform]);
 
   const handleCanvasClick = (evt: React.MouseEvent<HTMLCanvasElement>): void => {
-    if (!_onTune || !_sampleRate || !_centerFrequency) {
+    if (!_sampleRate || !_centerFrequency) {
       return;
     }
     const canvas = evt.currentTarget;

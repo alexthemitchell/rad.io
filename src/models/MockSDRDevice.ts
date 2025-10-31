@@ -8,7 +8,6 @@ import {
   validateFrequency,
   validateSampleRate,
   convertInt8ToIQ,
-  type SDRStreamConfig,
 } from "./SDRDevice";
 
 /**
@@ -136,12 +135,12 @@ export class MockSDRDevice implements ISDRDevice {
     this._lnaGain = gainDb;
   }
 
-  async setVGAGain(_gainDb: number): Promise<void> {
+  async setVGAGain(): Promise<void> {
     // Not used in app; no-op
     await Promise.resolve();
   }
 
-  async setAmpEnable(_enabled: boolean): Promise<void> {
+  async setAmpEnable(): Promise<void> {
     // No-op for mock
     await Promise.resolve();
   }
@@ -162,7 +161,6 @@ export class MockSDRDevice implements ISDRDevice {
 
   async receive(
     callback: (data: DataView) => void,
-    _config?: Partial<SDRStreamConfig>,
   ): Promise<void> {
     await Promise.resolve();
     if (!this._isOpen) {

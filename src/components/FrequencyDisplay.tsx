@@ -198,7 +198,7 @@ function FrequencyDisplay({
         const el = backingInputRef.current;
         if (el) {
           el.focus();
-          el.select?.();
+          el.select();
         }
         return;
       }
@@ -281,7 +281,7 @@ function FrequencyDisplay({
           value={frequency}
           step={1000}
           onKeyDown={(e): void => {
-            if (!onChange) return;
+            if (!onChange) {return;}
             if (e.key === "PageUp") {
               e.preventDefault();
               onChange(Math.max(0, Math.round(frequency + 100000)));

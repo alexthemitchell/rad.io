@@ -27,7 +27,7 @@ Check output of `npm start` to get deployed server URL (usually https://localhos
 - Use Playwright MCP browser tools to test your code in a browser environment. Take screenshots and analyze them to verify your work.
 - **Prefer to read symbol data with serena tools over reading entirety of files**: use #oraios/serena/find_referencing_symbols #oraios/serena/get_symbols_overview #oraios/serena/search_for_pattern
   **Maintain Long Term Memory**: use #oraios/serena/read_memory when thinking about how to solve problems and #oraios/serena/write_memory when you have learned something new that will be valuable for a future Agent.
-- Before writing a memory, use #oraios/serena/read_memory to find "SERENA_MEMORY_BEST_PRACTICES". Follow those best practices to add helpful long-term memories before you end your turn. You may decide to update existing memories rather than creating new ones, remove outdated memories, or choose not to write any memories at all.
+- Before writing a memory, use #oraios/serena/read_memory to find "memory_usage". Follow those best practices to add helpful long-term memories before you end your turn. You may decide to update existing memories rather than creating new ones, remove outdated memories, or choose not to write any memories at all.
   - Hard memory rules:
   - Do not create memories that summarize a run, task, PR, or manual test session (e.g., “REAL_HARDWARE_E2E_2025-10-27”). These belong in PR descriptions, Issues, or chat.
   - Do not store transient artifacts or metrics (logs, screenshots, per-run results, test counts, timings). Link to CI/test reports instead.
@@ -52,7 +52,7 @@ References: Microsoft Bot Framework state (persist preferences, not turns): http
 
 1. Retrieval before reading
 
-- Use #oraios/serena/list_memories → scan for relevant items (start with "SERENA_MEMORY_BEST_PRACTICES").
+- Use #oraios/serena/list_memories → scan for relevant items (start with "memory_usage").
 - Use #oraios/serena/read_memory only for relevant memories; if a memory answers your question, avoid scanning the codebase.
 
 2. Symbol-first code exploration

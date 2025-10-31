@@ -13,7 +13,6 @@ import {
   type IQSampleCallback,
   type SDRDeviceInfo,
   type SDRCapabilities,
-  type SDRStreamConfig,
   type DeviceMemoryInfo,
   SDRDeviceType,
   convertInt16ToIQ,
@@ -110,7 +109,7 @@ export class AirspyDeviceAdapter implements ISDRDevice {
     await this.device.setMixerAGC(enabled);
   }
 
-  async setBandwidth(_bandwidthHz: number): Promise<void> {
+  async setBandwidth(): Promise<void> {
     // Airspy bandwidth is determined by sample rate
     console.debug("Airspy bandwidth is determined by sample rate");
     return Promise.resolve();
@@ -118,7 +117,6 @@ export class AirspyDeviceAdapter implements ISDRDevice {
 
   async receive(
     callback: IQSampleCallback,
-    _config?: Partial<SDRStreamConfig>,
   ): Promise<void> {
     return this.device.receive((samples) => {
       // Convert IQSample[] to DataView for callback

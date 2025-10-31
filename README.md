@@ -448,7 +448,7 @@ See docs/reference/wasm-runtime-flags.md for details on behavior, validation heu
 
 For AI agents contributing to this repository, use Serena memories to keep context lean and high-signal:
 
-- Start by listing available memories and look for "SERENA_MEMORY_BEST_PRACTICES".
+- Start by listing available memories and look for "memory_usage".
 - Read that memory for concise best practices on minimizing noise-to-signal in context, retrieval order, and when/what to write.
 - Only write new memories for durable, reusable knowledge (architecture decisions, debugging playbooks, repo-wide workflows). Prefer updating an existing memory over creating duplicates.
 - Favor symbol-first exploration over full-file reads. Avoid re-reading the same content with multiple tools.

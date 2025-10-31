@@ -52,7 +52,7 @@ const Monitor: React.FC = () => {
     stop: stopDsp,
   } = useDsp(device, {
     fftSize,
-    onNewFft: (_fft: Float32Array) => {
+    onNewFft: () => {
       // No-op here; PrimaryVisualization consumes latest fftData directly.
       // This avoids React state churn for history frames.
     },
@@ -212,12 +212,12 @@ const Monitor: React.FC = () => {
   // TODO(rad.io): Temporary placeholder for recordedSamples. Replace with proper IQSample[] when recording is implemented.
   const [recordedSamples, setRecordedSamples] = useState<IQSample[]>([]);
   // TODO(rad.io): Temporary placeholder for recordingDuration. Refactor consuming components to accept optional props or implement feature properly.
-  const [recordingDuration, _setRecordingDuration] = useState(0);
+  const [recordingDuration] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [volume, setVolume] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
   // TODO(rad.io): Temporary placeholder for signalQuality. Refactor consuming components to accept optional props or implement feature properly.
-  const [signalQuality, _setSignalQuality] = useState({
+  const [signalQuality] = useState({
     snr: 0,
     peakPower: 0,
     avgPower: 0,

@@ -40,7 +40,7 @@ export function useDetection(enableAutoDetection = false): UseDetectionReturn {
   const [signals, setSignals] = useState<ClassifiedSignal[]>([]);
   const [noiseFloor, setNoiseFloor] = useState<number>(-Infinity);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [_config, setConfig] = useState<DetectionConfig>({});
+  const [, setConfig] = useState<DetectionConfig>({});
 
   const managerRef = useRef<DetectionManager | null>(null);
 

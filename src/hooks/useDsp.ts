@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { shouldUseMockSDR } from "../utils/e2e";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { dspWorkerPool } from "../workers/dspWorkerPool";
-import type { ISDRDevice, IQSampleCallback } from "../models/SDRDevice";
+import type { ISDRDevice, IQSampleCallback , IQSample } from "../models/SDRDevice";
 import type { DspWorkerMessage } from "../workers/dspWorkerPool";
-import { shouldUseMockSDR } from "../utils/e2e";
-import type { IQSample } from "../models/SDRDevice";
 
 interface UseDspOptions {
   fftSize: number;
@@ -75,7 +74,7 @@ export function useDsp(
       // Generate a simple composite tone in IQ domain and feed the DSP worker
       const generate = (): void => {
         const N = fftSize; // match current FFT size
-        const samples: IQSample[] = new Array(N);
+        const samples: IQSample[] = new Array(N) as IQSample[];
         const t0 = simPhaseRef.current;
         // Two tones inside band to give non-trivial spectrum
         const f1 = 0.07; // normalized frequency cycles/sample
@@ -141,7 +140,7 @@ export function useDsp(
 
   // Ensure simulated generator is torn down on unmount regardless of explicit stop
   useEffect(() => {
-    return () => {
+    return (): void => {
       if (simTimerRef.current) {
         clearInterval(simTimerRef.current);
         simTimerRef.current = null;

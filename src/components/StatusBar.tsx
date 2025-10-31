@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDeviceContext } from "../contexts/DeviceContext";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
-import { RenderTier, maxTier } from "../types/rendering";
 import { renderTierManager } from "../lib/render/RenderTierManager";
+import { RenderTier, maxTier } from "../types/rendering";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
 /** Rendering tier detected for visualization components */
 // Re-export for backward compatibility with existing imports/tests
@@ -59,7 +59,7 @@ function useOptionalDeviceContext(): {
   } catch {
     return {
       primaryDevice: undefined,
-      connectPairedUSBDevice: async (_usb: USBDevice): Promise<void> => {
+      connectPairedUSBDevice: async (): Promise<void> => {
         await Promise.resolve();
       },
       requestDevice: async (): Promise<void> => {

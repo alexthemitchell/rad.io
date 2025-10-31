@@ -68,7 +68,7 @@ describe("StatusBar", () => {
 
     rerender(<StatusBar renderTier={RenderTier.WebGL2} />);
     tierElement = screen.getByText("WebGL2");
-    expect(tierElement).toHaveStyle({ color: "var(--rad-primary)" });
+    expect(tierElement).toHaveStyle({ color: "var(--rad-fg)" });
 
     rerender(<StatusBar renderTier={RenderTier.WebGL1} />);
     tierElement = screen.getByText("WebGL1");
