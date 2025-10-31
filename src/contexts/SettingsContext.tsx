@@ -53,10 +53,10 @@ function loadFromStorage(): SettingsState | null {
     if (!allowedFft.includes(next.fftSize)) {
       next.fftSize = DEFAULTS.fftSize;
     }
-    if (typeof next.dbMin !== "number") {
+    if (next.dbMin !== undefined && typeof next.dbMin !== "number") {
       next.dbMin = DEFAULTS.dbMin;
     }
-    if (typeof next.dbMax !== "number") {
+    if (next.dbMax !== undefined && typeof next.dbMax !== "number") {
       next.dbMax = DEFAULTS.dbMax;
     }
     return next;
