@@ -6,21 +6,21 @@ import React, {
   useEffect,
   useRef,
   type ReactNode,
-} from 'react';
-import { notify as busNotify } from '../lib/notifications';
+} from "react";
+import { notify as busNotify } from "../lib/notifications";
 
 interface Notification {
   id: number;
   message: string;
-  tone: 'success' | 'error' | 'info';
-  sr: 'assertive' | 'polite';
+  tone: "success" | "error" | "info";
+  sr: "assertive" | "polite";
   visual: boolean;
 }
 
 interface NotificationContextType {
   notifications: Notification[];
   notify: (
-    notification: Omit<Notification, 'id'> & { duration?: number },
+    notification: Omit<Notification, "id"> & { duration?: number },
   ) => void;
 }
 
@@ -61,7 +61,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const timeoutIdsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   const notify = useCallback(
-    (notification: Omit<Notification, 'id'> & { duration?: number }) => {
+    (notification: Omit<Notification, "id"> & { duration?: number }) => {
       setNextId((prevId) => {
         const id = prevId;
         setNotifications((prev) => [...prev, { ...notification, id }]);
@@ -72,7 +72,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           timeoutIdsRef.current.delete(timeoutId);
         }, notification.duration ?? 5000);
         timeoutIdsRef.current.add(timeoutId);
-        
+
         return prevId + 1;
       });
     },
@@ -93,9 +93,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       {children}
       <div
         style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
+          position: "fixed",
+          bottom: "20px",
+          right: "20px",
           zIndex: 1000,
         }}
       >
@@ -103,16 +103,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           <div
             key={n.id}
             style={{
-              padding: '10px 20px',
+              padding: "10px 20px",
               backgroundColor:
-                n.tone === 'success'
-                  ? 'green'
-                  : n.tone === 'error'
-                  ? 'red'
-                  : 'blue',
-              color: 'white',
-              marginBottom: '10px',
-              borderRadius: '5px',
+                n.tone === "success"
+                  ? "green"
+                  : n.tone === "error"
+                    ? "red"
+                    : "blue",
+              color: "white",
+              marginBottom: "10px",
+              borderRadius: "5px",
             }}
           >
             {n.message}

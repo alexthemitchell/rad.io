@@ -76,8 +76,12 @@ class PerformanceMonitor {
         const isObjOrFunc =
           (typeof poUnknown === "object" && poUnknown !== null) ||
           typeof poUnknown === "function";
-        if (isObjOrFunc && "supportedEntryTypes" in (poUnknown as Record<string, unknown>)) {
-          const set = (poUnknown as { supportedEntryTypes?: unknown }).supportedEntryTypes;
+        if (
+          isObjOrFunc &&
+          "supportedEntryTypes" in (poUnknown as Record<string, unknown>)
+        ) {
+          const set = (poUnknown as { supportedEntryTypes?: unknown })
+            .supportedEntryTypes;
           if (Array.isArray(set) && set.every((x) => typeof x === "string")) {
             return set as readonly string[];
           }

@@ -1,8 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import AudioControls from "../components/AudioControls";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
@@ -14,7 +10,10 @@ import { useDevice } from "../contexts/DeviceContext";
 import { useFrequency } from "../contexts/FrequencyContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { useDsp } from "../hooks/useDsp";
-import { useFrequencyScanner, type ActiveSignal } from "../hooks/useFrequencyScanner";
+import {
+  useFrequencyScanner,
+  type ActiveSignal,
+} from "../hooks/useFrequencyScanner";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { formatFrequency } from "../utils/frequency";
 import type { IQSample } from "../models/SDRDevice";
@@ -65,9 +64,8 @@ const Monitor: React.FC = () => {
   );
   const [highPerfMode, setHighPerfMode] = useState(false);
   const [showWaterfall, setShowWaterfall] = useState(true);
-  const [colorMap, setColorMap] = useState<keyof typeof WATERFALL_COLORMAPS>(
-    "turbo",
-  );
+  const [colorMap, setColorMap] =
+    useState<keyof typeof WATERFALL_COLORMAPS>("turbo");
   const [dbMin, setDbMin] = useState<number | undefined>(-100);
   const [dbMax, setDbMax] = useState<number | undefined>(0);
 
@@ -93,11 +91,10 @@ const Monitor: React.FC = () => {
   });
 
   useEffect(() => {
-    if (scanner.state === 'idle' && foundSignals.length > 0) {
+    if (scanner.state === "idle" && foundSignals.length > 0) {
       setStatusMsg(`Scan complete, found ${foundSignals.length} signals.`);
     }
   }, [scanner.state, foundSignals.length]);
-
 
   const tuneDevice = useCallback(async () => {
     if (!device) {
@@ -175,7 +172,12 @@ const Monitor: React.FC = () => {
     if (useMock) {
       return;
     }
-    if (!device || !device.isOpen() || isReceiving || scanner.state !== "idle") {
+    if (
+      !device ||
+      !device.isOpen() ||
+      isReceiving ||
+      scanner.state !== "idle"
+    ) {
       return;
     }
     void handleStart();
@@ -197,7 +199,9 @@ const Monitor: React.FC = () => {
   }, [isReceiving]);
 
   // Dummy state for components that are not yet fully integrated
-  const [recordingState, setRecordingState] = useState<"idle" | "recording" | "playback">("idle");
+  const [recordingState, setRecordingState] = useState<
+    "idle" | "recording" | "playback"
+  >("idle");
   // TODO(rad.io): Temporary placeholder for recordedSamples. Replace with proper IQSample[] when recording is implemented.
   const [recordedSamples, setRecordedSamples] = useState<IQSample[]>([]);
   // TODO(rad.io): Temporary placeholder for recordingDuration. Refactor consuming components to accept optional props or implement feature properly.
@@ -206,7 +210,11 @@ const Monitor: React.FC = () => {
   const [volume, setVolume] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
   // TODO(rad.io): Temporary placeholder for signalQuality. Refactor consuming components to accept optional props or implement feature properly.
-  const [signalQuality, _setSignalQuality] = useState({ snr: 0, peakPower: 0, avgPower: 0 });
+  const [signalQuality, _setSignalQuality] = useState({
+    snr: 0,
+    peakPower: 0,
+    avgPower: 0,
+  });
   // Render metrics are shown in the global StatusBar (App)
 
   const handleStartRecording = (): void => setRecordingState("recording");
@@ -228,14 +236,21 @@ const Monitor: React.FC = () => {
 
       {/* Page status message will be surfaced via the StatusBar below to maintain a single status region. */}
 
-      <section aria-labelledby="visualization-heading" aria-label="Spectrum visualization">
+      <section
+        aria-labelledby="visualization-heading"
+        aria-label="Spectrum visualization"
+      >
         <h2 id="visualization-heading">Visualization</h2>
         <div
           role="group"
           aria-label="Visualization controls"
           style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
         >
-          <div role="group" aria-label="Live reception controls" style={{ display: "inline-flex", gap: 8 }}>
+          <div
+            role="group"
+            aria-label="Live reception controls"
+            style={{ display: "inline-flex", gap: 8 }}
+          >
             {!isReceiving ? (
               <button
                 onClick={() => void handleStart()}
@@ -440,8 +455,8 @@ const Monitor: React.FC = () => {
               vizMode === "fft" && showWaterfall
                 ? "spectrogram"
                 : vizMode === "fft"
-                ? "fft"
-                : vizMode
+                  ? "fft"
+                  : vizMode
             }
             colorMap={colorMap}
             dbMin={dbMin}
@@ -477,8 +492,8 @@ const Monitor: React.FC = () => {
                     {s.rdsData?.ps
                       ? ` — ${s.rdsData.ps}`
                       : s.label
-                      ? ` — ${s.label}`
-                      : ""}
+                        ? ` — ${s.label}`
+                        : ""}
                     <button
                       style={{ marginLeft: 8 }}
                       onClick={() => {
@@ -581,9 +596,7 @@ const Monitor: React.FC = () => {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: "0.85em", opacity: 0.7 }}>
-              Sample Rate
-            </div>
+            <div style={{ fontSize: "0.85em", opacity: 0.7 }}>Sample Rate</div>
             <div style={{ fontSize: "1.2em", fontWeight: "bold" }}>
               {(sampleRate / 1e6).toFixed(2)} MSPS
             </div>

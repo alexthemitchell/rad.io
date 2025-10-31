@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { performanceMonitor } from '../utils/performanceMonitor';
-import { dspWorkerPool } from '../workers/dspWorkerPool';
-import type { ISDRDevice, IQSampleCallback } from '../models/SDRDevice';
-import type { DspWorkerMessage } from '../workers/dspWorkerPool';
+import { useState, useEffect, useCallback } from "react";
+import { performanceMonitor } from "../utils/performanceMonitor";
+import { dspWorkerPool } from "../workers/dspWorkerPool";
+import type { ISDRDevice, IQSampleCallback } from "../models/SDRDevice";
+import type { DspWorkerMessage } from "../workers/dspWorkerPool";
 
 interface UseDspOptions {
   fftSize: number;
@@ -24,16 +24,16 @@ export function useDsp(
 
   const handleWorkerMessage = useCallback(
     (event: MessageEvent<DspWorkerMessage>) => {
-      if (event.data.type === 'fft') {
+      if (event.data.type === "fft") {
         // Reuse existing buffer instead of creating new one to prevent memory accumulation
         const payload = event.data.payload as ArrayBuffer;
         const newMagnitudes = new Float32Array(payload);
-        
+
         // Reuse buffer to minimize allocations (copy data in-place)
         // IMPORTANT: Returns same reference to avoid allocations. setState will still trigger
         // re-renders, but consumers should rely on the onNewFft callback for immediate updates
         // rather than depending on React state changes, as the buffer contents change in-place.
-        setMagnitudes(prevMagnitudes => {
+        setMagnitudes((prevMagnitudes) => {
           // If size changed, need new buffer
           if (prevMagnitudes.length !== newMagnitudes.length) {
             return newMagnitudes;
@@ -42,10 +42,10 @@ export function useDsp(
           prevMagnitudes.set(newMagnitudes);
           return prevMagnitudes;
         });
-        
+
         // Mark a visualization data push for performance cadence metrics
-        performanceMonitor.mark('viz-push');
-        performanceMonitor.measure('viz-push', 'viz-push');
+        performanceMonitor.mark("viz-push");
+        performanceMonitor.measure("viz-push", "viz-push");
         onNewFft(newMagnitudes);
       }
     },
@@ -53,9 +53,9 @@ export function useDsp(
   );
 
   useEffect(() => {
-    dspWorkerPool.addEventListener('message', handleWorkerMessage);
+    dspWorkerPool.addEventListener("message", handleWorkerMessage);
     return (): void => {
-      dspWorkerPool.removeEventListener('message', handleWorkerMessage);
+      dspWorkerPool.removeEventListener("message", handleWorkerMessage);
     };
   }, [handleWorkerMessage]);
 
@@ -69,7 +69,7 @@ export function useDsp(
       try {
         const iq = device.parseSamples(raw);
         dspWorkerPool.postMessage({
-          type: 'process',
+          type: "process",
           payload: {
             samples: iq,
             fftSize,

@@ -21,7 +21,6 @@ test.use({
   viewport: { width: 1280, height: 800 },
 });
 
-
 // Helper to ensure reception is running, accommodating auto-start on /monitor
 async function ensureReceiving(page: Page): Promise<void> {
   // Try to detect quickly; if receiving, we're done

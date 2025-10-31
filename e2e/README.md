@@ -9,6 +9,7 @@ This directory contains comprehensive end-to-end (E2E) tests for the rad.io SDR 
 > **These tests document what the application SHOULD do, according to project specifications.**
 
 The test suite serves multiple purposes:
+
 - ✅ **Executable Specifications**: Tests define expected behavior from PRD and ADRs
 - ✅ **Implementation Guide**: Tests show developers what features should do
 - ✅ **Quality Assurance**: Tests validate performance, accessibility, and UX requirements
@@ -22,9 +23,11 @@ The test suite serves multiple purposes:
 ### Primary Workspace Tests
 
 #### 1. `monitor-comprehensive.spec.ts` (594 lines, ~42 tests)
+
 **Monitor workspace** - The default/primary view for real-time spectrum analysis
 
 **Coverage:**
+
 - Core functionality (page load, UI elements, start/stop reception)
 - Spectrum visualization (ARIA attributes, 60 FPS rendering, grid overlay)
 - Waterfall display (rendering, scrolling, click-to-tune)
@@ -36,15 +39,18 @@ The test suite serves multiple purposes:
 - Navigation integration (routing, query parameters)
 
 **Key Requirements Validated:**
+
 - 60 FPS at 8192 bins (PRD)
 - <150ms click-to-audio latency (PRD)
 - WCAG 2.1 AA compliance (ADR-0017, ADR-0023)
 - Keyboard-first operation (UI Design Spec)
 
 #### 2. `scanner-comprehensive.spec.ts` (514 lines, ~35 tests)
+
 **Scanner workspace** - Automated frequency scanning and activity logging
 
 **Coverage:**
+
 - Navigation (page access, keyboard shortcuts)
 - Configuration (scan mode, frequency range, step size, threshold, dwell time)
 - Scan execution (start/stop/pause, keyboard shortcuts)
@@ -58,14 +64,17 @@ The test suite serves multiple purposes:
 - Performance (>10 channels/s scan rate)
 
 **Key Requirements Validated:**
-- >10 channels/s fast scan mode (PRD)
+
+- > 10 channels/s fast scan mode (PRD)
 - Detection reliability >95% above squelch (PRD)
 - Activity log with waterfall thumbnails (PRD)
 
 #### 3. `workspaces-comprehensive.spec.ts` (640 lines, ~62 tests)
+
 **Decode, Analysis, and Recordings workspaces**
 
 **Decode Workspace Coverage:**
+
 - Navigation and mode selection (RTTY, PSK31, SSTV)
 - RTTY decoder (baud rate 45.45/50, shift 170/850 Hz, text output)
 - PSK31 decoder (AFC, varicode decoding)
@@ -73,6 +82,7 @@ The test suite serves multiple purposes:
 - General controls (start/stop, <200ms latency requirement)
 
 **Analysis Workspace Coverage:**
+
 - Navigation
 - Constellation diagram (freeze frame, persistence trails, EVM calculation)
 - Eye diagram (trigger controls, sample interpolation)
@@ -81,6 +91,7 @@ The test suite serves multiple purposes:
 - Phase noise measurement
 
 **Recordings Workspace Coverage:**
+
 - Navigation
 - Library display (list/grid views, metadata)
 - Filtering and search (tags, full-text search)
@@ -90,6 +101,7 @@ The test suite serves multiple purposes:
 - Integration with Analysis and Decode workspaces
 
 **Key Requirements Validated:**
+
 - <200ms decode latency (PRD)
 - Handles 20GB+ recordings (PRD)
 - SigMF compliance (PRD)
@@ -97,44 +109,52 @@ The test suite serves multiple purposes:
 ### Global UI and Navigation Tests
 
 #### 4. `navigation-and-panels.spec.ts` (708 lines, ~87 tests)
+
 **Navigation, panels, keyboard shortcuts, and settings**
 
 **Coverage:**
 
 **Global Navigation:**
+
 - Page routing (all workspaces, support pages, panels)
 - Active page highlighting
 - Deep linking with query parameters
 - Share links with state
 
 **Keyboard Shortcuts:**
+
 - Global (?, 1-5 for workspaces, Ctrl+K, Ctrl+S, Ctrl+F)
 - Tuning (Arrow keys, Page Up/Down, [/], M)
 - Visualization (Z, X, P, G, R)
 - Bookmarks (B, Ctrl+B)
 
 **Bookmarks Panel:**
+
 - List display, hierarchical folders, search
 - Filter by tags, click-to-tune
 - Import/export (CSV, RadioReference)
 - 10k+ bookmark capacity (PRD)
 
 **Devices Panel:**
+
 - Device list, connect button, device information
 - Per-device settings (sample rate, gain, PPM)
 - Multi-device support (4+ devices per PRD)
 
 **Measurements Panel:**
+
 - Measurement tools, marker placement, marker table
 - Export CSV/JSON
 - Channel power, OBW, ACPR, SNR/SINAD
 - ±1 Hz frequency accuracy, ±0.2dB power accuracy (PRD)
 
 **Diagnostics Panel:**
+
 - Health metrics, telemetry data
 - Copy logs, download diagnostics bundle
 
 **Settings and Calibration:**
+
 - Settings tabs (Display, Radio, Audio, Calibration, Advanced)
 - Import/export settings JSON
 - Keyboard shortcut customization
@@ -142,10 +162,12 @@ The test suite serves multiple purposes:
 - Per-device calibration profiles
 
 **Help Page:**
+
 - Help content display
 - Keyboard shortcuts reference
 
 **Key Requirements Validated:**
+
 - Keyboard-first operation (UI Design Spec)
 - 10,000+ bookmarks with <100ms search (PRD)
 - ±1 Hz frequency accuracy post-calibration (PRD)
@@ -154,9 +176,11 @@ The test suite serves multiple purposes:
 ### Accessibility Tests
 
 #### 5. `accessibility.spec.ts` (Updated documentation)
+
 **WCAG 2.1 AA compliance validation**
 
 **Coverage:**
+
 - Application-wide accessibility scan (axe-core)
 - Document structure (main landmark, heading hierarchy, skip link)
 - Keyboard navigation (skip link, interactive elements, tab order, frequency controls)
@@ -167,6 +191,7 @@ The test suite serves multiple purposes:
 - Live regions (announcements for screen readers)
 
 **Key Requirements Validated:**
+
 - WCAG 2.1 AA compliance (ADR-0017, ADR-0023)
 - Zero critical violations (ADR-0023)
 - 4.5:1 text contrast, 3:1 UI component contrast (UI Design Spec)
@@ -360,11 +385,11 @@ Tests use mock SDR devices for CI-friendly execution:
 
 ```typescript
 // Activate mock mode via URL
-await page.goto('/monitor?mockSdr=1');
+await page.goto("/monitor?mockSdr=1");
 
 // Or via localStorage
 await page.evaluate(() => {
-  localStorage.setItem('radio:e2e:mockSdr', '1');
+  localStorage.setItem("radio:e2e:mockSdr", "1");
 });
 ```
 
@@ -374,16 +399,16 @@ The mock device generates realistic IQ samples without requiring physical hardwa
 
 The test suite validates performance requirements from the PRD:
 
-| Metric | Requirement | Test Location |
-|--------|-------------|---------------|
-| Spectrum rendering | 60 FPS at 8192 bins | `monitor-comprehensive.spec.ts` |
-| Click-to-audio latency | <150ms | `monitor-comprehensive.spec.ts` |
-| Scan rate | >10 channels/s | `scanner-comprehensive.spec.ts` |
-| Decode latency | <200ms | `workspaces-comprehensive.spec.ts` |
-| Frequency accuracy | ±1 Hz (calibrated) | `navigation-and-panels.spec.ts` |
-| Power accuracy | ±0.2dB | `navigation-and-panels.spec.ts` |
-| Memory growth | <50MB over 6s | `monitor-comprehensive.spec.ts` |
-| Bookmark search | <100ms for 10k+ | `navigation-and-panels.spec.ts` |
+| Metric                 | Requirement         | Test Location                      |
+| ---------------------- | ------------------- | ---------------------------------- |
+| Spectrum rendering     | 60 FPS at 8192 bins | `monitor-comprehensive.spec.ts`    |
+| Click-to-audio latency | <150ms              | `monitor-comprehensive.spec.ts`    |
+| Scan rate              | >10 channels/s      | `scanner-comprehensive.spec.ts`    |
+| Decode latency         | <200ms              | `workspaces-comprehensive.spec.ts` |
+| Frequency accuracy     | ±1 Hz (calibrated)  | `navigation-and-panels.spec.ts`    |
+| Power accuracy         | ±0.2dB              | `navigation-and-panels.spec.ts`    |
+| Memory growth          | <50MB over 6s       | `monitor-comprehensive.spec.ts`    |
+| Bookmark search        | <100ms for 10k+     | `navigation-and-panels.spec.ts`    |
 
 ## Accessibility Standards
 
@@ -411,6 +436,7 @@ Tests run automatically in CI:
 ```
 
 **CI Behavior:**
+
 - Mock device mode only (no hardware)
 - 1 worker (prevents OOM)
 - 2 retry attempts on failure
@@ -449,12 +475,12 @@ test.describe("Feature Name", () => {
   test("should perform expected behavior", async ({ page }) => {
     // Navigate with mock device
     await page.goto("/monitor?mockSdr=1");
-    
+
     // Interact with UI
     const button = page.getByRole("button", { name: /start/i });
     await expect(button).toBeVisible();
     await button.click();
-    
+
     // Verify results
     const status = page.getByRole("status");
     await expect(status).toContainText(/active/i);
@@ -465,29 +491,33 @@ test.describe("Feature Name", () => {
 ### Best Practices
 
 1. **Use Mock Mode for CI Tests**
+
    ```typescript
    await page.goto("/monitor?mockSdr=1");
    ```
 
 2. **Use Accessible Selectors**
+
    ```typescript
    // ✅ Good - uses accessible role and name
-   page.getByRole("button", { name: /start reception/i })
-   
+   page.getByRole("button", { name: /start reception/i });
+
    // ❌ Bad - relies on implementation details
-   page.locator(".start-button")
+   page.locator(".start-button");
    ```
 
 3. **Wait for Async Operations**
+
    ```typescript
    // Wait for element to appear
    await expect(element).toBeVisible({ timeout: 5000 });
-   
+
    // Wait for state change
    await page.waitForFunction(() => window.dbgReceiving === true);
    ```
 
 4. **Document Intended Behavior**
+
    ```typescript
    test("should support feature X per PRD", async ({ page }) => {
      // This test validates intended behavior from PRD Section Y
@@ -500,7 +530,7 @@ test.describe("Feature Name", () => {
    test.afterEach(async ({ page }) => {
      // Stop streaming
      await page.click('button:has-text("Stop")').catch(() => {});
-     
+
      // Clear state
      await page.evaluate(() => localStorage.clear());
    });
@@ -511,11 +541,13 @@ test.describe("Feature Name", () => {
 ### Common Issues
 
 **Browser not installed:**
+
 ```bash
 npx playwright install chromium
 ```
 
 **Port 8080 already in use:**
+
 ```bash
 # Kill existing process
 lsof -i :8080  # Find PID
@@ -526,6 +558,7 @@ kill -9 <PID>
 ```
 
 **Self-signed certificate errors:**
+
 ```typescript
 // Already configured in playwright.config.ts
 use: {
@@ -534,12 +567,14 @@ use: {
 ```
 
 **Tests timeout waiting for page load:**
+
 ```bash
 # Increase timeout in playwright.config.ts
 timeout: 60 * 1000,  // 60 seconds
 ```
 
 **Memory issues with parallel tests:**
+
 ```bash
 # Reduce workers
 npm run test:e2e -- --workers=1
@@ -548,6 +583,7 @@ npm run test:e2e -- --workers=1
 ## Documentation References
 
 ### Architecture Decision Records (ADRs)
+
 - **ADR-0006**: Testing Strategy and Framework Selection
 - **ADR-0017**: Comprehensive Accessibility Pattern Implementation
 - **ADR-0018**: UX Information Architecture and Page Map
@@ -558,11 +594,13 @@ npm run test:e2e -- --workers=1
 - **ADR-0016**: Signal Decoder Architecture
 
 ### Product Requirements
+
 - **PRD.md**: Core features, performance targets, success criteria
 - **UI-DESIGN-SPEC.md**: Visual design, components, keyboard shortcuts
 - **ROADMAP.md**: Iteration phases and feature priorities
 
 ### Related Documentation
+
 - **docs/e2e-tests.md**: E2E testing overview and guide
 - **docs/ACCESSIBILITY.md**: Accessibility features and patterns
 - **docs/ACCESSIBILITY-TESTING-GUIDE.md**: Accessibility testing procedures
@@ -579,6 +617,7 @@ When adding new E2E tests:
 6. **Use descriptive names**: Test names should clearly state what they validate
 
 Example:
+
 ```typescript
 test("should achieve 60 FPS target per PRD Section 2.2", async ({ page }) => {
   // This test validates the PRD performance requirement for
@@ -595,6 +634,7 @@ Same as rad.io project license.
 ## Support
 
 For questions about E2E tests:
+
 - Check this README first
 - Review ADR-0020 (E2E Testing Strategy)
 - Review docs/e2e-tests.md (comprehensive guide)

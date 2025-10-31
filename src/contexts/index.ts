@@ -5,7 +5,4 @@
 
 export { DeviceProvider, useDeviceContext, useDevice } from "./DeviceContext";
 export { FrequencyProvider, useFrequency } from "./FrequencyContext";
-export {
-  NotificationProvider,
-  useNotifications,
-} from "./NotificationContext";
+export { NotificationProvider, useNotifications } from "./NotificationContext";

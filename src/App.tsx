@@ -63,41 +63,41 @@ function App(): React.JSX.Element {
 
             {/* Main content area for pages */}
             <main id="main-content" tabIndex={-1}>
-            <Routes>
-              {/* Primary workspaces */}
-              <Route path="/" element={<Monitor />} />
-              <Route path="/monitor" element={<Monitor />} />
-              <Route path="/scanner" element={<Scanner />} />
-              <Route path="/decode" element={<Decode />} />
-              <Route path="/analysis" element={<Analysis />} />
-              <Route path="/recordings" element={<Recordings />} />
+              <Routes>
+                {/* Primary workspaces */}
+                <Route path="/" element={<Monitor />} />
+                <Route path="/monitor" element={<Monitor />} />
+                <Route path="/scanner" element={<Scanner />} />
+                <Route path="/decode" element={<Decode />} />
+                <Route path="/analysis" element={<Analysis />} />
+                <Route path="/recordings" element={<Recordings />} />
 
-              {/* Supporting panels (also accessible as full pages) */}
-              <Route
-                path="/bookmarks"
-                element={<Bookmarks isPanel={false} />}
-              />
-              <Route path="/devices" element={<Devices isPanel={false} />} />
-              <Route
-                path="/measurements"
-                element={<Measurements isPanel={false} />}
-              />
-              <Route
-                path="/diagnostics"
-                element={<Diagnostics isPanel={false} />}
-              />
+                {/* Supporting panels (also accessible as full pages) */}
+                <Route
+                  path="/bookmarks"
+                  element={<Bookmarks isPanel={false} />}
+                />
+                <Route path="/devices" element={<Devices isPanel={false} />} />
+                <Route
+                  path="/measurements"
+                  element={<Measurements isPanel={false} />}
+                />
+                <Route
+                  path="/diagnostics"
+                  element={<Diagnostics isPanel={false} />}
+                />
 
-              {/* Settings and configuration */}
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/calibration" element={<Calibration />} />
+                {/* Settings and configuration */}
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/calibration" element={<Calibration />} />
 
-              {/* Help and documentation */}
-              <Route path="/help" element={<Help />} />
+                {/* Help and documentation */}
+                <Route path="/help" element={<Help />} />
 
-              {/* Demo pages */}
-              <Route path="/demo" element={<VisualizationDemo />} />
-              <Route path="/renderers-demo" element={<RenderersDemo />} />
-            </Routes>
+                {/* Demo pages */}
+                <Route path="/demo" element={<VisualizationDemo />} />
+                <Route path="/renderers-demo" element={<RenderersDemo />} />
+              </Routes>
             </main>
 
             {/* Global shortcuts help overlay (toggles with '?') */}

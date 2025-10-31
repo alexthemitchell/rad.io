@@ -1,12 +1,9 @@
-import React, { useEffect, useRef, useMemo } from 'react';
-import { performanceMonitor } from '../../utils/performanceMonitor';
-import {
-  WebGLSpectrum,
-  WebGLWaterfall,
-} from '../../visualization';
-import type { WATERFALL_COLORMAPS } from '../../constants';
-import type { RenderTransform } from '../../visualization';
-import type { VisualizationWorkerManager } from '../../workers/VisualizationWorkerManager';
+import React, { useEffect, useRef, useMemo } from "react";
+import { performanceMonitor } from "../../utils/performanceMonitor";
+import { WebGLSpectrum, WebGLWaterfall } from "../../visualization";
+import type { WATERFALL_COLORMAPS } from "../../constants";
+import type { RenderTransform } from "../../visualization";
+import type { VisualizationWorkerManager } from "../../workers/VisualizationWorkerManager";
 
 interface PrimaryVisualizationProps {
   fftData: Float32Array;
@@ -15,7 +12,7 @@ interface PrimaryVisualizationProps {
   sampleRate: number;
   // TODO(rad.io): centerFrequency not yet used in this refactored version, will be needed for frequency axis labels
   centerFrequency: number;
-  mode: 'fft' | 'waterfall' | 'spectrogram';
+  mode: "fft" | "waterfall" | "spectrogram";
   colorMap?: keyof typeof WATERFALL_COLORMAPS;
   dbMin?: number;
   dbMax?: number;
@@ -29,7 +26,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   sampleRate: _sampleRate,
   centerFrequency: _centerFrequency,
   mode,
-  colorMap = 'viridis',
+  colorMap = "viridis",
   dbMin = -100,
   dbMax = 0,
   onTune: _onTune,
@@ -143,9 +140,9 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
       const max = dbMaxRef.current;
       const cmap = colorMapRef.current;
 
-      performanceMonitor.mark('render-start');
+      performanceMonitor.mark("render-start");
 
-      if (m === 'fft' || m === 'spectrogram') {
+      if (m === "fft" || m === "spectrogram") {
         spectrumRendererRef.current?.render({
           magnitudes: data,
           freqMin: 0,
@@ -154,13 +151,13 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         });
       }
 
-      if (m === 'waterfall' || m === 'spectrogram') {
+      if (m === "waterfall" || m === "spectrogram") {
         const range = Math.max(1e-6, max - min);
         // Prefer worker path; fallback to WebGL renderer if worker not ready
         if (workerManagerRef.current?.isReady()) {
           try {
             workerManagerRef.current.render({
-              'fftData': [data],
+              fftData: [data],
               transform,
             });
           } catch {
@@ -182,7 +179,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         }
       }
 
-      performanceMonitor.measure('rendering', 'render-start');
+      performanceMonitor.measure("rendering", "render-start");
       rafIdRef.current = requestAnimationFrame(render);
     };
 
@@ -202,7 +199,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         width="900"
         height="320"
         style={{
-          display: mode === 'fft' || mode === 'spectrogram' ? 'block' : 'none',
+          display: mode === "fft" || mode === "spectrogram" ? "block" : "none",
         }}
         aria-label="Spectrum Analyzer"
       />
@@ -212,8 +209,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         height="320"
         style={{
           display:
-            mode === 'waterfall' || mode === 'spectrogram' ? 'block' : 'none',
-          marginTop: '8px',
+            mode === "waterfall" || mode === "spectrogram" ? "block" : "none",
+          marginTop: "8px",
         }}
         aria-label="Waterfall Display"
       />

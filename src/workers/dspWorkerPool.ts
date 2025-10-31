@@ -1,5 +1,5 @@
 export interface DspWorkerMessage {
-  type: 'fft' | 'error';
+  type: "fft" | "error";
   payload: unknown;
 }
 
@@ -10,13 +10,13 @@ class DspWorkerPool {
 
   constructor(poolSize: number) {
     for (let i = 0; i < poolSize; i++) {
-      const worker = new Worker(new URL('./dspWorker.ts', import.meta.url), {
-        type: 'module',
+      const worker = new Worker(new URL("./dspWorker.ts", import.meta.url), {
+        type: "module",
       });
       this.workers.push(worker);
       worker.onmessage = (event: MessageEvent<DspWorkerMessage>): void => {
         this.eventTarget.dispatchEvent(
-          new MessageEvent('message', { data: event.data }),
+          new MessageEvent("message", { data: event.data }),
         );
       };
     }
@@ -32,7 +32,7 @@ class DspWorkerPool {
 
   // Typed overload for message events carrying DspWorkerMessage
   addEventListener(
-    type: 'message',
+    type: "message",
     listener: (event: MessageEvent<DspWorkerMessage>) => void,
     options?: boolean | AddEventListenerOptions,
   ): void;
@@ -44,16 +44,22 @@ class DspWorkerPool {
   ): void;
   addEventListener(
     type: string,
-    listener: ((event: MessageEvent<DspWorkerMessage>) => void) | (EventListenerOrEventListenerObject | null),
+    listener:
+      | ((event: MessageEvent<DspWorkerMessage>) => void)
+      | (EventListenerOrEventListenerObject | null),
     options?: boolean | AddEventListenerOptions,
   ): void {
     // We can safely cast here because we control dispatchEvent to always send a MessageEvent for 'message'
-    this.eventTarget.addEventListener(type, listener as EventListenerOrEventListenerObject, options);
+    this.eventTarget.addEventListener(
+      type,
+      listener as EventListenerOrEventListenerObject,
+      options,
+    );
   }
 
   // Typed overload for message events
   removeEventListener(
-    type: 'message',
+    type: "message",
     callback: (event: MessageEvent<DspWorkerMessage>) => void,
     options?: EventListenerOptions | boolean,
   ): void;
@@ -65,10 +71,16 @@ class DspWorkerPool {
   ): void;
   removeEventListener(
     type: string,
-    callback: ((event: MessageEvent<DspWorkerMessage>) => void) | (EventListenerOrEventListenerObject | null),
+    callback:
+      | ((event: MessageEvent<DspWorkerMessage>) => void)
+      | (EventListenerOrEventListenerObject | null),
     options?: EventListenerOptions | boolean,
   ): void {
-    this.eventTarget.removeEventListener(type, callback as EventListenerOrEventListenerObject, options);
+    this.eventTarget.removeEventListener(
+      type,
+      callback as EventListenerOrEventListenerObject,
+      options,
+    );
   }
 
   terminate(): void {
@@ -79,5 +91,5 @@ class DspWorkerPool {
 }
 
 export const dspWorkerPool = new DspWorkerPool(
-  typeof navigator !== 'undefined' && navigator.hardwareConcurrency || 4,
+  (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4,
 );
