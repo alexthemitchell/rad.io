@@ -79,15 +79,20 @@
   --rad-surface-2: oklch(22% 0.02 240deg);
   --rad-fg: oklch(90% 0.005 240deg);
   --rad-fg-muted: oklch(62% 0.01 240deg);
-  --rad-primary: oklch(55% 0.18 240deg); /* Electric Blue */
+
+  /* Increase contrast for text on brand backgrounds */
+  --rad-primary: oklch(
+    47% 0.18 240deg
+  ); /* Electric Blue (darker for AA contrast) */
+
   --rad-primary-foreground: oklch(98% 0 0deg);
   --rad-accent: oklch(78% 0.14 195deg); /* Cyan for tuning */
   --rad-accent-foreground: oklch(12% 0.01 240deg);
-  --rad-success: oklch(68% 0.15 145deg);
-  --rad-success-foreground: oklch(12% 0.01 240deg);
-  --rad-warning: oklch(75% 0.15 75deg);
-  --rad-warning-foreground: oklch(12% 0.01 240deg);
-  --rad-danger: oklch(60% 0.2 25deg);
+  --rad-success: oklch(52% 0.15 145deg);
+  --rad-success-foreground: oklch(98% 0 0deg);
+  --rad-warning: oklch(58% 0.15 75deg);
+  --rad-warning-foreground: oklch(98% 0 0deg);
+  --rad-danger: oklch(45% 0.2 25deg);
   --rad-danger-foreground: oklch(98% 0 0deg);
   --rad-border: oklch(28% 0.015 240deg);
   --rad-ring: oklch(78% 0.14 195deg);

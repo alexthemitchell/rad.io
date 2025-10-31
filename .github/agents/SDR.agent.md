@@ -1,4 +1,3 @@
----
 name: SDR
 description: An expert in Software-Defined Radio (SDR) and WebUSB, specializing in HackRF One and RTL-SDR devices.
 tools:

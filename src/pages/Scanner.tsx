@@ -53,18 +53,12 @@ function Scanner(): React.JSX.Element {
       enabled: false,
     },
   ]);
-  const [currentTalkgroup, _setCurrentTalkgroup] = useState<string | null>(
-    null,
-  );
-  const [currentTalkgroupName, _setCurrentTalkgroupName] = useState<
-    string | null
-  >(null);
-  const [signalPhase, _setSignalPhase] = useState<"Phase 1" | "Phase 2" | null>(
-    null,
-  );
-  const [tdmaSlot, _setTdmaSlot] = useState<number | null>(null);
-  const [signalStrength, _setSignalStrength] = useState(0);
-  const [isEncrypted, _setIsEncrypted] = useState(false);
+  const [currentTalkgroup] = useState<string | null>(null);
+  const [currentTalkgroupName] = useState<string | null>(null);
+  const [signalPhase] = useState<"Phase 1" | "Phase 2" | null>(null);
+  const [tdmaSlot] = useState<number | null>(null);
+  const [signalStrength] = useState(0);
+  const [isEncrypted] = useState(false);
 
   const handleSignalTypeChange = (type: SignalType): void => {
     setSignalType(type);

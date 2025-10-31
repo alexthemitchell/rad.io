@@ -2,12 +2,22 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 /**
- * E2E Accessibility Tests for rad.io
+ * Comprehensive E2E Accessibility Tests for rad.io
+ * Based on: ADR-0017 (Accessibility Patterns), ADR-0023 (Continuous Compliance), UI Design Spec
  *
- * These tests verify WCAG 2.1 AA compliance in the running application.
- * Prerequisites:
- * - Dev server must be running at https://localhost:8080
- * - Run with: npx playwright test e2e/accessibility.spec.ts
+ * Validates WCAG 2.1 AA compliance across the application:
+ * - Keyboard navigation (full control without mouse)
+ * - Screen reader support (ARIA labels, live regions, semantic HTML)
+ * - Visual accessibility (color contrast, focus indicators)
+ * - Motion preferences (prefers-reduced-motion support)
+ * - Responsive design (touch targets, mobile viewports)
+ *
+ * Success criteria from ADR-0023:
+ * - Zero critical violations in automated testing
+ * - All interactive elements keyboard accessible
+ * - 4.5:1 text contrast, 3:1 UI component contrast
+ * - Visible focus indicators (3px solid cyan ring, ≥3:1 contrast)
+ * - Logical tab order following visual layout
  */
 
 // Configure to ignore HTTPS certificate errors for local development

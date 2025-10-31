@@ -53,7 +53,7 @@ function Analysis(): React.JSX.Element {
   const { device, initialize, isCheckingPaired } = useDevice();
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [frequency, _setFrequency] = useState(100.3e6);
+  const [frequency] = useState(100.3e6);
   const [deviceError, setDeviceError] = useState<Error | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [samples, setSamples] = useState<Sample[]>([]);

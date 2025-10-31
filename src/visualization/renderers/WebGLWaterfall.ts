@@ -1,4 +1,6 @@
 import { WATERFALL_COLORMAPS } from "../../constants";
+import { renderTierManager } from "../../lib/render/RenderTierManager";
+import { RenderTier } from "../../types/rendering";
 import * as webgl from "../../utils/webgl";
 import type { Renderer } from "./types";
 
@@ -81,6 +83,12 @@ export class WebGLWaterfall implements Renderer {
       this.vertexBuffer = webgl.createBuffer(gl, webgl.QUAD_VERTICES);
       this.textureBuffer = webgl.createBuffer(gl, webgl.TEX_COORDS);
 
+      // Report tier: Waterfall uses WebGL1 path currently
+      try {
+        renderTierManager.reportSuccess(RenderTier.WebGL1);
+      } catch {
+        // ignore
+      }
       return true;
     } catch (error) {
       this.error(

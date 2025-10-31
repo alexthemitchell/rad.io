@@ -17,6 +17,10 @@ import {
  * - Implements a minimal subset of device behavior used by the app
  * - Avoids any WebUSB dependency so it runs in headless CI reliably
  */
+
+// Maximum number of sample buffers to retain in memory
+const MAX_BUFFER_COUNT = 10;
+
 export class MockSDRDevice implements ISDRDevice {
   private _isOpen = false;
   private _isReceiving = false;
@@ -29,7 +33,7 @@ export class MockSDRDevice implements ISDRDevice {
   // Memory tracking
   private sampleBuffers: DataView[] = [];
   private totalBufferSize = 0;
-  private readonly maxBufferSize = 8 * 1024 * 1024; // 8 MB
+  private readonly maxBufferSize = 2 * 1024 * 1024; // 2 MB (reduced from 8MB)
 
   private readonly deviceInfo: SDRDeviceInfo = {
     type: SDRDeviceType.GENERIC,
@@ -131,12 +135,12 @@ export class MockSDRDevice implements ISDRDevice {
     this._lnaGain = gainDb;
   }
 
-  async setVGAGain(_gainDb: number): Promise<void> {
+  async setVGAGain(): Promise<void> {
     // Not used in app; no-op
     await Promise.resolve();
   }
 
-  async setAmpEnable(_enabled: boolean): Promise<void> {
+  async setAmpEnable(): Promise<void> {
     // No-op for mock
     await Promise.resolve();
   }
@@ -166,12 +170,17 @@ export class MockSDRDevice implements ISDRDevice {
     this._isReceiving = true;
 
     // Generate IQ sample chunks periodically
+    // Reduced frequency and size to prevent memory accumulation
     this.receiveInterval = setInterval(() => {
       if (!this._isReceiving) {
         return;
       }
 
-      const samplesPerChunk = 16384;
+      // Reduced from 16384 to limit memory.
+      // Rationale: 8192 is chosen to balance memory usage and FFT processing.
+      // Typical FFT size is 4096, so this provides ~2 FFT windows per chunk.
+      // Each buffer is ~16KB (8192 samples × 2 bytes), which helps prevent memory accumulation in CI/E2E runs.
+      const samplesPerChunk = 8192;
       const buffer = new ArrayBuffer(samplesPerChunk * 2);
       const view = new DataView(buffer);
 
@@ -193,23 +202,20 @@ export class MockSDRDevice implements ISDRDevice {
         view.setInt8(i * 2 + 1, Math.round(Q * 127));
       }
 
-      // Track memory (trim if needed)
+      // Track memory (trim aggressively to prevent OOM)
       this.sampleBuffers.push(view);
       this.totalBufferSize += view.byteLength;
-      if (this.totalBufferSize > this.maxBufferSize) {
-        while (
-          this.totalBufferSize > this.maxBufferSize / 2 &&
-          this.sampleBuffers.length
-        ) {
-          const old = this.sampleBuffers.shift();
-          if (old) {
-            this.totalBufferSize -= old.byteLength;
-          }
+      // Keep only last 10 buffers (10 × 8192 samples × 2 bytes = ~163KB) to prevent memory accumulation
+      while (this.sampleBuffers.length > MAX_BUFFER_COUNT) {
+        const old = this.sampleBuffers.shift();
+        if (old) {
+          this.totalBufferSize -= old.byteLength;
         }
       }
 
+      // Emit raw interleaved IQ bytes; downstream layers convert via parseSamples()
       callback(view);
-    }, 100);
+    }, 200); // Reduced frequency from 10Hz (100ms) to 5Hz (200ms) to reduce memory pressure
   }
 
   async stopRx(): Promise<void> {
@@ -218,6 +224,9 @@ export class MockSDRDevice implements ISDRDevice {
       clearInterval(this.receiveInterval);
       this.receiveInterval = undefined;
     }
+    // Clear sample buffers to free memory
+    this.sampleBuffers = [];
+    this.totalBufferSize = 0;
     await Promise.resolve();
   }
 

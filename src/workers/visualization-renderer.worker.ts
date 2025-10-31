@@ -205,6 +205,9 @@ function renderConstellationWebGL(
     return false;
   }
 
+  // Prevent unused parameter lint error until transform support is implemented
+  void _transform;
+
   const pixelW = canvasOffscreen.width;
   const pixelH = canvasOffscreen.height;
 

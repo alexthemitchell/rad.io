@@ -1,5 +1,5 @@
----
 name: ProblemSolver
+description: Problem Solver
 tools:
   [
     "edit",

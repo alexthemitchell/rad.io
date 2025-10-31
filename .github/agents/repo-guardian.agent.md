@@ -1,4 +1,3 @@
----
 name: RepoGuardian
 description: An AI assistant dedicated to maintaining the overall health, consistency, and quality of the rad.io repository.
 tools:

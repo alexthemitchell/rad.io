@@ -115,18 +115,10 @@ export class VisualizationWorkerManager {
       return false;
     }
 
-    // Check if canvas can be transferred
-    const hasContext =
-      canvas.getContext("2d") !== null ||
-      canvas.getContext("webgl") !== null ||
-      canvas.getContext("webgl2") !== null ||
-      canvas.getContext("webgpu") !== null;
-
-    if (hasContext) {
-      // Canvas already has a context, can't transfer
-      return false;
-    }
-
+    // Check if transferControlToOffscreen is available
+    // Note: We cannot reliably check if a canvas already has a context
+    // without calling getContext(), which would create one.
+    // Instead, we'll try to transfer and handle failure gracefully.
     const transferFn = (
       canvas as HTMLCanvasElement & {
         transferControlToOffscreen?: () => OffscreenCanvas;
@@ -139,12 +131,12 @@ export class VisualizationWorkerManager {
 
     try {
       // Create worker
-      const workerUrl =
-        typeof window !== "undefined" && typeof URL !== "undefined"
-          ? new URL("./visualization-renderer.worker.ts", window.location.href)
-          : ("./visualization-renderer.worker.ts" as unknown as URL);
-
-      this.worker = new Worker(workerUrl);
+      // Use bundler-friendly URL so webpack packs the worker correctly
+      const workerUrl = new URL(
+        "./visualization-renderer.worker.ts",
+        import.meta.url,
+      );
+      this.worker = new Worker(workerUrl, { type: "module" });
 
       // Set up message handler
       this.worker.onmessage = (ev: MessageEvent<WorkerMessage>): void => {
