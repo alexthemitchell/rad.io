@@ -4,10 +4,6 @@ import { useSettings } from "../contexts/SettingsContext";
 export interface RenderingSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Reflect current High Performance toggle value (optional; defaults to false) */
-  currentHighPerf?: boolean;
-  /** Called when High Performance toggle is changed */
-  onChangeHighPerf?: (enabled: boolean) => void;
 }
 
 /**
