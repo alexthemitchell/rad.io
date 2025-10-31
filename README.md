@@ -246,7 +246,7 @@ npm run build
 
 ### Frequency Scanner
 
-The automated frequency scanner sweeps through a user-defined range to detect and log active signals.
+The automated frequency scanner sweeps through a user-defined range to detect and log active signals with automatic signal type classification.
 
 **Configuration:**
 
@@ -269,9 +269,15 @@ The automated frequency scanner sweeps through a user-defined range to detect an
 **Active Signals Table:**
 
 - Lists all detected signals sorted by strength
-- Shows frequency, signal strength percentage, and detection time
+- Shows frequency, signal strength percentage, signal type, and detection time
+- **Signal Type Classification**: Automatically identifies modulation type with confidence score
+  - **WFM** (Wideband FM): 150-250 kHz bandwidth - Commercial FM radio broadcasts
+  - **NFM** (Narrowband FM): 12-30 kHz bandwidth - Two-way radio, amateur repeaters
+  - **AM**: 4-12 kHz bandwidth - AM radio, aviation, amateur bands
+  - **Digital**: 1-5 kHz with sharp edges - Digital voice modes, data transmissions
+  - **Unknown**: Signals that don't match known modulation patterns
 - Color-coded strength bars: Red (weak), Orange (moderate), Green (strong)
-- "Export" button saves results as JSON file
+- "Export" button saves results as JSON file with classification data
 - "Clear" button removes all detected signals from the list
 
 **Note**: Device must be connected and scanning only works for FM/AM modes (not P25).
