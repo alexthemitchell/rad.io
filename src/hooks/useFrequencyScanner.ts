@@ -291,7 +291,10 @@ export function useFrequencyScanner(
         signalClassifierRef.current ??= new SignalClassifier();
         for (const peak of peaks) {
           // Classify the signal
-          const classifiedSignal = signalClassifierRef.current.classify(peak, powerSpectrum);
+          const classifiedSignal = signalClassifierRef.current.classify(
+            peak,
+            powerSpectrum,
+          );
 
           // Convert power dB to 0-1 strength scale (relative to dynamic range)
           // Assume typical dynamic range of 60 dB

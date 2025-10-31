@@ -504,18 +504,16 @@ export async function decodeP25Phase2WithLogging(
   config: P25DecoderConfig = DEFAULT_P25_CONFIG,
   options: {
     logger?: {
-      logTransmission: (
-        record: {
-          timestamp: number;
-          talkgroupId?: number;
-          sourceId?: number;
-          duration: number;
-          signalQuality: number;
-          slot: number;
-          isEncrypted: boolean;
-          errorRate: number;
-        },
-      ) => Promise<number>;
+      logTransmission: (record: {
+        timestamp: number;
+        talkgroupId?: number;
+        sourceId?: number;
+        duration: number;
+        signalQuality: number;
+        slot: number;
+        isEncrypted: boolean;
+        errorRate: number;
+      }) => Promise<number>;
     };
     transmissionStartTime?: number;
   } = {},

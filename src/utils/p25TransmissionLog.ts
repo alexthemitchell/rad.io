@@ -188,10 +188,7 @@ export class P25TransmissionLogger {
             include = false;
           }
 
-          if (
-            options.minQuality &&
-            record.signalQuality < options.minQuality
-          ) {
+          if (options.minQuality && record.signalQuality < options.minQuality) {
             include = false;
           }
 
@@ -262,7 +259,10 @@ export class P25TransmissionLogger {
       } else if (options.sourceId !== undefined) {
         const index = objectStore.index("sourceId");
         request = index.openCursor(IDBKeyRange.only(options.sourceId));
-      } else if (options.startTime !== undefined || options.endTime !== undefined) {
+      } else if (
+        options.startTime !== undefined ||
+        options.endTime !== undefined
+      ) {
         const index = objectStore.index("timestamp");
         let range: IDBKeyRange | undefined;
         if (options.startTime !== undefined && options.endTime !== undefined) {
@@ -284,20 +284,35 @@ export class P25TransmissionLogger {
           const record = cursor.value as TransmissionRecord;
           // Apply remaining filters
           let matches = true;
-          
-          if (options.talkgroupId !== undefined && record.talkgroupId !== options.talkgroupId) {
+
+          if (
+            options.talkgroupId !== undefined &&
+            record.talkgroupId !== options.talkgroupId
+          ) {
             matches = false;
           }
-          if (options.sourceId !== undefined && record.sourceId !== options.sourceId) {
+          if (
+            options.sourceId !== undefined &&
+            record.sourceId !== options.sourceId
+          ) {
             matches = false;
           }
-          if (options.startTime !== undefined && record.timestamp < options.startTime) {
+          if (
+            options.startTime !== undefined &&
+            record.timestamp < options.startTime
+          ) {
             matches = false;
           }
-          if (options.endTime !== undefined && record.timestamp > options.endTime) {
+          if (
+            options.endTime !== undefined &&
+            record.timestamp > options.endTime
+          ) {
             matches = false;
           }
-          if (options.minQuality !== undefined && record.signalQuality < options.minQuality) {
+          if (
+            options.minQuality !== undefined &&
+            record.signalQuality < options.minQuality
+          ) {
             matches = false;
           }
 
@@ -327,9 +342,7 @@ export class P25TransmissionLogger {
       const transaction = db.transaction([STORE_NAME], "readwrite");
       const objectStore = transaction.objectStore(STORE_NAME);
       const index = objectStore.index("timestamp");
-      const request = index.openCursor(
-        IDBKeyRange.upperBound(timestamp, true),
-      );
+      const request = index.openCursor(IDBKeyRange.upperBound(timestamp, true));
       let deletedCount = 0;
 
       request.onsuccess = (event: Event): void => {
