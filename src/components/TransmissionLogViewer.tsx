@@ -157,7 +157,7 @@ export default function TransmissionLogViewer(): React.JSX.Element {
 
   const handleExport = (): void => {
     const csv = [
-      "Timestamp,Talkgroup ID,Source ID,Duration (ms),Signal Quality,Slot,Encrypted,Error Rate",
+      "Timestamp,Talkgroup ID,Source ID,Duration (ms),Signal Quality,Slot,Encrypted",
       ...transmissions.map((t) =>
         [
           new Date(t.timestamp).toISOString(),
@@ -167,7 +167,6 @@ export default function TransmissionLogViewer(): React.JSX.Element {
           t.signalQuality,
           t.slot,
           t.isEncrypted ? "Yes" : "No",
-          t.errorRate.toFixed(3),
         ].join(","),
       ),
     ].join("\n");
@@ -178,7 +177,7 @@ export default function TransmissionLogViewer(): React.JSX.Element {
     a.href = url;
     a.download = `p25-transmissions-${Date.now()}.csv`;
     a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const formatDuration = (ms: number): string => {

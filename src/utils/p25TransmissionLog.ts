@@ -248,12 +248,72 @@ export class P25TransmissionLogger {
       });
     }
 
-    // Otherwise, query and count matching records
-    const records = await this.queryTransmissions({
-      ...options,
-      limit: Number.MAX_SAFE_INTEGER,
+    // Otherwise, use a cursor to count matching records efficiently
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], "readonly");
+      const objectStore = transaction.objectStore(STORE_NAME);
+      let count = 0;
+      let request: IDBRequest<IDBCursorWithValue | null>;
+
+      // Use index if possible for faster filtering
+      if (options.talkgroupId !== undefined) {
+        const index = objectStore.index("talkgroupId");
+        request = index.openCursor(IDBKeyRange.only(options.talkgroupId));
+      } else if (options.sourceId !== undefined) {
+        const index = objectStore.index("sourceId");
+        request = index.openCursor(IDBKeyRange.only(options.sourceId));
+      } else if (options.startTime !== undefined || options.endTime !== undefined) {
+        const index = objectStore.index("timestamp");
+        let range: IDBKeyRange | undefined;
+        if (options.startTime !== undefined && options.endTime !== undefined) {
+          range = IDBKeyRange.bound(options.startTime, options.endTime);
+        } else if (options.startTime !== undefined) {
+          range = IDBKeyRange.lowerBound(options.startTime);
+        } else if (options.endTime !== undefined) {
+          range = IDBKeyRange.upperBound(options.endTime);
+        }
+        request = index.openCursor(range);
+      } else {
+        request = objectStore.openCursor();
+      }
+
+      request.onsuccess = (event: Event): void => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (cursor) {
+          const record = cursor.value as TransmissionRecord;
+          // Apply remaining filters
+          let matches = true;
+          
+          if (options.talkgroupId !== undefined && record.talkgroupId !== options.talkgroupId) {
+            matches = false;
+          }
+          if (options.sourceId !== undefined && record.sourceId !== options.sourceId) {
+            matches = false;
+          }
+          if (options.startTime !== undefined && record.timestamp < options.startTime) {
+            matches = false;
+          }
+          if (options.endTime !== undefined && record.timestamp > options.endTime) {
+            matches = false;
+          }
+          if (options.minQuality !== undefined && record.signalQuality < options.minQuality) {
+            matches = false;
+          }
+
+          if (matches) {
+            count++;
+          }
+          cursor.continue();
+        } else {
+          resolve(count);
+        }
+      };
+
+      request.onerror = (): void => {
+        reject(new Error("Failed to count filtered transmissions"));
+      };
     });
-    return records.length;
   }
 
   /**
