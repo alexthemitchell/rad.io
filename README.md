@@ -77,6 +77,35 @@ rad.io features a **comprehensive device integration framework** that enables pl
 
 Adding a new device takes ~200 lines of code following the patterns in existing implementations.
 
+### Plugin System 🔌
+
+rad.io features an **extensible plugin architecture** that allows developers to add custom features without modifying the core codebase.
+
+**Plugin Types:**
+
+- **Demodulator Plugins**: Custom signal demodulation (FM, AM, SSB, digital modes)
+- **Visualization Plugins**: Custom displays for signal analysis
+- **Device Driver Plugins**: Add support for new SDR hardware
+- **Utility Plugins**: General integrations and tools
+
+**Framework Features:**
+
+- **Type-Safe**: Full TypeScript support with strict type checking
+- **Lifecycle Management**: Automated initialization, activation, and cleanup
+- **Configuration**: Schema-based plugin configuration
+- **Event System**: Plugin state change notifications
+- **Testing**: Easy to unit test with Jest
+
+**Developer Resources:**
+
+- 📖 [Creating Your First Plugin Tutorial](docs/tutorials/03-creating-plugins.md) - Step-by-step guide
+- 📚 [Plugin Developer How-To Guides](docs/how-to/) - Demodulator, Visualization, and Device Driver plugins
+- 🎨 [Plugin Templates](templates/plugin-templates/) - Starter templates with examples
+- 📐 [Plugin System Architecture (ADR-0024)](docs/decisions/0024-plugin-system-architecture.md) - Design decisions
+- 💡 [Example Plugins](src/plugins/) - Reference implementations
+
+Creating a plugin takes ~100-200 lines of code using the provided templates and following established patterns.
+
 ### Quality Assurance ✅
 
 - **Comprehensive Unit Tests**: Coverage across DSP, devices, and components
