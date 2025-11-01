@@ -67,6 +67,35 @@ export interface WasmDSPModule {
     qSamples: Float32Array,
     size: number,
   ): void;
+
+  // SIMD-optimized variants (available only in SIMD-enabled builds)
+  applyHannWindowSIMD?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ) => void;
+  applyHammingWindowSIMD?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ) => void;
+  applyBlackmanWindowSIMD?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ) => void;
+  calculateWaveformSIMD?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    amplitude: Float32Array,
+    phase: Float32Array,
+    count: number,
+  ) => void;
+  calculateWaveformOutSIMD?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    count: number,
+  ) => Float32Array;
 }
 
 function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
@@ -107,8 +136,12 @@ let wasmLoading: Promise<WasmDSPModule | null> | null = null;
 let wasmSupported = false;
 // One-time log flags to avoid flooding console on hot paths
 let loggedFFTChoice = false;
-let loggedWaveformChoice = false;
+let loggedWaveformOutSIMD = false;
+let loggedWaveformOut = false;
+let loggedWaveformSIMD = false;
+let loggedWaveformStandard = false;
 let loggedSpectrogramChoice = false;
+let loggedWindowChoice = false;
 
 // Test-only helpers to control internal module state
 // These are no-ops in production usage but exported for unit tests to inject fakes.
@@ -346,6 +379,22 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
           Object.assign(wasmModule, b3);
         }
 
+        // Bind SIMD-optimized functions if present (only in SIMD builds)
+        const simdFunctions = [
+          "applyHannWindowSIMD",
+          "applyHammingWindowSIMD",
+          "applyBlackmanWindowSIMD",
+          "calculateWaveformSIMD",
+          "calculateWaveformOutSIMD",
+        ] as const;
+
+        for (const funcName of simdFunctions) {
+          const binding = buildOptionalBinding(mod, funcName);
+          if (binding) {
+            Object.assign(wasmModule, binding);
+          }
+        }
+
         wasmSupported = true;
         // One-time visibility into loaded exports
         try {
@@ -559,23 +608,58 @@ export function calculateWaveformWasm(
       }
     }
 
-    // Prefer return-by-value if available
-    if (typeof wasmModule.calculateWaveformOut === "function") {
-      if (!loggedWaveformChoice) {
-        dspLogger.info("Using calculateWaveformOut (return-by-value)");
-        loggedWaveformChoice = true;
+    // Prefer SIMD return-by-value if available (best performance)
+    if (typeof wasmModule.calculateWaveformOutSIMD === "function") {
+      if (!loggedWaveformOutSIMD) {
+        dspLogger.info("Using calculateWaveformOutSIMD (SIMD return-by-value)");
+        loggedWaveformOutSIMD = true;
       }
-      const flat = wasmModule.calculateWaveformOut(iSamples, qSamples, count);
-      // Split into amplitude and phase views
+      const flat = wasmModule.calculateWaveformOutSIMD(
+        iSamples,
+        qSamples,
+        count,
+      );
       const amplitude = flat.subarray(0, count);
       const phase = flat.subarray(count, count * 2);
       return { amplitude, phase };
     }
 
-    // Legacy path: allocate output arrays and let WASM fill them
+    // Fall back to standard return-by-value if available
+    if (typeof wasmModule.calculateWaveformOut === "function") {
+      if (!loggedWaveformOut) {
+        dspLogger.info("Using calculateWaveformOut (return-by-value)");
+        loggedWaveformOut = true;
+      }
+      const flat = wasmModule.calculateWaveformOut(iSamples, qSamples, count);
+      const amplitude = flat.subarray(0, count);
+      const phase = flat.subarray(count, count * 2);
+      return { amplitude, phase };
+    }
+
+    // Legacy path with SIMD if available
     const amplitude = wasmModule.allocateFloat32Array(count);
     const phase = wasmModule.allocateFloat32Array(count);
-    wasmModule.calculateWaveform(iSamples, qSamples, amplitude, phase, count);
+
+    if (typeof wasmModule.calculateWaveformSIMD === "function") {
+      if (!loggedWaveformSIMD) {
+        dspLogger.info("Using calculateWaveformSIMD (SIMD legacy)");
+        loggedWaveformSIMD = true;
+      }
+      wasmModule.calculateWaveformSIMD(
+        iSamples,
+        qSamples,
+        amplitude,
+        phase,
+        count,
+      );
+    } else {
+      if (!loggedWaveformStandard) {
+        dspLogger.info("Using calculateWaveform (standard legacy)");
+        loggedWaveformStandard = true;
+      }
+      wasmModule.calculateWaveform(iSamples, qSamples, amplitude, phase, count);
+    }
+
     return { amplitude, phase };
   } catch (error) {
     dspLogger.warn(
@@ -733,6 +817,59 @@ function applyWasmWindow(
   }
 }
 
+// Cache for selected window functions to avoid repeated lookups on hot path
+const windowFnCache = new Map<
+  string,
+  (iSamples: Float32Array, qSamples: Float32Array, size: number) => void
+>();
+
+/**
+ * Helper function to select SIMD or standard window function
+ * Caches the selected function to avoid repeated lookups on hot path
+ * @param simdName - Name of the SIMD variant property
+ * @param standardName - Name of the standard variant property
+ * @returns Bound function (SIMD if available, otherwise standard)
+ */
+function selectWindowFn(
+  simdName: keyof WasmDSPModule,
+  standardName: keyof WasmDSPModule,
+): (iSamples: Float32Array, qSamples: Float32Array, size: number) => void {
+  // Check cache first
+  const cacheKey = `${simdName}:${standardName}`;
+  const cached = windowFnCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  if (!wasmModule) {
+    throw new Error("WASM module not loaded");
+  }
+
+  const simdFn = wasmModule[simdName] as
+    | ((iSamples: Float32Array, qSamples: Float32Array, size: number) => void)
+    | undefined;
+  const standardFn = wasmModule[standardName] as (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ) => void;
+
+  const selected = simdFn?.bind(wasmModule) ?? standardFn.bind(wasmModule);
+
+  // Log once which variant is being used
+  if (!loggedWindowChoice) {
+    dspLogger.info(
+      `Using ${simdFn ? simdName : standardName} for window functions`,
+    );
+    loggedWindowChoice = true;
+  }
+
+  // Cache the selected function
+  windowFnCache.set(cacheKey, selected);
+
+  return selected;
+}
+
 /**
  * Apply Hann window using WASM if available
  * Modifies samples in-place for efficiency
@@ -741,12 +878,8 @@ export function applyHannWindowWasm(samples: Sample[]): boolean {
   if (!wasmModule) {
     return false;
   }
-  const module = wasmModule;
-  return applyWasmWindow(
-    samples,
-    (i, q, s) => module.applyHannWindow(i, q, s),
-    "Hann",
-  );
+  const windowFn = selectWindowFn("applyHannWindowSIMD", "applyHannWindow");
+  return applyWasmWindow(samples, windowFn, "Hann");
 }
 
 /**
@@ -756,12 +889,11 @@ export function applyHammingWindowWasm(samples: Sample[]): boolean {
   if (!wasmModule) {
     return false;
   }
-  const module = wasmModule;
-  return applyWasmWindow(
-    samples,
-    (i, q, s) => module.applyHammingWindow(i, q, s),
-    "Hamming",
+  const windowFn = selectWindowFn(
+    "applyHammingWindowSIMD",
+    "applyHammingWindow",
   );
+  return applyWasmWindow(samples, windowFn, "Hamming");
 }
 
 /**
@@ -771,12 +903,11 @@ export function applyBlackmanWindowWasm(samples: Sample[]): boolean {
   if (!wasmModule) {
     return false;
   }
-  const module = wasmModule;
-  return applyWasmWindow(
-    samples,
-    (i, q, s) => module.applyBlackmanWindow(i, q, s),
-    "Blackman",
+  const windowFn = selectWindowFn(
+    "applyBlackmanWindowSIMD",
+    "applyBlackmanWindow",
   );
+  return applyWasmWindow(samples, windowFn, "Blackman");
 }
 
 /**
