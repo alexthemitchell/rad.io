@@ -1,0 +1,205 @@
+/**
+ * Transmission Log Viewer Styles
+ */
+
+.transmission-log-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.log-header h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.log-stats {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Filters */
+.log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  align-items: flex-end;
+  padding: var(--spacing-md);
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-md);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  min-width: 150px;
+}
+
+.filter-group label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.filter-group input[type="range"] {
+  width: 100%;
+}
+
+.filter-group span {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-left: var(--spacing-xs);
+}
+
+/* Table */
+.log-table-container {
+  overflow-x: auto;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-background-primary);
+}
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.log-table thead {
+  background: var(--color-background-secondary);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.log-table th {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.log-table tbody tr {
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color 0.2s ease;
+}
+
+.log-table tbody tr:hover {
+  background: var(--color-background-hover);
+}
+
+.log-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.log-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-text-primary);
+}
+
+.sort-button {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  text-align: left;
+}
+
+.sort-button:hover {
+  color: var(--color-primary);
+}
+
+.sort-button:focus {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Quality badge */
+.quality-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-xs);
+}
+
+.quality-badge.quality-good {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.quality-badge.quality-fair {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.quality-badge.quality-poor {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+/* States */
+.log-loading,
+.log-error,
+.log-empty {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.log-error {
+  color: var(--color-error-text);
+  background: var(--color-error-bg);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+}
+
+/* Pagination */
+.log-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+}
+
+.page-info {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .log-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .log-table {
+    font-size: var(--font-size-xs);
+  }
+
+  .log-table th,
+  .log-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+}
