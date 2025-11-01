@@ -238,11 +238,67 @@ IndexedDB is supported in all modern browsers:
 - Safari 10+
 - Opera 15+
 
+### Priority Scanning
+
+The TalkgroupPriorityScanner automatically monitors talkgroup activity and switches to higher-priority talkgroups when they become active:
+
+```typescript
+import { TalkgroupPriorityScanner } from './lib/scanning';
+import type { Talkgroup } from './components/TalkgroupScanner';
+
+// Initialize the scanner
+const scanner = new TalkgroupPriorityScanner();
+
+// Set up talkgroups with priorities
+const talkgroups: Talkgroup[] = [
+  { id: "101", name: "Fire Dispatch", category: "Fire", priority: 9, enabled: true },
+  { id: "201", name: "Police Dispatch", category: "Police", priority: 9, enabled: true },
+  { id: "301", name: "EMS Main", category: "EMS", priority: 8, enabled: true },
+];
+
+scanner.updateTalkgroups(talkgroups);
+
+// Process decoded P25 data
+scanner.processDecodedData(decodedData, Date.now());
+
+// Check if we should switch to a higher priority talkgroup
+const switchEvent = scanner.shouldSwitch(Date.now());
+if (switchEvent) {
+  console.log(`Switching from ${switchEvent.fromTalkgroup} to ${switchEvent.toTalkgroup} (priority ${switchEvent.priority})`);
+  console.log(`Reason: ${switchEvent.reason}`);
+  scanner.setCurrentTalkgroup(switchEvent.toTalkgroup);
+  // Tune your SDR to the new talkgroup's frequency
+}
+
+// Get current activity status for all talkgroups
+const activityStatus = scanner.getActivityStatus();
+activityStatus.forEach(activity => {
+  console.log(`Talkgroup ${activity.talkgroupId}: ${activity.isActive ? 'Active' : 'Inactive'} (Priority ${activity.priority})`);
+});
+```
+
+#### Priority Switching Logic
+
+The scanner implements the following switching rules:
+
+1. **Initial Selection**: When no talkgroup is selected, switches to the highest-priority active talkgroup
+2. **Higher Priority Preemption**: Switches to a higher-priority talkgroup when it becomes active
+3. **Current Ended**: Switches to the next-highest priority talkgroup when the current one becomes inactive
+4. **Stay on Current**: Remains on the current talkgroup if it's the highest priority active
+
+#### Activity Timeout
+
+Configure how long a talkgroup remains "active" without hearing from it:
+
+```typescript
+scanner.setActivityTimeout(5000); // 5 seconds (default)
+```
+
 ## Future Enhancements
 
 Potential future improvements:
 
-1. **Priority Scanning Logic**: Implement automatic switching to high-priority talkgroups
+1. ✅ **Priority Scanning Logic**: Implemented - Automatic switching to high-priority talkgroups
 2. **Real-time Alerts**: Notify when specific talkgroups become active
 3. **Statistical Analysis**: Aggregate transmission patterns and metrics
 4. **Cloud Sync**: Optional cloud backup of transmission logs
@@ -253,13 +309,21 @@ Potential future improvements:
 Comprehensive test coverage:
 
 - `src/utils/__tests__/p25TransmissionLog.test.ts` - Logger tests
-- `src/components/__tests__/TalkgroupScanner.test.tsx` - Scanner tests
+- `src/components/__tests__/TalkgroupScanner.test.tsx` - Scanner tests with priority controls
 - `src/components/__tests__/TransmissionLogViewer.test.tsx` - Viewer tests
+- `src/lib/scanning/__tests__/talkgroup-priority-scanner.test.ts` - Priority scanner tests
 
 Run tests:
 
 ```bash
+# Run all P25-related tests
 npm test -- --testPathPatterns=p25
+
+# Run priority scanner tests specifically
+npm test -- --testPathPatterns=talkgroup-priority-scanner
+
+# Run all scanner-related tests
+npm test -- --testPathPatterns="Scanner|Talkgroup"
 ```
 
 ## References
