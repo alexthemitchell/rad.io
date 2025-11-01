@@ -134,7 +134,7 @@ export function applyHannWindowSIMD(
 
   // SIMD-optimized loop: process 4 samples at once
   for (let n: i32 = 0; n < simdCount; n += simdWidth) {
-    // Load 4 I samples and 4 window coefficients
+    // Load 4 I samples, 4 Q samples, and 4 window coefficients
     const iVec = v128.load(changetype<usize>(iSamples) + (n << 2));
     const qVec = v128.load(changetype<usize>(qSamples) + (n << 2));
     const wVec = v128.load(changetype<usize>(windowCoeffs) + (n << 2));

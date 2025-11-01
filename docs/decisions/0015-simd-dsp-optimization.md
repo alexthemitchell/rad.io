@@ -77,13 +77,35 @@ export function isWasmSIMDSupported(): boolean {
 **3. Automatic Fallback**
 
 ```typescript
+// Helper function for window selection with caching
+function selectWindowFn(
+  simdName: keyof WasmDSPModule,
+  standardName: keyof WasmDSPModule,
+): WindowFunction {
+  // Check cache to avoid repeated lookups on hot path
+  const cached = windowFnCache.get(`${simdName}:${standardName}`);
+  if (cached) return cached;
+
+  const simdFn = wasmModule[simdName];
+  const standardFn = wasmModule[standardName];
+
+  // Use nullish coalescing to prefer SIMD if available
+  const selected = simdFn?.bind(wasmModule) ?? standardFn.bind(wasmModule);
+
+  // Cache and return
+  windowFnCache.set(`${simdName}:${standardName}`, selected);
+  return selected;
+}
+
 export function applyHannWindowWasm(samples: Sample[]): boolean {
-  const module = wasmModule;
-  // Prefer SIMD, fall back to standard
-  const windowFn = module.applyHannWindowSIMD || module.applyHannWindow;
+  if (!wasmModule) return false;
+  // Prefer SIMD, fall back to standard (cached for performance)
+  const windowFn = selectWindowFn("applyHannWindowSIMD", "applyHannWindow");
   return applyWasmWindow(samples, windowFn, "Hann");
 }
 ```
+
+> **Note:** The actual implementation uses a helper function (`selectWindowFn`) with caching and nullish coalescing (`??`) for robust fallback logic and optimal performance. The helper is called on first use per window type, then cached to avoid repeated lookups on the hot path.
 
 **4. SIMD Implementation Pattern**
 

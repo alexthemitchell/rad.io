@@ -817,8 +817,15 @@ function applyWasmWindow(
   }
 }
 
+// Cache for selected window functions to avoid repeated lookups on hot path
+const windowFnCache = new Map<
+  string,
+  (iSamples: Float32Array, qSamples: Float32Array, size: number) => void
+>();
+
 /**
  * Helper function to select SIMD or standard window function
+ * Caches the selected function to avoid repeated lookups on hot path
  * @param simdName - Name of the SIMD variant property
  * @param standardName - Name of the standard variant property
  * @returns Bound function (SIMD if available, otherwise standard)
@@ -827,9 +834,17 @@ function selectWindowFn(
   simdName: keyof WasmDSPModule,
   standardName: keyof WasmDSPModule,
 ): (iSamples: Float32Array, qSamples: Float32Array, size: number) => void {
+  // Check cache first
+  const cacheKey = `${simdName}:${standardName}`;
+  const cached = windowFnCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   if (!wasmModule) {
     throw new Error("WASM module not loaded");
   }
+
   const simdFn = wasmModule[simdName] as
     | ((iSamples: Float32Array, qSamples: Float32Array, size: number) => void)
     | undefined;
@@ -848,6 +863,9 @@ function selectWindowFn(
     );
     loggedWindowChoice = true;
   }
+
+  // Cache the selected function
+  windowFnCache.set(cacheKey, selected);
 
   return selected;
 }

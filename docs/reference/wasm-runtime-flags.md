@@ -166,7 +166,7 @@ localStorage.removeItem("radio.wasm.validate");
 **Check SIMD status:**
 
 ```javascript
-// Note: @/ is a path alias to the src directory. 
+// Note: @/ is a path alias to the src directory.
 // Adjust import paths based on your project structure.
 import { isWasmSIMDSupported } from "@/utils/dspWasm";
 import { getOptimizationStatus } from "@/utils/dsp";
