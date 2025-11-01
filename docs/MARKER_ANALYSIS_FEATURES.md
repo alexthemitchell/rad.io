@@ -189,7 +189,7 @@ Peak Hold mode captures and displays the maximum power level detected at each fr
 ### CSV Export Format
 ```csv
 id,freqHz,freqMHz,powerDb,deltaFreqHz,deltaPowerDb,label
-1234567890-512,162550000,162.550000,-45.20,,-45.20,
+1234567890-512,162550000,162.550000,-45.20,,,
 1234567891-645,162565000,162.565000,-38.15,15000,7.05,
 ```
 

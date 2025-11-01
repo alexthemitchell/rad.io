@@ -17,6 +17,42 @@ function formatMHz(hz: number): string {
   return (hz / 1e6).toFixed(6);
 }
 
+/**
+ * Calculate deltas between current marker and previous marker
+ */
+function calculateMarkerDeltas(
+  marker: MarkerRow,
+  prevMarker: MarkerRow | null,
+): { deltaFreqHz: number | null; deltaPowerDb: number | null } {
+  if (!prevMarker) {
+    return { deltaFreqHz: null, deltaPowerDb: null };
+  }
+
+  const deltaFreqHz = marker.freqHz - prevMarker.freqHz;
+  const deltaPowerDb =
+    marker.powerDb !== undefined && prevMarker.powerDb !== undefined
+      ? marker.powerDb - prevMarker.powerDb
+      : null;
+
+  return { deltaFreqHz, deltaPowerDb };
+}
+
+/**
+ * Get color for delta power display based on value
+ */
+function getDeltaPowerColor(deltaPowerDb: number | null): string {
+  if (deltaPowerDb === null) {
+    return "#e8f2ff";
+  }
+  if (deltaPowerDb > 0) {
+    return "#4fc3f7"; // Blue for gain
+  }
+  if (deltaPowerDb < 0) {
+    return "#ff8080"; // Red for loss
+  }
+  return "#e8f2ff"; // Default for zero
+}
+
 export default function MarkerTable({
   markers,
   onRemove,
@@ -37,23 +73,19 @@ export default function MarkerTable({
       "label",
     ].join(",");
     const rows = markers.map((m, idx) => {
-      const deltaFreqHz =
-        idx > 0 ? m.freqHz - (markers[idx - 1]?.freqHz ?? 0) : "";
-      const deltaPowerDb =
-        idx > 0 &&
-        m.powerDb !== undefined &&
-        markers[idx - 1]?.powerDb !== undefined
-          ? m.powerDb - (markers[idx - 1]?.powerDb ?? 0)
-          : "";
+      const prevMarker = idx > 0 ? (markers[idx - 1] ?? null) : null;
+      const { deltaFreqHz, deltaPowerDb } = calculateMarkerDeltas(
+        m,
+        prevMarker,
+      );
+
       return [
         m.id,
         String(m.freqHz),
         formatMHz(m.freqHz),
         m.powerDb?.toFixed(2) ?? "",
-        String(deltaFreqHz),
-        typeof deltaPowerDb === "number"
-          ? deltaPowerDb.toFixed(2)
-          : deltaPowerDb,
+        deltaFreqHz !== null ? String(deltaFreqHz) : "",
+        deltaPowerDb !== null ? deltaPowerDb.toFixed(2) : "",
         m.label ?? "",
       ].join(",");
     });
@@ -113,16 +145,11 @@ export default function MarkerTable({
           </thead>
           <tbody>
             {markers.map((m, idx) => {
-              const prevMarker = idx > 0 ? markers[idx - 1] : null;
-              const deltaFreqHz = prevMarker
-                ? m.freqHz - prevMarker.freqHz
-                : null;
-              const deltaPowerDb =
-                prevMarker &&
-                m.powerDb !== undefined &&
-                prevMarker.powerDb !== undefined
-                  ? m.powerDb - prevMarker.powerDb
-                  : null;
+              const prevMarker = idx > 0 ? (markers[idx - 1] ?? null) : null;
+              const { deltaFreqHz, deltaPowerDb } = calculateMarkerDeltas(
+                m,
+                prevMarker,
+              );
 
               return (
                 <tr key={m.id}>
@@ -159,14 +186,7 @@ export default function MarkerTable({
                       ...tdStyle,
                       fontFamily:
                         "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-                      color:
-                        deltaPowerDb !== null
-                          ? deltaPowerDb > 0
-                            ? "#4fc3f7"
-                            : deltaPowerDb < 0
-                              ? "#ff8080"
-                              : "#e8f2ff"
-                          : "#e8f2ff",
+                      color: getDeltaPowerColor(deltaPowerDb),
                     }}
                   >
                     {deltaPowerDb !== null
