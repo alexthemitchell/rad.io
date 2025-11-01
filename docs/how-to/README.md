@@ -5,8 +5,13 @@ These guides help you accomplish specific tasks in rad.io. Each guide assumes yo
 ## Device Integration
 
 - **[Add a New SDR Device](./add-new-sdr-device.md)** - Implement support for a new hardware device
-- **[Debug Device Connection Issues](./debug-device-connections.md)** - Troubleshoot WebUSB and device communication
-- **[Configure Device Parameters](./configure-device-parameters.md)** - Set up gain, sample rate, and other settings
+- **[Debug WebUSB Issues](./debug-webusb.md)** - Solve USB communication problems
+
+## Plugin Development
+
+- **[Create a Demodulator Plugin](./create-demodulator-plugin.md)** - Build custom signal demodulators
+- **[Create a Visualization Plugin](./create-visualization-plugin.md)** - Build custom visualizations
+- **[Create a Device Driver Plugin](./create-device-driver-plugin.md)** - Add support for new SDR hardware
 
 ## Signal Processing
 

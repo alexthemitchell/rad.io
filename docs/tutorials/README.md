@@ -8,15 +8,15 @@ If you're new to rad.io, start here:
 
 1. **[Getting Started with rad.io](./01-getting-started.md)** - Set up your development environment and run your first SDR application
 2. **[Your First Visualization](./02-first-visualization.md)** - Create a simple spectrum analyzer
-3. **[Building an FM Radio](./03-fm-radio-receiver.md)** - Build a complete FM radio receiver with demodulation
+3. **[Creating Your First Plugin](./03-creating-plugins.md)** - Build custom plugins to extend rad.io functionality
 
-## Advanced Tutorials
+## Advanced Topics
 
-Once you're comfortable with the basics:
+For in-depth plugin development, see the How-To guides:
 
-1. **[Adding a Custom Demodulator](./04-custom-demodulator.md)** - Implement your own demodulation algorithm
-2. **[Creating Custom Visualizations](./05-custom-visualizations.md)** - Build new visualization components
-3. **[Working with Real Hardware](./06-real-hardware.md)** - Connect and control SDR hardware devices
+1. **[Create a Demodulator Plugin](../how-to/create-demodulator-plugin.md)** - Advanced demodulator implementation
+2. **[Create a Visualization Plugin](../how-to/create-visualization-plugin.md)** - Custom visualization components
+3. **[Create a Device Driver Plugin](../how-to/create-device-driver-plugin.md)** - Support new SDR hardware
 
 ## About These Tutorials
 
