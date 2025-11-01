@@ -305,7 +305,8 @@ export function applyHannWindowWasm(samples: Sample[]): boolean {
 **Verify SIMD Usage:**
 
 ```typescript
-import { getOptimizationStatus, isWasmSIMDSupported } from "@/utils/dsp";
+import { getOptimizationStatus } from "@/utils/dsp";
+import { isWasmSIMDSupported } from "@/utils/dspWasm";
 
 const status = getOptimizationStatus();
 console.log(status);

@@ -294,8 +294,8 @@ export function calculateWaveformSIMD(
 
   // Phase calculation (no efficient SIMD atan2, use scalar)
   for (let i: i32 = 0; i < count; i++) {
-    const I = i < iSamples.length ? iSamples[i] : 0.0;
-    const Q = i < qSamples.length ? qSamples[i] : 0.0;
+    const I = iSamples[i];
+    const Q = qSamples[i];
 
     // Amplitude already calculated for SIMD portion
     if (i >= simdCount) {

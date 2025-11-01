@@ -822,13 +822,7 @@ export function applyHannWindowWasm(samples: Sample[]): boolean {
   const simdFn = module.applyHannWindowSIMD?.bind(module);
   const standardFn = module.applyHannWindow.bind(module);
   const windowFn = simdFn ?? standardFn;
-  return applyWasmWindow(
-    samples,
-    (i, q, s) => {
-      windowFn(i, q, s);
-    },
-    "Hann",
-  );
+  return applyWasmWindow(samples, windowFn, "Hann");
 }
 
 /**
@@ -843,13 +837,7 @@ export function applyHammingWindowWasm(samples: Sample[]): boolean {
   const simdFn = module.applyHammingWindowSIMD?.bind(module);
   const standardFn = module.applyHammingWindow.bind(module);
   const windowFn = simdFn ?? standardFn;
-  return applyWasmWindow(
-    samples,
-    (i, q, s) => {
-      windowFn(i, q, s);
-    },
-    "Hamming",
-  );
+  return applyWasmWindow(samples, windowFn, "Hamming");
 }
 
 /**
@@ -864,13 +852,7 @@ export function applyBlackmanWindowWasm(samples: Sample[]): boolean {
   const simdFn = module.applyBlackmanWindowSIMD?.bind(module);
   const standardFn = module.applyBlackmanWindow.bind(module);
   const windowFn = simdFn ?? standardFn;
-  return applyWasmWindow(
-    samples,
-    (i, q, s) => {
-      windowFn(i, q, s);
-    },
-    "Blackman",
-  );
+  return applyWasmWindow(samples, windowFn, "Blackman");
 }
 
 /**

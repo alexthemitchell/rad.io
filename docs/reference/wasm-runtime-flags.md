@@ -166,7 +166,8 @@ localStorage.removeItem("radio.wasm.validate");
 **Check SIMD status:**
 
 ```javascript
-import { isWasmSIMDSupported, getOptimizationStatus } from "@/utils/dsp";
+import { isWasmSIMDSupported } from "@/utils/dspWasm";
+import { getOptimizationStatus } from "@/utils/dsp";
 
 console.log("SIMD supported:", isWasmSIMDSupported());
 
