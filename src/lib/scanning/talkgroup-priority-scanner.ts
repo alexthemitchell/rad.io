@@ -79,7 +79,7 @@ export class TalkgroupPriorityScanner {
 
     // Extract LCW format (first 8 bits)
     let lcwFormat = 0;
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 8 && i < bits.length; i++) {
       lcwFormat = (lcwFormat << 1) | (bits[i] ?? 0);
     }
 
@@ -90,7 +90,7 @@ export class TalkgroupPriorityScanner {
 
     // Extract talkgroup ID (16 bits, following the format byte)
     let talkgroupId = 0;
-    for (let i = 8; i < 24; i++) {
+    for (let i = 8; i < 24 && i < bits.length; i++) {
       talkgroupId = (talkgroupId << 1) | (bits[i] ?? 0);
     }
 

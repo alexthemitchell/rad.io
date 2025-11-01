@@ -124,9 +124,9 @@
   color: var(--color-primary);
 }
 
-.sort-button:focus {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 2px;
+.sort-button:focus-visible {
+  outline: var(--rad-focus-ring-width) solid var(--rad-ring);
+  outline-offset: var(--rad-focus-ring-offset);
 }
 
 /* Quality badge */
