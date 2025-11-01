@@ -3,6 +3,7 @@ import React from "react";
 export type MarkerRow = {
   id: string;
   freqHz: number;
+  powerDb?: number;
   label?: string;
 };
 
@@ -16,6 +17,70 @@ function formatMHz(hz: number): string {
   return (hz / 1e6).toFixed(6);
 }
 
+/**
+ * Escape CSV field to prevent formula injection
+ * Prepends single quote if field starts with =, +, -, or @
+ */
+function escapeCsvField(value: string): string {
+  if (/^[=+\-@]/.test(value)) {
+    return `'${value}`;
+  }
+  return value;
+}
+
+/**
+ * Calculate deltas between current marker and previous marker
+ */
+function calculateMarkerDeltas(
+  marker: MarkerRow,
+  prevMarker: MarkerRow | null,
+): { deltaFreqHz: number | null; deltaPowerDb: number | null } {
+  if (!prevMarker) {
+    return { deltaFreqHz: null, deltaPowerDb: null };
+  }
+
+  const deltaFreqHz = marker.freqHz - prevMarker.freqHz;
+  const deltaPowerDb =
+    marker.powerDb !== undefined && prevMarker.powerDb !== undefined
+      ? marker.powerDb - prevMarker.powerDb
+      : null;
+
+  return { deltaFreqHz, deltaPowerDb };
+}
+
+/**
+ * Get color for delta power display based on value
+ */
+function getDeltaPowerColor(deltaPowerDb: number | null): string {
+  if (deltaPowerDb === null) {
+    return "#e8f2ff";
+  }
+  if (deltaPowerDb > 0) {
+    return "#4fc3f7"; // Blue for gain
+  }
+  if (deltaPowerDb < 0) {
+    return "#ff8080"; // Red for loss
+  }
+  return "#e8f2ff"; // Default for zero
+}
+
+/**
+ * Format delta power for display with sign prefix and directional indicator
+ * Uses ↑ for gain, ↓ for loss to provide visual cues independent of color
+ */
+function formatDeltaPower(deltaPowerDb: number | null): string {
+  if (deltaPowerDb === null) {
+    return "—";
+  }
+  if (deltaPowerDb > 0) {
+    return `↑ +${deltaPowerDb.toFixed(2)}`;
+  }
+  if (deltaPowerDb < 0) {
+    return `↓ ${deltaPowerDb.toFixed(2)}`;
+  }
+  return deltaPowerDb.toFixed(2);
+}
+
 export default function MarkerTable({
   markers,
   onRemove,
@@ -26,10 +91,32 @@ export default function MarkerTable({
   }
 
   const exportCsv = (): void => {
-    const header = ["id", "freqHz", "freqMHz", "label"].join(",");
-    const rows = markers.map((m) =>
-      [m.id, String(m.freqHz), formatMHz(m.freqHz), m.label ?? ""].join(","),
-    );
+    const header = [
+      "id",
+      "freqHz",
+      "freqMHz",
+      "powerDb",
+      "deltaFreqHz",
+      "deltaPowerDb",
+      "label",
+    ].join(",");
+    const rows = markers.map((m, idx) => {
+      const prevMarker = idx > 0 ? (markers[idx - 1] ?? null) : null;
+      const { deltaFreqHz, deltaPowerDb } = calculateMarkerDeltas(
+        m,
+        prevMarker,
+      );
+
+      return [
+        escapeCsvField(m.id),
+        String(m.freqHz),
+        formatMHz(m.freqHz),
+        m.powerDb?.toFixed(2) ?? "",
+        deltaFreqHz !== null ? String(deltaFreqHz) : "",
+        deltaPowerDb !== null ? deltaPowerDb.toFixed(2) : "",
+        escapeCsvField(m.label ?? ""),
+      ].join(",");
+    });
     const csv = [header, ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -77,49 +164,88 @@ export default function MarkerTable({
             <tr>
               <th style={thStyle}>#</th>
               <th style={thStyle}>Frequency (MHz)</th>
+              <th style={thStyle}>Power (dB)</th>
+              <th style={thStyle}>Δ Freq (Hz)</th>
+              <th style={thStyle}>Δ Power (dB)</th>
               {onTune ? <th style={thStyle}>Tune</th> : null}
               {onRemove ? <th style={thStyle}>Remove</th> : null}
             </tr>
           </thead>
           <tbody>
-            {markers.map((m, idx) => (
-              <tr key={m.id}>
-                <td style={tdStyle}>{idx + 1}</td>
-                <td
-                  style={{
-                    ...tdStyle,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-                  }}
-                >
-                  {formatMHz(m.freqHz)}
-                </td>
-                {onTune ? (
-                  <td style={tdStyle}>
-                    <button
-                      type="button"
-                      onClick={() => onTune(m.freqHz)}
-                      aria-label={`Tune to ${formatMHz(m.freqHz)} megahertz`}
-                      style={btnStyle}
-                    >
-                      Tune
-                    </button>
+            {markers.map((m, idx) => {
+              const prevMarker = idx > 0 ? (markers[idx - 1] ?? null) : null;
+              const { deltaFreqHz, deltaPowerDb } = calculateMarkerDeltas(
+                m,
+                prevMarker,
+              );
+
+              return (
+                <tr key={m.id}>
+                  <td style={tdStyle}>{idx + 1}</td>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                    }}
+                  >
+                    {formatMHz(m.freqHz)}
                   </td>
-                ) : null}
-                {onRemove ? (
-                  <td style={tdStyle}>
-                    <button
-                      type="button"
-                      onClick={() => onRemove(m.id)}
-                      aria-label={`Remove marker ${idx + 1}`}
-                      style={btnDangerStyle}
-                    >
-                      Remove
-                    </button>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                    }}
+                  >
+                    {m.powerDb !== undefined ? m.powerDb.toFixed(2) : "—"}
                   </td>
-                ) : null}
-              </tr>
-            ))}
+                  <td
+                    style={{
+                      ...tdStyle,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                    }}
+                  >
+                    {deltaFreqHz !== null ? deltaFreqHz.toFixed(0) : "—"}
+                  </td>
+                  <td
+                    style={{
+                      ...tdStyle,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                      color: getDeltaPowerColor(deltaPowerDb),
+                    }}
+                  >
+                    {formatDeltaPower(deltaPowerDb)}
+                  </td>
+                  {onTune ? (
+                    <td style={tdStyle}>
+                      <button
+                        type="button"
+                        onClick={() => onTune(m.freqHz)}
+                        aria-label={`Tune to ${formatMHz(m.freqHz)} megahertz`}
+                        style={btnStyle}
+                      >
+                        Tune
+                      </button>
+                    </td>
+                  ) : null}
+                  {onRemove ? (
+                    <td style={tdStyle}>
+                      <button
+                        type="button"
+                        onClick={() => onRemove(m.id)}
+                        aria-label={`Remove marker ${idx + 1}`}
+                        style={btnDangerStyle}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  ) : null}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
