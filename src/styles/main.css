@@ -14,6 +14,7 @@
 @import url("./components/rds.css") layer(rds);
 @import url("./components/tmc.css") layer(tmc);
 @import url("./components/audio.css") layer(audio);
+@import url("./components/transmission-log.css") layer(transmission-log);
 
 /* Global base, accessibility, and focus styles moved to base.css and a11y.css */
 
@@ -278,6 +279,24 @@
   font-size: 0.8rem;
   color: var(--rad-fg-muted);
   margin-top: 0.25rem;
+}
+
+.talkgroup-priority-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.talkgroup-priority-slider {
+  width: 100%;
+  cursor: pointer;
+}
+
+.talkgroup-priority-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 1rem;
 }
 
 .talkgroup-empty {
