@@ -68,19 +68,16 @@ test.describe("Marker Analysis Features @simulated @marker", () => {
       position: { x: boundingBox.width * 0.3, y: boundingBox.height / 2 },
     });
 
-    // Wait a bit before placing second marker
-    await page.waitForTimeout(500);
+    // Wait for first marker to appear
+    const markerRows = page.locator("table tbody tr");
+    await expect(markerRows).toHaveCount(1, { timeout: 3000 });
 
     // Place second marker
     await spectrumCanvas.click({
       position: { x: boundingBox.width * 0.7, y: boundingBox.height / 2 },
     });
 
-    // Wait for markers to be visible
-    await page.waitForTimeout(500);
-
-    // Verify we have 2 markers
-    const markerRows = page.locator("table tbody tr");
+    // Wait for second marker to appear
     await expect(markerRows).toHaveCount(2, { timeout: 3000 });
 
     // Verify delta columns are present
@@ -230,17 +227,17 @@ test.describe("Marker Analysis Features @simulated @marker", () => {
     await spectrumCanvas.click({
       position: { x: boundingBox.width * 0.3, y: boundingBox.height / 2 },
     });
-    await page.waitForTimeout(300);
+
+    // Wait for first marker to appear
+    const markerRows = page.locator("table tbody tr");
+    await expect(markerRows).toHaveCount(1, { timeout: 3000 });
+
     await spectrumCanvas.click({
       position: { x: boundingBox.width * 0.7, y: boundingBox.height / 2 },
     });
 
-    // Wait for markers
-    await page.waitForTimeout(500);
-
-    // Verify we have 2 markers
-    const markerRows = page.locator("table tbody tr");
-    await expect(markerRows).toHaveCount(2);
+    // Wait for second marker to appear
+    await expect(markerRows).toHaveCount(2, { timeout: 3000 });
 
     // Click the remove button for the first marker
     const removeBtn = page.getByRole("button", { name: /Remove marker 1/i });

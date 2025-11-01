@@ -50,8 +50,8 @@ describe("MarkerTable", () => {
     // Check delta frequency is displayed for second marker
     expect(screen.getByText("62550000")).toBeInTheDocument(); // 162550000 - 100000000
 
-    // Check delta power is displayed for second marker
-    expect(screen.getByText("+5.30")).toBeInTheDocument(); // -45.2 - (-50.5)
+    // Check delta power is displayed for second marker with directional indicator
+    expect(screen.getByText("↑ +5.30")).toBeInTheDocument(); // -45.2 - (-50.5)
   });
 
   it("exports CSV with power and delta data", () => {

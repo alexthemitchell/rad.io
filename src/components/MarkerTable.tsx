@@ -54,14 +54,20 @@ function getDeltaPowerColor(deltaPowerDb: number | null): string {
 }
 
 /**
- * Format delta power for display with sign prefix
+ * Format delta power for display with sign prefix and directional indicator
+ * Uses ↑ for gain, ↓ for loss to provide visual cues independent of color
  */
 function formatDeltaPower(deltaPowerDb: number | null): string {
   if (deltaPowerDb === null) {
     return "—";
   }
-  const sign = deltaPowerDb > 0 ? "+" : "";
-  return sign + deltaPowerDb.toFixed(2);
+  if (deltaPowerDb > 0) {
+    return `↑ +${deltaPowerDb.toFixed(2)}`;
+  }
+  if (deltaPowerDb < 0) {
+    return `↓ ${deltaPowerDb.toFixed(2)}`;
+  }
+  return deltaPowerDb.toFixed(2);
 }
 
 export default function MarkerTable({
