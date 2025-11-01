@@ -9,6 +9,7 @@ import TalkgroupScanner, {
   type Talkgroup,
 } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
+import TransmissionLogViewer from "../components/TransmissionLogViewer";
 import { useDevice } from "../contexts/DeviceContext";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { notify } from "../lib/notifications";
@@ -81,6 +82,12 @@ function Scanner(): React.JSX.Element {
     setTalkgroups((prev) => [...prev, { ...newTalkgroup, enabled: true }]);
   };
 
+  const handleUpdatePriority = (id: string, priority: number): void => {
+    setTalkgroups((prev) =>
+      prev.map((tg) => (tg.id === id ? { ...tg, priority } : tg)),
+    );
+  };
+
   const handleTuneToSignal = useCallback(
     (frequency: number) => {
       // Navigate to Live Monitor page with frequency in state
@@ -150,7 +157,15 @@ function Scanner(): React.JSX.Element {
                 talkgroups={talkgroups}
                 onTalkgroupToggle={handleTalkgroupToggle}
                 onAddTalkgroup={handleAddTalkgroup}
+                onUpdatePriority={handleUpdatePriority}
               />
+            </Card>
+
+            <Card
+              title="Transmission History"
+              subtitle="View and search logged P25 transmissions"
+            >
+              <TransmissionLogViewer />
             </Card>
           </>
         )}
