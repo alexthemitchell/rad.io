@@ -172,7 +172,6 @@ Peak Hold mode captures and displays the maximum power level detected at each fr
 | Double Click | Tune to Frequency |
 | `Ctrl+Scroll` | Zoom In/Out |
 | Drag | Pan View |
-| `0` | Reset View |
 
 ## Technical Details
 

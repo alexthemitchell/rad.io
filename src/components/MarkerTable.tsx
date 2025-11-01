@@ -90,7 +90,7 @@ export default function MarkerTable({
       "label",
     ].join(",");
     const rows = markers.map((m, idx) => {
-      const prevMarker = idx > 0 ? (markers[idx - 1] ?? null) : null;
+      const prevMarker = idx > 0 ? markers[idx - 1] : null;
       const { deltaFreqHz, deltaPowerDb } = calculateMarkerDeltas(
         m,
         prevMarker,
@@ -162,7 +162,7 @@ export default function MarkerTable({
           </thead>
           <tbody>
             {markers.map((m, idx) => {
-              const prevMarker = idx > 0 ? (markers[idx - 1] ?? null) : null;
+              const prevMarker = idx > 0 ? markers[idx - 1] : null;
               const { deltaFreqHz, deltaPowerDb } = calculateMarkerDeltas(
                 m,
                 prevMarker,
