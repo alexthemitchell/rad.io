@@ -243,16 +243,28 @@ IndexedDB is supported in all modern browsers:
 The TalkgroupPriorityScanner automatically monitors talkgroup activity and switches to higher-priority talkgroups when they become active:
 
 ```typescript
-import { TalkgroupPriorityScanner } from './lib/scanning';
-import type { Talkgroup } from './components/TalkgroupScanner';
+import { TalkgroupPriorityScanner } from "./lib/scanning";
+import type { Talkgroup } from "./components/TalkgroupScanner";
 
 // Initialize the scanner
 const scanner = new TalkgroupPriorityScanner();
 
 // Set up talkgroups with priorities
 const talkgroups: Talkgroup[] = [
-  { id: "101", name: "Fire Dispatch", category: "Fire", priority: 9, enabled: true },
-  { id: "201", name: "Police Dispatch", category: "Police", priority: 9, enabled: true },
+  {
+    id: "101",
+    name: "Fire Dispatch",
+    category: "Fire",
+    priority: 9,
+    enabled: true,
+  },
+  {
+    id: "201",
+    name: "Police Dispatch",
+    category: "Police",
+    priority: 9,
+    enabled: true,
+  },
   { id: "301", name: "EMS Main", category: "EMS", priority: 8, enabled: true },
 ];
 
@@ -264,7 +276,9 @@ scanner.processDecodedData(decodedData, Date.now());
 // Check if we should switch to a higher priority talkgroup
 const switchEvent = scanner.shouldSwitch(Date.now());
 if (switchEvent) {
-  console.log(`Switching from ${switchEvent.fromTalkgroup} to ${switchEvent.toTalkgroup} (priority ${switchEvent.priority})`);
+  console.log(
+    `Switching from ${switchEvent.fromTalkgroup} to ${switchEvent.toTalkgroup} (priority ${switchEvent.priority})`,
+  );
   console.log(`Reason: ${switchEvent.reason}`);
   scanner.setCurrentTalkgroup(switchEvent.toTalkgroup);
   // Tune your SDR to the new talkgroup's frequency
@@ -272,8 +286,10 @@ if (switchEvent) {
 
 // Get current activity status for all talkgroups
 const activityStatus = scanner.getActivityStatus();
-activityStatus.forEach(activity => {
-  console.log(`Talkgroup ${activity.talkgroupId}: ${activity.isActive ? 'Active' : 'Inactive'} (Priority ${activity.priority})`);
+activityStatus.forEach((activity) => {
+  console.log(
+    `Talkgroup ${activity.talkgroupId}: ${activity.isActive ? "Active" : "Inactive"} (Priority ${activity.priority})`,
+  );
 });
 ```
 
