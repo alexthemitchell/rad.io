@@ -186,4 +186,4 @@ if (status.wasmVariant === "simd") {
 }
 ```
 
-These settings take effect on next page load
+These settings take effect on next page load.

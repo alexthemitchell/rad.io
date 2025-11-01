@@ -9,7 +9,6 @@ import {
   isWasmAvailable,
 } from "../dspWasm";
 
-
 // Measure execution time
 function measureTime(fn: () => void, iterations = 10): number {
   const start = performance.now();

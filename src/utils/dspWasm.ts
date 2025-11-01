@@ -637,6 +637,10 @@ export function calculateWaveformWasm(
     const phase = wasmModule.allocateFloat32Array(count);
 
     if (typeof wasmModule.calculateWaveformSIMD === "function") {
+      if (!loggedWaveformChoice) {
+        dspLogger.info("Using calculateWaveformSIMD (SIMD legacy)");
+        loggedWaveformChoice = true;
+      }
       wasmModule.calculateWaveformSIMD(
         iSamples,
         qSamples,
