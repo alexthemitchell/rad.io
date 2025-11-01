@@ -99,6 +99,7 @@ export class TalkgroupPriorityScanner {
 
   /**
    * Update activity for a talkgroup
+   * Note: Priority is always refreshed from the current talkgroup configuration
    */
   private updateActivity(
     talkgroupId: number,
@@ -111,6 +112,7 @@ export class TalkgroupPriorityScanner {
     }
 
     const existing = this.activity.get(talkgroupId);
+    // Always update priority from current talkgroup configuration to reflect any changes
     this.activity.set(talkgroupId, {
       talkgroupId,
       priority: talkgroup.priority,
@@ -183,8 +185,14 @@ export class TalkgroupPriorityScanner {
       };
     }
 
+    // Get current priority from talkgroup configuration (not cached activity)
+    // This ensures we use the latest priority even if it was updated
+    const currentPriority =
+      this.talkgroups.get(String(this.currentTalkgroupId))?.priority ??
+      currentActivity.priority;
+
     // If a higher priority talkgroup becomes active, switch to it
-    if (highestPriority.priority > currentActivity.priority) {
+    if (highestPriority.priority > currentPriority) {
       return {
         fromTalkgroup: this.currentTalkgroupId,
         toTalkgroup: highestPriority.talkgroupId,

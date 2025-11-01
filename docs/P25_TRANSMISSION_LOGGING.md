@@ -298,11 +298,12 @@ scanner.setActivityTimeout(5000); // 5 seconds (default)
 
 Potential future improvements:
 
-1. ✅ **Priority Scanning Logic**: Implemented - Automatic switching to high-priority talkgroups
-2. **Real-time Alerts**: Notify when specific talkgroups become active
-3. **Statistical Analysis**: Aggregate transmission patterns and metrics
-4. **Cloud Sync**: Optional cloud backup of transmission logs
-5. **Advanced Filtering**: Saved filter presets and complex queries
+1. **Real-time Alerts**: Notify when specific talkgroups become active
+2. **Statistical Analysis**: Aggregate transmission patterns and metrics
+3. **Cloud Sync**: Optional cloud backup of transmission logs
+4. **Advanced Filtering**: Saved filter presets and complex queries
+
+Note: Priority scanning logic has been implemented (see Priority Scanning section above).
 
 ## Testing
 
