@@ -72,7 +72,7 @@ describe("MarkerTable", () => {
     
     // Override createElement to inject click spy
     const originalCreateElement = document.createElement.bind(document);
-    jest.spyOn(document, "createElement").mockImplementation((tag: string) => {
+    const createElementSpy = jest.spyOn(document, "createElement").mockImplementation((tag: string) => {
       const element = originalCreateElement(tag);
       if (tag === "a") {
         element.click = mockClick;
@@ -80,15 +80,18 @@ describe("MarkerTable", () => {
       return element;
     });
 
-    const exportBtn = screen.getByRole("button", { name: /Export markers as CSV/i });
-    fireEvent.click(exportBtn);
+    try {
+      const exportBtn = screen.getByRole("button", { name: /Export markers as CSV/i });
+      fireEvent.click(exportBtn);
 
-    expect(global.URL.createObjectURL).toHaveBeenCalled();
-    expect(mockClick).toHaveBeenCalled();
-    expect(global.URL.revokeObjectURL).toHaveBeenCalled();
-
-    mockAppendChild.mockRestore();
-    mockRemoveChild.mockRestore();
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(mockClick).toHaveBeenCalled();
+      expect(global.URL.revokeObjectURL).toHaveBeenCalled();
+    } finally {
+      mockAppendChild.mockRestore();
+      mockRemoveChild.mockRestore();
+      createElementSpy.mockRestore();
+    }
   });
 
   it("handles missing power data gracefully", () => {

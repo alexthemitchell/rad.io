@@ -168,10 +168,8 @@ test.describe("Marker Analysis Features @simulated @marker", () => {
   });
 
   test("should toggle and clear peak hold", async ({ page }) => {
-    // Find peak hold checkbox
-    const peakHoldCheckbox = page.locator('input[type="checkbox"]').filter({
-      has: page.locator("text=Peak Hold"),
-    });
+    // Find peak hold checkbox by accessible name
+    const peakHoldCheckbox = page.getByRole("checkbox", { name: /Peak Hold/i });
 
     // Enable peak hold
     await peakHoldCheckbox.check();
