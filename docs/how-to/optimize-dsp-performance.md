@@ -296,8 +296,8 @@ SIMD functions automatically fall back when not supported:
 // Internal implementation
 export function applyHannWindowWasm(samples: Sample[]): boolean {
   const module = wasmModule;
-  // Try SIMD first, fall back to standard
-  const windowFn = module.applyHannWindowSIMD || module.applyHannWindow;
+  // Try SIMD first, fall back to standard (using nullish coalescing)
+  const windowFn = module.applyHannWindowSIMD ?? module.applyHannWindow;
   return applyWasmWindow(samples, windowFn, "Hann");
 }
 ```

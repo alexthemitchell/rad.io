@@ -138,6 +138,7 @@ let wasmSupported = false;
 let loggedFFTChoice = false;
 let loggedWaveformChoice = false;
 let loggedSpectrogramChoice = false;
+let loggedWindowChoice = false;
 
 // Test-only helpers to control internal module state
 // These are no-ops in production usage but exported for unit tests to inject fakes.
@@ -810,6 +811,41 @@ function applyWasmWindow(
 }
 
 /**
+ * Helper function to select SIMD or standard window function
+ * @param simdName - Name of the SIMD variant property
+ * @param standardName - Name of the standard variant property
+ * @returns Bound function (SIMD if available, otherwise standard)
+ */
+function selectWindowFn(
+  simdName: keyof WasmDSPModule,
+  standardName: keyof WasmDSPModule,
+): (iSamples: Float32Array, qSamples: Float32Array, size: number) => void {
+  if (!wasmModule) {
+    throw new Error("WASM module not loaded");
+  }
+  const simdFn = wasmModule[simdName] as
+    | ((iSamples: Float32Array, qSamples: Float32Array, size: number) => void)
+    | undefined;
+  const standardFn = wasmModule[standardName] as (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ) => void;
+
+  const selected = simdFn?.bind(wasmModule) ?? standardFn.bind(wasmModule);
+
+  // Log once which variant is being used
+  if (!loggedWindowChoice) {
+    dspLogger.info(
+      `Using ${simdFn ? simdName : standardName} for window functions`,
+    );
+    loggedWindowChoice = true;
+  }
+
+  return selected;
+}
+
+/**
  * Apply Hann window using WASM if available
  * Modifies samples in-place for efficiency
  */
@@ -817,11 +853,7 @@ export function applyHannWindowWasm(samples: Sample[]): boolean {
   if (!wasmModule) {
     return false;
   }
-  const module = wasmModule;
-  // Use SIMD version if available, otherwise fall back to standard
-  const simdFn = module.applyHannWindowSIMD?.bind(module);
-  const standardFn = module.applyHannWindow.bind(module);
-  const windowFn = simdFn ?? standardFn;
+  const windowFn = selectWindowFn("applyHannWindowSIMD", "applyHannWindow");
   return applyWasmWindow(samples, windowFn, "Hann");
 }
 
@@ -832,11 +864,10 @@ export function applyHammingWindowWasm(samples: Sample[]): boolean {
   if (!wasmModule) {
     return false;
   }
-  const module = wasmModule;
-  // Use SIMD version if available, otherwise fall back to standard
-  const simdFn = module.applyHammingWindowSIMD?.bind(module);
-  const standardFn = module.applyHammingWindow.bind(module);
-  const windowFn = simdFn ?? standardFn;
+  const windowFn = selectWindowFn(
+    "applyHammingWindowSIMD",
+    "applyHammingWindow",
+  );
   return applyWasmWindow(samples, windowFn, "Hamming");
 }
 
@@ -847,11 +878,10 @@ export function applyBlackmanWindowWasm(samples: Sample[]): boolean {
   if (!wasmModule) {
     return false;
   }
-  const module = wasmModule;
-  // Use SIMD version if available, otherwise fall back to standard
-  const simdFn = module.applyBlackmanWindowSIMD?.bind(module);
-  const standardFn = module.applyBlackmanWindow.bind(module);
-  const windowFn = simdFn ?? standardFn;
+  const windowFn = selectWindowFn(
+    "applyBlackmanWindowSIMD",
+    "applyBlackmanWindow",
+  );
   return applyWasmWindow(samples, windowFn, "Blackman");
 }
 

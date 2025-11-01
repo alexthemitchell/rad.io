@@ -292,17 +292,17 @@ export function calculateWaveformSIMD(
     v128.store(changetype<usize>(amplitude) + offset, mag);
   }
 
+  // Scalar amplitude calculation for tail portion
+  for (let i: i32 = simdCount; i < count; i++) {
+    const I = iSamples[i];
+    const Q = qSamples[i];
+    amplitude[i] = f32(Math.sqrt(I * I + Q * Q));
+  }
+
   // Phase calculation (no efficient SIMD atan2, use scalar)
   for (let i: i32 = 0; i < count; i++) {
     const I = iSamples[i];
     const Q = qSamples[i];
-
-    // Amplitude already calculated for SIMD portion
-    if (i >= simdCount) {
-      amplitude[i] = f32(Math.sqrt(I * I + Q * Q));
-    }
-
-    // Phase requires atan2 (no SIMD equivalent)
     phase[i] = f32(Math.atan2(Q, I));
   }
 }
