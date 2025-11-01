@@ -54,44 +54,58 @@ describe("MarkerTable", () => {
     expect(screen.getByText("↑ +5.30")).toBeInTheDocument(); // -45.2 - (-50.5)
   });
 
-  it("exports CSV with power and delta data", () => {
-    render(<MarkerTable markers={markers} />);
+  describe("CSV export", () => {
+    const testMarkers: MarkerRow[] = [
+      { id: "a", freqHz: 100_000_000, powerDb: -50.5 },
+      { id: "b", freqHz: 162_550_000, powerDb: -45.2 },
+    ];
 
-    // Mock URL methods
-    global.URL.createObjectURL = jest.fn(() => "blob:mock-url");
-    global.URL.revokeObjectURL = jest.fn();
-    
-    // Mock anchor element
+    let createElementSpy: jest.SpyInstance;
+    let mockAppendChild: jest.SpyInstance;
+    let mockRemoveChild: jest.SpyInstance;
     const mockClick = jest.fn();
-    const mockAppendChild = jest
-      .spyOn(document.body, "appendChild")
-      .mockImplementation((el) => el as HTMLAnchorElement);
-    const mockRemoveChild = jest
-      .spyOn(document.body, "removeChild")
-      .mockImplementation((el) => el as HTMLAnchorElement);
-    
-    // Override createElement to inject click spy
-    const originalCreateElement = document.createElement.bind(document);
-    const createElementSpy = jest.spyOn(document, "createElement").mockImplementation((tag: string) => {
-      const element = originalCreateElement(tag);
-      if (tag === "a") {
-        element.click = mockClick;
-      }
-      return element;
+
+    afterEach(() => {
+      if (mockAppendChild) mockAppendChild.mockRestore();
+      if (mockRemoveChild) mockRemoveChild.mockRestore();
+      if (createElementSpy) createElementSpy.mockRestore();
+      mockClick.mockClear();
     });
 
-    try {
-      const exportBtn = screen.getByRole("button", { name: /Export markers as CSV/i });
+    it("exports CSV with power and delta data", () => {
+      render(<MarkerTable markers={testMarkers} />);
+
+      // Set up mocks after render
+      global.URL.createObjectURL = jest.fn(() => "blob:mock-url");
+      global.URL.revokeObjectURL = jest.fn();
+
+      mockAppendChild = jest
+        .spyOn(document.body, "appendChild")
+        .mockImplementation((el) => el as HTMLAnchorElement);
+      mockRemoveChild = jest
+        .spyOn(document.body, "removeChild")
+        .mockImplementation((el) => el as HTMLAnchorElement);
+
+      const originalCreateElement = document.createElement.bind(document);
+      createElementSpy = jest
+        .spyOn(document, "createElement")
+        .mockImplementation((tag: string) => {
+          const element = originalCreateElement(tag);
+          if (tag === "a") {
+            element.click = mockClick;
+          }
+          return element;
+        });
+
+      const exportBtn = screen.getByRole("button", {
+        name: /Export markers as CSV/i,
+      });
       fireEvent.click(exportBtn);
 
       expect(global.URL.createObjectURL).toHaveBeenCalled();
       expect(mockClick).toHaveBeenCalled();
       expect(global.URL.revokeObjectURL).toHaveBeenCalled();
-    } finally {
-      mockAppendChild.mockRestore();
-      mockRemoveChild.mockRestore();
-      createElementSpy.mockRestore();
-    }
+    });
   });
 
   it("handles missing power data gracefully", () => {

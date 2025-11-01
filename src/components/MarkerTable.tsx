@@ -18,6 +18,17 @@ function formatMHz(hz: number): string {
 }
 
 /**
+ * Escape CSV field to prevent formula injection
+ * Prepends single quote if field starts with =, +, -, or @
+ */
+function escapeCsvField(value: string): string {
+  if (/^[=+\-@]/.test(value)) {
+    return `'${value}`;
+  }
+  return value;
+}
+
+/**
  * Calculate deltas between current marker and previous marker
  */
 function calculateMarkerDeltas(
@@ -97,13 +108,13 @@ export default function MarkerTable({
       );
 
       return [
-        m.id,
+        escapeCsvField(m.id),
         String(m.freqHz),
         formatMHz(m.freqHz),
         m.powerDb?.toFixed(2) ?? "",
         deltaFreqHz !== null ? String(deltaFreqHz) : "",
         deltaPowerDb !== null ? deltaPowerDb.toFixed(2) : "",
-        m.label ?? "",
+        escapeCsvField(m.label ?? ""),
       ].join(",");
     });
     const csv = [header, ...rows].join("\n");

@@ -51,7 +51,7 @@ test.describe("Marker Analysis Features @simulated @marker", () => {
     // Verify power level is displayed in the Power (dB) column
     const firstMarkerRow = page.locator("table tbody tr").first();
     const powerCell = firstMarkerRow.locator("td").nth(2); // Third column (0-based index)
-    await expect(powerCell).toHaveText(/\-?\d+\.\d+/);
+    await expect(powerCell).toHaveText(/^-?\d+\.\d+$/);
   });
 
   test("should display deltas between multiple markers", async ({ page }) => {
