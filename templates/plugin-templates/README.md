@@ -11,6 +11,7 @@ This directory contains starter templates for creating rad.io plugins.
 ## Using a Template
 
 1. **Copy the template** to your plugin directory:
+
    ```bash
    cp templates/plugin-templates/demodulator-plugin-template.ts \
       src/plugins/demodulators/MyDemodulatorPlugin.ts
@@ -37,10 +38,16 @@ This directory contains starter templates for creating rad.io plugins.
 cp templates/plugin-templates/demodulator-plugin-template.ts \
    src/plugins/demodulators/AMDemodulatorPlugin.ts
 
-# Replace placeholders
+# Replace placeholders (Linux)
 sed -i 's/TemplateDemodulator/AMDemodulator/g' \
    src/plugins/demodulators/AMDemodulatorPlugin.ts
 sed -i 's/template-demodulator/am-demodulator/g' \
+   src/plugins/demodulators/AMDemodulatorPlugin.ts
+
+# Or on macOS (BSD sed requires empty string after -i)
+sed -i '' 's/TemplateDemodulator/AMDemodulator/g' \
+   src/plugins/demodulators/AMDemodulatorPlugin.ts
+sed -i '' 's/template-demodulator/am-demodulator/g' \
    src/plugins/demodulators/AMDemodulatorPlugin.ts
 
 # Edit the file and implement your logic

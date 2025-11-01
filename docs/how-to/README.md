@@ -10,7 +10,7 @@ These guides help you accomplish specific tasks in rad.io. Each guide assumes yo
 ## Plugin Development
 
 - **[Create a Demodulator Plugin](./create-demodulator-plugin.md)** - Build custom signal demodulators
-- **[Create a Visualization Plugin](./create-visualization-plugin.md)** - Build custom visualizations  
+- **[Create a Visualization Plugin](./create-visualization-plugin.md)** - Build custom visualizations
 - **[Create a Device Driver Plugin](./create-device-driver-plugin.md)** - Add support for new SDR hardware
 
 ## Signal Processing

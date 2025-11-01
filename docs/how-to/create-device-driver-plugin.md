@@ -35,10 +35,7 @@ Before creating a driver, you need:
 ```typescript
 import { BasePlugin } from "../../lib/BasePlugin";
 import { PluginType } from "../../types/plugin";
-import type {
-  DeviceDriverPlugin,
-  PluginMetadata,
-} from "../../types/plugin";
+import type { DeviceDriverPlugin, PluginMetadata } from "../../types/plugin";
 import type { ISDRDevice } from "../../models/SDRDevice";
 
 export class CustomSDRDriverPlugin
@@ -172,15 +169,7 @@ export class CustomSDRDevice implements ISDRDevice {
       minFrequency: 24e6, // 24 MHz
       maxFrequency: 1.766e9, // 1.766 GHz
       supportedSampleRates: [
-        0.9e6,
-        1.024e6,
-        1.536e6,
-        1.8e6,
-        1.92e6,
-        2.048e6,
-        2.4e6,
-        2.56e6,
-        3.2e6,
+        0.9e6, 1.024e6, 1.536e6, 1.8e6, 1.92e6, 2.048e6, 2.4e6, 2.56e6, 3.2e6,
       ],
       supportsAmpControl: false,
       supportsAntennaControl: false,
@@ -395,9 +384,7 @@ export class CustomSDRDevice implements ISDRDevice {
       config.centerFrequency < caps.minFrequency ||
       config.centerFrequency > caps.maxFrequency
     ) {
-      throw new Error(
-        `Frequency ${config.centerFrequency} Hz out of range`,
-      );
+      throw new Error(`Frequency ${config.centerFrequency} Hz out of range`);
     }
 
     if (!caps.supportedSampleRates.includes(config.sampleRate)) {

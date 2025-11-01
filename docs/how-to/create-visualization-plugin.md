@@ -525,10 +525,10 @@ private offscreenCanvas: HTMLCanvasElement | null = null;
 ### Limit Sample Buffer
 
 ```typescript
-  // Already implemented - prevents memory growth
-  if (this.samples.length > this.maxSamples) {
-    this.samples = this.samples.slice(-this.maxSamples);
-  }
+// Already implemented - prevents memory growth
+if (this.samples.length > this.maxSamples) {
+  this.samples = this.samples.slice(-this.maxSamples);
+}
 ```
 
 ## Step 10: Add WebGL Support (Optional)

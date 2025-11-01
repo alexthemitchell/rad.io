@@ -43,6 +43,7 @@ The plugin system is fully implemented and ready for use. All core infrastructur
 - **ExampleDeviceDriverPlugin**: Template for device drivers
 
 All examples include:
+
 - Complete implementation
 - Configuration schemas
 - Parameter management
@@ -63,6 +64,7 @@ All examples include:
 **Location**: `docs/`
 
 ##### Architecture Decision Record
+
 - [`docs/decisions/0024-plugin-system-architecture.md`](../decisions/0024-plugin-system-architecture.md)
   - Design rationale and trade-offs
   - Architecture overview
@@ -70,6 +72,7 @@ All examples include:
   - Future enhancements
 
 ##### Tutorial
+
 - [`docs/tutorials/03-creating-plugins.md`](../tutorials/03-creating-plugins.md)
   - Step-by-step guide to building an AM demodulator
   - ~45 minutes to complete
@@ -77,6 +80,7 @@ All examples include:
   - Complete working example
 
 ##### How-To Guides
+
 - [`docs/how-to/create-demodulator-plugin.md`](../how-to/create-demodulator-plugin.md)
   - Advanced SSB demodulator implementation
   - AGC, AFC, noise blanking
@@ -96,6 +100,7 @@ All examples include:
   - Error handling
 
 ##### Plugin Reference
+
 - [`src/plugins/README.md`](../../src/plugins/README.md)
   - Quick start guide
   - API overview
@@ -112,6 +117,7 @@ All examples include:
 - **Template README**: Instructions for using templates
 
 Each template includes:
+
 - Placeholder names to search-and-replace
 - TODO comments for required implementation
 - Helper method skeletons
@@ -164,6 +170,7 @@ Future enhancements (if needed):
 ### For Plugin Developers
 
 1. **Choose a template**:
+
    ```bash
    cp templates/plugin-templates/demodulator-plugin-template.ts \
       src/plugins/demodulators/MyPlugin.ts
@@ -202,6 +209,7 @@ The plugin system is **ready for integration** but not yet connected to the main
 #### Future Integration Work (Optional)
 
 1. **App Initialization Hook** (5-10 lines):
+
    ```typescript
    // In App.tsx or similar
    useEffect(() => {
@@ -290,17 +298,17 @@ The plugin system is **feature-complete** for the issue requirements. Future enh
 
 Comparing against the original issue requirements:
 
-| Requirement | Status | Evidence |
-|-------------|--------|----------|
-| Define plugin architecture | ✅ Complete | ADR-0024, TypeScript interfaces |
-| Plugin manifest system | ✅ Complete | PluginMetadata interface |
-| Plugin lifecycle | ✅ Complete | BasePlugin with state machine |
-| Plugin loader and registry | ✅ Complete | PluginRegistry implementation |
-| Plugin APIs for types | ✅ Complete | Demodulator, Visualization, Device Driver interfaces |
-| Example plugin | ✅ Complete | FM demodulator, Waterfall, Device driver |
-| Testing | ✅ Complete | 56 tests passing, 100% coverage |
-| Documentation | ✅ Complete | Tutorial, 3 how-to guides, templates, API reference |
-| Plugin tooling | ✅ Complete | 3 starter templates with instructions |
+| Requirement                | Status      | Evidence                                             |
+| -------------------------- | ----------- | ---------------------------------------------------- |
+| Define plugin architecture | ✅ Complete | ADR-0024, TypeScript interfaces                      |
+| Plugin manifest system     | ✅ Complete | PluginMetadata interface                             |
+| Plugin lifecycle           | ✅ Complete | BasePlugin with state machine                        |
+| Plugin loader and registry | ✅ Complete | PluginRegistry implementation                        |
+| Plugin APIs for types      | ✅ Complete | Demodulator, Visualization, Device Driver interfaces |
+| Example plugin             | ✅ Complete | FM demodulator, Waterfall, Device driver             |
+| Testing                    | ✅ Complete | 56 tests passing, 100% coverage                      |
+| Documentation              | ✅ Complete | Tutorial, 3 how-to guides, templates, API reference  |
+| Plugin tooling             | ✅ Complete | 3 starter templates with instructions                |
 
 ## Conclusion
 

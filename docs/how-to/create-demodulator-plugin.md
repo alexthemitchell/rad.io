@@ -81,8 +81,7 @@ export class SSBDemodulatorPlugin
       name: "SSB Demodulator",
       version: "1.0.0",
       author: "rad.io",
-      description:
-        "Single Sideband demodulator with AGC and noise reduction",
+      description: "Single Sideband demodulator with AGC and noise reduction",
       type: PluginType.DEMODULATOR,
     };
 
@@ -491,8 +490,10 @@ describe("SSBDemodulatorPlugin", () => {
       const audio2 = plugin.demodulate(quietSamples);
 
       // AGC should normalize levels
-      const avg1 = audio1.reduce((sum, v) => sum + Math.abs(v), 0) / audio1.length;
-      const avg2 = audio2.reduce((sum, v) => sum + Math.abs(v), 0) / audio2.length;
+      const avg1 =
+        audio1.reduce((sum, v) => sum + Math.abs(v), 0) / audio1.length;
+      const avg2 =
+        audio2.reduce((sum, v) => sum + Math.abs(v), 0) / audio2.length;
 
       // Levels should be more similar after AGC
       expect(avg1).toBeGreaterThan(0);
@@ -570,7 +571,7 @@ setParameters(params: Partial<DemodulatorParameters>): void {
 
 ### 3. Provide Clear Documentation
 
-```typescript
+````typescript
 /**
  * Demodulate IQ samples to audio
  *
@@ -595,7 +596,7 @@ setParameters(params: Partial<DemodulatorParameters>): void {
 demodulate(samples: IQSample[]): Float32Array {
   // ...
 }
-```
+````
 
 ### 4. Performance Monitoring
 
