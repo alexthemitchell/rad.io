@@ -63,8 +63,12 @@ describe("MarkerTable", () => {
     
     // Mock anchor element
     const mockClick = jest.fn();
-    const mockAppendChild = jest.spyOn(document.body, "appendChild").mockImplementation(() => document.createElement("a"));
-    const mockRemoveChild = jest.spyOn(document.body, "removeChild").mockImplementation(() => document.createElement("a"));
+    const mockAppendChild = jest
+      .spyOn(document.body, "appendChild")
+      .mockImplementation((el) => el as HTMLAnchorElement);
+    const mockRemoveChild = jest
+      .spyOn(document.body, "removeChild")
+      .mockImplementation((el) => el as HTMLAnchorElement);
     
     // Override createElement to inject click spy
     const originalCreateElement = document.createElement.bind(document);

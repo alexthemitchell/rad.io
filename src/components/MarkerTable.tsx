@@ -53,6 +53,17 @@ function getDeltaPowerColor(deltaPowerDb: number | null): string {
   return "#e8f2ff"; // Default for zero
 }
 
+/**
+ * Format delta power for display with sign prefix
+ */
+function formatDeltaPower(deltaPowerDb: number | null): string {
+  if (deltaPowerDb === null) {
+    return "—";
+  }
+  const sign = deltaPowerDb > 0 ? "+" : "";
+  return sign + deltaPowerDb.toFixed(2);
+}
+
 export default function MarkerTable({
   markers,
   onRemove,
@@ -189,9 +200,7 @@ export default function MarkerTable({
                       color: getDeltaPowerColor(deltaPowerDb),
                     }}
                   >
-                    {deltaPowerDb !== null
-                      ? (deltaPowerDb > 0 ? "+" : "") + deltaPowerDb.toFixed(2)
-                      : "—"}
+                    {formatDeltaPower(deltaPowerDb)}
                   </td>
                   {onTune ? (
                     <td style={tdStyle}>

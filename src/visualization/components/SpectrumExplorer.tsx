@@ -772,7 +772,7 @@ export default function SpectrumExplorer({
         sampleRate,
         centerFrequency,
       );
-      const powerDb = mags[peakIdx] ?? 0;
+      const powerDb = mags[peakIdx] ?? -Infinity;
       setMarkers((prev) =>
         prev.concat({ id: `${Date.now()}-${peakIdx}`, freqHz, powerDb }),
       );

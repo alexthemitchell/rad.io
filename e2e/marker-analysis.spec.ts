@@ -213,8 +213,8 @@ test.describe("Marker Analysis Features @simulated @marker", () => {
     // Wait a bit to ensure no errors
     await page.waitForTimeout(500);
 
-    // Test passes if no errors occurred
-    expect(true).toBe(true);
+    // Test passes if no errors occurred during double-click action
+    // No assertion needed - if an error is thrown, the test will fail automatically
   });
 
   test("should remove individual markers", async ({ page }) => {
