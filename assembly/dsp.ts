@@ -325,10 +325,8 @@ export function calculateWaveformOutSIMD(
   calculateWaveformSIMD(iSamples, qSamples, amplitude, phase, count);
 
   const out = new Float32Array(count * 2);
-  for (let i = 0; i < count; i++) {
-    out[i] = amplitude[i];
-    out[count + i] = phase[i];
-  }
+  out.set(amplitude, 0);
+  out.set(phase, count);
   return out;
 }
 

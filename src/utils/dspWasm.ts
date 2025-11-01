@@ -136,7 +136,10 @@ let wasmLoading: Promise<WasmDSPModule | null> | null = null;
 let wasmSupported = false;
 // One-time log flags to avoid flooding console on hot paths
 let loggedFFTChoice = false;
-let loggedWaveformChoice = false;
+let loggedWaveformOutSIMD = false;
+let loggedWaveformOut = false;
+let loggedWaveformSIMD = false;
+let loggedWaveformStandard = false;
 let loggedSpectrogramChoice = false;
 let loggedWindowChoice = false;
 
@@ -607,9 +610,9 @@ export function calculateWaveformWasm(
 
     // Prefer SIMD return-by-value if available (best performance)
     if (typeof wasmModule.calculateWaveformOutSIMD === "function") {
-      if (!loggedWaveformChoice) {
+      if (!loggedWaveformOutSIMD) {
         dspLogger.info("Using calculateWaveformOutSIMD (SIMD return-by-value)");
-        loggedWaveformChoice = true;
+        loggedWaveformOutSIMD = true;
       }
       const flat = wasmModule.calculateWaveformOutSIMD(
         iSamples,
@@ -623,9 +626,9 @@ export function calculateWaveformWasm(
 
     // Fall back to standard return-by-value if available
     if (typeof wasmModule.calculateWaveformOut === "function") {
-      if (!loggedWaveformChoice) {
+      if (!loggedWaveformOut) {
         dspLogger.info("Using calculateWaveformOut (return-by-value)");
-        loggedWaveformChoice = true;
+        loggedWaveformOut = true;
       }
       const flat = wasmModule.calculateWaveformOut(iSamples, qSamples, count);
       const amplitude = flat.subarray(0, count);
@@ -638,9 +641,9 @@ export function calculateWaveformWasm(
     const phase = wasmModule.allocateFloat32Array(count);
 
     if (typeof wasmModule.calculateWaveformSIMD === "function") {
-      if (!loggedWaveformChoice) {
+      if (!loggedWaveformSIMD) {
         dspLogger.info("Using calculateWaveformSIMD (SIMD legacy)");
-        loggedWaveformChoice = true;
+        loggedWaveformSIMD = true;
       }
       wasmModule.calculateWaveformSIMD(
         iSamples,
@@ -650,6 +653,10 @@ export function calculateWaveformWasm(
         count,
       );
     } else {
+      if (!loggedWaveformStandard) {
+        dspLogger.info("Using calculateWaveform (standard legacy)");
+        loggedWaveformStandard = true;
+      }
       wasmModule.calculateWaveform(iSamples, qSamples, amplitude, phase, count);
     }
 
