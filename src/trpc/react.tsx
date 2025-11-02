@@ -56,28 +56,35 @@ function createDirectReactLink(device?: ISDRDevice) {
   };
 }
 
-/**
- * Query Client singleton
- */
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: false,
-    },
-  },
-});
-
 interface TRPCProviderProps {
   children: React.ReactNode;
   device?: ISDRDevice;
+  queryClient?: QueryClient;
 }
 
 /**
  * tRPC Provider component
  * Wraps the application with tRPC and React Query context
+ * 
+ * @param queryClient - Optional QueryClient instance. If not provided, a new one will be created.
+ *                      Provide your own QueryClient if you need to share it across multiple providers
+ *                      or customize the default options.
  */
-export function TRPCProvider({ children, device }: TRPCProviderProps) {
+export function TRPCProvider({ children, device, queryClient: providedQueryClient }: TRPCProviderProps) {
+  const queryClient = useMemo(
+    () =>
+      providedQueryClient ||
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            refetchOnWindowFocus: false,
+            retry: false,
+          },
+        },
+      }),
+    [providedQueryClient]
+  );
+
   const trpcClient = useMemo(
     () =>
       trpc.createClient({

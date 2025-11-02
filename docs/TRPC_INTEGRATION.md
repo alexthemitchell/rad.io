@@ -34,18 +34,32 @@ Since rad.io is a browser-only application without a traditional backend, we use
 
 ```tsx
 import { TRPCProvider } from './trpc';
+import { QueryClient } from '@tanstack/react-query';
 import { ISDRDevice } from './models/SDRDevice';
 
 function App() {
   const [device, setDevice] = useState<ISDRDevice | undefined>();
+  
+  // Optional: Create your own QueryClient if you need custom configuration
+  // If not provided, TRPCProvider will create one with sensible defaults
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5000,
+        // ... your custom options
+      },
+    },
+  });
 
   return (
-    <TRPCProvider device={device}>
+    <TRPCProvider device={device} queryClient={queryClient}>
       <YourAppComponents />
     </TRPCProvider>
   );
 }
 ```
+
+**Note**: The `queryClient` prop is optional. If you need to share a QueryClient across multiple providers or customize the default options, pass your own instance. Otherwise, TRPCProvider will create one automatically.
 
 ### 2. Use tRPC Hooks in Components
 
@@ -251,7 +265,7 @@ getSignalStrength: deviceProcedure
 
 // 3. useDeviceWithTRPC.ts
 export function useGetSignalStrength() {
-  return trpc.device.getSignalStrength.useQuery;
+  return trpc.device.getSignalStrength.useQuery();
 }
 ```
 

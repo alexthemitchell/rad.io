@@ -3,7 +3,7 @@
  */
 
 import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { TRPCProvider } from '../../trpc/react';
 import { useDeviceInfo, useSetFrequency } from '../useDeviceWithTRPC';
@@ -40,8 +40,8 @@ describe('useDeviceWithTRPC hooks', () => {
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <TRPCProvider device={mockDevice}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <TRPCProvider device={mockDevice} queryClient={queryClient}>
+      {children}
     </TRPCProvider>
   );
 

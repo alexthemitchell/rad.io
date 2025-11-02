@@ -52,17 +52,23 @@ tRPC provides end-to-end type safety from the UI to the device abstraction layer
 
 ```tsx
 import { TRPCProvider } from './trpc';
+import { QueryClient } from '@tanstack/react-query';
 
 function App() {
   const [device, setDevice] = useState<ISDRDevice>();
+  
+  // Optional: Provide custom QueryClient
+  const queryClient = new QueryClient();
 
   return (
-    <TRPCProvider device={device}>
+    <TRPCProvider device={device} queryClient={queryClient}>
       <YourComponents />
     </TRPCProvider>
   );
 }
 ```
+
+**Note**: The `queryClient` prop is optional and will be created automatically if not provided.
 
 ### 2. Use in Components
 

@@ -64,15 +64,14 @@ export const memoryInfoSchema = z.object({
  */
 export const streamConfigSchema = z
   .object({
-    centerFrequency: z.number(),
-    sampleRate: z.number(),
+    centerFrequency: z.number().optional(),
+    sampleRate: z.number().optional(),
     bandwidth: z.number().optional(),
     lnaGain: z.number().optional(),
     vgaGain: z.number().optional(),
     ampEnabled: z.boolean().optional(),
     antennaEnabled: z.boolean().optional(),
   })
-  .partial()
   .optional() satisfies z.ZodType<Partial<SDRStreamConfig> | undefined>;
 
 /**
