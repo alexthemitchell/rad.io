@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useDevice, useDeviceContext } from "../contexts/DeviceContext";
+import { useDevice, useDeviceContext } from "../contexts";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
 import { notify } from "../lib/notifications";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";

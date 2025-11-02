@@ -9,7 +9,7 @@ import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
-import { useDevice } from "../contexts/DeviceContext";
+import { useDevice } from "../contexts";
 import { notify } from "../lib/notifications";
 import { type ISDRDevice } from "../models/SDRDevice";
 import Measurements from "../panels/Measurements";

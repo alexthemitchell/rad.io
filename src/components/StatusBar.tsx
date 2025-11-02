@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useDeviceContext } from "../contexts/DeviceContext";
+import { useDeviceContext } from "../contexts";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { RenderTier, maxTier } from "../types/rendering";

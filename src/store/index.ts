@@ -69,22 +69,22 @@ export const useSettings = (): {
   settings: SettingsState;
   setSettings: (partial: Partial<SettingsState>) => void;
   resetSettings: () => void;
-} =>
-  useStore((state) => ({
-    settings: state.settings,
-    setSettings: state.setSettings,
-    resetSettings: state.resetSettings,
-  }));
+} => {
+  const settings = useStore((state) => state.settings);
+  const setSettings = useStore((state) => state.setSettings);
+  const resetSettings = useStore((state) => state.resetSettings);
+  return { settings, setSettings, resetSettings };
+};
 
 // Frequency slice selectors
 export const useFrequency = (): {
   frequencyHz: number;
   setFrequencyHz: (hz: number) => void;
-} =>
-  useStore((state) => ({
-    frequencyHz: state.frequencyHz,
-    setFrequencyHz: state.setFrequencyHz,
-  }));
+} => {
+  const frequencyHz = useStore((state) => state.frequencyHz);
+  const setFrequencyHz = useStore((state) => state.setFrequencyHz);
+  return { frequencyHz, setFrequencyHz };
+};
 
 // Notification slice selectors
 export const useNotifications = (): {
@@ -92,11 +92,11 @@ export const useNotifications = (): {
   notify: (
     notification: Omit<Notification, "id"> & { duration?: number },
   ) => void;
-} =>
-  useStore((state) => ({
-    notifications: state.notifications,
-    notify: state.notify,
-  }));
+} => {
+  const notifications = useStore((state) => state.notifications);
+  const notify = useStore((state) => state.notify);
+  return { notifications, notify };
+};
 
 // Device slice selectors
 export const useDevice = (): {
@@ -107,16 +107,26 @@ export const useDevice = (): {
   closeDevice: (deviceId: DeviceId) => Promise<void>;
   closeAllDevices: () => Promise<void>;
   connectPairedUSBDevice: (usbDevice: USBDevice) => Promise<void>;
-} =>
-  useStore((state) => ({
-    devices: state.devices,
-    primaryDevice: state.primaryDevice,
-    isCheckingPaired: state.isCheckingPaired,
-    requestDevice: state.requestDevice,
-    closeDevice: state.closeDevice,
-    closeAllDevices: state.closeAllDevices,
-    connectPairedUSBDevice: state.connectPairedUSBDevice,
-  }));
+} => {
+  const devices = useStore((state) => state.devices);
+  const primaryDevice = useStore((state) => state.primaryDevice);
+  const isCheckingPaired = useStore((state) => state.isCheckingPaired);
+  const requestDevice = useStore((state) => state.requestDevice);
+  const closeDevice = useStore((state) => state.closeDevice);
+  const closeAllDevices = useStore((state) => state.closeAllDevices);
+  const connectPairedUSBDevice = useStore(
+    (state) => state.connectPairedUSBDevice,
+  );
+  return {
+    devices,
+    primaryDevice,
+    isCheckingPaired,
+    requestDevice,
+    closeDevice,
+    closeAllDevices,
+    connectPairedUSBDevice,
+  };
+};
 
 // Export types
 export type { SettingsState, VizMode } from "./slices/settingsSlice";

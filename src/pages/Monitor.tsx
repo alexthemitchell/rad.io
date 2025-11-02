@@ -8,9 +8,7 @@ import SignalStrengthMeter from "../components/SignalStrengthMeter";
 import StatusBar from "../components/StatusBar";
 import { WATERFALL_COLORMAPS } from "../constants";
 import { useSettings } from "../contexts";
-import { useDevice } from "../contexts/DeviceContext";
-import { useFrequency } from "../contexts/FrequencyContext";
-import { useNotifications } from "../contexts/NotificationContext";
+import { useDevice, useFrequency, useNotifications } from "../contexts";
 import { useDsp } from "../hooks/useDsp";
 import {
   useFrequencyScanner,

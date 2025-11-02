@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDevice } from "../contexts/DeviceContext";
+import { useDevice } from "../contexts";
 import { useStatusMetrics } from "../hooks/useStatusMetrics";
 
 /**

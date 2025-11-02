@@ -6,6 +6,17 @@ import { render, screen } from "@testing-library/react";
 import App from "../App";
 import * as dspWasm from "../utils/dspWasm";
 
+// Mock WebUSB API
+Object.defineProperty(global.navigator, "usb", {
+  value: {
+    getDevices: jest.fn().mockResolvedValue([]),
+    requestDevice: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  },
+  writable: true,
+});
+
 // Mock the WASM module preload
 jest.mock("../utils/dspWasm", () => ({
   preloadWasmModule: jest.fn(),

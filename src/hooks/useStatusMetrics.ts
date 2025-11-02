@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDeviceContext } from "../contexts/DeviceContext";
+import { useDeviceContext } from "../contexts";
 import { notify } from "../lib/notifications";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { performanceMonitor } from "../utils/performanceMonitor";
