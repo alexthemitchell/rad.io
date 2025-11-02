@@ -210,7 +210,7 @@ export class PSK31DemodulatorPlugin
   private agcEnvelope: number;
 
   // Output buffer
-  public decodedText: string;
+  private decodedText: string;
 
   constructor() {
     const metadata: PluginMetadata = {

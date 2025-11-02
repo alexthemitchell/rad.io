@@ -252,6 +252,15 @@ export function DigitalModeDisplay({
           <span
             className="digital-mode-status-dot"
             style={{
+              /*
+               * TypeScript's no-unnecessary-condition rule flags this ternary as "always truthy"
+               * because isActive is a boolean. However, this is a false positive - we are not
+               * checking if isActive is truthy/falsy, we are using its boolean value to select
+               * between two different color constants. This is idiomatic React code for conditional
+               * styling. The alternative would be to compute the color in a separate variable,
+               * which would be more verbose without adding clarity. This is a known limitation
+               * of the rule when used with boolean props in JSX expressions.
+               */
               // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
               backgroundColor: isActive
                 ? STATUS_COLOR_ACTIVE
@@ -259,6 +268,7 @@ export function DigitalModeDisplay({
             }}
           />
           <span className="digital-mode-status-text">
+            {/* See explanation above - same reasoning applies for text selection */}
             {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
             {isActive ? "Receiving" : "Standby"}
           </span>

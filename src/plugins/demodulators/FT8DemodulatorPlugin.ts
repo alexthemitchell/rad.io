@@ -78,7 +78,7 @@ export class FT8DemodulatorPlugin
   // Message duration: 12.64 seconds, 79 symbols per message
 
   // Decoded messages buffer
-  public decodedMessages: FT8Message[];
+  private decodedMessages: FT8Message[];
 
   constructor() {
     const metadata: PluginMetadata = {
