@@ -31,10 +31,10 @@ describe("PSK31DemodulatorPlugin", () => {
     it("should reset state on initialization", async () => {
       // Set some state
       plugin.demodulate([{ I: 1, Q: 0 }]);
-      
+
       // Re-initialize
       await plugin.initialize();
-      
+
       // Verify state is reset
       const text = plugin.getDecodedText();
       expect(text).toBe("");
@@ -155,7 +155,7 @@ describe("PSK31DemodulatorPlugin", () => {
       }));
 
       const audio = plugin.demodulate(weakSamples);
-      
+
       // Most samples should be squelched (zero)
       const zeroCount = Array.from(audio).filter((v) => v === 0).length;
       expect(zeroCount).toBeGreaterThan(50);
@@ -175,7 +175,7 @@ describe("PSK31DemodulatorPlugin", () => {
       }
 
       const audio = plugin.demodulate(strongSamples);
-      
+
       // Signal should pass through (most samples should not be zero)
       const nonZeroCount = Array.from(audio).filter((v) => v !== 0).length;
       expect(nonZeroCount).toBeGreaterThan(50);
@@ -185,7 +185,7 @@ describe("PSK31DemodulatorPlugin", () => {
       // Generate BPSK signal for space character
       // Space = "1" in Varicode, followed by "00" separator
       // So bit pattern is: 1 0 0
-      
+
       const samples: IQSample[] = [];
       const sampleRate = 48000;
       const symbolRate = 31.25;
@@ -195,19 +195,19 @@ describe("PSK31DemodulatorPlugin", () => {
       for (let i = 0; i < samplesPerSymbol; i++) {
         samples.push({ I: Math.cos(Math.PI), Q: Math.sin(Math.PI) });
       }
-      
+
       // Bit "0" (no phase transition)
       for (let i = 0; i < samplesPerSymbol; i++) {
         samples.push({ I: Math.cos(Math.PI), Q: Math.sin(Math.PI) });
       }
-      
+
       // Bit "0" (no phase transition)
       for (let i = 0; i < samplesPerSymbol; i++) {
         samples.push({ I: Math.cos(Math.PI), Q: Math.sin(Math.PI) });
       }
 
       plugin.demodulate(samples);
-      
+
       const text = plugin.getDecodedText();
       // Note: Actual decoding depends on proper phase tracking
       // This is a basic test that the mechanism works
@@ -234,13 +234,13 @@ describe("PSK31DemodulatorPlugin", () => {
     it("should define valid ranges for parameters", () => {
       const schema = plugin.getConfigSchema();
       expect(schema).toBeDefined();
-      
+
       expect(schema!.properties["bandwidth"]?.minimum).toBe(50);
       expect(schema!.properties["bandwidth"]?.maximum).toBe(200);
-      
+
       expect(schema!.properties["agcTarget"]?.minimum).toBe(0.1);
       expect(schema!.properties["agcTarget"]?.maximum).toBe(1.0);
-      
+
       expect(schema!.properties["squelch"]?.minimum).toBe(0);
       expect(schema!.properties["squelch"]?.maximum).toBe(100);
     });
@@ -289,11 +289,11 @@ describe("PSK31DemodulatorPlugin", () => {
       // First call with no data returns empty
       const initialText = plugin.getDecodedText();
       expect(initialText).toBe("");
-      
+
       // After demodulation, text may be available
       // (depends on signal content - we test the clear behavior)
       plugin.getDecodedText(); // Clear any accumulated text
-      
+
       // Second call should return empty
       const text2 = plugin.getDecodedText();
       expect(text2).toBe("");
@@ -302,11 +302,11 @@ describe("PSK31DemodulatorPlugin", () => {
     it("should return decoded text through public API", () => {
       // Demodulate some samples - text accumulates internally
       plugin.demodulate([{ I: 1, Q: 0 }]);
-      
+
       // Text is accessible only through getter
       const text = plugin.getDecodedText();
       expect(typeof text).toBe("string");
-      
+
       // Subsequent call returns empty (text was cleared)
       const text2 = plugin.getDecodedText();
       expect(text2).toBe("");
@@ -337,22 +337,22 @@ describe("PSK31DemodulatorPlugin", () => {
       }
 
       const audio = plugin.demodulate(samples);
-      
+
       // AFC should adapt and produce output
       expect(audio.length).toBe(samples.length);
     });
 
     it("should not track when AFC is disabled", () => {
       plugin.setParameters({ afcEnabled: false });
-      
+
       // Generate signal
       const samples: IQSample[] = Array.from({ length: 100 }, () => ({
         I: 1.0,
         Q: 0.0,
       }));
-      
+
       const audio = plugin.demodulate(samples);
-      
+
       // Should still produce output (just without tracking)
       expect(audio.length).toBe(samples.length);
     });

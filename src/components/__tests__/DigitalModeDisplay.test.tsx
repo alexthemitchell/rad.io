@@ -31,12 +31,12 @@ describe("DigitalModeDisplay", () => {
           messages={[]}
           currentMode={null}
           isActive={false}
-        />
+        />,
       );
 
       expect(screen.getByText("No Digital Mode Selected")).toBeInTheDocument();
       expect(
-        screen.getByText("Select PSK31, FT8, or RTTY from the mode selector")
+        screen.getByText("Select PSK31, FT8, or RTTY from the mode selector"),
       ).toBeInTheDocument();
     });
   });
@@ -48,12 +48,12 @@ describe("DigitalModeDisplay", () => {
           messages={[]}
           currentMode="PSK31"
           isActive={false}
-        />
+        />,
       );
 
       expect(screen.getByText("PSK31 Decoder Inactive")).toBeInTheDocument();
       expect(
-        screen.getByText("Activate the decoder to receive messages")
+        screen.getByText("Activate the decoder to receive messages"),
       ).toBeInTheDocument();
     });
   });
@@ -61,17 +61,25 @@ describe("DigitalModeDisplay", () => {
   describe("Active Mode with No Messages", () => {
     it("should display waiting message when active but no messages", () => {
       render(
-        <DigitalModeDisplay messages={[]} currentMode="PSK31" isActive={true} />
+        <DigitalModeDisplay
+          messages={[]}
+          currentMode="PSK31"
+          isActive={true}
+        />,
       );
 
       expect(
-        screen.getByText("Waiting for PSK31 signals...")
+        screen.getByText("Waiting for PSK31 signals..."),
       ).toBeInTheDocument();
     });
 
     it("should show mode badge", () => {
       render(
-        <DigitalModeDisplay messages={[]} currentMode="PSK31" isActive={true} />
+        <DigitalModeDisplay
+          messages={[]}
+          currentMode="PSK31"
+          isActive={true}
+        />,
       );
 
       expect(screen.getByText("PSK31")).toBeInTheDocument();
@@ -80,7 +88,11 @@ describe("DigitalModeDisplay", () => {
 
     it("should show message count of 0", () => {
       render(
-        <DigitalModeDisplay messages={[]} currentMode="PSK31" isActive={true} />
+        <DigitalModeDisplay
+          messages={[]}
+          currentMode="PSK31"
+          isActive={true}
+        />,
       );
 
       expect(screen.getByText("0 messages")).toBeInTheDocument();
@@ -94,7 +106,7 @@ describe("DigitalModeDisplay", () => {
           messages={mockMessages}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       expect(screen.getByText("CQ CQ DE TEST TEST K")).toBeInTheDocument();
@@ -107,7 +119,7 @@ describe("DigitalModeDisplay", () => {
           messages={mockMessages}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       expect(screen.getByText("2 messages")).toBeInTheDocument();
@@ -123,7 +135,7 @@ describe("DigitalModeDisplay", () => {
           messages={[firstMessage]}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       expect(screen.getByText("1 message")).toBeInTheDocument();
@@ -135,7 +147,7 @@ describe("DigitalModeDisplay", () => {
           messages={mockMessages}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       expect(screen.getByText("-5.5 dB")).toBeInTheDocument();
@@ -148,7 +160,7 @@ describe("DigitalModeDisplay", () => {
           messages={mockMessages}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       // Frequency 14070.5 Hz = 14.1 kHz (toFixed(1))
@@ -167,7 +179,7 @@ describe("DigitalModeDisplay", () => {
           messages={[simpleMessage]}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       expect(screen.getByText("Simple message")).toBeInTheDocument();
@@ -181,7 +193,7 @@ describe("DigitalModeDisplay", () => {
           messages={mockMessages}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       const autoScrollButton = screen.getByRole("button", {
@@ -208,16 +220,13 @@ describe("DigitalModeDisplay", () => {
           messages={mockMessages}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       const messagesContainer = screen.getByRole("log");
       expect(messagesContainer).toHaveAttribute("aria-live", "polite");
       expect(messagesContainer).toHaveAttribute("aria-atomic", "false");
-      expect(messagesContainer).toHaveAttribute(
-        "aria-relevant",
-        "additions"
-      );
+      expect(messagesContainer).toHaveAttribute("aria-relevant", "additions");
     });
 
     it("should have accessible button labels", () => {
@@ -226,7 +235,7 @@ describe("DigitalModeDisplay", () => {
           messages={mockMessages}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       const autoScrollButton = screen.getByRole("button", {
@@ -251,7 +260,7 @@ describe("DigitalModeDisplay", () => {
           messages={[ft8Message]}
           currentMode="FT8"
           isActive={true}
-        />
+        />,
       );
 
       expect(screen.getByText("FT8")).toBeInTheDocument();
@@ -270,7 +279,7 @@ describe("DigitalModeDisplay", () => {
           messages={[rttyMessage]}
           currentMode="RTTY"
           isActive={true}
-        />
+        />,
       );
 
       expect(screen.getByText("RTTY")).toBeInTheDocument();
@@ -285,7 +294,7 @@ describe("DigitalModeDisplay", () => {
           messages={mockMessages}
           currentMode="PSK31"
           isActive={true}
-        />
+        />,
       );
 
       expect(screen.getByText("Receiving")).toBeInTheDocument();
@@ -297,7 +306,7 @@ describe("DigitalModeDisplay", () => {
           messages={mockMessages}
           currentMode="PSK31"
           isActive={false}
-        />
+        />,
       );
 
       expect(screen.getByText("PSK31 Decoder Inactive")).toBeInTheDocument();
@@ -312,7 +321,7 @@ describe("DigitalModeDisplay", () => {
           currentMode="PSK31"
           isActive={true}
           className="custom-class"
-        />
+        />,
       );
 
       const display = container.querySelector(".digital-mode-display");

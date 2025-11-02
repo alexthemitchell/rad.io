@@ -18,6 +18,7 @@ This guide shows you how to use the digital mode decoders in rad.io to receive a
 ### 1. Select Digital Mode
 
 From the main interface:
+
 1. Open the **Mode Selector**
 2. Choose **PSK31** or **FT8**
 3. The decoder will activate automatically
@@ -25,6 +26,7 @@ From the main interface:
 ### 2. Tune to Digital Frequencies
 
 **Common PSK31 Frequencies:**
+
 - 3.580 MHz (80m)
 - 7.070 MHz (40m)
 - 10.142 MHz (30m)
@@ -34,6 +36,7 @@ From the main interface:
 - 28.120 MHz (10m)
 
 **Common FT8 Frequencies:**
+
 - 3.573 MHz (80m)
 - 7.074 MHz (40m)
 - 10.136 MHz (30m)
@@ -45,11 +48,13 @@ From the main interface:
 ### 3. Adjust Settings
 
 #### PSK31 Settings
+
 - **AFC (Automatic Frequency Control)**: Keep enabled for best results
 - **Squelch**: Start at 0, increase if too much noise
 - **AGC Target**: Default 0.5 works for most signals
 
 #### FT8 Settings (Stub)
+
 - **Time Offset**: Adjust if UTC time sync is off
 - **SNR Threshold**: -20 dB default (can decode very weak signals)
 - **Auto Sync**: Enable for automatic time synchronization
@@ -57,6 +62,7 @@ From the main interface:
 ### 4. View Decoded Messages
 
 The **Digital Mode Display** component shows:
+
 - **Timestamp**: UTC time of message
 - **SNR**: Signal-to-Noise Ratio (color-coded)
 - **Frequency**: Offset frequency in Hz/kHz
@@ -67,6 +73,7 @@ The **Digital Mode Display** component shows:
 ### How PSK31 Works
 
 PSK31 uses Binary Phase Shift Keying (BPSK) to transmit text:
+
 1. Characters encoded with Varicode (variable-length)
 2. Phase changes represent bits (0° = 0, 180° = 1)
 3. Extremely narrow bandwidth (~31 Hz)
@@ -77,6 +84,7 @@ PSK31 uses Binary Phase Shift Keying (BPSK) to transmit text:
 ```
 CQ CQ DE W1AW W1AW K
 ```
+
 - `CQ`: Calling any station
 - `DE`: "From" (from)
 - `W1AW`: Callsign
@@ -94,6 +102,7 @@ CQ CQ DE W1AW W1AW K
 ### How FT8 Works
 
 FT8 uses 8-FSK (8-tone frequency shift keying):
+
 1. 79 symbols per message (12.64 seconds)
 2. LDPC error correction
 3. Can decode signals 20 dB below noise floor
@@ -111,11 +120,13 @@ W1AW TEST 73        # Sign-off
 ### FT8 Requirements
 
 ⚠️ **Note**: Full FT8 implementation requires:
+
 - LDPC decoder (not yet implemented)
 - UTC time sync within ±1 second
 - Time-slot synchronization (15-second periods)
 
 Current stub provides:
+
 - Plugin architecture
 - Message structure definitions
 - Signal magnitude extraction
@@ -126,12 +137,14 @@ Current stub provides:
 ### No Decoded Text
 
 **PSK31:**
+
 - Check frequency tuning (very narrow bandwidth)
 - Verify AFC is enabled
 - Reduce squelch threshold
 - Look for phase changes in IQ constellation
 
 **FT8:**
+
 - Ensure UTC time is synchronized
 - Wait for full 12.64-second transmission
 - Check SNR threshold setting

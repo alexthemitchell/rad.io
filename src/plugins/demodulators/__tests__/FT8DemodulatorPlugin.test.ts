@@ -221,7 +221,7 @@ describe("FT8DemodulatorPlugin", () => {
 
       const messages = plugin.getDecodedMessages();
       expect(Array.isArray(messages)).toBe(true);
-      
+
       // Verify message structure if any messages exist
       messages.forEach((msg) => {
         expect(msg).toHaveProperty("timeSlot");
