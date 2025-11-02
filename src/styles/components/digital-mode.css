@@ -1,0 +1,214 @@
+/**
+ * Digital Mode Display Styles
+ */
+
+.digital-mode-display {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--rad-bg);
+  border: var(--rad-border-width) solid var(--rad-border);
+  border-radius: var(--rad-radius-3);
+  overflow: hidden;
+}
+
+/* No Data / Inactive States */
+.digital-mode-no-data,
+.digital-mode-inactive {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.digital-mode-status {
+  text-align: center;
+  padding: var(--rad-space-6);
+}
+
+.digital-mode-icon {
+  font-size: 3rem;
+  margin-bottom: var(--rad-space-4);
+}
+
+.digital-mode-status-message {
+  font-size: var(--rad-font-size-4);
+  font-weight: 600;
+  color: var(--rad-fg);
+  margin-bottom: var(--rad-space-2);
+}
+
+.digital-mode-hint {
+  font-size: var(--rad-font-size-2);
+  color: var(--rad-fg-muted);
+}
+
+/* Header */
+.digital-mode-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--rad-space-3) var(--rad-space-4);
+  background: var(--rad-surface);
+  border-bottom: var(--rad-border-width) solid var(--rad-border);
+}
+
+.digital-mode-title {
+  display: flex;
+  align-items: center;
+  gap: var(--rad-space-2);
+}
+
+.digital-mode-badge {
+  display: inline-block;
+  padding: var(--rad-space-1) var(--rad-space-2);
+  font-size: var(--rad-font-size-1);
+  font-weight: 700;
+  color: white;
+  border-radius: var(--rad-radius-2);
+  text-transform: uppercase;
+}
+
+.digital-mode-label {
+  font-size: var(--rad-font-size-2);
+  font-weight: 500;
+  color: var(--rad-fg);
+}
+
+.digital-mode-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--rad-space-3);
+}
+
+.digital-mode-auto-scroll {
+  background: none;
+  border: var(--rad-border-width) solid var(--rad-border);
+  border-radius: var(--rad-radius-2);
+  padding: var(--rad-space-1) var(--rad-space-2);
+  cursor: pointer;
+  font-size: var(--rad-font-size-3);
+  transition: all var(--rad-transition-fast);
+}
+
+.digital-mode-auto-scroll:hover {
+  background: var(--rad-bg-elev-1);
+}
+
+.digital-mode-auto-scroll.active {
+  background: var(--rad-primary);
+  border-color: var(--rad-primary);
+}
+
+.digital-mode-count {
+  font-size: var(--rad-font-size-2);
+  color: var(--rad-fg-muted);
+}
+
+/* Messages Container */
+.digital-mode-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--rad-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--rad-space-3);
+}
+
+.digital-mode-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--rad-fg-muted);
+}
+
+.digital-mode-empty-icon {
+  font-size: 2rem;
+  margin-bottom: var(--rad-space-2);
+}
+
+.digital-mode-empty-text {
+  font-size: var(--rad-font-size-2);
+}
+
+/* Individual Message */
+.digital-mode-message {
+  padding: var(--rad-space-3);
+  background: var(--rad-surface);
+  border-radius: var(--rad-radius-2);
+  border-left: 3px solid var(--rad-primary);
+}
+
+.digital-mode-message-header {
+  display: flex;
+  align-items: center;
+  gap: var(--rad-space-2);
+  margin-bottom: var(--rad-space-2);
+  font-size: var(--rad-font-size-1);
+  color: var(--rad-fg-muted);
+}
+
+.digital-mode-message-time {
+  font-family: var(--rad-font-mono);
+  font-weight: 500;
+}
+
+.digital-mode-message-snr {
+  font-family: var(--rad-font-mono);
+  font-weight: 600;
+}
+
+.digital-mode-message-freq {
+  font-family: var(--rad-font-mono);
+}
+
+.digital-mode-message-text {
+  font-family: var(--rad-font-mono);
+  font-size: var(--rad-font-size-2);
+  color: var(--rad-fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: var(--rad-line-height-normal);
+}
+
+/* Footer */
+.digital-mode-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--rad-space-2) var(--rad-space-4);
+  background: var(--rad-surface);
+  border-top: var(--rad-border-width) solid var(--rad-border);
+}
+
+.digital-mode-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--rad-space-2);
+}
+
+.digital-mode-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.digital-mode-status-text {
+  font-size: var(--rad-font-size-1);
+  color: var(--rad-fg-muted);
+  font-weight: 500;
+}

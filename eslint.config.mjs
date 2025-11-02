@@ -241,7 +241,12 @@ export default defineConfig([
 
       // TypeScript rules - Code Quality
       "@typescript-eslint/switch-exhaustiveness-check": "error",
-      "@typescript-eslint/no-unnecessary-condition": "error",
+      "@typescript-eslint/no-unnecessary-condition": [
+        "error",
+        {
+          allowConstantLoopConditions: true,
+        },
+      ],
       "@typescript-eslint/consistent-type-imports": [
         "error",
         {

@@ -15,6 +15,7 @@
 @import url("./components/tmc.css") layer(tmc);
 @import url("./components/audio.css") layer(audio);
 @import url("./components/transmission-log.css") layer(transmission-log);
+@import url("./components/digital-mode.css") layer(digital-mode);
 
 /* Global base, accessibility, and focus styles moved to base.css and a11y.css */
 

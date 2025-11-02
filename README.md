@@ -19,7 +19,7 @@ A professional browser-based SDR application with industry-standard visualizatio
 
 ### Signal Control 🎛️
 
-- **AM/FM/P25 Band Selection**: Toggle between FM (88.1-107.9 MHz), AM (530-1700 kHz), and P25 Phase 2 (700-800 MHz, 150-174 MHz)
+- **AM/FM/P25/Digital Mode Selection**: Toggle between FM (88.1-107.9 MHz), AM (530-1700 kHz), P25 Phase 2 (700-800 MHz, 150-174 MHz), PSK31, and FT8
 - **Preset Stations**: One-click tuning to popular stations
 - **Manual Frequency Control**: Precise frequency adjustment
 - **Frequency Scanner**: Automated scanning across user-defined ranges with signal detection and logging
@@ -49,6 +49,8 @@ A professional browser-based SDR application with industry-standard visualizatio
 - **Robust Error Handling**: Gracefully handles noisy/distorted radio audio
 - **P25 Phase 2 Decoder**: H-DQPSK demodulation, TDMA slot extraction, frame synchronization
 - **Trunked Radio Support**: Monitor talkgroups, control channels, and encrypted transmissions
+- **Digital Mode Decoders**: PSK31 (BPSK/QPSK with Varicode), FT8 (stub with full architecture)
+- **Real-Time Text Display**: Auto-scrolling message history with SNR and frequency indicators
 
 ### Universal Device Support 🔌
 
