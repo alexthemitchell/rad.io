@@ -1,15 +1,12 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import Settings from "../Settings";
-import { SettingsProvider } from "../../contexts";
 
 describe("Settings", () => {
   it("renders the settings page", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     expect(screen.getByRole("main")).toBeInTheDocument();
@@ -18,9 +15,7 @@ describe("Settings", () => {
   it("displays heading", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     expect(
@@ -31,9 +26,7 @@ describe("Settings", () => {
   it("shows all tab buttons", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     expect(screen.getByRole("tab", { name: /display/i })).toBeInTheDocument();
@@ -48,9 +41,7 @@ describe("Settings", () => {
   it("displays display tab by default", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     expect(
@@ -61,9 +52,7 @@ describe("Settings", () => {
   it("switches to radio tab when clicked", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     const radioTab = screen.getByRole("tab", { name: /radio/i });
@@ -76,9 +65,7 @@ describe("Settings", () => {
   it("switches to audio tab when clicked", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     const audioTab = screen.getByRole("tab", { name: /audio/i });
@@ -91,9 +78,7 @@ describe("Settings", () => {
   it("switches to calibration tab when clicked", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     const calibrationTab = screen.getByRole("tab", { name: /calibration/i });
@@ -106,9 +91,7 @@ describe("Settings", () => {
   it("shows link to calibration wizard in calibration tab", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     const calibrationTab = screen.getByRole("tab", { name: /calibration/i });
@@ -121,9 +104,7 @@ describe("Settings", () => {
   it("switches to advanced tab when clicked", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     const advancedTab = screen.getByRole("tab", { name: /advanced/i });
@@ -136,9 +117,7 @@ describe("Settings", () => {
   it("marks active tab with aria-selected", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     const displayTab = screen.getByRole("tab", { name: /display/i });
@@ -151,9 +130,7 @@ describe("Settings", () => {
   it("disables Save/Reset actions", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <Settings />
-        </SettingsProvider>
+        <Settings />
       </BrowserRouter>,
     );
     const save = screen.getByRole("button", { name: /save settings/i });
