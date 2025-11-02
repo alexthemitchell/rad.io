@@ -184,6 +184,16 @@ export class PSK31DemodulatorPlugin
   declare metadata: PluginMetadata & { type: PluginType.DEMODULATOR };
   private parameters: PSK31Parameters;
 
+  // DSP Constants
+  private static readonly AGC_ATTACK_RATE = 0.01; // Envelope follower attack rate
+  private static readonly AGC_DECAY_RATE = 0.0001; // Envelope follower decay rate
+  private static readonly AGC_MIN_ENVELOPE = 0.001; // Minimum envelope to prevent division by zero
+  private static readonly AGC_MIN_GAIN = 0.1; // Minimum AGC gain to prevent over-amplification
+  private static readonly AGC_MAX_GAIN = 10.0; // Maximum AGC gain to prevent clipping
+  private static readonly AFC_PROPORTIONAL_GAIN = 0.001; // AFC loop proportional gain (alpha)
+  private static readonly AFC_INTEGRAL_GAIN = 0.00001; // AFC loop integral gain (beta)
+  private static readonly MAX_VARICODE_BIT_BUFFER_LENGTH = 20; // Maximum Varicode character length plus separator
+
   // Demodulation state
   private previousPhase: number;
   private carrierPhase: number;
@@ -352,22 +362,24 @@ export class PSK31DemodulatorPlugin
    */
   private updateAGC(magnitude: number): void {
     // Envelope follower
-    const attackRate = 0.01;
-    const decayRate = 0.0001;
-
     if (magnitude > this.agcEnvelope) {
-      this.agcEnvelope += attackRate * (magnitude - this.agcEnvelope);
+      this.agcEnvelope +=
+        PSK31DemodulatorPlugin.AGC_ATTACK_RATE * (magnitude - this.agcEnvelope);
     } else {
-      this.agcEnvelope += decayRate * (magnitude - this.agcEnvelope);
+      this.agcEnvelope +=
+        PSK31DemodulatorPlugin.AGC_DECAY_RATE * (magnitude - this.agcEnvelope);
     }
 
     // Calculate gain
-    if (this.agcEnvelope > 0.001) {
+    if (this.agcEnvelope > PSK31DemodulatorPlugin.AGC_MIN_ENVELOPE) {
       this.agcGain = this.parameters.agcTarget / this.agcEnvelope;
     }
 
     // Clamp gain
-    this.agcGain = Math.max(0.1, Math.min(10.0, this.agcGain));
+    this.agcGain = Math.max(
+      PSK31DemodulatorPlugin.AGC_MIN_GAIN,
+      Math.min(PSK31DemodulatorPlugin.AGC_MAX_GAIN, this.agcGain),
+    );
   }
 
   /**
@@ -377,13 +389,11 @@ export class PSK31DemodulatorPlugin
     // Calculate phase error: sign(I) * Q for BPSK
     const error = Math.sign(i) * q;
 
-    // Loop filter parameters
-    const alpha = 0.001; // Proportional gain
-    const beta = 0.00001; // Integral gain
-
-    // Update frequency and phase
-    this.carrierFrequency += beta * error;
-    this.carrierPhase += this.carrierFrequency + alpha * error;
+    // Update frequency and phase using PI controller
+    this.carrierFrequency += PSK31DemodulatorPlugin.AFC_INTEGRAL_GAIN * error;
+    this.carrierPhase +=
+      this.carrierFrequency +
+      PSK31DemodulatorPlugin.AFC_PROPORTIONAL_GAIN * error;
 
     // Wrap phase
     while (this.carrierPhase > Math.PI) this.carrierPhase -= 2 * Math.PI;
@@ -411,8 +421,14 @@ export class PSK31DemodulatorPlugin
     }
 
     // Limit buffer size to prevent overflow
-    if (this.bitBuffer.length > 20) {
-      this.bitBuffer = this.bitBuffer.substring(this.bitBuffer.length - 20);
+    if (
+      this.bitBuffer.length >
+      PSK31DemodulatorPlugin.MAX_VARICODE_BIT_BUFFER_LENGTH
+    ) {
+      this.bitBuffer = this.bitBuffer.substring(
+        this.bitBuffer.length -
+          PSK31DemodulatorPlugin.MAX_VARICODE_BIT_BUFFER_LENGTH,
+      );
     }
   }
 

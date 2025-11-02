@@ -6,6 +6,22 @@
 
 import { useEffect, useState, useRef, type ReactElement } from "react";
 
+// Color constants for signal quality and modes
+const SNR_COLOR_GOOD = "#4ade80"; // Green - SNR >= 0 dB
+const SNR_COLOR_FAIR = "#fbbf24"; // Yellow - SNR >= -10 dB
+const SNR_COLOR_POOR = "#f87171"; // Red - SNR < -10 dB
+
+const MODE_COLOR_PSK31 = "#60a5fa"; // Blue
+const MODE_COLOR_FT8 = "#a78bfa"; // Purple
+const MODE_COLOR_RTTY = "#34d399"; // Green
+const MODE_COLOR_DEFAULT = "#9ca3af"; // Gray
+
+const STATUS_COLOR_ACTIVE = "#4ade80"; // Green
+const STATUS_COLOR_INACTIVE = "#9ca3af"; // Gray
+
+// Scroll threshold - pixels from bottom to consider "at bottom"
+const SCROLL_BOTTOM_THRESHOLD = 10;
+
 export interface DigitalModeMessage {
   timestamp: Date;
   mode: "PSK31" | "FT8" | "RTTY";
@@ -57,7 +73,8 @@ export function DigitalModeDisplay({
 
     const handleScroll = (): void => {
       const { scrollTop, scrollHeight, clientHeight } = container;
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 10;
+      const isAtBottom =
+        scrollHeight - scrollTop - clientHeight < SCROLL_BOTTOM_THRESHOLD;
       setAutoScroll(isAtBottom);
     };
 
@@ -93,11 +110,11 @@ export function DigitalModeDisplay({
   // Get SNR color
   const getSNRColor = (snr: number): string => {
     if (snr >= 0) {
-      return "#4ade80"; // Green
+      return SNR_COLOR_GOOD;
     } else if (snr >= -10) {
-      return "#fbbf24"; // Yellow
+      return SNR_COLOR_FAIR;
     } else {
-      return "#f87171"; // Red
+      return SNR_COLOR_POOR;
     }
   };
 
@@ -105,13 +122,13 @@ export function DigitalModeDisplay({
   const getModeColor = (mode: string): string => {
     switch (mode) {
       case "PSK31":
-        return "#60a5fa"; // Blue
+        return MODE_COLOR_PSK31;
       case "FT8":
-        return "#a78bfa"; // Purple
+        return MODE_COLOR_FT8;
       case "RTTY":
-        return "#34d399"; // Green
+        return MODE_COLOR_RTTY;
       default:
-        return "#9ca3af"; // Gray
+        return MODE_COLOR_DEFAULT;
     }
   };
 
@@ -121,7 +138,9 @@ export function DigitalModeDisplay({
       <div className={`digital-mode-display digital-mode-no-data ${className}`}>
         <div className="digital-mode-status">
           <div className="digital-mode-icon">📡</div>
-          <div className="digital-mode-message">No Digital Mode Selected</div>
+          <div className="digital-mode-status-message">
+            No Digital Mode Selected
+          </div>
           <div className="digital-mode-hint">
             Select PSK31, FT8, or RTTY from the mode selector
           </div>
@@ -138,7 +157,7 @@ export function DigitalModeDisplay({
       >
         <div className="digital-mode-status">
           <div className="digital-mode-icon">⏸️</div>
-          <div className="digital-mode-message">
+          <div className="digital-mode-status-message">
             {currentMode} Decoder Inactive
           </div>
           <div className="digital-mode-hint">
@@ -233,10 +252,14 @@ export function DigitalModeDisplay({
           <span
             className="digital-mode-status-dot"
             style={{
-              backgroundColor: isActive ? "#4ade80" : "#9ca3af",
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+              backgroundColor: isActive
+                ? STATUS_COLOR_ACTIVE
+                : STATUS_COLOR_INACTIVE,
             }}
           />
           <span className="digital-mode-status-text">
+            {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
             {isActive ? "Receiving" : "Standby"}
           </span>
         </div>
