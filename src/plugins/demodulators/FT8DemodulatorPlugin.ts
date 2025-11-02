@@ -78,7 +78,7 @@ export class FT8DemodulatorPlugin
   // Message duration: 12.64 seconds, 79 symbols per message
 
   // Decoded messages buffer
-  private decodedMessages: FT8Message[];
+  private decodedMessages: FT8Message[] = [];
 
   constructor() {
     const metadata: PluginMetadata = {
@@ -102,12 +102,19 @@ export class FT8DemodulatorPlugin
       squelch: 0,
     };
 
+    this.resetState();
+  }
+
+  /**
+   * Reset demodulator state to initial values
+   */
+  private resetState(): void {
     this.decodedMessages = [];
   }
 
   protected onInitialize(): void {
     // Reset all state
-    this.decodedMessages = [];
+    this.resetState();
   }
 
   protected async onActivate(): Promise<void> {
@@ -117,8 +124,8 @@ export class FT8DemodulatorPlugin
   }
 
   protected onDeactivate(): void {
-    // Pause demodulation
-    this.onInitialize();
+    // Pause demodulation and reset state
+    this.resetState();
   }
 
   protected async onDispose(): Promise<void> {

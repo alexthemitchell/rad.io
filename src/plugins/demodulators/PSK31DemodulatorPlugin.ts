@@ -195,22 +195,22 @@ export class PSK31DemodulatorPlugin
   private static readonly MAX_VARICODE_BIT_BUFFER_LENGTH = 20; // Maximum Varicode character length plus separator
 
   // Demodulation state
-  private previousPhase: number;
-  private carrierPhase: number;
-  private carrierFrequency: number;
+  private previousPhase = 0;
+  private carrierPhase = 0;
+  private carrierFrequency = 0;
 
   // Symbol detection
-  private bitBuffer: string;
+  private bitBuffer = "";
   private samplesPerSymbol: number;
-  private sampleCounter: number;
-  private previousSymbol: number;
+  private sampleCounter = 0;
+  private previousSymbol = 0;
 
   // AGC state
-  private agcGain: number;
-  private agcEnvelope: number;
+  private agcGain = 1.0;
+  private agcEnvelope = 0;
 
   // Output buffer
-  private decodedText: string;
+  private decodedText = "";
 
   constructor() {
     const metadata: PluginMetadata = {
@@ -234,11 +234,18 @@ export class PSK31DemodulatorPlugin
     };
 
     // Initialize state
+    this.samplesPerSymbol = Math.floor(this.parameters.audioSampleRate / 31.25);
+    this.resetState();
+  }
+
+  /**
+   * Reset demodulator state to initial values
+   */
+  private resetState(): void {
     this.previousPhase = 0;
     this.carrierPhase = 0;
     this.carrierFrequency = 0;
     this.bitBuffer = "";
-    this.samplesPerSymbol = Math.floor(this.parameters.audioSampleRate / 31.25);
     this.sampleCounter = 0;
     this.previousSymbol = 0;
     this.agcGain = 1.0;
@@ -248,15 +255,7 @@ export class PSK31DemodulatorPlugin
 
   protected onInitialize(): void {
     // Reset all state
-    this.previousPhase = 0;
-    this.carrierPhase = 0;
-    this.carrierFrequency = 0;
-    this.bitBuffer = "";
-    this.sampleCounter = 0;
-    this.previousSymbol = 0;
-    this.agcGain = 1.0;
-    this.agcEnvelope = 0;
-    this.decodedText = "";
+    this.resetState();
   }
 
   protected async onActivate(): Promise<void> {
@@ -264,8 +263,8 @@ export class PSK31DemodulatorPlugin
   }
 
   protected onDeactivate(): void {
-    // Pause demodulation
-    this.onInitialize();
+    // Pause demodulation and reset state
+    this.resetState();
   }
 
   protected async onDispose(): Promise<void> {

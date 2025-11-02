@@ -151,8 +151,8 @@ describe("DigitalModeDisplay", () => {
         />
       );
 
-      // Frequency 14070.5 Hz = 14.070 kHz (toFixed(3))
-      expect(screen.getAllByText("14.070 kHz")).toHaveLength(2);
+      // Frequency 14070.5 Hz = 14.1 kHz (toFixed(1))
+      expect(screen.getAllByText("14.1 kHz")).toHaveLength(2);
     });
 
     it("should handle messages without SNR or frequency", () => {

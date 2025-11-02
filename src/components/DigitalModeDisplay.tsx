@@ -17,7 +17,6 @@ const MODE_COLOR_RTTY = "#34d399"; // Green
 const MODE_COLOR_DEFAULT = "#9ca3af"; // Gray
 
 const STATUS_COLOR_ACTIVE = "#4ade80"; // Green
-const STATUS_COLOR_INACTIVE = "#9ca3af"; // Gray
 
 // Scroll threshold - pixels from bottom to consider "at bottom"
 const SCROLL_BOTTOM_THRESHOLD = 10;
@@ -104,7 +103,7 @@ export function DigitalModeDisplay({
     if (freq < 1000) {
       return `${freq.toFixed(1)} Hz`;
     }
-    return `${(freq / 1000).toFixed(3)} kHz`;
+    return `${(freq / 1000).toFixed(1)} kHz`;
   };
 
   // Get SNR color
@@ -252,14 +251,10 @@ export function DigitalModeDisplay({
           <span
             className="digital-mode-status-dot"
             style={{
-              backgroundColor: isActive
-                ? STATUS_COLOR_ACTIVE
-                : STATUS_COLOR_INACTIVE,
+              backgroundColor: STATUS_COLOR_ACTIVE,
             }}
           />
-          <span className="digital-mode-status-text">
-            {isActive ? "Receiving" : "Standby"}
-          </span>
+          <span className="digital-mode-status-text">Receiving</span>
         </div>
       </div>
     </div>
