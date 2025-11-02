@@ -167,7 +167,7 @@ Future enhancement: Track QSOs (contacts) and export to ADIF format.
 ## References
 
 - [PSK31 Specification](http://www.arrl.org/psk31)
-- [FT8 Protocol](https://www.g4ifb.com/FT8_Hinson_tips_for_HF_DXers.pdf)
+- [FT8 Operating Guide by Gary Hinson (PDF)](https://www.g4ifb.com/FT8_Hinson_tips_for_HF_DXers.pdf)
 - [WSJT-X Documentation](https://physics.princeton.edu/pulsar/k1jt/wsjtx.html)
 - [Digital Mode Reference](../reference/digital-modes.md)
 

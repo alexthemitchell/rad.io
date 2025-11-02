@@ -109,7 +109,6 @@ export class PriorityQueue<T extends { priority: number }> {
     }
 
     let index = idx;
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (true) {
       const leftIndex = 2 * index + 1;
       const rightIndex = 2 * index + 2;
