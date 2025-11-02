@@ -155,11 +155,25 @@ export const deviceSlice: StateCreator<DeviceSlice> = (set, get) => ({
         return state;
       }
 
-      // Update primary device if needed
-      const primaryDevice =
-        newDevices.size > 0
-          ? newDevices.values().next().value?.device
-          : undefined;
+      // Update primary device if needed.
+      // Prefer the last-used device (from localStorage) if present; otherwise, pick the first device.
+      let primaryDevice: ISDRDevice | undefined;
+      if (newDevices.size > 0) {
+        let lastDeviceId: DeviceId | null = null;
+        try {
+          lastDeviceId = window.localStorage.getItem("rad.io:lastDeviceId");
+        } catch {
+          // ignore storage failures
+        }
+        if (lastDeviceId && newDevices.has(lastDeviceId)) {
+          const entry = newDevices.get(lastDeviceId);
+          primaryDevice = entry?.device;
+        } else {
+          primaryDevice = newDevices.values().next().value?.device;
+        }
+      } else {
+        primaryDevice = undefined;
+      }
 
       deviceLogger.info("Device removed from store", { deviceId });
 

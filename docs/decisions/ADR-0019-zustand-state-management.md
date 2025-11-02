@@ -69,7 +69,7 @@ To prevent infinite re-renders, selector functions are properly memoized:
 
 ```typescript
 // ❌ Wrong - creates new object on every call
-export const useSettings = () => 
+export const useSettings = () =>
   useStore((state) => ({
     settings: state.settings,
     setSettings: state.setSettings,

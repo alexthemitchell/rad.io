@@ -127,8 +127,11 @@ export function useDeviceIntegration(): void {
     if (!useMock) {
       return;
     }
-    // Only create one mock device if none exist yet
-    if (devicesRef.current.size > 0) {
+    // Only create a mock device if none exists yet
+    const hasMockDevice = Array.from(devicesRef.current.values()).some(
+      (d) => d.device instanceof MockSDRDevice,
+    );
+    if (hasMockDevice) {
       return;
     }
 

@@ -114,7 +114,7 @@ describe("Zustand Store", () => {
         duration: 100, // 100ms for testing
       });
       expect(useStore.getState().notifications).toHaveLength(1);
-      
+
       setTimeout(() => {
         const { notifications } = useStore.getState();
         expect(notifications).toHaveLength(0);
@@ -152,7 +152,7 @@ describe("Zustand Store", () => {
       const { setSettings, setFrequencyHz } = useStore.getState();
       setSettings({ highPerf: true });
       setFrequencyHz(915_000_000);
-      
+
       const state = useStore.getState();
       expect(state.settings.highPerf).toBe(true);
       expect(state.frequencyHz).toBe(915_000_000);

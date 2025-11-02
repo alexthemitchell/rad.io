@@ -43,12 +43,6 @@ export const notificationSlice: StateCreator<NotificationSlice> = (
       id,
     };
 
-    // Add notification
-    set((state) => ({
-      notifications: [...state.notifications, newNotification],
-      _nextId: state._nextId + 1,
-    }));
-
     // Also send to global notification bus for compatibility with ToastProvider
     busNotify({
       message: notification.message,
@@ -58,7 +52,7 @@ export const notificationSlice: StateCreator<NotificationSlice> = (
       duration: notification.duration,
     });
 
-    // Schedule removal
+    // Schedule removal timeout
     const timeoutId = setTimeout(() => {
       set((state) => {
         const newTimeouts = new Map(state._timeouts);
@@ -70,11 +64,15 @@ export const notificationSlice: StateCreator<NotificationSlice> = (
       });
     }, notification.duration ?? 5000);
 
-    // Track timeout for cleanup
+    // Add notification and track timeout in a single atomic state update
     set((state) => {
       const newTimeouts = new Map(state._timeouts);
       newTimeouts.set(id, timeoutId);
-      return { _timeouts: newTimeouts };
+      return {
+        notifications: [...state.notifications, newNotification],
+        _nextId: state._nextId + 1,
+        _timeouts: newTimeouts,
+      };
     });
   },
 });

@@ -7,8 +7,12 @@ import RenderingSettingsModal from "../components/RenderingSettingsModal";
 import SignalStrengthMeter from "../components/SignalStrengthMeter";
 import StatusBar from "../components/StatusBar";
 import { WATERFALL_COLORMAPS } from "../constants";
-import { useSettings } from "../contexts";
-import { useDevice, useFrequency, useNotifications } from "../contexts";
+import {
+  useDevice,
+  useFrequency,
+  useNotifications,
+  useSettings,
+} from "../contexts";
 import { useDsp } from "../hooks/useDsp";
 import {
   useFrequencyScanner,

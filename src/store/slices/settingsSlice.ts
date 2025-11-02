@@ -33,14 +33,18 @@ const DEFAULTS: SettingsState = {
 const STORAGE_KEY = "rad.settings.v1";
 
 /**
+ * Allowed FFT sizes for validation
+ */
+const ALLOWED_FFT_SIZES = [1024, 2048, 4096, 8192] as const;
+
+/**
  * Validates and normalizes settings loaded from storage
  */
 function normalizeSettings(partial: Partial<SettingsState>): SettingsState {
   const next: SettingsState = { ...DEFAULTS, ...partial };
 
   // Normalize fftSize
-  const allowedFft = [1024, 2048, 4096, 8192];
-  if (!allowedFft.includes(next.fftSize)) {
+  if (!ALLOWED_FFT_SIZES.includes(next.fftSize)) {
     next.fftSize = DEFAULTS.fftSize;
   }
 
@@ -94,13 +98,12 @@ export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
       const next = { ...state.settings, ...partial };
 
       // Enforce valid fftSize
-      const allowedFft = [1024, 2048, 4096, 8192];
-      if (!allowedFft.includes(next.fftSize)) {
+      if (!ALLOWED_FFT_SIZES.includes(next.fftSize)) {
         next.fftSize = state.settings.fftSize;
       }
 
       // Normalize dB range entries (permit undefined)
-      if (Object.prototype.hasOwnProperty.call(partial, "dbMin")) {
+      if ("dbMin" in partial) {
         const v = partial.dbMin;
         if (v === undefined) {
           next.dbMin = undefined;
@@ -108,7 +111,7 @@ export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
           next.dbMin = state.settings.dbMin;
         }
       }
-      if (Object.prototype.hasOwnProperty.call(partial, "dbMax")) {
+      if ("dbMax" in partial) {
         const v = partial.dbMax;
         if (v === undefined) {
           next.dbMax = undefined;

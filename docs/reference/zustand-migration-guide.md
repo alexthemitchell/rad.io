@@ -14,14 +14,19 @@ The migration is mostly transparent - the same hooks work as before:
 
 ```typescript
 // Before and After - Same API!
-import { useSettings, useFrequency, useDevice, useNotifications } from '../contexts';
+import {
+  useSettings,
+  useFrequency,
+  useDevice,
+  useNotifications,
+} from "../contexts";
 
 function MyComponent() {
   const { settings, setSettings } = useSettings();
   const { frequencyHz, setFrequencyHz } = useFrequency();
   const { devices, primaryDevice } = useDevice();
   const { notify } = useNotifications();
-  
+
   // Use as before
 }
 ```
@@ -31,7 +36,7 @@ function MyComponent() {
 For new code, prefer importing directly from the store:
 
 ```typescript
-import { useSettings, useFrequency } from '../store';
+import { useSettings, useFrequency } from "../store";
 
 function MyComponent() {
   const { settings, setSettings } = useSettings();
@@ -60,7 +65,7 @@ You no longer need to wrap components in Context providers:
 Zustand allows accessing the store outside React components:
 
 ```typescript
-import { useStore } from '../store';
+import { useStore } from "../store";
 
 // Get current state anywhere
 const currentFrequency = useStore.getState().frequencyHz;
@@ -72,8 +77,8 @@ useStore.getState().setFrequencyHz(100_000_000);
 const unsubscribe = useStore.subscribe(
   (state) => state.frequencyHz,
   (frequencyHz) => {
-    console.log('Frequency changed:', frequencyHz);
-  }
+    console.log("Frequency changed:", frequencyHz);
+  },
 );
 ```
 
@@ -113,10 +118,10 @@ import { useStore } from '../store';
 
 it('does something when frequency changes', () => {
   const { getByText } = render(<MyComponent />);
-  
+
   // Directly manipulate store
   useStore.getState().setFrequencyHz(88_500_000);
-  
+
   // Assert based on new state
   expect(getByText('88.5 MHz')).toBeInTheDocument();
 });
@@ -125,7 +130,7 @@ it('does something when frequency changes', () => {
 ### Mocking the Store
 
 ```typescript
-import { useStore } from '../store';
+import { useStore } from "../store";
 
 beforeEach(() => {
   // Reset store to known state
@@ -133,7 +138,7 @@ beforeEach(() => {
     frequencyHz: 100_000_000,
     settings: {
       highPerf: false,
-      vizMode: 'fft',
+      vizMode: "fft",
       // ... other defaults
     },
   });
@@ -189,7 +194,7 @@ export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
 1. Create `src/store/slices/mySlice.ts`:
 
 ```typescript
-import { StateCreator } from 'zustand';
+import { StateCreator } from "zustand";
 
 export interface MyState {
   value: string;
@@ -200,7 +205,7 @@ export interface MySlice extends MyState {
 }
 
 export const mySlice: StateCreator<MySlice> = (set) => ({
-  value: '',
+  value: "",
   setValue: (value: string): void => {
     set({ value });
   },
@@ -210,7 +215,7 @@ export const mySlice: StateCreator<MySlice> = (set) => ({
 2. Add to root store in `src/store/index.ts`:
 
 ```typescript
-import { mySlice, type MySlice } from './slices/mySlice';
+import { mySlice, type MySlice } from "./slices/mySlice";
 
 export type RootState = SettingsSlice & FrequencySlice & MySlice;
 
@@ -221,8 +226,8 @@ export const useStore = create<RootState>()(
       ...frequencySlice(...args),
       ...mySlice(...args),
     }),
-    { name: 'rad.io-store' }
-  )
+    { name: "rad.io-store" },
+  ),
 );
 
 // Add convenience hook
@@ -266,7 +271,7 @@ export const useSettings = () => {
 };
 
 // ❌ Bad - creates new object every time, causing infinite re-renders
-export const useSettings = () => 
+export const useSettings = () =>
   useStore((state) => ({
     settings: state.settings,
     setSettings: state.setSettings,
@@ -309,16 +314,16 @@ const isHighFrequency = useStore((state) => state.frequencyHz > 1_000_000_000);
 closeDevice: async (deviceId: DeviceId): Promise<void> => {
   const state = get();
   const entry = state.devices.get(deviceId);
-  
+
   if (!entry) return;
-  
+
   try {
     await entry.device.close();
     state.removeDevice(deviceId);
   } catch (err) {
     // Handle error
   }
-}
+};
 ```
 
 ### Middleware
@@ -326,7 +331,7 @@ closeDevice: async (deviceId: DeviceId): Promise<void> => {
 Zustand supports middleware for cross-cutting concerns:
 
 ```typescript
-import { persist } from 'zustand/middleware';
+import { persist } from "zustand/middleware";
 
 // Example: persist settings to localStorage
 export const useStore = create<RootState>()(
@@ -336,9 +341,9 @@ export const useStore = create<RootState>()(
         ...settingsSlice(...args),
         // ...
       }),
-      { name: 'rad.io-storage' }
-    )
-  )
+      { name: "rad.io-storage" },
+    ),
+  ),
 );
 ```
 
