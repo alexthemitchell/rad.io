@@ -27,6 +27,7 @@ This directory contains starter templates for creating rad.io plugins.
 4. **Add tests** in `__tests__/MyDemodulatorPlugin.test.ts`
 
 5. **Export your plugin** in `src/plugins/index.ts`:
+
    ```typescript
    export { MyDemodulatorPlugin } from "./demodulators/MyDemodulatorPlugin";
    ```

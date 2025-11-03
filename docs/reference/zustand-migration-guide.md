@@ -44,7 +44,7 @@ function MyComponent() {
 }
 ```
 
-### No More Providers!
+### No More Providers
 
 You no longer need to wrap components in Context providers:
 
@@ -212,7 +212,7 @@ export const mySlice: StateCreator<MySlice> = (set) => ({
 });
 ```
 
-2. Add to root store in `src/store/index.ts`:
+1. Add to root store in `src/store/index.ts`:
 
 ```typescript
 import { mySlice, type MySlice } from "./slices/mySlice";
@@ -241,7 +241,7 @@ export const useMySlice = (): {
 };
 ```
 
-3. Export from `src/contexts/index.ts` for backward compatibility:
+1. Export from `src/contexts/index.ts` for backward compatibility:
 
 ```typescript
 export { useMySlice } from "../store";
