@@ -34,6 +34,9 @@ export function useDeviceIntegration(): void {
     devicesRef.current = devices;
   }, [devices]);
 
+  // Track if mock device has been initialized to avoid redundant checks
+  const mockInitializedRef = useRef(false);
+
   // Register built-in drivers on mount
   useEffect(() => {
     registerBuiltinDrivers();
@@ -127,11 +130,8 @@ export function useDeviceIntegration(): void {
     if (!useMock) {
       return;
     }
-    // Only create a mock device if none exists yet
-    const hasMockDevice = Array.from(devicesRef.current.values()).some(
-      (d) => d.device instanceof MockSDRDevice,
-    );
-    if (hasMockDevice) {
+    // Only create a mock device if we haven't already initialized one
+    if (mockInitializedRef.current) {
       return;
     }
 
@@ -140,6 +140,7 @@ export function useDeviceIntegration(): void {
         const mock = new MockSDRDevice();
         await mock.open();
         addDevice("mock:device", { device: mock });
+        mockInitializedRef.current = true;
         deviceLogger.info("Mock SDR device initialized for E2E", {
           reason: "shouldUseMockSDR()",
         });

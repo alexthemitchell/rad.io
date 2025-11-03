@@ -10,11 +10,7 @@ describe("Zustand Store", () => {
     const state = useStore.getState();
     state.resetSettings();
     state.setFrequencyHz(100_000_000);
-    // Clear notifications
-    state.notifications.forEach(() => {
-      // Notifications will auto-clear, just reset the array
-    });
-    // Reset to empty state
+    // Clear notifications - reset to empty state
     useStore.setState({ notifications: [], _nextId: 0, _timeouts: new Map() });
   });
 
@@ -48,8 +44,8 @@ describe("Zustand Store", () => {
     it("should validate fftSize", () => {
       const { setSettings } = useStore.getState();
       const initialFftSize = useStore.getState().settings.fftSize;
-      // @ts-expect-error Testing invalid fftSize
-      setSettings({ fftSize: 1000 });
+      // Test invalid fftSize - should be rejected and keep current value
+      setSettings({ fftSize: 1000 as number });
       const { settings } = useStore.getState();
       expect(settings.fftSize).toBe(initialFftSize); // Should not change
     });
@@ -101,7 +97,7 @@ describe("Zustand Store", () => {
       });
       const { notifications } = useStore.getState();
       expect(notifications).toHaveLength(1);
-      expect(notifications[0].message).toBe("Test notification");
+      expect(notifications[0]?.message).toBe("Test notification");
     });
 
     it("should auto-remove notifications after duration", (done) => {

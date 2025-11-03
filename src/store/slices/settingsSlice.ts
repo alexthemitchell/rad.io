@@ -35,7 +35,7 @@ const STORAGE_KEY = "rad.settings.v1";
 /**
  * Allowed FFT sizes for validation
  */
-const ALLOWED_FFT_SIZES = [1024, 2048, 4096, 8192] as const;
+const ALLOWED_FFT_SIZES: readonly number[] = [1024, 2048, 4096, 8192];
 
 /**
  * Validates and normalizes settings loaded from storage

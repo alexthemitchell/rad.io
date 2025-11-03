@@ -6,13 +6,17 @@
  */
 
 import { type StateCreator } from "zustand";
-import { notify as busNotify } from "../../lib/notifications";
+import {
+  notify as busNotify,
+  type Politeness,
+  type Tone,
+} from "../../lib/notifications";
 
 export interface Notification {
   id: number;
   message: string;
-  tone: "success" | "error" | "info";
-  sr: "assertive" | "polite";
+  tone: Tone;
+  sr: Politeness;
   visual: boolean;
 }
 
