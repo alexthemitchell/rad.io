@@ -7,17 +7,17 @@ import RenderingSettingsModal from "../components/RenderingSettingsModal";
 import SignalStrengthMeter from "../components/SignalStrengthMeter";
 import StatusBar from "../components/StatusBar";
 import { WATERFALL_COLORMAPS } from "../constants";
-import {
-  useDevice,
-  useFrequency,
-  useNotifications,
-  useSettings,
-} from "../contexts";
 import { useDsp } from "../hooks/useDsp";
 import {
   useFrequencyScanner,
   type ActiveSignal,
 } from "../hooks/useFrequencyScanner";
+import {
+  useDevice,
+  useFrequency,
+  useNotifications,
+  useSettings,
+} from "../store";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { formatFrequency } from "../utils/frequency";
 import type { IQSample } from "../models/SDRDevice";
@@ -29,7 +29,7 @@ declare global {
 }
 
 const Monitor: React.FC = () => {
-  const { device } = useDevice();
+  const { primaryDevice: device } = useDevice();
   const { notify } = useNotifications();
   const useMock = shouldUseMockSDR();
 

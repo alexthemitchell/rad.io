@@ -10,13 +10,13 @@ import TalkgroupScanner, {
 } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import TransmissionLogViewer from "../components/TransmissionLogViewer";
-import { useDevice } from "../contexts";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { notify } from "../lib/notifications";
+import { useDevice } from "../store";
 
 function Scanner(): React.JSX.Element {
   const navigate = useNavigate();
-  const { device } = useDevice();
+  const { primaryDevice: device } = useDevice();
   const [signalType, setSignalType] = useState<SignalType>("FM");
   const scanner = useFrequencyScanner(device);
 

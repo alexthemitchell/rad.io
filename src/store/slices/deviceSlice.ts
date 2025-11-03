@@ -99,7 +99,15 @@ export interface DeviceSlice {
   ) => void;
 }
 
-export const deviceSlice: StateCreator<DeviceSlice> = (set, get) => ({
+export const deviceSlice: StateCreator<DeviceSlice> = (
+  set: (
+    partial:
+      | DeviceSlice
+      | Partial<DeviceSlice>
+      | ((state: DeviceSlice) => DeviceSlice | Partial<DeviceSlice>),
+  ) => void,
+  get: () => DeviceSlice,
+) => ({
   devices: new Map(),
   primaryDevice: undefined,
   isCheckingPaired: true,
@@ -116,7 +124,7 @@ export const deviceSlice: StateCreator<DeviceSlice> = (set, get) => ({
   },
 
   addDevice: (deviceId: DeviceId, entry: DeviceEntry): void => {
-    set((state) => {
+    set((state: DeviceSlice) => {
       // Skip if already initialized
       if (state.devices.has(deviceId)) {
         deviceLogger.debug("Device already initialized", { deviceId });
@@ -147,7 +155,7 @@ export const deviceSlice: StateCreator<DeviceSlice> = (set, get) => ({
   },
 
   removeDevice: (deviceId: DeviceId): void => {
-    set((state) => {
+    set((state: DeviceSlice) => {
       const newDevices = new Map(state.devices);
       const removed = newDevices.delete(deviceId);
 
@@ -214,15 +222,17 @@ export const deviceSlice: StateCreator<DeviceSlice> = (set, get) => ({
     // Clear devices immediately to prevent concurrent closes
     set({ devices: new Map(), primaryDevice: undefined });
 
-    const closePromises = devicesToClose.map(async ([deviceId, entry]) => {
-      try {
-        await entry.device.close();
-      } catch (err) {
-        deviceLogger.error("Failed to close device during cleanup", err, {
-          deviceId,
-        });
-      }
-    });
+    const closePromises = devicesToClose.map(
+      async ([deviceId, entry]: [DeviceId, DeviceEntry]) => {
+        try {
+          await entry.device.close();
+        } catch (err) {
+          deviceLogger.error("Failed to close device during cleanup", err, {
+            deviceId,
+          });
+        }
+      },
+    );
 
     await Promise.allSettled(closePromises);
     deviceLogger.info("All devices closed");

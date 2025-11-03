@@ -30,8 +30,15 @@ export interface NotificationSlice {
 }
 
 export const notificationSlice: StateCreator<NotificationSlice> = (
-  set,
-  get,
+  set: (
+    partial:
+      | NotificationSlice
+      | Partial<NotificationSlice>
+      | ((
+          state: NotificationSlice,
+        ) => NotificationSlice | Partial<NotificationSlice>),
+  ) => void,
+  get: () => NotificationSlice,
 ) => ({
   notifications: [],
   _nextId: 0,
@@ -58,18 +65,20 @@ export const notificationSlice: StateCreator<NotificationSlice> = (
 
     // Schedule removal timeout
     const timeoutId = setTimeout(() => {
-      set((state) => {
+      set((state: NotificationSlice) => {
         const newTimeouts = new Map(state._timeouts);
         newTimeouts.delete(id);
         return {
-          notifications: state.notifications.filter((n) => n.id !== id),
+          notifications: state.notifications.filter(
+            (n: Notification) => n.id !== id,
+          ),
           _timeouts: newTimeouts,
         };
       });
     }, notification.duration ?? 5000);
 
     // Add notification and track timeout in a single atomic state update
-    set((state) => {
+    set((state: NotificationSlice) => {
       const newTimeouts = new Map(state._timeouts);
       newTimeouts.set(id, timeoutId);
       return {

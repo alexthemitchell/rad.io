@@ -9,10 +9,10 @@ import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
-import { useDevice } from "../contexts";
 import { notify } from "../lib/notifications";
 import { type ISDRDevice } from "../models/SDRDevice";
 import Measurements from "../panels/Measurements";
+import { useDevice } from "../store";
 import { type Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import {
@@ -50,7 +50,11 @@ const DEFAULT_MAX_BUFFER_SAMPLES = 32768;
 const DEFAULT_UPDATE_INTERVAL_MS = 33; // ~30 FPS
 
 function Analysis(): React.JSX.Element {
-  const { device, initialize, isCheckingPaired } = useDevice();
+  const {
+    primaryDevice: device,
+    requestDevice,
+    isCheckingPaired,
+  } = useDevice();
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [frequency] = useState(100.3e6);
@@ -275,7 +279,7 @@ function Analysis(): React.JSX.Element {
     setIsInitializing(true);
 
     try {
-      await initialize();
+      await requestDevice();
       setDeviceError(null);
       notify({
         message: "SDR device connected",
@@ -297,7 +301,7 @@ function Analysis(): React.JSX.Element {
     } finally {
       setIsInitializing(false);
     }
-  }, [initialize, isInitializing]);
+  }, [requestDevice, isInitializing]);
 
   // Handle start reception
   const startListening = useCallback(async (): Promise<void> => {

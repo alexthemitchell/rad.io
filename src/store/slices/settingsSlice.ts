@@ -84,7 +84,14 @@ export interface SettingsSlice {
   resetSettings: () => void;
 }
 
-export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
+export const settingsSlice: StateCreator<SettingsSlice> = (
+  set: (
+    partial:
+      | SettingsSlice
+      | Partial<SettingsSlice>
+      | ((state: SettingsSlice) => SettingsSlice | Partial<SettingsSlice>),
+  ) => void,
+) => ({
   settings: ((): SettingsState => {
     // Load from storage on initialization
     try {
@@ -100,7 +107,7 @@ export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
   })(),
 
   setSettings: (partial: Partial<SettingsState>): void => {
-    set((state) => {
+    set((state: SettingsSlice) => {
       // Normalize partial updates against current settings (not DEFAULTS)
       const next = normalizeSettings(partial, state.settings);
 

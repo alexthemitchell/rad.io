@@ -12,7 +12,7 @@
  * - More scalable: Handles complex state logic better
  */
 
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
 import { devtools } from "zustand/middleware";
 import {
   deviceSlice,
@@ -49,7 +49,7 @@ export type RootState = SettingsSlice &
  */
 export const useStore = create<RootState>()(
   devtools(
-    (...args) => ({
+    (...args: Parameters<StateCreator<RootState>>) => ({
       ...settingsSlice(...args),
       ...frequencySlice(...args),
       ...notificationSlice(...args),
@@ -70,9 +70,9 @@ export const useSettings = (): {
   setSettings: (partial: Partial<SettingsState>) => void;
   resetSettings: () => void;
 } => {
-  const settings = useStore((state) => state.settings);
-  const setSettings = useStore((state) => state.setSettings);
-  const resetSettings = useStore((state) => state.resetSettings);
+  const settings = useStore((state: RootState) => state.settings);
+  const setSettings = useStore((state: RootState) => state.setSettings);
+  const resetSettings = useStore((state: RootState) => state.resetSettings);
   return { settings, setSettings, resetSettings };
 };
 
@@ -81,8 +81,8 @@ export const useFrequency = (): {
   frequencyHz: number;
   setFrequencyHz: (hz: number) => void;
 } => {
-  const frequencyHz = useStore((state) => state.frequencyHz);
-  const setFrequencyHz = useStore((state) => state.setFrequencyHz);
+  const frequencyHz = useStore((state: RootState) => state.frequencyHz);
+  const setFrequencyHz = useStore((state: RootState) => state.setFrequencyHz);
   return { frequencyHz, setFrequencyHz };
 };
 
@@ -93,8 +93,8 @@ export const useNotifications = (): {
     notification: Omit<Notification, "id"> & { duration?: number },
   ) => void;
 } => {
-  const notifications = useStore((state) => state.notifications);
-  const notify = useStore((state) => state.notify);
+  const notifications = useStore((state: RootState) => state.notifications);
+  const notify = useStore((state: RootState) => state.notify);
   return { notifications, notify };
 };
 
@@ -108,14 +108,16 @@ export const useDevice = (): {
   closeAllDevices: () => Promise<void>;
   connectPairedUSBDevice: (usbDevice: USBDevice) => Promise<void>;
 } => {
-  const devices = useStore((state) => state.devices);
-  const primaryDevice = useStore((state) => state.primaryDevice);
-  const isCheckingPaired = useStore((state) => state.isCheckingPaired);
-  const requestDevice = useStore((state) => state.requestDevice);
-  const closeDevice = useStore((state) => state.closeDevice);
-  const closeAllDevices = useStore((state) => state.closeAllDevices);
+  const devices = useStore((state: RootState) => state.devices);
+  const primaryDevice = useStore((state: RootState) => state.primaryDevice);
+  const isCheckingPaired = useStore(
+    (state: RootState) => state.isCheckingPaired,
+  );
+  const requestDevice = useStore((state: RootState) => state.requestDevice);
+  const closeDevice = useStore((state: RootState) => state.closeDevice);
+  const closeAllDevices = useStore((state: RootState) => state.closeAllDevices);
   const connectPairedUSBDevice = useStore(
-    (state) => state.connectPairedUSBDevice,
+    (state: RootState) => state.connectPairedUSBDevice,
   );
   return {
     devices,

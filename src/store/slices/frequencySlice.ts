@@ -12,7 +12,14 @@ export interface FrequencySlice {
   setFrequencyHz: (hz: number) => void;
 }
 
-export const frequencySlice: StateCreator<FrequencySlice> = (set) => ({
+export const frequencySlice: StateCreator<FrequencySlice> = (
+  set: (
+    partial:
+      | FrequencySlice
+      | Partial<FrequencySlice>
+      | ((state: FrequencySlice) => FrequencySlice | Partial<FrequencySlice>),
+  ) => void,
+) => ({
   frequencyHz: 100_000_000, // Default to 100 MHz
 
   setFrequencyHz: (hz: number): void => {

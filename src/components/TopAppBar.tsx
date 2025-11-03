@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDevice } from "../contexts";
 import { useStatusMetrics } from "../hooks/useStatusMetrics";
+import { useDevice } from "../store";
 
 /**
  * TopAppBar component - Global status and quick actions
@@ -27,7 +27,7 @@ type TopAppBarProps = {
 };
 
 function TopAppBar({ asBanner = true }: TopAppBarProps): React.JSX.Element {
-  const { device } = useDevice();
+  const { primaryDevice: device } = useDevice();
   const navigate = useNavigate();
   // Reuse the centralized status metrics used by StatusBar for consistency
   const metrics = useStatusMetrics();
