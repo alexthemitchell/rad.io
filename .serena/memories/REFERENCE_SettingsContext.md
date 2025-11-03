@@ -25,7 +25,7 @@ Persistence:
 
 Usage:
 
-- Wrap app at root: <SettingsProvider> … </SettingsProvider>
+- Wrap app at root: `<SettingsProvider> … </SettingsProvider>`
 - Access in components: const { settings, setSettings, resetSettings } = useSettings()
 - Update settings with partials: setSettings({ vizMode: "waterfall" })
 - In JSX where strict types are required (e.g., PrimaryVisualization colorMap), assert type: const key = settings.colorMap as keyof typeof WATERFALL_COLORMAPS

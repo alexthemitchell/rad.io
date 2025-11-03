@@ -6,7 +6,7 @@ labels: bug
 assignees: ""
 ---
 
-## Bug Description
+# Bug Description
 
 A clear and concise description of the bug.
 

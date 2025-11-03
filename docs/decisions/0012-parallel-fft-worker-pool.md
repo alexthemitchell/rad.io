@@ -259,17 +259,17 @@ export async function scanBand(
 
 ## References
 
-#### Parallel Processing Algorithms
+### Parallel Processing Algorithms
 
 - Lea, Doug. "A Java Fork/Join Framework." Java Grande Conference (2000). [Paper](http://gee.cs.oswego.edu/dl/papers/fj.pdf) - Work-stealing scheduler design patterns
 - IEEE Signal Processing Magazine. "Parallel FFT Algorithms." - Parallel DSP implementation strategies
 
-#### Performance Research (from ADR-0002)
+### Performance Research (from ADR-0002)
 
 - IEEE (2015). "Performance Scalability Analysis of JavaScript Applications with Web Workers." [Research](https://ieeexplore.ieee.org/document/7307120) - Worker pool scaling analysis
 - fft.js benchmark: 47,511 ops/sec at 2048 points - fastest JavaScript FFT implementation
 
-#### Related ADRs
+### Related ADRs
 
 - ADR-0002: Web Worker DSP Architecture (foundational worker pool design)
 - ADR-0004: Signal Processing Library Selection (FFT library choice)

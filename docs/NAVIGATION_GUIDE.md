@@ -161,28 +161,28 @@ docs/
 
 ### Search by Keyword
 
-**Frequency**
+#### Frequency
 
 - Reference: [SDR Basics](./reference/sdr-basics.md)
 - Reference: [Frequency Allocations](./reference/frequency-allocations.md)
 
-**FFT**
+#### FFT
 
 - Reference: [FFT Implementation](./reference/fft-implementation.md)
 - How-To: [Optimize DSP Performance](./how-to/optimize-dsp-performance.md)
 
-**WebUSB**
+#### WebUSB
 
 - Explanation: [WebUSB Integration](./explanation/webusb-browser-integration.md)
 - How-To: [Debug WebUSB Issues](./how-to/debug-webusb.md)
 
-**Performance**
+#### Performance
 
 - How-To: [Optimize DSP Performance](./how-to/optimize-dsp-performance.md)
 - Reference: [Performance Optimization](./reference/performance-optimization.md)
 - Reference: [Performance Benchmarks](./reference/performance-benchmarks.md)
 
-**Testing**
+#### Testing
 
 - Root: [Testing Strategy](./testing/TEST_STRATEGY.md)
 - Reference: [Test Strategy](./reference/test-strategy.md)

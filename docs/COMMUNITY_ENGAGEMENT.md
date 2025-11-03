@@ -48,21 +48,21 @@ We track these metrics quarterly:
 
 ### For New Contributors
 
-**1. Clear Onboarding Path**
+#### 1. Clear Onboarding Path
 
 - [First-Time Contributor Checklist](../.github/FIRST_TIME_CONTRIBUTOR_CHECKLIST.md)
 - [Onboarding Guide](./ONBOARDING.md)
 - `good first issue` labels
 - Welcoming PR comments
 
-**2. Documentation**
+#### 2. Documentation
 
 - Comprehensive guides using Diátaxis framework
 - Video tutorials (planned)
 - Architecture documentation
 - Code comments and examples
 
-**3. Mentorship**
+#### 3. Mentorship
 
 - Pairing experienced contributors with newcomers
 - Code review as teaching opportunity
@@ -71,21 +71,21 @@ We track these metrics quarterly:
 
 ### For Active Contributors
 
-**1. Recognition**
+#### 1. Recognition
 
 - Listed in [CONTRIBUTORS.md](../CONTRIBUTORS.md)
 - Highlighted in release notes
 - Maintainer nomination pathway
 - Community shout-outs
 
-**2. Opportunities**
+#### 2. Opportunities
 
 - Complex issues for experienced developers
 - Architecture discussions
 - Feature design participation
 - Code review responsibilities
 
-**3. Growth**
+#### 3. Growth
 
 - Technical deep-dive sessions
 - Conference talk support
@@ -94,21 +94,21 @@ We track these metrics quarterly:
 
 ### For Maintainers
 
-**1. Efficiency Tools**
+#### 1. Efficiency Tools
 
 - Issue templates
 - PR checklists
 - Automated testing
 - CI/CD pipeline
 
-**2. Communication**
+#### 2. Communication
 
 - Regular roadmap updates
 - Clear decision-making process
 - Transparent governance
 - Monthly community calls
 
-**3. Sustainability**
+#### 3. Sustainability
 
 - Clear maintainer responsibilities
 - Succession planning
@@ -351,28 +351,28 @@ We maintain a quarterly health check:
 
 ### Contributor Levels
 
-**New Contributor**
+#### New Contributor
 
 - First merged PR
 - Added to CONTRIBUTORS.md
 - Welcome message
 - Badge in PR
 
-**Regular Contributor**
+#### Regular Contributor
 
 - 5+ merged PRs
 - Recognized in release notes
 - Invited to planning discussions
 - Code review privileges
 
-**Core Contributor**
+#### Core Contributor
 
 - 20+ merged PRs
 - Significant feature contributions
 - Mentoring new contributors
 - Considered for maintainer role
 
-**Maintainer**
+#### Maintainer
 
 - Consistent high-quality contributions
 - Community leadership

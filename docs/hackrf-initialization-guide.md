@@ -304,8 +304,8 @@ await hackrf.receive(callback); // Works!
 - Driver: WinUSB (v6.x)
 - Click "Install Driver" (or "Replace Driver")
 
-4. Unplug/replug the HackRF
-5. Retry in the browser (https://localhost:8080/monitor)
+1. Unplug/replug the HackRF
+2. Retry in the browser (https://localhost:8080/monitor)
 
 If issues persist, reflash or update HackRF firmware: https://greatscottgadgets.com/hackrf/one/
 

@@ -13,7 +13,7 @@ Check output of `npm start` to get deployed server URL (usually https://localhos
 **Consider `docs/decisions/` for architectural decision records that may inform your work.**
 **Refer to `docs/reference/` for specialized domain knowledge about SDR and related technologies.**
 
-**When reviewing memories, consider whether it is valuable information for future agents. If not, do not allow it to be committed**
+When reviewing memories, consider whether it is valuable information for future agents. If not, do not allow it to be committed.
 
 ## Tools
 
@@ -55,7 +55,7 @@ References: Microsoft Bot Framework state (persist preferences, not turns): http
 - Use #oraios/serena/list_memories → scan for relevant items (start with "memory_usage").
 - Use #oraios/serena/read_memory only for relevant memories; if a memory answers your question, avoid scanning the codebase.
 
-2. Symbol-first code exploration
+1. Symbol-first code exploration
 
 - Prefer these tools in order:
   - #oraios/serena/get_symbols_overview
@@ -64,7 +64,7 @@ References: Microsoft Bot Framework state (persist preferences, not turns): http
 - For discovery, use #oraios/serena/search_for_pattern with tight include globs and minimal context lines.
 - Avoid reading entire files unless strictly necessary. Never re-read the same content with multiple tools.
 
-3. Memory writing policy (what to store)
+1. Memory writing policy (what to store)
 
 - Capture durable, reusable knowledge: architecture decisions, invariants, concise debugging playbooks (root cause → minimal signal → fix), and repo-wide workflows.
 - Keep memories short (≈150–400 words), scannable, and link to code paths instead of inlining code.
@@ -72,7 +72,7 @@ References: Microsoft Bot Framework state (persist preferences, not turns): http
 - Before writing a memory, first use #oraios/serena/read_memory to find best practices on long term memory management.
 - You do not need to write any notes summarizing changes to memory, nor to files which are committed to the respository. Save these for comments and chat messages only.
 
-4. Operational hygiene
+1. Operational hygiene
 
 - Use a structured todo list to plan work; keep one item in progress.
 - Before edits, sanity-check your scope and assumptions; after multi-step searches, review whether collected information is sufficient.
@@ -80,7 +80,7 @@ References: Microsoft Bot Framework state (persist preferences, not turns): http
 - Do not add eslint-ignore or disable type checks unless absolutely necessary. Instead, fix the underlying issues.
 - Fix all problems surfaced by lint/type-check/build before proceeding, even if they are outside your immediate scope.
 
-5. Quick workflow
+1. Quick workflow
 
 - list_memories → read_memory (relevant only)
 - explore via symbols (overview → symbol → references)

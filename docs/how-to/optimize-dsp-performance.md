@@ -127,7 +127,7 @@ onmessage = (e) => {
 
 ### Convert Critical Paths to WASM
 
-**Example: FFT in AssemblyScript**
+#### Example: FFT in AssemblyScript
 
 Create `assembly/fft.ts`:
 

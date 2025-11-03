@@ -1,3 +1,5 @@
+# Memory Usage Policy
+
 - **Durable Knowledge Only**: Store architectural decisions, system invariants, debugging playbooks, and repo-wide workflows. Avoid feature-specific, transient, or log-heavy details.
 - **Short, Scannable Memories**: Target 150–400 words, use headings/bullets, and link to code paths (not inline code).
 - **Retrieve Before Read**: Always list and scan memories before reading code. If a memory answers the question, avoid codebase scans.

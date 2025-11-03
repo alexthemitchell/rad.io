@@ -51,7 +51,7 @@ Adopt the following UX Information Architecture and page map. Organize the app i
 - Accessibility: Keyboard tuning, focus order, announcers for frequency/mode changes (ADR-0017)
 - Dependencies: ADR-0003, ADR-0015, ADR-0008, ADR-0012
 
-2. Scanner (/scanner)
+1. Scanner (/scanner)
 
 - Purpose: Configure and run range/memory scans with activity logging
 - Includes: Scan config (range, steps, thresholds), activity table (timestamp/freq/peak/duration), real-time preview
@@ -60,7 +60,7 @@ Adopt the following UX Information Architecture and page map. Organize the app i
 - Accessibility: Full keyboard operation; live region for detections
 - Dependencies: ADR-0013, ADR-0014
 
-3. Decode (/decode)
+1. Decode (/decode)
 
 - Purpose: Digital mode decoders (RTTY, PSK31/63/125, SSTV) with mode-specific controls
 - Includes: Mode panel, AFC, varicode, live text/image outputs, copy/save
@@ -68,7 +68,7 @@ Adopt the following UX Information Architecture and page map. Organize the app i
 - Success: Accuracy and latency per PRD Iteration 1; progressive SSTV rendering
 - Dependencies: ADR-0016, ADR-0008
 
-4. Analysis (/analysis)
+1. Analysis (/analysis)
 
 - Purpose: Deep-dive visualization and measurement setup separate from live tuning
 - Includes: ConstellationDiagram, EyeDiagram, Spectrogram zoom, phase noise view
@@ -76,7 +76,7 @@ Adopt the following UX Information Architecture and page map. Organize the app i
 - Accessibility: Keyboard cursors; prefer-reduced-motion; descriptive labels
 - Dependencies: ADR-0015, ADR-0003
 
-5. Recordings (/recordings)
+1. Recordings (/recordings)
 
 - Purpose: Library for IQ/audio recordings with metadata and export
 - Includes: List/grid with filters/tags, playback/preview, SigMF export, storage quotas
@@ -180,12 +180,12 @@ Negative:
 - Pros: Fewer routes, simpler navigation
 - Cons: Poor deep-linking, hard to scale, monolithic complexity, hurts testing and shareability
 
-2. Multi-modal “modes” (Receive vs Analyze vs Manage)
+1. Multi-modal “modes” (Receive vs Analyze vs Manage)
 
 - Pros: Simple model
 - Cons: Frequent mode switches undercuts real-time workflows; too coarse for diverse personas
 
-3. Desktop “MDI” metaphor with floating windows
+1. Desktop “MDI” metaphor with floating windows
 
 - Pros: Power-user flexibility
 - Cons: Overhead for web, harder on small screens, accessibility challenges, higher cognitive load

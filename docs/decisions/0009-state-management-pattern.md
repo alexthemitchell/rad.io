@@ -460,18 +460,18 @@ useStore.setState({ waterfallOffset: offset }, true); // true = transient
 
 ## References
 
-#### Official Documentation and Libraries
+### Official Documentation and Libraries
 
 - [Zustand Documentation](https://github.com/pmndrs/zustand) - Official Zustand library and documentation
 - [Zustand vs Redux](https://github.com/pmndrs/zustand#why-zustand-over-redux) - Official comparison from Zustand maintainers
 
-#### Academic Research and Comparative Studies
+### Academic Research and Comparative Studies
 
 - "Performance and Developer Experience Comparison of Redux, Zustand, and Context API." International Journal of Science and Advanced Technology (2025). [Research Paper](https://www.ijsat.org/papers/2025/2/5026.pdf) - Quantitative study showing Zustand's minimal re-render advantage
 - "State Management in React: Comparing Redux Toolkit vs. Zustand." DEV Community (2024). [Technical Article](https://dev.to/hamzakhan/state-management-in-react-comparing-redux-toolkit-vs-zustand-3no) - Developer productivity and performance comparison
 - "React State Management Showdown: Redux vs Context API vs Zustand." Java Code Geeks (2025). [Comparative Analysis](https://www.javacodegeeks.com/2025/09/react-state-management-showdown-redux-vs-context-api-vs-zustand.html) - Architecture and scalability trade-offs
 
-#### Technical Articles and Best Practices
+### Technical Articles and Best Practices
 
 - "Zustand vs Redux: A Comprehensive Comparison." Better Stack Community (2024). [Developer Guide](https://betterstack.com/community/guides/scaling-nodejs/zustand-vs-redux/) - Detailed feature comparison and use case guidance
 - "State management in React and Next.js: Redux vs Recoil vs Zustand." Perficient (2025). [Technical Blog](https://blogs.perficient.com/2025/07/28/state-management-in-react-and-next-js-redux-vs-recoil-vs-zustand/) - Enterprise perspective on state management choices

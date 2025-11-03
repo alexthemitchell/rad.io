@@ -12,7 +12,7 @@ rad.io is a browser-based Software-Defined Radio (SDR) application that enables 
 
 **Decision**: Build entirely with web technologies rather than creating a desktop application.
 
-**Why?**
+#### Why?
 
 - **Universal Access**: Works on any device with a modern browser
 - **No Installation**: Users can start analyzing signals immediately
@@ -63,7 +63,7 @@ The architecture is layered with clear boundaries:
 └─────────────────────────────────────────┘
 ```
 
-**Why this structure?**
+#### Why this structure?
 
 - **Testability**: Each layer can be tested independently
 - **Flexibility**: Swap implementations without affecting other layers
@@ -74,7 +74,7 @@ The architecture is layered with clear boundaries:
 
 **Decision**: Use TypeScript with strict mode enabled throughout.
 
-**Why?**
+#### Why?
 
 - **Catch Errors Early**: Type errors found at compile time, not runtime
 - **Better Tooling**: IDE autocomplete, refactoring tools, inline documentation
@@ -164,7 +164,7 @@ See [ADR-0002: Web Worker DSP Architecture](../decisions/0002-web-worker-dsp-arc
 2. **WebGL** (fallback): Broad support, good performance
 3. **Canvas 2D** (last resort): Works everywhere, acceptable performance
 
-**Why three backends?**
+#### Why three backends?
 
 - **Compatibility**: Works on maximum number of devices
 - **Performance**: Use fastest available option

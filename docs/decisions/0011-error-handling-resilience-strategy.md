@@ -197,17 +197,17 @@ export function logError(
 
 ## References
 
-#### Official Documentation and Standards
+### Official Documentation and Standards
 
 - [Error Boundaries - React](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary) - Official React error boundary documentation
 - [WebUSB API - Error Handling](https://developer.mozilla.org/en-US/docs/Web/API/USB) - USB device error recovery patterns
 
-#### Design Philosophy and Best Practices
+### Design Philosophy and Best Practices
 
 - Keith, Jeremy. "Resilient Web Design." (2016). [Book](https://resilientwebdesign.com/) - Principles of fault-tolerant web applications
 - "Error Handling Best Practices in Node.js" - Industry patterns applicable to browser JavaScript
 
-#### Related ADRs
+### Related ADRs
 
 - ADR-0002: Web Worker DSP Architecture (worker error isolation)
 - ADR-0008: Web Audio API Architecture (audio underrun recovery)

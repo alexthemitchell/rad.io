@@ -6,7 +6,7 @@ labels: documentation
 assignees: ""
 ---
 
-## Documentation Issue
+# Documentation Issue
 
 Describe what documentation is missing, unclear, or incorrect.
 

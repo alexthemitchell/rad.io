@@ -428,18 +428,18 @@ export function useScan(device: SDRDevice | null) {
 
 ## References
 
-#### Academic and Industry Research
+### Academic and Industry Research
 
 - IEEE Communications Magazine. "Spectrum Sensing Techniques for Cognitive Radio Systems." - Survey of scanning strategies
 - GNU Radio Conference Proceedings. "Fast Frequency Scanning for Software Defined Radio." - Practical SDR scanning implementation
 - SDR Academy. "Adaptive Step Size in Frequency Scanning." - Optimization techniques
 
-#### SDR Resources
+### SDR Resources
 
 - [GNU Radio](https://www.gnuradio.org/) - Open source SDR framework with scanning examples
 - [LiquidSDR](https://liquidsdr.org/) - DSP library with spectrum sensing primitives
 
-#### Related ADRs
+### Related ADRs
 
 - ADR-0013: Automatic Signal Detection System (detection during scan)
 - ADR-0012: Parallel FFT Worker Pool (parallel spectrum analysis)

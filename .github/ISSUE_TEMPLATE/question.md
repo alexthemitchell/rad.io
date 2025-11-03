@@ -6,7 +6,7 @@ labels: question
 assignees: ""
 ---
 
-## Question
+# Question
 
 A clear and concise question about the project.
 

@@ -130,7 +130,7 @@ Success criteria for this decision:
 
 ### Implementation Patterns
 
-**1. Keyboard Navigation**
+### 1. Keyboard Navigation
 
 ```typescript
 // src/hooks/use-keyboard-navigation.ts
@@ -184,7 +184,7 @@ export function useKeyboardNavigation() {
 }
 ```
 
-**2. Focus Management**
+### 2. Focus Management
 
 ```typescript
 // src/hooks/use-focus-trap.ts
@@ -236,7 +236,7 @@ export function useFocusTrap(
 }
 ```
 
-**3. ARIA Live Regions for Status Updates**
+### 3. ARIA Live Regions for Status Updates
 
 ```typescript
 // src/components/AccessibleStatus.tsx
@@ -282,7 +282,7 @@ export function AccessibleStatus() {
 }
 ```
 
-**4. Accessible Form Controls**
+### 4. Accessible Form Controls
 
 ```tsx
 // src/components/FrequencyInput.tsx
@@ -332,7 +332,7 @@ export function FrequencyInput() {
 }
 ```
 
-**5. Screen Reader Utilities**
+### 5. Screen Reader Utilities
 
 ```css
 /* src/index.css - Screen reader only class */
@@ -361,7 +361,7 @@ export function FrequencyInput() {
 }
 ```
 
-**6. Accessible Visualizations**
+### 6. Accessible Visualizations
 
 ```typescript
 // src/components/AccessibleWaterfall.tsx
@@ -450,7 +450,7 @@ export function AccessibleWaterfall({ data }: { data: Float32Array }) {
 }
 ```
 
-**7. Reduced Motion Support**
+### 7. Reduced Motion Support
 
 ```typescript
 // src/hooks/use-reduced-motion.ts
@@ -492,7 +492,7 @@ function AnimatedComponent() {
 }
 ```
 
-**8. Focus Indicators**
+### 8. Focus Indicators
 
 ```css
 /* src/index.css - Visible focus indicators */

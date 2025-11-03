@@ -66,12 +66,12 @@ await mcp_microsoft_pla_browser_click({
 });
 ```
 
-3. **MANUAL ACTION REQUIRED**: A WebUSB device picker will appear
+1. **MANUAL ACTION REQUIRED**: A WebUSB device picker will appear
    - User must manually select "HackRF One" from the list
    - Click "Connect" in the dialog
    - This cannot be automated
 
-4. After pairing, verify device connected:
+2. After pairing, verify device connected:
 
 ```typescript
 // Wait for device to initialize
@@ -84,7 +84,7 @@ await mcp_microsoft_pla_browser_take_screenshot({
 });
 ```
 
-5. Verify in snapshot:
+1. Verify in snapshot:
    - Device status shows "HackRF One"
    - "Start reception" button is visible and enabled
    - Sample rate displays in status bar

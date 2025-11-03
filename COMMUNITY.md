@@ -320,4 +320,4 @@ Welcome to the community! 🎉
 
 ---
 
-_This document is a living guide. Suggest improvements via PR or Discussion._
+*This document is a living guide. Suggest improvements via PR or Discussion.*

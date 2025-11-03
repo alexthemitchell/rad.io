@@ -416,21 +416,21 @@ export class ConstellationRenderer extends BaseWebGLRenderer {
 
 ## References
 
-#### WebGL Resources and Documentation
+### WebGL Resources and Documentation
 
 - [WebGL2 Fundamentals](https://webgl2fundamentals.org/) - Comprehensive WebGL2 tutorial and reference
 - [GPU Gems - Efficient Data Textures](https://developer.nvidia.com/gpugems) - NVIDIA GPU optimization techniques
 
-#### Academic Research (from ADR-0003)
+### Academic Research (from ADR-0003)
 
 - Springer (2025). "DECODE-3DViz: Efficient WebGL-Based High-Fidelity Visualization." [Research](https://link.springer.com/article/10.1007/s10278-025-01430-9) - 144 FPS with large datasets using LOD
 - ScienceDirect (2024). "WebGL vs. WebGPU: A Performance Analysis." [Paper](https://www.sciencedirect.com/science/article/pii/S1877050924006410) - Performance benchmarks
 
-#### Conference Papers
+### Conference Papers
 
 - "Real-Time Data Visualization in WebGL" - IEEE Vis Conference 2020 - Real-time rendering strategies
 
-#### Related ADRs
+### Related ADRs
 
 - ADR-0003: WebGL2/WebGPU GPU Acceleration (rendering platform choice)
 - ADR-0016: Viridis Colormap (colormap shader implementation)
