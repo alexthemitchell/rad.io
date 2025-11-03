@@ -206,7 +206,7 @@ export interface MySlice extends MyState {
 
 export const mySlice: StateCreator<MySlice> = (set) => ({
   value: "",
-  setValue: (value: string): void => {
+  setValue: (value: string) => {
     set({ value });
   },
 });

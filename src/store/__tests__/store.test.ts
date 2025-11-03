@@ -50,6 +50,23 @@ describe("Zustand Store", () => {
       expect(settings.fftSize).toBe(initialFftSize); // Should not change
     });
 
+    it("should preserve user settings when updating unrelated fields", () => {
+      const { setSettings } = useStore.getState();
+      // Set specific dB values
+      setSettings({ dbMin: -100, dbMax: -50 });
+      expect(useStore.getState().settings.dbMin).toBe(-100);
+      expect(useStore.getState().settings.dbMax).toBe(-50);
+      
+      // Update an unrelated field
+      setSettings({ highPerf: true });
+      
+      // dB values should remain unchanged, not reset to undefined
+      const { settings } = useStore.getState();
+      expect(settings.dbMin).toBe(-100);
+      expect(settings.dbMax).toBe(-50);
+      expect(settings.highPerf).toBe(true);
+    });
+
     it("should normalize dB range", () => {
       const { setSettings } = useStore.getState();
       setSettings({ dbMin: -80, dbMax: -20 });

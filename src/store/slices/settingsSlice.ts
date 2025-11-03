@@ -38,25 +38,31 @@ const STORAGE_KEY = "rad.settings.v1";
 const ALLOWED_FFT_SIZES: readonly number[] = [1024, 2048, 4096, 8192];
 
 /**
- * Validates and normalizes settings loaded from storage
+ * Validates and normalizes settings loaded from storage.
+ * Only merges with DEFAULTS when base is not provided (used for initial load).
  */
-function normalizeSettings(partial: Partial<SettingsState>): SettingsState {
-  const next: SettingsState = { ...DEFAULTS, ...partial };
+function normalizeSettings(
+  partial: Partial<SettingsState>,
+  base?: SettingsState,
+): SettingsState {
+  const next: SettingsState = base
+    ? { ...base, ...partial }
+    : { ...DEFAULTS, ...partial };
 
   // Normalize fftSize
   if (!ALLOWED_FFT_SIZES.includes(next.fftSize)) {
-    next.fftSize = DEFAULTS.fftSize;
+    next.fftSize = base ? base.fftSize : DEFAULTS.fftSize;
   }
 
   // Normalize dB range: allow undefined (auto). Coerce non-number/NaN to undefined.
   if (next.dbMin !== undefined) {
     if (typeof next.dbMin !== "number" || Number.isNaN(next.dbMin)) {
-      next.dbMin = undefined;
+      next.dbMin = base?.dbMin ?? undefined;
     }
   }
   if (next.dbMax !== undefined) {
     if (typeof next.dbMax !== "number" || Number.isNaN(next.dbMax)) {
-      next.dbMax = undefined;
+      next.dbMax = base?.dbMax ?? undefined;
     }
   }
   if (
@@ -95,9 +101,8 @@ export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
 
   setSettings: (partial: Partial<SettingsState>): void => {
     set((state) => {
-      // Merge partial updates with current settings and normalize
-      const merged = { ...state.settings, ...partial };
-      const next = normalizeSettings(merged);
+      // Normalize partial updates against current settings (not DEFAULTS)
+      const next = normalizeSettings(partial, state.settings);
 
       // Persist to storage
       try {
