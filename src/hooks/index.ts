@@ -16,3 +16,9 @@ export {
   type UseReceptionResult,
   type HardwareConfig,
 } from "./useReception";
+export {
+  useFrequencyInput,
+  type UseFrequencyInputOptions,
+  type UseFrequencyInputResult,
+  type SignalType as FrequencySignalType,
+} from "./useFrequencyInput";
