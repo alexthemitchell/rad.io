@@ -22,7 +22,9 @@ This guide documents the pattern used to decouple React components from business
 ## Refactoring Pattern
 
 ### Step 1: Identify Business Logic
+
 Look for logic in components related to:
+
 - Data transformation (e.g., unit conversion)
 - Validation and bounds checking
 - State machines and workflows
@@ -30,17 +32,19 @@ Look for logic in components related to:
 - Complex calculations
 
 ### Step 2: Create Custom Hook
+
 Extract logic into a hook with:
+
 ```typescript
 export function useFeatureName(options: Options): Result {
   // Internal state
   const [state, setState] = useState(...);
-  
+
   // Callbacks with business logic
   const handleAction = useCallback((...) => {
     // Business logic here
   }, [deps]);
-  
+
   // Return interface for component
   return {
     state,
@@ -51,20 +55,24 @@ export function useFeatureName(options: Options): Result {
 ```
 
 ### Step 3: Add Comprehensive Tests
+
 Test the hook independently:
+
 - All state transitions
 - Edge cases and error handling
 - Callback behavior
 - Dependency tracking
 
 ### Step 4: Update Component
+
 Replace inline logic with hook:
+
 ```typescript
 function Component(props) {
   const { state, handlers, values } = useFeatureName({
     // Pass props to hook
   });
-  
+
   return (
     <div>
       {/* Pure UI rendering using hook's interface */}
@@ -76,27 +84,33 @@ function Component(props) {
 ## Examples from rad.io
 
 ### Example 1: useReception
+
 **Extracted from**: Monitor component
 **Logic encapsulated**:
+
 - Device tuning with hardware parameters
 - Reception start/stop control
 - Auto-start behavior
 - Cleanup on unmount
 
 **Benefits**:
+
 - Monitor component reduced by ~100 lines
 - Reception logic testable independently
 - Can be reused in other components
 
 ### Example 2: useFrequencyInput
+
 **Extracted from**: RadioControls component
 **Logic encapsulated**:
+
 - Hz ↔ MHz/kHz conversion
 - Signal type-specific bounds (FM/AM/P25)
 - Keyboard navigation (Arrow, PageUp/Down)
 - Accessibility text generation
 
 **Benefits**:
+
 - RadioControls is now purely presentational
 - Frequency logic reusable across components
 - 18 tests ensure correctness
@@ -105,6 +119,7 @@ function Component(props) {
 ## Testing Strategy
 
 ### Hook Tests
+
 - Mock all external dependencies
 - Test state changes independently
 - Verify callback behavior
@@ -112,6 +127,7 @@ function Component(props) {
 - Test cleanup effects
 
 ### Component Tests
+
 - Mock the custom hook
 - Test UI rendering
 - Verify prop passing
@@ -147,6 +163,7 @@ src/
 ## Type Safety
 
 Always export types from hooks:
+
 ```typescript
 export interface UseFeatureOptions { ... }
 export interface UseFeatureResult { ... }
@@ -154,6 +171,7 @@ export function useFeature(options: UseFeatureOptions): UseFeatureResult
 ```
 
 This enables:
+
 - Type-safe hook usage
 - Better IDE autocomplete
 - Compile-time error catching

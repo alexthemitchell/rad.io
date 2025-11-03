@@ -247,7 +247,9 @@ describe("useReception", () => {
       await result.current.startReception();
     });
 
-    expect(onStatusMessage).toHaveBeenCalledWith(expect.stringContaining("Tuned"));
+    expect(onStatusMessage).toHaveBeenCalledWith(
+      expect.stringContaining("Tuned"),
+    );
     expect(onStatusMessage).toHaveBeenCalledWith("Receiving started");
   });
 

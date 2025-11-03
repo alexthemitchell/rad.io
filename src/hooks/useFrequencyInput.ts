@@ -65,7 +65,7 @@ const FM_BOUNDS: FrequencyBounds = {
   min: 88.1,
   max: 107.9,
   step: 0.1,
-  coarseStep: 1.0,
+  coarseStep: 1.0, // 10x the fine step for Page Up/Down navigation
   unit: "MHz",
   conversionFactor: 1e6,
 };
@@ -77,7 +77,7 @@ const AM_BOUNDS: FrequencyBounds = {
   min: 530,
   max: 1700,
   step: 10,
-  coarseStep: 100,
+  coarseStep: 100, // 10x the fine step for Page Up/Down navigation
   unit: "kHz",
   conversionFactor: 1e3,
 };
