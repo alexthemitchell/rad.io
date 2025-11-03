@@ -435,7 +435,7 @@ const Monitor: React.FC = () => {
                         const snapped = Math.round(s.frequency / 1_000) * 1_000;
                         setFrequency(snapped);
                         scanner.pauseScan();
-                        // Tuning will happen automatically via useReception hook
+                        // Device will tune to the new frequency on the next reception start/restart
                       }}
                       title="Tune to this frequency in Live Monitor"
                     >
