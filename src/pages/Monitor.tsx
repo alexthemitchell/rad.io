@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import AudioControls from "../components/AudioControls";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
@@ -16,6 +16,7 @@ import {
   useFrequencyScanner,
   type ActiveSignal,
 } from "../hooks/useFrequencyScanner";
+import { useReception } from "../hooks/useReception";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { formatFrequency } from "../utils/frequency";
 import type { IQSample } from "../models/SDRDevice";
@@ -34,17 +35,17 @@ const Monitor: React.FC = () => {
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
     useFrequency();
-  const [isReceiving, setIsReceiving] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<string>("");
   const [showRenderingSettings, setShowRenderingSettings] = useState(false);
   const { settings, setSettings } = useSettings();
 
-  // Tuning state
   // Hardware configuration - currently hardcoded, could be made configurable in future
-  const sampleRate = 2_000_000; // 2 MSPS
-  const lnaGain = 16; // dB
-  const vgaGain = 30; // dB
-  // Visualization/DSP configuration comes from SettingsContext
+  const hardwareConfig = {
+    sampleRate: 2_000_000, // 2 MSPS
+    lnaGain: 16, // dB
+    vgaGain: 30, // dB
+    bandwidth: 2_500_000,
+  };
+  const sampleRate = hardwareConfig.sampleRate; // For compatibility with existing code
 
   // Deprecated: spectrogram frames are streamed directly to the renderer now.
   // Keeping a React state history is unnecessary and adds GC pressure.
@@ -92,114 +93,22 @@ const Monitor: React.FC = () => {
     }
   }, [scanner.state, foundSignals.length]);
 
-  const tuneDevice = useCallback(async () => {
-    if (!device) {
-      setStatusMsg("No device connected. Open the Devices panel to connect.");
-      return;
-    }
-    try {
-      if (!device.isOpen()) {
-        await device.open();
-      }
-      await device.setSampleRate(sampleRate);
-      await device.setLNAGain(lnaGain);
-      if (device.setVGAGain) {
-        await device.setVGAGain(vgaGain);
-      }
-      if (device.setBandwidth) {
-        await device.setBandwidth(2_500_000);
-      }
-      await device.setFrequency(frequency);
-      setStatusMsg(
-        `Tuned to ${formatFrequency(frequency)} @ ${(sampleRate / 1e6).toFixed(
-          2,
-        )} MSPS`,
-      );
-    } catch (err) {
-      console.error("Tune failed", err);
-      setStatusMsg(
-        err instanceof Error ? `Tune failed: ${err.message}` : "Tune failed",
-      );
-      throw err;
-    }
-  }, [device, frequency, lnaGain, sampleRate, vgaGain]);
-
-  // Reception control
-  const handleStart = useCallback(async (): Promise<void> => {
-    if (!device && !useMock) {
-      setStatusMsg("No device connected or setup not initialized");
-      return;
-    }
-    // Guard against re-entrant calls to prevent infinite loops
-    if (isReceiving) {
-      console.warn("Already receiving, skipping start");
-      return;
-    }
-    try {
-      scanner.stopScan();
-      if (device) {
-        await tuneDevice();
-      }
-      // Optimistically mark receiving before awaiting DSP start to unblock E2E readiness checks
-      setIsReceiving(true);
-      setStatusMsg("Receiving started");
-      await startDsp();
-    } catch (err) {
-      console.error("Start failed", err);
-      setIsReceiving(false);
-      setStatusMsg(
-        err instanceof Error ? `Start failed: ${err.message}` : "Start failed",
-      );
-    }
-  }, [device, tuneDevice, startDsp, scanner, isReceiving, useMock]);
-
-  const handleStop = useCallback(async (): Promise<void> => {
-    try {
-      await stopDsp();
-    } finally {
-      setIsReceiving(false);
-      setStatusMsg("Reception stopped");
-    }
-  }, [stopDsp]);
-
-  // Auto-start reception if a previously paired device is already connected/opened.
-  // Note: handleStart is intentionally omitted from deps to prevent infinite loop (see PLAYBOOK_MONITOR_INFINITE_LOOP_2025_10)
-  useEffect(() => {
-    // In mock/e2e mode, let tests control start to avoid races
-    if (useMock) {
-      // Under automation, proactively start to avoid flake in simulated suite
-      const isWebDriver =
-        typeof navigator !== "undefined" && navigator.webdriver === true;
-      if (isWebDriver && !isReceiving && scanner.state === "idle") {
-        void handleStart();
-      }
-      return;
-    }
-    if (
-      !device ||
-      !device.isOpen() ||
-      isReceiving ||
-      scanner.state !== "idle"
-    ) {
-      return;
-    }
-    void handleStart();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [device, isReceiving, scanner.state, useMock]);
-
-  // Ensure RX is stopped when leaving the page
-  useEffect(() => {
-    return (): void => {
-      if (isReceiving) {
-        void handleStop();
-      }
-    };
-  }, [isReceiving, handleStop]);
-
-  // Test/debug hook: expose receiving state for E2E assertions
-  useEffect(() => {
-    window.dbgReceiving = isReceiving;
-  }, [isReceiving]);
+  // Reception control using the useReception hook
+  const [statusMsg, setStatusMsg] = useState<string>("");
+  const {
+    isReceiving,
+    startReception: handleStart,
+    stopReception: handleStop,
+  } = useReception({
+    device,
+    frequency,
+    config: hardwareConfig,
+    startDsp,
+    stopDsp,
+    stopScanner: scanner.stopScan,
+    scannerState: scanner.state,
+    onStatusMessage: setStatusMsg,
+  });
 
   // Dummy state for components that are not yet fully integrated
   const [recordingState, setRecordingState] = useState<
@@ -498,7 +407,9 @@ const Monitor: React.FC = () => {
                       ).toFixed(2)} MSPS`,
                     ),
                   )
-                  .catch(() => void tuneDevice());
+                  .catch((err: unknown) => {
+                    console.error("Failed to set frequency", err);
+                  });
               }
             }}
           />
@@ -524,7 +435,7 @@ const Monitor: React.FC = () => {
                         const snapped = Math.round(s.frequency / 1_000) * 1_000;
                         setFrequency(snapped);
                         scanner.pauseScan();
-                        void tuneDevice();
+                        // Tuning will happen automatically via useReception hook
                       }}
                       title="Tune to this frequency in Live Monitor"
                     >
