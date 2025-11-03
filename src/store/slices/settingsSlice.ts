@@ -95,40 +95,9 @@ export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
 
   setSettings: (partial: Partial<SettingsState>): void => {
     set((state) => {
-      const next = { ...state.settings, ...partial };
-
-      // Enforce valid fftSize
-      if (!ALLOWED_FFT_SIZES.includes(next.fftSize)) {
-        next.fftSize = state.settings.fftSize;
-      }
-
-      // Normalize dB range entries (permit undefined)
-      if ("dbMin" in partial) {
-        const v = partial.dbMin;
-        if (v === undefined) {
-          next.dbMin = undefined;
-        } else if (typeof v !== "number" || Number.isNaN(v)) {
-          next.dbMin = state.settings.dbMin;
-        }
-      }
-      if ("dbMax" in partial) {
-        const v = partial.dbMax;
-        if (v === undefined) {
-          next.dbMax = undefined;
-        } else if (typeof v !== "number" || Number.isNaN(v)) {
-          next.dbMax = state.settings.dbMax;
-        }
-      }
-
-      // Ensure dbMin < dbMax when both defined; otherwise fall back to auto
-      if (
-        next.dbMin !== undefined &&
-        next.dbMax !== undefined &&
-        !(next.dbMin < next.dbMax)
-      ) {
-        next.dbMin = undefined;
-        next.dbMax = undefined;
-      }
+      // Merge partial updates with current settings and normalize
+      const merged = { ...state.settings, ...partial };
+      const next = normalizeSettings(merged);
 
       // Persist to storage
       try {

@@ -25,14 +25,7 @@ export function useDeviceIntegration(): void {
     setRequestDevice,
     setConnectPairedUSBDevice,
     closeAllDevices,
-    devices,
   } = useStore();
-
-  // Keep a ref to the latest devices map to avoid stale closures in callbacks
-  const devicesRef = useRef(devices);
-  useEffect(() => {
-    devicesRef.current = devices;
-  }, [devices]);
 
   // Track if mock device has been initialized to avoid redundant checks
   const mockInitializedRef = useRef(false);

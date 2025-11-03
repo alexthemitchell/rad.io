@@ -45,7 +45,7 @@ export type RootState = SettingsSlice &
  * Create the root store with all slices
  *
  * Using devtools middleware for Redux DevTools integration
- * Persist middleware used for settings that should survive page refresh
+ * Settings persistence is handled manually in settingsSlice via localStorage
  */
 export const useStore = create<RootState>()(
   devtools(
