@@ -110,36 +110,12 @@ export function useFrequencyInput(
   const bounds = getBounds(signalType);
 
   /**
-   * Convert display value to Hz
-   */
-  /**
-   * Convert display value to Hz
-   */
-  function toHz(displayValue: number): number {
-    return displayValue * bounds.conversionFactor;
-  }
-
-  /**
-   * Convert Hz to display value
-   */
-  function fromHz(hz: number): number {
-    return hz / bounds.conversionFactor;
-  }
-
-  /**
-   * Apply bounds to a display value
-   */
-  function applyBounds(value: number): number {
-    return Math.max(bounds.min, Math.min(bounds.max, value));
-  }
-
-  /**
    * Handle input change events
    */
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>): void => {
       const numValue = Number(e.target.value);
-      const frequencyHz = toHz(numValue);
+      const frequencyHz = numValue * bounds.conversionFactor;
       setFrequency(frequencyHz).catch((error: unknown) => {
         console.error("useFrequencyInput: Failed to set frequency", error, {
           requestedFrequency: frequencyHz,
@@ -148,7 +124,7 @@ export function useFrequencyInput(
         });
       });
     },
-    [toHz, setFrequency, signalType],
+    [bounds.conversionFactor, setFrequency, signalType],
   );
 
   /**
@@ -156,7 +132,7 @@ export function useFrequencyInput(
    */
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>): void => {
-      const currentValue = fromHz(frequency);
+      const currentValue = frequency / bounds.conversionFactor;
       let newValue: number;
 
       if (e.key === "ArrowUp") {
@@ -175,8 +151,8 @@ export function useFrequencyInput(
         return; // Let other keys work normally
       }
 
-      newValue = applyBounds(newValue);
-      const frequencyHz = toHz(newValue);
+      newValue = Math.max(bounds.min, Math.min(bounds.max, newValue));
+      const frequencyHz = newValue * bounds.conversionFactor;
 
       setFrequency(frequencyHz).catch((error: unknown) => {
         console.error(
@@ -191,10 +167,10 @@ export function useFrequencyInput(
         );
       });
     },
-    [frequency, fromHz, bounds, applyBounds, toHz, setFrequency, signalType],
+    [frequency, bounds, setFrequency, signalType],
   );
 
-  const displayValue = fromHz(frequency);
+  const displayValue = frequency / bounds.conversionFactor;
   const precision = signalType === "FM" ? 1 : 0;
 
   const tooltip =

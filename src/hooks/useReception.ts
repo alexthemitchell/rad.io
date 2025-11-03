@@ -206,11 +206,11 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
    */
   useEffect(() => {
     return (): void => {
-      if (isReceiving) {
+      if (isReceivingRef.current) {
         void stopReception();
       }
     };
-  }, [isReceiving, stopReception]);
+  }, [stopReception]);
 
   /**
    * Test/debug hook: expose receiving state for E2E assertions
