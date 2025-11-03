@@ -20,5 +20,4 @@ export {
   useFrequencyInput,
   type UseFrequencyInputOptions,
   type UseFrequencyInputResult,
-  type SignalType as FrequencySignalType,
 } from "./useFrequencyInput";

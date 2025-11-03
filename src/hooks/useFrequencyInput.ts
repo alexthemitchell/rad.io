@@ -1,11 +1,6 @@
 import { useCallback } from "react";
+import type { SignalType } from "../components/SignalTypeSelector";
 import type { ChangeEvent, KeyboardEvent } from "react";
-
-/**
- * Signal type for frequency input
- * Note: P25 uses the same frequency handling as FM (MHz)
- */
-export type SignalType = "FM" | "AM" | "P25";
 
 /**
  * Frequency bounds configuration for a signal type
@@ -168,7 +163,7 @@ export function useFrequencyInput(
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>): void => {
       const currentValue = fromHz(frequency);
-      let newValue = currentValue;
+      let newValue: number;
 
       if (e.key === "ArrowUp") {
         e.preventDefault();

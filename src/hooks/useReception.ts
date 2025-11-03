@@ -80,6 +80,13 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
 
   // Track if we're currently starting to prevent re-entrant calls
   const isStartingRef = useRef(false);
+  // Track receiving state in ref to avoid unnecessary callback re-creation
+  const isReceivingRef = useRef(false);
+
+  // Sync ref with state
+  useEffect(() => {
+    isReceivingRef.current = isReceiving;
+  }, [isReceiving]);
 
   /**
    * Update status message and notify parent if callback provided
@@ -134,7 +141,7 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
       return;
     }
     // Guard against re-entrant calls to prevent infinite loops
-    if (isReceiving || isStartingRef.current) {
+    if (isReceivingRef.current || isStartingRef.current) {
       console.warn("Already receiving or starting, skipping start");
       return;
     }
@@ -158,15 +165,7 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
     } finally {
       isStartingRef.current = false;
     }
-  }, [
-    device,
-    tuneDevice,
-    startDsp,
-    stopScanner,
-    isReceiving,
-    useMock,
-    updateStatus,
-  ]);
+  }, [device, tuneDevice, startDsp, stopScanner, useMock, updateStatus]);
 
   /**
    * Stop reception
