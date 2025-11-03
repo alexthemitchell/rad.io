@@ -112,32 +112,26 @@ export function useFrequencyInput(
   /**
    * Convert display value to Hz
    */
-  const toHz = useCallback(
-    (displayValue: number): number => {
-      return displayValue * bounds.conversionFactor;
-    },
-    [bounds],
-  );
+  /**
+   * Convert display value to Hz
+   */
+  function toHz(displayValue: number): number {
+    return displayValue * bounds.conversionFactor;
+  }
 
   /**
    * Convert Hz to display value
    */
-  const fromHz = useCallback(
-    (hz: number): number => {
-      return hz / bounds.conversionFactor;
-    },
-    [bounds],
-  );
+  function fromHz(hz: number): number {
+    return hz / bounds.conversionFactor;
+  }
 
   /**
    * Apply bounds to a display value
    */
-  const applyBounds = useCallback(
-    (value: number): number => {
-      return Math.max(bounds.min, Math.min(bounds.max, value));
-    },
-    [bounds],
-  );
+  function applyBounds(value: number): number {
+    return Math.max(bounds.min, Math.min(bounds.max, value));
+  }
 
   /**
    * Handle input change events
