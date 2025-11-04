@@ -96,6 +96,28 @@ export interface WasmDSPModule {
     qSamples: Float32Array,
     count: number,
   ) => Float32Array;
+
+  // DC correction functions
+  removeDCOffsetStatic?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ) => void;
+  removeDCOffsetStaticSIMD?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+  ) => void;
+  removeDCOffsetIIR?: (
+    iSamples: Float32Array,
+    qSamples: Float32Array,
+    size: number,
+    alpha: number,
+    prevInputI: number,
+    prevInputQ: number,
+    prevOutputI: number,
+    prevOutputQ: number,
+  ) => Float32Array; // Returns state [prevInputI, prevInputQ, prevOutputI, prevOutputQ]
 }
 
 function isValidModule(mod: Partial<WasmDSPModule>): mod is WasmDSPModule {
@@ -874,6 +896,103 @@ function selectWindowFn(
  * Apply Hann window using WASM if available
  * Modifies samples in-place for efficiency
  */
+/**
+ * Apply static DC offset removal using WASM (with SIMD if available)
+ * Modifies samples in-place for efficiency
+ *
+ * @param samples - IQ samples to process (modified in-place)
+ * @returns true if WASM processing succeeded, false if should fallback to JS
+ */
+export function removeDCOffsetStaticWasm(samples: Sample[]): boolean {
+  if (!wasmModule || samples.length === 0) {
+    return false;
+  }
+
+  try {
+    const { iSamples, qSamples } = separateIQComponents(samples);
+
+    // Prefer SIMD version if available
+    if (
+      isWasmSIMDSupported() &&
+      typeof wasmModule.removeDCOffsetStaticSIMD === "function"
+    ) {
+      wasmModule.removeDCOffsetStaticSIMD(iSamples, qSamples, samples.length);
+    } else if (typeof wasmModule.removeDCOffsetStatic === "function") {
+      wasmModule.removeDCOffsetStatic(iSamples, qSamples, samples.length);
+    } else {
+      return false;
+    }
+
+    copyIQToSamples(samples, iSamples, qSamples);
+    return true;
+  } catch (error) {
+    dspLogger.warn(
+      "WASM static DC offset removal failed",
+      error instanceof Error ? { error: error.message } : undefined,
+    );
+    return false;
+  }
+}
+
+/**
+ * Apply IIR DC blocker using WASM
+ * Modifies samples in-place and updates state for continuous operation
+ *
+ * @param samples - IQ samples to process (modified in-place)
+ * @param state - DC blocker state (will be updated)
+ * @param alpha - Filter coefficient (typically 0.99)
+ * @returns true if WASM processing succeeded, false if should fallback to JS
+ */
+export function removeDCOffsetIIRWasm(
+  samples: Sample[],
+  state: {
+    prevInputI: number;
+    prevInputQ: number;
+    prevOutputI: number;
+    prevOutputQ: number;
+  },
+  alpha = 0.99,
+): boolean {
+  if (
+    !wasmModule ||
+    samples.length === 0 ||
+    typeof wasmModule.removeDCOffsetIIR !== "function"
+  ) {
+    return false;
+  }
+
+  try {
+    const { iSamples, qSamples } = separateIQComponents(samples);
+
+    // Call WASM IIR DC blocker
+    const newState = wasmModule.removeDCOffsetIIR(
+      iSamples,
+      qSamples,
+      samples.length,
+      alpha,
+      state.prevInputI,
+      state.prevInputQ,
+      state.prevOutputI,
+      state.prevOutputQ,
+    );
+
+    // Update state for next call
+    state.prevInputI = newState[0] ?? 0;
+    state.prevInputQ = newState[1] ?? 0;
+    state.prevOutputI = newState[2] ?? 0;
+    state.prevOutputQ = newState[3] ?? 0;
+
+    copyIQToSamples(samples, iSamples, qSamples);
+    return true;
+  } catch (error) {
+    dspLogger.warn(
+      "WASM IIR DC offset removal failed",
+      error instanceof Error ? { error: error.message } : undefined,
+    );
+    return false;
+  }
+}
+
 export function applyHannWindowWasm(samples: Sample[]): boolean {
   if (!wasmModule) {
     return false;

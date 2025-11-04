@@ -559,3 +559,186 @@ export function calculateSpectrogramOut(
 export function allocateFloat32Array(size: i32): Float32Array {
   return new Float32Array(size);
 }
+
+/**
+ * Remove static DC offset from IQ samples (WASM-accelerated)
+ * Calculates and subtracts the mean of I and Q components
+ *
+ * @param iSamples - I component samples (modified in-place)
+ * @param qSamples - Q component samples (modified in-place)
+ * @param size - Number of samples
+ */
+export function removeDCOffsetStatic(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  size: i32,
+): void {
+  if (size === 0) {
+    return;
+  }
+
+  // Calculate mean (DC offset)
+  let sumI: f64 = 0.0;
+  let sumQ: f64 = 0.0;
+
+  for (let i: i32 = 0; i < size; i++) {
+    sumI += f64(iSamples[i]);
+    sumQ += f64(qSamples[i]);
+  }
+
+  const dcOffsetI = f32(sumI / f64(size));
+  const dcOffsetQ = f32(sumQ / f64(size));
+
+  // Subtract DC offset from all samples
+  for (let i: i32 = 0; i < size; i++) {
+    iSamples[i] -= dcOffsetI;
+    qSamples[i] -= dcOffsetQ;
+  }
+}
+
+/**
+ * SIMD-optimized static DC offset removal
+ * Processes 4 samples in parallel for mean calculation and subtraction
+ *
+ * @param iSamples - I component samples (modified in-place)
+ * @param qSamples - Q component samples (modified in-place)
+ * @param size - Number of samples
+ */
+export function removeDCOffsetStaticSIMD(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  size: i32,
+): void {
+  if (size === 0) {
+    return;
+  }
+
+  const simdWidth = 4;
+  const simdCount = size - (size % simdWidth);
+
+  // Calculate mean using SIMD for accumulation
+  let sumI: f64 = 0.0;
+  let sumQ: f64 = 0.0;
+
+  // SIMD-optimized summation
+  const zeroVec = f32x4.splat(0.0);
+  let sumIVec = zeroVec;
+  let sumQVec = zeroVec;
+
+  for (let i: i32 = 0; i < simdCount; i += simdWidth) {
+    const offset = i << 2;
+    const iVec = v128.load(changetype<usize>(iSamples) + offset);
+    const qVec = v128.load(changetype<usize>(qSamples) + offset);
+
+    sumIVec = f32x4.add(sumIVec, iVec);
+    sumQVec = f32x4.add(sumQVec, qVec);
+  }
+
+  // Extract and sum SIMD lanes
+  sumI +=
+    f64(f32x4.extract_lane(sumIVec, 0)) +
+    f64(f32x4.extract_lane(sumIVec, 1)) +
+    f64(f32x4.extract_lane(sumIVec, 2)) +
+    f64(f32x4.extract_lane(sumIVec, 3));
+
+  sumQ +=
+    f64(f32x4.extract_lane(sumQVec, 0)) +
+    f64(f32x4.extract_lane(sumQVec, 1)) +
+    f64(f32x4.extract_lane(sumQVec, 2)) +
+    f64(f32x4.extract_lane(sumQVec, 3));
+
+  // Add remaining samples (scalar)
+  for (let i: i32 = simdCount; i < size; i++) {
+    sumI += f64(iSamples[i]);
+    sumQ += f64(qSamples[i]);
+  }
+
+  const dcOffsetI = f32(sumI / f64(size));
+  const dcOffsetQ = f32(sumQ / f64(size));
+
+  // Subtract DC offset using SIMD
+  const dcOffsetIVec = f32x4.splat(dcOffsetI);
+  const dcOffsetQVec = f32x4.splat(dcOffsetQ);
+
+  for (let i: i32 = 0; i < simdCount; i += simdWidth) {
+    const offset = i << 2;
+    const iVec = v128.load(changetype<usize>(iSamples) + offset);
+    const qVec = v128.load(changetype<usize>(qSamples) + offset);
+
+    const iResult = f32x4.sub(iVec, dcOffsetIVec);
+    const qResult = f32x4.sub(qVec, dcOffsetQVec);
+
+    v128.store(changetype<usize>(iSamples) + offset, iResult);
+    v128.store(changetype<usize>(qSamples) + offset, qResult);
+  }
+
+  // Handle tail with scalar code
+  for (let i: i32 = simdCount; i < size; i++) {
+    iSamples[i] -= dcOffsetI;
+    qSamples[i] -= dcOffsetQ;
+  }
+}
+
+/**
+ * IIR DC blocker (WASM-accelerated)
+ * High-pass filter that removes DC component: H(z) = (1 - z^-1) / (1 - α*z^-1)
+ *
+ * @param iSamples - I component samples (modified in-place)
+ * @param qSamples - Q component samples (modified in-place)
+ * @param size - Number of samples
+ * @param alpha - Filter coefficient (typically 0.99)
+ * @param prevInputI - Previous input I value (state)
+ * @param prevInputQ - Previous input Q value (state)
+ * @param prevOutputI - Previous output I value (state)
+ * @param prevOutputQ - Previous output Q value (state)
+ * @returns Updated state as Float32Array [prevInputI, prevInputQ, prevOutputI, prevOutputQ]
+ */
+export function removeDCOffsetIIR(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  size: i32,
+  alpha: f32,
+  prevInputI: f32,
+  prevInputQ: f32,
+  prevOutputI: f32,
+  prevOutputQ: f32,
+): Float32Array {
+  if (size === 0) {
+    const state = new Float32Array(4);
+    state[0] = prevInputI;
+    state[1] = prevInputQ;
+    state[2] = prevOutputI;
+    state[3] = prevOutputQ;
+    return state;
+  }
+
+  let lastInputI = prevInputI;
+  let lastInputQ = prevInputQ;
+  let lastOutputI = prevOutputI;
+  let lastOutputQ = prevOutputQ;
+
+  // IIR DC blocker: y[n] = x[n] - x[n-1] + α*y[n-1]
+  for (let i: i32 = 0; i < size; i++) {
+    const inputI = iSamples[i];
+    const inputQ = qSamples[i];
+
+    const outputI = inputI - lastInputI + alpha * lastOutputI;
+    const outputQ = inputQ - lastInputQ + alpha * lastOutputQ;
+
+    iSamples[i] = outputI;
+    qSamples[i] = outputQ;
+
+    lastInputI = inputI;
+    lastInputQ = inputQ;
+    lastOutputI = outputI;
+    lastOutputQ = outputQ;
+  }
+
+  // Return updated state
+  const state = new Float32Array(4);
+  state[0] = lastInputI;
+  state[1] = lastInputQ;
+  state[2] = lastOutputI;
+  state[3] = lastOutputQ;
+  return state;
+}
