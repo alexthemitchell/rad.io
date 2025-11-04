@@ -4,6 +4,11 @@ declare global {
     /** True when running under browser automation (e.g., Playwright sets this) */
     webdriver?: boolean;
   }
+
+  interface Window {
+    /** Debug property: current reception state (set by useReception hook) */
+    dbgReceiving?: boolean;
+  }
 }
 
 export {};

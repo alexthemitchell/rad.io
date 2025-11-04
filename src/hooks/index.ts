@@ -10,3 +10,14 @@ export { useFrequencyScanner, type ActiveSignal } from "./useFrequencyScanner";
 export { usePageVisibility } from "./usePageVisibility";
 export { useIntersectionObserver } from "./useIntersectionObserver";
 export { useDsp } from "./useDsp";
+export {
+  useReception,
+  type UseReceptionOptions,
+  type UseReceptionResult,
+  type HardwareConfig,
+} from "./useReception";
+export {
+  useFrequencyInput,
+  type UseFrequencyInputOptions,
+  type UseFrequencyInputResult,
+} from "./useFrequencyInput";
