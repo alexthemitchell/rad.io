@@ -89,16 +89,17 @@ const Monitor: React.FC = () => {
 
   useEffect(() => {
     if (scanner.state === "idle" && foundSignals.length > 0) {
-      setStatusMsg(`Scan complete, found ${foundSignals.length} signals.`);
+      setScanStatusMsg(`Scan complete, found ${foundSignals.length} signals.`);
     }
   }, [scanner.state, foundSignals.length]);
 
   // Reception control using the useReception hook
-  const [statusMsg, setStatusMsg] = useState<string>("");
+  const [scanStatusMsg, setScanStatusMsg] = useState<string>("");
   const {
     isReceiving,
     startReception: handleStart,
     stopReception: handleStop,
+    statusMessage: receptionStatusMsg,
   } = useReception({
     device,
     frequency,
@@ -107,8 +108,10 @@ const Monitor: React.FC = () => {
     stopDsp,
     stopScanner: scanner.stopScan,
     scannerState: scanner.state,
-    onStatusMessage: setStatusMsg,
   });
+
+  // Combine reception and scan status messages (reception takes precedence)
+  const statusMsg = receptionStatusMsg || scanStatusMsg;
 
   // Dummy state for components that are not yet fully integrated
   const [recordingState, setRecordingState] = useState<
@@ -328,7 +331,7 @@ const Monitor: React.FC = () => {
                 // refactored to manage its own signal list, remove this line.
                 setFoundSignals([]);
                 void scanner.startScan();
-                setStatusMsg("Scanning for active signals…");
+                setScanStatusMsg("Scanning for active signals…");
               }}
               disabled={scanner.state === "scanning"}
               aria-label="Start frequency scan"
@@ -353,7 +356,7 @@ const Monitor: React.FC = () => {
             <button
               onClick={() => {
                 scanner.stopScan();
-                setStatusMsg("Scan stopped");
+                setScanStatusMsg("Scan stopped");
               }}
               disabled={scanner.state === "idle"}
               aria-label="Stop scan"
@@ -401,7 +404,7 @@ const Monitor: React.FC = () => {
                 void device
                   .setFrequency(snapped)
                   .then(() =>
-                    setStatusMsg(
+                    setScanStatusMsg(
                       `Tuned to ${formatFrequency(snapped)} @ ${(
                         sampleRate / 1e6
                       ).toFixed(2)} MSPS`,

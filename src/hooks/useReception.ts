@@ -191,17 +191,22 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
       // Under automation, proactively start to avoid flake in simulated suite
       const isWebDriver =
         typeof navigator !== "undefined" && navigator.webdriver === true;
-      if (isWebDriver && !isReceiving && scannerState === "idle") {
+      if (isWebDriver && !isReceivingRef.current && scannerState === "idle") {
         void startReception();
       }
       return;
     }
-    if (!device || !device.isOpen() || isReceiving || scannerState !== "idle") {
+    if (
+      !device ||
+      !device.isOpen() ||
+      isReceivingRef.current ||
+      scannerState !== "idle"
+    ) {
       return;
     }
     void startReception();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [device, isReceiving, scannerState, useMock]);
+  }, [device, scannerState, useMock]);
 
   /**
    * Ensure RX is stopped when leaving the page
