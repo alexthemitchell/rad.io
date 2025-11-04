@@ -19,7 +19,8 @@ import { useUSBDevice } from "./useUSBDevice";
  * Call this once at the app level (e.g., in App.tsx)
  */
 export function useDeviceIntegration(): void {
-  const { addDevice, setIsCheckingPaired, closeAllDevices } = useStore();
+  const addDevice = useStore((s) => s.addDevice);
+  const closeAllDevices = useStore((s) => s.closeAllDevices);
 
   // Track if mock device has been initialized to avoid redundant checks
   const mockInitializedRef = useRef(false);
@@ -36,10 +37,13 @@ export function useDeviceIntegration(): void {
     isCheckingPaired,
   } = useUSBDevice(SDRDriverRegistry.getAllUSBFilters());
 
-  // Sync isCheckingPaired state
+  // Sync isCheckingPaired state with equality guard to avoid redundant updates
   useEffect(() => {
-    setIsCheckingPaired(isCheckingPaired);
-  }, [isCheckingPaired, setIsCheckingPaired]);
+    const curr = useStore.getState().isCheckingPaired;
+    if (curr !== isCheckingPaired) {
+      useStore.setState({ isCheckingPaired });
+    }
+  }, [isCheckingPaired]);
 
   /**
    * Initialize a USB device when it's connected
@@ -87,15 +91,26 @@ export function useDeviceIntegration(): void {
     [initializeDevice, closeAllDevices],
   );
 
-  // Set the functions in the store so components can call them
-  // Use direct store update to avoid effect dependency loops if setter identities change
+  // Stable function proxies: keep latest implementations via refs
+  const requestRef = useRef(usbRequestDevice);
+  const connectRef = useRef(connectPairedUSBDevice);
+  useEffect(() => {
+    requestRef.current = usbRequestDevice;
+  }, [usbRequestDevice]);
+  useEffect(() => {
+    connectRef.current = connectPairedUSBDevice;
+  }, [connectPairedUSBDevice]);
+
+  // Expose stable wrappers in the store once (mount-only)
   useEffect(() => {
     useStore.setState({
-      requestDevice: usbRequestDevice,
-      connectPairedUSBDevice,
+      requestDevice: async (...args: unknown[]) =>
+        // @ts-expect-error propagate args
+        await requestRef.current(...args),
+      connectPairedUSBDevice: async (usb: USBDevice) =>
+        await connectRef.current(usb),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usbRequestDevice, connectPairedUSBDevice]);
+  }, []);
 
   /**
    * Initialize USB device when it becomes available
@@ -146,6 +161,5 @@ export function useDeviceIntegration(): void {
         deviceLogger.error("Cleanup failed during unmount", err),
       );
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - only run on mount/unmount
+  }, [closeAllDevices]); // run on mount/unmount; resubscribe if function identity changes
 }

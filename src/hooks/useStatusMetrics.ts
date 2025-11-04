@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDevice } from "../store";
 import { notify } from "../lib/notifications";
 import { renderTierManager } from "../lib/render/RenderTierManager";
+import { useDevice } from "../store";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { useSpeaker, type SpeakerInfo } from "./useSpeaker";
 import type { RenderTier } from "../types/rendering";

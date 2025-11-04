@@ -6,11 +6,11 @@
  * keep working while delegating implementation to the store.
  */
 
-import type React from "react";
 import { useDeviceIntegration } from "../hooks/useDeviceIntegration";
 import { useStore, type RootState } from "../store";
-import type { DeviceEntry, DeviceId } from "../store/slices/deviceSlice";
 import type { ISDRDevice } from "../models/SDRDevice";
+import type { DeviceEntry, DeviceId } from "../store/slices/deviceSlice";
+import type React from "react";
 
 // Provider stub: initializes device integration and renders children
 export function DeviceProvider({

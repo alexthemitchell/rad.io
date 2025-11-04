@@ -592,26 +592,26 @@ jobs:
 
 ## References
 
-#### Official Documentation
+### Official Documentation
 
 - [Vitest Documentation](https://vitest.dev/) - Official Vitest testing framework
 - [Playwright Documentation](https://playwright.dev/) - Official Playwright end-to-end testing
 - [React Testing Library](https://testing-library.com/react) - React component testing library
 - [Playwright Best Practices](https://playwright.dev/docs/best-practices) - Official testing best practices from Microsoft
 
-#### Technical Articles and Guides
+### Technical Articles and Guides
 
 - "Playwright Test Best Practices for Scalability." DEV Community (2024). [Technical Guide](https://dev.to/aswani25/playwright-test-best-practices-for-scalability-4l0j) - Page Object Model, parallel execution, test organization
 - "Mastering Testing with Vitest and TypeScript." xjavascript.com (2024). [Developer Guide](https://www.xjavascript.com/blog/vitest-typescript/) - TypeScript integration and best practices
 - "Unit Testing a React Application with Vitest, MSW, and Playwright." MakePath (2024). [Integration Guide](https://makepath.com/unit-testing-a-react-application-with-vitest-msw-and-playwright/) - Combining Vitest browser mode with Playwright
 - GitHub. "Vitest Playground: A hands-on repository for learning Vitest." [Examples](https://github.com/SallamRady/vitest-playground/) - Practical testing patterns
 
-#### Testing Web Workers
+### Testing Web Workers
 
 - "Testing Web Workers" - Web.dev - Best practices for worker testing
 - "E2E Testing Best Practices" - Playwright Blog - End-to-end testing strategies
 
-#### Related ADRs
+### Related ADRs
 
 - ADR-0002: Web Worker DSP Architecture (testing workers in isolation)
 - ADR-0007: Type Safety and Validation Approach (test data validation)

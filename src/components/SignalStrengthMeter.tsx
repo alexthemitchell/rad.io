@@ -17,9 +17,9 @@ export default function SignalStrengthMeter({
   useEffect(() => {
     if (samples.length > 0) {
       const strength = calculateSignalStrength(samples);
-      setSignalStrength(strength);
+      setSignalStrength((prev) => (prev === strength ? prev : strength));
     } else {
-      setSignalStrength(-100);
+      setSignalStrength((prev) => (prev === -100 ? prev : -100));
     }
   }, [samples]);
 

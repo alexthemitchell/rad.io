@@ -1,4 +1,7 @@
-# Community Engagement & Metrics
+# Community Engagement
+
+<!-- markdownlint-disable MD036 -->
+## Community Engagement & Metrics
 
 This document outlines how we track and improve community engagement in rad.io.
 

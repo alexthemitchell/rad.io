@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useDevice } from "../store";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
 import { renderTierManager } from "../lib/render/RenderTierManager";
+import { useDevice } from "../store";
 import { RenderTier, maxTier } from "../types/rendering";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
 /** Rendering tier detected for visualization components */

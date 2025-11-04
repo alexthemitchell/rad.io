@@ -354,7 +354,7 @@ export function calculateFFT(
   const n = fftSize;
   const samples = new Array<Complex>(n);
 
-  // Copy input samples to complex array
+  // Copy input samples to complex array (no per-window mean to keep performance)
   for (let i = 0; i < n; i++) {
     const iVal = i < iSamples.length ? iSamples[i] : 0.0;
     const qVal = i < qSamples.length ? qSamples[i] : 0.0;
@@ -410,6 +410,43 @@ export function calculateFFT(
     // Frequency shift: move DC to center
     const shiftedIdx = k < half ? k + half : k - half;
     output[shiftedIdx] = f32(dB);
+  }
+
+  // Apply a lightweight DC notch at center (suppresses visual DC spike)
+  // Notch width: 3 bins (center +/- 1). Replace with average of neighboring bins.
+  // This is cheap and avoids extra passes over input samples.
+  const center = half; // after shift, DC is at center index
+  const neighborSpan: i32 = 5; // take 5 bins on each side, skipping the center range
+  const notchHalfWidth: i32 = 1;
+  if (n >= 32) { // ensure enough bins to compute a stable average
+    let sum: f64 = 0.0;
+    let count: i32 = 0;
+    // Left neighbors: [center - (notchHalfWidth + neighborSpan) .. center - (notchHalfWidth + 1)]
+    const leftStart = center - (notchHalfWidth + neighborSpan);
+    const leftEnd = center - (notchHalfWidth + 1);
+    for (let i = leftStart; i <= leftEnd; i++) {
+      if (i >= 0 && i < n) {
+        sum += f64(output[i]);
+        count += 1;
+      }
+    }
+    // Right neighbors: [center + (notchHalfWidth + 1) .. center + (notchHalfWidth + neighborSpan)]
+    const rightStart = center + (notchHalfWidth + 1);
+    const rightEnd = center + (notchHalfWidth + neighborSpan);
+    for (let i = rightStart; i <= rightEnd; i++) {
+      if (i >= 0 && i < n) {
+        sum += f64(output[i]);
+        count += 1;
+      }
+    }
+    if (count > 0) {
+      const avg = f32(sum / f64(count));
+      for (let i = center - notchHalfWidth; i <= center + notchHalfWidth; i++) {
+        if (i >= 0 && i < n) {
+          output[i] = avg;
+        }
+      }
+    }
   }
 }
 

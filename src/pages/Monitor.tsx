@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import AudioControls from "../components/AudioControls";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
@@ -12,13 +12,13 @@ import {
   useFrequencyScanner,
   type ActiveSignal,
 } from "../hooks/useFrequencyScanner";
+import { useReception } from "../hooks/useReception";
 import {
   useDevice,
   useFrequency,
   useNotifications,
   useSettings,
 } from "../store";
-import { useReception } from "../hooks/useReception";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { formatFrequency } from "../utils/frequency";
 import type { IQSample } from "../models/SDRDevice";
@@ -33,6 +33,7 @@ const Monitor: React.FC = () => {
   const { primaryDevice: device } = useDevice();
   const { notify } = useNotifications();
   const useMock = shouldUseMockSDR();
+  const emptySamples = useMemo(() => [], []);
 
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
@@ -318,6 +319,20 @@ const Monitor: React.FC = () => {
               Show Waterfall (improves performance when off)
             </label>
           )}
+          {/* Debug/diagnostic indicator for DC correction state */}
+          <span
+            aria-label="DC correction status"
+            title="The FFT applies a lightweight center-bin DC notch (±1 bin)"
+            style={{
+              opacity: 0.85,
+              padding: "2px 8px",
+              borderRadius: 4,
+              background: "rgba(255,255,255,0.06)",
+              fontFamily: "JetBrains Mono, monospace",
+            }}
+          >
+            DC notch: on (±1 bin)
+          </span>
           <div
             role="group"
             aria-label="Frequency scanner controls"
@@ -496,7 +511,7 @@ const Monitor: React.FC = () => {
           }}
         >
           <div style={{ flex: "1 1 300px" }}>
-            <SignalStrengthMeter samples={[]} />
+            <SignalStrengthMeter samples={emptySamples} />
           </div>
           {foundSignals.length > 0 && foundSignals[0]?.rdsData && (
             <div style={{ flex: "1 1 300px" }}>

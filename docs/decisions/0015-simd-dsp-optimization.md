@@ -46,7 +46,7 @@ Based on profiling, the following operations consume the most CPU time and benef
 
 ### Implementation Strategy
 
-**1. Dual-Build Approach**
+#### 1. Dual-Build Approach
 
 Build two WASM variants:
 
@@ -57,7 +57,7 @@ npm run asbuild:release-simd   # SIMD WASM (release-simd.wasm)
 
 Both deployed with the application, loader selects appropriate variant at runtime.
 
-**2. Feature Detection**
+#### 2. Feature Detection
 
 ```typescript
 export function isWasmSIMDSupported(): boolean {
@@ -74,7 +74,7 @@ export function isWasmSIMDSupported(): boolean {
 }
 ```
 
-**3. Automatic Fallback**
+#### 3. Automatic Fallback
 
 ```typescript
 // Helper function for window selection with caching
@@ -107,7 +107,7 @@ export function applyHannWindowWasm(samples: Sample[]): boolean {
 
 > **Note:** The actual implementation uses a helper function (`selectWindowFn`) with caching and nullish coalescing (`??`) for robust fallback logic and optimal performance. The helper is called on first use per window type, then cached to avoid repeated lookups on the hot path.
 
-**4. SIMD Implementation Pattern**
+#### 4. SIMD Implementation Pattern
 
 ```typescript
 // AssemblyScript SIMD window function

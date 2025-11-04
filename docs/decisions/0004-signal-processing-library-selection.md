@@ -236,20 +236,20 @@ If profiling reveals performance issues:
 
 ## References
 
-#### JavaScript FFT Libraries
+### JavaScript FFT Libraries
 
 - [fft.js - Fast Fourier Transform](https://github.com/indutny/fft.js) - Fastest JavaScript FFT implementation: 47,511 ops/sec at 2048 points, 35,153 ops/sec at 2048 complex FFT
 - [dsp.js - Digital Signal Processing](https://github.com/corbanbrook/dsp.js) - Digital signal processing primitives: 23,143 ops/sec at 2048 points
 - Mozilla Kraken Benchmark. "Fast Fourier Transform Benchmark." [Kraken FFT](https://mozilla.github.io/krakenbenchmark.mozilla.org/explanations/fft.html) - JavaScript FFT performance comparison
 - "FFTs in JavaScript." The Breakfast Post (2015). [Technical Article](https://thebreakfastpost.com/2015/10/18/ffts-in-javascript/) - Comparison of JavaScript FFT implementations
 
-#### Digital Signal Processing References
+### Digital Signal Processing References
 
 - [GNU Radio - DSP Reference Implementation](https://www.gnuradio.org/) - Industry-standard open-source SDR framework for algorithm validation
 - [LiquidSDR - Software Defined Radio Library](https://liquidsdr.org/) - Comprehensive DSP library for SDR applications in C
 - Lyons, Richard G. "Understanding Digital Signal Processing" (3rd Edition). Prentice Hall, 2010. ISBN: 978-0137027415 - Standard DSP textbook
 
-#### Web Technologies
+### Web Technologies
 
 - [WebAssembly SIMD Proposal](https://github.com/WebAssembly/simd) - SIMD operations for performance optimization
 - [Emscripten Wasm Audio Worklets](https://emscripten.org/docs/api_reference/wasm_audio_worklets.html) - C/C++ DSP compilation to WebAssembly

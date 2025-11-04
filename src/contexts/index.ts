@@ -14,4 +14,3 @@ export {
 export type { SettingsState, VizMode } from "../store";
 export type { Notification } from "../store/slices/notificationSlice";
 export type { DeviceId, DeviceEntry } from "../store/slices/deviceSlice";
-
