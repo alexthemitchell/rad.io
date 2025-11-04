@@ -19,13 +19,7 @@ import { useUSBDevice } from "./useUSBDevice";
  * Call this once at the app level (e.g., in App.tsx)
  */
 export function useDeviceIntegration(): void {
-  const {
-    addDevice,
-    setIsCheckingPaired,
-    setRequestDevice,
-    setConnectPairedUSBDevice,
-    closeAllDevices,
-  } = useStore();
+  const { addDevice, setIsCheckingPaired, closeAllDevices } = useStore();
 
   // Track if mock device has been initialized to avoid redundant checks
   const mockInitializedRef = useRef(false);
@@ -94,15 +88,14 @@ export function useDeviceIntegration(): void {
   );
 
   // Set the functions in the store so components can call them
+  // Use direct store update to avoid effect dependency loops if setter identities change
   useEffect(() => {
-    setRequestDevice(usbRequestDevice);
-    setConnectPairedUSBDevice(connectPairedUSBDevice);
-  }, [
-    usbRequestDevice,
-    connectPairedUSBDevice,
-    setRequestDevice,
-    setConnectPairedUSBDevice,
-  ]);
+    useStore.setState({
+      requestDevice: usbRequestDevice,
+      connectPairedUSBDevice,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usbRequestDevice, connectPairedUSBDevice]);
 
   /**
    * Initialize USB device when it becomes available

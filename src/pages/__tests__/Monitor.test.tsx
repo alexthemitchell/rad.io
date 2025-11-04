@@ -22,24 +22,7 @@ jest.mock("../../visualization", () => ({
   })),
 }));
 
-// Mock the DeviceContext to avoid requiring a real provider in tests
-jest.mock("../../contexts/DeviceContext", () => ({
-  DeviceProvider: ({ children }: any) => <>{children}</>,
-  useDevice: jest.fn(() => ({
-    device: null,
-    initialize: jest.fn(),
-    cleanup: jest.fn(),
-    isCheckingPaired: false,
-  })),
-  useDeviceContext: jest.fn(() => ({
-    devices: new Map(),
-    primaryDevice: undefined,
-    isCheckingPaired: false,
-    requestDevice: jest.fn(),
-    closeDevice: jest.fn(),
-    closeAllDevices: jest.fn(),
-  })),
-}));
+// DeviceContext is removed; Zustand store requires no provider or mocking here
 
 import Monitor from "../Monitor";
 

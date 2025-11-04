@@ -14,34 +14,17 @@
  * @see ADR-0018 for page architecture and state management patterns
  */
 
-import React, {
+/*
+import * as React from "react";
+const {
   createContext,
   useContext,
   useState,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
-  type ReactNode,
-} from "react";
-import { SDRDriverRegistry, registerBuiltinDrivers } from "../drivers";
-import { useUSBDevice } from "../hooks/useUSBDevice";
-import { MockSDRDevice } from "../models/MockSDRDevice";
-import { shouldUseMockSDR } from "../utils/e2e";
-import { deviceLogger } from "../utils/logger";
-import type { ISDRDevice } from "../models/SDRDevice";
-
-/**
- * Unique identifier for a device (vendorId:productId:serialNumber)
- */
-type DeviceId = string;
-
-/**
- * Device entry in the context
- */
-interface DeviceEntry {
-  device: ISDRDevice;
-  usbDevice?: USBDevice;
-}
+} = React;
 
 /**
  * Context value shape
@@ -370,3 +353,8 @@ export function useDevice(): {
     isCheckingPaired,
   };
 }
+
+*/
+
+// Deprecated: React DeviceContext is removed in favor of Zustand store hooks.
+export {};

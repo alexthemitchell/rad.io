@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useDeviceContext } from "../contexts";
+import { useDevice } from "../store";
 import { notify } from "../lib/notifications";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { performanceMonitor } from "../utils/performanceMonitor";
@@ -34,7 +34,7 @@ export type StatusMetrics = {
  * - Storage usage via StorageManager.estimate()
  */
 export function useStatusMetrics(): StatusMetrics {
-  const { primaryDevice } = useDeviceContext();
+  const { primaryDevice } = useDevice();
   const speaker = useSpeaker();
   const [renderTier, setRenderTier] = useState<RenderTier>(
     renderTierManager.getTier(),

@@ -3,7 +3,6 @@
  */
 
 import { render, screen } from "@testing-library/react";
-import App from "../App";
 import * as dspWasm from "../utils/dspWasm";
 
 // Mock WebUSB API
@@ -47,6 +46,14 @@ jest.mock("../pages/Monitor", () => {
     return <div data-testid="monitor">Monitor Page</div>;
   };
 });
+
+// Mock integration/status hooks to avoid store update loops in tests
+jest.mock("../hooks/useDeviceIntegration", () => ({
+  useDeviceIntegration: jest.fn(),
+}));
+jest.mock("../hooks/useStatusMetrics", () => ({
+  useStatusMetrics: jest.fn(),
+}));
 
 jest.mock("../pages/Scanner", () => {
   return function Scanner() {
@@ -114,26 +121,10 @@ jest.mock("../panels/Diagnostics", () => {
   };
 });
 
-// Mock the DeviceContext
-jest.mock("../contexts/DeviceContext", () => ({
-  DeviceProvider: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
-  useDevice: jest.fn(() => ({
-    device: null,
-    initialize: jest.fn(),
-    cleanup: jest.fn(),
-    isCheckingPaired: false,
-  })),
-  useDeviceContext: jest.fn(() => ({
-    devices: new Map(),
-    primaryDevice: undefined,
-    isCheckingPaired: false,
-    requestDevice: jest.fn(),
-    closeDevice: jest.fn(),
-    closeAllDevices: jest.fn(),
-  })),
-}));
+// In Zustand architecture, DeviceContext is no longer used; no mock needed
+
+// Import App after mocks are in place to ensure they take effect
+const App = require("../App").default;
 
 describe("App", () => {
   beforeEach(() => {

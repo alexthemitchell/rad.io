@@ -1,22 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 
-// Mock the DeviceContext to avoid requiring a real provider in tests
-jest.mock("../../contexts/DeviceContext", () => ({
-  DeviceProvider: ({ children }: any) => <>{children}</>,
+// Mock the Zustand store's useDevice hook to avoid requiring real device state
+jest.mock("../../store", () => ({
+  __esModule: true,
   useDevice: jest.fn(() => ({
-    device: null,
-    initialize: jest.fn(),
-    cleanup: jest.fn(),
-    isCheckingPaired: false,
-  })),
-  useDeviceContext: jest.fn(() => ({
     devices: new Map(),
     primaryDevice: undefined,
     isCheckingPaired: false,
     requestDevice: jest.fn(),
     closeDevice: jest.fn(),
     closeAllDevices: jest.fn(),
+    connectPairedUSBDevice: jest.fn(),
   })),
 }));
 
@@ -152,12 +147,15 @@ describe("Analysis", () => {
   });
 
   it("shows different message when device is connected but not listening", () => {
-    const { useDevice } = require("../../contexts/DeviceContext");
+    const { useDevice } = require("../../store");
     useDevice.mockReturnValue({
-      device: { isReceiving: () => false },
-      initialize: jest.fn(),
-      cleanup: jest.fn(),
+      devices: new Map(),
+      primaryDevice: {},
       isCheckingPaired: false,
+      requestDevice: jest.fn(),
+      closeDevice: jest.fn(),
+      closeAllDevices: jest.fn(),
+      connectPairedUSBDevice: jest.fn(),
     });
 
     render(
