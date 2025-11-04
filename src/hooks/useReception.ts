@@ -142,7 +142,7 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
     }
     // Guard against re-entrant calls to prevent infinite loops.
     // Note: We use isReceivingRef.current (not the state variable) to avoid stale closures and unnecessary re-renders.
-    // The state variable is intentionally omitted from the auto-start effect's dependencies (see line 209) to prevent infinite loops.
+    // The state variable is intentionally omitted from the auto-start effect's dependencies (see line 211) to prevent infinite loops.
     if (isReceivingRef.current || isStartingRef.current) {
       console.warn("Already receiving or starting, skipping start");
       return;
@@ -175,6 +175,9 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
   const stopReception = useCallback(async (): Promise<void> => {
     try {
       await stopDsp();
+    } catch (err) {
+      console.error("Failed to stop DSP:", err);
+      // Continue with cleanup even if DSP stop fails
     } finally {
       setIsReceiving(false);
       updateStatus("Reception stopped");

@@ -175,8 +175,8 @@ export function useFrequencyInput(
 
   const tooltip =
     signalType === "FM"
-      ? `Enter FM broadcast frequency (${bounds.min}-${bounds.max} ${bounds.unit}). Use arrow keys for fine tuning (±${bounds.step} ${bounds.unit}), Page Up/Down for coarse tuning (±${bounds.coarseStep} ${bounds.unit}), or type to adjust. Popular stations: 88.5 (NPR), 95.5 (Classic Rock), 100.3 (Pop)`
-      : `Enter AM broadcast frequency (${bounds.min}-${bounds.max} ${bounds.unit}). Use arrow keys for fine tuning (±${bounds.step} ${bounds.unit}), Page Up/Down for coarse tuning (±${bounds.coarseStep} ${bounds.unit}), or type to adjust. Popular stations: 660 (News), 1010 (Sports), 1450 (Public Radio)`;
+      ? `Enter FM frequency (${bounds.min}-${bounds.max} ${bounds.unit})`
+      : `Enter AM frequency (${bounds.min}-${bounds.max} ${bounds.unit})`;
 
   const ariaLabel = `Center frequency in ${bounds.unit}. Range: ${bounds.min} to ${bounds.max} ${bounds.unit}. Current: ${displayValue.toFixed(precision)} ${bounds.unit}. Use arrow keys for fine tuning, Page Up/Down for coarse tuning.`;
 

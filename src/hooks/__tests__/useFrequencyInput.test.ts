@@ -329,8 +329,8 @@ describe("useFrequencyInput", () => {
         }),
       );
 
-      expect(result.current.tooltip).toContain("FM broadcast frequency");
-      expect(result.current.tooltip).toContain("Popular stations");
+      expect(result.current.tooltip).toContain("FM frequency");
+      expect(result.current.tooltip).toContain("88.1-107.9 MHz");
     });
   });
 

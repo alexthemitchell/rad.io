@@ -412,6 +412,9 @@ const Monitor: React.FC = () => {
                   )
                   .catch((err: unknown) => {
                     console.error("Failed to set frequency", err);
+                    setScanStatusMsg(
+                      `Failed to tune to ${formatFrequency(snapped)}: ${err instanceof Error ? err.message : String(err)}`,
+                    );
                   });
               }
             }}
