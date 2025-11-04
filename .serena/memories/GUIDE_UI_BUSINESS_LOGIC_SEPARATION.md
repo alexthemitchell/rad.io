@@ -181,4 +181,3 @@ This enables:
 - Hook implementation: `src/hooks/useReception.ts`, `src/hooks/useFrequencyInput.ts`
 - Hook tests: `src/hooks/__tests__/`
 - Refactored components: `src/pages/Monitor.tsx`, `src/components/RadioControls.tsx`
-- PR: See copilot/refactor-ui-components-logic branch
