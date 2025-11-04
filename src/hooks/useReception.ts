@@ -142,7 +142,7 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
     }
     // Guard against re-entrant calls to prevent infinite loops.
     // Note: We use isReceivingRef.current (not the state variable) to avoid stale closures and unnecessary re-renders.
-    // The state variable is intentionally omitted from the effect's dependencies.
+    // The state variable is intentionally omitted from the auto-start effect's dependencies (see line 209) to prevent infinite loops.
     if (isReceivingRef.current || isStartingRef.current) {
       console.warn("Already receiving or starting, skipping start");
       return;
