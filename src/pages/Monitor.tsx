@@ -322,7 +322,7 @@ const Monitor: React.FC = () => {
           {/* Debug/diagnostic indicator for DC correction state */}
           <span
             aria-label="DC correction status"
-            title="The FFT applies a lightweight center-bin DC notch (±1 bin)"
+            title="DC offset removal: subtracts mean I/Q before FFT"
             style={{
               opacity: 0.85,
               padding: "2px 8px",
@@ -331,7 +331,7 @@ const Monitor: React.FC = () => {
               fontFamily: "JetBrains Mono, monospace",
             }}
           >
-            DC notch: on (±1 bin)
+            DC removal: on
           </span>
           <div
             role="group"

@@ -71,6 +71,9 @@ export class CanvasWaterfall implements Renderer {
     const ctx = this.ctx;
     ctx.save();
     ctx.scale(this.dpr, this.dpr);
+    // Avoid subpixel smoothing artifacts when drawing many small rects
+    // which can manifest as vertical/horizontal lines between tiles.
+    ctx.imageSmoothingEnabled = false;
 
     // Apply transform if provided
     if (transform) {
@@ -95,8 +98,21 @@ export class CanvasWaterfall implements Renderer {
       return false;
     }
 
-    const frameWidth = Math.max(1, chartWidth / numFrames);
-    const binHeight = chartHeight / binCount;
+    // Precompute integer-aligned pixel edges to prevent gaps/overdraw.
+    // This eliminates aliasing lines that appear with fractional sizes.
+    const xEdges: number[] = new Array(numFrames + 1);
+    for (let i = 0; i <= numFrames; i++) {
+      xEdges[i] = margin.left + Math.floor((i * chartWidth) / numFrames);
+    }
+
+    const binSpan = binCount; // number of bins to draw
+    const yEdges: number[] = new Array(binSpan + 1);
+    // Build from top to bottom; bin index 0 sits at the bottom by design below,
+    // so compute edges in chart space then invert when drawing.
+    for (let j = 0; j <= binSpan; j++) {
+      // Edge position measured from top of chart area
+      yEdges[j] = margin.top + Math.floor((j * chartHeight) / binSpan);
+    }
 
     // Find global min/max for normalization
     let globalMin = Infinity;
@@ -128,8 +144,9 @@ export class CanvasWaterfall implements Renderer {
       if (!frame) {
         continue;
       }
-
-      const x = margin.left + frameIdx * frameWidth;
+      const x0 = xEdges[frameIdx];
+      const x1 = xEdges[frameIdx + 1];
+      const w = Math.max(1, x1 - x0);
 
       for (let bin = freqMin; bin < freqMax && bin < frame.length; bin++) {
         const value = frame[bin];
@@ -148,10 +165,15 @@ export class CanvasWaterfall implements Renderer {
         const g = lut[colorIdx + 1] ?? 0;
         const b = lut[colorIdx + 2] ?? 0;
 
-        // Draw pixel
-        const y = margin.top + chartHeight - (bin - freqMin) * binHeight;
+        // Draw pixel aligned to integer pixel grid.
+        const j = bin - freqMin; // 0..binSpan-1 (bottom to top mapping)
+        // Convert to top-origin coordinates: higher bins are nearer the top.
+        const yTop = yEdges[binSpan - (j + 1)];
+        const yBottom = yEdges[binSpan - j];
+        const h = Math.max(1, yBottom - yTop);
+
         ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        ctx.fillRect(x, y - binHeight, frameWidth + 0.5, binHeight + 0.5);
+        ctx.fillRect(x0, yTop, w, h);
       }
     }
 
