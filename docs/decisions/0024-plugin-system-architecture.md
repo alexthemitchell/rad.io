@@ -75,7 +75,7 @@ Compile plugins to WebAssembly modules for sandboxed execution.
 
 ## Decision Outcome
 
-**Chosen option: "Option 2: Registry Pattern with Compile-Time Plugins"**
+### Chosen option: "Option 2: Registry Pattern with Compile-Time Plugins"
 
 We implement a registry-based plugin system with strong TypeScript interfaces. Plugins are registered at compile time and managed through a central registry. This provides the best balance of type safety, security, and maintainability for the current stage of the project.
 

@@ -1,307 +1,47 @@
 /**
- * DeviceContext - Shared SDR device state management
+ * DeviceContext compatibility layer
  *
- * Provides a centralized context for managing SDR device instances across the application.
- * This solves the race condition where multiple components tried to open the same USB device
- * simultaneously by maintaining a single source of truth for device state.
- *
- * Design considerations:
- * - Supports multiple devices (keyed by unique identifier) for future extensibility
- * - Maintains device lifecycle (initialization, configuration, cleanup)
- * - Provides device state to all components via React Context
- * - Handles USB device discovery and pairing
- *
- * @see ADR-0018 for page architecture and state management patterns
+ * The project migrated to Zustand (`src/store/`) for state management.
+ * This file preserves the previous public API surface so legacy imports
+ * keep working while delegating implementation to the store.
  */
 
-/*
-import * as React from "react";
-const {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} = React;
+import type React from "react";
+import { useDeviceIntegration } from "../hooks/useDeviceIntegration";
+import { useStore, type RootState } from "../store";
+import type { DeviceEntry, DeviceId } from "../store/slices/deviceSlice";
+import type { ISDRDevice } from "../models/SDRDevice";
 
-/**
- * Context value shape
- */
-interface DeviceContextValue {
-  /**
-   * Map of device instances keyed by device ID
-   */
-  devices: Map<DeviceId, DeviceEntry>;
-
-  /**
-   * Primary device (first connected device, for convenience)
-   */
-  primaryDevice: ISDRDevice | undefined;
-
-  /**
-   * Whether we're currently checking for paired devices
-   */
-  isCheckingPaired: boolean;
-
-  /**
-   * Request connection to a new USB device
-   */
-  requestDevice: () => Promise<void>;
-
-  /**
-   * Close and remove a device by ID
-   */
-  closeDevice: (deviceId: DeviceId) => Promise<void>;
-
-  /**
-   * Close all devices
-   */
-  closeAllDevices: () => Promise<void>;
-
-  /**
-   * Connect to a previously paired USB device without opening the native picker
-   */
-  connectPairedUSBDevice: (usbDevice: USBDevice) => Promise<void>;
-}
-
-const DeviceContext = createContext<DeviceContextValue | undefined>(undefined);
-
-/**
- * Generate unique identifier for a USB device
- */
-function getDeviceId(usbDevice: USBDevice): DeviceId {
-  // Use vendorId:productId:serialNumber as unique key
-  // If no serial number, use empty string (may not be truly unique in multi-device scenarios)
-  return `${usbDevice.vendorId}:${usbDevice.productId}:${usbDevice.serialNumber ?? ""}`;
-}
-
-/**
- * Provider component that manages device state
- */
+// Provider stub: initializes device integration and renders children
 export function DeviceProvider({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }): React.JSX.Element {
-  const [devices, setDevices] = useState<Map<DeviceId, DeviceEntry>>(new Map());
-  // Keep a ref to the latest devices map to avoid stale closures in callbacks
-  const devicesRef = useRef<Map<DeviceId, DeviceEntry>>(devices);
-  useEffect(() => {
-    devicesRef.current = devices;
-  }, [devices]);
+  useDeviceIntegration();
+  return <>{children}</>;
+}
 
-  // Register built-in drivers on mount
-  useEffect(() => {
-    registerBuiltinDrivers();
-  }, []);
-
-  // Use the existing useUSBDevice hook for device discovery
-  // Now gets all USB filters from the driver registry
-  const {
-    device: usbDevice,
-    requestDevice,
-    isCheckingPaired,
-  } = useUSBDevice(SDRDriverRegistry.getAllUSBFilters());
-
-  /**
-   * Initialize a USB device when it's connected
-   */
-  // Note on dependencies:
-  // We intentionally omit `devices` from initializeDevice dependencies and use
-  // functional state updates inside setDevices(). This avoids stale-closure
-  // bugs while preventing dependency cycles and repeated re-creations of the
-  // callback. See ADR-0011 (error handling & resilience) and SHARED_DEVICE_CONTEXT_PATTERN memory.
-  const initializeDevice = useCallback(
-    async (usb: USBDevice): Promise<void> => {
-      const deviceId = getDeviceId(usb);
-
-      try {
-        // Use driver registry to automatically select the correct adapter
-        // based on USB VID/PID matching
-        const adapter = await SDRDriverRegistry.createDevice(usb);
-
-        // Ensure device is ready: always invoke adapter.open(),
-        // which is idempotent for already-open devices.
-        // This guarantees claiming interfaces/alternate settings
-        // for drivers like HackRF that require it.
-        await adapter.open();
-
-        // Add to devices map (functional update checks for duplicates)
-        setDevices((prev) => {
-          // Skip if already initialized
-          if (prev.has(deviceId)) {
-            deviceLogger.debug("Device already initialized", { deviceId });
-            return prev;
-          }
-
-          const next = new Map(prev);
-          next.set(deviceId, { device: adapter, usbDevice: usb });
-          return next;
-        });
-
-        deviceLogger.info("Device initialized", {
-          deviceId,
-          deviceInfo: await adapter.getDeviceInfo(),
-        });
-
-        // Persist last-used device for future preference when multiple are present
-        try {
-          window.localStorage.setItem("rad.io:lastDeviceId", deviceId);
-        } catch {
-          // ignore storage failures (private mode, etc.)
-        }
-      } catch (err) {
-        deviceLogger.error("Failed to initialize device", err, {
-          deviceId,
-          productId: usb.productId,
-          vendorId: usb.vendorId,
-          wasOpened: usb.opened,
-        });
-        throw err;
-      }
-    },
-    [], // Intentional: functional setState ensures fresh value without dependency
+// Backwards-compatible context accessor implemented via Zustand selectors
+export function useDeviceContext(): {
+  devices: Map<DeviceId, DeviceEntry>;
+  primaryDevice: ISDRDevice | undefined;
+  isCheckingPaired: boolean;
+  requestDevice: () => Promise<void>;
+  closeDevice: (deviceId: DeviceId) => Promise<void>;
+  closeAllDevices: () => Promise<void>;
+  connectPairedUSBDevice: (usbDevice: USBDevice) => Promise<void>;
+} {
+  const devices = useStore((s: RootState) => s.devices);
+  const primaryDevice = useStore((s: RootState) => s.primaryDevice);
+  const isCheckingPaired = useStore((s: RootState) => s.isCheckingPaired);
+  const requestDevice = useStore((s: RootState) => s.requestDevice);
+  const closeDevice = useStore((s: RootState) => s.closeDevice);
+  const closeAllDevices = useStore((s: RootState) => s.closeAllDevices);
+  const connectPairedUSBDevice = useStore(
+    (s: RootState) => s.connectPairedUSBDevice,
   );
-
-  /**
-   * Close and remove a device
-   */
-  // Similar to initializeDevice, we use a functional update to read the current
-  // entry without depending on `devices`. This prevents re-renders from
-  // recreating the callback and avoids dependency cycles.
-  const closeDevice = useCallback(
-    async (deviceId: DeviceId): Promise<void> => {
-      // Use ref to get the latest entry without adding dependencies
-      const entry = devicesRef.current.get(deviceId);
-
-      if (!entry) {
-        deviceLogger.warn("Attempted to close unknown device", { deviceId });
-        return;
-      }
-
-      try {
-        await entry.device.close();
-        setDevices((prev) => {
-          const next = new Map(prev);
-          next.delete(deviceId);
-          return next;
-        });
-        deviceLogger.info("Device closed", { deviceId });
-      } catch (err) {
-        deviceLogger.error("Failed to close device", err, { deviceId });
-        throw err;
-      }
-    },
-    [], // Intentional: devicesRef provides current state without dependency
-  );
-
-  /**
-   * Close all devices
-   */
-  const closeAllDevices = useCallback(async (): Promise<void> => {
-    // Capture current devices and clear immediately to prevent concurrent closes
-    const devicesToClose: Array<[DeviceId, DeviceEntry]> = [];
-
-    setDevices((prev) => {
-      devicesToClose.push(...prev.entries());
-      return new Map(); // Clear devices immediately
-    });
-
-    if (devicesToClose.length === 0) {
-      return;
-    }
-
-    const closePromises = devicesToClose.map(async ([deviceId, entry]) => {
-      try {
-        await entry.device.close();
-      } catch (err) {
-        deviceLogger.error("Failed to close device during cleanup", err, {
-          deviceId,
-        });
-      }
-    });
-
-    await Promise.allSettled(closePromises);
-    deviceLogger.info("All devices closed");
-  }, []); // Intentional: closes all captured at invocation time
-
-  /**
-   * Initialize USB device when it becomes available
-   */
-  useEffect(() => {
-    if (!usbDevice) {
-      return;
-    }
-
-    void initializeDevice(usbDevice);
-  }, [usbDevice, initializeDevice]);
-
-  // In multi-device scenarios, selection is deferred to the UI (Devices panel)
-
-  /**
-   * Connect a previously paired USB device without opening the native picker
-   */
-  const connectPairedUSBDevice = useCallback(
-    async (usb: USBDevice): Promise<void> => {
-      // Ensure we switch the primary device to the selected one
-      await closeAllDevices();
-      await initializeDevice(usb);
-    },
-    [initializeDevice, closeAllDevices],
-  );
-
-  /**
-   * E2E/CI mock mode: create a mock SDR device when flag is enabled
-   */
-  const useMock = shouldUseMockSDR();
-  useEffect(() => {
-    if (!useMock) {
-      return;
-    }
-    // Only create one mock device if none exist yet
-    if (devicesRef.current.size > 0) {
-      return;
-    }
-
-    const setupMock = async (): Promise<void> => {
-      try {
-        const mock = new MockSDRDevice();
-        await mock.open();
-        setDevices((prev) => {
-          if (prev.size > 0) {
-            return prev;
-          }
-          const next = new Map(prev);
-          next.set("mock:device", { device: mock });
-          return next;
-        });
-        deviceLogger.info("Mock SDR device initialized for E2E", {
-          reason: "shouldUseMockSDR()",
-        });
-      } catch (err) {
-        deviceLogger.error("Failed to initialize mock SDR device", err);
-      }
-    };
-    void setupMock();
-  }, [useMock]);
-
-  /**
-   * Cleanup all devices on unmount only
-   */
-  useEffect(() => {
-    return (): void => {
-      void closeAllDevices();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - only run on mount/unmount
-
-  // Get primary device (first in map, or undefined if none)
-  const primaryDevice =
-    devices.size > 0 ? devices.values().next().value?.device : undefined;
-
-  const contextValue: DeviceContextValue = {
+  return {
     devices,
     primaryDevice,
     isCheckingPaired,
@@ -310,51 +50,10 @@ export function DeviceProvider({
     closeAllDevices,
     connectPairedUSBDevice,
   };
-
-  return (
-    <DeviceContext.Provider value={contextValue}>
-      {children}
-    </DeviceContext.Provider>
-  );
 }
 
-/**
- * Hook to access device context
- *
- * @throws Error if used outside DeviceProvider
- */
-export function useDeviceContext(): DeviceContextValue {
-  const context = useContext(DeviceContext);
-  if (!context) {
-    throw new Error("useDeviceContext must be used within DeviceProvider");
-  }
-  return context;
-}
+// Re-export store hook for compatibility where `useDevice` was imported from this module
+export { useDevice as useDevice } from "../store";
 
-/**
- * Convenience hook to get the primary device
- *
- * This is a drop-in replacement for useHackRFDevice() for components
- * that only need to work with a single device.
- */
-export function useDevice(): {
-  device: ISDRDevice | undefined;
-  initialize: () => Promise<void>;
-  cleanup: () => Promise<void>;
-  isCheckingPaired: boolean;
-} {
-  const { primaryDevice, requestDevice, closeAllDevices, isCheckingPaired } =
-    useDeviceContext();
-
-  return {
-    device: primaryDevice,
-    initialize: requestDevice,
-    cleanup: closeAllDevices,
-    isCheckingPaired,
-  };
-}
-
-*/
-
-// Deprecated: React DeviceContext is removed in favor of Zustand store hooks.
-export {};
+// Types for compatibility
+export type { DeviceId, DeviceEntry } from "../store";

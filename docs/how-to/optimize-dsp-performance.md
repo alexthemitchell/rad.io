@@ -127,7 +127,7 @@ onmessage = (e) => {
 
 ### Convert Critical Paths to WASM
 
-**Example: FFT in AssemblyScript**
+#### Example: FFT in AssemblyScript
 
 Create `assembly/fft.ts`:
 
@@ -227,11 +227,11 @@ See [WASM Runtime Flags](../reference/wasm-runtime-flags.md) for details.
 
 ### SIMD Optimization
 
-**What is SIMD?**
+#### What is SIMD?
 
 SIMD (Single Instruction, Multiple Data) allows processing multiple data values in parallel with a single CPU instruction. WebAssembly SIMD uses 128-bit vectors to process 4 float32 values simultaneously.
 
-**SIMD in rad.io**
+#### SIMD in rad.io
 
 rad.io automatically uses SIMD-optimized DSP functions when the browser supports WebAssembly SIMD:
 
@@ -248,14 +248,14 @@ if (isWasmSIMDSupported()) {
 applyHannWindowWasm(samples); // Uses applyHannWindowSIMD internally
 ```
 
-**SIMD-Optimized Functions:**
+#### SIMD-Optimized Functions
 
 - `applyHannWindowSIMD` - Hann window (2-4x faster)
 - `applyHammingWindowSIMD` - Hamming window (2-4x faster)
 - `applyBlackmanWindowSIMD` - Blackman window (2-4x faster)
 - `calculateWaveformSIMD` - Waveform calculation (1.5-3x faster)
 
-**How It Works:**
+#### How It Works
 
 ```typescript
 // SIMD processes 4 samples at once

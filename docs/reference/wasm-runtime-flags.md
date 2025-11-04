@@ -71,25 +71,25 @@ Both modules are deployed with the application. No user configuration needed.
 | Waveform Calc    | 2.1 ms   | 0.9ms | 2.3x    | 10000             |
 | Combined (5 ops) | 5.0 ms   | 2.0ms | 2.5x    | 2048              |
 
-**60 FPS Budget: 16.67ms per frame**
+#### 60 FPS Budget: 16.67ms per frame
 
 With SIMD, typical DSP pipeline completes in ~2-3ms, leaving plenty of headroom for rendering and UI interactions.
 
 ### Browser Support
 
-**SIMD Enabled by Default:**
+#### SIMD Enabled by Default
 
 - Chrome/Edge 91+ (May 2021)
 - Firefox 89+ (June 2021)
 - Safari 16.4+ (March 2023)
 
-**Automatic Fallback:**
+#### Automatic Fallback
 
 Older browsers automatically use standard WASM without SIMD. No performance regression - just no additional speedup.
 
 ### Implementation Details
 
-**SIMD Instructions Used:**
+#### SIMD Instructions Used
 
 ```
 v128.load    - Load 128-bit vector (4 × float32)
@@ -99,7 +99,7 @@ f32x4.add    - Add 4 floats in parallel
 f32x4.sqrt   - Square root of 4 floats in parallel
 ```
 
-**Example: SIMD Window Application**
+#### Example: SIMD Window Application
 
 ```typescript
 // Standard: Process 1 sample per iteration
@@ -116,7 +116,7 @@ for (let n = 0; n < size; n += 4) {
 }
 ```
 
-**Memory Alignment:**
+#### Memory Alignment
 
 SIMD operations work best with aligned memory. AssemblyScript Float32Arrays are automatically aligned, so no manual alignment needed.
 

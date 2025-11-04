@@ -8,13 +8,13 @@ The Spectrum Explorer now includes professional-grade measurement and analysis t
 
 ### Placing Markers
 
-**Method 1: Click on Spectrum**
+#### Method 1: Click on Spectrum
 
 - Single-click anywhere on the spectrum display
 - Marker automatically snaps to the nearest spectral peak
 - Power level at that frequency is captured automatically
 
-**Method 2: Double-Click to Tune**
+#### Method 2: Double-Click to Tune
 
 - Double-click on spectrum to tune the radio to that frequency
 - Useful for quick frequency changes during monitoring
@@ -32,17 +32,17 @@ Each marker shows:
 
 ### Marker Management
 
-**Individual Removal**
+#### Individual Removal
 
 - Click the "Remove" button next to any marker in the table
 - Useful when you only want to remove specific measurements
 
-**Clear All Markers**
+#### Clear All Markers
 
 - Click the "Clear Markers" button in the controls
 - Instantly removes all markers from the display and table
 
-**Export to CSV**
+#### Export to CSV
 
 - Click "Export CSV" button in the marker table
 - Downloads a CSV file with all marker data:
@@ -67,18 +67,18 @@ Peak Hold mode captures and displays the maximum power level detected at each fr
 
 ### Using Peak Hold
 
-**Enable Peak Hold**
+#### Enable Peak Hold
 
 1. Check the "Peak Hold" checkbox in the controls
 2. Or press `P` on your keyboard (when spectrum has focus)
 
-**Clear Peak Hold Data**
+#### Clear Peak Hold Data
 
 - Click the "Clear Peak Hold" button (appears when peak hold is active)
 - Resets all accumulated peak values
 - Useful when switching to a different frequency range
 
-**Keyboard Shortcuts**
+#### Keyboard Shortcuts
 
 - `P`: Toggle peak hold on/off
 - `G`: Toggle grid display
@@ -215,24 +215,24 @@ id,freqHz,freqMHz,powerDb,deltaFreqHz,deltaPowerDb,label
 
 ## Troubleshooting
 
-**Marker doesn't appear after clicking**
+### Marker doesn't appear after clicking
 
 - Ensure you're clicking within the spectrum plot area
 - Check that there's valid spectrum data (signal should be receiving)
 - Try clicking on a visible peak
 
-**Delta values show "—"**
+### Delta values show "—"
 
 - This is normal for the first marker (no previous reference)
 - Ensure power data is available for both markers
 
-**Peak hold not working**
+### Peak hold not working
 
 - Verify Peak Hold checkbox is checked
 - Click "Clear Peak Hold" and try again
 - Check that signal is actually present
 
-**CSV export not downloading**
+### CSV export not downloading
 
 - Check browser download settings
 - Ensure pop-up blocker isn't active
