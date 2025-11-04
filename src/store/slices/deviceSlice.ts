@@ -115,12 +115,16 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
   // These will be set by the integration layer
   // eslint-disable-next-line @typescript-eslint/require-await
   requestDevice: async (): Promise<void> => {
-    deviceLogger.warn("requestDevice called before initialization");
+    const error = "requestDevice called before initialization";
+    deviceLogger.warn(error);
+    throw new Error(error);
   },
 
   // eslint-disable-next-line @typescript-eslint/require-await
   connectPairedUSBDevice: async (): Promise<void> => {
-    deviceLogger.warn("connectPairedUSBDevice called before initialization");
+    const error = "connectPairedUSBDevice called before initialization";
+    deviceLogger.warn(error);
+    throw new Error(error);
   },
 
   addDevice: (deviceId: DeviceId, entry: DeviceEntry): void => {

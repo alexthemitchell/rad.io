@@ -149,7 +149,9 @@ export function useDeviceIntegration(): void {
    */
   useEffect(() => {
     return (): void => {
-      void closeAllDevices();
+      closeAllDevices().catch((err: unknown) =>
+        deviceLogger.error("Cleanup failed during unmount", err),
+      );
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run on mount/unmount

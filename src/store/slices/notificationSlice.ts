@@ -90,7 +90,23 @@ export const notificationSlice: StateCreator<NotificationSlice> = (
   },
 });
 
-// Export cleanup function for use in App.tsx or similar
+/**
+ * Cleanup function for notification timeouts.
+ *
+ * Note: This should be called when the app unmounts or when clearing all notifications.
+ * The timeouts are automatically cleaned up when notifications are removed individually,
+ * but this function can be used to force cleanup of all pending timeouts at once.
+ *
+ * Example usage in cleanup:
+ * ```typescript
+ * useEffect(() => {
+ *   return () => {
+ *     const { _timeouts } = useStore.getState();
+ *     cleanupNotificationTimeouts(_timeouts);
+ *   };
+ * }, []);
+ * ```
+ */
 export function cleanupNotificationTimeouts(
   timeouts: Map<number, NodeJS.Timeout>,
 ): void {
