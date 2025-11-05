@@ -143,8 +143,11 @@ export function useSignalDetection(
         right++;
       }
 
-      // Calculate bins width - for single-bin signals, use 1 bin minimum for bandwidth estimate
-      const binsWidth = right === left ? 1 : right - left;
+      // Calculate bins width: left and right are the first bins outside the half-power region.
+      // The actual signal spans from (left+1) to (right-1) inclusive.
+      // Width = (right-1) - (left+1) + 1 = right - left - 1
+      // Special case: if right - left <= 1, the signal is very narrow (1 bin), use 1 as minimum.
+      const binsWidth = Math.max(1, right - left - 1);
       const freqRes = sampleRate / fftData.length;
       const bandwidth = binsWidth * freqRes;
 

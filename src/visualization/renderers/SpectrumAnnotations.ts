@@ -287,7 +287,7 @@ export class SpectrumAnnotations {
   /**
    * Find signal at given canvas coordinates
    * @param x Canvas x coordinate
-   * @param y Canvas y coordinate
+   * @param _y Canvas y coordinate (reserved for future amplitude-based filtering)
    * @param signals Array of detected signals
    * @param sampleRate Sample rate in Hz
    * @param centerFrequency Center frequency in Hz
@@ -295,7 +295,7 @@ export class SpectrumAnnotations {
    */
   public findSignalAt(
     x: number,
-    y: number,
+    _y: number,
     signals: DetectedSignal[],
     sampleRate: number,
     centerFrequency: number,
