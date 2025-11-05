@@ -126,10 +126,6 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
       historyApiFallback: true,
       hot: true,
       server: "https",
-      headers: {
-        "Cross-Origin-Opener-Policy": "same-origin",
-        "Cross-Origin-Embedder-Policy": "require-corp",
-      },
     },
     performance: {
       maxEntrypointSize: 630000,
