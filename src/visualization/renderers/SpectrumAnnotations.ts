@@ -5,6 +5,11 @@
 
 import type { DetectedSignal } from "../../hooks/useSignalDetection";
 
+// Constants for annotation rendering
+const MIN_BANDWIDTH_PX = 2; // Minimum bandwidth in pixels to show bandwidth box
+const LABEL_PADDING_PX = 4; // Padding around label text background
+const MIN_HIT_AREA_HZ = 50e3; // Minimum hit area for signal detection (50 kHz)
+
 /**
  * Configuration for annotation rendering
  */
@@ -157,11 +162,11 @@ export class SpectrumAnnotations {
     const bandwidthPx = bandwidthNorm * width;
 
     // Get color for signal type
-    const color = this.getSignalColor(signal.type, false); // Always get base RGB color
+    const color = this.getSignalColor(signal.type); // Always returns base RGB format
     const alpha = isHovered ? 0.4 : 0.25;
 
     // Draw bandwidth box if enabled
-    if (config.showBandwidth && bandwidthPx > 2) {
+    if (config.showBandwidth && bandwidthPx > MIN_BANDWIDTH_PX) {
       // Convert RGB to RGBA by replacing 'rgb' with 'rgba' and adding alpha
       ctx.fillStyle = color
         .replace("rgb(", "rgba(")
@@ -231,7 +236,7 @@ export class SpectrumAnnotations {
     const labelY = height * 0.05; // 5% from top
 
     // Background with padding
-    const bgPadding = 4;
+    const bgPadding = LABEL_PADDING_PX;
     ctx.fillStyle = isHovered ? "rgba(0, 0, 0, 0.85)" : "rgba(0, 0, 0, 0.75)";
     ctx.fillRect(
       x - textWidth / 2 - bgPadding,
@@ -248,7 +253,7 @@ export class SpectrumAnnotations {
   /**
    * Get color for signal type (always returns RGB format)
    */
-  private getSignalColor(type: string, _isHovered: boolean): string {
+  private getSignalColor(type: string): string {
     /* eslint-disable @typescript-eslint/naming-convention */
     const colors: Record<string, string> = {
       "wideband-fm": "rgb(76, 175, 80)", // Green
@@ -323,7 +328,7 @@ export class SpectrumAnnotations {
       const distance = Math.abs(signal.frequency - freqAtX);
 
       // Signal is "hit" if within bandwidth or close to center line
-      const hitDistance = Math.max(halfBandwidth, 50e3); // At least 50 kHz hit area
+      const hitDistance = Math.max(halfBandwidth, MIN_HIT_AREA_HZ);
       if (distance < hitDistance && distance < closestDistance) {
         closestDistance = distance;
         closestSignal = signal;

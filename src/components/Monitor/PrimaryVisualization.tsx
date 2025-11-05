@@ -56,7 +56,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
 
   // Throttle state for mouse move handler
   const lastMouseMoveTime = useRef<number>(0);
-  const MOUSE_MOVE_THROTTLE_MS = 50; // 20 FPS for mouse move updates
+  const MOUSE_MOVE_THROTTLE_MS = 50; // 20 updates per second (20 Hz) for mouse move updates
 
   // Keep latest props in refs to avoid restarting RAF loop on every change
   // Note: fftData is a stable reference whose contents are updated in-place by useDsp for performance.
