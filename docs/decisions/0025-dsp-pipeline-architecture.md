@@ -519,6 +519,6 @@ For existing deployments without SAB support:
 ---
 
 **Authors**: rad.io team  
-**Date**: 2024-01-05  
-**Last Updated**: 2024-01-05  
+**Date**: 2025-11-01  
+**Last Updated**: 2025-11-01  
 **Status**: Accepted
