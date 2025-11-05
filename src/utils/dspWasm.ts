@@ -893,10 +893,6 @@ function selectWindowFn(
 }
 
 /**
- * Apply Hann window using WASM if available
- * Modifies samples in-place for efficiency
- */
-/**
  * Apply static DC offset removal using WASM (with SIMD if available)
  * Modifies samples in-place for efficiency
  *
@@ -993,6 +989,13 @@ export function removeDCOffsetIIRWasm(
   }
 }
 
+/**
+ * Apply Hann window using WASM if available
+ * Modifies samples in-place for efficiency
+ *
+ * @param samples - IQ samples to process (modified in-place)
+ * @returns true if WASM processing succeeded, false if should fallback to JS
+ */
 export function applyHannWindowWasm(samples: Sample[]): boolean {
   if (!wasmModule) {
     return false;

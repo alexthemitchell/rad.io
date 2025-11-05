@@ -26,7 +26,7 @@ export type DCCorrectionMode = "none" | "static" | "iir" | "combined";
  * IIR DC Blocker State
  * Maintains state for recursive DC removal filter
  */
-interface DCBlockerState {
+export interface DCBlockerState {
   prevInputI: number;
   prevInputQ: number;
   prevOutputI: number;
