@@ -22,10 +22,15 @@ class DspWorkerPool {
     }
   }
 
-  postMessage(message: unknown): void {
+  postMessage(message: unknown, transfer?: Transferable[]): void {
     const worker = this.workers[this.nextWorker];
     if (worker) {
-      worker.postMessage(message);
+      // Forward transferable list when provided to enable zero-copy
+      if (transfer && transfer.length > 0) {
+        worker.postMessage(message, transfer);
+      } else {
+        worker.postMessage(message);
+      }
       this.nextWorker = (this.nextWorker + 1) % this.workers.length;
     }
   }
@@ -104,15 +109,22 @@ const workerCount = ((): number => {
 })();
 
 // Ensure a single pool instance across HMR reloads by caching on a global
+interface RadIoGlobalCache {
+  dspWorkerPool?: DspWorkerPool;
+}
 interface GlobalWithRadio {
-  radIo?: Record<string, unknown>;
+  radIo?: RadIoGlobalCache;
 }
 const globalWithRadio = globalThis as unknown as GlobalWithRadio;
-const g = (globalWithRadio.radIo ??= {});
-let existing = g.dspWorkerPool as DspWorkerPool | undefined;
-if (!existing) {
-  existing = new DspWorkerPool(workerCount);
-  g.dspWorkerPool = existing;
-}
+const g = (globalWithRadio.radIo ??= {} as RadIoGlobalCache);
 
-export const dspWorkerPool = existing;
+const ensurePool = (): DspWorkerPool => {
+  let pool = g.dspWorkerPool;
+  if (!pool) {
+    pool = new DspWorkerPool(workerCount);
+    g.dspWorkerPool = pool;
+  }
+  return pool;
+};
+
+export const dspWorkerPool = ensurePool();

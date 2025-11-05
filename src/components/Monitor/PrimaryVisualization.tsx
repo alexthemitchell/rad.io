@@ -27,8 +27,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   centerFrequency: _centerFrequency,
   mode,
   colorMap = "viridis",
-  dbMin = -100,
-  dbMax = 0,
+  dbMin,
+  dbMax,
   onTune: _onTune,
 }) => {
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -38,6 +38,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   const workerManagerRef = useRef<VisualizationWorkerManager | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  // Reusable single-element array to avoid allocating [data] on every frame
+  const waterfallFrameArrayRef = useRef<Float32Array[]>([new Float32Array(0)]);
 
   // Keep latest props in refs to avoid restarting RAF loop on every change
   // Note: fftData is a stable reference whose contents are updated in-place by useDsp for performance.
@@ -45,8 +47,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   // without depending on React state/reference changes.
   const fftDataRef = useRef<Float32Array>(fftData);
   const modeRef = useRef<typeof mode>(mode);
-  const dbMinRef = useRef<number>(dbMin);
-  const dbMaxRef = useRef<number>(dbMax);
+  const dbMinRef = useRef<number | undefined>(dbMin);
+  const dbMaxRef = useRef<number | undefined>(dbMax);
   const colorMapRef = useRef<keyof typeof WATERFALL_COLORMAPS>(colorMap);
   const fftSizeRef = useRef<number>(fftSize);
 
@@ -136,8 +138,27 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
       // Use ref to avoid adding fftData as an effect dependency; the underlying buffer is mutated in place
       const data = fftDataRef.current;
       const size = fftSizeRef.current;
-      const min = dbMinRef.current;
-      const max = dbMaxRef.current;
+      // Determine normalization range: manual dB floor/ceil if provided, otherwise auto from current row
+      let min = dbMinRef.current;
+      let max = dbMaxRef.current;
+      if (min === undefined || max === undefined) {
+        // Compute min/max from current data
+        let rowMin = Infinity;
+        let rowMax = -Infinity;
+        for (let i = 0; i < size; i++) {
+          const v = data[i];
+          if (v === undefined || !isFinite(v)) continue;
+          if (v < rowMin) rowMin = v;
+          if (v > rowMax) rowMax = v;
+        }
+        if (min === undefined) min = rowMin;
+        if (max === undefined) max = rowMax;
+      }
+      // Fallback if no finite values
+      if (!isFinite(min as number) || !isFinite(max as number)) {
+        min = 0;
+        max = 1;
+      }
       const cmap = colorMapRef.current;
 
       performanceMonitor.mark("render-start");
@@ -156,24 +177,28 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         // Prefer worker path; fallback to WebGL renderer if worker not ready
         if (workerManagerRef.current?.isReady()) {
           try {
+            // Reuse array ref to avoid allocation
+            waterfallFrameArrayRef.current[0] = data;
             workerManagerRef.current.render({
-              fftData: [data],
+              fftData: waterfallFrameArrayRef.current,
               transform,
             });
           } catch {
             // If render throws (e.g., not initialized), fall back
+            waterfallFrameArrayRef.current[0] = data;
             waterfallRendererRef.current?.render({
-              frames: [data],
+              frames: waterfallFrameArrayRef.current,
               gain: 1 / range,
-              offset: -min / range,
+              offset: -(min as number) / range,
               colormapName: cmap,
             });
           }
         } else if (waterfallRendererRef.current) {
+          waterfallFrameArrayRef.current[0] = data;
           waterfallRendererRef.current.render({
-            frames: [data],
+            frames: waterfallFrameArrayRef.current,
             gain: 1 / range,
-            offset: -min / range,
+            offset: -(min as number) / range,
             colormapName: cmap,
           });
         }

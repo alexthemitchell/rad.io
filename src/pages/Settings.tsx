@@ -4,7 +4,7 @@ import {
   WATERFALL_COLORMAP_NAMES,
   type WaterfallColormapName,
 } from "../constants";
-import { useSettings } from "../contexts";
+import { useSettings } from "../store";
 
 /**
  * Settings page with tabbed interface
