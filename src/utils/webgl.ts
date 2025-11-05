@@ -125,13 +125,13 @@ export function createTextureLuminanceF32(
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
-  // Use FLOAT texture extension if available
-  const ext = gl.getExtension("OES_texture_float");
-  const internalFormat =
-    gl instanceof WebGL2RenderingContext ? gl.R32F : gl.LUMINANCE;
-  const srcFormat =
-    gl instanceof WebGL2RenderingContext ? gl.RED : gl.LUMINANCE;
-  const type = ext ? gl.FLOAT : gl.UNSIGNED_BYTE;
+  // Choose correct internal/format/type for WebGL version
+  // WebGL2 has native float textures; WebGL1 requires OES_texture_float
+  const isGL2 = gl instanceof WebGL2RenderingContext;
+  const ext = isGL2 ? null : gl.getExtension("OES_texture_float");
+  const internalFormat = isGL2 ? gl.R32F : gl.LUMINANCE;
+  const srcFormat = isGL2 ? gl.RED : gl.LUMINANCE;
+  const type = isGL2 || ext ? gl.FLOAT : gl.UNSIGNED_BYTE;
   const dataForUpload =
     type === gl.FLOAT
       ? data
@@ -160,6 +160,42 @@ export function createTextureLuminanceF32(
     srcFormat,
     type,
     dataForUpload,
+  );
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  return tex;
+}
+
+export function createTextureLuminanceU8(
+  gl: GL,
+  width: number,
+  height: number,
+  data: Uint8Array | null,
+): WebGLTexture {
+  const tex = gl.createTexture();
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (tex === null) {
+    throw new Error("Failed to create WebGL texture (context lost?)");
+  }
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+
+  const isGL2 = gl instanceof WebGL2RenderingContext;
+  const internalFormat = isGL2 ? gl.R8 : gl.LUMINANCE;
+  const srcFormat = isGL2 ? gl.RED : gl.LUMINANCE;
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    internalFormat,
+    width,
+    height,
+    0,
+    srcFormat,
+    gl.UNSIGNED_BYTE,
+    data,
   );
   gl.bindTexture(gl.TEXTURE_2D, null);
   return tex;

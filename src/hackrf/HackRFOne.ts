@@ -828,12 +828,12 @@ export class HackRFOne {
 
     let iterationCount = 0;
     let consecutiveTimeouts = 0;
-    // 5 second timeout per transfer: Chosen to allow for USB latency and HackRF device initialization.
-    // Shorter timeouts may cause premature failures on slower systems or during device startup.
-    const TIMEOUT_MS = 5000;
-    // Max failures before giving up: 3 consecutive timeouts indicate a persistent hardware issue.
-    // This prevents infinite retry loops and allows for graceful recovery or user notification.
-    const MAX_CONSECUTIVE_TIMEOUTS = 3;
+    // 1 second timeout per transfer: USB transfers typically complete in <100ms or fail immediately.
+    // This allows recovery within ~2 seconds rather than 15+ seconds with the previous 5s timeout.
+    const TIMEOUT_MS = 1000;
+    // Max failures before recovery: 2 consecutive timeouts trigger automatic recovery.
+    // Most USB issues are persistent (not transient), so fast recovery improves UX significantly.
+    const MAX_CONSECUTIVE_TIMEOUTS = 2;
 
     // Main streaming loop - continues until streaming flag is cleared
     while (this.streaming as boolean) {
@@ -924,18 +924,7 @@ export class HackRFOne {
               );
               break;
             }
-            // Skip recovery if closing flag is set (shutdown in progress)
-            if (this.closing) {
-              if (isDev) {
-                console.debug(
-                  "HackRFOne.receive: Skipping recovery during shutdown",
-                  {
-                    iteration: iterationCount,
-                  },
-                );
-              }
-              break;
-            }
+            // Already handled shutdown case above; proceed to recovery otherwise
             // Attempt fast automatic recovery
             try {
               console.warn(
@@ -962,8 +951,7 @@ export class HackRFOne {
             } catch (recoveryError) {
               // If fast recovery fails, throw error with manual instructions
               // Use debug level if closing to reduce noise
-              const logLevel = this.closing ? console.debug : console.error;
-              logLevel(
+              console.error(
                 "HackRFOne.receive: Automatic recovery failed",
                 recoveryError,
                 {
@@ -1023,7 +1011,7 @@ export class HackRFOne {
           command: RequestCommand.UI_ENABLE,
           value: 1,
         });
-      } catch (e) {
+      } catch (_e) {
         // Suppress errors during teardown
       }
     }
@@ -1127,15 +1115,71 @@ export class HackRFOne {
       });
     }
 
-    // Quick reset with minimal delay
+    // Do not attempt recovery during shutdown
+    if (this.closing) {
+      throw new Error("Cannot perform fastRecovery while device is closing");
+    }
+
+    // Ensure device is open and interface is selected before issuing control transfers
+    if (!this.usbDevice.opened || this.interfaceNumber === null) {
+      try {
+        await this.open();
+      } catch {
+        // If open fails, continue — RESET below may still succeed and we re-open after
+      }
+    }
+
+    // Send device RESET
     await this.controlTransferOut({
       command: RequestCommand.RESET,
       value: 0,
       index: 0,
     });
 
-    // Minimal delay - just enough for device to stabilize
-    await this.delay(150);
+    // Allow device/USB stack to stabilize
+    await this.delay(250);
+
+    // After reset, the original USBDevice reference may be invalidated.
+    // Try to re-open; if that fails with NotFoundError (No device selected),
+    // rebind to the paired device and open again.
+    try {
+      if (!this.usbDevice.opened || this.interfaceNumber === null) {
+        await this.open();
+      }
+    } catch (err) {
+      const e = err as Error & { name?: string; message?: string };
+      const msg = e.message;
+      const needsRebind =
+        e.name === "NotFoundError" || /No device selected/i.test(msg);
+      if (!needsRebind) {
+        throw err;
+      }
+      const prev = this.usbDevice;
+      // Attempt to find a freshly re-enumerated paired device matching previous VID/PID/serial
+      let match: USBDevice | undefined;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const devices = await navigator.usb.getDevices();
+        match = devices.find(
+          (d) =>
+            d.vendorId === prev.vendorId &&
+            d.productId === prev.productId &&
+            (prev.serialNumber ? d.serialNumber === prev.serialNumber : true),
+        );
+        if (match) break;
+
+        await this.delay(150);
+      }
+      if (!match) {
+        throw new Error(
+          "Paired device not found after reset; manual reconnection required",
+        );
+      }
+      // Swap underlying device and force re-claim
+      this.usbDevice = match;
+      this.interfaceNumber = null;
+      this.inEndpointNumber = 1;
+      await this.open();
+    }
 
     // Reconfigure device to last known state
     if (this.lastSampleRate !== null) {

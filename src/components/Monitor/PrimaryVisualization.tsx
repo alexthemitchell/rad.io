@@ -1,43 +1,64 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import { performanceMonitor } from "../../utils/performanceMonitor";
 import { WebGLSpectrum, WebGLWaterfall } from "../../visualization";
+import { SpectrumAnnotations } from "../../visualization/renderers/SpectrumAnnotations";
+import { SignalTooltip } from "../SignalTooltip";
 import type { WATERFALL_COLORMAPS } from "../../constants";
+import type { DetectedSignal } from "../../hooks/useSignalDetection";
 import type { RenderTransform } from "../../visualization";
 import type { VisualizationWorkerManager } from "../../workers/VisualizationWorkerManager";
 
 interface PrimaryVisualizationProps {
   fftData: Float32Array;
   fftSize: number;
-  // TODO(rad.io): sampleRate not yet used in this refactored version, will be needed for frequency axis labels
   sampleRate: number;
-  // TODO(rad.io): centerFrequency not yet used in this refactored version, will be needed for frequency axis labels
   centerFrequency: number;
   mode: "fft" | "waterfall" | "spectrogram";
   colorMap?: keyof typeof WATERFALL_COLORMAPS;
   dbMin?: number;
   dbMax?: number;
-  // TODO(rad.io): onTune callback not yet implemented in this refactored version, will enable click-to-tune
   onTune: (frequency: number) => void;
+  /** Detected signals to annotate */
+  signals?: DetectedSignal[];
+  /** Whether to show signal annotations */
+  showAnnotations?: boolean;
 }
 
 const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   fftData,
   fftSize,
-  sampleRate: _sampleRate,
-  centerFrequency: _centerFrequency,
+  sampleRate,
+  centerFrequency,
   mode,
   colorMap = "viridis",
-  dbMin = -100,
-  dbMax = 0,
-  onTune: _onTune,
+  dbMin,
+  dbMax,
+  onTune,
+  signals = [],
+  showAnnotations = true,
 }) => {
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
   const waterfallCanvasRef = useRef<HTMLCanvasElement>(null);
+  const annotationsCanvasRef = useRef<HTMLCanvasElement>(null);
   const spectrumRendererRef = useRef<WebGLSpectrum | null>(null);
   const waterfallRendererRef = useRef<WebGLWaterfall | null>(null);
+  const annotationsRendererRef = useRef<SpectrumAnnotations | null>(null);
   const workerManagerRef = useRef<VisualizationWorkerManager | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  // Reusable single-element array to avoid allocating [data] on every frame
+  const waterfallFrameArrayRef = useRef<Float32Array[]>([new Float32Array(0)]);
+
+  // Tooltip state
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [hoveredSignal, setHoveredSignal] = useState<DetectedSignal | null>(
+    null,
+  );
+
+  // Throttle state for mouse move handler
+  const lastMouseMoveTime = useRef<number>(0);
+  const MOUSE_MOVE_THROTTLE_MS = 50; // 20 updates per second (20 Hz) for mouse move updates
 
   // Keep latest props in refs to avoid restarting RAF loop on every change
   // Note: fftData is a stable reference whose contents are updated in-place by useDsp for performance.
@@ -45,12 +66,16 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   // without depending on React state/reference changes.
   const fftDataRef = useRef<Float32Array>(fftData);
   const modeRef = useRef<typeof mode>(mode);
-  const dbMinRef = useRef<number>(dbMin);
-  const dbMaxRef = useRef<number>(dbMax);
+  const dbMinRef = useRef<number | undefined>(dbMin);
+  const dbMaxRef = useRef<number | undefined>(dbMax);
   const colorMapRef = useRef<keyof typeof WATERFALL_COLORMAPS>(colorMap);
   const fftSizeRef = useRef<number>(fftSize);
+  const sampleRateRef = useRef<number>(sampleRate);
+  const centerFrequencyRef = useRef<number>(centerFrequency);
+  const signalsRef = useRef<DetectedSignal[]>(signals);
+  const showAnnotationsRef = useRef<boolean>(showAnnotations);
 
-  // Keep ref in sync on initial mount; subsequent in-place mutations do not require updates here.
+  // Keep refs in sync
   useEffect((): void => {
     fftDataRef.current = fftData;
   }, [fftData]);
@@ -69,6 +94,18 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   useEffect((): void => {
     fftSizeRef.current = fftSize;
   }, [fftSize]);
+  useEffect((): void => {
+    sampleRateRef.current = sampleRate;
+  }, [sampleRate]);
+  useEffect((): void => {
+    centerFrequencyRef.current = centerFrequency;
+  }, [centerFrequency]);
+  useEffect((): void => {
+    signalsRef.current = signals;
+  }, [signals]);
+  useEffect((): void => {
+    showAnnotationsRef.current = showAnnotations;
+  }, [showAnnotations]);
 
   const transform = useMemo(
     (): RenderTransform => ({
@@ -79,6 +116,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     [],
   );
 
+  // Initialize spectrum renderer
   useEffect((): (() => void) => {
     if (spectrumCanvasRef.current) {
       const renderer = new WebGLSpectrum();
@@ -93,14 +131,13 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     };
   }, []);
 
+  // Initialize waterfall renderer
   useEffect(() => {
     const canvas = waterfallCanvasRef.current;
     if (!canvas) {
       return;
     }
 
-    // For now, use main-thread WebGL waterfall directly
-    // Worker-based rendering has issues with canvas transfer in some environments
     const renderer = new WebGLWaterfall();
     void renderer.initialize(canvas).then((success) => {
       if (success) {
@@ -118,6 +155,23 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     };
   }, []);
 
+  // Initialize annotations renderer
+  useEffect(() => {
+    if (annotationsCanvasRef.current) {
+      const renderer = new SpectrumAnnotations();
+      const success = renderer.initialize(annotationsCanvasRef.current);
+      if (success) {
+        annotationsRendererRef.current = renderer;
+      }
+    }
+
+    return (): void => {
+      annotationsRendererRef.current?.cleanup();
+      annotationsRendererRef.current = null;
+    };
+  }, []);
+
+  // Main render loop
   useEffect((): (() => void) => {
     const render = (): void => {
       // Spectrum: render on main thread when available
@@ -131,17 +185,34 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
       }
 
       const m = modeRef.current;
-      // Read directly from prop: the underlying Float32Array is mutated in-place by the DSP pipeline
-      // so this always reflects the latest magnitudes without reallocations.
-      // Use ref to avoid adding fftData as an effect dependency; the underlying buffer is mutated in place
       const data = fftDataRef.current;
       const size = fftSizeRef.current;
-      const min = dbMinRef.current;
-      const max = dbMaxRef.current;
+      // Determine normalization range: manual dB floor/ceil if provided, otherwise auto from current row
+      let min = dbMinRef.current;
+      let max = dbMaxRef.current;
+      if (min === undefined || max === undefined) {
+        // Compute min/max from current data
+        let rowMin = Infinity;
+        let rowMax = -Infinity;
+        for (let i = 0; i < size; i++) {
+          const v = data[i];
+          if (v === undefined || !isFinite(v)) continue;
+          if (v < rowMin) rowMin = v;
+          if (v > rowMax) rowMax = v;
+        }
+        min ??= rowMin;
+        max ??= rowMax;
+      }
+      // Fallback if no finite values
+      if (!isFinite(min) || !isFinite(max)) {
+        min = 0;
+        max = 1;
+      }
       const cmap = colorMapRef.current;
 
       performanceMonitor.mark("render-start");
 
+      // Render spectrum
       if (m === "fft" || m === "spectrogram") {
         spectrumRendererRef.current?.render({
           magnitudes: data,
@@ -149,29 +220,49 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
           freqMax: size,
           transform,
         });
+
+        // Render annotations on spectrum
+        if (
+          showAnnotationsRef.current &&
+          annotationsRendererRef.current?.isReady()
+        ) {
+          annotationsRendererRef.current.render(
+            signalsRef.current,
+            sampleRateRef.current,
+            centerFrequencyRef.current,
+            {
+              enabled: true,
+              showLabels: true,
+              showBandwidth: true,
+              fontSize: 12,
+            },
+          );
+        }
       }
 
+      // Render waterfall
       if (m === "waterfall" || m === "spectrogram") {
         const range = Math.max(1e-6, max - min);
-        // Prefer worker path; fallback to WebGL renderer if worker not ready
         if (workerManagerRef.current?.isReady()) {
           try {
+            // Reuse array ref to avoid allocation
+            waterfallFrameArrayRef.current[0] = data;
             workerManagerRef.current.render({
-              fftData: [data],
+              fftData: waterfallFrameArrayRef.current,
               transform,
             });
           } catch {
-            // If render throws (e.g., not initialized), fall back
             waterfallRendererRef.current?.render({
-              frames: [data],
+              frames: waterfallFrameArrayRef.current,
               gain: 1 / range,
               offset: -min / range,
               colormapName: cmap,
             });
           }
         } else if (waterfallRendererRef.current) {
+          waterfallFrameArrayRef.current[0] = data;
           waterfallRendererRef.current.render({
-            frames: [data],
+            frames: waterfallFrameArrayRef.current,
             gain: 1 / range,
             offset: -min / range,
             colormapName: cmap,
@@ -192,23 +283,78 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     };
   }, [transform]);
 
+  // Handle mouse move for tooltip (throttled)
+  const handleMouseMove = (evt: React.MouseEvent<HTMLCanvasElement>): void => {
+    if (!annotationsRendererRef.current || !showAnnotations) {
+      setTooltipVisible(false);
+      return;
+    }
+
+    // Throttle mouse move updates to reduce computation
+    const now = Date.now();
+    if (now - lastMouseMoveTime.current < MOUSE_MOVE_THROTTLE_MS) {
+      return;
+    }
+    lastMouseMoveTime.current = now;
+
+    const canvas = evt.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    const x = evt.clientX - rect.left;
+    const y = evt.clientY - rect.top;
+
+    // Find signal at mouse position
+    const signal = annotationsRendererRef.current.findSignalAt(
+      x,
+      y,
+      signals,
+      sampleRate,
+      centerFrequency,
+    );
+
+    if (signal) {
+      setHoveredSignal(signal);
+      setTooltipPosition({ x: evt.clientX, y: evt.clientY });
+      setTooltipVisible(true);
+      annotationsRendererRef.current.setHoveredSignal(signal);
+    } else {
+      setHoveredSignal(null);
+      setTooltipVisible(false);
+      annotationsRendererRef.current.setHoveredSignal(null);
+    }
+  };
+
+  // Handle mouse leave
+  const handleMouseLeave = (): void => {
+    setTooltipVisible(false);
+    setHoveredSignal(null);
+    annotationsRendererRef.current?.setHoveredSignal(null);
+  };
+
+  // Handle canvas click
   const handleCanvasClick = (
     evt: React.MouseEvent<HTMLCanvasElement>,
   ): void => {
-    if (!_sampleRate || !_centerFrequency) {
+    // If clicking on a signal, tune to it
+    if (hoveredSignal) {
+      onTune(hoveredSignal.frequency);
+      return;
+    }
+
+    // Otherwise, tune to frequency at click position
+    if (!sampleRate || !centerFrequency) {
       return;
     }
     const canvas = evt.currentTarget;
     const rect = canvas.getBoundingClientRect();
     const x = evt.clientX - rect.left;
     const frac = Math.min(1, Math.max(0, x / rect.width));
-    const span = _sampleRate; // Hz across the view
-    const tuned = _centerFrequency - span / 2 + frac * span;
-    _onTune(tuned);
+    const span = sampleRate;
+    const tuned = centerFrequency - span / 2 + frac * span;
+    onTune(tuned);
   };
 
   return (
-    <div>
+    <div style={{ position: "relative" }}>
       <canvas
         ref={spectrumCanvasRef}
         width="900"
@@ -219,7 +365,24 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         role="img"
         aria-label="Spectrum Analyzer"
         onClick={handleCanvasClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
       />
+      {showAnnotations && (mode === "fft" || mode === "spectrogram") && (
+        <canvas
+          ref={annotationsCanvasRef}
+          width="900"
+          height="320"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            pointerEvents: "none",
+          }}
+          role="img"
+          aria-label="Signal Annotations"
+        />
+      )}
       <canvas
         ref={waterfallCanvasRef}
         width="900"
@@ -227,11 +390,17 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         style={{
           display:
             mode === "waterfall" || mode === "spectrogram" ? "block" : "none",
-          marginTop: "8px",
+          marginTop: mode === "spectrogram" ? "8px" : "0",
         }}
         role="img"
         aria-label="Waterfall Display"
         onClick={handleCanvasClick}
+      />
+      <SignalTooltip
+        signal={hoveredSignal}
+        x={tooltipPosition.x}
+        y={tooltipPosition.y}
+        visible={tooltipVisible}
       />
     </div>
   );

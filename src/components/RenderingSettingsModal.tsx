@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useSettings } from "../contexts";
+import { useSettings } from "../store";
 
 export interface RenderingSettingsModalProps {
   isOpen: boolean;

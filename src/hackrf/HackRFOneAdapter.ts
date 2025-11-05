@@ -277,7 +277,7 @@ export class HackRFOneAdapter implements ISDRDevice {
    */
   async fastRecovery(): Promise<void> {
     await this.device.fastRecovery();
-    // Keep isInitialized=true since fastRecovery restores all configuration
+    this.isInitialized = true; // Ensure initialized state after fastRecovery
   }
 
   // Expose the underlying HackRFOne instance for advanced use

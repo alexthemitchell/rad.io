@@ -5,11 +5,6 @@
 1. [Overview](#overview)
 2. [Core Architecture](#core-architecture)
 3. [Device Integration Framework](#device-integration-framework)
-4. [Component Architecture](#component-architecture)
-5. [Data Flow](#data-flow)
-6. [DSP Pipeline](#dsp-pipeline)
-7. [Testing Strategy](#testing-strategy)
-8. [Performance Considerations](#performance-considerations)
 
 ## Overview
 

@@ -83,6 +83,13 @@ export function useDeviceIntegration(): void {
         // Add to store
         addDevice(deviceId, { device: adapter, usbDevice: usb });
 
+        // In development, expose primary device on global for debugging
+        if (process.env["NODE_ENV"] === "development") {
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore runtime global
+          globalRad["primaryDevice"] = adapter;
+        }
+
         deviceLogger.info("Device initialized", {
           deviceId,
           deviceInfo: await adapter.getDeviceInfo(),

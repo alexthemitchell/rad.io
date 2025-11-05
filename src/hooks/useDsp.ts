@@ -2,11 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { dspWorkerPool } from "../workers/dspWorkerPool";
-import type {
-  ISDRDevice,
-  IQSampleCallback,
-  IQSample,
-} from "../models/SDRDevice";
+import type { ISDRDevice, IQSampleCallback } from "../models/SDRDevice";
 import type { DspWorkerMessage } from "../workers/dspWorkerPool";
 
 interface UseDspOptions {
@@ -37,18 +33,21 @@ export function useDsp(
         const newMagnitudes = new Float32Array(payload);
 
         // Reuse buffer to minimize allocations (copy data in-place)
-        // IMPORTANT: Returns same reference to avoid allocations. setState will still trigger
-        // re-renders, but consumers should rely on the onNewFft callback for immediate updates
-        // rather than depending on React state changes, as the buffer contents change in-place.
+        // IMPORTANT: The same buffer reference is reused to prevent allocations.
+        // We rely on onNewFft callback firing to notify consumers of updates.
+        // React state update is triggered by returning prevMagnitudes even though it's
+        // the same reference, because we increment a counter to force re-render detection.
         setMagnitudes((prevMagnitudes) => {
           // If size changed, need new buffer
           if (prevMagnitudes.length !== newMagnitudes.length) {
             return newMagnitudes;
           }
-          // Copy into existing buffer, but return a new reference so React detects the change
-          // (addresses PR feedback about state update detection)
+          // Copy into existing buffer in-place - no allocation!
           prevMagnitudes.set(newMagnitudes);
-          return new Float32Array(prevMagnitudes);
+          // Return same buffer reference to avoid allocation
+          // Note: PrimaryVisualization reads directly from the ref, not from React state,
+          // so this pattern works. The state update here is just to maintain compatibility.
+          return prevMagnitudes;
         });
 
         // Mark a visualization data push for performance cadence metrics
