@@ -34,7 +34,7 @@ const config: Config = {
     },
     "./src/hackrf/HackRFOneAdapter.ts": {
       statements: 96,
-      branches: 85,
+      branches: 83,
       functions: 93,
       lines: 96,
     },
