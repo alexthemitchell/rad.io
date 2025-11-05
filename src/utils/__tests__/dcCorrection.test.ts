@@ -472,10 +472,10 @@ describe("Performance characteristics", () => {
 describe("WASM fallback scenarios", () => {
   it("should use JavaScript fallback when WASM is disabled for static correction", () => {
     const samples = generateSamplesWithDC(1000, 0.5, 0.3);
-    
+
     // Explicitly disable WASM
     const corrected = removeDCOffsetStatic(samples, false);
-    
+
     const dc = calculateDCOffset(corrected);
     expect(Math.abs(dc.I)).toBeLessThan(1e-10);
     expect(Math.abs(dc.Q)).toBeLessThan(1e-10);
@@ -489,10 +489,10 @@ describe("WASM fallback scenarios", () => {
       prevOutputI: 0,
       prevOutputQ: 0,
     };
-    
+
     // Explicitly disable WASM
     const corrected = removeDCOffsetIIR(samples, state, 0.99, false);
-    
+
     // Check last half for settled response
     const lastHalf = corrected.slice(1000);
     const dc = calculateDCOffset(lastHalf);
@@ -508,10 +508,10 @@ describe("WASM fallback scenarios", () => {
       prevOutputI: 0,
       prevOutputQ: 0,
     };
-    
+
     // Explicitly disable WASM
     const corrected = removeDCOffsetCombined(samples, state, 0.99, false);
-    
+
     // Check last half for settled response
     const lastHalf = corrected.slice(1000);
     const dc = calculateDCOffset(lastHalf);
@@ -524,7 +524,7 @@ describe("processIQSampling integration", () => {
   it("should use IIR mode without state (fallback to static)", () => {
     const { processIQSampling } = require("../dspProcessing");
     const samples = generateSamplesWithDC(1000, 0.5, 0.3);
-    
+
     const result = processIQSampling(samples, {
       sampleRate: 2048000,
       dcCorrection: true,
@@ -542,7 +542,7 @@ describe("processIQSampling integration", () => {
   it("should use combined mode without state (fallback to static)", () => {
     const { processIQSampling } = require("../dspProcessing");
     const samples = generateSamplesWithDC(1000, 0.5, 0.3);
-    
+
     const result = processIQSampling(samples, {
       sampleRate: 2048000,
       dcCorrection: true,
@@ -560,7 +560,7 @@ describe("processIQSampling integration", () => {
   it("should handle none mode (no correction)", () => {
     const { processIQSampling } = require("../dspProcessing");
     const samples = generateSamplesWithDC(1000, 0.5, 0.3);
-    
+
     const result = processIQSampling(samples, {
       sampleRate: 2048000,
       dcCorrection: true,
@@ -581,7 +581,7 @@ describe("processIQSampling integration", () => {
       prevOutputI: 0,
       prevOutputQ: 0,
     };
-    
+
     const result = processIQSampling(samples, {
       sampleRate: 2048000,
       dcCorrection: true,
@@ -604,7 +604,7 @@ describe("processIQSampling integration", () => {
       prevOutputI: 0,
       prevOutputQ: 0,
     };
-    
+
     const result = processIQSampling(samples, {
       sampleRate: 2048000,
       dcCorrection: true,
