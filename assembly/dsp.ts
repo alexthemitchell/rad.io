@@ -626,6 +626,7 @@ export function removeDCOffsetStaticSIMD(
   let sumQVec = zeroVec;
 
   for (let i: i32 = 0; i < simdCount; i += simdWidth) {
+    // Calculate byte offset: i << 2 multiplies by 4 (Float32 = 4 bytes)
     const offset = i << 2;
     const iVec = v128.load(changetype<usize>(iSamples) + offset);
     const qVec = v128.load(changetype<usize>(qSamples) + offset);
@@ -661,6 +662,7 @@ export function removeDCOffsetStaticSIMD(
   const dcOffsetQVec = f32x4.splat(dcOffsetQ);
 
   for (let i: i32 = 0; i < simdCount; i += simdWidth) {
+    // Calculate byte offset: i << 2 multiplies by 4 (Float32 = 4 bytes)
     const offset = i << 2;
     const iVec = v128.load(changetype<usize>(iSamples) + offset);
     const qVec = v128.load(changetype<usize>(qSamples) + offset);

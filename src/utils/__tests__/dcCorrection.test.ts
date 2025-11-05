@@ -113,8 +113,13 @@ describe("removeDCOffsetStatic", () => {
     const samples = generateSamplesWithDC(1000, 5e-4, 3e-4);
     const corrected = removeDCOffsetStatic(samples, false);
 
-    // Should return original samples (no correction applied)
-    expect(corrected).toBe(samples);
+    // Should return copy with same values (no correction applied, but new array for consistency)
+    expect(corrected).not.toBe(samples); // Different reference
+    expect(corrected.length).toBe(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+      expect(corrected[i]?.I).toBeCloseTo(samples[i]?.I ?? 0, 5);
+      expect(corrected[i]?.Q).toBeCloseTo(samples[i]?.Q ?? 0, 5);
+    }
   });
 });
 

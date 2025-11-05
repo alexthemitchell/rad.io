@@ -379,10 +379,11 @@ export function removeDCOffsetStatic(
     Math.abs(dcOffsetI) < DC_OFFSET_THRESHOLD &&
     Math.abs(dcOffsetQ) < DC_OFFSET_THRESHOLD
   ) {
-    return samples;
+    // Return copy for consistent behavior with WASM path
+    return samples.map((s) => ({ I: s.I, Q: s.Q }));
   }
 
-  // Remove DC offset
+  // Remove DC offset (always returns new array)
   return samples.map((sample) => ({
     I: sample.I - dcOffsetI,
     Q: sample.Q - dcOffsetQ,
