@@ -54,6 +54,10 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     null,
   );
 
+  // Throttle state for mouse move handler
+  const lastMouseMoveTime = useRef<number>(0);
+  const MOUSE_MOVE_THROTTLE_MS = 50; // 20 FPS for mouse move updates
+
   // Keep latest props in refs to avoid restarting RAF loop on every change
   // Note: fftData is a stable reference whose contents are updated in-place by useDsp for performance.
   // We intentionally read directly from the prop inside the RAF loop to always use the freshest data
@@ -210,7 +214,6 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
               showLabels: true,
               showBandwidth: true,
               fontSize: 12,
-              minStrength: 0,
             },
           );
         }
@@ -256,12 +259,19 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     };
   }, [transform]);
 
-  // Handle mouse move for tooltip
+  // Handle mouse move for tooltip (throttled)
   const handleMouseMove = (evt: React.MouseEvent<HTMLCanvasElement>): void => {
     if (!annotationsRendererRef.current || !showAnnotations) {
       setTooltipVisible(false);
       return;
     }
+
+    // Throttle mouse move updates to reduce computation
+    const now = Date.now();
+    if (now - lastMouseMoveTime.current < MOUSE_MOVE_THROTTLE_MS) {
+      return;
+    }
+    lastMouseMoveTime.current = now;
 
     const canvas = evt.currentTarget;
     const rect = canvas.getBoundingClientRect();

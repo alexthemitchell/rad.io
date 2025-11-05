@@ -17,8 +17,6 @@ export interface AnnotationConfig {
   showBandwidth: boolean;
   /** Font size for labels in pixels */
   fontSize: number;
-  /** Minimum signal strength to show annotation (0-1) */
-  minStrength: number;
 }
 
 /**
@@ -30,6 +28,8 @@ export class SpectrumAnnotations {
   private ctx: CanvasRenderingContext2D | null = null;
   private dpr = 1;
   private hoveredSignal: DetectedSignal | null = null;
+  private lastWidth = 0;
+  private lastHeight = 0;
 
   /**
    * Initialize the annotation renderer
@@ -72,16 +72,22 @@ export class SpectrumAnnotations {
 
     const ctx = this.ctx;
 
-    // Update canvas size to match display
+    // Update canvas size only when dimensions change
     const rect = this.canvas.getBoundingClientRect();
     const width = rect.width;
     const height = rect.height;
-    this.canvas.width = width * this.dpr;
-    this.canvas.height = height * this.dpr;
-    this.canvas.style.width = `${width}px`;
-    this.canvas.style.height = `${height}px`;
 
-    // Scale for device pixel ratio
+    if (width !== this.lastWidth || height !== this.lastHeight) {
+      this.canvas.width = width * this.dpr;
+      this.canvas.height = height * this.dpr;
+      this.canvas.style.width = `${width}px`;
+      this.canvas.style.height = `${height}px`;
+      this.lastWidth = width;
+      this.lastHeight = height;
+    }
+
+    // Save context state and scale for device pixel ratio
+    ctx.save();
     ctx.scale(this.dpr, this.dpr);
 
     // Clear canvas
@@ -112,6 +118,9 @@ export class SpectrumAnnotations {
       );
     }
 
+    // Restore context state
+    ctx.restore();
+
     return true;
   }
 
@@ -131,7 +140,12 @@ export class SpectrumAnnotations {
     }
 
     const ctx = this.ctx;
-    const isHovered = this.hoveredSignal?.frequency === signal.frequency;
+    // Use epsilon comparison for floating-point frequency values
+    const FREQUENCY_EPSILON = 1000; // 1 kHz tolerance for frequency comparison
+    const isHovered =
+      this.hoveredSignal !== null &&
+      Math.abs(this.hoveredSignal.frequency - signal.frequency) <
+        FREQUENCY_EPSILON;
 
     // Calculate x position from frequency
     const freqRange = freqMax - freqMin;
@@ -143,19 +157,24 @@ export class SpectrumAnnotations {
     const bandwidthPx = bandwidthNorm * width;
 
     // Get color for signal type
-    const color = this.getSignalColor(signal.type, isHovered);
+    const color = this.getSignalColor(signal.type, false); // Always get base RGB color
     const alpha = isHovered ? 0.4 : 0.25;
 
     // Draw bandwidth box if enabled
     if (config.showBandwidth && bandwidthPx > 2) {
-      ctx.fillStyle = color.replace(")", `, ${alpha})`);
+      // Convert RGB to RGBA by replacing 'rgb' with 'rgba' and adding alpha
+      ctx.fillStyle = color
+        .replace("rgb(", "rgba(")
+        .replace(")", `, ${alpha})`);
       const boxX = x - bandwidthPx / 2;
       const boxY = height * 0.1; // Start 10% from top
       const boxHeight = height * 0.8; // Use 80% of height
       ctx.fillRect(boxX, boxY, bandwidthPx, boxHeight);
 
-      // Draw border
-      ctx.strokeStyle = color;
+      // Draw border - use full opacity for border
+      ctx.strokeStyle = isHovered
+        ? color.replace("rgb(", "rgba(").replace(")", ", 1)")
+        : color;
       ctx.lineWidth = isHovered ? 2 : 1;
       ctx.strokeRect(boxX, boxY, bandwidthPx, boxHeight);
     }
@@ -227,9 +246,9 @@ export class SpectrumAnnotations {
   }
 
   /**
-   * Get color for signal type
+   * Get color for signal type (always returns RGB format)
    */
-  private getSignalColor(type: string, isHovered: boolean): string {
+  private getSignalColor(type: string, _isHovered: boolean): string {
     /* eslint-disable @typescript-eslint/naming-convention */
     const colors: Record<string, string> = {
       "wideband-fm": "rgb(76, 175, 80)", // Green
@@ -240,10 +259,7 @@ export class SpectrumAnnotations {
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 
-    const baseColor = colors[type] ?? colors["unknown"];
-    return isHovered
-      ? baseColor.replace("rgb", "rgba").replace(")", ", 1)")
-      : baseColor;
+    return colors[type] ?? colors["unknown"];
   }
 
   /**

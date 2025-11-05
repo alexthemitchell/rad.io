@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { formatFrequency } from "../utils/frequency";
 import type { DetectedSignal } from "../hooks/useSignalDetection";
 import "./SignalTooltip.css";
 
@@ -16,20 +17,6 @@ export interface SignalTooltipProps {
   y: number;
   /** Whether tooltip is visible */
   visible: boolean;
-}
-
-/**
- * Format frequency with appropriate units
- */
-function formatFrequency(hz: number): string {
-  if (hz >= 1e9) {
-    return `${(hz / 1e9).toFixed(3)} GHz`;
-  } else if (hz >= 1e6) {
-    return `${(hz / 1e6).toFixed(3)} MHz`;
-  } else if (hz >= 1e3) {
-    return `${(hz / 1e3).toFixed(3)} kHz`;
-  }
-  return `${hz.toFixed(0)} Hz`;
 }
 
 /**
