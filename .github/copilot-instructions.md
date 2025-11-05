@@ -1,4 +1,6 @@
-# rad.io - SDR Visualizer Project Guide
+- Use [`package.json`](../package.json) scripts to run, build, and test the project.
+- Use [`docs/decisions/`](../docs/decisions/) for architectural decision records that may inform your work.
+- Use [`docs/reference/`](../docs/reference/) for specialized domain knowledge about SDR and related technologies.
 
 Check output of `npm start` to get deployed server URL (usually https://localhost:8080)
 
@@ -12,8 +14,6 @@ Check output of `npm start` to get deployed server URL (usually https://localhos
 
 **Fix issues you find, even if they seem unrelated to your current task.**
 
-**Consider `docs/decisions/` for architectural decision records that may inform your work.**
-**Refer to `docs/reference/` for specialized domain knowledge about SDR and related technologies.**
 
 ## Tools
 
