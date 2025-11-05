@@ -15,12 +15,14 @@ The rad.io DSP pipeline now has a clearly defined architecture with explicit bou
 ## Problem Solved
 
 **Before**: The DSP pipeline had components (workers, SAB, WASM) but lacked comprehensive architectural definition, leading to:
+
 - Unclear data flow boundaries
 - Risk of buffer drops and stalls
 - Difficulty debugging cross-thread issues
 - No clear performance validation
 
 **After**: A well-documented, production-ready pipeline with:
+
 - Clear architectural decision record (ADR-0025)
 - Explicit threading and memory transfer strategy
 - Comprehensive benchmarks and validation procedures
@@ -79,13 +81,13 @@ The rad.io DSP pipeline now has a clearly defined architecture with explicit bou
 
 ### Memory Transfer Strategy
 
-| Stage | Transfer Method | Copy? | Overhead |
-|-------|----------------|-------|----------|
-| Producer → RingBuffer | SharedArrayBuffer write | No | ~0.1ms |
-| RingBuffer → Worker | SharedArrayBuffer read | No | ~0.1ms |
-| Worker → WASM | Memory view | No | 0ms |
-| Worker → Main (FFT) | Transferable ArrayBuffer | No | ~1ms |
-| Worker → Main (Audio) | Transferable ArrayBuffer | No | ~1ms |
+| Stage                 | Transfer Method          | Copy? | Overhead |
+| --------------------- | ------------------------ | ----- | -------- |
+| Producer → RingBuffer | SharedArrayBuffer write  | No    | ~0.1ms   |
+| RingBuffer → Worker   | SharedArrayBuffer read   | No    | ~0.1ms   |
+| Worker → WASM         | Memory view              | No    | 0ms      |
+| Worker → Main (FFT)   | Transferable ArrayBuffer | No    | ~1ms     |
+| Worker → Main (Audio) | Transferable ArrayBuffer | No    | ~1ms     |
 
 **Total latency**: ~2-3ms for full pipeline
 
@@ -96,7 +98,6 @@ The rad.io DSP pipeline now has a clearly defined architecture with explicit bou
 - **DC Correction**: Static mean removal and IIR blocker
   - Files: `assembly/dsp.ts` - `removeDCOffsetStatic`, `removeDCOffsetIIR`
   - Performance: 2-3x faster than JavaScript
-  
 - **Windowing Functions**: Hann, Hamming, Blackman, Kaiser
   - Files: `assembly/dsp.ts` - `applyHannWindow`, `applyHammingWindow`, etc.
   - SIMD variants: `applyHannWindowSIMD`, `applyHammingWindowSIMD`, etc.
@@ -145,6 +146,7 @@ The rad.io DSP pipeline now has a clearly defined architecture with explicit bou
 ### Development (webpack-dev-server)
 
 Headers configured in `webpack.config.ts`:
+
 ```typescript
 devServer: {
   server: "https",
@@ -158,6 +160,7 @@ devServer: {
 ### Production (Netlify)
 
 Configuration in `netlify.toml` and `public/_headers`:
+
 ```toml
 [[headers]]
   for = "/*"
@@ -169,6 +172,7 @@ Configuration in `netlify.toml` and `public/_headers`:
 ### Production (Vercel)
 
 Configuration in `vercel.json`:
+
 ```json
 {
   "headers": [
@@ -197,6 +201,7 @@ Located in `src/utils/__tests__/dspPipeline.benchmark.test.ts`:
 - ✅ Ring buffer throughput tests
 
 Run with:
+
 ```bash
 npm test -- src/utils/__tests__/dspPipeline.benchmark.test.ts
 ```
@@ -206,12 +211,14 @@ npm test -- src/utils/__tests__/dspPipeline.benchmark.test.ts
 See `docs/performance-validation.md` for detailed procedures:
 
 1. **Browser console check**:
+
    ```javascript
-   typeof SharedArrayBuffer !== 'undefined' && crossOriginIsolated
+   typeof SharedArrayBuffer !== "undefined" && crossOriginIsolated;
    // Should return: true
    ```
 
 2. **Headers verification**:
+
    ```bash
    curl -I https://localhost:8080
    # Should show COOP/COEP headers
@@ -224,20 +231,24 @@ See `docs/performance-validation.md` for detailed procedures:
 ## Files Created/Modified
 
 ### Documentation
+
 - ✅ `docs/decisions/0025-dsp-pipeline-architecture.md` - Comprehensive ADR
 - ✅ `docs/performance-validation.md` - Validation procedures
 - ✅ `docs/dsp-pipeline-summary.md` - This summary
 
 ### Configuration
+
 - ✅ `webpack.config.ts` - Added COOP/COEP headers for dev server
 - ✅ `netlify.toml` - Production deployment config
 - ✅ `vercel.json` - Alternative deployment config
 - ✅ `public/_headers` - Netlify headers file
 
 ### Tests
+
 - ✅ `src/utils/__tests__/dspPipeline.benchmark.test.ts` - Performance benchmarks
 
 ### Existing (Verified)
+
 - ✅ `src/utils/sharedRingBuffer.ts` - SharedArrayBuffer implementation
 - ✅ `src/workers/dspWorkerPool.ts` - Worker pool implementation
 - ✅ `src/workers/dspWorker.ts` - Worker DSP processing
@@ -247,11 +258,13 @@ See `docs/performance-validation.md` for detailed procedures:
 
 ✅ **ADR added for DSP pipeline**: See `docs/decisions/0025-dsp-pipeline-architecture.md`
 
-✅ **SharedArrayBuffer enabled in dev/prod**: 
+✅ **SharedArrayBuffer enabled in dev/prod**:
+
 - Dev: webpack-dev-server with COOP/COEP headers
-- Prod: netlify.toml, vercel.json, _headers configured
+- Prod: netlify.toml, vercel.json, \_headers configured
 
 ✅ **Benchmark targets**:
+
 - 30 FPS @ 2.4 MSPS: ✅ Achieved (58-60 FPS measured)
 - 60 FPS @ 10 MSPS: 🎯 Target (not yet tested with real hardware)
 - <1% drop rate: ✅ Achieved (0% drops at 2.4 MSPS)
@@ -259,16 +272,19 @@ See `docs/performance-validation.md` for detailed procedures:
 ## Next Steps (Future Enhancements)
 
 ### Short Term
+
 - [ ] Test with real HackRF device at 10 MSPS
 - [ ] Add metrics dashboard to UI
 - [ ] Implement adaptive quality (reduce FFT size when CPU saturated)
 
 ### Medium Term
+
 - [ ] Implement FIR filtering in WASM
 - [ ] Implement polyphase resampling in WASM
 - [ ] Add integration tests with real SDR devices
 
 ### Long Term
+
 - [ ] Port demodulation cores to WASM (AM/FM/SSB)
 - [ ] Add WebGPU compute shader option for FFT
 - [ ] Explore Rust+WASM for more complex DSP

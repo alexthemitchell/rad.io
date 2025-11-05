@@ -5,6 +5,7 @@ This document describes how to validate that the DSP pipeline meets the performa
 ## Requirements (from ADR-0025)
 
 ### Acceptance Criteria
+
 1. **30 FPS waterfall @ 2.4 MSPS** with <1% drop rate
 2. **60 FPS waterfall @ 10 MSPS** with <5% drop rate (target)
 3. **Main thread never blocked >16ms**
@@ -31,6 +32,7 @@ npm run test:perf -- src/utils/__tests__/dspPipeline.benchmark.test.ts
 For accurate performance measurements, use the Chrome DevTools Performance profiler with a real SDR device:
 
 1. **Start the dev server** (with COOP/COEP headers):
+
    ```bash
    npm start
    ```
@@ -58,19 +60,22 @@ For accurate performance measurements, use the Chrome DevTools Performance profi
 ### 1. SharedArrayBuffer Support
 
 Check browser console for:
+
 ```javascript
 // In browser console:
-typeof SharedArrayBuffer !== 'undefined' && crossOriginIsolated
+typeof SharedArrayBuffer !== "undefined" && crossOriginIsolated;
 // Should return: true
 ```
 
 Or check the capabilities:
+
 ```javascript
-import { getSharedBufferCapabilities } from './src/utils/sharedRingBuffer';
+import { getSharedBufferCapabilities } from "./src/utils/sharedRingBuffer";
 console.log(getSharedBufferCapabilities());
 ```
 
 Expected output:
+
 ```javascript
 {
   supported: true,
@@ -85,17 +90,20 @@ Expected output:
 Verify headers are being sent:
 
 **Development** (webpack-dev-server):
+
 ```bash
 curl -I https://localhost:8080
 ```
 
 Look for:
+
 ```
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
 **Production** (Netlify/Vercel):
+
 ```bash
 curl -I https://your-deployment-url.netlify.app
 ```
@@ -103,12 +111,14 @@ curl -I https://your-deployment-url.netlify.app
 ### 3. WASM Module Loading
 
 Check browser console for WASM loading:
+
 ```
 ✓ WASM module loaded successfully
 ✓ SIMD support detected
 ```
 
 If you see errors, check:
+
 - Files `dsp.wasm`, `dsp.js` are in `dist/`
 - Content-Type is `application/wasm` for `.wasm` files
 - CORS headers allow WASM loading
@@ -116,13 +126,15 @@ If you see errors, check:
 ### 4. Worker Pool
 
 Check that worker pool is initialized:
+
 ```javascript
 // In browser console (when app is running):
-window.radIo.dspWorkerPool
+window.radIo.dspWorkerPool;
 // Should show: DspWorkerPool object with N workers
 ```
 
 Expected worker count:
+
 - Desktop: `navigator.hardwareConcurrency` (typically 4-16)
 - Mobile: Limited to 2-4 workers
 - E2E/Test: Limited to 1 worker (prevents resource contention)
@@ -130,6 +142,7 @@ Expected worker count:
 ### 5. Pipeline Metrics
 
 When receiving from SDR, check console for metrics:
+
 ```
 DSP Pipeline Metrics:
 - FPS: 58.3
@@ -143,28 +156,28 @@ DSP Pipeline Metrics:
 
 ### RTL-SDR @ 2.4 MSPS
 
-| Metric | Target | Status |
-|--------|--------|--------|
-| FPS | ≥30 | ✅ |
-| Drop rate | <1% | ✅ |
-| Max latency | <16ms | ✅ |
-| Throughput | 2.4 MSPS | ✅ |
+| Metric      | Target   | Status |
+| ----------- | -------- | ------ |
+| FPS         | ≥30      | ✅     |
+| Drop rate   | <1%      | ✅     |
+| Max latency | <16ms    | ✅     |
+| Throughput  | 2.4 MSPS | ✅     |
 
 ### HackRF @ 10 MSPS
 
-| Metric | Target | Status |
-|--------|--------|--------|
-| FPS | ≥60 | 🎯 Target |
-| Drop rate | <5% | 🎯 Target |
-| Max latency | <16ms | 🎯 Target |
-| Throughput | 10 MSPS | 🎯 Target |
+| Metric      | Target  | Status    |
+| ----------- | ------- | --------- |
+| FPS         | ≥60     | 🎯 Target |
+| Drop rate   | <5%     | 🎯 Target |
+| Max latency | <16ms   | 🎯 Target |
+| Throughput  | 10 MSPS | 🎯 Target |
 
 ### HackRF @ 20 MSPS
 
-| Metric | Target | Status |
-|--------|--------|--------|
-| FPS | ≥30 | 🔬 Experimental |
-| Drop rate | <10% | 🔬 Experimental |
+| Metric     | Target  | Status          |
+| ---------- | ------- | --------------- |
+| FPS        | ≥30     | 🔬 Experimental |
+| Drop rate  | <10%    | 🔬 Experimental |
 | Throughput | 20 MSPS | 🔬 Experimental |
 
 ## Troubleshooting Performance Issues
@@ -174,6 +187,7 @@ DSP Pipeline Metrics:
 **Symptoms**: FPS < 30, choppy waterfall
 
 **Possible causes**:
+
 1. **WASM not loading**: Check console for WASM errors
 2. **Worker starvation**: Not enough CPU cores
 3. **Excessive FFT size**: Try smaller FFT (1024 or 2048)
@@ -181,6 +195,7 @@ DSP Pipeline Metrics:
 5. **No GPU acceleration**: Check if WebGL is enabled
 
 **Solutions**:
+
 ```javascript
 // Reduce FFT size
 settings.fftSize = 1024;
@@ -197,12 +212,14 @@ settings.useSIMD = true;
 **Symptoms**: Gaps in waterfall, "Drops: N" increasing
 
 **Possible causes**:
+
 1. **Sample rate too high** for available CPU
 2. **Ring buffer too small**
 3. **Backpressure not working**
 4. **Worker pool saturated**
 
 **Solutions**:
+
 ```javascript
 // Increase ring buffer size
 const ringBuffer = new SharedRingBuffer(2 * 1024 * 1024); // 2M floats
@@ -219,12 +236,14 @@ const pool = new DspWorkerPool(navigator.hardwareConcurrency);
 **Symptoms**: UI freezes, max latency >16ms
 
 **Possible causes**:
+
 1. **Heavy operations on main thread**
 2. **Large data copies** instead of transfers
 3. **Synchronous operations** in render path
 4. **No worker offloading**
 
 **Solutions**:
+
 - Move processing to workers
 - Use `Transferable` objects for large data
 - Make operations async with `requestAnimationFrame`
@@ -235,6 +254,7 @@ const pool = new DspWorkerPool(navigator.hardwareConcurrency);
 **Symptoms**: `crossOriginIsolated === false`
 
 **Possible causes**:
+
 1. **Missing COOP/COEP headers**
 2. **HTTP instead of HTTPS**
 3. **Embedded in iframe** without proper headers
@@ -243,6 +263,7 @@ const pool = new DspWorkerPool(navigator.hardwareConcurrency);
 **Solutions**:
 
 **Development**:
+
 ```typescript
 // webpack.config.ts already configured with:
 devServer: {
@@ -255,11 +276,13 @@ devServer: {
 ```
 
 **Production**:
+
 - Netlify: Uses `netlify.toml` and `_headers` file
 - Vercel: Uses `vercel.json`
 - Other: Add headers to your server config
 
 **Fallback**:
+
 ```javascript
 if (!canUseSharedArrayBuffer()) {
   // Use MessageChannel instead
