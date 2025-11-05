@@ -15,3 +15,39 @@ if (!appElement) {
 }
 const root = createRoot(appElement);
 root.render(<App />);
+
+// Ensure we attempt a graceful device/worker teardown on HMR full reloads
+// and normal navigations. These hooks are best-effort and non-blocking.
+
+const callGlobalShutdown = (): void => {
+  try {
+    interface GlobalWithRadio {
+      radIo?: { shutdown?: () => Promise<void> };
+    }
+    const g = globalThis as unknown as GlobalWithRadio;
+    if (g.radIo?.shutdown) {
+      // Fire and forget; cannot await during dispose/unload
+      void g.radIo.shutdown();
+    }
+  } catch {
+    // no-op
+  }
+};
+
+// Webpack HMR dispose callback
+interface HotModule {
+  hot?: {
+    dispose: (callback: () => void) => void;
+  };
+}
+const hotModule = module as unknown as HotModule;
+if (hotModule.hot) {
+  hotModule.hot.dispose(() => {
+    callGlobalShutdown();
+  });
+}
+
+// Best-effort on navigation away
+window.addEventListener("beforeunload", () => {
+  callGlobalShutdown();
+});

@@ -4,6 +4,7 @@ import FrequencyDisplay from "./components/FrequencyDisplay";
 import Navigation from "./components/Navigation";
 import RenderingSettingsModal from "./components/RenderingSettingsModal";
 import ShortcutsOverlay from "./components/ShortcutsOverlay";
+import StatusBar from "./components/StatusBar";
 import ToastProvider from "./components/ToastProvider";
 import TopAppBar from "./components/TopAppBar";
 import VFOControl from "./components/VFOControl";
@@ -34,7 +35,7 @@ function App(): React.JSX.Element {
   useDeviceIntegration();
 
   // Initialize status metrics collection (hook manages its own subscriptions)
-  useStatusMetrics();
+  const metrics = useStatusMetrics();
   const [showRenderingSettings, setShowRenderingSettings] = useState(false);
 
   return (
@@ -64,7 +65,7 @@ function App(): React.JSX.Element {
           </header>
 
           {/* Main content area for pages */}
-          <main id="main-content" tabIndex={-1}>
+          <main id="main-content" tabIndex={-1} style={{ paddingBottom: 56 }}>
             <Routes>
               {/* Primary workspaces */}
               <Route path="/" element={<Monitor />} />
@@ -100,10 +101,30 @@ function App(): React.JSX.Element {
             </Routes>
           </main>
 
+          {/* Global StatusBar pinned to bottom of viewport */}
+          <StatusBar
+            message={undefined}
+            renderTier={metrics.renderTier}
+            fps={metrics.fps}
+            inputFps={metrics.inputFps}
+            droppedFrames={metrics.droppedFrames}
+            renderP95Ms={metrics.renderP95Ms}
+            longTasks={metrics.longTasks}
+            sampleRate={metrics.sampleRate}
+            bufferHealth={metrics.bufferHealth}
+            bufferDetails={metrics.bufferDetails}
+            storageUsed={metrics.storageUsed}
+            storageQuota={metrics.storageQuota}
+            deviceConnected={metrics.deviceConnected}
+            audioState={metrics.audio.state}
+            audioVolume={Math.round((metrics.audio.volume ?? 0) * 100)}
+            audioClipping={metrics.audio.clipping}
+            onOpenRenderingSettings={() => setShowRenderingSettings(true)}
+          />
+
           {/* Global shortcuts help overlay (toggles with '?') */}
           <ShortcutsOverlay />
 
-          {/* Page-level StatusBar components provide status; no global duplicate here */}
           <RenderingSettingsModal
             isOpen={showRenderingSettings}
             onClose={() => setShowRenderingSettings(false)}

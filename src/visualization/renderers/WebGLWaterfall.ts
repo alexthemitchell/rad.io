@@ -5,7 +5,7 @@ import * as webgl from "../../utils/webgl";
 import type { Renderer } from "./types";
 
 const WATERFALL_FS = `
-precision mediump float;
+precision highp float;
 uniform sampler2D uColormap;
 uniform sampler2D uSpectrogram;
 uniform float uGain;
@@ -14,7 +14,7 @@ varying vec2 v_texCoord;
 
 void main() {
   float power = texture2D(uSpectrogram, v_texCoord).r;
-  power = power * uGain + uOffset;
+  power = clamp(power * uGain + uOffset, 0.0, 1.0);
   gl_FragColor = texture2D(uColormap, vec2(power, 0.5));
 }
 `;
@@ -78,7 +78,18 @@ export class WebGLWaterfall implements Renderer {
         this.textureSize.height,
         null,
       );
+      // Use linear filtering on the spectrogram to avoid visible vertical aliasing
+      // when the texture width exceeds the canvas resolution.
+      gl.bindTexture(gl.TEXTURE_2D, this.spectrogramTexture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.bindTexture(gl.TEXTURE_2D, null);
       this.colormapTexture = webgl.createTextureRGBA(gl, 256, 1, null);
+      // Smooth the 1D colormap to avoid visible quantization bands
+      gl.bindTexture(gl.TEXTURE_2D, this.colormapTexture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.bindTexture(gl.TEXTURE_2D, null);
 
       this.vertexBuffer = webgl.createBuffer(gl, webgl.QUAD_VERTICES);
       this.textureBuffer = webgl.createBuffer(gl, webgl.TEX_COORDS);
@@ -152,6 +163,7 @@ export class WebGLWaterfall implements Renderer {
 
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, this.spectrogramTexture);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
     for (const row of spectrogram) {
       if (row.length !== this.textureSize.width) {
@@ -166,6 +178,10 @@ export class WebGLWaterfall implements Renderer {
           this.textureSize.height,
           null,
         );
+        gl.bindTexture(gl.TEXTURE_2D, this.spectrogramTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.bindTexture(gl.TEXTURE_2D, null);
         this.currentRow = 0;
         gl.bindTexture(gl.TEXTURE_2D, this.spectrogramTexture);
       }
@@ -197,9 +213,20 @@ export class WebGLWaterfall implements Renderer {
     gl.vertexAttribPointer(this.aPosition, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(this.aPosition);
 
-    // We need to adjust texture coordinates to achieve the scrolling effect
-    const y = this.currentRow / this.textureSize.height;
-    const textureCoords = new Float32Array([0, y, 1, y, 0, y - 1, 1, y - 1]);
+    // Adjust texture coordinates for scrolling with half-texel offset to avoid seams
+    const texH = this.textureSize.height;
+    const halfY = 0.5 / texH;
+    const y = (this.currentRow + 0.5) / texH; // center of current row
+    const textureCoords = new Float32Array([
+      0,
+      y + halfY,
+      1,
+      y + halfY,
+      0,
+      y - 1 + halfY,
+      1,
+      y - 1 + halfY,
+    ]);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.textureBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, textureCoords, gl.DYNAMIC_DRAW);
     gl.vertexAttribPointer(this.aTexCoord, 2, gl.FLOAT, false, 0, 0);

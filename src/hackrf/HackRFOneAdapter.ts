@@ -64,7 +64,13 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   async close(): Promise<void> {
+    // Ensure we abort any pending transfer immediately before closing
     this.isReceivingFlag = false;
+    try {
+      this.device.stopRx();
+    } catch {
+      // ignore
+    }
     this.isInitialized = false; // Reset initialization state on close
     await this.device.close();
   }

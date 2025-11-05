@@ -78,25 +78,30 @@ export function useDsp(
       // Generate a simple composite tone in IQ domain and feed the DSP worker
       const generate = (): void => {
         const N = fftSize; // match current FFT size
-        const samples: IQSample[] = new Array(N) as IQSample[];
+        const interleavedSamples = new Float32Array(N * 2);
         const t0 = simPhaseRef.current;
         // Two tones inside band to give non-trivial spectrum
         const f1 = 0.07; // normalized frequency cycles/sample
         const f2 = 0.151;
         for (let i = 0; i < N; i++) {
           const t = t0 + i;
-          const iSample = Math.sin(2 * Math.PI * (f1 * t));
-          const qSample = Math.cos(2 * Math.PI * (f2 * t));
-          samples[i] = { I: iSample, Q: qSample };
+          interleavedSamples[i * 2] = Math.sin(2 * Math.PI * (f1 * t));
+          interleavedSamples[i * 2 + 1] = Math.cos(2 * Math.PI * (f2 * t));
         }
         simPhaseRef.current = (t0 + N) % 1e9; // keep bounded
-        dspWorkerPool.postMessage({
-          type: "process",
-          payload: {
-            samples,
-            fftSize,
+
+        // Transfer the buffer to worker (zero-copy)
+        const buffer = interleavedSamples.buffer;
+        dspWorkerPool.postMessage(
+          {
+            type: "process",
+            payload: {
+              samplesBuffer: buffer,
+              fftSize,
+            },
           },
-        });
+          [buffer],
+        );
       };
 
       // Target ~30–33Hz updates to reduce CPU load under automation
@@ -114,18 +119,30 @@ export function useDsp(
       // Convert transport format (DataView) to IQSample[] using device's parser
       try {
         const iq = device.parseSamples(raw);
-        dspWorkerPool.postMessage({
-          type: "process",
-          payload: {
-            samples: iq,
-            fftSize,
+
+        // Convert IQSample[] to interleaved Float32Array for zero-copy transfer
+        const interleavedSamples = new Float32Array(iq.length * 2);
+        for (let i = 0; i < iq.length; i++) {
+          interleavedSamples[i * 2] = iq[i]?.I ?? 0;
+          interleavedSamples[i * 2 + 1] = iq[i]?.Q ?? 0;
+        }
+
+        // Transfer the buffer to worker (zero-copy)
+        const buffer = interleavedSamples.buffer;
+        dspWorkerPool.postMessage(
+          {
+            type: "process",
+            payload: {
+              samplesBuffer: buffer,
+              fftSize,
+            },
           },
-        });
+          [buffer],
+        );
       } catch {
         // Swallow parsing errors to avoid breaking stream; logging optional
       }
     };
-
     await device.receive(sampleCallback);
   }, [device, fftSize]);
 

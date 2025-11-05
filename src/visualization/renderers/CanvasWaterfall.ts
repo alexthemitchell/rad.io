@@ -100,19 +100,18 @@ export class CanvasWaterfall implements Renderer {
 
     // Precompute integer-aligned pixel edges to prevent gaps/overdraw.
     // This eliminates aliasing lines that appear with fractional sizes.
-    const xEdges: number[] = new Array(numFrames + 1);
-    for (let i = 0; i <= numFrames; i++) {
-      xEdges[i] = margin.left + Math.floor((i * chartWidth) / numFrames);
-    }
+    const xEdges: number[] = Array.from(
+      { length: numFrames + 1 },
+      (_, i) => margin.left + Math.floor((i * chartWidth) / numFrames),
+    );
 
     const binSpan = binCount; // number of bins to draw
-    const yEdges: number[] = new Array(binSpan + 1);
     // Build from top to bottom; bin index 0 sits at the bottom by design below,
     // so compute edges in chart space then invert when drawing.
-    for (let j = 0; j <= binSpan; j++) {
-      // Edge position measured from top of chart area
-      yEdges[j] = margin.top + Math.floor((j * chartHeight) / binSpan);
-    }
+    const yEdges: number[] = Array.from(
+      { length: binSpan + 1 },
+      (_, j) => margin.top + Math.floor((j * chartHeight) / binSpan),
+    );
 
     // Find global min/max for normalization
     let globalMin = Infinity;
@@ -144,8 +143,12 @@ export class CanvasWaterfall implements Renderer {
       if (!frame) {
         continue;
       }
-      const x0 = xEdges[frameIdx];
-      const x1 = xEdges[frameIdx + 1];
+      const x0 =
+        xEdges[frameIdx] ??
+        margin.left + Math.floor((frameIdx * chartWidth) / numFrames);
+      const x1 =
+        xEdges[frameIdx + 1] ??
+        margin.left + Math.floor(((frameIdx + 1) * chartWidth) / numFrames);
       const w = Math.max(1, x1 - x0);
 
       for (let bin = freqMin; bin < freqMax && bin < frame.length; bin++) {
@@ -168,8 +171,13 @@ export class CanvasWaterfall implements Renderer {
         // Draw pixel aligned to integer pixel grid.
         const j = bin - freqMin; // 0..binSpan-1 (bottom to top mapping)
         // Convert to top-origin coordinates: higher bins are nearer the top.
-        const yTop = yEdges[binSpan - (j + 1)];
-        const yBottom = yEdges[binSpan - j];
+        const yTop =
+          yEdges[binSpan - (j + 1)] ??
+          margin.top +
+            Math.floor(((binSpan - (j + 1)) * chartHeight) / binSpan);
+        const yBottom =
+          yEdges[binSpan - j] ??
+          margin.top + Math.floor(((binSpan - j) * chartHeight) / binSpan);
         const h = Math.max(1, yBottom - yTop);
 
         ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;

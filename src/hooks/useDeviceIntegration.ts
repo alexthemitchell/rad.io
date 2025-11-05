@@ -21,6 +21,20 @@ import { useUSBDevice } from "./useUSBDevice";
 export function useDeviceIntegration(): void {
   const addDevice = useStore((s) => s.addDevice);
   const closeAllDevices = useStore((s) => s.closeAllDevices);
+  // Global guard across HMR reloads to avoid duplicated device sessions
+  // and to offer a centralized shutdown callable from HMR/beforeunload.
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore augment global at runtime without declaring ambient types
+  interface GlobalWithRadio {
+    radIo?: Record<string, unknown>;
+  }
+  const globalWithRadio = globalThis as unknown as GlobalWithRadio;
+  const globalRad = (globalWithRadio.radIo ??= {});
+
+  // Track closing state on the global to let new code paths short-circuit.
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore runtime attachment only
+  globalRad["closing"] = globalRad["closing"] ?? false;
 
   // Track if mock device has been initialized to avoid redundant checks
   const mockInitializedRef = useRef(false);
@@ -50,6 +64,13 @@ export function useDeviceIntegration(): void {
    */
   const initializeDevice = useCallback(
     async (usb: USBDevice): Promise<void> => {
+      // Skip initialization if a shutdown is in progress (e.g., HMR dispose)
+      if (globalRad["closing"]) {
+        deviceLogger.warn("Skipping device init during shutdown phase", {
+          reason: "global closing",
+        });
+        return;
+      }
       const deviceId = getDeviceId(usb);
 
       try {
@@ -76,7 +97,8 @@ export function useDeviceIntegration(): void {
         throw err;
       }
     },
-    [addDevice],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [addDevice], // globalRad is a runtime global, not a React dependency
   );
 
   /**
@@ -156,10 +178,49 @@ export function useDeviceIntegration(): void {
    * Cleanup all devices on unmount only
    */
   useEffect(() => {
+    // Expose a global shutdown that HMR dispose / beforeunload can call.
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore attach runtime global function (idempotent)
+    const g = (globalWithRadio.radIo ??= {});
+    Object.assign(g, {
+      // Provide an idempotent async shutdown
+      shutdown: async (): Promise<void> => {
+        try {
+          g["closing"] = true;
+          await closeAllDevices();
+          // Terminate DSP workers if present
+          try {
+            const pool = g["dspWorkerPool"] as
+              | { terminate: () => void }
+              | undefined;
+            pool?.terminate();
+          } catch {
+            // ignore worker termination errors during shutdown
+          }
+        } catch (err) {
+          deviceLogger.error("Shutdown error during global teardown", err);
+        } finally {
+          // Keep closing true briefly; new init paths will skip until reload completes
+          g["closing"] = false;
+        }
+      },
+    });
+
     return (): void => {
-      closeAllDevices().catch((err: unknown) =>
+      // Local unmount cleanup; do not await
+      void closeAllDevices().catch((err: unknown) =>
         deviceLogger.error("Cleanup failed during unmount", err),
       );
+      // Best-effort DSP worker termination on unmount
+      try {
+        const pool = globalRad["dspWorkerPool"] as
+          | { terminate: () => void }
+          | undefined;
+        pool?.terminate();
+      } catch {
+        // ignore
+      }
     };
-  }, [closeAllDevices]); // run on mount/unmount; resubscribe if function identity changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closeAllDevices]); // globalRad and globalWithRadio are runtime globals, not React dependencies
 }

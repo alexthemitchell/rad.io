@@ -914,6 +914,28 @@ export class HackRFOne {
           });
 
           if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
+            // If a shutdown is in progress, do not attempt recovery
+            if (this.closing) {
+              console.warn(
+                "HackRFOne.receive: Max timeouts reached during shutdown; exiting without recovery",
+                {
+                  iteration: iterationCount,
+                },
+              );
+              break;
+            }
+            // Skip recovery if closing flag is set (shutdown in progress)
+            if (this.closing) {
+              if (isDev) {
+                console.debug(
+                  "HackRFOne.receive: Skipping recovery during shutdown",
+                  {
+                    iteration: iterationCount,
+                  },
+                );
+              }
+              break;
+            }
             // Attempt fast automatic recovery
             try {
               console.warn(
@@ -939,11 +961,14 @@ export class HackRFOne {
               continue;
             } catch (recoveryError) {
               // If fast recovery fails, throw error with manual instructions
-              console.error(
+              // Use debug level if closing to reduce noise
+              const logLevel = this.closing ? console.debug : console.error;
+              logLevel(
                 "HackRFOne.receive: Automatic recovery failed",
                 recoveryError,
                 {
                   iteration: iterationCount,
+                  closing: this.closing,
                   deviceState: {
                     sampleRate: this.lastSampleRate,
                     frequency: this.lastFrequency,
@@ -990,11 +1015,18 @@ export class HackRFOne {
     }
     // Clear stop controller to avoid leaking references
     this.stopReject = null;
-    await this.setTransceiverMode(TransceiverMode.OFF);
-    await this.controlTransferOut({
-      command: RequestCommand.UI_ENABLE,
-      value: 1,
-    });
+    // During shutdown, avoid further control transfers which can fail noisily
+    if (!this.closing) {
+      try {
+        await this.setTransceiverMode(TransceiverMode.OFF);
+        await this.controlTransferOut({
+          command: RequestCommand.UI_ENABLE,
+          value: 1,
+        });
+      } catch (e) {
+        // Suppress errors during teardown
+      }
+    }
   }
 
   // New method to stop reception

@@ -103,4 +103,16 @@ const workerCount = ((): number => {
   return DEFAULT_POOL;
 })();
 
-export const dspWorkerPool = new DspWorkerPool(workerCount);
+// Ensure a single pool instance across HMR reloads by caching on a global
+interface GlobalWithRadio {
+  radIo?: Record<string, unknown>;
+}
+const globalWithRadio = globalThis as unknown as GlobalWithRadio;
+const g = (globalWithRadio.radIo ??= {});
+let existing = g.dspWorkerPool as DspWorkerPool | undefined;
+if (!existing) {
+  existing = new DspWorkerPool(workerCount);
+  g.dspWorkerPool = existing;
+}
+
+export const dspWorkerPool = existing;

@@ -52,7 +52,21 @@ jest.mock("../hooks/useDeviceIntegration", () => ({
   useDeviceIntegration: jest.fn(),
 }));
 jest.mock("../hooks/useStatusMetrics", () => ({
-  useStatusMetrics: jest.fn(),
+  useStatusMetrics: jest.fn(() => ({
+    deviceConnected: false,
+    renderTier: 0,
+    fps: 0,
+    inputFps: 0,
+    droppedFrames: 0,
+    renderP95Ms: 0,
+    longTasks: 0,
+    sampleRate: 0,
+    bufferHealth: 100,
+    bufferDetails: undefined,
+    storageUsed: 0,
+    storageQuota: 0,
+    audio: { state: "idle", volume: 0.5, clipping: false },
+  })),
 }));
 
 jest.mock("../pages/Scanner", () => {
@@ -160,5 +174,10 @@ describe("App", () => {
     const header = screen.getByRole("banner");
     expect(header).toBeInTheDocument();
     expect(header.tagName).toBe("HEADER");
+  });
+
+  it("renders the global StatusBar in the shell", () => {
+    render(<App />);
+    expect(screen.getByTestId("status-bar")).toBeInTheDocument();
   });
 });

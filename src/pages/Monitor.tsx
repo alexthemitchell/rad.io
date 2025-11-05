@@ -3,9 +3,7 @@ import AudioControls from "../components/AudioControls";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
 import RecordingControls from "../components/RecordingControls";
-import RenderingSettingsModal from "../components/RenderingSettingsModal";
 import SignalStrengthMeter from "../components/SignalStrengthMeter";
-import StatusBar from "../components/StatusBar";
 import { WATERFALL_COLORMAPS } from "../constants";
 import { useDsp } from "../hooks/useDsp";
 import {
@@ -38,7 +36,6 @@ const Monitor: React.FC = () => {
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
     useFrequency();
-  const [showRenderingSettings, setShowRenderingSettings] = useState(false);
   const { settings, setSettings } = useSettings();
 
   // Hardware configuration - currently hardcoded, could be made configurable in future
@@ -97,12 +94,11 @@ const Monitor: React.FC = () => {
   }, [scanner.state, foundSignals.length]);
 
   // Reception control using the useReception hook
-  const [scanStatusMsg, setScanStatusMsg] = useState<string>("");
+  const [, setScanStatusMsg] = useState<string>("");
   const {
     isReceiving,
     startReception: handleStart,
     stopReception: handleStop,
-    statusMessage: receptionStatusMsg,
   } = useReception({
     device,
     frequency,
@@ -114,7 +110,8 @@ const Monitor: React.FC = () => {
   });
 
   // Combine reception and scan status messages (reception takes precedence)
-  const statusMsg = receptionStatusMsg || scanStatusMsg;
+  // Note: value currently unused; StatusBar consumes messages directly from hooks.
+  // const statusMsg = receptionStatusMsg || scanStatusMsg;
 
   // Dummy state for components that are not yet fully integrated
   const [recordingState, setRecordingState] = useState<
@@ -664,22 +661,7 @@ const Monitor: React.FC = () => {
         </div>
       </details>
 
-      {/* Bottom status bar */}
-      <div style={{ marginTop: 12 }}>
-        <StatusBar
-          message={statusMsg}
-          sampleRate={sampleRate}
-          deviceConnected={Boolean(device)}
-          audioState={"idle"}
-          audioVolume={volume}
-          audioClipping={false}
-          onOpenRenderingSettings={() => setShowRenderingSettings(true)}
-        />
-      </div>
-      <RenderingSettingsModal
-        isOpen={showRenderingSettings}
-        onClose={() => setShowRenderingSettings(false)}
-      />
+      {/* StatusBar is rendered globally in the App shell */}
     </div>
   );
 };
