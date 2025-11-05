@@ -72,7 +72,7 @@ Each decoder runs in a dedicated Web Worker with message passing.
 
 ## Decision Outcome
 
-**Chosen option: "Option 2: Individual Decoder Classes with Common Interface"**
+### Chosen option: "Option 2: Individual Decoder Classes with Common Interface"
 
 We implement separate decoder classes for each mode with a React component that manages them. This provides the best balance of code clarity, extensibility, and performance.
 

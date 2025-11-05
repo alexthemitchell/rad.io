@@ -22,38 +22,16 @@ jest.mock("../../visualization", () => ({
   })),
 }));
 
-// Mock the DeviceContext to avoid requiring a real provider in tests
-jest.mock("../../contexts/DeviceContext", () => ({
-  DeviceProvider: ({ children }: any) => <>{children}</>,
-  useDevice: jest.fn(() => ({
-    device: null,
-    initialize: jest.fn(),
-    cleanup: jest.fn(),
-    isCheckingPaired: false,
-  })),
-  useDeviceContext: jest.fn(() => ({
-    devices: new Map(),
-    primaryDevice: undefined,
-    isCheckingPaired: false,
-    requestDevice: jest.fn(),
-    closeDevice: jest.fn(),
-    closeAllDevices: jest.fn(),
-  })),
-}));
+// DeviceContext is removed; Zustand store requires no provider or mocking here
 
 import Monitor from "../Monitor";
-import { FrequencyProvider } from "../../contexts/FrequencyContext";
-import { SettingsProvider } from "../../contexts";
 
 describe("Monitor", () => {
   it("renders the monitor page", () => {
+    // No providers needed with Zustand - state is global
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <FrequencyProvider initialHz={100_000_000}>
-            <Monitor />
-          </FrequencyProvider>
-        </SettingsProvider>
+        <Monitor />
       </BrowserRouter>,
     );
     expect(screen.getByRole("main")).toBeInTheDocument();
@@ -62,11 +40,7 @@ describe("Monitor", () => {
   it("displays heading", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <FrequencyProvider initialHz={100_000_000}>
-            <Monitor />
-          </FrequencyProvider>
-        </SettingsProvider>
+        <Monitor />
       </BrowserRouter>,
     );
     expect(
@@ -77,11 +51,7 @@ describe("Monitor", () => {
   it("shows spectrum section", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <FrequencyProvider initialHz={100_000_000}>
-            <Monitor />
-          </FrequencyProvider>
-        </SettingsProvider>
+        <Monitor />
       </BrowserRouter>,
     );
     expect(
@@ -92,11 +62,7 @@ describe("Monitor", () => {
   it("shows audio controls section", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <FrequencyProvider initialHz={100_000_000}>
-            <Monitor />
-          </FrequencyProvider>
-        </SettingsProvider>
+        <Monitor />
       </BrowserRouter>,
     );
     expect(screen.getByLabelText(/audio controls/i)).toBeInTheDocument();
@@ -105,11 +71,7 @@ describe("Monitor", () => {
   it("shows signal info section", () => {
     render(
       <BrowserRouter>
-        <SettingsProvider>
-          <FrequencyProvider initialHz={100_000_000}>
-            <Monitor />
-          </FrequencyProvider>
-        </SettingsProvider>
+        <Monitor />
       </BrowserRouter>,
     );
     expect(screen.getByLabelText(/signal information/i)).toBeInTheDocument();

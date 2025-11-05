@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useDeviceContext } from "../contexts/DeviceContext";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
 import { renderTierManager } from "../lib/render/RenderTierManager";
+import { useDevice } from "../store";
 import { RenderTier, maxTier } from "../types/rendering";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
 /** Rendering tier detected for visualization components */
@@ -48,26 +48,14 @@ export interface StatusBarProps {
 }
 
 // Custom hook to safely consume DeviceContext, returning defaults if provider is missing
-function useOptionalDeviceContext(): {
+function useDeviceState(): {
   primaryDevice: unknown;
   connectPairedUSBDevice: (usb: USBDevice) => Promise<void>;
   requestDevice: () => Promise<void>;
   isCheckingPaired: boolean;
 } {
-  try {
-    return useDeviceContext();
-  } catch {
-    return {
-      primaryDevice: undefined,
-      connectPairedUSBDevice: async (): Promise<void> => {
-        await Promise.resolve();
-      },
-      requestDevice: async (): Promise<void> => {
-        await Promise.resolve();
-      },
-      isCheckingPaired: false,
-    };
-  }
+  // Zustand store is always available without a Provider
+  return useDevice();
 }
 
 // Helper to compute a stable key for a USB device
@@ -124,7 +112,7 @@ function StatusBar({
     connectPairedUSBDevice,
     requestDevice,
     isCheckingPaired,
-  } = useOptionalDeviceContext();
+  } = useDeviceState();
 
   // Enumerated list of previously paired and supported USB devices
   const [pairedUSBDevices, setPairedUSBDevices] = useState<USBDevice[] | null>(

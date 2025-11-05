@@ -64,7 +64,13 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   async close(): Promise<void> {
+    // Ensure we abort any pending transfer immediately before closing
     this.isReceivingFlag = false;
+    try {
+      this.device.stopRx();
+    } catch {
+      // ignore
+    }
     this.isInitialized = false; // Reset initialization state on close
     await this.device.close();
   }
@@ -271,7 +277,19 @@ export class HackRFOneAdapter implements ISDRDevice {
    */
   async fastRecovery(): Promise<void> {
     await this.device.fastRecovery();
-    // Keep isInitialized=true since fastRecovery restores all configuration
+
+    // Ensure underlying device reflects initialized configuration state.
+    // Some mock environments may not persist state through reset; reapply
+    // the adapter's known sample rate to keep getConfigurationStatus() accurate.
+    if (this.currentSampleRate > 0) {
+      try {
+        await this.device.setSampleRate(this.currentSampleRate);
+      } catch {
+        // Best-effort; underlying device fastRecovery already attempted restore
+      }
+    }
+
+    this.isInitialized = true; // Ensure initialized state after fastRecovery
   }
 
   // Expose the underlying HackRFOne instance for advanced use

@@ -120,13 +120,8 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
       historyApiFallback: true,
       hot: true,
       server: "https",
-      headers: {
-        "Cross-Origin-Opener-Policy": "same-origin",
-        "Cross-Origin-Embedder-Policy": "require-corp",
-      },
     },
     performance: {
-      // Updated to match documented bundle sizes: main chunk ~406 KB, total ~628 KB
       maxEntrypointSize: 630000,
       maxAssetSize: 630000,
       hints: isDevelopment ? false : "warning",

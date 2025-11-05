@@ -1,9 +1,16 @@
 /**
  * Contexts barrel export
- * Provides centralized exports for all React contexts
+ *
+ * Re-exports Zustand store hooks for convenience.
  */
 
-export { DeviceProvider, useDeviceContext, useDevice } from "./DeviceContext";
-export { FrequencyProvider, useFrequency } from "./FrequencyContext";
-export { NotificationProvider, useNotifications } from "./NotificationContext";
-export { SettingsProvider, useSettings } from "./SettingsContext";
+export {
+  useDevice,
+  useFrequency,
+  useNotifications,
+  useSettings,
+} from "../store";
+
+export type { SettingsState, VizMode } from "../store";
+export type { Notification } from "../store/slices/notificationSlice";
+export type { DeviceId, DeviceEntry } from "../store/slices/deviceSlice";

@@ -31,8 +31,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   centerFrequency,
   mode,
   colorMap = "viridis",
-  dbMin = -100,
-  dbMax = 0,
+  dbMin,
+  dbMax,
   onTune,
   signals = [],
   showAnnotations = true,
@@ -46,6 +46,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   const workerManagerRef = useRef<VisualizationWorkerManager | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  // Reusable single-element array to avoid allocating [data] on every frame
+  const waterfallFrameArrayRef = useRef<Float32Array[]>([new Float32Array(0)]);
 
   // Tooltip state
   const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -64,8 +66,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   // without depending on React state/reference changes.
   const fftDataRef = useRef<Float32Array>(fftData);
   const modeRef = useRef<typeof mode>(mode);
-  const dbMinRef = useRef<number>(dbMin);
-  const dbMaxRef = useRef<number>(dbMax);
+  const dbMinRef = useRef<number | undefined>(dbMin);
+  const dbMaxRef = useRef<number | undefined>(dbMax);
   const colorMapRef = useRef<keyof typeof WATERFALL_COLORMAPS>(colorMap);
   const fftSizeRef = useRef<number>(fftSize);
   const sampleRateRef = useRef<number>(sampleRate);
@@ -185,8 +187,27 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
       const m = modeRef.current;
       const data = fftDataRef.current;
       const size = fftSizeRef.current;
-      const min = dbMinRef.current;
-      const max = dbMaxRef.current;
+      // Determine normalization range: manual dB floor/ceil if provided, otherwise auto from current row
+      let min = dbMinRef.current;
+      let max = dbMaxRef.current;
+      if (min === undefined || max === undefined) {
+        // Compute min/max from current data
+        let rowMin = Infinity;
+        let rowMax = -Infinity;
+        for (let i = 0; i < size; i++) {
+          const v = data[i];
+          if (v === undefined || !isFinite(v)) continue;
+          if (v < rowMin) rowMin = v;
+          if (v > rowMax) rowMax = v;
+        }
+        min ??= rowMin;
+        max ??= rowMax;
+      }
+      // Fallback if no finite values
+      if (!isFinite(min) || !isFinite(max)) {
+        min = 0;
+        max = 1;
+      }
       const cmap = colorMapRef.current;
 
       performanceMonitor.mark("render-start");
@@ -224,21 +245,24 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         const range = Math.max(1e-6, max - min);
         if (workerManagerRef.current?.isReady()) {
           try {
+            // Reuse array ref to avoid allocation
+            waterfallFrameArrayRef.current[0] = data;
             workerManagerRef.current.render({
-              fftData: [data],
+              fftData: waterfallFrameArrayRef.current,
               transform,
             });
           } catch {
             waterfallRendererRef.current?.render({
-              frames: [data],
+              frames: waterfallFrameArrayRef.current,
               gain: 1 / range,
               offset: -min / range,
               colormapName: cmap,
             });
           }
         } else if (waterfallRendererRef.current) {
+          waterfallFrameArrayRef.current[0] = data;
           waterfallRendererRef.current.render({
-            frames: [data],
+            frames: waterfallFrameArrayRef.current,
             gain: 1 / range,
             offset: -min / range,
             colormapName: cmap,

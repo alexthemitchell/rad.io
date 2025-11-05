@@ -2,18 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import TopAppBar from "../TopAppBar";
 
-// Mock the device context hooks used by TopAppBar and useStatusMetrics
-jest.mock("../../contexts/DeviceContext", () => ({
-  useDevice: jest.fn(() => ({
-    device: null,
-    initialize: jest.fn(),
-    cleanup: jest.fn(),
-    isCheckingPaired: false,
-  })),
-  useDeviceContext: jest.fn(() => ({
-    primaryDevice: null,
-  })),
-}));
+// DeviceContext is removed; TopAppBar reads Zustand state directly
 
 describe("TopAppBar", () => {
   it("renders the top app bar", () => {

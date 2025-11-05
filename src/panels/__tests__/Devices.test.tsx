@@ -1,21 +1,16 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
-// Mock the DeviceContext to avoid requiring a real provider in tests
-jest.mock("../../contexts/DeviceContext", () => ({
-  DeviceProvider: ({ children }: any) => <>{children}</>,
+// Mock the Zustand store's useDevice hook to avoid requiring real device state
+jest.mock("../../store", () => ({
+  __esModule: true,
   useDevice: jest.fn(() => ({
-    device: null,
-    initialize: jest.fn(),
-    cleanup: jest.fn(),
-    isCheckingPaired: false,
-  })),
-  useDeviceContext: jest.fn(() => ({
     devices: new Map(),
     primaryDevice: undefined,
     isCheckingPaired: false,
     requestDevice: jest.fn(),
     closeDevice: jest.fn(),
     closeAllDevices: jest.fn(),
+    connectPairedUSBDevice: jest.fn(),
   })),
 }));
 
@@ -69,14 +64,17 @@ describe("Devices", () => {
     ).toBeInTheDocument();
   });
 
-  it("calls initialize when scan button is clicked", async () => {
-    const { useDevice } = require("../../contexts/DeviceContext");
-    const mockInitialize = jest.fn();
+  it("calls requestDevice when scan button is clicked", async () => {
+    const { useDevice } = require("../../store");
+    const mockRequestDevice = jest.fn().mockResolvedValue(undefined);
     useDevice.mockReturnValue({
-      device: null,
-      initialize: mockInitialize,
-      cleanup: jest.fn(),
+      devices: new Map(),
+      primaryDevice: undefined,
       isCheckingPaired: false,
+      requestDevice: mockRequestDevice,
+      closeDevice: jest.fn(),
+      closeAllDevices: jest.fn(),
+      connectPairedUSBDevice: jest.fn(),
     });
 
     render(<Devices />);
@@ -85,17 +83,20 @@ describe("Devices", () => {
     });
     fireEvent.click(scanButton);
     await waitFor(() => {
-      expect(mockInitialize).toHaveBeenCalled();
+      expect(mockRequestDevice).toHaveBeenCalled();
     });
   });
 
   it("shows checking message when isCheckingPaired is true", () => {
-    const { useDevice } = require("../../contexts/DeviceContext");
+    const { useDevice } = require("../../store");
     useDevice.mockReturnValue({
-      device: null,
-      initialize: jest.fn(),
-      cleanup: jest.fn(),
+      devices: new Map(),
+      primaryDevice: undefined,
       isCheckingPaired: true,
+      requestDevice: jest.fn(),
+      closeDevice: jest.fn(),
+      closeAllDevices: jest.fn(),
+      connectPairedUSBDevice: jest.fn(),
     });
 
     render(<Devices />);
@@ -122,7 +123,7 @@ describe("Devices", () => {
   });
 
   it("displays connected USB device info including USB ID when available", async () => {
-    const { useDevice } = require("../../contexts/DeviceContext");
+    const { useDevice } = require("../../store");
     const fakeUSB = {
       productName: "HackRF One",
       serialNumber: "ABC123",
@@ -137,10 +138,13 @@ describe("Devices", () => {
       device: fakeUSB,
     };
     useDevice.mockReturnValue({
-      device: fakeDevice,
-      initialize: jest.fn(),
-      cleanup: jest.fn(),
+      devices: new Map(),
+      primaryDevice: fakeDevice,
       isCheckingPaired: false,
+      requestDevice: jest.fn(),
+      closeDevice: jest.fn(),
+      closeAllDevices: jest.fn(),
+      connectPairedUSBDevice: jest.fn(),
     });
 
     render(<Devices />);

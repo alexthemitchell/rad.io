@@ -425,7 +425,7 @@ await pluginRegistry.unregister("my-plugin-id");
 
 ### Registry Methods
 
-#### register(plugin: Plugin): Promise<void>
+#### `register(plugin: Plugin): Promise<void>`
 
 Registers a plugin with the registry.
 
@@ -449,7 +449,7 @@ await pluginRegistry.register(plugin);
 console.log(plugin.state); // PluginState.INITIALIZED
 ```
 
-#### unregister(pluginId: string): Promise<void>
+#### `unregister(pluginId: string): Promise<void>`
 
 Unregisters a plugin from the registry.
 
@@ -526,7 +526,7 @@ abstract class BasePlugin implements Plugin {
 
 Plugins extending `BasePlugin` implement these hooks:
 
-#### onInitialize(): void | Promise<void>
+#### `onInitialize(): void | Promise<void>`
 
 Called during `initialize()`. Set up initial state.
 
@@ -537,7 +537,7 @@ protected onInitialize(): void {
 }
 ```
 
-#### onActivate(): void | Promise<void>
+#### `onActivate(): void | Promise<void>`
 
 Called during `activate()`. Start plugin functionality.
 
@@ -548,7 +548,7 @@ protected async onActivate(): Promise<void> {
 }
 ```
 
-#### onDeactivate(): void | Promise<void>
+#### `onDeactivate(): void | Promise<void>`
 
 Called during `deactivate()`. Stop plugin but keep state.
 
@@ -560,7 +560,7 @@ protected onDeactivate(): void {
 }
 ```
 
-#### onDispose(): void | Promise<void>
+#### `onDispose(): void | Promise<void>`
 
 Called during `dispose()`. Clean up all resources.
 
@@ -574,7 +574,7 @@ protected async onDispose(): Promise<void> {
 }
 ```
 
-#### onConfigUpdate(config: Record<string, unknown>): void | Promise<void>
+#### `onConfigUpdate(config: Record<string, unknown>): void | Promise<void>`
 
 Called during `updateConfig()`. Apply configuration changes.
 

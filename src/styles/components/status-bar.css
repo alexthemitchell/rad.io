@@ -8,7 +8,9 @@
   border-top: 1px solid var(--rad-border);
   font-size: 0.8rem;
   color: var(--rad-fg);
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
   z-index: 100;
 }

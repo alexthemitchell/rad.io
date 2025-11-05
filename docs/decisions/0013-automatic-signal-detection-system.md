@@ -347,17 +347,17 @@ export class DetectionManager {
 
 ## References
 
-#### Academic Research on Signal Detection
+### Academic Research on Signal Detection
 
 - IEEE Transactions on Signal Processing. "Automatic Modulation Classification: A Review." - Machine learning approaches to signal classification
 - IEEE Communications Surveys & Tutorials. "Energy Detection in Spectrum Sensing: Overview and Challenges." - Statistical detection methods
 - MATLAB Documentation. "Peak Detection Algorithms." Signal Processing Toolbox. [Documentation](https://www.mathworks.com/help/signal/ref/findpeaks.html) - Algorithm reference
 
-#### DSP Fundamentals
+### DSP Fundamentals
 
 - Proakis, John G., and Manolakis, Dimitris G. "Digital Signal Processing: Principles, Algorithms, and Applications." Pearson, 4th edition (2006). - Standard DSP textbook
 
-#### Related ADRs
+### Related ADRs
 
 - ADR-0002: Web Worker DSP Architecture (detection runs in workers)
 - ADR-0004: Signal Processing Library Selection (detection algorithms)

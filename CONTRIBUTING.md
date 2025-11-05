@@ -100,14 +100,16 @@ npm run clean          # Remove build artifacts and dependencies
 > npm test -- src/utils/__tests__/dsp.test.ts
 > ```
 
-4. **Commit with descriptive messages**
+````
+
+1. **Commit with descriptive messages**
 
 ```bash
 git add .
 git commit -m "feat: add support for new SDR device"
-```
+````
 
-5. **Push and create PR**
+1. **Push and create PR**
 
    ```bash
    git push origin feature/your-feature-name
@@ -256,14 +258,14 @@ rad.io enforces strict coverage thresholds to maintain code quality and prevent 
 
 ### Coverage Enforcement
 
-**CI/CD Pipeline**
+#### CI/CD Pipeline
 
 - All PRs must maintain or improve overall coverage
 - Per-module thresholds are enforced in `jest.config.js`
 - Codecov integration provides visual coverage reports
 - PRs that decrease coverage below thresholds will fail CI
 
-**Local Verification**
+#### Local Verification
 
 ```bash
 # Check coverage for all modules
@@ -277,7 +279,7 @@ npm test -- --coverage --coverageReporters=html
 open coverage/index.html
 ```
 
-**Coverage Badge**
+#### Coverage Badge
 
 [![codecov](https://codecov.io/gh/alexthemitchell/rad.io/branch/main/graph/badge.svg)](https://codecov.io/gh/alexthemitchell/rad.io)
 

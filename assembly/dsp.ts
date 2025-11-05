@@ -354,10 +354,26 @@ export function calculateFFT(
   const n = fftSize;
   const samples = new Array<Complex>(n);
 
-  // Copy input samples to complex array
+  // DC offset removal: compute mean of I and Q in single pass
+  let sumI: f64 = 0.0;
+  let sumQ: f64 = 0.0;
+  let validCount: i32 = 0;
+
   for (let i = 0; i < n; i++) {
-    const iVal = i < iSamples.length ? iSamples[i] : 0.0;
-    const qVal = i < qSamples.length ? qSamples[i] : 0.0;
+    if (i < iSamples.length) {
+      sumI += f64(iSamples[i]);
+      sumQ += f64(qSamples[i]);
+      validCount++;
+    }
+  }
+
+  const meanI = validCount > 0 ? sumI / f64(validCount) : 0.0;
+  const meanQ = validCount > 0 ? sumQ / f64(validCount) : 0.0;
+
+  // Copy mean-corrected samples to complex array
+  for (let i = 0; i < n; i++) {
+    const iVal = i < iSamples.length ? f64(iSamples[i]) - meanI : 0.0;
+    const qVal = i < qSamples.length ? f64(qSamples[i]) - meanQ : 0.0;
     samples[i] = new Complex(iVal, qVal);
   }
 
@@ -411,6 +427,9 @@ export function calculateFFT(
     const shiftedIdx = k < half ? k + half : k - half;
     output[shiftedIdx] = f32(dB);
   }
+
+  // DC correction is now done pre-FFT via mean removal
+  // No post-processing notch needed
 }
 
 /**

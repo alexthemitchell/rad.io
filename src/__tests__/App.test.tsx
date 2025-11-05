@@ -3,8 +3,18 @@
  */
 
 import { render, screen } from "@testing-library/react";
-import App from "../App";
 import * as dspWasm from "../utils/dspWasm";
+
+// Mock WebUSB API
+Object.defineProperty(global.navigator, "usb", {
+  value: {
+    getDevices: jest.fn().mockResolvedValue([]),
+    requestDevice: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  },
+  writable: true,
+});
 
 // Mock the WASM module preload
 jest.mock("../utils/dspWasm", () => ({
@@ -36,6 +46,28 @@ jest.mock("../pages/Monitor", () => {
     return <div data-testid="monitor">Monitor Page</div>;
   };
 });
+
+// Mock integration/status hooks to avoid store update loops in tests
+jest.mock("../hooks/useDeviceIntegration", () => ({
+  useDeviceIntegration: jest.fn(),
+}));
+jest.mock("../hooks/useStatusMetrics", () => ({
+  useStatusMetrics: jest.fn(() => ({
+    deviceConnected: false,
+    renderTier: 0,
+    fps: 0,
+    inputFps: 0,
+    droppedFrames: 0,
+    renderP95Ms: 0,
+    longTasks: 0,
+    sampleRate: 0,
+    bufferHealth: 100,
+    bufferDetails: undefined,
+    storageUsed: 0,
+    storageQuota: 0,
+    audio: { state: "idle", volume: 0.5, clipping: false },
+  })),
+}));
 
 jest.mock("../pages/Scanner", () => {
   return function Scanner() {
@@ -103,26 +135,10 @@ jest.mock("../panels/Diagnostics", () => {
   };
 });
 
-// Mock the DeviceContext
-jest.mock("../contexts/DeviceContext", () => ({
-  DeviceProvider: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
-  useDevice: jest.fn(() => ({
-    device: null,
-    initialize: jest.fn(),
-    cleanup: jest.fn(),
-    isCheckingPaired: false,
-  })),
-  useDeviceContext: jest.fn(() => ({
-    devices: new Map(),
-    primaryDevice: undefined,
-    isCheckingPaired: false,
-    requestDevice: jest.fn(),
-    closeDevice: jest.fn(),
-    closeAllDevices: jest.fn(),
-  })),
-}));
+// In Zustand architecture, DeviceContext is no longer used; no mock needed
+
+// Import App after mocks are in place to ensure they take effect
+const App = require("../App").default;
 
 describe("App", () => {
   beforeEach(() => {
@@ -158,5 +174,10 @@ describe("App", () => {
     const header = screen.getByRole("banner");
     expect(header).toBeInTheDocument();
     expect(header.tagName).toBe("HEADER");
+  });
+
+  it("renders the global StatusBar in the shell", () => {
+    render(<App />);
+    expect(screen.getByTestId("status-bar")).toBeInTheDocument();
   });
 });

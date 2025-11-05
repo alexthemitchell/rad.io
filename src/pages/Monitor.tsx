@@ -1,16 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import AudioControls from "../components/AudioControls";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import RDSDisplay from "../components/RDSDisplay";
 import RecordingControls from "../components/RecordingControls";
-import RenderingSettingsModal from "../components/RenderingSettingsModal";
 import SignalStrengthMeter from "../components/SignalStrengthMeter";
-import StatusBar from "../components/StatusBar";
 import { WATERFALL_COLORMAPS } from "../constants";
-import { useSettings } from "../contexts";
-import { useDevice } from "../contexts/DeviceContext";
-import { useFrequency } from "../contexts/FrequencyContext";
-import { useNotifications } from "../contexts/NotificationContext";
 import { useDsp } from "../hooks/useDsp";
 import {
   useFrequencyScanner,
@@ -18,6 +12,12 @@ import {
 } from "../hooks/useFrequencyScanner";
 import { useReception } from "../hooks/useReception";
 import { useSignalDetection } from "../hooks/useSignalDetection";
+import {
+  useDevice,
+  useFrequency,
+  useNotifications,
+  useSettings,
+} from "../store";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { formatFrequency } from "../utils/frequency";
 import type { IQSample } from "../models/SDRDevice";
@@ -29,14 +29,14 @@ declare global {
 }
 
 const Monitor: React.FC = () => {
-  const { device } = useDevice();
+  const { primaryDevice: device } = useDevice();
   const { notify } = useNotifications();
   const useMock = shouldUseMockSDR();
+  const emptySamples = useMemo(() => [], []);
 
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
     useFrequency();
-  const [showRenderingSettings, setShowRenderingSettings] = useState(false);
   const { settings, setSettings } = useSettings();
 
   // Hardware configuration - currently hardcoded, could be made configurable in future
@@ -95,12 +95,11 @@ const Monitor: React.FC = () => {
   }, [scanner.state, foundSignals.length]);
 
   // Reception control using the useReception hook
-  const [scanStatusMsg, setScanStatusMsg] = useState<string>("");
+  const [, setScanStatusMsg] = useState<string>("");
   const {
     isReceiving,
     startReception: handleStart,
     stopReception: handleStop,
-    statusMessage: receptionStatusMsg,
   } = useReception({
     device,
     frequency,
@@ -112,7 +111,8 @@ const Monitor: React.FC = () => {
   });
 
   // Combine reception and scan status messages (reception takes precedence)
-  const statusMsg = receptionStatusMsg || scanStatusMsg;
+  // Note: value currently unused; StatusBar consumes messages directly from hooks.
+  // const statusMsg = receptionStatusMsg || scanStatusMsg;
 
   // Automatic signal detection during live reception
   const autoDetection = useSignalDetection(
@@ -325,6 +325,20 @@ const Monitor: React.FC = () => {
               Show Waterfall (improves performance when off)
             </label>
           )}
+          {/* Debug/diagnostic indicator for DC correction state */}
+          <span
+            aria-label="DC correction status"
+            title="DC offset removal: subtracts mean I/Q before FFT"
+            style={{
+              opacity: 0.85,
+              padding: "2px 8px",
+              borderRadius: 4,
+              background: "rgba(255,255,255,0.06)",
+              fontFamily: "JetBrains Mono, monospace",
+            }}
+          >
+            DC removal: on
+          </span>
           <div
             role="group"
             aria-label="Frequency scanner controls"
@@ -505,7 +519,7 @@ const Monitor: React.FC = () => {
           }}
         >
           <div style={{ flex: "1 1 300px" }}>
-            <SignalStrengthMeter samples={[]} />
+            <SignalStrengthMeter samples={emptySamples} />
           </div>
           {foundSignals.length > 0 && foundSignals[0]?.rdsData && (
             <div style={{ flex: "1 1 300px" }}>
@@ -658,22 +672,7 @@ const Monitor: React.FC = () => {
         </div>
       </details>
 
-      {/* Bottom status bar */}
-      <div style={{ marginTop: 12 }}>
-        <StatusBar
-          message={statusMsg}
-          sampleRate={sampleRate}
-          deviceConnected={Boolean(device)}
-          audioState={"idle"}
-          audioVolume={volume}
-          audioClipping={false}
-          onOpenRenderingSettings={() => setShowRenderingSettings(true)}
-        />
-      </div>
-      <RenderingSettingsModal
-        isOpen={showRenderingSettings}
-        onClose={() => setShowRenderingSettings(false)}
-      />
+      {/* StatusBar is rendered globally in the App shell */}
     </div>
   );
 };

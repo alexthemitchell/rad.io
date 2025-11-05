@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { useDevice, useDeviceContext } from "../contexts/DeviceContext";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
 import { notify } from "../lib/notifications";
+import { useDevice } from "../store";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
 
@@ -33,8 +33,13 @@ interface DevicesProps {
 // WebUSB adapter extraction lives in src/utils/usb.ts
 
 function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
-  const { device, initialize, cleanup, isCheckingPaired } = useDevice();
-  const { connectPairedUSBDevice } = useDeviceContext();
+  const {
+    primaryDevice: device,
+    requestDevice,
+    closeAllDevices,
+    isCheckingPaired,
+    connectPairedUSBDevice,
+  } = useDevice();
   // Unified notifications
 
   const [sampleRate, setSampleRate] = useState<number | null>(null);
@@ -115,10 +120,10 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
 
   const handleScanForDevices = async (): Promise<void> => {
     try {
-      await initialize();
+      await requestDevice();
       notify({ message: "Device picker opened", sr: "polite", visual: false });
     } catch (error) {
-      console.error("Failed to initialize device:", error);
+      console.error("Failed to request device:", error);
       notify({
         message: "Failed to open device picker",
         sr: "assertive",
@@ -129,7 +134,7 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
   };
 
   const handleDisconnect = (): void => {
-    void cleanup();
+    void closeAllDevices();
     setSampleRate(null);
     setFrequency(null);
     setDeviceInfo({});

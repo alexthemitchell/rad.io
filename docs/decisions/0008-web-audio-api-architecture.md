@@ -477,28 +477,28 @@ class AudioRingBuffer {
 
 ## References
 
-#### W3C Standards and Specifications
+### W3C Standards and Specifications
 
 - [Web Audio API Specification](https://www.w3.org/TR/webaudio/) - W3C Recommendation for high-level audio processing
 - [AudioWorklet - MDN](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet) - Low-latency audio processing API documentation
 
-#### Academic Research and Technical Articles
+### Academic Research and Technical Articles
 
 - "Understanding AudioWorklet: A Deep Dive Into Web Audio API." PeerDH (2024). [Technical Guide](https://peerdh.com/blogs/programming-insights/understanding-audioworklet-a-deep-dive-into-web-audio-api) - Comprehensive analysis of AudioWorklet architecture and performance
 - "Real-Time Audio Worklet Recorder." GitHub (2024). [Implementation](https://github.com/alyssonbarrera/audio-worklet-recorder) - Production example with low-latency streaming, resampling, and WebSocket integration
 - Stack Overflow. "Using AudioWorkletProcessor for low-latency audio scheduling." [Technical Discussion](https://stackoverflow.com/questions/62505257/using-audioworkletprocessor-for-low-latency-audio-scheduling) - Best practices for timing precision
 - [Emscripten Wasm Audio Worklets](https://emscripten.org/docs/api_reference/wasm_audio_worklets.html) - C/C++ audio processing compiled to WebAssembly
 
-#### Conference Papers and Industry Resources
+### Conference Papers and Industry Resources
 
 - "Enter Audio Worklet" - Web Audio Conference 2018 - Introduction to AudioWorklet design patterns
 - "Audio Worklet Design Pattern" - Google Developers - Best practices from Chrome audio team
 
-#### DSP References
+### DSP References
 
 - [Sample Rate Conversion Algorithms](https://ccrma.stanford.edu/~jos/resample/) - Julius O. Smith III, Stanford CCRMA - Mathematical foundations for resampling
 
-#### Related ADRs
+### Related ADRs
 
 - ADR-0002: Web Worker DSP Architecture (demodulation processing before audio output)
 - ADR-0011: Error Handling and Resilience Strategy (audio underrun recovery)

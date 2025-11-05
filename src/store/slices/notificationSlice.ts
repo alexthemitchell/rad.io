@@ -1,0 +1,115 @@
+/**
+ * Notification Slice
+ *
+ * Manages application notifications and toasts.
+ * Migrated from NotificationContext.tsx to use Zustand.
+ */
+
+import { type StateCreator } from "zustand";
+import {
+  notify as busNotify,
+  type Politeness,
+  type Tone,
+} from "../../lib/notifications";
+
+export interface Notification {
+  id: number;
+  message: string;
+  tone: Tone;
+  sr: Politeness;
+  visual: boolean;
+}
+
+export interface NotificationSlice {
+  notifications: Notification[];
+  notify: (
+    notification: Omit<Notification, "id"> & { duration?: number },
+  ) => void;
+  _nextId: number; // Internal counter for notification IDs
+  _timeouts: Map<number, NodeJS.Timeout>; // Track active timeouts for cleanup
+}
+
+export const notificationSlice: StateCreator<NotificationSlice> = (
+  set: (
+    partial:
+      | NotificationSlice
+      | Partial<NotificationSlice>
+      | ((
+          state: NotificationSlice,
+        ) => NotificationSlice | Partial<NotificationSlice>),
+  ) => void,
+  get: () => NotificationSlice,
+) => ({
+  notifications: [],
+  _nextId: 0,
+  _timeouts: new Map(),
+
+  notify: (
+    notification: Omit<Notification, "id"> & { duration?: number },
+  ): void => {
+    const state = get();
+    const id = state._nextId;
+    const newNotification: Notification = {
+      ...notification,
+      id,
+    };
+
+    // Also send to global notification bus for compatibility with ToastProvider
+    busNotify({
+      message: notification.message,
+      tone: notification.tone,
+      sr: notification.sr,
+      visual: notification.visual,
+      duration: notification.duration,
+    });
+
+    // Add notification first, then schedule timeout to ensure ordering
+    set((state: NotificationSlice) => {
+      // Schedule removal timeout after notification is added to state
+      const timeoutId = setTimeout(() => {
+        set((innerState: NotificationSlice) => {
+          const newTimeouts = new Map(innerState._timeouts);
+          newTimeouts.delete(id);
+          return {
+            notifications: innerState.notifications.filter(
+              (n: Notification) => n.id !== id,
+            ),
+            _timeouts: newTimeouts,
+          };
+        });
+      }, notification.duration ?? 5000);
+
+      const newTimeouts = new Map(state._timeouts);
+      newTimeouts.set(id, timeoutId);
+      return {
+        notifications: [...state.notifications, newNotification],
+        _nextId: state._nextId + 1,
+        _timeouts: newTimeouts,
+      };
+    });
+  },
+});
+
+/**
+ * Cleanup function for notification timeouts.
+ *
+ * Note: This should be called when the app unmounts or when clearing all notifications.
+ * The timeouts are automatically cleaned up when notifications are removed individually,
+ * but this function can be used to force cleanup of all pending timeouts at once.
+ *
+ * Example usage in cleanup:
+ * ```typescript
+ * useEffect(() => {
+ *   return () => {
+ *     const { _timeouts } = useStore.getState();
+ *     cleanupNotificationTimeouts(_timeouts);
+ *   };
+ * }, []);
+ * ```
+ */
+export function cleanupNotificationTimeouts(
+  timeouts: Map<number, NodeJS.Timeout>,
+): void {
+  timeouts.forEach(clearTimeout);
+  timeouts.clear();
+}
