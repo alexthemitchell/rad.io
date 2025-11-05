@@ -408,7 +408,7 @@ At Nyquist: |H(fs/2)| ≈ 1 (minimal attenuation)
 
 Planned improvements for DC correction:
 
-1. **Adaptive Alpha**: Automatically adjust α based on DC drift rate
+1. **Adaptive alpha**: Automatically adjust α based on DC drift rate
 2. **Fast Settling Mode**: Rapid convergence for initial samples
 3. **Calibration Wizard**: GUI tool for DC offset measurement and correction
 4. **Hardware-Specific Profiles**: Optimized parameters for different SDR devices

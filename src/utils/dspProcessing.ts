@@ -600,7 +600,8 @@ export function processIQSampling(
 
   if (params.dcCorrection && samples.length > 0) {
     // Determine which DC correction mode to use
-    const mode = params.dcCorrectionMode ?? "static"; // Default to static for backward compatibility
+    // Default to 'static' mode (simplest, no state management required)
+    const mode = params.dcCorrectionMode ?? "static";
 
     switch (mode) {
       case "static":
