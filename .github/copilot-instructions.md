@@ -14,7 +14,6 @@ Check output of `npm start` to get deployed server URL (usually https://localhos
 
 **Fix issues you find, even if they seem unrelated to your current task.**
 
-
 ## Tools
 
 - **It is incredibly important to use the tools available to you when implementing your solutions.**
