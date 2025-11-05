@@ -110,10 +110,10 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
             to: "dsp-simd.js",
             noErrorOnMissing: true,
           },
-          // Copy Netlify headers for production deployment
+          // Copy Netlify headers for production deployment (to dist root)
           {
             from: "public/_headers",
-            to: "_headers",
+            to: "[name][ext]",
             noErrorOnMissing: true,
           },
         ],
