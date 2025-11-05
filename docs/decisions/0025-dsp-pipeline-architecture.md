@@ -39,99 +39,45 @@ The rad.io SDR visualizer requires a high-performance, maintainable DSP (Digital
 
 **Architecture**:
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         MAIN THREAD                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐                                               │
-│  │ SDR Device   │  WebUSB samples (IQ)                          │
-│  │ (HackRF/RTL) │                                               │
-│  └──────┬───────┘                                               │
-│         │                                                        │
-│         ▼                                                        │
-│  ┌──────────────┐      SharedArrayBuffer                        │
-│  │  Producer    │────────────────────────────────┐              │
-│  │  (write IQ)  │                                 │              │
-│  └──────────────┘                                 │              │
-│                                                    ▼              │
-│                                          ┌─────────────────┐     │
-│                                          │ SharedRingBuffer│     │
-│                                          │  (lock-free)    │     │
-│                                          │  - write pos    │     │
-│                                          │  - read pos     │     │
-│                                          │  - data[N]      │     │
-│                                          └────────┬────────┘     │
-│                                                   │              │
-│  ┌────────────────────────────────────────────┐  │              │
-│  │           Visualization                     │  │              │
-│  │  - Waterfall (WebGL2/Canvas)                │  │              │
-│  │  - Spectrum Analyzer                        │  │              │
-│  │  - Constellation Diagram                    │  │              │
-│  └────────────────────────────────────────────┘  │              │
-│         ▲                                         │              │
-│         │ FFT results (transferable)             │              │
-└─────────┼─────────────────────────────────────────┼──────────────┘
-          │                                         │
-          │                                         │
-┌─────────┼─────────────────────────────────────────┼──────────────┐
-│         │                    DSP WORKER           │              │
-├─────────┼─────────────────────────────────────────┼──────────────┤
-│         │                                         │              │
-│         │                                         ▼              │
-│  ┌──────┴──────┐                      ┌──────────────────┐      │
-│  │ FFT Result  │                      │   Consumer       │      │
-│  │ (transfer)  │◀─────────────────────│ (read from SAB) │      │
-│  └─────────────┘                      └────────┬─────────┘      │
-│                                                 │                │
-│                                                 ▼                │
-│                                       ┌──────────────────┐       │
-│                                       │  DC Correction   │       │
-│                                       │  (WASM/SIMD)     │       │
-│                                       └────────┬─────────┘       │
-│                                                │                 │
-│                                                ▼                 │
-│                                       ┌──────────────────┐       │
-│                                       │   Windowing      │       │
-│                                       │  (Hann/Hamming)  │       │
-│                                       │  (WASM/SIMD)     │       │
-│                                       └────────┬─────────┘       │
-│                                                │                 │
-│                                                ▼                 │
-│                                       ┌──────────────────┐       │
-│                                       │   FFT            │       │
-│                                       │ (WASM Cooley-    │       │
-│                                       │  Tukey radix-2)  │       │
-│                                       └────────┬─────────┘       │
-│                                                │                 │
-│                                                ▼                 │
-│                                       ┌──────────────────┐       │
-│                                       │  Demodulation    │       │
-│                                       │  (AM/FM/SSB)     │       │
-│                                       │  (JS for now)    │       │
-│                                       └────────┬─────────┘       │
-│                                                │                 │
-│                                                ▼                 │
-│                                       ┌──────────────────┐       │
-│                                       │  Audio Output    │       │
-│                                       │  (Float32Array)  │       │
-│                                       └────────┬─────────┘       │
-│                                                │                 │
-└────────────────────────────────────────────────┼─────────────────┘
-                                                 │
-                                                 ▼
-┌────────────────────────────────────────────────────────────────┐
-│                         MAIN THREAD                             │
-├────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────────────────────────────────────┐              │
-│  │           Web Audio API                       │              │
-│  │  - AudioContext (48kHz)                       │              │
-│  │  - AudioBuffer for playback                   │              │
-│  │  - Volume/Gain controls                       │              │
-│  └──────────────────────────────────────────────┘              │
-│                                                                 │
-└────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph MainThread["MAIN THREAD"]
+        SDR["SDR Device<br/>(HackRF/RTL)<br/>WebUSB samples"]
+        Producer["Producer<br/>(write IQ)"]
+        Viz["Visualization<br/>- Waterfall (WebGL2)<br/>- Spectrum Analyzer<br/>- Constellation"]
+        WebAudio["Web Audio API<br/>- AudioContext (48kHz)<br/>- AudioBuffer<br/>- Volume/Gain"]
+    end
+
+    subgraph SAB["SharedArrayBuffer (Zero-Copy)"]
+        RingBuffer["SharedRingBuffer<br/>(lock-free)<br/>- write pos<br/>- read pos<br/>- data[N]"]
+    end
+
+    subgraph DSPWorker["DSP WORKER POOL"]
+        Consumer["Consumer<br/>(read from SAB)"]
+        DCCorr["DC Correction<br/>(WASM/SIMD)"]
+        Window["Windowing<br/>(Hann/Hamming)<br/>(WASM/SIMD)"]
+        FFT["FFT<br/>(WASM Cooley-Tukey<br/>radix-2)"]
+        Demod["Demodulation<br/>(AM/FM/SSB)<br/>(JS for now)"]
+        AudioOut["Audio Output<br/>(Float32Array)"]
+    end
+
+    SDR -->|IQ samples| Producer
+    Producer -->|write| RingBuffer
+    RingBuffer -->|read| Consumer
+    Consumer --> DCCorr
+    DCCorr --> Window
+    Window --> FFT
+    FFT -->|transferable| Viz
+    FFT --> Demod
+    Demod --> AudioOut
+    AudioOut -->|transferable| WebAudio
+
+    style MainThread fill:#e1f5ff
+    style DSPWorker fill:#fff4e1
+    style SAB fill:#f0f0f0
+    style FFT fill:#90EE90
+    style DCCorr fill:#90EE90
+    style Window fill:#90EE90
 ```
 
 **Memory Transfer Strategy**:
@@ -209,6 +155,58 @@ interface DSPMetrics {
 - ⚠️ **Resampling** - Not yet implemented in WASM (TODO)
 - ⚠️ **Demodulation** (AM/FM/SSB cores) - Currently in JavaScript (TODO for WASM)
 
+**DSP Pipeline Visibility & Configuration**:
+
+To enable debugging and UI control of the DSP pipeline, the architecture supports:
+
+1. **Stage Inspection**: Each DSP stage can be monitored independently via metrics interface
+
+   ```typescript
+   interface StageMetrics {
+     stageName: string;
+     inputSamples: number;
+     outputSamples: number;
+     processingTimeMs: number;
+     dropped: number;
+   }
+   ```
+
+2. **Intermediate Output Access**: Workers can send intermediate results for visualization
+
+   ```typescript
+   // Example: Visualize post-windowing but pre-FFT data
+   worker.postMessage({
+     type: "visualize-stage",
+     stage: "windowing",
+     data: windowedSamples,
+   });
+   ```
+
+3. **UI Configuration**: Pipeline parameters exposed via settings interface
+
+   ```typescript
+   interface DSPSettings {
+     fftSize: number; // UI: Dropdown (1024/2048/4096/8192)
+     windowType: WindowFunction; // UI: Select (Hann/Hamming/Blackman)
+     dcCorrection: boolean; // UI: Toggle
+     agcEnabled: boolean; // UI: Toggle
+     demodMode: "AM" | "FM" | "SSB"; // UI: Radio buttons
+   }
+   ```
+
+4. **Real-time Reconfiguration**: Settings changes propagate to workers without restart
+   ```typescript
+   // Worker receives configuration updates
+   worker.postMessage({ type: "update-config", settings: newSettings });
+   ```
+
+This pattern allows users to:
+
+- Compare different windowing functions visually
+- Toggle DSP stages on/off for debugging
+- Adjust parameters (FFT size, AGC threshold) in real-time
+- Inspect intermediate pipeline stages
+
 ### Option 2: MessageChannel-only (No SharedArrayBuffer)
 
 **Architecture**: Same pipeline but use `postMessage` with `Transferable` objects at each stage.
@@ -276,12 +274,12 @@ Chosen: **Option 1 - Producer → RingBuffer(SAB) → Worker → WASM DSP → De
 - [x] WASM DSP functions (FFT, windowing, DC correction) (`assembly/dsp.ts`)
 - [x] Basic metrics collection
 
-#### Phase 2: COOP/COEP Headers 🔄 (This ADR)
+#### Phase 2: COOP/COEP Headers ✅ (Completed)
 
-- [ ] Configure webpack-dev-server to send COOP/COEP headers
-- [ ] Configure production deployment (Netlify/Vercel) for headers
-- [ ] Add browser capability detection and fallback UI
-- [ ] Document deployment requirements
+- [x] Configure webpack-dev-server to send COOP/COEP headers
+- [x] Configure production deployment (GitHub Pages) for headers via meta tags
+- [ ] Add browser capability detection and fallback UI (tracked in #193)
+- [x] Document deployment requirements
 
 #### Phase 3: Pipeline Integration
 
@@ -353,13 +351,15 @@ devServer: {
 }
 ```
 
-**Production deployment** (Netlify `_headers` file):
+**Production deployment** (GitHub Pages via HTML meta tags):
 
+```html
+<!-- Added to index.html during build -->
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+<meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
 ```
-/*
-  Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedder-Policy: require-corp
-```
+
+Note: GitHub Pages doesn't support custom HTTP headers, so COOP/COEP must be set via meta tags or service worker. For full SharedArrayBuffer support in production, consider using a platform that supports custom headers (Netlify, Vercel, Cloudflare Pages) or implement a service worker solution.
 
 ### Confirmation
 
@@ -424,7 +424,7 @@ devServer: {
 
 ### Performance Benchmarks
 
-- Baseline: M1 MacBook Pro, Chrome 120
+- Baseline: M1 MacBook Pro, Chrome 131+ (November 2025)
 - SharedRingBuffer: 10.2 GB/s write, 9.8 GB/s read (benchmarked)
 - WASM FFT (2048 points): ~0.3ms (7x faster than Web Audio API)
 - WASM Windowing (2048 points): ~0.05ms (3x faster than JavaScript)
@@ -515,6 +515,64 @@ For existing deployments without SAB support:
 3. Fall back to `postMessage` pipeline
 4. Log analytics event for tracking
 5. Link to deployment guide
+
+### Audio Worklets vs WASM Demodulation
+
+**Question**: Should we move demodulation to Audio Worklets for lower latency?
+
+**Analysis**:
+
+- **Audio Worklets**: Run on audio thread, guaranteed 128-sample callback every ~3ms at 48kHz
+  - Pros: Lower latency (~3ms), no Web Audio API overhead, direct audio output
+  - Cons: Limited API surface, can't easily share with visualization, harder to debug
+- **WASM in Workers**: Current architecture with transferable results
+  - Pros: Full API access, can share processed data with visualization, easier debugging
+  - Cons: Slightly higher latency (~5-10ms), requires message passing
+
+**Decision**: Keep WASM in workers for now because:
+
+1. Latency difference (~5ms) is acceptable for SDR monitoring use case
+2. Sharing demodulated data with visualization (waterfall, scope) is critical
+3. Audio Worklets would require duplicating processing for audio and viz paths
+4. Can revisit if users report audio latency issues
+
+**Future**: Consider hybrid approach where WASM worker sends to both Audio Worklet (for playback) and main thread (for visualization).
+
+### WebGPU Implementation Timeline
+
+**Question**: Why not implement WebGPU compute shaders immediately for FFT?
+
+**Reasons for deferred implementation**:
+
+1. **Browser Support**: WebGPU still limited (~70% as of 2025-11)
+   - Chrome/Edge: ✅ 113+
+   - Firefox: ⚠️ Behind flag
+   - Safari: ⚠️ Limited support
+2. **Development Complexity**:
+   - Requires shader programming (WGSL)
+   - More complex error handling
+   - Harder to debug than WASM
+3. **Performance Trade-offs**:
+   - GPU memory transfer overhead negates benefits for small FFTs (<8192 points)
+   - WASM + SIMD already provides 7x speedup vs JavaScript
+   - GPU shows benefits primarily for massive parallel workloads (16K+ FFTs)
+4. **Diminishing Returns**:
+   - Current WASM implementation meets 60 FPS target
+   - GPU would add complexity without user-visible benefit at current sample rates
+
+**When to revisit**:
+
+- When targeting 20+ MSPS continuous processing
+- When WebGPU support reaches 90%+
+- When implementing spectrogram with 1000+ parallel FFTs
+- As progressive enhancement for high-end hardware
+
+**Implementation approach** (when time comes):
+
+1. Feature detect WebGPU availability
+2. Implement as alternative FFT backend (strategy pattern)
+3. Benchmark against WASM and auto-select fastest
+4. Fall back gracefully to WASM on unsupported browsers
 
 ---
 

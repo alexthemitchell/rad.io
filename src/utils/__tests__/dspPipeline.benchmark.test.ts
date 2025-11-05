@@ -1,16 +1,15 @@
 /**
  * DSP Pipeline Benchmark Tests
- * 
+ *
  * Validates that the DSP pipeline meets performance requirements specified in ADR-0025:
  * - 30 FPS waterfall @ 2.4 MSPS with <1% drop rate
  * - 60 FPS waterfall @ 10 MSPS with <5% drop rate (target)
  * - Main thread never blocked >16ms
- * 
+ *
  * Run with: npm run test:perf -- src/utils/__tests__/dspPipeline.benchmark.test.ts
  */
 
 import { loadWasmModule, isWasmAvailable } from "../dspWasm";
-import type { IQSample } from "../../models/SDRDevice";
 import { SharedRingBuffer, canUseSharedArrayBuffer } from "../sharedRingBuffer";
 
 // Configuration for benchmarks
@@ -31,19 +30,6 @@ const BENCHMARKS = {
   // Test duration
   TEST_DURATION_MS: 1000,
 };
-
-// Helper to generate test IQ samples
-function generateIQSamples(count: number, frequency = 1000): IQSample[] {
-  const samples: IQSample[] = [];
-  for (let i = 0; i < count; i++) {
-    const t = i / BENCHMARKS.SAMPLE_RATES.RTL_SDR;
-    samples.push({
-      I: Math.cos(2 * Math.PI * frequency * t),
-      Q: Math.sin(2 * Math.PI * frequency * t),
-    });
-  }
-  return samples;
-}
 
 // Helper to measure throughput
 interface ThroughputResult {
@@ -72,7 +58,7 @@ function measureThroughput(
 
   while (performance.now() - startTime < durationMs) {
     const frameStart = performance.now();
-    
+
     try {
       processFunc();
       samplesProcessed += samplesPerFrame;
@@ -176,7 +162,7 @@ describe("DSP Pipeline Benchmarks (ADR-0025)", () => {
       console.log("⚠️  FIR filtering: Not yet in WASM (TODO)");
       console.log("⚠️  Resampling: Not yet in WASM (TODO)");
       console.log("⚠️  Demodulation (AM/FM/SSB): JavaScript (TODO for WASM)");
-      
+
       // This is just for documentation, not an assertion failure
       expect(true).toBe(true);
     });
@@ -230,14 +216,14 @@ describe("DSP Pipeline Benchmarks (ADR-0025)", () => {
 
         // Warm-up
         for (let i = 0; i < 5; i++) {
-          wasmModule.calculateFFTOut(iSamples, qSamples, fftSize);
+          wasmModule!.calculateFFTOut!(iSamples, qSamples, fftSize);
         }
 
         // Benchmark
         const iterations = 100;
         const start = performance.now();
         for (let i = 0; i < iterations; i++) {
-          wasmModule.calculateFFTOut(iSamples, qSamples, fftSize);
+          wasmModule!.calculateFFTOut!(iSamples, qSamples, fftSize);
         }
         const elapsed = performance.now() - start;
         const avgTime = elapsed / iterations;
@@ -282,13 +268,13 @@ describe("DSP Pipeline Benchmarks (ADR-0025)", () => {
         const fftQ = qSamples.slice(0, fftSize);
 
         // DC correction
-        wasmModule.removeDCOffsetStatic(fftI, fftQ, fftSize);
+        wasmModule!.removeDCOffsetStatic!(fftI, fftQ, fftSize);
 
         // Windowing
-        wasmModule.applyHannWindow(fftI, fftQ, fftSize);
+        wasmModule!.applyHannWindow!(fftI, fftQ, fftSize);
 
         // FFT
-        wasmModule.calculateFFTOut(fftI, fftQ, fftSize);
+        wasmModule!.calculateFFTOut!(fftI, fftQ, fftSize);
       };
 
       const result = measureThroughput(
@@ -341,19 +327,19 @@ Waterfall @ ${sampleRate / 1e6} MSPS, ${targetFps} FPS:
         const fftQ = qSamples.slice(0, fftSize);
 
         // Use SIMD variants if available
-        if (wasmModule.removeDCOffsetStaticSIMD) {
-          wasmModule.removeDCOffsetStaticSIMD(fftI, fftQ, fftSize);
+        if (wasmModule!.removeDCOffsetStaticSIMD) {
+          wasmModule!.removeDCOffsetStaticSIMD!(fftI, fftQ, fftSize);
         } else {
-          wasmModule.removeDCOffsetStatic(fftI, fftQ, fftSize);
+          wasmModule!.removeDCOffsetStatic!(fftI, fftQ, fftSize);
         }
 
-        if (wasmModule.applyHannWindowSIMD) {
-          wasmModule.applyHannWindowSIMD(fftI, fftQ, fftSize);
+        if (wasmModule!.applyHannWindowSIMD) {
+          wasmModule!.applyHannWindowSIMD!(fftI, fftQ, fftSize);
         } else {
-          wasmModule.applyHannWindow(fftI, fftQ, fftSize);
+          wasmModule!.applyHannWindow!(fftI, fftQ, fftSize);
         }
 
-        wasmModule.calculateFFTOut(fftI, fftQ, fftSize);
+        wasmModule!.calculateFFTOut!(fftI, fftQ, fftSize);
       };
 
       const result = measureThroughput(
@@ -375,12 +361,14 @@ High-Performance Waterfall @ ${sampleRate / 1e6} MSPS, ${targetFps} FPS:
       // ADR-0025 target criteria (less strict for high-perf)
       expect(result.fps).toBeGreaterThanOrEqual(targetFps * 0.8); // Within 20% of target
       expect(result.dropRate).toBeLessThan(0.05); // <5% drop rate
-      
+
       // This is a target, not strict requirement
       if (result.fps >= targetFps * 0.95 && result.dropRate < 0.01) {
         console.log("✓ Exceeds high-performance target!");
       } else {
-        console.log("⚠️  Target not yet met (expected for non-optimized environments)");
+        console.log(
+          "⚠️  Target not yet met (expected for non-optimized environments)",
+        );
       }
     });
   });
@@ -403,8 +391,11 @@ High-Performance Waterfall @ ${sampleRate / 1e6} MSPS, ${targetFps} FPS:
         const copy = new Float32Array(array);
         const copyTime = performance.now() - copyStart;
 
+        // Use the copy to prevent optimization
+        const copySum = copy.reduce((acc, val) => acc + val, 0);
+
         console.log(
-          `ArrayBuffer ${size} floats (${(size * 4) / 1024}KB): copy=${copyTime.toFixed(3)}ms`,
+          `ArrayBuffer ${size} floats (${(size * 4) / 1024}KB): copy=${copyTime.toFixed(3)}ms, sum=${copySum.toFixed(3)}`,
         );
 
         // Transfer is effectively zero-copy (ownership transfer)
@@ -442,9 +433,7 @@ High-Performance Waterfall @ ${sampleRate / 1e6} MSPS, ${targetFps} FPS:
       const writeThroughput =
         (writeIterations * chunkSize * 4) / (writeTime / 1000) / 1e9; // GB/s
 
-      console.log(
-        `SharedRingBuffer write: ${writeThroughput.toFixed(2)} GB/s`,
-      );
+      console.log(`SharedRingBuffer write: ${writeThroughput.toFixed(2)} GB/s`);
 
       // Clear buffer
       ringBuffer.clear();
