@@ -468,3 +468,153 @@ describe("Performance characteristics", () => {
     expect(duration).toBeLessThan(50);
   });
 });
+
+describe("WASM fallback scenarios", () => {
+  it("should use JavaScript fallback when WASM is disabled for static correction", () => {
+    const samples = generateSamplesWithDC(1000, 0.5, 0.3);
+    
+    // Explicitly disable WASM
+    const corrected = removeDCOffsetStatic(samples, false);
+    
+    const dc = calculateDCOffset(corrected);
+    expect(Math.abs(dc.I)).toBeLessThan(1e-10);
+    expect(Math.abs(dc.Q)).toBeLessThan(1e-10);
+  });
+
+  it("should use JavaScript fallback when WASM is disabled for IIR correction", () => {
+    const samples = generateSamplesWithDC(2000, 0.4, 0.2);
+    const state = {
+      prevInputI: 0,
+      prevInputQ: 0,
+      prevOutputI: 0,
+      prevOutputQ: 0,
+    };
+    
+    // Explicitly disable WASM
+    const corrected = removeDCOffsetIIR(samples, state, 0.99, false);
+    
+    // Check last half for settled response
+    const lastHalf = corrected.slice(1000);
+    const dc = calculateDCOffset(lastHalf);
+    expect(Math.abs(dc.I)).toBeLessThan(0.01);
+    expect(Math.abs(dc.Q)).toBeLessThan(0.01);
+  });
+
+  it("should use JavaScript fallback when WASM is disabled for combined correction", () => {
+    const samples = generateSamplesWithDC(2000, 0.6, 0.4);
+    const state = {
+      prevInputI: 0,
+      prevInputQ: 0,
+      prevOutputI: 0,
+      prevOutputQ: 0,
+    };
+    
+    // Explicitly disable WASM
+    const corrected = removeDCOffsetCombined(samples, state, 0.99, false);
+    
+    // Check last half for settled response
+    const lastHalf = corrected.slice(1000);
+    const dc = calculateDCOffset(lastHalf);
+    expect(Math.abs(dc.I)).toBeLessThan(0.02);
+    expect(Math.abs(dc.Q)).toBeLessThan(0.02);
+  });
+});
+
+describe("processIQSampling integration", () => {
+  it("should use IIR mode without state (fallback to static)", () => {
+    const { processIQSampling } = require("../dspProcessing");
+    const samples = generateSamplesWithDC(1000, 0.5, 0.3);
+    
+    const result = processIQSampling(samples, {
+      sampleRate: 2048000,
+      dcCorrection: true,
+      dcCorrectionMode: "iir",
+      // No dcBlockerState provided - should fallback to static
+      iqBalance: false,
+    });
+
+    expect(result.output.length).toBe(samples.length);
+    const dc = calculateDCOffset(result.output);
+    expect(Math.abs(dc.I)).toBeLessThan(1e-9);
+    expect(Math.abs(dc.Q)).toBeLessThan(1e-9);
+  });
+
+  it("should use combined mode without state (fallback to static)", () => {
+    const { processIQSampling } = require("../dspProcessing");
+    const samples = generateSamplesWithDC(1000, 0.5, 0.3);
+    
+    const result = processIQSampling(samples, {
+      sampleRate: 2048000,
+      dcCorrection: true,
+      dcCorrectionMode: "combined",
+      // No dcBlockerState provided - should fallback to static
+      iqBalance: false,
+    });
+
+    expect(result.output.length).toBe(samples.length);
+    const dc = calculateDCOffset(result.output);
+    expect(Math.abs(dc.I)).toBeLessThan(1e-9);
+    expect(Math.abs(dc.Q)).toBeLessThan(1e-9);
+  });
+
+  it("should handle none mode (no correction)", () => {
+    const { processIQSampling } = require("../dspProcessing");
+    const samples = generateSamplesWithDC(1000, 0.5, 0.3);
+    
+    const result = processIQSampling(samples, {
+      sampleRate: 2048000,
+      dcCorrection: true,
+      dcCorrectionMode: "none",
+      iqBalance: false,
+    });
+
+    // Should not apply correction
+    expect(result.output).toBe(samples);
+  });
+
+  it("should use static mode with IIR when state is provided", () => {
+    const { processIQSampling } = require("../dspProcessing");
+    const samples = generateSamplesWithDC(1000, 0.5, 0.3);
+    const state = {
+      prevInputI: 0,
+      prevInputQ: 0,
+      prevOutputI: 0,
+      prevOutputQ: 0,
+    };
+    
+    const result = processIQSampling(samples, {
+      sampleRate: 2048000,
+      dcCorrection: true,
+      dcCorrectionMode: "iir",
+      dcBlockerState: state,
+      iqBalance: false,
+    });
+
+    expect(result.output.length).toBe(samples.length);
+    // State should be updated
+    expect(state.prevOutputI).not.toBe(0);
+  });
+
+  it("should use combined mode with state provided", () => {
+    const { processIQSampling } = require("../dspProcessing");
+    const samples = generateSamplesWithDC(1000, 0.5, 0.3);
+    const state = {
+      prevInputI: 0,
+      prevInputQ: 0,
+      prevOutputI: 0,
+      prevOutputQ: 0,
+    };
+    
+    const result = processIQSampling(samples, {
+      sampleRate: 2048000,
+      dcCorrection: true,
+      dcCorrectionMode: "combined",
+      dcBlockerState: state,
+      iqBalance: false,
+    });
+
+    expect(result.output.length).toBe(samples.length);
+    // State should be updated
+    expect(state.prevOutputI).not.toBe(0);
+  });
+});
