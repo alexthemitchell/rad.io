@@ -17,6 +17,7 @@ import {
   type ActiveSignal,
 } from "../hooks/useFrequencyScanner";
 import { useReception } from "../hooks/useReception";
+import { useSignalDetection } from "../hooks/useSignalDetection";
 import { shouldUseMockSDR } from "../utils/e2e";
 import { formatFrequency } from "../utils/frequency";
 import type { IQSample } from "../models/SDRDevice";
@@ -112,6 +113,14 @@ const Monitor: React.FC = () => {
 
   // Combine reception and scan status messages (reception takes precedence)
   const statusMsg = receptionStatusMsg || scanStatusMsg;
+
+  // Automatic signal detection during live reception
+  const autoDetection = useSignalDetection(
+    isReceiving ? fftData : null, // Only detect when receiving
+    sampleRate,
+    frequency,
+    isReceiving, // Enable when receiving
+  );
 
   // Dummy state for components that are not yet fully integrated
   const [recordingState, setRecordingState] = useState<
@@ -397,6 +406,8 @@ const Monitor: React.FC = () => {
             colorMap={colorKey}
             dbMin={settings.dbMin}
             dbMax={settings.dbMax}
+            signals={autoDetection.signals}
+            showAnnotations={isReceiving}
             onTune={(fHz) => {
               const snapped = Math.round(fHz / 1_000) * 1_000;
               setFrequency(snapped);
