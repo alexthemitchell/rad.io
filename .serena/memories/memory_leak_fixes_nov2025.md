@@ -17,16 +17,19 @@
 ## Solutions Implemented
 
 ### PrimaryVisualization
+
 - Added `waterfallFrameArrayRef` to store a reusable single-element array
 - Reuse by updating `[0]` element instead of creating new array: `waterfallFrameArrayRef.current[0] = data`
 - Applied to all 3 render paths (worker, fallback, direct WebGL)
 
-### WebGLWaterfall  
+### WebGLWaterfall
+
 - Added `colormapRGBACache` and `lastColormapName` private fields
 - Cache Uint8Array and only recreate when colormap name changes
 - Typical case: colormap unchanged, zero allocations per frame
 
 ### useDsp
+
 - Modified to return same `prevMagnitudes` reference after in-place `.set()` copy
 - Eliminates Float32Array allocation on every FFT update
 - Maintains compatibility with React state update detection via onNewFft callback

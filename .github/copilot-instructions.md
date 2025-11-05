@@ -15,7 +15,6 @@ Check output of `npm start` to get deployed server URL (usually https://localhos
 **Consider `docs/decisions/` for architectural decision records that may inform your work.**
 **Refer to `docs/reference/` for specialized domain knowledge about SDR and related technologies.**
 
-
 ## Tools
 
 - **It is incredibly important to use the tools available to you when implementing your solutions.**

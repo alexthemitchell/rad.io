@@ -446,6 +446,126 @@ describe("HackRF Error Handling and Recovery", () => {
       expect(status.bandwidth).toBeNull();
       expect(status.lnaGain).toBeNull();
     });
+
+    it("skips rebind when WebUSB is unavailable (NotFoundError)", async () => {
+      const device = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      await adapter.setSampleRate(20_000_000);
+
+      // Force open() to fail with NotFoundError so needsRebind path is taken
+      const underlying = adapter.getUnderlyingDevice() as any;
+      const originalOpen = underlying.open.bind(underlying);
+      underlying.open = jest.fn().mockRejectedValue({ name: "NotFoundError" });
+
+      // navigator.usb is not defined in this environment: branch should skip rebind and continue
+      await expect(adapter.fastRecovery()).resolves.not.toThrow();
+
+      const status = adapter.getUnderlyingDevice().getConfigurationStatus();
+      expect(status.isConfigured).toBe(true);
+
+      // Restore original open for safety
+      underlying.open = originalOpen;
+    });
+
+    it("proceeds when WebUSB is available but no paired device is found", async () => {
+      const device = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+      await adapter.setSampleRate(20_000_000);
+
+      const underlying = adapter.getUnderlyingDevice() as any;
+      const originalOpen = underlying.open.bind(underlying);
+      underlying.open = jest.fn().mockRejectedValue({ name: "NotFoundError" });
+
+      // Mock WebUSB with empty device list to exercise rebind failure path
+      const prevNavigator = (globalThis as any).navigator;
+      (globalThis as any).navigator = {
+        usb: {
+          getDevices: jest.fn().mockResolvedValue([]),
+        },
+      } as any;
+
+      await expect(adapter.fastRecovery()).resolves.not.toThrow();
+
+      const status = adapter.getUnderlyingDevice().getConfigurationStatus();
+      expect(status.isConfigured).toBe(true);
+
+      // Cleanup
+      (globalThis as any).navigator = prevNavigator;
+      underlying.open = originalOpen;
+    });
+
+    it("rebinds to a re-enumerated device when available", async () => {
+      const originalDevice = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(originalDevice);
+      await adapter.setSampleRate(20_000_000);
+
+      const underlying = adapter.getUnderlyingDevice() as any;
+
+      // First open attempt fails -> triggers needsRebind path
+      const originalOpen = underlying.open.bind(underlying);
+      const openMock = jest
+        .fn()
+        .mockRejectedValueOnce({ name: "NotFoundError" }) // pre-reset open
+        .mockResolvedValueOnce(undefined); // open after successful rebind
+      underlying.open = openMock;
+
+      // Create a re-enumerated device with a minimal valid interface/endpoint
+      const reEnumDevice: any = {
+        opened: false,
+        vendorId: (originalDevice as any).vendorId,
+        productId: (originalDevice as any).productId,
+        serialNumber: (originalDevice as any).serialNumber,
+        configurations: [
+          {
+            configurationValue: 1,
+            interfaces: [
+              {
+                interfaceNumber: 0,
+                alternates: [
+                  {
+                    alternateSetting: 0,
+                    endpoints: [
+                      {
+                        type: "bulk",
+                        direction: "in",
+                        endpointNumber: 1,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        configuration: undefined,
+        open: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn().mockResolvedValue(undefined),
+        selectConfiguration: jest.fn().mockResolvedValue(undefined),
+        claimInterface: jest.fn().mockResolvedValue(undefined),
+        selectAlternateInterface: jest.fn().mockResolvedValue(undefined),
+        releaseInterface: jest.fn().mockResolvedValue(undefined),
+        controlTransferOut: (originalDevice as any).controlTransferOut,
+        controlTransferIn: (originalDevice as any).controlTransferIn,
+        transferIn: (originalDevice as any).transferIn,
+      };
+
+      const prevNavigator = (globalThis as any).navigator;
+      (globalThis as any).navigator = {
+        usb: {
+          getDevices: jest.fn().mockResolvedValue([reEnumDevice]),
+        },
+      } as any;
+
+      await expect(adapter.fastRecovery()).resolves.not.toThrow();
+
+      const status = adapter.getUnderlyingDevice().getConfigurationStatus();
+      expect(status.isConfigured).toBe(true);
+
+      // Cleanup
+      (globalThis as any).navigator = prevNavigator;
+      underlying.open = originalOpen;
+    });
   });
 
   describe("Error Detection and Reporting", () => {
@@ -550,6 +670,46 @@ describe("HackRF Error Handling and Recovery", () => {
       );
 
       await expect(adapter.fastRecovery()).rejects.toThrow();
+    });
+  });
+
+  describe("Adapter Coverage", () => {
+    it("reports isOpen correctly for device state", () => {
+      const device = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+      // Default mock device opened=true
+      expect(adapter.isOpen()).toBe(true);
+      (device as any).opened = false;
+      expect(adapter.isOpen()).toBe(false);
+    });
+
+    it("adjusts LNA gain to nearest supported step", async () => {
+      const device = createMockUSBDevice();
+      // Ensure LNA gain set succeeds
+      (device.controlTransferIn as jest.Mock).mockResolvedValue({
+        data: new DataView(new Uint8Array([1]).buffer),
+        status: "ok",
+      } as USBInTransferResult);
+
+      const adapter = new HackRFOneAdapter(device);
+      await adapter.setSampleRate(20_000_000);
+
+      const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+      await adapter.setLNAGain(7); // invalid; should adjust to 8
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("adjusts bandwidth to nearest supported value", async () => {
+      const device = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+      await adapter.setSampleRate(20_000_000);
+
+      const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+      // 11 MHz is not in supported list; should adjust to 10 or 12 MHz
+      await adapter.setBandwidth(11_000_000);
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
   });
 

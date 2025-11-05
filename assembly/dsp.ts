@@ -358,7 +358,7 @@ export function calculateFFT(
   let sumI: f64 = 0.0;
   let sumQ: f64 = 0.0;
   let validCount: i32 = 0;
-  
+
   for (let i = 0; i < n; i++) {
     if (i < iSamples.length) {
       sumI += f64(iSamples[i]);
@@ -366,7 +366,7 @@ export function calculateFFT(
       validCount++;
     }
   }
-  
+
   const meanI = validCount > 0 ? sumI / f64(validCount) : 0.0;
   const meanQ = validCount > 0 ? sumQ / f64(validCount) : 0.0;
 
