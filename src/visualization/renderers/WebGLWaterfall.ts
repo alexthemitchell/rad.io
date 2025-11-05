@@ -2,8 +2,8 @@ import { WATERFALL_COLORMAPS } from "../../constants";
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
 import * as webgl from "../../utils/webgl";
-import type { GL } from "../../utils/webgl";
 import type { Renderer } from "./types";
+import type { GL } from "../../utils/webgl";
 
 const WATERFALL_FS = `
 precision highp float;
@@ -46,7 +46,7 @@ export class WebGLWaterfall implements Renderer {
     height: 0,
   };
   private currentRow = 0;
-  private spectrogramSrcFormat: number = 0;
+  private spectrogramSrcFormat = 0;
   private colormapRGBACache: Uint8Array | null = null;
   private lastColormapName: string | null = null;
   private rowU8: Uint8Array | null = null;
@@ -63,7 +63,7 @@ export class WebGLWaterfall implements Renderer {
         return false;
       }
 
-      const gl = this.gl as GL;
+      const gl = this.gl;
       this.program = webgl.createProgram(gl, webgl.FULLSCREEN_VS, WATERFALL_FS);
 
       this.aPosition = gl.getAttribLocation(this.program, "a_position");
@@ -72,7 +72,10 @@ export class WebGLWaterfall implements Renderer {
       this.uSpectrogram = gl.getUniformLocation(this.program, "uSpectrogram");
       this.uGain = gl.getUniformLocation(this.program, "uGain");
       this.uOffset = gl.getUniformLocation(this.program, "uOffset");
-      this.uBypassColormap = gl.getUniformLocation(this.program, "uBypassColormap");
+      this.uBypassColormap = gl.getUniformLocation(
+        this.program,
+        "uBypassColormap",
+      );
 
       this.textureSize = {
         width: DEFAULT_SPECTROGRAM_WIDTH,
@@ -87,7 +90,7 @@ export class WebGLWaterfall implements Renderer {
       );
       // Determine source format for subsequent row updates based on context
       this.spectrogramSrcFormat =
-        gl instanceof WebGL2RenderingContext ? gl.RED : (gl as WebGLRenderingContext).LUMINANCE;
+        gl instanceof WebGL2RenderingContext ? gl.RED : gl.LUMINANCE;
       // Use linear filtering on the spectrogram to avoid visible vertical aliasing
       // when the texture width exceeds the canvas resolution.
       gl.bindTexture(gl.TEXTURE_2D, this.spectrogramTexture);
@@ -109,8 +112,11 @@ export class WebGLWaterfall implements Renderer {
       // Report tier based on context
       try {
         const isWebGL2 =
-          typeof WebGL2RenderingContext !== "undefined" && gl instanceof WebGL2RenderingContext;
-        renderTierManager.reportSuccess(isWebGL2 ? RenderTier.WebGL2 : RenderTier.WebGL1);
+          typeof WebGL2RenderingContext !== "undefined" &&
+          gl instanceof WebGL2RenderingContext;
+        renderTierManager.reportSuccess(
+          isWebGL2 ? RenderTier.WebGL2 : RenderTier.WebGL1,
+        );
       } catch {
         // ignore
       }
@@ -209,7 +215,7 @@ export class WebGLWaterfall implements Renderer {
         this.currentRow = 0;
         gl.bindTexture(gl.TEXTURE_2D, this.spectrogramTexture);
         this.spectrogramSrcFormat =
-          gl instanceof WebGL2RenderingContext ? gl.RED : (gl as WebGLRenderingContext).LUMINANCE;
+          gl instanceof WebGL2RenderingContext ? gl.RED : gl.LUMINANCE;
         // Reset row buffer cache
         this.rowU8 = null;
       }
@@ -281,7 +287,12 @@ export class WebGLWaterfall implements Renderer {
     gl.enableVertexAttribArray(this.aTexCoord);
 
     // Set viewport to current drawing buffer size and draw
-    gl.viewport(0, 0, (gl as WebGLRenderingContext).drawingBufferWidth, (gl as WebGLRenderingContext).drawingBufferHeight);
+    gl.viewport(
+      0,
+      0,
+      (gl as WebGLRenderingContext).drawingBufferWidth,
+      (gl as WebGLRenderingContext).drawingBufferHeight,
+    );
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     return true;

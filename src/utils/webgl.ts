@@ -172,6 +172,7 @@ export function createTextureLuminanceU8(
   data: Uint8Array | null,
 ): WebGLTexture {
   const tex = gl.createTexture();
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (tex === null) {
     throw new Error("Failed to create WebGL texture (context lost?)");
   }
@@ -183,8 +184,8 @@ export function createTextureLuminanceU8(
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
 
   const isGL2 = gl instanceof WebGL2RenderingContext;
-  const internalFormat = isGL2 ? (gl as WebGL2RenderingContext).R8 : (gl as WebGLRenderingContext).LUMINANCE;
-  const srcFormat = isGL2 ? (gl as WebGL2RenderingContext).RED : (gl as WebGLRenderingContext).LUMINANCE;
+  const internalFormat = isGL2 ? gl.R8 : gl.LUMINANCE;
+  const srcFormat = isGL2 ? gl.RED : gl.LUMINANCE;
   gl.texImage2D(
     gl.TEXTURE_2D,
     0,
@@ -197,7 +198,7 @@ export function createTextureLuminanceU8(
     data,
   );
   gl.bindTexture(gl.TEXTURE_2D, null);
-  return tex as WebGLTexture;
+  return tex;
 }
 
 export function createTextureRGBA(

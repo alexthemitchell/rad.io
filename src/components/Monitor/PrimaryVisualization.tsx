@@ -200,11 +200,11 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
           if (v < rowMin) rowMin = v;
           if (v > rowMax) rowMax = v;
         }
-        if (min === undefined) min = rowMin;
-        if (max === undefined) max = rowMax;
+        min ??= rowMin;
+        max ??= rowMax;
       }
       // Fallback if no finite values
-      if (!isFinite(min as number) || !isFinite(max as number)) {
+      if (!isFinite(min) || !isFinite(max)) {
         min = 0;
         max = 1;
       }
@@ -255,7 +255,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
             waterfallRendererRef.current?.render({
               frames: waterfallFrameArrayRef.current,
               gain: 1 / range,
-              offset: -(min as number) / range,
+              offset: -min / range,
               colormapName: cmap,
             });
           }
@@ -264,7 +264,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
           waterfallRendererRef.current.render({
             frames: waterfallFrameArrayRef.current,
             gain: 1 / range,
-            offset: -(min as number) / range,
+            offset: -min / range,
             colormapName: cmap,
           });
         }
