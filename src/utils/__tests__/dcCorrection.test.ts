@@ -346,7 +346,7 @@ describe("removeDCOffsetCombined", () => {
     // leaves significant DC in the second half.
     expect(Math.abs(dcStatic.I)).toBeGreaterThan(0.3);
     expect(Math.abs(dcStatic.Q)).toBeGreaterThan(0.2);
-    
+
     // Verify combined has processed the data
     expect(combined.length).toBe(samples.length);
     expect(combinedSecondHalf.length).toBe(500);
