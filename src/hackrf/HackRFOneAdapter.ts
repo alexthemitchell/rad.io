@@ -69,7 +69,6 @@ export class HackRFOneAdapter implements ISDRDevice {
     try {
       this.device.stopRx();
     } catch {
-      /* istanbul ignore next: defensive cleanup path */
       // ignore
     }
     this.isInitialized = false; // Reset initialization state on close
@@ -81,7 +80,6 @@ export class HackRFOneAdapter implements ISDRDevice {
     // This is safe because we control the HackRFOne implementation
     const opened = (this.device as unknown as { usbDevice?: USBDevice })
       .usbDevice?.opened;
-    /* istanbul ignore next: nullish-coalescing branch adds noise to coverage */
     return opened ?? false;
   }
 

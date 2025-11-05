@@ -158,6 +158,8 @@ export function useDeviceIntegration(): void {
   const useMock = shouldUseMockSDR();
   useEffect(() => {
     if (!useMock) {
+      // Reset mock initialization flag when mock mode is disabled
+      mockInitializedRef.current = false;
       return;
     }
     // Only create a mock device if we haven't already initialized one

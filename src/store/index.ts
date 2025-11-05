@@ -62,6 +62,10 @@ export const useStore = create<RootState>()(
 /**
  * Convenience hooks for accessing specific slices
  * These help with code organization and make components more readable
+ *
+ * Note: Each hook creates separate subscriptions for each selector.
+ * Components will re-render when any of the returned values change.
+ * For fine-grained control, use useStore directly with a single selector.
  */
 
 // Settings slice selectors

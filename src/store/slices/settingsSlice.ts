@@ -38,8 +38,24 @@ const STORAGE_KEY = "rad.settings.v1";
 const ALLOWED_FFT_SIZES: readonly number[] = [1024, 2048, 4096, 8192];
 
 /**
- * Validates and normalizes settings loaded from storage.
- * Only merges with DEFAULTS when base is not provided (used for initial load).
+ * Validates and normalizes settings loaded from storage or during updates.
+ *
+ * This function uses a two-phase approach:
+ * 1. Merge phase: Combines partial settings with either DEFAULTS (initial load) or base (updates)
+ * 2. Validation phase: Validates the merged result and falls back to safe values if needed
+ *
+ * When `base` is provided (during setSettings):
+ * - Spreads partial over base to preserve existing user values
+ * - Validates explicitly provided fields in partial
+ * - Falls back to base values for invalid partial values
+ *
+ * When `base` is NOT provided (initial load from storage):
+ * - Spreads partial over DEFAULTS
+ * - Validates all fields and falls back to DEFAULTS for invalid values
+ *
+ * @param partial - The partial settings to apply (from user or storage)
+ * @param base - Optional base settings to merge with (used during updates to preserve existing values)
+ * @returns Fully normalized settings with all required fields
  */
 function normalizeSettings(
   partial: Partial<SettingsState>,
@@ -49,12 +65,14 @@ function normalizeSettings(
     ? { ...base, ...partial }
     : { ...DEFAULTS, ...partial };
 
-  // Normalize fftSize
+  // Normalize fftSize - reject invalid values
   if (!ALLOWED_FFT_SIZES.includes(next.fftSize)) {
     next.fftSize = base ? base.fftSize : DEFAULTS.fftSize;
   }
 
   // Normalize dB range: allow undefined (auto). Coerce non-number/NaN to undefined.
+  // The validation only triggers if the field exists in next (from merge).
+  // If partial doesn't contain dbMin/dbMax, they're already preserved from base.
   if (next.dbMin !== undefined) {
     if (typeof next.dbMin !== "number" || Number.isNaN(next.dbMin)) {
       next.dbMin = base?.dbMin ?? undefined;

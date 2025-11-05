@@ -63,22 +63,22 @@ export const notificationSlice: StateCreator<NotificationSlice> = (
       duration: notification.duration,
     });
 
-    // Schedule removal timeout
-    const timeoutId = setTimeout(() => {
-      set((state: NotificationSlice) => {
-        const newTimeouts = new Map(state._timeouts);
-        newTimeouts.delete(id);
-        return {
-          notifications: state.notifications.filter(
-            (n: Notification) => n.id !== id,
-          ),
-          _timeouts: newTimeouts,
-        };
-      });
-    }, notification.duration ?? 5000);
-
-    // Add notification and track timeout in a single atomic state update
+    // Add notification first, then schedule timeout to ensure ordering
     set((state: NotificationSlice) => {
+      // Schedule removal timeout after notification is added to state
+      const timeoutId = setTimeout(() => {
+        set((innerState: NotificationSlice) => {
+          const newTimeouts = new Map(innerState._timeouts);
+          newTimeouts.delete(id);
+          return {
+            notifications: innerState.notifications.filter(
+              (n: Notification) => n.id !== id,
+            ),
+            _timeouts: newTimeouts,
+          };
+        });
+      }, notification.duration ?? 5000);
+
       const newTimeouts = new Map(state._timeouts);
       newTimeouts.set(id, timeoutId);
       return {

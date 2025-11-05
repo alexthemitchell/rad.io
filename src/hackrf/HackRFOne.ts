@@ -351,11 +351,10 @@ export class HackRFOne {
           return result;
         } catch (err: unknown) {
           const error = err as Error & { name?: string; message?: string };
-          // Retry on transient InvalidStateError or NetworkError
           const isInvalidState = error.name === "InvalidStateError";
-          const msg = (error as { message?: string }).message;
+          const msg = error.message;
           const isNetworkError =
-            error.name === "NetworkError" || /transfer error/i.test(msg ?? "");
+            error.name === "NetworkError" || /transfer error/i.test(msg);
 
           if (isInvalidState || isNetworkError) {
             lastError = err;
@@ -1157,7 +1156,7 @@ export class HackRFOne {
       }
     } catch (err) {
       const e = err as Error & { name?: string; message?: string };
-      const msg = e.message ?? "";
+      const msg = e.message;
       const needsRebind =
         e.name === "NotFoundError" || /No device selected/i.test(msg);
       const nonCriticalMockOpenError =
@@ -1175,10 +1174,14 @@ export class HackRFOne {
         // Skip rebind and proceed to reconfiguration using control transfers
       } else if (needsRebind) {
         // Attempt to find a freshly re-enumerated paired device if the WebUSB API is available
-        const nav: any = (globalThis as any).navigator;
-        const hasWebUSB =
-          Boolean(nav?.usb) && typeof nav.usb.getDevices === "function";
-        if (!hasWebUSB) {
+        type NavigatorWithUSB = Navigator & {
+          usb?: {
+            getDevices: () => Promise<USBDevice[]>;
+          };
+        };
+        const usb = (globalThis as { navigator?: NavigatorWithUSB }).navigator
+          ?.usb;
+        if (!usb || typeof usb.getDevices !== "function") {
           if (isDev) {
             console.warn(
               "HackRFOne.fastRecovery: WebUSB not available in test environment; skipping rebind",
@@ -1191,7 +1194,7 @@ export class HackRFOne {
           let match: USBDevice | undefined;
           /* istanbul ignore next */
           for (let attempt = 0; attempt < 10; attempt++) {
-            const devices = await nav.usb.getDevices();
+            const devices = await usb.getDevices();
             match = devices.find(
               (d: USBDevice) =>
                 d.vendorId === prev.vendorId &&

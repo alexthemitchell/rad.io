@@ -113,6 +113,8 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
   isCheckingPaired: true,
 
   // These will be set by the integration layer
+  // Placeholder functions that throw until initialization
+  // Must be async to match the interface signature, but don't need await since they throw immediately
   // eslint-disable-next-line @typescript-eslint/require-await
   requestDevice: async (): Promise<void> => {
     const error = "requestDevice called before initialization";
