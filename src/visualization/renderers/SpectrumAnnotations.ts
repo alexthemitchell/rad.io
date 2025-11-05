@@ -264,7 +264,8 @@ export class SpectrumAnnotations {
     };
     /* eslint-enable @typescript-eslint/naming-convention */
 
-    return colors[type] ?? colors["unknown"];
+    const defaultColor = "rgb(158, 158, 158)"; // Gray fallback
+    return colors[type] ?? defaultColor;
   }
 
   /**

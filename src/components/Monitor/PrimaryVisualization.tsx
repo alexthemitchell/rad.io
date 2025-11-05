@@ -337,7 +337,6 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         height="320"
         style={{
           display: mode === "fft" || mode === "spectrogram" ? "block" : "none",
-          position: "relative",
         }}
         role="img"
         aria-label="Spectrum Analyzer"

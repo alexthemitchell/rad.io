@@ -57,6 +57,22 @@ export interface UseSignalDetectionResult {
 }
 
 /**
+ * Calculate the width of a signal in bins based on half-power boundaries
+ *
+ * After scanning outward from peak, left and right point to the first bins
+ * outside the half-power region. The actual signal spans from (left+1) to
+ * (right-1) inclusive. Width = (right-1) - (left+1) + 1 = right - left - 1.
+ * For very narrow signals, use a minimum of 1 bin.
+ *
+ * @param left Index of first bin outside half-power region (left side)
+ * @param right Index of first bin outside half-power region (right side)
+ * @returns Number of bins the signal spans (minimum 1)
+ */
+function calculateSignalBinsWidth(left: number, right: number): number {
+  return Math.max(1, right - left - 1);
+}
+
+/**
  * Hook for automatic signal detection during live spectrum monitoring
  *
  * @param fftData Current FFT magnitude data (dB)
@@ -143,11 +159,7 @@ export function useSignalDetection(
         right++;
       }
 
-      // Calculate bins width: left and right are the first bins outside the half-power region.
-      // The actual signal spans from (left+1) to (right-1) inclusive.
-      // Width = (right-1) - (left+1) + 1 = right - left - 1
-      // Special case: if right - left <= 1, the signal is very narrow (1 bin), use 1 as minimum.
-      const binsWidth = Math.max(1, right - left - 1);
+      const binsWidth = calculateSignalBinsWidth(left, right);
       const freqRes = sampleRate / fftData.length;
       const bandwidth = binsWidth * freqRes;
 
