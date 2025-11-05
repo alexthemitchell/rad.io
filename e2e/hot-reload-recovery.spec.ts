@@ -8,12 +8,16 @@ import { test, expect } from "@playwright/test";
 test.describe("Hot reload recovery", () => {
   test("reload does not leave HackRF in a bad state", async ({ page }) => {
     const consoleMessages: string[] = [];
-    page.on("console", (msg) => consoleMessages.push(`[${msg.type()}] ${msg.text()}`));
+    page.on("console", (msg) =>
+      consoleMessages.push(`[${msg.type()}] ${msg.text()}`),
+    );
 
     await page.goto("/monitor");
 
     // Wait for initial streaming state (Stop reception button indicates active stream)
-    await expect(page.getByRole("button", { name: "Stop reception" })).toBeVisible({ timeout: 20000 });
+    await expect(
+      page.getByRole("button", { name: "Stop reception" }),
+    ).toBeVisible({ timeout: 20000 });
 
     // Trigger a full reload (simulates HMR fallback scenario)
     await page.evaluate(() => location.reload());
@@ -38,8 +42,12 @@ test.describe("Hot reload recovery", () => {
     }
 
     // UI should reflect a connected device and active controls again
-    await expect(page.getByRole("heading", { name: "Signal Monitor" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Stop reception" })).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole("heading", { name: "Signal Monitor" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Stop reception" }),
+    ).toBeVisible({ timeout: 10000 });
 
     // Optional: sanity check that exactly one device is exposed and opened
     const openedCount = await page.evaluate(async () => {

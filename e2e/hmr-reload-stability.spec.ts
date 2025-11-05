@@ -1,12 +1,12 @@
 /**
  * HMR Reload Stability E2E Test
- * 
+ *
  * Validates that hot reloads and full reloads do not:
  * - Leave HackRF device in unstable state
  * - Create duplicate workers
  * - Trigger DataCloneError memory issues
  * - Fail to recover gracefully
- * 
+ *
  * This test simulates real-world development workflow with
  * frequent code changes triggering HMR and full reloads.
  */
@@ -65,21 +65,21 @@ test.describe("HMR Reload Stability", () => {
 
     // Trigger shutdown
     await triggerGlobalShutdown(page);
-    
+
     // Wait for shutdown to complete
     await page.waitForTimeout(500);
 
     // Reload page
     await page.reload({ waitUntil: "networkidle" });
-    
+
     // Wait for app to stabilize
     await page.waitForTimeout(2000);
 
     // Check for DataCloneError or worker errors
-    const hasDataCloneError = errors.some((e) =>
-      e.includes("DataCloneError")
+    const hasDataCloneError = errors.some((e) => e.includes("DataCloneError"));
+    const hasWorkerError = errors.some((e) =>
+      e.includes("DedicatedWorkerGlobalScope"),
     );
-    const hasWorkerError = errors.some((e) => e.includes("DedicatedWorkerGlobalScope"));
 
     expect(hasDataCloneError, "Should not have DataCloneError").toBe(false);
     expect(hasWorkerError, "Should not have worker errors").toBe(false);
@@ -98,9 +98,10 @@ test.describe("HMR Reload Stability", () => {
       await page.waitForTimeout(1000);
 
       const count = await getWorkerCount(page);
-      expect(count, `Worker count should remain stable after reload ${i + 1}`).toBe(
-        initialCount
-      );
+      expect(
+        count,
+        `Worker count should remain stable after reload ${i + 1}`,
+      ).toBe(initialCount);
     }
   });
 
@@ -161,14 +162,20 @@ test.describe("HMR Reload Stability", () => {
 
     // Post-reload should have no new DataCloneError or recovery errors
     const hasDataCloneError = postReloadErrors.some((e) =>
-      e.includes("DataCloneError")
+      e.includes("DataCloneError"),
     );
     const hasRecoveryError = postReloadErrors.some((e) =>
-      e.includes("Automatic recovery failed")
+      e.includes("Automatic recovery failed"),
     );
 
-    expect(hasDataCloneError, "Should not have DataCloneError after clean reload").toBe(false);
-    expect(hasRecoveryError, "Should not have recovery errors after clean reload").toBe(false);
+    expect(
+      hasDataCloneError,
+      "Should not have DataCloneError after clean reload",
+    ).toBe(false);
+    expect(
+      hasRecoveryError,
+      "Should not have recovery errors after clean reload",
+    ).toBe(false);
   });
 
   test("should support rapid reload cycles", async ({ page }) => {
@@ -197,10 +204,14 @@ test.describe("HMR Reload Stability", () => {
       return !!(g && typeof g.shutdown === "function");
     });
 
-    expect(hasShutdown, "Global shutdown function should be available").toBe(true);
+    expect(hasShutdown, "Global shutdown function should be available").toBe(
+      true,
+    );
   });
 
-  test("should validate worker pool termination on shutdown", async ({ page }) => {
+  test("should validate worker pool termination on shutdown", async ({
+    page,
+  }) => {
     const initialCount = await getWorkerCount(page);
     expect(initialCount).toBeGreaterThan(0);
 
@@ -211,12 +222,15 @@ test.describe("HMR Reload Stability", () => {
     // Workers should be terminated (or count reset)
     // Note: After shutdown, before reload, pool might be empty
     const postShutdownCount = await getWorkerCount(page);
-    
+
     // After reload, should have workers again
     await page.reload({ waitUntil: "networkidle" });
     await page.waitForTimeout(1000);
-    
+
     const postReloadCount = await getWorkerCount(page);
-    expect(postReloadCount, "Workers should be re-created after reload").toBeGreaterThan(0);
+    expect(
+      postReloadCount,
+      "Workers should be re-created after reload",
+    ).toBeGreaterThan(0);
   });
 });

@@ -98,15 +98,16 @@ npm run clean          # Remove build artifacts and dependencies
 >
 > ```bash
 > npm test -- src/utils/__tests__/dsp.test.ts
+> ```
 
-   ```
+````
 
 1. **Commit with descriptive messages**
 
-   ```bash
-   git add .
-   git commit -m "feat: add support for new SDR device"
-   ```
+```bash
+git add .
+git commit -m "feat: add support for new SDR device"
+````
 
 1. **Push and create PR**
 

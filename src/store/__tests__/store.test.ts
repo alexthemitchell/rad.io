@@ -56,10 +56,10 @@ describe("Zustand Store", () => {
       setSettings({ dbMin: -100, dbMax: -50 });
       expect(useStore.getState().settings.dbMin).toBe(-100);
       expect(useStore.getState().settings.dbMax).toBe(-50);
-      
+
       // Update an unrelated field
       setSettings({ highPerf: true });
-      
+
       // dB values should remain unchanged, not reset to undefined
       const { settings } = useStore.getState();
       expect(settings.dbMin).toBe(-100);
