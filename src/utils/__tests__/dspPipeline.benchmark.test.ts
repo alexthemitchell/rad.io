@@ -58,23 +58,22 @@ function measureThroughput(
 
   while (performance.now() - startTime < durationMs) {
     const frameStart = performance.now();
+    let frameDropped = false;
 
     try {
       processFunc();
       samplesProcessed += samplesPerFrame;
     } catch {
+      frameDropped = true;
       dropCount++;
     }
 
     const frameTime = performance.now() - frameStart;
     latencies.push(frameTime);
 
-    // Simulate frame pacing
+    // Simulate frame pacing - only count as drop if not already dropped due to exception
     const remaining = targetFrameTime - frameTime;
-    if (remaining > 0) {
-      // In real scenario, this would be requestAnimationFrame
-      // For benchmark, we just track the timing
-    } else {
+    if (remaining <= 0 && !frameDropped) {
       dropCount++; // Frame took too long
     }
   }

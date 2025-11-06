@@ -274,12 +274,20 @@ Chosen: **Option 1 - Producer → RingBuffer(SAB) → Worker → WASM DSP → De
 - [x] WASM DSP functions (FFT, windowing, DC correction) (`assembly/dsp.ts`)
 - [x] Basic metrics collection
 
-#### Phase 2: COOP/COEP Headers ✅ (Completed)
+#### Phase 2: COOP/COEP Headers 🔄 (Partial)
 
-- [x] Configure webpack-dev-server to send COOP/COEP headers
-- [x] Configure production deployment (GitHub Pages) for headers via meta tags
+- [x] Configure webpack-dev-server to send COOP/COEP headers (dev environment)
+- [ ] Configure production deployment (GitHub Pages) for headers (see note below)
 - [ ] Add browser capability detection and fallback UI (tracked in #193)
 - [x] Document deployment requirements
+
+**Note**: GitHub Pages doesn't support custom HTTP headers. COOP/COEP headers work in development via webpack-dev-server. For production, either:
+
+1. Implement service worker to set headers (complex)
+2. Use meta tags (limited effectiveness for SharedArrayBuffer)
+3. Consider alternative deployment platform (Netlify, Vercel, Cloudflare Pages)
+
+Currently, SharedArrayBuffer will work in development but may not work in production on GitHub Pages.
 
 #### Phase 3: Pipeline Integration
 

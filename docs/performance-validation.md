@@ -345,11 +345,10 @@ Add these checks to CI:
     test -f build/release.wasm
     test -f build/release.js
 
-- name: Verify deployment configs
+- name: Verify WASM builds exist
   run: |
-    test -f netlify.toml
-    test -f vercel.json
-    test -f public/_headers
+    test -f build/release.wasm
+    test -f build/release.js
 ```
 
 ## References
