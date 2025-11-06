@@ -21,7 +21,7 @@
  * - Low noise amplifier control
  */
 
-import type { IQSample } from "./SDRDevice";
+import type { IQSample } from "../../models/SDRDevice";
 
 // Airspy USB command codes
 enum AirspyCommand {

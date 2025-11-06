@@ -5,7 +5,7 @@
  */
 
 import { RTLSDRDeviceAdapter } from "../RTLSDRDeviceAdapter";
-import { SDRDeviceType } from "../SDRDevice";
+import { SDRDeviceType } from "../../../models/SDRDevice";
 
 // Mock USB device for testing
 class MockUSBDevice {

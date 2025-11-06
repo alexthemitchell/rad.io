@@ -6,7 +6,7 @@
 
 import { AirspyDevice } from "../AirspyDevice";
 import { AirspyDeviceAdapter } from "../AirspyDeviceAdapter";
-import type { IQSample } from "../SDRDevice";
+import type { IQSample } from "../../../models/SDRDevice";
 
 // Mock USB device
 class MockUSBDevice implements USBDevice {

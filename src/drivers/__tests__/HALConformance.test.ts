@@ -55,7 +55,7 @@ describe("HAL Conformance Tests", () => {
       registerBuiltinDrivers();
       const drivers = SDRDriverRegistry.getAllDrivers();
       expect(drivers.length).toBeGreaterThanOrEqual(2);
-      
+
       // Verify each driver has required properties
       drivers.forEach((driver) => {
         expect(driver.metadata).toBeDefined();
@@ -110,7 +110,7 @@ describe("HAL Conformance Tests", () => {
         expect(caps.maxFrequency).toBeGreaterThan(caps.minFrequency);
         expect(Array.isArray(caps.supportedSampleRates)).toBe(true);
         expect(caps.supportedSampleRates.length).toBeGreaterThan(0);
-        
+
         // All sample rates should be positive
         caps.supportedSampleRates.forEach((rate) => {
           expect(rate).toBeGreaterThan(0);
@@ -131,7 +131,7 @@ describe("HAL Conformance Tests", () => {
       const sampleRates = metadata?.capabilities.supportedSampleRates || [];
       expect(sampleRates).toContain(20e6); // 20 MSPS max
       expect(sampleRates).toContain(10e6); // 10 MSPS
-      expect(sampleRates).toContain(8e6);  // 8 MSPS
+      expect(sampleRates).toContain(8e6); // 8 MSPS
     });
 
     it("should have RTL-SDR with correct frequency range", () => {

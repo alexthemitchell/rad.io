@@ -63,3 +63,5 @@ export { registerBuiltinDrivers } from "./registerBuiltinDrivers";
 
 // Built-in drivers
 export * from "./hackrf";
+export * from "./rtlsdr";
+export * from "./airspy";

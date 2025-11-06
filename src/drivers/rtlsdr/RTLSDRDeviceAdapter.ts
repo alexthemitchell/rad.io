@@ -1,12 +1,11 @@
 /**
- * Airspy Device Adapter
+ * RTL-SDR Device Adapter
  *
- * This adapter wraps the AirspyDevice implementation to conform
+ * This adapter wraps the RTLSDRDevice implementation to conform
  * to the universal ISDRDevice interface, providing plug-and-play
  * compatibility with the visualization and control components.
  */
 
-import { AirspyDevice } from "./AirspyDevice";
 import {
   type ISDRDevice,
   type IQSample,
@@ -15,43 +14,81 @@ import {
   type SDRCapabilities,
   type DeviceMemoryInfo,
   SDRDeviceType,
-  convertInt16ToIQ,
-} from "./SDRDevice";
+  convertUint8ToIQ,
+} from "../../models/SDRDevice";
+import { RTLSDRDevice, RTLSDRTunerType } from "./RTLSDRDevice";
 
-export class AirspyDeviceAdapter implements ISDRDevice {
-  private device: AirspyDevice;
+export class RTLSDRDeviceAdapter implements ISDRDevice {
+  private device: RTLSDRDevice;
   private activeBuffers: DataView[] = [];
   private totalBufferSize = 0;
   private maxSamples = 0;
   private currentSamples = 0;
 
   constructor(usbDevice: USBDevice) {
-    this.device = new AirspyDevice(usbDevice);
+    this.device = new RTLSDRDevice(usbDevice);
   }
 
   async getDeviceInfo(): Promise<SDRDeviceInfo> {
+    const tunerType = this.device.getTunerType();
+    let tunerName = "Unknown";
+
+    switch (tunerType) {
+      case RTLSDRTunerType.UNKNOWN:
+        tunerName = "Unknown";
+        break;
+      case RTLSDRTunerType.E4000:
+        tunerName = "E4000";
+        break;
+      case RTLSDRTunerType.FC0012:
+        tunerName = "FC0012";
+        break;
+      case RTLSDRTunerType.FC0013:
+        tunerName = "FC0013";
+        break;
+      case RTLSDRTunerType.FC2580:
+        tunerName = "FC2580";
+        break;
+      case RTLSDRTunerType.R820T:
+        tunerName = "R820T";
+        break;
+      case RTLSDRTunerType.R828D:
+        tunerName = "R828D";
+        break;
+    }
+
     return Promise.resolve({
-      type: SDRDeviceType.AIRSPY,
-      vendorId: 0x1d50,
-      productId: 0x60a1,
-      serialNumber: undefined,
+      type: SDRDeviceType.RTLSDR,
+      vendorId: 0x0bda,
+      productId: 0x2838,
+      serialNumber: undefined, // RTL-SDR doesn't easily expose serial via WebUSB
       firmwareVersion: undefined,
-      hardwareRevision: "Airspy R2/Mini",
+      hardwareRevision: `RTL2832U + ${tunerName}`,
     });
   }
 
   getCapabilities(): SDRCapabilities {
     return {
-      minFrequency: 24e6, // 24 MHz
-      maxFrequency: 1800e6, // 1.8 GHz
+      minFrequency: 24e6,
+      maxFrequency: 1766e6,
       supportedSampleRates: [
-        2.5e6, // 2.5 MS/s
-        10e6, // 10 MS/s
+        225e3, // 225 kHz
+        900e3, // 900 kHz
+        1.024e6, // 1.024 MHz
+        1.4e6, // 1.4 MHz
+        1.8e6, // 1.8 MHz
+        1.92e6, // 1.92 MHz
+        2.048e6, // 2.048 MHz (default)
+        2.4e6, // 2.4 MHz
+        2.56e6, // 2.56 MHz
+        2.88e6, // 2.88 MHz
+        3.2e6, // 3.2 MHz (max)
       ],
-      maxLNAGain: 45, // 15 steps × 3 dB = 45 dB
-      supportsAmpControl: false, // Uses AGC instead
+      maxLNAGain: 49.6,
+      // RTL-SDR doesn't have separate VGA gain control
+      supportsAmpControl: false, // RTL-SDR uses AGC instead
       supportsAntennaControl: false,
-      maxBandwidth: 10e6, // Maximum 10 MHz
+      maxBandwidth: 3.2e6,
     };
   }
 
@@ -73,7 +110,7 @@ export class AirspyDeviceAdapter implements ISDRDevice {
   }
 
   async getFrequency(): Promise<number> {
-    return Promise.resolve(this.device.getFrequency());
+    return this.device.getFrequency();
   }
 
   async setSampleRate(sampleRateHz: number): Promise<void> {
@@ -81,44 +118,44 @@ export class AirspyDeviceAdapter implements ISDRDevice {
   }
 
   async getSampleRate(): Promise<number> {
-    return Promise.resolve(this.device.getSampleRate());
+    return this.device.getSampleRate();
   }
 
   async getUsableBandwidth(): Promise<number> {
-    // Airspy usable bandwidth is approximately 90% of sample rate
-    const sampleRate = this.device.getSampleRate();
-    return Promise.resolve(sampleRate * 0.9);
+    // RTL-SDR usable bandwidth is approximately 80% of sample rate
+    // due to anti-aliasing filter rolloff
+    const sampleRate = await this.device.getSampleRate();
+    return sampleRate * 0.8;
   }
 
   async setLNAGain(gainDb: number): Promise<void> {
-    // Convert dB to gain index (0-15)
-    // LNA gain: 0-45 dB in 3 dB steps
-    const gainIndex = Math.round(gainDb / 3);
-    return this.device.setLNAGain(gainIndex);
+    return this.device.setGain(gainDb);
   }
 
-  async setVGAGain(gainDb: number): Promise<void> {
-    // VGA gain: 0-15 dB in 1 dB steps
-    const gainIndex = Math.round(gainDb);
-    return this.device.setVGAGain(gainIndex);
+  // RTL-SDR doesn't have separate VGA gain control
+  async setVGAGain?(): Promise<void> {
+    // No-op for RTL-SDR
+    console.debug("RTL-SDR does not support separate VGA gain control");
+    return Promise.resolve();
   }
 
   async setAmpEnable(enabled: boolean): Promise<void> {
-    // Enable/disable AGC for both LNA and Mixer
-    await this.device.setLNAAGC(enabled);
-    await this.device.setMixerAGC(enabled);
+    // RTL-SDR uses AGC instead of separate amp control
+    // When "amp" is enabled, we enable AGC; when disabled, we use manual gain
+    return this.device.setAGC(enabled);
   }
 
-  async setBandwidth(): Promise<void> {
-    // Airspy bandwidth is determined by sample rate
-    console.debug("Airspy bandwidth is determined by sample rate");
+  // RTL-SDR doesn't have configurable bandwidth filter
+  async setBandwidth?(): Promise<void> {
+    // No-op for RTL-SDR - bandwidth is determined by sample rate
+    console.debug("RTL-SDR bandwidth is determined by sample rate");
     return Promise.resolve();
   }
 
   async receive(callback: IQSampleCallback): Promise<void> {
     return this.device.receive((samples) => {
       // Convert IQSample[] to DataView for callback
-      const buffer = new ArrayBuffer(samples.length * 4); // 4 bytes per sample (2 bytes I + 2 bytes Q)
+      const buffer = new ArrayBuffer(samples.length * 2);
       const view = new DataView(buffer);
 
       for (let i = 0; i < samples.length; i++) {
@@ -126,12 +163,11 @@ export class AirspyDeviceAdapter implements ISDRDevice {
         if (sample === undefined) {
           continue;
         }
-        // Convert ±1.0 float to int16
-        const I = Math.round(sample.I * 32768.0);
-        const Q = Math.round(sample.Q * 32768.0);
-        const offset = i * 4;
-        view.setInt16(offset, Math.max(-32768, Math.min(32767, I)), true);
-        view.setInt16(offset + 2, Math.max(-32768, Math.min(32767, Q)), true);
+        // Convert ±1.0 float back to uint8 with 127 offset
+        const I = Math.floor(sample.I * 128.0 + 127);
+        const Q = Math.floor(sample.Q * 128.0 + 127);
+        view.setUint8(i * 2, Math.max(0, Math.min(255, I)));
+        view.setUint8(i * 2 + 1, Math.max(0, Math.min(255, Q)));
       }
 
       // Track memory usage
@@ -165,7 +201,7 @@ export class AirspyDeviceAdapter implements ISDRDevice {
   }
 
   parseSamples(data: DataView): IQSample[] {
-    return convertInt16ToIQ(data);
+    return convertUint8ToIQ(data);
   }
 
   getMemoryInfo(): DeviceMemoryInfo {
@@ -187,13 +223,13 @@ export class AirspyDeviceAdapter implements ISDRDevice {
     this.activeBuffers = [];
     this.totalBufferSize = 0;
     this.currentSamples = 0;
-    console.debug("Airspy buffers cleared");
+    console.debug("RTL-SDR buffers cleared");
   }
 
   async reset(): Promise<void> {
     // Reset by closing and reopening the device
     await this.device.close();
     await this.device.open();
-    console.debug("Airspy reset complete");
+    console.debug("RTL-SDR reset complete");
   }
 }
