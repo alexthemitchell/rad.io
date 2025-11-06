@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { SDRDriverRegistry, registerBuiltinDrivers } from "../../drivers";
-import { useUSBDevice } from "../../hooks/useUSBDevice";
-import { type ISDRDevice } from "../../models/SDRDevice";
+import { SDRDriverRegistry, registerBuiltinDrivers } from "../..";
+import { useUSBDevice } from "../../../hooks/useUSBDevice";
+import { type ISDRDevice } from "../../../models/SDRDevice";
 
 /**
  * React hook for managing HackRF One device lifecycle

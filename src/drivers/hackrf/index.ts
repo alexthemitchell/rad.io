@@ -28,5 +28,5 @@ export type {
   SDRCapabilities,
   SDRStreamConfig,
   DeviceMemoryInfo,
-} from "../models/SDRDevice";
-export { SDRDeviceType, convertInt8ToIQ } from "../models/SDRDevice";
+} from "../../models/SDRDevice";
+export { SDRDeviceType, convertInt8ToIQ } from "../../models/SDRDevice";

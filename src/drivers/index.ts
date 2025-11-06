@@ -60,3 +60,6 @@ export {
 } from "./DriverHotReload";
 
 export { registerBuiltinDrivers } from "./registerBuiltinDrivers";
+
+// Built-in drivers
+export * from "./hackrf";
