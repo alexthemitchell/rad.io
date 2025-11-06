@@ -483,7 +483,7 @@ const hackrf = new HackRFOne(mockDevice as USBDevice);
 // Test configuration and error handling
 ```
 
-See `src/hackrf/__tests__/` for comprehensive test examples.
+See `src/drivers/hackrf/__tests__/` for comprehensive test examples.
 
 ## References
 
@@ -492,7 +492,7 @@ See `src/hackrf/__tests__/` for comprehensive test examples.
 - **Memory: HACKRF_DEVICE_INITIALIZATION_BUG_FIX**: Details on sample rate requirement
 - **Memory: HACKRF_ERROR_HANDLING_ENHANCEMENT_2025**: Health checks and recovery
 - **Memory: HACKRF_PROTECTIVE_MEASURES_IMPLEMENTATION**: Timeout protection
-- **Test README**: `src/hackrf/__tests__/README.md` for testing patterns
+- **Test README**: `src/drivers/hackrf/__tests__/README.md` for testing patterns
 
 ## Support
 

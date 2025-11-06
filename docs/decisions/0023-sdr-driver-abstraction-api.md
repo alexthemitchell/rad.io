@@ -229,7 +229,7 @@ src/drivers/
 
 - **Interface**: `src/models/SDRDevice.ts` (ISDRDevice)
 - **Adapters**:
-  - `src/hackrf/HackRFOneAdapter.ts`
+  - `src/drivers/hackrf/HackRFOneAdapter.ts`
   - `src/models/RTLSDRDeviceAdapter.ts`
 - **WebUSB Spec**: https://wicg.github.io/webusb/
 - **Related ADRs**:

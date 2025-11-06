@@ -72,7 +72,7 @@ graph TB
    - Accessibility (ARIA, keyboard navigation)
    - Visual rendering
 
-3. **Device Models** (`src/models/__tests__/`, `src/hackrf/__tests__/`)
+3. **Device Models** (`src/models/__tests__/`, `src/drivers/hackrf/__tests__/`)
    - HackRF One adapter
    - RTL-SDR device
    - Airspy device
@@ -235,10 +235,10 @@ global: {
 **HackRF Implementation**:
 
 ```javascript
-"./src/hackrf/HackRFOne.ts": {
+"./src/drivers/hackrf/HackRFOne.ts": {
   statements: 76%, branches: 60%, functions: 95%, lines: 75%
 }
-"./src/hackrf/HackRFOneAdapter.ts": {
+"./src/drivers/hackrf/HackRFOneAdapter.ts": {
   statements: 96%, branches: 85%, functions: 93%, lines: 96%
 }
 ```

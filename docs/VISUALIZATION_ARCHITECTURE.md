@@ -88,7 +88,7 @@ Rendering backends in `src/visualization/renderers/` and `src/utils/webgl.ts`:
 
 Abstract data providers in `src/visualization/` and `src/models/`:
 
-- **HackRF Device** (`src/hackrf/HackRFOne.ts`): Real hardware
+- **HackRF Device** (`src/drivers/hackrf/HackRFOne.ts`): Real hardware
 - **MockSDRDevice** (`src/models/MockSDRDevice.ts`): E2E testing
 - **SimulatedSource** (`src/visualization/SimulatedSource.ts`): Development/testing
 - **ReplaySource** (`src/visualization/ReplaySource.ts`): Recorded data playback
