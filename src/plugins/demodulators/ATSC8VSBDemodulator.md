@@ -92,7 +92,7 @@ Maps received samples to closest 8-VSB level:
 ### Basic Example
 
 ```typescript
-import { ATSC8VSBDemodulator } from './plugins/demodulators/ATSC8VSBDemodulator';
+import { ATSC8VSBDemodulator } from '@/plugins/demodulators/ATSC8VSBDemodulator';
 
 // Create demodulator instance
 const demodulator = new ATSC8VSBDemodulator();
@@ -131,8 +131,8 @@ const config = demodulator.getParameters();
 ### Integration with Plugin System
 
 ```typescript
-import { pluginRegistry } from "./lib/PluginRegistry";
-import { ATSC8VSBDemodulator } from "./plugins/demodulators/ATSC8VSBDemodulator";
+import { pluginRegistry } from "@/lib/PluginRegistry";
+import { ATSC8VSBDemodulator } from "@/plugins/demodulators/ATSC8VSBDemodulator";
 
 // Register demodulator
 const demod = new ATSC8VSBDemodulator();

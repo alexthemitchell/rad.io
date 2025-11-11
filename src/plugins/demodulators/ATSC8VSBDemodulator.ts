@@ -40,8 +40,9 @@ const CHANNEL_BANDWIDTH = 6e6; // 6 MHz
 
 /**
  * Data segment sync pattern (4 symbols)
+ * Uses actual 8-VSB symbol levels from the VSB_LEVELS array
  */
-const SEGMENT_SYNC_PATTERN = [5, -5, -5, 5]; // +1, -1, -1, +1 in normalized form
+const SEGMENT_SYNC_PATTERN = [5, -5, -5, 5];
 
 /**
  * Gardner timing error detector state
@@ -90,6 +91,7 @@ export class ATSC8VSBDemodulator
   private segmentSyncCount: number;
   private fieldSyncCount: number;
   private syncLocked: boolean;
+  private lastSyncPosition: number; // Track position of last detected sync
 
   // Demodulated data buffer
   private symbolBuffer: number[];
@@ -141,6 +143,7 @@ export class ATSC8VSBDemodulator
     this.segmentSyncCount = 0;
     this.fieldSyncCount = 0;
     this.syncLocked = false;
+    this.lastSyncPosition = -1; // -1 means no sync found yet
 
     this.symbolBuffer = [];
   }
@@ -176,6 +179,7 @@ export class ATSC8VSBDemodulator
     this.segmentSyncCount = 0;
     this.fieldSyncCount = 0;
     this.syncLocked = false;
+    this.lastSyncPosition = -1;
     this.symbolBuffer = [];
 
     // Reset equalizer
@@ -249,7 +253,7 @@ export class ATSC8VSBDemodulator
   /**
    * Update equalizer taps using LMS algorithm
    */
-  private updateEqualizer(input: number, output: number, error: number): void {
+  private updateEqualizer(error: number): void {
     // LMS update: taps[i] = taps[i] + stepSize * error * delayLine[i]
     for (let i = 0; i < this.equalizer.numTaps; i++) {
       const currentTap = this.equalizer.taps[i] ?? 0;
@@ -317,6 +321,8 @@ export class ATSC8VSBDemodulator
 
       // Advance to next symbol (ensure we always move forward)
       const advance = this.samplesPerSymbol + this.symbolPhase;
+      // Minimum advance of 0.1 samples prevents timing loop from stalling or moving backwards
+      // if symbolPhase becomes negative enough to offset samplesPerSymbol
       sampleIndex += Math.max(0.1, advance);
     }
 
@@ -352,31 +358,42 @@ export class ATSC8VSBDemodulator
     }
 
     // If we're not locked, search for sync pattern anywhere
-    // Once locked, verify sync appears at expected position
     if (!this.syncLocked) {
       // Search for sync pattern using correlation
-      // Check the most recent symbols for sync pattern
       let matches = 0;
       for (let i = 0; i < SEGMENT_SYNC_LENGTH; i++) {
         if (symbols[i] === SEGMENT_SYNC_PATTERN[i]) {
           matches++;
         }
       }
-      return matches >= 3; // Allow for 1 error
+      if (matches >= 3) {
+        // Found initial sync - mark the position
+        this.lastSyncPosition = this.symbolBuffer.length - SEGMENT_SYNC_LENGTH;
+        return true;
+      }
+      return false;
     } else {
-      // Once locked, check at segment boundaries
-      // The sync should be at the start of each 832-symbol segment
-      const bufferPosition = this.symbolBuffer.length % SEGMENT_LENGTH;
+      // Once locked, verify sync appears at expected 832-symbol intervals
+      const symbolsSinceLastSync =
+        this.symbolBuffer.length - this.lastSyncPosition;
 
-      // Only check when we're at a potential segment boundary
-      if (bufferPosition < SEGMENT_SYNC_LENGTH) {
+      // Check if we're at the expected sync position (within a small window)
+      if (
+        symbolsSinceLastSync >= SEGMENT_LENGTH &&
+        symbolsSinceLastSync < SEGMENT_LENGTH + SEGMENT_SYNC_LENGTH
+      ) {
         let matches = 0;
         for (let i = 0; i < SEGMENT_SYNC_LENGTH; i++) {
           if (i < symbols.length && symbols[i] === SEGMENT_SYNC_PATTERN[i]) {
             matches++;
           }
         }
-        return matches >= 3;
+        if (matches >= 3) {
+          // Update last sync position
+          this.lastSyncPosition =
+            this.symbolBuffer.length - SEGMENT_SYNC_LENGTH;
+          return true;
+        }
       }
       return false;
     }
@@ -387,7 +404,7 @@ export class ATSC8VSBDemodulator
    */
   private detectFieldSync(): boolean {
     // Field sync occurs every 313 segments
-    if (this.segmentSyncCount >= FIELD_SYNC_SEGMENTS) {
+    if (this.segmentSyncCount === FIELD_SYNC_SEGMENTS) {
       this.segmentSyncCount = 0;
       this.fieldSyncCount++;
       return true;
@@ -427,7 +444,7 @@ export class ATSC8VSBDemodulator
 
       // Update equalizer (LMS algorithm)
       const error = equalized - decided;
-      this.updateEqualizer(symbols[i], equalized, error);
+      this.updateEqualizer(error);
 
       output[i] = decided;
 
@@ -489,11 +506,7 @@ export class ATSC8VSBDemodulator
    */
   setParameters(params: Partial<DemodulatorParameters>): void {
     this.parameters = { ...this.parameters, ...params };
-
-    // Update internal state based on parameters
-    if (params.audioSampleRate) {
-      this.samplesPerSymbol = params.audioSampleRate / SYMBOL_RATE;
-    }
+    // Note: samplesPerSymbol is recalculated in recoverTiming() based on actual sample rate
   }
 
   /**
