@@ -26,7 +26,7 @@ import type {
 /**
  * ATSC 8-VSB symbol levels (normalized)
  */
-const VSB_LEVELS = [-7, -5, -3, -1, 1, 3, 5, 7];
+const VSB_LEVELS = [-7, -5, -3, -1, 1, 3, 5, 7] as const;
 
 /**
  * ATSC constants
@@ -213,7 +213,7 @@ export class ATSC8VSBDemodulator
 
       // Phase-locked loop to track pilot
       // Error signal: imaginary part of complex correlation
-      const error = corrected[i].Q;
+      const error = corrected[i]?.Q ?? 0;
 
       // Update frequency offset and phase
       this.pilotFrequencyOffset += this.pllBeta * error;
@@ -284,7 +284,8 @@ export class ATSC8VSBDemodulator
 
       // Linear interpolation
       const currentSample =
-        samples[intPart] * (1 - fracPart) + samples[intPart + 1] * fracPart;
+        (samples[intPart] ?? 0) * (1 - fracPart) +
+        (samples[intPart + 1] ?? 0) * fracPart;
 
       // Gardner timing error detector
       // Error = (current - previous) * midpoint
@@ -299,8 +300,8 @@ export class ATSC8VSBDemodulator
         midpointIndex >= 0
       ) {
         midpointSample =
-          samples[midpointIntPart] * (1 - midpointFracPart) +
-          samples[midpointIntPart + 1] * midpointFracPart;
+          (samples[midpointIntPart] ?? 0) * (1 - midpointFracPart) +
+          (samples[midpointIntPart + 1] ?? 0) * midpointFracPart;
       }
 
       const timingError =
@@ -335,7 +336,7 @@ export class ATSC8VSBDemodulator
   private slicerDecision(sample: number): number {
     // Find closest VSB level
     let minDistance = Infinity;
-    let closestLevel = VSB_LEVELS[0];
+    let closestLevel: number = VSB_LEVELS[0];
 
     for (const level of VSB_LEVELS) {
       const distance = Math.abs(sample - level);
@@ -437,7 +438,7 @@ export class ATSC8VSBDemodulator
 
     for (let i = 0; i < symbols.length; i++) {
       // Apply equalizer
-      const equalized = this.equalize(symbols[i]);
+      const equalized = this.equalize(symbols[i] ?? 0);
 
       // Slicer decision
       const decided = this.slicerDecision(equalized);

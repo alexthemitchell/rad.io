@@ -219,7 +219,7 @@ describe("ATSC8VSBDemodulator", () => {
       // Data symbols (828 symbols with random levels)
       const vsbLevels = [-7, -5, -3, -1, 1, 3, 5, 7];
       for (let s = 0; s < 828; s++) {
-        const level = vsbLevels[s % vsbLevels.length];
+        const level = vsbLevels[s % vsbLevels.length] ?? 0;
         for (let i = 0; i < samplesPerSymbol; i++) {
           samples.push({ I: level, Q: 0 });
         }
@@ -245,8 +245,9 @@ describe("ATSC8VSBDemodulator", () => {
 
       // Add delayed echo
       for (let i = 0; i < numSamples; i++) {
-        const main = mainSignal[i];
-        const echo = i >= echoDelay ? mainSignal[i - echoDelay] * echoGain : 0;
+        const main = mainSignal[i] ?? 0;
+        const echo =
+          i >= echoDelay ? (mainSignal[i - echoDelay] ?? 0) * echoGain : 0;
         samples.push({
           I: main + echo,
           Q: 0,
@@ -310,14 +311,14 @@ describe("ATSC8VSBDemodulator", () => {
 
     it("should define mode property", () => {
       const schema = demodulator.getConfigSchema();
-      expect(schema!.properties["mode"]).toBeDefined();
-      expect(schema!.properties["mode"].enum).toContain("8vsb");
+      expect(schema?.properties["mode"]).toBeDefined();
+      expect(schema?.properties["mode"]?.enum).toContain("8vsb");
     });
 
     it("should define bandwidth property", () => {
       const schema = demodulator.getConfigSchema();
-      expect(schema!.properties["bandwidth"]).toBeDefined();
-      expect(schema!.properties["bandwidth"].default).toBe(6e6);
+      expect(schema?.properties["bandwidth"]).toBeDefined();
+      expect(schema?.properties["bandwidth"]?.default).toBe(6e6);
     });
 
     it("should define squelch property", () => {

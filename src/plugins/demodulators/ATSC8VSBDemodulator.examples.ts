@@ -4,7 +4,7 @@
  * Demonstrates various usage patterns for the ATSC 8-VSB demodulator plugin.
  */
 
-/* eslint-disable no-console, @typescript-eslint/explicit-function-return-type, @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/prefer-for-of */
+/* eslint-disable no-console, @typescript-eslint/explicit-function-return-type, @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/prefer-for-of */
 
 import { ATSC8VSBDemodulator } from "./ATSC8VSBDemodulator";
 import type { IQSample } from "../../models/SDRDevice";
@@ -239,7 +239,10 @@ export async function batchProcessing() {
 
     // Collect all symbols
     for (let i = 0; i < symbols.length; i++) {
-      allSymbols.push(symbols[i]);
+      const symbol = symbols[i];
+      if (symbol !== undefined) {
+        allSymbols.push(symbol);
+      }
     }
 
     // Check progress
@@ -268,9 +271,6 @@ export async function pluginRegistryIntegration() {
   const demodulator = new ATSC8VSBDemodulator();
   await pluginRegistry.register(demodulator);
 
-  // Initialize all plugins
-  await pluginRegistry.initializeAll();
-
   // Get the registered demodulator
   const registered = pluginRegistry.getPlugin("atsc-8vsb-demodulator");
 
@@ -285,10 +285,10 @@ export async function pluginRegistryIntegration() {
 
     // Deactivate
     await registered.deactivate();
-  }
 
-  // Cleanup
-  await pluginRegistry.disposeAll();
+    // Unregister/cleanup
+    await pluginRegistry.unregister(registered.metadata.id);
+  }
 }
 
 // Export all examples
