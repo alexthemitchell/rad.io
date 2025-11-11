@@ -46,7 +46,9 @@ describe("useATSCScanner", () => {
       getFieldSyncCount: jest.fn().mockReturnValue(0),
     } as unknown as jest.Mocked<ATSC8VSBDemodulator>;
 
-    (ATSC8VSBDemodulator as jest.Mock).mockImplementation(() => mockDemodulator);
+    (ATSC8VSBDemodulator as jest.Mock).mockImplementation(
+      () => mockDemodulator,
+    );
 
     // Mock storage functions
     jest.spyOn(atscChannelStorage, "saveATSCChannel").mockResolvedValue();

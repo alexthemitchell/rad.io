@@ -4,7 +4,10 @@
 
 import { render, screen, fireEvent } from "@testing-library/react";
 import ATSCScanner from "../ATSCScanner";
-import type { ATSCScanConfig, ATSCScannerState } from "../../hooks/useATSCScanner";
+import type {
+  ATSCScanConfig,
+  ATSCScannerState,
+} from "../../hooks/useATSCScanner";
 import type { StoredATSCChannel } from "../../utils/atscChannelStorage";
 import type { ATSCChannel } from "../../utils/atscChannels";
 
@@ -79,7 +82,9 @@ describe("ATSCScanner", () => {
     it("should render band selection checkboxes", () => {
       render(<ATSCScanner {...mockProps} />);
       expect(screen.getByText(/VHF-Low.*2-6.*54-88 MHz/)).toBeInTheDocument();
-      expect(screen.getByText(/VHF-High.*7-13.*174-216 MHz/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/VHF-High.*7-13.*174-216 MHz/),
+      ).toBeInTheDocument();
       expect(screen.getByText(/UHF.*14-36.*470-608 MHz/)).toBeInTheDocument();
     });
 
@@ -220,7 +225,9 @@ describe("ATSCScanner", () => {
     it("should handle threshold changes", () => {
       render(<ATSCScanner {...mockProps} />);
 
-      const thresholdInput = screen.getByLabelText(/Threshold/) as HTMLInputElement;
+      const thresholdInput = screen.getByLabelText(
+        /Threshold/,
+      ) as HTMLInputElement;
       fireEvent.change(thresholdInput, { target: { value: "20" } });
 
       expect(mockProps.onConfigChange).toHaveBeenCalledWith({
@@ -231,7 +238,9 @@ describe("ATSCScanner", () => {
     it("should handle dwell time changes", () => {
       render(<ATSCScanner {...mockProps} />);
 
-      const dwellInput = screen.getByLabelText(/Dwell Time/) as HTMLInputElement;
+      const dwellInput = screen.getByLabelText(
+        /Dwell Time/,
+      ) as HTMLInputElement;
       fireEvent.change(dwellInput, { target: { value: "1000" } });
 
       expect(mockProps.onConfigChange).toHaveBeenCalledWith({
@@ -285,9 +294,7 @@ describe("ATSCScanner", () => {
     });
 
     it("should display channel information", () => {
-      render(
-        <ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />,
-      );
+      render(<ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />);
       expect(screen.getByText("7")).toBeInTheDocument(); // Channel number
       expect(screen.getByText("177.0 MHz")).toBeInTheDocument();
       expect(screen.getByText("VHF-High")).toBeInTheDocument();
@@ -295,39 +302,31 @@ describe("ATSCScanner", () => {
     });
 
     it("should display signal quality info", () => {
-      render(
-        <ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />,
-      );
-      expect(screen.getByText(/Pilot.*Sync.*MER: 30\.0 dB/)).toBeInTheDocument();
+      render(<ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />);
+      expect(
+        screen.getByText(/Pilot.*Sync.*MER: 30\.0 dB/),
+      ).toBeInTheDocument();
     });
 
     it("should show Export button when channels exist", () => {
-      render(
-        <ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />,
-      );
+      render(<ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />);
       expect(screen.getByText("Export")).toBeInTheDocument();
     });
 
     it("should show Clear button when channels exist", () => {
-      render(
-        <ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />,
-      );
+      render(<ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />);
       expect(screen.getByText("Clear")).toBeInTheDocument();
     });
 
     it("should call onExportChannels when Export clicked", () => {
-      render(
-        <ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />,
-      );
+      render(<ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />);
 
       fireEvent.click(screen.getByText("Export"));
       expect(mockProps.onExportChannels).toHaveBeenCalledTimes(1);
     });
 
     it("should call onClearChannels when Clear clicked", () => {
-      render(
-        <ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />,
-      );
+      render(<ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />);
 
       fireEvent.click(screen.getByText("Clear"));
       expect(mockProps.onClearChannels).toHaveBeenCalledTimes(1);
@@ -364,9 +363,7 @@ describe("ATSCScanner", () => {
     });
 
     it("should not show Tune button when callback not provided", () => {
-      render(
-        <ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />,
-      );
+      render(<ATSCScanner {...mockProps} foundChannels={[mockFoundChannel]} />);
       expect(screen.queryByText("Tune")).not.toBeInTheDocument();
     });
 

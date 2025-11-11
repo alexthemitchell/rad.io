@@ -38,6 +38,7 @@ The ATSC Channel Scanner is a comprehensive tool for discovering and monitoring 
 #### Bands to Scan
 
 Choose which frequency bands to scan:
+
 - ☑ VHF-Low (Ch 2-6): Lower VHF television channels
 - ☑ VHF-High (Ch 7-13): Upper VHF television channels
 - ☑ UHF (Ch 14-36): UHF television channels (post-repack)
@@ -47,15 +48,12 @@ Choose which frequency bands to scan:
 - **Threshold**: Signal detection threshold in dB above noise floor (5-30 dB)
   - Default: 15 dB
   - Higher values reduce false positives but may miss weak signals
-  
 - **Dwell Time**: Time spent analyzing each channel (100-2000 ms)
   - Default: 500 ms
   - Longer dwell times improve sync detection accuracy
-  
 - **Require Pilot Tone**: Only report channels with detected ATSC pilot
   - Recommended: Enabled
   - Ensures detected signals are actually ATSC broadcasts
-  
 - **Require Sync Lock**: Only report channels where demodulator achieves sync
   - Default: Disabled (slower but more accurate when enabled)
   - Enable for highest confidence in signal validity
@@ -71,6 +69,7 @@ Choose which frequency bands to scan:
 ### Found Channels
 
 Each discovered channel displays:
+
 - **Channel Number**: Physical RF channel (2-36)
 - **Frequency**: Center frequency in MHz
 - **Band**: VHF-Low, VHF-High, or UHF
@@ -146,17 +145,20 @@ Channels are stored in IndexedDB with the following schema:
 ### Troubleshooting
 
 **No channels found:**
+
 - Ensure SDR device is connected and antenna is attached
 - Lower detection threshold
 - Increase dwell time
 - Check that selected bands are appropriate for your location
 
 **Many false positives:**
+
 - Increase detection threshold
 - Enable "Require Pilot Tone"
 - Enable "Require Sync Lock"
 
 **Scan is slow:**
+
 - Reduce dwell time
 - Disable sync lock requirement
 - Scan fewer bands

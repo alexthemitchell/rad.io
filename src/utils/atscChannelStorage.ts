@@ -72,7 +72,7 @@ async function openDatabase(): Promise<IDBDatabase> {
       // Create object store if it doesn't exist
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, {
-          keyPath: ["channel.channel"], // Use physical channel number as key
+          keyPath: "channel.channel", // Use physical channel number as key
         });
 
         // Create indexes for efficient querying
@@ -136,7 +136,7 @@ export async function getATSCChannelData(
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], "readonly");
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.get([channelNumber]);
+    const request = store.get(channelNumber);
 
     request.onsuccess = () => {
       const result = request.result as
@@ -269,7 +269,7 @@ export async function deleteATSCChannel(channelNumber: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_NAME], "readwrite");
     const store = transaction.objectStore(STORE_NAME);
-    const request = store.delete([channelNumber]);
+    const request = store.delete(channelNumber);
 
     request.onsuccess = () => {
       resolve();
@@ -387,20 +387,80 @@ export async function exportATSCChannelsToJSON(): Promise<string> {
  * Import channels from JSON
  */
 export async function importATSCChannelsFromJSON(json: string): Promise<void> {
-  const channels = JSON.parse(json) as StoredATSCChannel[];
+  // Validate JSON structure
+  let channels: unknown;
+  try {
+    channels = JSON.parse(json);
+  } catch (_error) {
+    throw new Error("Invalid JSON format");
+  }
 
+  // Verify it's an array
+  if (!Array.isArray(channels)) {
+    throw new Error("JSON must contain an array of channels");
+  }
+
+  // Validate each channel
   for (const channel of channels) {
+    // Check required properties
+    if (!channel || typeof channel !== "object") {
+      throw new Error("Invalid channel object");
+    }
+
+    const ch = channel as Partial<StoredATSCChannel>;
+
+    // Validate channel structure
+    if (!ch.channel || typeof ch.channel !== "object") {
+      throw new Error("Missing or invalid channel information");
+    }
+
+    // Validate channel number
+    if (
+      typeof ch.channel.channel !== "number" ||
+      ch.channel.channel < 2 ||
+      ch.channel.channel > 36
+    ) {
+      throw new Error(
+        `Invalid channel number: ${ch.channel.channel}. Must be between 2 and 36.`,
+      );
+    }
+
+    // Validate numeric values
+    if (typeof ch.strength !== "number" || ch.strength < 0 || ch.strength > 1) {
+      throw new Error("Invalid strength value. Must be between 0 and 1.");
+    }
+
+    if (typeof ch.snr !== "number") {
+      throw new Error("Invalid SNR value");
+    }
+
+    if (typeof ch.pilotDetected !== "boolean") {
+      throw new Error("Invalid pilotDetected value");
+    }
+
+    if (typeof ch.syncLocked !== "boolean") {
+      throw new Error("Invalid syncLocked value");
+    }
+
+    // Validate required date fields
+    if (!ch.discoveredAt) {
+      throw new Error("Missing discoveredAt field");
+    }
+    if (!ch.lastScanned) {
+      throw new Error("Missing lastScanned field");
+    }
+
     // Ensure dates are Date objects
     await saveATSCChannel({
-      ...channel,
+      ...(ch as StoredATSCChannel),
       discoveredAt:
-        channel.discoveredAt instanceof Date
-          ? channel.discoveredAt
-          : new Date(channel.discoveredAt),
+        ch.discoveredAt instanceof Date
+          ? ch.discoveredAt
+          : new Date(ch.discoveredAt),
       lastScanned:
-        channel.lastScanned instanceof Date
-          ? channel.lastScanned
-          : new Date(channel.lastScanned),
+        ch.lastScanned instanceof Date
+          ? ch.lastScanned
+          : new Date(ch.lastScanned),
     });
   }
 }

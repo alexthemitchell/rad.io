@@ -17,6 +17,7 @@ import {
   saveATSCChannel,
   getAllATSCChannels,
   clearAllATSCChannels,
+  getATSCChannelData,
   type StoredATSCChannel,
 } from "../utils/atscChannelStorage";
 import {
@@ -115,6 +116,8 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
   const receivePromiseRef = useRef<Promise<void> | null>(null);
   const dwellResolveRef = useRef<(() => void) | null>(null);
   const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pausedChannelsRef = useRef<ATSCChannel[]>([]);
+  const pausedIndexRef = useRef<number>(0);
 
   /**
    * Settle any pending receive operation
@@ -254,13 +257,17 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
 
         // Collect IQ samples
         const iqSamples: IQSample[] = [];
+        let samplesCollected = false;
 
         receivePromiseRef.current = device.receive((data: DataView) => {
-          if (!isScanningRef.current) return;
+          // Stop accumulating if we already have enough samples or scanning stopped
+          if (!isScanningRef.current || samplesCollected) return;
+
           const samples = device.parseSamples(data);
           iqSamples.push(...samples);
 
           if (iqSamples.length >= config.fftSize && dwellResolveRef.current) {
+            samplesCollected = true;
             dwellResolveRef.current();
           }
         });
@@ -381,81 +388,108 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
   /**
    * Perform full scan
    */
-  const performScan = useCallback(async (): Promise<void> => {
-    if (!device?.isOpen() || !isScanningRef.current) {
-      return;
-    }
-
-    try {
-      // Build list of channels to scan
-      const channelsToScan: ATSCChannel[] = [];
-      if (config.scanVHFLow) {
-        channelsToScan.push(
-          ...ATSC_CHANNELS.filter((ch) => ch.band === "VHF-Low"),
-        );
-      }
-      if (config.scanVHFHigh) {
-        channelsToScan.push(
-          ...ATSC_CHANNELS.filter((ch) => ch.band === "VHF-High"),
-        );
-      }
-      if (config.scanUHF) {
-        channelsToScan.push(...ATSC_CHANNELS.filter((ch) => ch.band === "UHF"));
+  const performScan = useCallback(
+    async (resumeFromPaused = false): Promise<void> => {
+      if (!device?.isOpen() || !isScanningRef.current) {
+        return;
       }
 
-      const totalChannels = channelsToScan.length;
-      let scannedCount = 0;
+      try {
+        // Build list of channels to scan or use paused list
+        let channelsToScan: ATSCChannel[];
+        let startIndex = 0;
 
-      // Scan each channel
-      for (const channel of channelsToScan) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (!isScanningRef.current) break;
-
-        const result = await scanChannel(channel);
-
-        if (result) {
-          // Save to database and state
-          const storedChannel: StoredATSCChannel = {
-            ...result,
-            discoveredAt: new Date(),
-            lastScanned: new Date(),
-            scanCount: 1,
-          };
-
-          await saveATSCChannel(storedChannel);
-          setFoundChannels((prev) => {
-            const existing = prev.find(
-              (ch) => ch.channel.channel === channel.channel,
+        if (resumeFromPaused && pausedChannelsRef.current.length > 0) {
+          // Resume from where we paused
+          channelsToScan = pausedChannelsRef.current;
+          startIndex = pausedIndexRef.current;
+        } else {
+          // Build fresh list
+          channelsToScan = [];
+          if (config.scanVHFLow) {
+            channelsToScan.push(
+              ...ATSC_CHANNELS.filter((ch) => ch.band === "VHF-Low"),
             );
-            if (existing) {
-              return prev.map((ch) =>
-                ch.channel.channel === channel.channel ? storedChannel : ch,
-              );
-            }
-            return [...prev, storedChannel];
-          });
+          }
+          if (config.scanVHFHigh) {
+            channelsToScan.push(
+              ...ATSC_CHANNELS.filter((ch) => ch.band === "VHF-High"),
+            );
+          }
+          if (config.scanUHF) {
+            channelsToScan.push(
+              ...ATSC_CHANNELS.filter((ch) => ch.band === "UHF"),
+            );
+          }
+          // Store for potential pause/resume
+          pausedChannelsRef.current = channelsToScan;
+          pausedIndexRef.current = 0;
         }
 
-        scannedCount++;
-        setProgress((scannedCount / totalChannels) * 100);
-      }
+        const totalChannels = channelsToScan.length;
+        let scannedCount = startIndex;
 
-      // Scan complete
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (isScanningRef.current) {
+        // Scan each channel starting from the resume point
+        for (let i = startIndex; i < channelsToScan.length; i++) {
+          const channel = channelsToScan[i];
+          if (!channel) continue;
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (!isScanningRef.current) break;
+
+          const result = await scanChannel(channel);
+
+          if (result) {
+            // Check if channel already exists in database
+            const existingChannel = await getATSCChannelData(channel.channel);
+
+            // Save to database and state
+            const storedChannel: StoredATSCChannel = {
+              ...result,
+              discoveredAt: existingChannel?.discoveredAt ?? new Date(),
+              lastScanned: new Date(),
+              scanCount: (existingChannel?.scanCount ?? 0) + 1,
+            };
+
+            await saveATSCChannel(storedChannel);
+            setFoundChannels((prev) => {
+              const existing = prev.find(
+                (ch) => ch.channel.channel === channel.channel,
+              );
+              if (existing) {
+                return prev.map((ch) =>
+                  ch.channel.channel === channel.channel ? storedChannel : ch,
+                );
+              }
+              return [...prev, storedChannel];
+            });
+          }
+
+          scannedCount++;
+          pausedIndexRef.current = i + 1; // Track progress for potential pause
+          setProgress((scannedCount / totalChannels) * 100);
+        }
+
+        // Scan complete
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (isScanningRef.current) {
+          setState("idle");
+          isScanningRef.current = false;
+          setCurrentChannel(null);
+          setProgress(100);
+          // Clear paused state on completion
+          pausedChannelsRef.current = [];
+          pausedIndexRef.current = 0;
+        }
+      } catch (error: unknown) {
+        console.error("Error during ATSC scan:", error);
         setState("idle");
         isScanningRef.current = false;
         setCurrentChannel(null);
-        setProgress(100);
+        setProgress(0);
       }
-    } catch (error: unknown) {
-      console.error("Error during ATSC scan:", error);
-      setState("idle");
-      isScanningRef.current = false;
-      setCurrentChannel(null);
-      setProgress(0);
-    }
-  }, [device, config, scanChannel]);
+    },
+    [device, config, scanChannel],
+  );
 
   /**
    * Start scanning
@@ -482,8 +516,11 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
     setProgress(0);
     setFoundChannels([]);
     await clearAllATSCChannels();
+    // Clear any paused state when starting fresh
+    pausedChannelsRef.current = [];
+    pausedIndexRef.current = 0;
 
-    void performScan().catch((err: unknown) => {
+    void performScan(false).catch((err: unknown) => {
       console.error("Error during performScan():", err);
       setState("idle");
       isScanningRef.current = false;
@@ -514,7 +551,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
     if (state === "paused") {
       setState("scanning");
       isScanningRef.current = true;
-      void performScan().catch((err: unknown) => {
+      void performScan(true).catch((err: unknown) => {
         console.error("Error during performScan() on resume:", err);
         setState("idle");
         isScanningRef.current = false;
@@ -537,6 +574,9 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
       dwellResolveRef.current();
     }
     void settleReceivePromise();
+    // Clear paused state when stopping
+    pausedChannelsRef.current = [];
+    pausedIndexRef.current = 0;
   }, [clearPendingTimers, settleReceivePromise]);
 
   /**
@@ -602,17 +642,33 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
   // Cleanup on unmount
   useEffect(() => {
     return (): void => {
+      isScanningRef.current = false;
       clearPendingTimers();
       if (dwellResolveRef.current) {
         dwellResolveRef.current();
       }
-      void settleReceivePromise();
-      if (demodulatorRef.current) {
-        void demodulatorRef.current.deactivate();
-        void demodulatorRef.current.dispose();
-      }
+
+      // Ensure proper cleanup order: stop receiving, then dispose demodulator
+      void (async (): Promise<void> => {
+        await settleReceivePromise();
+        if (device?.isReceiving()) {
+          try {
+            await device.stopRx();
+          } catch (_error) {
+            // Ignore errors during cleanup
+          }
+        }
+        if (demodulatorRef.current) {
+          try {
+            await demodulatorRef.current.deactivate();
+            await demodulatorRef.current.dispose();
+          } catch (_error) {
+            // Ignore errors during cleanup
+          }
+        }
+      })();
     };
-  }, [clearPendingTimers, settleReceivePromise]);
+  }, [clearPendingTimers, settleReceivePromise, device]);
 
   return useMemo(
     () => ({

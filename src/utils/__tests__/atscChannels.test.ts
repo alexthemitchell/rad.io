@@ -45,7 +45,9 @@ describe("atscChannels", () => {
     it("should have correct VHF-High channels (7-13)", () => {
       const vhfHigh = ATSC_CHANNELS.filter((ch) => ch.band === "VHF-High");
       expect(vhfHigh.length).toBe(7);
-      expect(vhfHigh.map((ch) => ch.channel)).toEqual([7, 8, 9, 10, 11, 12, 13]);
+      expect(vhfHigh.map((ch) => ch.channel)).toEqual([
+        7, 8, 9, 10, 11, 12, 13,
+      ]);
     });
 
     it("should have correct UHF channels (14-36)", () => {
@@ -64,8 +66,7 @@ describe("atscChannels", () => {
 
     it("should have correct pilot frequencies", () => {
       for (const channel of ATSC_CHANNELS) {
-        const expectedPilot =
-          channel.lowerEdge + ATSC_CONSTANTS.PILOT_OFFSET;
+        const expectedPilot = channel.lowerEdge + ATSC_CONSTANTS.PILOT_OFFSET;
         expect(channel.pilotFrequency).toBeCloseTo(expectedPilot, 0);
       }
     });

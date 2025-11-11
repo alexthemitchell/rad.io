@@ -98,8 +98,9 @@ function ATSCScanner({
         <div className="config-section">
           <h3>Bands to Scan</h3>
           <div className="checkbox-group">
-            <label>
+            <label htmlFor="scan-vhf-low">
               <input
+                id="scan-vhf-low"
                 type="checkbox"
                 checked={config.scanVHFLow}
                 onChange={(e) =>
@@ -109,8 +110,9 @@ function ATSCScanner({
               />
               VHF-Low (Ch 2-6: 54-88 MHz)
             </label>
-            <label>
+            <label htmlFor="scan-vhf-high">
               <input
+                id="scan-vhf-high"
                 type="checkbox"
                 checked={config.scanVHFHigh}
                 onChange={(e) =>
@@ -120,8 +122,9 @@ function ATSCScanner({
               />
               VHF-High (Ch 7-13: 174-216 MHz)
             </label>
-            <label>
+            <label htmlFor="scan-uhf">
               <input
+                id="scan-uhf"
                 type="checkbox"
                 checked={config.scanUHF}
                 onChange={(e) => onConfigChange({ scanUHF: e.target.checked })}
@@ -171,8 +174,9 @@ function ATSCScanner({
           </div>
 
           <div className="checkbox-group">
-            <label>
+            <label htmlFor="require-pilot">
               <input
+                id="require-pilot"
                 type="checkbox"
                 checked={config.requirePilot}
                 onChange={(e) =>
@@ -182,8 +186,9 @@ function ATSCScanner({
               />
               Require pilot tone detection
             </label>
-            <label>
+            <label htmlFor="require-sync">
               <input
+                id="require-sync"
                 type="checkbox"
                 checked={config.requireSync}
                 onChange={(e) =>
