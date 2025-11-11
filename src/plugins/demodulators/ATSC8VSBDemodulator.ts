@@ -453,7 +453,12 @@ export class ATSC8VSBDemodulator
 
       // Limit buffer size to prevent unbounded growth
       if (this.symbolBuffer.length > SEGMENT_LENGTH * 4) {
+        const removed = this.symbolBuffer.length - SEGMENT_LENGTH * 2;
         this.symbolBuffer = this.symbolBuffer.slice(-SEGMENT_LENGTH * 2);
+        // Adjust lastSyncPosition to account for removed elements
+        if (this.lastSyncPosition >= 0) {
+          this.lastSyncPosition = Math.max(-1, this.lastSyncPosition - removed);
+        }
       }
     }
 
@@ -469,7 +474,15 @@ export class ATSC8VSBDemodulator
 
         // Keep only recent symbols
         if (this.symbolBuffer.length > SEGMENT_LENGTH * 2) {
+          const removed = this.symbolBuffer.length - SEGMENT_LENGTH;
           this.symbolBuffer = this.symbolBuffer.slice(-SEGMENT_LENGTH);
+          // Adjust lastSyncPosition to account for removed elements
+          if (this.lastSyncPosition >= 0) {
+            this.lastSyncPosition = Math.max(
+              -1,
+              this.lastSyncPosition - removed,
+            );
+          }
         }
       }
     }
