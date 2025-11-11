@@ -1,4 +1,4 @@
-export type SignalType = "FM" | "AM" | "P25";
+export type SignalType = "FM" | "AM" | "P25" | "ATSC";
 
 type SignalTypeSelectorProps = {
   signalType: SignalType;
@@ -45,6 +45,15 @@ export default function SignalTypeSelector({
           aria-pressed={signalType === "P25"}
         >
           P25
+        </button>
+        <button
+          className={`signal-type-btn ${signalType === "ATSC" ? "active" : ""}`}
+          onClick={() => onSignalTypeChange("ATSC")}
+          title="ATSC Digital TV (54-608 MHz) - 8-VSB digital television broadcasts. Scan VHF/UHF channels for active broadcasts with pilot tone detection."
+          aria-label={`ATSC Digital TV mode${signalType === "ATSC" ? " (currently selected)" : ""}`}
+          aria-pressed={signalType === "ATSC"}
+        >
+          ATSC
         </button>
       </div>
     </div>
