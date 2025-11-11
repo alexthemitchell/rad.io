@@ -58,6 +58,7 @@ interface EqualizerState {
   taps: Float32Array;
   numTaps: number;
   stepSize: number;
+  delayLine: Float32Array;
 }
 
 /**
@@ -79,7 +80,6 @@ export class ATSC8VSBDemodulator
   // Symbol timing recovery
   private symbolPhase: number;
   private samplesPerSymbol: number;
-  private timingError: number;
   private gardnerState: GardnerDetectorState;
   private timingLoopGain: number;
 
@@ -122,7 +122,6 @@ export class ATSC8VSBDemodulator
 
     this.symbolPhase = 0;
     this.samplesPerSymbol = 1;
-    this.timingError = 0;
     this.gardnerState = {
       previousSample: 0,
       previousMidpoint: 0,
@@ -134,8 +133,9 @@ export class ATSC8VSBDemodulator
       taps: new Float32Array(64),
       numTaps: 64,
       stepSize: 0.001,
+      delayLine: new Float32Array(64),
     };
-    // Set center tap to 1, others to 0
+    // Set center tap to 1, others to 0 (initial state)
     this.equalizer.taps[32] = 1.0;
 
     this.segmentSyncCount = 0;
@@ -169,7 +169,6 @@ export class ATSC8VSBDemodulator
     this.pilotPhase = 0;
     this.pilotFrequencyOffset = 0;
     this.symbolPhase = 0;
-    this.timingError = 0;
     this.gardnerState = {
       previousSample: 0,
       previousMidpoint: 0,
@@ -182,6 +181,7 @@ export class ATSC8VSBDemodulator
     // Reset equalizer
     this.equalizer.taps.fill(0);
     this.equalizer.taps[32] = 1.0;
+    this.equalizer.delayLine.fill(0);
   }
 
   /**
@@ -226,16 +226,22 @@ export class ATSC8VSBDemodulator
 
   /**
    * Apply adaptive equalizer for multipath correction
+   * Implements a full 64-tap FIR filter with delay line
    */
   private equalize(sample: number): number {
-    // Shift samples through delay line (conceptually)
-    // For simplicity, we'll use a direct convolution approach
+    // Shift delay line (move samples through)
+    for (let i = this.equalizer.numTaps - 1; i > 0; i--) {
+      this.equalizer.delayLine[i] = this.equalizer.delayLine[i - 1] ?? 0;
+    }
+    this.equalizer.delayLine[0] = sample;
 
+    // Convolve with equalizer taps (FIR filter)
     let output = 0;
-    const halfTaps = Math.floor(this.equalizer.numTaps / 2);
-
-    // Convolve with equalizer taps (simplified - in practice would maintain delay line)
-    output = sample * this.equalizer.taps[halfTaps];
+    for (let i = 0; i < this.equalizer.numTaps; i++) {
+      const tap = this.equalizer.taps[i] ?? 0;
+      const delayed = this.equalizer.delayLine[i] ?? 0;
+      output += tap * delayed;
+    }
 
     return output;
   }
@@ -244,12 +250,13 @@ export class ATSC8VSBDemodulator
    * Update equalizer taps using LMS algorithm
    */
   private updateEqualizer(input: number, output: number, error: number): void {
-    const halfTaps = Math.floor(this.equalizer.numTaps / 2);
-
-    // LMS update: taps = taps + stepSize * error * input
-    const currentTap = this.equalizer.taps[halfTaps] ?? 0;
-    this.equalizer.taps[halfTaps] =
-      currentTap + this.equalizer.stepSize * error * input;
+    // LMS update: taps[i] = taps[i] + stepSize * error * delayLine[i]
+    for (let i = 0; i < this.equalizer.numTaps; i++) {
+      const currentTap = this.equalizer.taps[i] ?? 0;
+      const delayed = this.equalizer.delayLine[i] ?? 0;
+      this.equalizer.taps[i] =
+        currentTap + this.equalizer.stepSize * error * delayed;
+    }
   }
 
   /**
@@ -337,22 +344,42 @@ export class ATSC8VSBDemodulator
 
   /**
    * Detect data segment sync pattern
+   * Searches for sync pattern at proper segment boundaries (every 832 symbols)
    */
   private detectSegmentSync(symbols: number[]): boolean {
     if (symbols.length < SEGMENT_SYNC_LENGTH) {
       return false;
     }
 
-    // Check if the first 4 symbols match the sync pattern
-    let matches = 0;
-    for (let i = 0; i < SEGMENT_SYNC_LENGTH; i++) {
-      const decision = this.slicerDecision(symbols[i]);
-      if (decision === SEGMENT_SYNC_PATTERN[i]) {
-        matches++;
+    // If we're not locked, search for sync pattern anywhere
+    // Once locked, verify sync appears at expected position
+    if (!this.syncLocked) {
+      // Search for sync pattern using correlation
+      // Check the most recent symbols for sync pattern
+      let matches = 0;
+      for (let i = 0; i < SEGMENT_SYNC_LENGTH; i++) {
+        if (symbols[i] === SEGMENT_SYNC_PATTERN[i]) {
+          matches++;
+        }
       }
-    }
+      return matches >= 3; // Allow for 1 error
+    } else {
+      // Once locked, check at segment boundaries
+      // The sync should be at the start of each 832-symbol segment
+      const bufferPosition = this.symbolBuffer.length % SEGMENT_LENGTH;
 
-    return matches >= 3; // Allow for 1 error
+      // Only check when we're at a potential segment boundary
+      if (bufferPosition < SEGMENT_SYNC_LENGTH) {
+        let matches = 0;
+        for (let i = 0; i < SEGMENT_SYNC_LENGTH; i++) {
+          if (i < symbols.length && symbols[i] === SEGMENT_SYNC_PATTERN[i]) {
+            matches++;
+          }
+        }
+        return matches >= 3;
+      }
+      return false;
+    }
   }
 
   /**

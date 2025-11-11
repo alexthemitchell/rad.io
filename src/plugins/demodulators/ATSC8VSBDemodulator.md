@@ -27,22 +27,26 @@ The ATSC 8-VSB (8-level Vestigial Sideband) demodulator is designed for processi
 ### 1. Pilot Tone Recovery
 
 The demodulator implements a phase-locked loop (PLL) to:
+
 - Remove the pilot tone at 309.44 kHz
 - Correct carrier frequency offset
 - Maintain phase coherence
 
 **Algorithm**: Second-order PLL with proportional-integral control
+
 - Loop bandwidth adaptive to signal conditions
 - Fast acquisition with stable tracking
 
 ### 2. Symbol Timing Recovery
 
 Uses the **Gardner algorithm** for symbol timing recovery:
+
 - Operates on baseband samples
 - Provides timing error estimates without requiring training sequences
 - Adapts to sample rate variations
 
 **Key Features**:
+
 - Non-data-aided operation
 - Robust to noise and interference
 - Continuous adaptation
@@ -50,11 +54,13 @@ Uses the **Gardner algorithm** for symbol timing recovery:
 ### 3. Adaptive Equalizer
 
 Implements a **Least Mean Squares (LMS)** adaptive equalizer:
+
 - 64 taps for multipath correction
 - Compensates for channel distortion
 - Adapts to time-varying channels
 
 **Purpose**:
+
 - Mitigate multipath interference (ghosting)
 - Correct for frequency-selective fading
 - Improve symbol detection accuracy
@@ -62,11 +68,13 @@ Implements a **Least Mean Squares (LMS)** adaptive equalizer:
 ### 4. Sync Detection
 
 **Segment Sync**:
+
 - Detects 4-symbol pattern at start of each segment
 - Provides frame alignment
 - Tracks segment boundaries
 
 **Field Sync**:
+
 - Detects field boundaries (every 313 segments)
 - Enables proper data framing
 - Supports error correction synchronization
@@ -74,6 +82,7 @@ Implements a **Least Mean Squares (LMS)** adaptive equalizer:
 ### 5. Symbol Slicing
 
 Maps received samples to closest 8-VSB level:
+
 - Minimum distance decision
 - Provides soft-decision information for error correction
 - Operates on equalized samples
@@ -109,10 +118,10 @@ if (demodulator.isSyncLocked()) {
 ```typescript
 // Set parameters
 demodulator.setParameters({
-  audioSampleRate: 10.76e6,  // Match symbol rate
-  bandwidth: 6e6,             // 6 MHz channel
-  squelch: 0,                 // No squelch
-  afcEnabled: true            // Enable automatic frequency control
+  audioSampleRate: 10.76e6, // Match symbol rate
+  bandwidth: 6e6, // 6 MHz channel
+  squelch: 0, // No squelch
+  afcEnabled: true, // Enable automatic frequency control
 });
 
 // Get current configuration
@@ -122,8 +131,8 @@ const config = demodulator.getParameters();
 ### Integration with Plugin System
 
 ```typescript
-import { pluginRegistry } from './lib/PluginRegistry';
-import { ATSC8VSBDemodulator } from './plugins/demodulators/ATSC8VSBDemodulator';
+import { pluginRegistry } from "./lib/PluginRegistry";
+import { ATSC8VSBDemodulator } from "./plugins/demodulators/ATSC8VSBDemodulator";
 
 // Register demodulator
 const demod = new ATSC8VSBDemodulator();
@@ -147,6 +156,7 @@ const symbols = demod.demodulate(samples);
 ### Throughput
 
 Designed for real-time processing at 10.76 Msymbols/sec:
+
 - Typical processing time: < 1ms per 1000 samples
 - Memory usage: < 1MB for state
 - Suitable for live ATSC reception
@@ -211,7 +221,7 @@ npm test -- --testNamePattern="ATSC8VSBDemodulator" --coverage
 ### Constructor
 
 ```typescript
-constructor()
+constructor();
 ```
 
 Creates new ATSC 8-VSB demodulator instance with default parameters.
@@ -223,6 +233,7 @@ Creates new ATSC 8-VSB demodulator instance with default parameters.
 Demodulates IQ samples to 8-VSB symbols.
 
 **Parameters**:
+
 - `samples`: Array of IQ samples to demodulate
 
 **Returns**: Float32Array of demodulated symbol levels
@@ -250,6 +261,7 @@ Gets current demodulation parameters.
 Updates demodulation parameters.
 
 **Parameters**:
+
 - `params`: Partial configuration object
 
 #### `isSyncLocked(): boolean`
