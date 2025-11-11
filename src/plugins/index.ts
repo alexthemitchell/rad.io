@@ -39,5 +39,6 @@ export { BasePlugin } from "../lib/BasePlugin";
 
 // Example plugins
 export { FMDemodulatorPlugin } from "./demodulators/FMDemodulatorPlugin";
+export { ATSC8VSBDemodulator } from "./demodulators/ATSC8VSBDemodulator";
 export { WaterfallVisualizationPlugin } from "./visualizations/WaterfallVisualizationPlugin";
 export { ExampleDeviceDriverPlugin } from "./device-drivers/ExampleDeviceDriverPlugin";
