@@ -469,6 +469,7 @@ export async function importATSCChannelsFromJSON(json: string): Promise<void> {
     }
 
     // Construct validated channel object explicitly
+    // All required properties have been validated above, so TypeScript can infer they exist
     const validatedChannel: StoredATSCChannel = {
       channel: ch.channel,
       strength: ch.strength,
@@ -489,7 +490,7 @@ export async function importATSCChannelsFromJSON(json: string): Promise<void> {
           ? ch.lastScanned
           : new Date(ch.lastScanned),
       scanCount: ch.scanCount,
-    };
+    } as StoredATSCChannel;
 
     await saveATSCChannel(validatedChannel);
   }

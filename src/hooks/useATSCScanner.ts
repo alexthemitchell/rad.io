@@ -266,10 +266,11 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           if (!isScanningRef.current || samplesCollected) return;
 
           const samples = device.parseSamples(data);
-          // Use a for-of loop instead of push(...samples) to avoid call stack limit issues
-          // that can occur when samples contains thousands of elements.
-          for (const sample of samples) {
-            iqSamples.push(sample);
+          // Push samples in chunks to avoid call stack limit issues with spread operator
+          // while maintaining good performance. Individual push() calls are slow for large arrays.
+          const CHUNK_SIZE = 1000;
+          for (let i = 0; i < samples.length; i += CHUNK_SIZE) {
+            iqSamples.push(...samples.slice(i, i + CHUNK_SIZE));
           }
 
           if (iqSamples.length >= config.fftSize && dwellResolveRef.current) {
