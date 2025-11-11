@@ -5,13 +5,10 @@
  * and signal quality measurement.
  */
 
-import type {
-  ATSCScanConfig,
-  ATSCScannerState,
-} from "../hooks/useATSCScanner";
+import { formatATSCChannel } from "../utils/atscChannels";
+import type { ATSCScanConfig, ATSCScannerState } from "../hooks/useATSCScanner";
 import type { ATSCChannel } from "../utils/atscChannels";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
-import { formatATSCChannel } from "../utils/atscChannels";
 
 export interface ATSCScannerProps {
   /** Current scanner state */
@@ -82,7 +79,8 @@ function ATSCScanner({
     const parts: string[] = [];
     if (channel.pilotDetected) parts.push("Pilot");
     if (channel.syncLocked) parts.push("Sync");
-    if (channel.mer !== undefined) parts.push(`MER: ${channel.mer.toFixed(1)} dB`);
+    if (channel.mer !== undefined)
+      parts.push(`MER: ${channel.mer.toFixed(1)} dB`);
     if (parts.length === 0) return "Signal detected";
     return parts.join(", ");
   };
@@ -91,8 +89,8 @@ function ATSCScanner({
     <div className="card">
       <h2>ATSC Channel Scanner</h2>
       <p className="scanner-description">
-        Scan VHF and UHF frequencies to find active ATSC (digital TV) broadcasts.
-        Detects pilot tones and measures signal quality.
+        Scan VHF and UHF frequencies to find active ATSC (digital TV)
+        broadcasts. Detects pilot tones and measures signal quality.
       </p>
 
       {/* Configuration Section */}
@@ -317,7 +315,9 @@ function ATSCScanner({
                       </td>
                       <td>{formatFrequency(channel.channel.frequency)}</td>
                       <td>
-                        <span className={`band-badge ${channel.channel.band.toLowerCase()}`}>
+                        <span
+                          className={`band-badge ${channel.channel.band.toLowerCase()}`}
+                        >
                           {channel.channel.band}
                         </span>
                       </td>

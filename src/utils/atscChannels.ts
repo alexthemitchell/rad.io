@@ -109,7 +109,7 @@ const UHF_CHANNELS: ATSCChannel[] = Array.from({ length: 23 }, (_, i) => {
 /**
  * Complete ATSC channel map (channels 2-36)
  */
-export const ATSC_CHANNELS: ReadonlyArray<ATSCChannel> = [
+export const ATSC_CHANNELS: readonly ATSCChannel[] = [
   ...VHF_LOW_CHANNELS,
   ...VHF_HIGH_CHANNELS,
   ...UHF_CHANNELS,

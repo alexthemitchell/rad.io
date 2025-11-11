@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import ATSCScanner from "../components/ATSCScanner";
 import Card from "../components/Card";
 import FrequencyScanner from "../components/FrequencyScanner";
-import ATSCScanner from "../components/ATSCScanner";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
@@ -11,8 +11,8 @@ import TalkgroupScanner, {
 } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import TransmissionLogViewer from "../components/TransmissionLogViewer";
-import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { useATSCScanner } from "../hooks/useATSCScanner";
+import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { notify } from "../lib/notifications";
 import { useDevice } from "../store";
 
@@ -108,10 +108,7 @@ function Scanner(): React.JSX.Element {
       {null}
 
       <main id="main-content" role="main">
-        <Card
-          title="Scanner Configuration"
-          subtitle="Select scanner type"
-        >
+        <Card title="Scanner Configuration" subtitle="Select scanner type">
           <SignalTypeSelector
             signalType={signalType}
             onSignalTypeChange={handleSignalTypeChange}

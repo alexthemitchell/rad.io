@@ -292,6 +292,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
         }
         await settleReceivePromise();
 
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!isScanningRef.current || iqSamples.length < config.fftSize) {
           return null;
         }
@@ -362,7 +363,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           segmentSyncCount,
           fieldSyncCount,
         };
-      } catch (error) {
+      } catch (error: unknown) {
         console.error(`Error scanning channel ${channel.channel}:`, error);
         return null;
       }
@@ -389,10 +390,14 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
       // Build list of channels to scan
       const channelsToScan: ATSCChannel[] = [];
       if (config.scanVHFLow) {
-        channelsToScan.push(...ATSC_CHANNELS.filter((ch) => ch.band === "VHF-Low"));
+        channelsToScan.push(
+          ...ATSC_CHANNELS.filter((ch) => ch.band === "VHF-Low"),
+        );
       }
       if (config.scanVHFHigh) {
-        channelsToScan.push(...ATSC_CHANNELS.filter((ch) => ch.band === "VHF-High"));
+        channelsToScan.push(
+          ...ATSC_CHANNELS.filter((ch) => ch.band === "VHF-High"),
+        );
       }
       if (config.scanUHF) {
         channelsToScan.push(...ATSC_CHANNELS.filter((ch) => ch.band === "UHF"));
@@ -403,6 +408,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
 
       // Scan each channel
       for (const channel of channelsToScan) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!isScanningRef.current) break;
 
         const result = await scanChannel(channel);
@@ -435,13 +441,14 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
       }
 
       // Scan complete
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (isScanningRef.current) {
         setState("idle");
         isScanningRef.current = false;
         setCurrentChannel(null);
         setProgress(100);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error during ATSC scan:", error);
       setState("idle");
       isScanningRef.current = false;
@@ -476,7 +483,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
     setFoundChannels([]);
     await clearAllATSCChannels();
 
-    void performScan().catch((err) => {
+    void performScan().catch((err: unknown) => {
       console.error("Error during performScan():", err);
       setState("idle");
       isScanningRef.current = false;
@@ -507,7 +514,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
     if (state === "paused") {
       setState("scanning");
       isScanningRef.current = true;
-      void performScan().catch((err) => {
+      void performScan().catch((err: unknown) => {
         console.error("Error during performScan() on resume:", err);
         setState("idle");
         isScanningRef.current = false;
@@ -535,12 +542,9 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
   /**
    * Update configuration
    */
-  const updateConfig = useCallback(
-    (updates: Partial<ATSCScanConfig>): void => {
-      setConfig((prev) => ({ ...prev, ...updates }));
-    },
-    [],
-  );
+  const updateConfig = useCallback((updates: Partial<ATSCScanConfig>): void => {
+    setConfig((prev) => ({ ...prev, ...updates }));
+  }, []);
 
   /**
    * Clear all stored channels
@@ -561,6 +565,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
   /**
    * Export channels to JSON
    */
+  // eslint-disable-next-line @typescript-eslint/require-await
   const exportChannels = useCallback(async (): Promise<string> => {
     return JSON.stringify(foundChannels, null, 2);
   }, [foundChannels]);
@@ -568,23 +573,26 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
   /**
    * Import channels from JSON
    */
-  const importChannels = useCallback(async (json: string): Promise<void> => {
-    const channels = JSON.parse(json) as StoredATSCChannel[];
-    for (const channel of channels) {
-      await saveATSCChannel({
-        ...channel,
-        discoveredAt:
-          channel.discoveredAt instanceof Date
-            ? channel.discoveredAt
-            : new Date(channel.discoveredAt),
-        lastScanned:
-          channel.lastScanned instanceof Date
-            ? channel.lastScanned
-            : new Date(channel.lastScanned),
-      });
-    }
-    await loadStoredChannels();
-  }, [loadStoredChannels]);
+  const importChannels = useCallback(
+    async (json: string): Promise<void> => {
+      const channels = JSON.parse(json) as StoredATSCChannel[];
+      for (const channel of channels) {
+        await saveATSCChannel({
+          ...channel,
+          discoveredAt:
+            channel.discoveredAt instanceof Date
+              ? channel.discoveredAt
+              : new Date(channel.discoveredAt),
+          lastScanned:
+            channel.lastScanned instanceof Date
+              ? channel.lastScanned
+              : new Date(channel.lastScanned),
+        });
+      }
+      await loadStoredChannels();
+    },
+    [loadStoredChannels],
+  );
 
   // Load stored channels on mount
   useEffect(() => {

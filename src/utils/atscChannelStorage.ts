@@ -4,6 +4,8 @@
  * Provides persistent storage for discovered ATSC channels with signal quality metrics.
  */
 
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+
 import type { ATSCChannel } from "./atscChannels";
 
 /**
@@ -48,13 +50,15 @@ const STORE_NAME = "channels";
 /**
  * Open or create the IndexedDB database
  */
-function openDatabase(): Promise<IDBDatabase> {
+async function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => {
       reject(
-        new Error(`Failed to open database: ${request.error?.message ?? "Unknown error"}`),
+        new Error(
+          `Failed to open database: ${request.error?.message ?? "Unknown error"}`,
+        ),
       );
     };
 
@@ -109,7 +113,9 @@ export async function saveATSCChannel(
 
     request.onerror = () => {
       reject(
-        new Error(`Failed to save channel: ${request.error?.message ?? "Unknown error"}`),
+        new Error(
+          `Failed to save channel: ${request.error?.message ?? "Unknown error"}`,
+        ),
       );
     };
 
@@ -154,7 +160,9 @@ export async function getATSCChannelData(
 
     request.onerror = () => {
       reject(
-        new Error(`Failed to get channel: ${request.error?.message ?? "Unknown error"}`),
+        new Error(
+          `Failed to get channel: ${request.error?.message ?? "Unknown error"}`,
+        ),
       );
     };
 
@@ -176,13 +184,12 @@ export async function getAllATSCChannels(): Promise<StoredATSCChannel[]> {
     const request = store.getAll();
 
     request.onsuccess = () => {
-      const results = request.result as (Omit<
-        StoredATSCChannel,
-        "discoveredAt" | "lastScanned"
-      > & {
-        discoveredAt: string;
-        lastScanned: string;
-      })[];
+      const results = request.result as Array<
+        Omit<StoredATSCChannel, "discoveredAt" | "lastScanned"> & {
+          discoveredAt: string;
+          lastScanned: string;
+        }
+      >;
 
       // Convert ISO strings back to Date objects
       const channels = results.map((ch) => ({
@@ -196,7 +203,9 @@ export async function getAllATSCChannels(): Promise<StoredATSCChannel[]> {
 
     request.onerror = () => {
       reject(
-        new Error(`Failed to get channels: ${request.error?.message ?? "Unknown error"}`),
+        new Error(
+          `Failed to get channels: ${request.error?.message ?? "Unknown error"}`,
+        ),
       );
     };
 
@@ -221,13 +230,12 @@ export async function getATSCChannelsByBand(
     const request = index.getAll(band);
 
     request.onsuccess = () => {
-      const results = request.result as (Omit<
-        StoredATSCChannel,
-        "discoveredAt" | "lastScanned"
-      > & {
-        discoveredAt: string;
-        lastScanned: string;
-      })[];
+      const results = request.result as Array<
+        Omit<StoredATSCChannel, "discoveredAt" | "lastScanned"> & {
+          discoveredAt: string;
+          lastScanned: string;
+        }
+      >;
 
       const channels = results.map((ch) => ({
         ...ch,
@@ -240,7 +248,9 @@ export async function getATSCChannelsByBand(
 
     request.onerror = () => {
       reject(
-        new Error(`Failed to get channels by band: ${request.error?.message ?? "Unknown error"}`),
+        new Error(
+          `Failed to get channels by band: ${request.error?.message ?? "Unknown error"}`,
+        ),
       );
     };
 
@@ -267,7 +277,9 @@ export async function deleteATSCChannel(channelNumber: number): Promise<void> {
 
     request.onerror = () => {
       reject(
-        new Error(`Failed to delete channel: ${request.error?.message ?? "Unknown error"}`),
+        new Error(
+          `Failed to delete channel: ${request.error?.message ?? "Unknown error"}`,
+        ),
       );
     };
 
@@ -294,7 +306,9 @@ export async function clearAllATSCChannels(): Promise<void> {
 
     request.onerror = () => {
       reject(
-        new Error(`Failed to clear channels: ${request.error?.message ?? "Unknown error"}`),
+        new Error(
+          `Failed to clear channels: ${request.error?.message ?? "Unknown error"}`,
+        ),
       );
     };
 
@@ -328,13 +342,12 @@ export async function getSyncLockedATSCChannels(): Promise<
     const request = store.getAll();
 
     request.onsuccess = () => {
-      const results = request.result as (Omit<
-        StoredATSCChannel,
-        "discoveredAt" | "lastScanned"
-      > & {
-        discoveredAt: string;
-        lastScanned: string;
-      })[];
+      const results = request.result as Array<
+        Omit<StoredATSCChannel, "discoveredAt" | "lastScanned"> & {
+          discoveredAt: string;
+          lastScanned: string;
+        }
+      >;
 
       // Filter for syncLocked channels
       const channels = results
