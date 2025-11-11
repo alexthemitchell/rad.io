@@ -442,6 +442,14 @@ export async function importATSCChannelsFromJSON(json: string): Promise<void> {
       throw new Error("Invalid syncLocked value");
     }
 
+    if (typeof ch.segmentSyncCount !== "number" || ch.segmentSyncCount < 0) {
+      throw new Error("Invalid segmentSyncCount value");
+    }
+
+    if (typeof ch.fieldSyncCount !== "number" || ch.fieldSyncCount < 0) {
+      throw new Error("Invalid fieldSyncCount value");
+    }
+
     // Validate required date fields
     if (!ch.discoveredAt) {
       throw new Error("Missing discoveredAt field");

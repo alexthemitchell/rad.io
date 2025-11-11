@@ -260,6 +260,11 @@ describe("useATSCScanner", () => {
     });
 
     it("should export channels", async () => {
+      // Mock exportATSCChannelsToJSON to return a JSON string
+      jest
+        .spyOn(atscChannelStorage, "exportATSCChannelsToJSON")
+        .mockResolvedValue(JSON.stringify([]));
+
       const { result } = renderHook(() => useATSCScanner(mockDevice));
 
       const json = await act(async () => {
@@ -268,6 +273,7 @@ describe("useATSCScanner", () => {
 
       expect(typeof json).toBe("string");
       expect(JSON.parse(json)).toEqual([]);
+      expect(atscChannelStorage.exportATSCChannelsToJSON).toHaveBeenCalled();
     });
 
     it("should import channels", async () => {
@@ -286,13 +292,18 @@ describe("useATSCScanner", () => {
         },
       ];
 
+      // Mock importATSCChannelsFromJSON
+      jest
+        .spyOn(atscChannelStorage, "importATSCChannelsFromJSON")
+        .mockResolvedValue();
+
       const { result } = renderHook(() => useATSCScanner(mockDevice));
 
       await act(async () => {
         await result.current.importChannels(JSON.stringify(mockChannels));
       });
 
-      expect(atscChannelStorage.saveATSCChannel).toHaveBeenCalled();
+      expect(atscChannelStorage.importATSCChannelsFromJSON).toHaveBeenCalled();
     });
   });
 

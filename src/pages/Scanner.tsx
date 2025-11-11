@@ -15,6 +15,7 @@ import { useATSCScanner } from "../hooks/useATSCScanner";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { notify } from "../lib/notifications";
 import { useDevice } from "../store";
+import { downloadJSON } from "../utils/exportUtils";
 
 function Scanner(): React.JSX.Element {
   const navigate = useNavigate();
@@ -134,13 +135,7 @@ function Scanner(): React.JSX.Element {
             }}
             onExportChannels={() => {
               void atscScanner.exportChannels().then((json) => {
-                const blob = new Blob([json], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `atsc-channels-${Date.now()}.json`;
-                link.click();
-                URL.revokeObjectURL(url);
+                downloadJSON(json, `atsc-channels-${Date.now()}.json`);
               });
             }}
             deviceAvailable={device?.isOpen() ?? false}

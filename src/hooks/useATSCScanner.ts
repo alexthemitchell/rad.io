@@ -18,6 +18,8 @@ import {
   getAllATSCChannels,
   clearAllATSCChannels,
   getATSCChannelData,
+  exportATSCChannelsToJSON,
+  importATSCChannelsFromJSON,
   type StoredATSCChannel,
 } from "../utils/atscChannelStorage";
 import {
@@ -264,7 +266,10 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           if (!isScanningRef.current || samplesCollected) return;
 
           const samples = device.parseSamples(data);
-          iqSamples.push(...samples);
+          // More efficient than spread operator for large arrays
+          for (const sample of samples) {
+            iqSamples.push(sample);
+          }
 
           if (iqSamples.length >= config.fftSize && dwellResolveRef.current) {
             samplesCollected = true;
@@ -605,30 +610,16 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
   /**
    * Export channels to JSON
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
   const exportChannels = useCallback(async (): Promise<string> => {
-    return JSON.stringify(foundChannels, null, 2);
-  }, [foundChannels]);
+    return await exportATSCChannelsToJSON();
+  }, []);
 
   /**
    * Import channels from JSON
    */
   const importChannels = useCallback(
     async (json: string): Promise<void> => {
-      const channels = JSON.parse(json) as StoredATSCChannel[];
-      for (const channel of channels) {
-        await saveATSCChannel({
-          ...channel,
-          discoveredAt:
-            channel.discoveredAt instanceof Date
-              ? channel.discoveredAt
-              : new Date(channel.discoveredAt),
-          lastScanned:
-            channel.lastScanned instanceof Date
-              ? channel.lastScanned
-              : new Date(channel.lastScanned),
-        });
-      }
+      await importATSCChannelsFromJSON(json);
       await loadStoredChannels();
     },
     [loadStoredChannels],
