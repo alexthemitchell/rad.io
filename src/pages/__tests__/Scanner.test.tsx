@@ -6,6 +6,7 @@ import { BrowserRouter } from "react-router-dom";
 // Mock the hooks
 jest.mock("../../hooks/useHackRFDevice");
 jest.mock("../../hooks/useFrequencyScanner");
+jest.mock("../../hooks/useATSCScanner");
 jest.mock("../../hooks/useLiveRegion");
 
 // Import the component under test after mocks are in place
@@ -39,6 +40,11 @@ jest.mock("../../components/TalkgroupScanner", () => ({
 jest.mock("../../components/TalkgroupStatus", () => ({
   __esModule: true,
   default: () => <div data-testid="talkgroup-status">TalkgroupStatus</div>,
+}));
+
+jest.mock("../../components/ATSCScanner", () => ({
+  __esModule: true,
+  default: () => <div data-testid="atsc-scanner">ATSCScanner</div>,
 }));
 
 jest.mock("../../components/Card", () => ({
@@ -84,6 +90,25 @@ describe("Scanner", () => {
       stopScan: jest.fn(),
       updateConfig: jest.fn(),
       clearSignals: jest.fn(),
+    });
+
+    // Mock useATSCScanner hook
+    const { useATSCScanner } = require("../../hooks/useATSCScanner");
+    useATSCScanner.mockReturnValue({
+      state: "idle",
+      config: {},
+      currentChannel: null,
+      foundChannels: [],
+      progress: 0,
+      startScan: jest.fn(),
+      pauseScan: jest.fn(),
+      resumeScan: jest.fn(),
+      stopScan: jest.fn(),
+      updateConfig: jest.fn(),
+      exportChannels: jest.fn(),
+      importChannels: jest.fn(),
+      deleteChannel: jest.fn(),
+      clearChannels: jest.fn(),
     });
 
     // Mock useLiveRegion hook
