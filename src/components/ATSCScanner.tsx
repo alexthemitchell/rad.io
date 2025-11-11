@@ -10,6 +10,26 @@ import type { ATSCScanConfig, ATSCScannerState } from "../hooks/useATSCScanner";
 import type { ATSCChannel } from "../utils/atscChannels";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
 
+/**
+ * Format frequency for display
+ */
+function formatFrequency(freqHz: number): string {
+  return `${(freqHz / 1e6).toFixed(1)} MHz`;
+}
+
+/**
+ * Format signal quality
+ */
+function formatSignalQuality(channel: StoredATSCChannel): string {
+  const parts: string[] = [];
+  if (channel.pilotDetected) parts.push("Pilot");
+  if (channel.syncLocked) parts.push("Sync");
+  if (channel.mer !== undefined)
+    parts.push(`MER: ${channel.mer.toFixed(1)} dB`);
+  if (parts.length === 0) return "Signal detected";
+  return parts.join(", ");
+}
+
 export interface ATSCScannerProps {
   /** Current scanner state */
   state: ATSCScannerState;
@@ -64,26 +84,6 @@ function ATSCScanner({
   const isScanning = state === "scanning";
   const isPaused = state === "paused";
   const isIdle = state === "idle";
-
-  /**
-   * Format frequency for display
-   */
-  const formatFrequency = (freqHz: number): string => {
-    return `${(freqHz / 1e6).toFixed(1)} MHz`;
-  };
-
-  /**
-   * Format signal quality
-   */
-  const formatSignalQuality = (channel: StoredATSCChannel): string => {
-    const parts: string[] = [];
-    if (channel.pilotDetected) parts.push("Pilot");
-    if (channel.syncLocked) parts.push("Sync");
-    if (channel.mer !== undefined)
-      parts.push(`MER: ${channel.mer.toFixed(1)} dB`);
-    if (parts.length === 0) return "Signal detected";
-    return parts.join(", ");
-  };
 
   return (
     <div className="card">

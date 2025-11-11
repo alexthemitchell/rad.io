@@ -266,7 +266,8 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           if (!isScanningRef.current || samplesCollected) return;
 
           const samples = device.parseSamples(data);
-          // More efficient than spread operator for large arrays
+          // Use a for-of loop instead of push(...samples) to avoid call stack limit issues
+          // that can occur when samples contains thousands of elements.
           for (const sample of samples) {
             iqSamples.push(sample);
           }

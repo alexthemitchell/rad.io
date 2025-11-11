@@ -384,7 +384,13 @@ export async function exportATSCChannelsToJSON(): Promise<string> {
 }
 
 /**
- * Import channels from JSON
+ * Imports ATSC channel data from a JSON string.
+ *
+ * Parses the provided JSON, validates its structure, and imports the channels into persistent storage.
+ * Throws an error if the JSON is invalid or does not contain a valid array of channels.
+ *
+ * @param json - A JSON string representing an array of ATSC channel objects.
+ * @returns A Promise that resolves when the import is complete.
  */
 export async function importATSCChannelsFromJSON(json: string): Promise<void> {
   // Validate JSON structure
@@ -458,9 +464,22 @@ export async function importATSCChannelsFromJSON(json: string): Promise<void> {
       throw new Error("Missing lastScanned field");
     }
 
-    // Ensure dates are Date objects
-    await saveATSCChannel({
-      ...(ch as StoredATSCChannel),
+    if (typeof ch.scanCount !== "number" || ch.scanCount < 0) {
+      throw new Error("Invalid scanCount value");
+    }
+
+    // Construct validated channel object explicitly
+    const validatedChannel: StoredATSCChannel = {
+      channel: ch.channel,
+      strength: ch.strength,
+      snr: ch.snr,
+      mer: ch.mer,
+      pilotDetected: ch.pilotDetected,
+      syncLocked: ch.syncLocked,
+      segmentSyncCount: ch.segmentSyncCount,
+      fieldSyncCount: ch.fieldSyncCount,
+      virtualChannels: ch.virtualChannels,
+      callSigns: ch.callSigns,
       discoveredAt:
         ch.discoveredAt instanceof Date
           ? ch.discoveredAt
@@ -469,6 +488,9 @@ export async function importATSCChannelsFromJSON(json: string): Promise<void> {
         ch.lastScanned instanceof Date
           ? ch.lastScanned
           : new Date(ch.lastScanned),
-    });
+      scanCount: ch.scanCount,
+    };
+
+    await saveATSCChannel(validatedChannel);
   }
 }
