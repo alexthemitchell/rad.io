@@ -630,10 +630,11 @@ export class TransportStreamParser {
     // Parse CRC
     const crcOffset = 3 + sectionLength - 4;
     const crc32 =
-      ((data[crcOffset] ?? 0) << 24) |
-      ((data[crcOffset + 1] ?? 0) << 16) |
-      ((data[crcOffset + 2] ?? 0) << 8) |
-      (data[crcOffset + 3] ?? 0);
+      (((data[crcOffset] ?? 0) << 24) |
+        ((data[crcOffset + 1] ?? 0) << 16) |
+        ((data[crcOffset + 2] ?? 0) << 8) |
+        (data[crcOffset + 3] ?? 0)) >>>
+      0;
 
     return {
       tableId,
@@ -746,10 +747,11 @@ export class TransportStreamParser {
     // Parse CRC
     const crcOffset = 3 + sectionLength - 4;
     const crc32 =
-      ((data[crcOffset] ?? 0) << 24) |
-      ((data[crcOffset + 1] ?? 0) << 16) |
-      ((data[crcOffset + 2] ?? 0) << 8) |
-      (data[crcOffset + 3] ?? 0);
+      (((data[crcOffset] ?? 0) << 24) |
+        ((data[crcOffset + 1] ?? 0) << 16) |
+        ((data[crcOffset + 2] ?? 0) << 8) |
+        (data[crcOffset + 3] ?? 0)) >>>
+      0;
 
     return {
       tableId,
@@ -866,10 +868,11 @@ export class TransportStreamParser {
         (((data[offset + 2] ?? 0) & 0x1f) << 8) | (data[offset + 3] ?? 0);
       const versionNumber = (data[offset + 4] ?? 0) & 0x1f;
       const numberOfBytes =
-        ((data[offset + 5] ?? 0) << 24) |
-        ((data[offset + 6] ?? 0) << 16) |
-        ((data[offset + 7] ?? 0) << 8) |
-        (data[offset + 8] ?? 0);
+        (((data[offset + 5] ?? 0) << 24) |
+          ((data[offset + 6] ?? 0) << 16) |
+          ((data[offset + 7] ?? 0) << 8) |
+          (data[offset + 8] ?? 0)) >>>
+        0;
       const tableDescriptorsLength =
         (((data[offset + 9] ?? 0) & 0x0f) << 8) | (data[offset + 10] ?? 0);
 
@@ -942,10 +945,11 @@ export class TransportStreamParser {
         (((data[offset + 1] ?? 0) & 0x03) << 8) | (data[offset + 2] ?? 0);
       const modulationMode = data[offset + 3] ?? 0;
       const carrierFrequency =
-        ((data[offset + 4] ?? 0) << 24) |
-        ((data[offset + 5] ?? 0) << 16) |
-        ((data[offset + 6] ?? 0) << 8) |
-        (data[offset + 7] ?? 0);
+        (((data[offset + 4] ?? 0) << 24) |
+          ((data[offset + 5] ?? 0) << 16) |
+          ((data[offset + 6] ?? 0) << 8) |
+          (data[offset + 7] ?? 0)) >>>
+        0;
       const channelTSID =
         ((data[offset + 8] ?? 0) << 8) | (data[offset + 9] ?? 0);
       const programNumber =
@@ -1023,10 +1027,11 @@ export class TransportStreamParser {
     for (let i = 0; i < numEvents && offset + 12 <= data.length; i++) {
       const eventid = ((data[offset] ?? 0) << 8) | (data[offset + 1] ?? 0);
       const startTime =
-        ((data[offset + 2] ?? 0) << 24) |
-        ((data[offset + 3] ?? 0) << 16) |
-        ((data[offset + 4] ?? 0) << 8) |
-        (data[offset + 5] ?? 0);
+        (((data[offset + 2] ?? 0) << 24) |
+          ((data[offset + 3] ?? 0) << 16) |
+          ((data[offset + 4] ?? 0) << 8) |
+          (data[offset + 5] ?? 0)) >>>
+        0;
       const etmLocation = ((data[offset + 6] ?? 0) >> 6) & 0x03;
       const lengthInSeconds =
         (((data[offset + 6] ?? 0) & 0x0f) << 16) |
