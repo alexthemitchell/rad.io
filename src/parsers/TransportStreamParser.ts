@@ -629,6 +629,9 @@ export class TransportStreamParser {
 
     // Parse CRC
     let crcOffset = 3 + sectionLength - 4;
+    if (data.length < 4) {
+      return null;
+    }
     if (crcOffset + 4 > data.length) {
       crcOffset = data.length - 4;
     }
@@ -716,6 +719,9 @@ export class TransportStreamParser {
     let offset = 12;
 
     // Parse program descriptors
+    if (offset + programInfoLength > data.length) {
+      return null;
+    }
     const programDescriptors = this.parseDescriptors(
       data.subarray(offset, offset + programInfoLength),
     );
@@ -733,6 +739,11 @@ export class TransportStreamParser {
         (((data[offset + 3] ?? 0) & 0x0f) << 8) | (data[offset + 4] ?? 0);
 
       offset += 5;
+
+      // Bounds check before parsing descriptors
+      if (offset + esInfoLength > data.length) {
+        break;
+      }
 
       const descriptors = this.parseDescriptors(
         data.subarray(offset, offset + esInfoLength),
@@ -884,6 +895,11 @@ export class TransportStreamParser {
 
       offset += 11;
 
+      // Bounds check: ensure we have enough data for tableDescriptorsLength
+      if (offset + tableDescriptorsLength > data.length) {
+        break;
+      }
+
       const descriptors = this.parseDescriptors(
         data.subarray(offset, offset + tableDescriptorsLength),
       );
@@ -906,6 +922,11 @@ export class TransportStreamParser {
     const descriptorsLength =
       (((data[offset] ?? 0) & 0x0f) << 8) | (data[offset + 1] ?? 0);
     offset += 2;
+
+    // Bounds check: ensure we have enough data for descriptors
+    if (offset + descriptorsLength > data.length) {
+      return;
+    }
 
     const descriptors = this.parseDescriptors(
       data.subarray(offset, offset + descriptorsLength),
@@ -977,6 +998,9 @@ export class TransportStreamParser {
 
       offset += 18;
 
+      // Bounds check before parsing descriptors
+      if (offset + descriptorsLength > data.length) break;
+
       const descriptors = this.parseDescriptors(
         data.subarray(offset, offset + descriptorsLength),
       );
@@ -1008,6 +1032,11 @@ export class TransportStreamParser {
     const descriptorsLength =
       (((data[offset] ?? 0) & 0x03) << 8) | (data[offset + 1] ?? 0);
     offset += 2;
+
+    // Bounds check: ensure we do not read past the end of data
+    if (offset + descriptorsLength > data.length) {
+      return;
+    }
 
     const descriptors = this.parseDescriptors(
       data.subarray(offset, offset + descriptorsLength),
@@ -1066,6 +1095,9 @@ export class TransportStreamParser {
       const descriptorsLength =
         (((data[offset] ?? 0) & 0x0f) << 8) | (data[offset + 1] ?? 0);
       offset += 2;
+
+      // Bounds check before parsing descriptors
+      if (offset + descriptorsLength > data.length) break;
 
       const descriptors = this.parseDescriptors(
         data.subarray(offset, offset + descriptorsLength),
