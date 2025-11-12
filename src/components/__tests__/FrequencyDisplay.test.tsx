@@ -25,7 +25,10 @@ describe("FrequencyDisplay", () => {
 
   it("displays frequency in correct format", () => {
     render(<FrequencyDisplay frequency={100000000} onChange={mockOnChange} />);
-    expect(screen.getByText(/100\.000 MHz/i)).toBeInTheDocument();
+    // The frequency is split visually into digit groups; assert via accessible label
+    expect(
+      screen.getByRole("group", { name: /current frequency: 100 MHz/i }),
+    ).toBeInTheDocument();
   });
 
   it("displays frequency in GHz for high frequencies", () => {

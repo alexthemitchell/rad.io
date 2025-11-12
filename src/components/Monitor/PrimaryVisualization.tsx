@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import { performanceMonitor } from "../../utils/performanceMonitor";
 import { WebGLSpectrum, WebGLWaterfall } from "../../visualization";
+import { WATERFALL_MARGIN } from "../../visualization/grid";
 import { SpectrumAnnotations } from "../../visualization/renderers/SpectrumAnnotations";
 import { SignalTooltip } from "../SignalTooltip";
 import type { WATERFALL_COLORMAPS } from "../../constants";
@@ -22,6 +23,9 @@ interface PrimaryVisualizationProps {
   signals?: DetectedSignal[];
   /** Whether to show signal annotations */
   showAnnotations?: boolean;
+  /** Whether to show frequency gridlines independent from annotations */
+  showGridlines?: boolean;
+  showGridLabels?: boolean;
 }
 
 const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
@@ -36,18 +40,31 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   onTune,
   signals = [],
   showAnnotations = true,
+  showGridlines = true,
+  showGridLabels = true,
 }) => {
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
   const waterfallCanvasRef = useRef<HTMLCanvasElement>(null);
   const annotationsCanvasRef = useRef<HTMLCanvasElement>(null);
+  const waterfallAnnotationsCanvasRef = useRef<HTMLCanvasElement>(null);
   const spectrumRendererRef = useRef<WebGLSpectrum | null>(null);
   const waterfallRendererRef = useRef<WebGLWaterfall | null>(null);
   const annotationsRendererRef = useRef<SpectrumAnnotations | null>(null);
+  const waterfallAnnotationsRendererRef = useRef<SpectrumAnnotations | null>(
+    null,
+  );
   const workerManagerRef = useRef<VisualizationWorkerManager | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   // Reusable single-element array to avoid allocating [data] on every frame
   const waterfallFrameArrayRef = useRef<Float32Array[]>([new Float32Array(0)]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Canvas dimensions state
+  const [canvasDimensions, setCanvasDimensions] = useState({
+    width: 900,
+    height: 320,
+  });
 
   // Tooltip state
   const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -74,6 +91,28 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   const centerFrequencyRef = useRef<number>(centerFrequency);
   const signalsRef = useRef<DetectedSignal[]>(signals);
   const showAnnotationsRef = useRef<boolean>(showAnnotations);
+  const showGridlinesRef = useRef<boolean>(showGridlines);
+  const showGridLabelsRef = useRef<boolean>(showGridLabels);
+  const lastAnnotationRenderTime = useRef<number>(0);
+  // Slightly slower annotation cadence to reduce flicker; spectrum vs waterfall staggered
+  const ANNOTATION_RENDER_INTERVAL_MS = 150; // 6-7 FPS for labels is sufficient
+  const lastWaterfallAnnotationRenderTime = useRef<number>(0);
+  const WATERFALL_ANNOTATION_RENDER_INTERVAL_MS = 200; // Waterfall overlays update a bit less frequently
+
+  // Memoize signals to only update when signal frequencies or active states change significantly
+  const memoizedSignals = useMemo(() => {
+    // Create a stable representation based only on frequency, active state, and power (rounded)
+    return signals.map((s) => ({
+      ...s,
+      power: Math.round(s.power * 2) / 2, // Round to nearest 0.5 dB
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    signals.length,
+    // Only recompute if the list of active signal frequencies changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    signals.map((s) => `${s.frequency}_${s.isActive}`).join(","),
+  ]);
 
   // Keep refs in sync
   useEffect((): void => {
@@ -101,11 +140,17 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     centerFrequencyRef.current = centerFrequency;
   }, [centerFrequency]);
   useEffect((): void => {
-    signalsRef.current = signals;
-  }, [signals]);
+    signalsRef.current = memoizedSignals;
+  }, [memoizedSignals]);
   useEffect((): void => {
     showAnnotationsRef.current = showAnnotations;
   }, [showAnnotations]);
+  useEffect((): void => {
+    showGridlinesRef.current = showGridlines;
+  }, [showGridlines]);
+  useEffect((): void => {
+    showGridLabelsRef.current = showGridLabels;
+  }, [showGridLabels]);
 
   const transform = useMemo(
     (): RenderTransform => ({
@@ -171,6 +216,108 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     };
   }, []);
 
+  // Initialize waterfall annotations renderer
+  useEffect(() => {
+    if (waterfallAnnotationsCanvasRef.current) {
+      const renderer = new SpectrumAnnotations();
+      const success = renderer.initialize(
+        waterfallAnnotationsCanvasRef.current,
+      );
+      if (success) {
+        waterfallAnnotationsRendererRef.current = renderer;
+      }
+    }
+
+    return (): void => {
+      waterfallAnnotationsRendererRef.current?.cleanup();
+      waterfallAnnotationsRendererRef.current = null;
+    };
+  }, []);
+
+  // Setup ResizeObserver to handle responsive canvas sizing
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const updateCanvasSize = (): void => {
+      const rect = container.getBoundingClientRect();
+      const width = Math.floor(rect.width);
+      // Maintain 2.8125:1 aspect ratio (900:320) or use a minimum height
+      const height = Math.max(320, Math.floor(width / 2.8125));
+
+      setCanvasDimensions({ width, height });
+    };
+
+    // Initial size
+    updateCanvasSize();
+
+    // Watch for resize events
+    const observer = new ResizeObserver(() => {
+      updateCanvasSize();
+    });
+
+    observer.observe(container);
+    resizeObserverRef.current = observer;
+    // Fallback for environments where ResizeObserver may not fire reliably
+    // (e.g., certain headless or test environments). Also ensures immediate
+    // layout update when the window is resized via programmatic calls.
+    const onWindowResize = (): void => updateCanvasSize();
+    window.addEventListener("resize", onWindowResize);
+
+    return (): void => {
+      observer.disconnect();
+      resizeObserverRef.current = null;
+      window.removeEventListener("resize", onWindowResize);
+    };
+  }, []);
+
+  // Update canvas internal dimensions when size changes
+  useEffect(() => {
+    const { width, height } = canvasDimensions;
+
+    // Update spectrum canvas
+    if (spectrumCanvasRef.current) {
+      spectrumCanvasRef.current.width = width;
+      spectrumCanvasRef.current.height = height;
+      spectrumCanvasRef.current.style.width = `${width}px`;
+      spectrumCanvasRef.current.style.height = `${height}px`;
+      // Do not reinitialize; WebGLSpectrum adapts viewport per frame
+    }
+
+    // Update waterfall canvas
+    if (waterfallCanvasRef.current) {
+      waterfallCanvasRef.current.width = width;
+      waterfallCanvasRef.current.height = height;
+      waterfallCanvasRef.current.style.width = `${width}px`;
+      waterfallCanvasRef.current.style.height = `${height}px`;
+      // Preserve existing WebGLWaterfall texture history; no reinit
+      // If using worker renderer in future, propagate resize:
+      if (workerManagerRef.current?.isReady()) {
+        const dpr = window.devicePixelRatio || 1;
+        workerManagerRef.current.resize({ width, height, dpr });
+      }
+    }
+
+    // Update annotations canvas
+    if (annotationsCanvasRef.current) {
+      annotationsCanvasRef.current.width = width;
+      annotationsCanvasRef.current.height = height;
+      annotationsCanvasRef.current.style.width = `${width}px`;
+      annotationsCanvasRef.current.style.height = `${height}px`;
+      // Keep existing annotations renderer; it draws relative to canvas size
+    }
+
+    // Update waterfall annotations canvas
+    if (waterfallAnnotationsCanvasRef.current) {
+      waterfallAnnotationsCanvasRef.current.width = width;
+      waterfallAnnotationsCanvasRef.current.height = height;
+      waterfallAnnotationsCanvasRef.current.style.width = `${width}px`;
+      waterfallAnnotationsCanvasRef.current.style.height = `${height}px`;
+    }
+  }, [canvasDimensions]);
+
   // Main render loop
   useEffect((): (() => void) => {
     const render = (): void => {
@@ -179,7 +326,10 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
       const waterfallReady =
         Boolean(workerManagerRef.current?.isReady()) ||
         Boolean(waterfallRendererRef.current);
-      if (!spectrumReady || !waterfallReady) {
+      // Only bail out if neither renderer is ready. Previously we required both
+      // to be ready which prevented rendering of spectrum-only configurations
+      // and caused canvas visual style widths to remain stale on resize.
+      if (!spectrumReady && !waterfallReady) {
         rafIdRef.current = requestAnimationFrame(render);
         return;
       }
@@ -220,11 +370,31 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
           freqMax: size,
           transform,
         });
+        // Ensure gridlines are rendered even when annotations are hidden
+        if (
+          showGridlinesRef.current &&
+          annotationsRendererRef.current?.isReady()
+        ) {
+          annotationsRendererRef.current.renderGridlines(
+            canvasDimensions.width,
+            canvasDimensions.height,
+            centerFrequencyRef.current - sampleRateRef.current / 2,
+            centerFrequencyRef.current + sampleRateRef.current / 2,
+            centerFrequencyRef.current,
+            sampleRateRef.current,
+            {
+              drawLabels: showGridLabelsRef.current,
+            },
+          );
+        }
 
-        // Render annotations on spectrum
+        // Render annotations on spectrum (throttled to reduce visual jumpiness)
+        const now = Date.now();
+        const timeSinceLastRender = now - lastAnnotationRenderTime.current;
         if (
           showAnnotationsRef.current &&
-          annotationsRendererRef.current?.isReady()
+          annotationsRendererRef.current?.isReady() &&
+          timeSinceLastRender >= ANNOTATION_RENDER_INTERVAL_MS
         ) {
           annotationsRendererRef.current.render(
             signalsRef.current,
@@ -234,9 +404,10 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
               enabled: true,
               showLabels: true,
               showBandwidth: true,
-              fontSize: 12,
+              fontSize: 14, // Increased for better readability
             },
           );
+          lastAnnotationRenderTime.current = now;
         }
       }
 
@@ -268,6 +439,62 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
             colormapName: cmap,
           });
         }
+
+        // Render annotations over waterfall (opaque horizontal bands) using dedicated overlay canvas
+        const now = Date.now();
+        const sinceLast = now - lastWaterfallAnnotationRenderTime.current;
+        if (
+          showAnnotationsRef.current &&
+          waterfallAnnotationsRendererRef.current?.isReady() &&
+          sinceLast >= WATERFALL_ANNOTATION_RENDER_INTERVAL_MS
+        ) {
+          waterfallAnnotationsRendererRef.current.renderWaterfall(
+            signalsRef.current,
+            sampleRateRef.current,
+            centerFrequencyRef.current,
+            {
+              enabled: true,
+              showLabels: false,
+              showBandwidth: true,
+              fontSize: 14,
+            },
+            transform,
+          );
+          lastWaterfallAnnotationRenderTime.current = now;
+        } else if (
+          !showAnnotationsRef.current &&
+          waterfallAnnotationsCanvasRef.current
+        ) {
+          // Clear stale overlay when annotations are hidden
+          const ctx = waterfallAnnotationsCanvasRef.current.getContext("2d");
+          if (ctx) {
+            ctx.clearRect(
+              0,
+              0,
+              waterfallAnnotationsCanvasRef.current.width,
+              waterfallAnnotationsCanvasRef.current.height,
+            );
+          }
+        }
+        // For waterfall, we still want gridlines visible if the caller enables them
+        if (
+          showGridlinesRef.current &&
+          waterfallAnnotationsRendererRef.current?.isReady()
+        ) {
+          waterfallAnnotationsRendererRef.current.renderGridlines(
+            canvasDimensions.width,
+            canvasDimensions.height,
+            centerFrequencyRef.current - sampleRateRef.current / 2,
+            centerFrequencyRef.current + sampleRateRef.current / 2,
+            centerFrequencyRef.current,
+            sampleRateRef.current,
+            {
+              margin: WATERFALL_MARGIN,
+              drawLabels: showGridLabelsRef.current,
+              lineColor: "rgba(255,255,255,0.10)",
+            },
+          );
+        }
       }
 
       performanceMonitor.measure("rendering", "render-start");
@@ -281,7 +508,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         rafIdRef.current = null;
       }
     };
-  }, [transform]);
+  }, [transform, canvasDimensions.width, canvasDimensions.height]);
 
   // Handle mouse move for tooltip (throttled)
   const handleMouseMove = (evt: React.MouseEvent<HTMLCanvasElement>): void => {
@@ -354,13 +581,13 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
       <canvas
         ref={spectrumCanvasRef}
-        width="900"
-        height="320"
         style={{
           display: mode === "fft" || mode === "spectrogram" ? "block" : "none",
+          width: "100%",
+          height: `${canvasDimensions.height}px`,
         }}
         role="img"
         aria-label="Spectrum Analyzer"
@@ -368,33 +595,55 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       />
-      {showAnnotations && (mode === "fft" || mode === "spectrogram") && (
-        <canvas
-          ref={annotationsCanvasRef}
-          width="900"
-          height="320"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            pointerEvents: "none",
-          }}
-          role="img"
-          aria-label="Signal Annotations"
-        />
-      )}
+      <canvas
+        ref={annotationsCanvasRef}
+        style={{
+          display:
+            (showAnnotations || showGridlines) &&
+            (mode === "fft" || mode === "spectrogram")
+              ? "block"
+              : "none",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: `${canvasDimensions.height}px`,
+          pointerEvents: "none",
+        }}
+        role="img"
+        aria-label="Signal Annotations"
+      />
       <canvas
         ref={waterfallCanvasRef}
-        width="900"
-        height="320"
         style={{
           display:
             mode === "waterfall" || mode === "spectrogram" ? "block" : "none",
           marginTop: mode === "spectrogram" ? "8px" : "0",
+          width: "100%",
+          height: `${canvasDimensions.height}px`,
         }}
         role="img"
         aria-label="Waterfall Display"
         onClick={handleCanvasClick}
+      />
+      <canvas
+        ref={waterfallAnnotationsCanvasRef}
+        style={{
+          display:
+            (showAnnotations || showGridlines) &&
+            (mode === "waterfall" || mode === "spectrogram")
+              ? "block"
+              : "none",
+          position: "absolute",
+          top:
+            mode === "spectrogram" ? `${canvasDimensions.height + 8}px` : "0", // stack below spectrum when spectrogram
+          left: 0,
+          width: "100%",
+          height: `${canvasDimensions.height}px`,
+          pointerEvents: "none",
+        }}
+        role="img"
+        aria-label="Waterfall Signal Annotations"
       />
       <SignalTooltip
         signal={hoveredSignal}

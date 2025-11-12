@@ -257,7 +257,6 @@ component_management:
       name: "Core Utilities"
       paths:
         - src/lib/utils/**
-        - src/utils/logger.ts
         - src/utils/device-utils.ts
       statuses:
         - type: project

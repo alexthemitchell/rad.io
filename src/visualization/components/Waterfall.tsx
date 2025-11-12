@@ -52,7 +52,6 @@ export default function Waterfall({
         if (webglSuccess) {
           rendererRef.current = webglRenderer;
           setRendererType("webgl");
-          console.info("[Waterfall] Using WebGL renderer");
           return;
         }
       } catch (err) {
@@ -67,7 +66,6 @@ export default function Waterfall({
         if (canvasSuccess) {
           rendererRef.current = canvasRenderer;
           setRendererType("canvas");
-          console.info("[Waterfall] Using Canvas2D renderer");
           return;
         }
       } catch (err) {

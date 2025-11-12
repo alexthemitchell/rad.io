@@ -42,10 +42,37 @@ export class SignalClassifier {
     let type: SignalType = "unknown";
     let confidence = 0;
 
+    // Check if signal is in FM broadcast band (88-108 MHz)
+    const isFmBroadcast = peak.frequency >= 88e6 && peak.frequency <= 108e6;
+
     // Classification priority order (to handle overlapping bandwidth ranges):
-    // 1. Digital (1-5 kHz): Check first because it requires edge sharpness
-    // 2. AM (4-11 kHz): Has overlap with digital at 4-5 kHz
-    // 3. FM: Non-overlapping ranges for narrowband and wideband
+    // 1. FM Broadcast Band (88-108 MHz): ALWAYS classify as WFM regardless of measured bandwidth
+    // 2. Digital (1-5 kHz): Check first because it requires edge sharpness
+    // 3. AM (4-11 kHz): Has overlap with digital at 4-5 kHz
+    // 4. FM: Non-overlapping ranges for narrowband and wideband
+
+    // FM Broadcast Band (88-108 MHz): ALWAYS classify as wideband FM
+    // Measured bandwidth can vary wildly due to fading, multipath, AGC, and threshold effects.
+    // Since we know the frequency range is exclusively used for wideband FM broadcast,
+    // we should classify based on frequency alone for stability.
+    // This eliminates flickering between narrowband-fm, wideband-fm, and unknown classifications.
+    if (isFmBroadcast) {
+      type = "wideband-fm";
+      // Higher confidence for strong signals with reasonable bandwidth measurement
+      if (peak.bandwidth >= 80_000) {
+        confidence = 0.95;
+      } else if (peak.bandwidth >= 30_000) {
+        confidence = 0.85;
+      } else {
+        // Even weak/faded signals in FM broadcast band are still wideband FM
+        confidence = 0.75;
+      }
+      return {
+        ...peak,
+        type,
+        confidence,
+      };
+    }
 
     // Digital: Often narrowband with sharp edges (check first for priority)
     // Note: 4-5 kHz overlaps with AM, but sharp edges distinguish digital signals
@@ -68,7 +95,10 @@ export class SignalClassifier {
       confidence = 0.7;
     }
 
-    // FM: bandwidth ~12-30 kHz (narrowband) or ~150-250 kHz (wideband)
+    // FM: bandwidth ~12-30 kHz (narrowband) or ~80-280 kHz (wideband)
+    // Wideband FM (broadcast) typically uses ±75 kHz deviation + guard bands = ~180-220 kHz occupied bandwidth
+    // However, in practice, due to fading, multipath, and measurement limitations,
+    // we may only capture 80-120 kHz of a wideband FM signal
     if (
       type === "unknown" &&
       peak.bandwidth >= 12_000 &&
@@ -78,8 +108,8 @@ export class SignalClassifier {
       confidence = 0.8;
     } else if (
       type === "unknown" &&
-      peak.bandwidth >= 150_000 &&
-      peak.bandwidth <= 250_000
+      peak.bandwidth >= 80_000 &&
+      peak.bandwidth <= 280_000
     ) {
       type = "wideband-fm";
       confidence = 0.9;

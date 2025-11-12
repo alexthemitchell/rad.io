@@ -23,9 +23,48 @@ test.use({
   viewport: { width: 1280, height: 800 },
 });
 
-// Helper to start reception with mock device
+// Helper: locate Start Reception button across multiple likely locations
+async function findStartButton(page: Page) {
+  const selectors = [
+    'button[aria-label*="Start receiving" i]',
+    'button:has-text("Start Reception")',
+    'button:has-text("Start receiving")',
+    'button[aria-label*="Start reception" i]',
+    'button[title*="Start reception" i]',
+  ];
+  for (const s of selectors) {
+    const loc = page.locator(s).first();
+    try {
+      if ((await loc.count()) > 0) {
+        return loc;
+      }
+    } catch {
+      // ignore malformed selectors or unsupported features
+    }
+  }
+  return null;
+}
+
+// Helper to start reception using available UI controls.
 async function startReception(page: Page): Promise<void> {
-  const startBtn = page.getByRole("button", { name: /start reception/i });
+  let startBtn = await findStartButton(page);
+
+  if (!startBtn) {
+    // Try to connect the device using the StatusBar connect button which may
+    // cause device controls to appear (if they are not rendered until connect)
+    const connectBtn = page.getByRole("button", { name: /connect/i }).first();
+    if ((await connectBtn.count()) > 0) {
+      await connectBtn.click();
+      // Allow UI update and any device connect async actions
+      await page.waitForTimeout(500);
+      startBtn = await findStartButton(page);
+    }
+  }
+
+  if (!startBtn) {
+    throw new Error("Start Reception control not found in page");
+  }
+
   await expect(startBtn).toBeVisible({ timeout: 10000 });
   await expect(startBtn).toBeEnabled();
   await startBtn.click();
@@ -40,11 +79,13 @@ test.describe("Monitor - Core Functionality", () => {
   test("should load monitor page as default route", async ({ page }) => {
     await page.goto("/");
 
-    // Verify we're on the monitor page
-    await expect(page).toHaveURL(/^\/$|\/monitor$/);
+    // Verify we're on the monitor page (match pathname explicitly to avoid host mismatch)
+    expect(new URL(page.url()).pathname).toMatch(/^\/$|\/monitor$/);
 
     // Verify main heading
-    const heading = page.getByRole("heading", { name: "rad.io", level: 1 });
+    const heading = page
+      .getByRole("heading", { name: "rad.io", level: 1 })
+      .first();
     await expect(heading).toBeVisible();
   });
 
@@ -58,7 +99,9 @@ test.describe("Monitor - Core Functionality", () => {
     await expect(topBar.first()).toBeVisible();
 
     // Frequency display should be visible (JetBrains Mono, tabular figures)
-    const freqDisplay = page.getByLabel(/frequency/i);
+    const freqDisplay = page
+      .getByRole("spinbutton", { name: /frequency/i })
+      .first();
     await expect(freqDisplay).toBeVisible();
 
     // Navigation should be present
@@ -574,8 +617,10 @@ test.describe("Monitor - Performance", () => {
   test("should handle rapid start/stop cycles", async ({ page }) => {
     await page.goto("/monitor?mockSdr=1");
 
-    const startBtn = page.getByRole("button", { name: /start reception/i });
-    const stopBtn = page.getByRole("button", { name: /stop reception/i });
+    const startBtn = await findStartButton(page);
+    const stopBtn = page
+      .getByRole("button", { name: /stop reception/i })
+      .first();
 
     // Cycle 3 times
     for (let i = 0; i < 3; i++) {

@@ -2,6 +2,7 @@
  * Canvas2D renderer for spectrum display (frequency line chart)
  */
 
+import { DEFAULT_MARGIN, determineGridSpacing } from "../grid";
 import type { Renderer, SpectrumData } from "./types";
 
 export class CanvasSpectrum implements Renderer {
@@ -65,7 +66,7 @@ export class CanvasSpectrum implements Renderer {
     ctx.fillRect(0, 0, this.width, this.height);
 
     // Chart margins
-    const margin = { top: 60, bottom: 60, left: 80, right: 40 };
+    const margin = DEFAULT_MARGIN;
     const chartWidth = this.width - margin.left - margin.right;
     const chartHeight = this.height - margin.top - margin.bottom;
 
@@ -103,9 +104,17 @@ export class CanvasSpectrum implements Renderer {
       ctx.stroke();
     }
 
-    // Vertical grid lines (frequency)
-    for (let i = 0; i <= 10; i++) {
-      const x = margin.left + (chartWidth * i) / 10;
+    const bandwidth = Math.max(1, freqMax - freqMin);
+    const { spacing, formatter } = determineGridSpacing(bandwidth, chartWidth);
+    const firstGridFreq = Math.ceil(freqMin / spacing) * spacing;
+    const gridFrequencies: number[] = [];
+    for (let f = firstGridFreq; f <= freqMax; f += spacing) {
+      gridFrequencies.push(f);
+      if (gridFrequencies.length > 512) break; // safe-guard
+    }
+    for (const gf of gridFrequencies) {
+      const x =
+        margin.left + ((gf - freqMin) / (freqMax - freqMin)) * chartWidth;
       ctx.beginPath();
       ctx.moveTo(x, margin.top);
       ctx.lineTo(x, margin.top + chartHeight);
@@ -179,13 +188,13 @@ export class CanvasSpectrum implements Renderer {
       ctx.fillText(`${mag.toFixed(0)} dB`, margin.left - 10, y);
     }
 
-    // X-axis labels (frequency bins)
+    // X-axis labels (frequency) aligned to the gridlines
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    for (let i = 0; i <= 10; i++) {
-      const bin = freqMin + Math.round((binCount * i) / 10);
-      const x = margin.left + (chartWidth * i) / 10;
-      ctx.fillText(`${bin}`, x, margin.top + chartHeight + 10);
+    for (const gf of gridFrequencies) {
+      const x =
+        margin.left + ((gf - freqMin) / (freqMax - freqMin)) * chartWidth;
+      ctx.fillText(formatter(gf), x, margin.top + chartHeight + 10);
     }
 
     // Title

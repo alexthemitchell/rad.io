@@ -11,7 +11,6 @@ import { MockSDRDevice } from "../models/MockSDRDevice";
 import { useStore } from "../store";
 import { getDeviceId } from "../store/slices/deviceSlice";
 import { shouldUseMockSDR } from "../utils/e2e";
-import { deviceLogger } from "../utils/logger";
 import { useUSBDevice } from "./useUSBDevice";
 
 /**
@@ -66,7 +65,7 @@ export function useDeviceIntegration(): void {
     async (usb: USBDevice): Promise<void> => {
       // Skip initialization if a shutdown is in progress (e.g., HMR dispose)
       if (globalRad["closing"]) {
-        deviceLogger.warn("Skipping device init during shutdown phase", {
+        console.warn("🔌 DEVICE: Skipping device init during shutdown phase", {
           reason: "global closing",
         });
         return;
@@ -90,12 +89,12 @@ export function useDeviceIntegration(): void {
           globalRad["primaryDevice"] = adapter;
         }
 
-        deviceLogger.info("Device initialized", {
+        console.info("🔌 DEVICE: Device initialized", {
           deviceId,
           deviceInfo: await adapter.getDeviceInfo(),
         });
       } catch (err) {
-        deviceLogger.error("Failed to initialize device", err, {
+        console.error("🔌 DEVICE: Failed to initialize device", err, {
           deviceId,
           productId: usb.productId,
           vendorId: usb.vendorId,
@@ -173,11 +172,11 @@ export function useDeviceIntegration(): void {
         await mock.open();
         addDevice("mock:device", { device: mock });
         mockInitializedRef.current = true;
-        deviceLogger.info("Mock SDR device initialized for E2E", {
+        console.info("🔌 DEVICE: Mock SDR device initialized for E2E", {
           reason: "shouldUseMockSDR()",
         });
       } catch (err) {
-        deviceLogger.error("Failed to initialize mock SDR device", err);
+        console.error("🔌 DEVICE: Failed to initialize mock SDR device", err);
       }
     };
     void setupMock();
@@ -207,7 +206,10 @@ export function useDeviceIntegration(): void {
             // ignore worker termination errors during shutdown
           }
         } catch (err) {
-          deviceLogger.error("Shutdown error during global teardown", err);
+          console.error(
+            "🔌 DEVICE: Shutdown error during global teardown",
+            err,
+          );
         } finally {
           // Keep closing true briefly; new init paths will skip until reload completes
           g["closing"] = false;
@@ -218,7 +220,7 @@ export function useDeviceIntegration(): void {
     return (): void => {
       // Local unmount cleanup; do not await
       void closeAllDevices().catch((err: unknown) =>
-        deviceLogger.error("Cleanup failed during unmount", err),
+        console.error("🔌 DEVICE: Cleanup failed during unmount", err),
       );
       // Best-effort DSP worker termination on unmount
       try {

@@ -193,6 +193,44 @@ function FrequencyScanner({
         </div>
 
         <div className="form-group">
+          <label htmlFor="min-separation">
+            Min Separation (kHz):
+            <input
+              id="min-separation"
+              type="number"
+              value={(config.minSeparationHz ?? 100000) / 1000}
+              onChange={(e) =>
+                onConfigChange({
+                  minSeparationHz: Number(e.target.value) * 1000,
+                })
+              }
+              disabled={!isIdle}
+              step="1"
+              min="0"
+              max="1000"
+            />
+          </label>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="min-valley">
+            Min Valley Depth (dB):
+            <input
+              id="min-valley"
+              type="number"
+              value={config.minValleyDepthDb ?? 6}
+              onChange={(e) =>
+                onConfigChange({ minValleyDepthDb: Number(e.target.value) })
+              }
+              disabled={!isIdle}
+              step="1"
+              min="0"
+              max="24"
+            />
+          </label>
+        </div>
+
+        <div className="form-group">
           <label htmlFor="threshold">
             Detection Threshold ({config.thresholdDb} dB above noise):
             <input
@@ -227,6 +265,69 @@ function FrequencyScanner({
             />
           </label>
         </div>
+        <div className="form-group">
+          <label htmlFor="use-worker">
+            Use FFT Worker:
+            <input
+              id="use-worker"
+              type="checkbox"
+              checked={config.useWorkerFFT ?? true}
+              onChange={(e) =>
+                onConfigChange({ useWorkerFFT: e.target.checked })
+              }
+              disabled={!isIdle}
+            />
+          </label>
+        </div>
+        <div className="form-group">
+          <label htmlFor="use-pfb">
+            Use PFB Channelizer:
+            <input
+              id="use-pfb"
+              type="checkbox"
+              checked={config.usePFBChannelizer ?? true}
+              onChange={(e) =>
+                onConfigChange({ usePFBChannelizer: e.target.checked })
+              }
+              disabled={!isIdle}
+            />
+          </label>
+        </div>
+        <div className="form-group">
+          <label htmlFor="auto-threshold">
+            Auto Threshold:
+            <input
+              id="auto-threshold"
+              type="checkbox"
+              checked={config.scanAutoThreshold ?? true}
+              onChange={(e) =>
+                onConfigChange({ scanAutoThreshold: e.target.checked })
+              }
+              disabled={!isIdle}
+            />
+          </label>
+        </div>
+        {config.scanAutoThreshold && (
+          <div className="form-group">
+            <label htmlFor="threshold-offset">
+              Threshold Offset (dB):
+              <input
+                id="threshold-offset"
+                type="number"
+                value={config.scanThresholdDbOffset ?? 12}
+                onChange={(e) =>
+                  onConfigChange({
+                    scanThresholdDbOffset: Number(e.target.value),
+                  })
+                }
+                disabled={!isIdle || !config.scanAutoThreshold}
+                step="1"
+                min="0"
+                max="48"
+              />
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Control Buttons */}

@@ -7,8 +7,8 @@ import ShortcutsOverlay from "./components/ShortcutsOverlay";
 import StatusBar from "./components/StatusBar";
 import ToastProvider from "./components/ToastProvider";
 import TopAppBar from "./components/TopAppBar";
-import VFOControl from "./components/VFOControl";
 import { useDeviceIntegration } from "./hooks/useDeviceIntegration";
+import { useFrequencySync } from "./hooks/useFrequencySync";
 import { useStatusMetrics } from "./hooks/useStatusMetrics";
 import Analysis from "./pages/Analysis";
 import ATSCPlayer from "./pages/ATSCPlayer";
@@ -35,6 +35,9 @@ function App(): React.JSX.Element {
   // Initialize device management integration (bridges React hooks with Zustand store)
   useDeviceIntegration();
 
+  // Initialize frequency synchronization (automatically retunes device when frequency changes)
+  useFrequencySync();
+
   // Initialize status metrics collection (hook manages its own subscriptions)
   const metrics = useStatusMetrics();
   const [showRenderingSettings, setShowRenderingSettings] = useState(false);
@@ -51,16 +54,25 @@ function App(): React.JSX.Element {
           {/* Live regions handled within ToastProvider */}
 
           {/* Global top bar with connection status and quick actions */}
-          <TopAppBar asBanner={false} />
+          <TopAppBar asBanner />
 
           {/* Main header with title and navigation */}
           <header className="header" role="banner">
             <div className="header-content">
-              {/* Maintain accessible document title and subtitle */}
-              <h1>rad.io</h1>
-              <p>Software-Defined Radio Visualizer</p>
               {/* Always-visible frequency display + VFO control (shared state) */}
               <SharedVFO />
+              {/* Application title & tagline for branding and tests */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <h1 className="app-title" style={{ margin: 0, fontSize: 18 }}>
+                  rad.io
+                </h1>
+                <span
+                  className="app-tagline"
+                  style={{ fontSize: 12, opacity: 0.85 }}
+                >
+                  Software-Defined Radio Visualizer
+                </span>
+              </div>
             </div>
             <Navigation />
           </header>
@@ -146,7 +158,6 @@ function SharedVFO(): React.JSX.Element {
   return (
     <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
       <FrequencyDisplay frequency={frequencyHz} onChange={setFrequencyHz} />
-      <VFOControl frequencyHz={frequencyHz} onChange={setFrequencyHz} />
     </div>
   );
 }

@@ -6,6 +6,7 @@
  * compatibility with the visualization and control components.
  */
 
+import { CalibrationManager } from "../lib/measurement/calibration";
 import {
   type ISDRDevice,
   type IQSample,
@@ -21,22 +22,29 @@ import { HackRFOne } from "./HackRFOne";
 
 export class HackRFOneAdapter implements ISDRDevice {
   private device: HackRFOne;
+  private usbDevice: USBDevice;
   private currentFrequency = 100e6; // 100 MHz default
   private currentSampleRate = 20e6; // 20 MS/s default
   private currentBandwidth = 20e6; // 20 MHz default
   private isReceivingFlag = false;
   private isInitialized = false; // Track if device has been properly configured
+  private calibration = new CalibrationManager();
+  private deviceId: string; // Per-device identifier derived from USB properties
 
   constructor(usbDevice: USBDevice) {
+    this.usbDevice = usbDevice;
     this.device = new HackRFOne(usbDevice);
+    // Build a stable per-device identifier (vendorId:productId:serial)
+    // If serialNumber is missing, leave it empty to avoid undefined in the key
+    this.deviceId = `${usbDevice.vendorId}:${usbDevice.productId}:${usbDevice.serialNumber ?? ""}`;
   }
 
   async getDeviceInfo(): Promise<SDRDeviceInfo> {
     return Promise.resolve({
       type: SDRDeviceType.HACKRF_ONE,
-      vendorId: 0x1d50,
-      productId: 0x6089,
-      serialNumber: "Unknown", // HackRF doesn't expose serial via WebUSB easily
+      vendorId: this.usbDevice.vendorId,
+      productId: this.usbDevice.productId,
+      serialNumber: this.usbDevice.serialNumber ?? undefined,
       firmwareVersion: "Unknown",
       hardwareRevision: "HackRF One",
     });
@@ -84,8 +92,13 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   async setFrequency(frequencyHz: number): Promise<void> {
-    this.currentFrequency = frequencyHz;
-    await this.device.setFrequency(frequencyHz);
+    // Apply stored PPM calibration before programming hardware so that the RF lands at requested logical frequency
+    const corrected = this.calibration.applyFrequencyCalibration(
+      this.deviceId,
+      frequencyHz,
+    );
+    this.currentFrequency = corrected;
+    await this.device.setFrequency(corrected);
   }
 
   async getFrequency(): Promise<number> {

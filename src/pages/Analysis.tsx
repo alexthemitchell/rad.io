@@ -147,19 +147,8 @@ function Analysis(): React.JSX.Element {
   const handleSampleChunk = useCallback(
     (chunk: Sample[]): void => {
       if (chunk.length === 0) {
-        console.warn("Analysis: Received empty sample chunk", {
-          chunkType: typeof chunk,
-        });
         return;
       }
-
-      console.debug("Analysis: Processing sample chunk", {
-        sampleCount: chunk.length,
-        bufferState: {
-          currentSize: sampleBufferRef.current.length,
-          maxSize: maxBufferSamples,
-        },
-      });
 
       const markName = `pipeline-chunk-start-${
         typeof performance !== "undefined" ? performance.now() : Date.now()
@@ -182,10 +171,6 @@ function Analysis(): React.JSX.Element {
         typeof performance !== "undefined" ? performance.now() : Date.now();
       if (!isFrozen && now - lastUpdateRef.current >= updateIntervalMs) {
         lastUpdateRef.current = now;
-        console.debug("Analysis: Scheduling visualization update", {
-          bufferSize: sampleBufferRef.current.length,
-          timeSinceLastUpdate: (now - lastUpdateRef.current).toFixed(2),
-        });
         scheduleVisualizationUpdate();
       }
     },
@@ -204,17 +189,9 @@ function Analysis(): React.JSX.Element {
         tone: "success",
       });
 
-      console.warn("Analysis: Configuring device for streaming", {
-        targetSampleRate: 2048000,
-        targetFrequency: frequency,
-      });
       try {
         await activeDevice.setSampleRate(2048000);
         await activeDevice.setFrequency(frequency);
-        console.warn("Analysis: Device configured successfully", {
-          sampleRate: 2048000,
-          frequency,
-        });
       } catch (err) {
         console.error("Analysis: Failed to configure device", err, {
           requestedSampleRate: 2048000,
@@ -228,13 +205,7 @@ function Analysis(): React.JSX.Element {
 
       const receivePromise = activeDevice
         .receive((data) => {
-          console.debug("Analysis: Received raw data from device", {
-            byteLength: data.byteLength,
-          });
           const parsed = activeDevice.parseSamples(data) as Sample[];
-          console.debug("Analysis: Parsed samples from raw data", {
-            sampleCount: parsed.length,
-          });
           handleSampleChunk(parsed);
         })
         .catch((err: unknown) => {

@@ -3,6 +3,21 @@ import App from "./App";
 import "./styles/main.css";
 // DeviceProvider is no longer needed with Zustand - device integration handled in App.tsx
 import { registerBuiltinDrivers } from "./drivers";
+import { seedDebugRDS } from "./lib/devRDS";
+
+/* eslint-disable @typescript-eslint/naming-convention */
+interface DevRdsDebug {
+  seedDebugRDS: typeof seedDebugRDS;
+  getDebugRDS: () => unknown;
+  injectGroup?: (g: unknown) => void;
+  getDecoderStats?: () => unknown;
+}
+
+interface DevGlobal {
+  __DEV_RDS__?: DevRdsDebug;
+  __lastConsoleLogged?: string | null;
+}
+/* eslint-enable @typescript-eslint/naming-convention */
 
 // Register all built-in SDR drivers before the app renders to ensure
 // driver metadata (USB filters) are available during initial render.
@@ -48,6 +63,49 @@ if (hotModule.hot) {
 }
 
 // Best-effort on navigation away
-window.addEventListener("beforeunload", () => {
+window.addEventListener("beforeunload", (): void => {
   callGlobalShutdown();
 });
+
+// Expose debug helpers in development mode for deterministic E2E testing
+if (process.env["NODE_ENV"] !== "production") {
+  // Load dev-only helpers lazily to keep production bundle smaller and avoid
+  // disallowed `require()` usage flagged by the linter.
+  void (async (): Promise<void> => {
+    const [{ createRDSDecoder }, { getAllCachedStations }] = await Promise.all([
+      import("./utils/rdsDecoder"),
+      import("./store/rdsCache"),
+    ]);
+    const debugDecoder = createRDSDecoder(228000);
+    // Naming conventions for development globals use all caps and underscores,
+    // which doesn't fit the default naming convention rules. We explicitly
+    // disable the naming convention rule for these debug globals.
+
+    (globalThis as unknown as DevGlobal).__DEV_RDS__ = {
+      seedDebugRDS,
+      getDebugRDS: (): unknown => getAllCachedStations(),
+      // Attach decoder helpers using safe, typed proxies
+      injectGroup: (group: unknown): void => {
+        (debugDecoder as { injectGroup?: (g: unknown) => void }).injectGroup?.(
+          group,
+        );
+      },
+      getDecoderStats: (): unknown =>
+        (debugDecoder as { getStats?: () => unknown }).getStats?.(),
+    };
+  })();
+}
+
+// Small helper to capture latest console messages for automated tests
+if (process.env["NODE_ENV"] !== "production") {
+  const dev: DevGlobal = globalThis as unknown as DevGlobal;
+  dev.__lastConsoleLogged = null as string | null;
+
+  const origWarn = console.warn;
+  console.warn = function (...args: unknown[]): void {
+    const warnArgs = args as Parameters<typeof console.warn>;
+    dev.__lastConsoleLogged = args.map(String).join(" ");
+    // Call original console.warn with properly typed args
+    origWarn.apply(console, warnArgs);
+  } as unknown as typeof console.warn;
+}
