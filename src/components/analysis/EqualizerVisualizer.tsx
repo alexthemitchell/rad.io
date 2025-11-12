@@ -97,6 +97,10 @@ export default function EqualizerVisualizer({
 
     // Helper: tap index to x-coordinate
     const indexToX = (index: number): number => {
+      if (taps.length === 1) {
+        // Center the single tap in the chart
+        return margin.left + chartWidth / 2;
+      }
       return margin.left + (index / (taps.length - 1)) * chartWidth;
     };
 

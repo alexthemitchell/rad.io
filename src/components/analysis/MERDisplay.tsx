@@ -7,11 +7,8 @@
  */
 
 import { type ReactElement, useMemo } from "react";
-
-export interface Sample {
-  I: number;
-  Q: number;
-}
+import { VSB_LEVELS } from "./types";
+import type { Sample } from "./types";
 
 export interface MERDisplayProps {
   /** Array of received IQ samples */
@@ -21,9 +18,6 @@ export interface MERDisplayProps {
   /** Whether to show detailed statistics */
   showDetails?: boolean;
 }
-
-// 8-VSB symbol levels (normalized)
-const VSB_LEVELS = [-7, -5, -3, -1, 1, 3, 5, 7];
 
 /**
  * Calculate MER from received symbols and ideal reference
@@ -262,7 +256,8 @@ export default function MERDisplay({
             style={{ marginTop: "12px", fontSize: "11px", color: "#606060" }}
           >
             MER measures constellation accuracy. Higher values indicate better
-            signal quality. Typical ATSC reception requires MER ≥ 15 dB.
+            signal quality. Typical ATSC reception requires MER {"\u2265"} 15
+            dB.
           </div>
         </div>
       )}

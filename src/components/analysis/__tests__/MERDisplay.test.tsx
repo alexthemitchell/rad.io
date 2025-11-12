@@ -20,7 +20,9 @@ describe("MERDisplay", () => {
 
   it("renders without crashing", () => {
     render(<MERDisplay samples={mockSamples} />);
-    expect(screen.getByText("Modulation Error Ratio (MER)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Modulation Error Ratio (MER)"),
+    ).toBeInTheDocument();
   });
 
   it("displays MER value in dB", () => {
@@ -35,7 +37,9 @@ describe("MERDisplay", () => {
 
   it("handles empty samples", () => {
     render(<MERDisplay samples={[]} />);
-    expect(screen.getByText("Modulation Error Ratio (MER)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Modulation Error Ratio (MER)"),
+    ).toBeInTheDocument();
   });
 
   it("shows detailed stats when enabled", () => {
@@ -58,16 +62,17 @@ describe("MERDisplay", () => {
   it("uses reference symbols when provided", () => {
     const referenceSymbols = [-7, -5, -3, -1, 1, 3, 5, 7];
     render(
-      <MERDisplay
-        samples={mockSamples}
-        referenceSymbols={referenceSymbols}
-      />,
+      <MERDisplay samples={mockSamples} referenceSymbols={referenceSymbols} />,
     );
-    expect(screen.getByText("Modulation Error Ratio (MER)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Modulation Error Ratio (MER)"),
+    ).toBeInTheDocument();
   });
 
   it("has proper ARIA region", () => {
     render(<MERDisplay samples={mockSamples} />);
-    expect(screen.getByRole("region", { name: /MER measurement/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: /MER measurement/ }),
+    ).toBeInTheDocument();
   });
 });

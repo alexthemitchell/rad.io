@@ -6,20 +6,16 @@
  */
 
 import { type ReactElement, useEffect, useMemo, useRef } from "react";
+import { useIntersectionObserver } from "../../hooks/useIntersectionObserver";
+import { usePageVisibility } from "../../hooks/usePageVisibility";
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
 import { performanceMonitor } from "../../utils/performanceMonitor";
-
-// 8-VSB symbol levels (normalized)
-const VSB_LEVELS = [-7, -5, -3, -1, 1, 3, 5, 7];
+import { VSB_LEVELS } from "./types";
+import type { Sample } from "./types";
 
 // Default margin for chart rendering
 const DEFAULT_MARGIN = { top: 20, right: 20, bottom: 30, left: 40 };
-
-export interface Sample {
-  I: number;
-  Q: number;
-}
 
 export interface ATSCConstellationProps {
   /** Array of IQ samples to display */
@@ -50,6 +46,12 @@ export default function ATSCConstellation({
 }: ATSCConstellationProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Visibility optimization hooks
+  const isPageVisible = usePageVisibility();
+  const isElementVisible = useIntersectionObserver(canvasRef, {
+    threshold: 0.1,
+  });
+
   // Generate accessible description
   const accessibleDescription = useMemo((): string => {
     if (samples.length === 0) {
@@ -67,6 +69,11 @@ export default function ATSCConstellation({
   useEffect((): void => {
     const canvas = canvasRef.current;
     if (!canvas || samples.length === 0) {
+      return;
+    }
+
+    // Skip rendering if not visible (unless continueInBackground is true)
+    if (!continueInBackground && (!isPageVisible || !isElementVisible)) {
       return;
     }
 
@@ -212,7 +219,15 @@ export default function ATSCConstellation({
 
     renderTierManager.reportSuccess(RenderTier.Canvas2D);
     performanceMonitor.measure("render-atsc-constellation", markStart);
-  }, [samples, width, height, showReferenceGrid, continueInBackground]);
+  }, [
+    samples,
+    width,
+    height,
+    showReferenceGrid,
+    continueInBackground,
+    isPageVisible,
+    isElementVisible,
+  ]);
 
   return (
     <div style={{ position: "relative", display: "inline-block" }}>

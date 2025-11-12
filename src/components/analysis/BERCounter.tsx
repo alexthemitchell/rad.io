@@ -241,7 +241,7 @@ export default function BERCounter({
             style={{ marginTop: "12px", fontSize: "11px", color: "#606060" }}
           >
             BER measures transmission quality. Lower values indicate fewer
-            errors. ATSC typically requires BER &lt; 10⁻⁴ before error
+            errors. ATSC typically requires BER {"<"} 10⁻⁴ before error
             correction.
           </div>
         </div>

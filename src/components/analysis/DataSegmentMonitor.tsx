@@ -98,7 +98,8 @@ export default function DataSegmentMonitor({
     if (segmentSyncCount === 0) {
       return FIELD_SYNC_SEGMENTS;
     }
-    return FIELD_SYNC_SEGMENTS - (segmentSyncCount % FIELD_SYNC_SEGMENTS);
+    const remainder = segmentSyncCount % FIELD_SYNC_SEGMENTS;
+    return remainder === 0 ? 0 : FIELD_SYNC_SEGMENTS - remainder;
   }, [segmentSyncCount]);
 
   return (

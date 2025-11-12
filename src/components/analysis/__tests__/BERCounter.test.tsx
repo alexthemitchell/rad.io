@@ -34,11 +34,7 @@ describe("BERCounter", () => {
 
   it("shows detailed stats when enabled", () => {
     render(
-      <BERCounter
-        totalBits={1000000}
-        errorBits={100}
-        showDetails={true}
-      />,
+      <BERCounter totalBits={1000000} errorBits={100} showDetails={true} />,
     );
     expect(screen.getByText(/Total Bits:/)).toBeInTheDocument();
     expect(screen.getByText(/Error Bits:/)).toBeInTheDocument();
@@ -60,11 +56,7 @@ describe("BERCounter", () => {
 
   it("formats large numbers with locale separators", () => {
     render(
-      <BERCounter
-        totalBits={10000000}
-        errorBits={1000}
-        showDetails={true}
-      />,
+      <BERCounter totalBits={10000000} errorBits={1000} showDetails={true} />,
     );
     const totalBitsText = screen.getByText(/10,000,000/);
     expect(totalBitsText).toBeInTheDocument();
@@ -72,6 +64,8 @@ describe("BERCounter", () => {
 
   it("has proper ARIA region", () => {
     render(<BERCounter totalBits={1000000} errorBits={100} />);
-    expect(screen.getByRole("region", { name: /BER measurement/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: /BER measurement/ }),
+    ).toBeInTheDocument();
   });
 });

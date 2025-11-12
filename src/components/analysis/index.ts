@@ -21,3 +21,7 @@ export type { BERCounterProps } from "./BERCounter";
 export type { EqualizerVisualizerProps } from "./EqualizerVisualizer";
 export type { ATSCEyeDiagramProps } from "./ATSCEyeDiagram";
 export type { DataSegmentMonitorProps } from "./DataSegmentMonitor";
+
+// Re-export shared types
+export type { Sample } from "./types";
+export { VSB_LEVELS } from "./types";

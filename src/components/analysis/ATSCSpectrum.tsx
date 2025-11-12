@@ -233,7 +233,8 @@ export default function ATSCSpectrum({
       const freq =
         centerFrequency - sampleRate / 2 + (sampleRate * i) / fftData.length;
       const x = freqToX(freq);
-      const y = powerToY(fftData[i] ?? minPower);
+      const power = i < fftData.length ? (fftData[i] ?? minPower) : minPower;
+      const y = powerToY(power);
 
       if (i === 0) {
         ctx.moveTo(x, y);

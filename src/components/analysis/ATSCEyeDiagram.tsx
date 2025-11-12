@@ -10,11 +10,8 @@ import { type ReactElement, useEffect, useMemo, useRef } from "react";
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
 import { performanceMonitor } from "../../utils/performanceMonitor";
-
-export interface Sample {
-  I: number;
-  Q: number;
-}
+import { VSB_LEVELS } from "./types";
+import type { Sample } from "./types";
 
 export interface ATSCEyeDiagramProps {
   /** Array of IQ samples (primarily uses I component for VSB) */
@@ -30,9 +27,6 @@ export interface ATSCEyeDiagramProps {
   /** Whether to show 8-VSB level markers */
   showLevelMarkers?: boolean;
 }
-
-// 8-VSB symbol levels (normalized)
-const VSB_LEVELS = [-7, -5, -3, -1, 1, 3, 5, 7];
 
 /**
  * ATSC Eye Diagram Component
@@ -201,7 +195,8 @@ export default function ATSCEyeDiagram({
           continue;
         }
         const I = s.I;
-        const x = margin.left + (k / (periodSamples - 1)) * chartWidth;
+        const xNorm = periodSamples <= 1 ? 0.5 : k / (periodSamples - 1);
+        const x = margin.left + xNorm * chartWidth;
         const yNorm = (I - (minI - ampPadding)) / (ampSpan + 2 * ampPadding);
         const y = margin.top + (1 - yNorm) * chartHeight;
 
