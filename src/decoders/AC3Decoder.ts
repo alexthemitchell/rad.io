@@ -275,8 +275,7 @@ export class AC3Decoder {
           });
 
           this.audioDecoder.configure(config);
-          // eslint-disable-next-line no-console
-          console.log(`AC-3 decoder initialized with codec: ${codec}`);
+          console.warn(`AC-3 decoder initialized with codec: ${codec}`);
           return;
         }
       } catch (_error) {
