@@ -116,9 +116,9 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       audioContextRef.current = new AudioContext();
       gainNodeRef.current = audioContextRef.current.createGain();
       gainNodeRef.current.connect(audioContextRef.current.destination);
-      gainNodeRef.current.gain.value = volume;
+      gainNodeRef.current.gain.value = 1.0; // Use default volume, setVolume handles updates
     }
-  }, [volume]);
+  }, []);
 
   /**
    * Get stream type description

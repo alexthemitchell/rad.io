@@ -265,8 +265,8 @@ function VideoPlayer({
             </p>
           </div>
         )}
+        <div id="closed-captions" className="closed-captions" />
       </div>
-      <div id="closed-captions" className="closed-captions" />
     </div>
   );
 }
@@ -353,7 +353,9 @@ function ATSCPlayer(): React.JSX.Element {
   // Load stored channels on mount
   useEffect(() => {
     void scanner.loadStoredChannels();
-  }, [scanner]);
+    // Only depend on loadStoredChannels to avoid re-running when scanner's internal state changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanner.loadStoredChannels]);
 
   const handleSelectChannel = useCallback(
     (channel: StoredATSCChannel) => {
