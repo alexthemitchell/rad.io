@@ -11,6 +11,7 @@ import { useDeviceIntegration } from "./hooks/useDeviceIntegration";
 import { useFrequencySync } from "./hooks/useFrequencySync";
 import { useStatusMetrics } from "./hooks/useStatusMetrics";
 import Analysis from "./pages/Analysis";
+import ATSCPlayer from "./pages/ATSCPlayer";
 import Calibration from "./pages/Calibration";
 import Decode from "./pages/Decode";
 import Help from "./pages/Help";
@@ -86,6 +87,7 @@ function App(): React.JSX.Element {
               <Route path="/decode" element={<Decode />} />
               <Route path="/analysis" element={<Analysis />} />
               <Route path="/recordings" element={<Recordings />} />
+              <Route path="/atsc-player" element={<ATSCPlayer />} />
 
               {/* Supporting panels (also accessible as full pages) */}
               <Route
