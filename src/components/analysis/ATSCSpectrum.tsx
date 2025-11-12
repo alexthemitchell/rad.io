@@ -5,7 +5,7 @@
  * pilot tone at 309.44 kHz offset from the lower band edge.
  */
 
-import React, { type ReactElement, useEffect, useMemo, useRef } from "react";
+import { type ReactElement, useEffect, useMemo, useRef } from "react";
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
 import { performanceMonitor } from "../../utils/performanceMonitor";

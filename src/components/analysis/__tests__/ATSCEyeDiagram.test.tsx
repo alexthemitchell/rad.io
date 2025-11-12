@@ -2,13 +2,12 @@
  * Tests for ATSC Eye Diagram component
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import ATSCEyeDiagram from "../ATSCEyeDiagram";
 
 describe("ATSCEyeDiagram", () => {
-  const mockSamples = [];
+  const mockSamples: Array<{ I: number; Q: number }> = [];
   // Generate several symbol periods
   for (let i = 0; i < 256; i++) {
     const phase = (i % 128) / 128;

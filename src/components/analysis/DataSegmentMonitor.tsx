@@ -5,7 +5,7 @@
  * showing segment sync detection, field sync, and timing alignment.
  */
 
-import React, { type ReactElement, useMemo } from "react";
+import { type ReactElement, useMemo } from "react";
 
 export interface DataSegmentMonitorProps {
   /** Whether segment sync is currently locked */

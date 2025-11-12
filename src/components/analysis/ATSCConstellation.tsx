@@ -5,7 +5,7 @@
  * amplitude levels (-7, -5, -3, -1, +1, +3, +5, +7) used in digital television.
  */
 
-import React, { type ReactElement, useEffect, useMemo, useRef } from "react";
+import { type ReactElement, useEffect, useMemo, useRef } from "react";
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
 import { performanceMonitor } from "../../utils/performanceMonitor";

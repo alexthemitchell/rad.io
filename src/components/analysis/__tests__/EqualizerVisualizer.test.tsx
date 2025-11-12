@@ -2,7 +2,6 @@
  * Tests for Equalizer Visualizer component
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import EqualizerVisualizer from "../EqualizerVisualizer";

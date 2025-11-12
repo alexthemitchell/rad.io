@@ -2,7 +2,6 @@
  * Tests for ATSC Constellation component
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import ATSCConstellation from "../ATSCConstellation";

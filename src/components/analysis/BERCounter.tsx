@@ -5,7 +5,7 @@
  * BER indicates the ratio of erroneous bits to total bits received.
  */
 
-import React, { type ReactElement, useMemo } from "react";
+import { type ReactElement, useMemo } from "react";
 
 export interface BERCounterProps {
   /** Total number of bits received */

@@ -6,7 +6,7 @@
  * delays have significant multipath components.
  */
 
-import React, { type ReactElement, useEffect, useMemo, useRef } from "react";
+import { type ReactElement, useEffect, useMemo, useRef } from "react";
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
 import { performanceMonitor } from "../../utils/performanceMonitor";

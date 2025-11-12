@@ -6,7 +6,7 @@
  * MER is similar to SNR but measured in the digital domain.
  */
 
-import React, { type ReactElement, useMemo } from "react";
+import { type ReactElement, useMemo } from "react";
 
 export interface Sample {
   I: number;
@@ -57,7 +57,7 @@ function calculateMER(
     } else {
       // Find nearest VSB level
       let minDist = Infinity;
-      idealI = VSB_LEVELS[0];
+      idealI = VSB_LEVELS[0] ?? 0;
       for (const level of VSB_LEVELS) {
         const dist = Math.abs(sample.I - level);
         if (dist < minDist) {
