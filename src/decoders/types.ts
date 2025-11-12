@@ -8,8 +8,8 @@
 export interface PESHeader {
   streamId: number;
   packetLength: number;
-  pts?: number; // Presentation timestamp (33-bit, 90kHz clock)
-  dts?: number; // Decode timestamp (33-bit, 90kHz clock)
+  pts?: number; // Presentation timestamp (33-bit, 90 kHz clock)
+  dts?: number; // Decode timestamp (33-bit, 90 kHz clock)
   headerDataLength: number;
 }
 

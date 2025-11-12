@@ -186,7 +186,11 @@ export class AC3Decoder {
     channelCount = 2,
     bufferSize = 4096,
   ): Promise<void> {
-    if (this.state !== "unconfigured" && this.state !== "closed") {
+    if (
+      this.state !== "unconfigured" &&
+      this.state !== "closed" &&
+      this.state !== "error"
+    ) {
       throw new Error(`Cannot initialize decoder in ${this.state} state.`);
     }
 
@@ -214,7 +218,7 @@ export class AC3Decoder {
   ): Promise<void> {
     // Check if AudioDecoder is available
     if (typeof AudioDecoder === "undefined") {
-      console.warn("WebCodecs AudioDecoder not available, using fallback");
+      console.info("WebCodecs AudioDecoder not available, using fallback");
       this.useWebCodecs = false;
       return;
     }
@@ -247,7 +251,7 @@ export class AC3Decoder {
           });
 
           this.audioDecoder.configure(config);
-          console.warn(`AC-3 decoder initialized with codec: ${codec}`);
+          console.info(`AC-3 decoder initialized with codec: ${codec}`);
           return;
         }
       } catch (_error) {
@@ -256,7 +260,7 @@ export class AC3Decoder {
       }
     }
 
-    console.warn("AC-3 codec not supported by WebCodecs, using fallback");
+    console.info("AC-3 codec not supported by WebCodecs, using fallback");
     this.useWebCodecs = false;
   }
 
@@ -406,8 +410,8 @@ export class AC3Decoder {
           const remainingData = processData.slice(offset);
           // Prevent memory leak: limit partial frame buffer size
           if (remainingData.length > AC3Decoder.MAX_PARTIAL_FRAME_SIZE) {
-            console.warn(
-              "AC3Decoder: Partial frame buffer exceeded maximum size, clearing",
+            console.error(
+              "AC3Decoder: Partial frame buffer exceeded maximum size (64KB), clearing buffer to prevent memory leak",
             );
             this.partialFrame = null;
           } else {
@@ -557,7 +561,7 @@ export class AC3Decoder {
       // Use WebCodecs AudioDecoder for actual AC-3 decoding
       try {
         // Convert PTS from 90kHz to microseconds for WebCodecs
-        const timestamp = pts ? (pts * 1000000) / 90000 : 0;
+        const timestamp = pts ? Math.floor((pts * 1000000) / 90000) : 0;
 
         // Create EncodedAudioChunk from AC-3 frame
         const chunk = new EncodedAudioChunk({
@@ -575,7 +579,9 @@ export class AC3Decoder {
         this.metrics.framesDecoded++;
         this.metrics.totalDecodeTime += decodeTime;
         this.metrics.averageDecodeTime =
-          this.metrics.totalDecodeTime / this.metrics.framesDecoded;
+          this.metrics.framesDecoded > 0
+            ? this.metrics.totalDecodeTime / this.metrics.framesDecoded
+            : 0;
         this.metrics.currentBitrate = header.bitrate;
 
         this.state = "decoding";
@@ -623,7 +629,9 @@ export class AC3Decoder {
     this.metrics.framesDecoded++;
     this.metrics.totalDecodeTime += decodeTime;
     this.metrics.averageDecodeTime =
-      this.metrics.totalDecodeTime / this.metrics.framesDecoded;
+      this.metrics.framesDecoded > 0
+        ? this.metrics.totalDecodeTime / this.metrics.framesDecoded
+        : 0;
     this.metrics.currentBitrate = header.bitrate;
 
     // Apply lip-sync correction
@@ -700,7 +708,7 @@ export class AC3Decoder {
         ? this.applyDynamicRangeCompression(stereoSamples)
         : stereoSamples;
 
-      // Get timestamp (already in 90kHz from processAC3Frame)
+      // Get timestamp (convert from microseconds to 90kHz)
       const pts = Math.floor((audioData.timestamp * 90000) / 1000000);
       const adjustedPTS = pts + (this.audioDelay * 90000) / 1000;
 
@@ -711,11 +719,10 @@ export class AC3Decoder {
       });
 
       this.presentAudio();
-
-      // Close the AudioData to free memory
-      audioData.close();
     } catch (error) {
       console.error("Error processing decoded audio:", error);
+    } finally {
+      // Always close the AudioData to free memory
       audioData.close();
     }
   }
@@ -726,7 +733,11 @@ export class AC3Decoder {
   private handleDecoderError(error: Error | DOMException): void {
     this.state = "error";
     const errorMessage =
-      error instanceof Error ? error : new Error(String(error));
+      error instanceof Error
+        ? error
+        : new Error(
+            `WebCodecs error: ${(error as DOMException).name} - ${(error as DOMException).message}`,
+          );
     this.onError(errorMessage);
   }
 

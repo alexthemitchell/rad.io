@@ -592,7 +592,7 @@ describe("AC3Decoder", () => {
     });
 
     it("should return config after initialization", async () => {
-      decoder.initialize(44100, 2, 2048);
+      await decoder.initialize(44100, 2, 2048);
       const config = decoder.getConfig();
       expect(config).not.toBeNull();
       expect(config?.sampleRate).toBe(44100);
