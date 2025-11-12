@@ -114,7 +114,9 @@ describe("ATSCVideoDecoder", () => {
       await decoder.initialize(StreamType.H264_VIDEO, 1920, 1080);
       await expect(
         decoder.initialize(StreamType.H264_VIDEO, 1920, 1080),
-      ).rejects.toThrow("Cannot initialize decoder in configured state");
+      ).rejects.toThrow(
+        "Cannot initialize decoder in configured state. Close first.",
+      );
     });
   });
 
@@ -149,20 +151,8 @@ describe("ATSCVideoDecoder", () => {
     it("should accumulate PES packet fragments", () => {
       // First fragment with PES start
       const fragment1 = new Uint8Array([
-        0x00,
-        0x00,
-        0x01,
-        0xe0,
-        0x00,
-        0x10,
-        0x80,
-        0x80,
-        0x05,
-        0x21,
-        0x00,
-        0x01,
-        0x00,
-        0x01,
+        0x00, 0x00, 0x01, 0xe0, 0x00, 0x10, 0x80, 0x80, 0x05, 0x21, 0x00, 0x01,
+        0x00, 0x01,
       ]);
 
       // Second fragment (continuation)
@@ -299,25 +289,8 @@ describe("ATSCVideoDecoder", () => {
     it("should flush pending frames", async () => {
       // Process a packet
       const pesPacket = new Uint8Array([
-        0x00,
-        0x00,
-        0x01,
-        0xe0,
-        0x00,
-        0x10,
-        0x80,
-        0x80,
-        0x05,
-        0x21,
-        0x00,
-        0x01,
-        0x00,
-        0x01,
-        0x00,
-        0x00,
-        0x00,
-        0x01,
-        0x65,
+        0x00, 0x00, 0x01, 0xe0, 0x00, 0x10, 0x80, 0x80, 0x05, 0x21, 0x00, 0x01,
+        0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x65,
       ]);
 
       decoder.processPayload(pesPacket);
@@ -330,15 +303,14 @@ describe("ATSCVideoDecoder", () => {
   describe("error handling", () => {
     it("should call error callback on decoder error", async () => {
       // Mock isConfigSupported to return unsupported
-      const originalIsConfigSupported =
-        global.VideoDecoder.isConfigSupported;
+      const originalIsConfigSupported = global.VideoDecoder.isConfigSupported;
       global.VideoDecoder.isConfigSupported = jest
         .fn()
         .mockResolvedValue({ supported: false });
 
-      await expect(
-        decoder.initialize(StreamType.H264_VIDEO),
-      ).rejects.toThrow("not supported");
+      await expect(decoder.initialize(StreamType.H264_VIDEO)).rejects.toThrow(
+        "not supported",
+      );
 
       // Restore
       global.VideoDecoder.isConfigSupported = originalIsConfigSupported;

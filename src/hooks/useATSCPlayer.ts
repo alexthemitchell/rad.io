@@ -197,7 +197,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
         try {
           await videoDecoderRef.current.initialize(streamType);
           // Log successful initialization
-          if (process.env.NODE_ENV !== "production") {
+          if (process.env["NODE_ENV"] !== "production") {
             // eslint-disable-next-line no-console
             console.log(
               `ATSC Video Decoder initialized for PID ${videoPid} with ${getStreamTypeDescription(streamType)}`,
@@ -410,6 +410,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
         // Start receiving and demodulating
         isPlayingRef.current = true;
         let tablesReceived = false;
+        let currentVideoPID: number | null = null;
 
         receivePromiseRef.current = device.receive((data: DataView) => {
           if (!isPlayingRef.current) return;
@@ -446,6 +447,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
                         const vPID = findVideoPID(pmt);
                         const aTracks = parseAudioTracks(pmt);
 
+                        currentVideoPID = vPID;
                         setVideoPID(vPID);
                         setAudioTracks(aTracks);
                         if (aTracks.length > 0) {
@@ -475,10 +477,20 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
                             (s) => s.elementaryPid === vPID,
                           );
                           if (videoStream) {
-                            void initializeVideoDecoder(
-                              videoStream.streamType as StreamType,
-                              vPID,
-                            );
+                            void (async (): Promise<void> => {
+                              try {
+                                await initializeVideoDecoder(
+                                  videoStream.streamType as StreamType,
+                                  vPID,
+                                );
+                              } catch (error) {
+                                console.error(
+                                  "Failed to initialize video decoder:",
+                                  error,
+                                );
+                                // Player can continue with audio-only
+                              }
+                            })();
                           }
                         }
                       }
@@ -489,13 +501,13 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
                 // Demultiplex and decode video using WebCodecs
                 if (
                   tablesReceived &&
-                  videoPID !== null &&
+                  currentVideoPID !== null &&
                   videoDecoderRef.current &&
                   packets.length > 0
                 ) {
                   const videoPayloads = parserRef.current.demultiplex(
                     packets,
-                    videoPID,
+                    currentVideoPID,
                   );
 
                   // Feed payloads to video decoder
@@ -525,7 +537,6 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       parseAudioTracks,
       parseProgramInfo,
       updateSignalQuality,
-      videoPID,
     ],
   );
 

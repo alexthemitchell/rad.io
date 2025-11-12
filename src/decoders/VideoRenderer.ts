@@ -109,6 +109,16 @@ export class VideoRenderer {
     const aspectRatio = this.videoWidth / this.videoHeight;
     const canvasAspect = this.canvas.clientWidth / this.canvas.clientHeight;
 
+    // Guard against division by zero or invalid aspect ratios
+    if (
+      !isFinite(aspectRatio) ||
+      !isFinite(canvasAspect) ||
+      aspectRatio <= 0 ||
+      canvasAspect <= 0
+    ) {
+      return;
+    }
+
     if (this.maintainAspectRatio) {
       if (this.scaleMode === "fit") {
         // Fit video inside canvas
@@ -155,6 +165,21 @@ export class VideoRenderer {
 
     const aspectRatio = this.videoWidth / this.videoHeight;
     const canvasAspect = this.canvas.width / this.canvas.height;
+
+    // Guard against division by zero or invalid aspect ratios
+    if (
+      !isFinite(aspectRatio) ||
+      !isFinite(canvasAspect) ||
+      aspectRatio <= 0 ||
+      canvasAspect <= 0
+    ) {
+      return {
+        dx: 0,
+        dy: 0,
+        dWidth: this.canvas.width,
+        dHeight: this.canvas.height,
+      };
+    }
 
     let dx = 0;
     let dy = 0;

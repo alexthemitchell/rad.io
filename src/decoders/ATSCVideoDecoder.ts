@@ -40,7 +40,7 @@ export interface VideoFrameMetadata {
  * Video codec configuration
  */
 export interface VideoCodecConfig {
-  codec: string; // "avc1.42E01E" or "mp2v"
+  codec: string; // "avc1.42001E" or "mp2v"
   codedWidth: number;
   codedHeight: number;
   description?: ArrayBuffer; // SPS/PPS for H.264, sequence header for MPEG-2
@@ -90,6 +90,17 @@ export type FrameOutputCallback = (frame: VideoFrame) => void;
  * Handles decoding of MPEG-2 and H.264 video streams from ATSC broadcasts.
  */
 export class ATSCVideoDecoder {
+  // H.264 NAL unit type constants
+  private static readonly H264_NAL_TYPE_SPS = 7;
+  private static readonly H264_NAL_TYPE_PPS = 8;
+  private static readonly H264_NAL_TYPE_IDR = 5;
+
+  // MPEG-2 picture type constants
+  private static readonly MPEG2_PICTURE_TYPE_I_FRAME = 1;
+
+  // Frame buffer timeout (1 second in milliseconds)
+  private static readonly FRAME_BUFFER_TIMEOUT_MS = 1000;
+
   private decoder: VideoDecoder | null = null;
   private state: DecoderState = "unconfigured";
   private streamType: StreamType | null = null;
@@ -101,7 +112,10 @@ export class ATSCVideoDecoder {
   private awaitingPESStart = true;
 
   // Frame buffer for ordering and timing
-  private frameBuffer = new Map<number, VideoFrame>();
+  private frameBuffer = new Map<
+    number,
+    { frame: VideoFrame; receivedAt: number }
+  >();
   private lastPresentedPTS = 0;
 
   // Performance metrics
@@ -244,23 +258,25 @@ export class ATSCVideoDecoder {
     let dts: number | undefined;
 
     if (ptsFlag && data.length >= 14) {
-      // Parse PTS (33-bit value encoded in 5 bytes)
-      pts =
-        (((data[9] ?? 0) & 0x0e) << 29) |
-        (((data[10] ?? 0) & 0xff) << 22) |
-        (((data[11] ?? 0) & 0xfe) << 14) |
-        (((data[12] ?? 0) & 0xff) << 7) |
-        (((data[13] ?? 0) & 0xfe) >> 1);
+      // Parse PTS (33-bit value encoded in 5 bytes) using BigInt for accuracy
+      pts = Number(
+        ((BigInt(data[9] ?? 0) & 0x0en) << 29n) |
+          ((BigInt(data[10] ?? 0) & 0xffn) << 22n) |
+          ((BigInt(data[11] ?? 0) & 0xfen) << 14n) |
+          ((BigInt(data[12] ?? 0) & 0xffn) << 7n) |
+          ((BigInt(data[13] ?? 0) & 0xfen) >> 1n),
+      );
     }
 
     if (dtsFlag && data.length >= 19) {
-      // Parse DTS (33-bit value encoded in 5 bytes)
-      dts =
-        (((data[14] ?? 0) & 0x0e) << 29) |
-        (((data[15] ?? 0) & 0xff) << 22) |
-        (((data[16] ?? 0) & 0xfe) << 14) |
-        (((data[17] ?? 0) & 0xff) << 7) |
-        (((data[18] ?? 0) & 0xfe) >> 1);
+      // Parse DTS (33-bit value encoded in 5 bytes) using BigInt for accuracy
+      dts = Number(
+        ((BigInt(data[14] ?? 0) & 0x0en) << 29n) |
+          ((BigInt(data[15] ?? 0) & 0xffn) << 22n) |
+          ((BigInt(data[16] ?? 0) & 0xfen) << 14n) |
+          ((BigInt(data[17] ?? 0) & 0xffn) << 7n) |
+          ((BigInt(data[18] ?? 0) & 0xfen) >> 1n),
+      );
     }
 
     return {
@@ -320,7 +336,7 @@ export class ATSCVideoDecoder {
     const chunk = new EncodedVideoChunk({
       type: this.isKeyFrame(esData) ? "key" : "delta",
       timestamp: this.currentPESHeader.pts
-        ? (this.currentPESHeader.pts / 90) * 1000
+        ? (this.currentPESHeader.pts * 1000000) / 90000
         : 0, // Convert 90kHz to microseconds
       duration: 0, // Will be calculated by decoder
       data: esData,
@@ -328,12 +344,10 @@ export class ATSCVideoDecoder {
 
     // Decode chunk
     try {
-      const decodeStart = performance.now();
       this.decoder.decode(chunk);
-      const decodeTime = performance.now() - decodeStart;
 
-      // Update metrics
-      this.updateMetrics(decodeTime, esData.length);
+      // Update metrics (note: actual decode time measured in handleDecodedFrame)
+      this.updateMetrics(esData.length);
 
       this.state = "decoding";
     } catch (error) {
@@ -351,7 +365,7 @@ export class ATSCVideoDecoder {
    * Extract H.264 SPS/PPS configuration
    */
   private extractH264Configuration(data: Uint8Array): void {
-    // Look for SPS (NAL type 7) and PPS (NAL type 8)
+    // Look for SPS and PPS NAL units
     const nalUnits: Uint8Array[] = [];
 
     // Find NAL units (search for start codes 0x000001 or 0x00000001)
@@ -377,8 +391,11 @@ export class ATSCVideoDecoder {
             nalEnd++;
           }
 
-          // Extract SPS (type 7) or PPS (type 8)
-          if (nalType === 7 || nalType === 8) {
+          // Extract SPS or PPS NAL units
+          if (
+            nalType === ATSCVideoDecoder.H264_NAL_TYPE_SPS ||
+            nalType === ATSCVideoDecoder.H264_NAL_TYPE_PPS
+          ) {
             nalUnits.push(data.slice(nalStart, nalEnd));
           }
 
@@ -396,13 +413,22 @@ export class ATSCVideoDecoder {
 
     // If we found SPS and PPS, reconfigure decoder
     if (nalUnits.length >= 2 && this.currentConfig) {
-      // Concatenate SPS and PPS
-      const totalLength = nalUnits.reduce((sum, nal) => sum + nal.length, 0);
+      // Build AVCC format: each NAL unit is prefixed by a 4-byte big-endian length
+      const totalLength = nalUnits.reduce(
+        (sum, nal) => sum + 4 + nal.length,
+        0,
+      );
       const description = new Uint8Array(totalLength);
       let offset = 0;
       for (const nal of nalUnits) {
-        description.set(nal, offset);
-        offset += nal.length;
+        // Write 4-byte big-endian length
+        description[offset] = (nal.length >>> 24) & 0xff;
+        description[offset + 1] = (nal.length >>> 16) & 0xff;
+        description[offset + 2] = (nal.length >>> 8) & 0xff;
+        description[offset + 3] = nal.length & 0xff;
+        // Write NAL unit bytes
+        description.set(nal, offset + 4);
+        offset += 4 + nal.length;
       }
 
       // Update configuration with description
@@ -475,7 +501,7 @@ export class ATSCVideoDecoder {
    */
   private isKeyFrame(data: Uint8Array): boolean {
     if (this.streamType === StreamType.H264_VIDEO) {
-      // For H.264, look for IDR NAL unit (type 5)
+      // For H.264, look for IDR NAL unit
       for (let i = 0; i < data.length - 4; i++) {
         if (
           data[i] === 0x00 &&
@@ -485,7 +511,7 @@ export class ATSCVideoDecoder {
         ) {
           const nalStart = data[i + 2] === 0x01 ? i + 3 : i + 4;
           const nalType = (data[nalStart] ?? 0) & 0x1f;
-          if (nalType === 5) {
+          if (nalType === ATSCVideoDecoder.H264_NAL_TYPE_IDR) {
             return true; // IDR frame
           }
         }
@@ -502,7 +528,9 @@ export class ATSCVideoDecoder {
         ) {
           // Picture start code, check picture coding type
           const pictureCodingType = ((data[i + 5] ?? 0) >> 3) & 0x07;
-          if (pictureCodingType === 1) {
+          if (
+            pictureCodingType === ATSCVideoDecoder.MPEG2_PICTURE_TYPE_I_FRAME
+          ) {
             return true; // I-frame
           }
         }
@@ -519,10 +547,10 @@ export class ATSCVideoDecoder {
   private handleDecodedFrame(frame: VideoFrame): void {
     this.metrics.framesDecoded++;
 
-    // Add to frame buffer for ordering
+    // Add to frame buffer for ordering with received timestamp
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const pts = Math.floor(frame.timestamp ?? 0);
-    this.frameBuffer.set(pts, frame);
+    this.frameBuffer.set(pts, { frame, receivedAt: performance.now() });
 
     // Present frames in order
     this.presentFrames();
@@ -539,9 +567,9 @@ export class ATSCVideoDecoder {
     for (const pts of sortedPTS) {
       if (pts <= this.lastPresentedPTS) {
         // Frame is late, drop it
-        const frame = this.frameBuffer.get(pts);
-        if (frame) {
-          frame.close();
+        const entry = this.frameBuffer.get(pts);
+        if (entry) {
+          entry.frame.close();
           this.frameBuffer.delete(pts);
           this.metrics.framesDropped++;
         }
@@ -549,21 +577,20 @@ export class ATSCVideoDecoder {
       }
 
       // Present frame
-      const frame = this.frameBuffer.get(pts);
-      if (frame) {
-        this.onFrame(frame);
+      const entry = this.frameBuffer.get(pts);
+      if (entry) {
+        this.onFrame(entry.frame);
         this.lastPresentedPTS = pts;
         this.frameBuffer.delete(pts);
         break; // Present one frame at a time
       }
     }
 
-    // Clean up old frames (more than 1 second old)
-    const now = performance.now() * 1000; // Convert to microseconds
-    for (const [pts, frame] of this.frameBuffer.entries()) {
-      if (now - pts > 1000000) {
-        // 1 second in microseconds
-        frame.close();
+    // Clean up old frames (more than FRAME_BUFFER_TIMEOUT_MS old)
+    const now = performance.now();
+    for (const [pts, entry] of this.frameBuffer.entries()) {
+      if (now - entry.receivedAt > ATSCVideoDecoder.FRAME_BUFFER_TIMEOUT_MS) {
+        entry.frame.close();
         this.frameBuffer.delete(pts);
         this.metrics.framesDropped++;
       }
@@ -583,11 +610,7 @@ export class ATSCVideoDecoder {
   /**
    * Update performance metrics
    */
-  private updateMetrics(decodeTime: number, dataSize: number): void {
-    this.metrics.totalDecodeTime += decodeTime;
-    this.metrics.averageDecodeTime =
-      this.metrics.totalDecodeTime / this.metrics.framesDecoded;
-
+  private updateMetrics(dataSize: number): void {
     // Calculate bitrate (bytes per second)
     const now = Date.now();
     const timeDelta = (now - this.metrics.lastUpdateTime) / 1000; // seconds
@@ -595,6 +618,12 @@ export class ATSCVideoDecoder {
       this.metrics.currentBitrate = (dataSize * 8) / timeDelta; // bits per second
     }
     this.metrics.lastUpdateTime = now;
+
+    // Average decode time is calculated in handleDecodedFrame
+    this.metrics.averageDecodeTime =
+      this.metrics.framesDecoded > 0
+        ? this.metrics.totalDecodeTime / this.metrics.framesDecoded
+        : 0;
   }
 
   /**
@@ -607,6 +636,8 @@ export class ATSCVideoDecoder {
 
       // Present any remaining buffered frames
       this.presentFrames();
+
+      this.state = "configured";
     }
   }
 
@@ -620,8 +651,8 @@ export class ATSCVideoDecoder {
     this.lastPresentedPTS = 0;
 
     // Close buffered frames
-    for (const frame of this.frameBuffer.values()) {
-      frame.close();
+    for (const entry of this.frameBuffer.values()) {
+      entry.frame.close();
     }
     this.frameBuffer.clear();
 
@@ -650,8 +681,8 @@ export class ATSCVideoDecoder {
    */
   public close(): void {
     // Close buffered frames
-    for (const frame of this.frameBuffer.values()) {
-      frame.close();
+    for (const entry of this.frameBuffer.values()) {
+      entry.frame.close();
     }
     this.frameBuffer.clear();
 
