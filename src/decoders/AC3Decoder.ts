@@ -7,6 +7,8 @@
  * AC-3 Specification: ATSC A/52 Standard
  */
 
+import type { PESHeader, DecoderState, DecoderErrorCallback } from "./types";
+
 /**
  * AC-3 frame header information
  */
@@ -23,17 +25,6 @@ export interface AC3FrameHeader {
   frameSize: number; // Frame size in bytes
   numChannels: number; // Number of channels
   bitrate: number; // Bitrate in kbps
-}
-
-/**
- * PES packet header information
- */
-export interface PESHeader {
-  streamId: number;
-  packetLength: number;
-  pts?: number; // Presentation timestamp (33-bit, 90kHz clock)
-  dts?: number; // Decode timestamp (33-bit, 90kHz clock)
-  headerDataLength: number;
 }
 
 /**
@@ -59,17 +50,6 @@ export interface AudioDecoderMetrics {
 }
 
 /**
- * Decoder state
- */
-export type DecoderState =
-  | "unconfigured"
-  | "configured"
-  | "decoding"
-  | "flushing"
-  | "error"
-  | "closed";
-
-/**
  * Callback for decoded audio samples
  */
 export type AudioOutputCallback = (
@@ -79,14 +59,6 @@ export type AudioOutputCallback = (
   pts?: number,
 ) => void;
 
-/**
- * Callback for decoder errors
- */
-export type DecoderErrorCallback = (error: Error) => void;
-
-/**
- * Channel configuration constants (acmod values)
- */
 /**
  * Sample rate table (fscod values)
  */
