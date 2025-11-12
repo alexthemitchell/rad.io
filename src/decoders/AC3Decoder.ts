@@ -567,7 +567,7 @@ export class AC3Decoder {
         const chunk = new EncodedAudioChunk({
           type: "key", // AC-3 frames are self-contained
           timestamp,
-          duration: (1536 * 1000000) / header.sampleRate, // 1536 samples per frame
+          duration: Math.floor((1536 * 1000000) / header.sampleRate), // 1536 samples per frame
           data: frame,
         });
 
@@ -636,7 +636,7 @@ export class AC3Decoder {
 
     // Apply lip-sync correction
     const adjustedPTS = pts
-      ? pts + (this.audioDelay * 90000) / 1000
+      ? Math.floor(pts + (this.audioDelay * 90000) / 1000)
       : undefined;
 
     // Queue audio for synchronized output
@@ -710,7 +710,7 @@ export class AC3Decoder {
 
       // Get timestamp (convert from microseconds to 90kHz)
       const pts = Math.floor((audioData.timestamp * 90000) / 1000000);
-      const adjustedPTS = pts + (this.audioDelay * 90000) / 1000;
+      const adjustedPTS = Math.floor(pts + (this.audioDelay * 90000) / 1000);
 
       // Queue for synchronized output
       this.audioQueue.set(adjustedPTS, {

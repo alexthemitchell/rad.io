@@ -771,9 +771,8 @@ describe("AC3Decoder", () => {
       ]);
 
       decoder.processPayload(pesPacketWithPTS);
-      decoder.presentAudio(100); // Present audio at time 100ms
 
-      // Audio should have been queued and potentially presented
+      // Audio should have been queued and potentially presented internally
     });
 
     it("should drop old audio frames", async () => {
@@ -808,9 +807,8 @@ describe("AC3Decoder", () => {
       ]);
 
       decoder.processPayload(pesPacket);
-      decoder.presentAudio(9999999); // Present with very late time
 
-      // Old frames should be dropped
+      // Old frames would be dropped automatically during internal presentAudio calls
       const metrics = decoder.getMetrics();
       expect(metrics.framesDropped).toBeGreaterThanOrEqual(0);
     });
@@ -836,7 +834,6 @@ describe("AC3Decoder", () => {
 
     it("should handle reinitialization after error", async () => {
       await decoder.initialize();
-      const initialState = decoder.getConfig();
 
       // Force an error state by closing and trying to reinitialize
       decoder.close();

@@ -49,24 +49,27 @@ Works with `TransportStreamParser` to process complete broadcast pipeline:
 3. Decoder processes payloads → outputs audio samples
 4. WebAudio API handles playback
 
-## Current Limitations
+## Current Implementation
 
-**Parser Framework Only**: Current implementation parses AC-3 structure but outputs **silent audio** (placeholder). Full decoding requires:
+**WebCodecs Native Decoding**: The implementation uses WebCodecs AudioDecoder for full AC-3 decoding when supported by the browser:
 
-- Bit allocation, exponent/mantissa decoding
-- IMDCT (Inverse Modified DCT)
-- Window/overlap-add
+- ✅ Complete AC-3 frame parsing and validation
+- ✅ Native decoding via WebCodecs AudioDecoder (when available)
+- ✅ ITU-R BS.775 compliant multi-channel downmixing
+- ✅ Automatic fallback to frame parsing when WebCodecs unsupported
+- ⚠️ Fallback mode generates silent placeholder audio
 
-**Production Solutions**:
+**Production Ready**: No additional dependencies required for browsers with WebCodecs AC-3 support (Chrome, Edge, modern Safari).
+
+**Alternative for Unsupported Browsers**:
 
 1. WebAssembly AC-3 decoder (port FFmpeg libavcodec)
 2. Server-side transcoding to AAC/Opus
-3. WebCodecs API (if browser supports AC-3 natively)
 
 ## Testing
 
 - Comprehensive unit tests covering all functionality
-- Tests include PES parsing, frame sync, partial frames, downmix, DRC, state management
+- Tests include PES parsing, frame sync, partial frames, downmix, DRC, state management, WebCodecs integration
 - All tests passing with proper error handling
 
 ## Code Quality

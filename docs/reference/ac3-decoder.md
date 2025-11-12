@@ -143,13 +143,14 @@ interface PESHeader {
 **PTS Parsing**: Extracts 33-bit Presentation Time Stamps for A/V sync
 
 ```typescript
-// PTS is encoded in 5 bytes with specific bit patterns
-pts =
-  ((data[9] & 0x0e) << 29) |
-  ((data[10] & 0xff) << 22) |
-  ((data[11] & 0xfe) << 14) |
-  ((data[12] & 0xff) << 7) |
-  ((data[13] & 0xfe) >> 1);
+// PTS is encoded in 5 bytes with specific bit patterns (using BigInt for 33-bit accuracy)
+pts = Number(
+  ((BigInt(data[9]) & 0x0en) << 29n) |
+    ((BigInt(data[10]) & 0xffn) << 22n) |
+    ((BigInt(data[11]) & 0xfen) << 14n) |
+    ((BigInt(data[12]) & 0xffn) << 7n) |
+    ((BigInt(data[13]) & 0xfen) >> 1n),
+);
 ```
 
 ### 2. Channel Downmixing
@@ -430,7 +431,7 @@ Get current audio configuration.
 
 The decoder includes comprehensive tests:
 
-- ✅ 35 unit tests covering all major functionality
+- ✅ Comprehensive unit tests covering all major functionality
 - ✅ PES packet parsing and PTS extraction
 - ✅ AC-3 frame synchronization
 - ✅ Partial frame handling across packets
