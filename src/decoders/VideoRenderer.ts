@@ -106,10 +106,19 @@ export class VideoRenderer {
       return;
     }
 
+    // Guard against division by zero before computing aspect ratios
+    if (
+      this.videoHeight === 0 ||
+      this.canvas.clientHeight === 0 ||
+      this.canvas.clientWidth === 0
+    ) {
+      return;
+    }
+
     const aspectRatio = this.videoWidth / this.videoHeight;
     const canvasAspect = this.canvas.clientWidth / this.canvas.clientHeight;
 
-    // Guard against division by zero or invalid aspect ratios
+    // Guard against invalid aspect ratios
     if (
       !isFinite(aspectRatio) ||
       !isFinite(canvasAspect) ||
@@ -163,10 +172,24 @@ export class VideoRenderer {
       };
     }
 
+    // Guard against division by zero before computing aspect ratios
+    if (
+      this.videoHeight === 0 ||
+      this.canvas.height === 0 ||
+      this.canvas.width === 0
+    ) {
+      return {
+        dx: 0,
+        dy: 0,
+        dWidth: this.canvas.width,
+        dHeight: this.canvas.height,
+      };
+    }
+
     const aspectRatio = this.videoWidth / this.videoHeight;
     const canvasAspect = this.canvas.width / this.canvas.height;
 
-    // Guard against division by zero or invalid aspect ratios
+    // Guard against invalid aspect ratios
     if (
       !isFinite(aspectRatio) ||
       !isFinite(canvasAspect) ||

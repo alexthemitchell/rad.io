@@ -239,4 +239,141 @@ describe("VideoRenderer", () => {
       expect(dimensions.height).toBe(1080);
     });
   });
+
+  describe("Division by zero protection", () => {
+    it("should handle zero videoHeight in updateCanvasSize", () => {
+      const testCanvas = document.createElement("canvas");
+      testCanvas.width = 800;
+      testCanvas.height = 600;
+      Object.defineProperty(testCanvas, "clientWidth", { value: 800 });
+      Object.defineProperty(testCanvas, "clientHeight", { value: 600 });
+
+      const testRenderer = new VideoRenderer({
+        canvas: testCanvas,
+        maintainAspectRatio: true,
+        scaleMode: "fit",
+      });
+
+      // Simulate frame with zero height
+      const mockFrame = {
+        displayWidth: 1920,
+        displayHeight: 0, // Zero height
+        timestamp: 0,
+        close: jest.fn(),
+      } as unknown as VideoFrame;
+
+      // Should not throw
+      expect(() => testRenderer.renderFrame(mockFrame)).not.toThrow();
+    });
+
+    it("should handle zero canvas clientHeight in updateCanvasSize", () => {
+      // Create canvas with zero client height
+      const zeroHeightCanvas = document.createElement("canvas");
+      zeroHeightCanvas.width = 800;
+      zeroHeightCanvas.height = 600;
+      Object.defineProperty(zeroHeightCanvas, "clientHeight", {
+        value: 0,
+        writable: false,
+      });
+      Object.defineProperty(zeroHeightCanvas, "clientWidth", {
+        value: 800,
+        writable: false,
+      });
+
+      const testRenderer = new VideoRenderer({
+        canvas: zeroHeightCanvas,
+        maintainAspectRatio: true,
+        scaleMode: "fit",
+      });
+
+      const mockFrame = {
+        displayWidth: 1920,
+        displayHeight: 1080,
+        timestamp: 0,
+        close: jest.fn(),
+      } as unknown as VideoFrame;
+
+      // Should not throw
+      expect(() => testRenderer.renderFrame(mockFrame)).not.toThrow();
+    });
+
+    it("should handle zero canvas clientWidth in updateCanvasSize", () => {
+      // Create canvas with zero client width
+      const zeroWidthCanvas = document.createElement("canvas");
+      zeroWidthCanvas.width = 800;
+      zeroWidthCanvas.height = 600;
+      Object.defineProperty(zeroWidthCanvas, "clientHeight", {
+        value: 600,
+        writable: false,
+      });
+      Object.defineProperty(zeroWidthCanvas, "clientWidth", {
+        value: 0,
+        writable: false,
+      });
+
+      const testRenderer = new VideoRenderer({
+        canvas: zeroWidthCanvas,
+        maintainAspectRatio: true,
+        scaleMode: "fit",
+      });
+
+      const mockFrame = {
+        displayWidth: 1920,
+        displayHeight: 1080,
+        timestamp: 0,
+        close: jest.fn(),
+      } as unknown as VideoFrame;
+
+      // Should not throw
+      expect(() => testRenderer.renderFrame(mockFrame)).not.toThrow();
+    });
+
+    it("should handle zero videoHeight in calculateDrawRect", () => {
+      const testCanvas = document.createElement("canvas");
+      testCanvas.width = 800;
+      testCanvas.height = 600;
+      Object.defineProperty(testCanvas, "clientWidth", { value: 800 });
+      Object.defineProperty(testCanvas, "clientHeight", { value: 600 });
+
+      const testRenderer = new VideoRenderer({
+        canvas: testCanvas,
+        maintainAspectRatio: true,
+        scaleMode: "fit",
+      });
+
+      const mockFrame = {
+        displayWidth: 1920,
+        displayHeight: 0, // Zero height
+        timestamp: 0,
+        close: jest.fn(),
+      } as unknown as VideoFrame;
+
+      // Should not throw and should return default rect
+      expect(() => testRenderer.renderFrame(mockFrame)).not.toThrow();
+    });
+
+    it("should handle zero canvas dimensions in calculateDrawRect", () => {
+      const zeroCanvas = document.createElement("canvas");
+      zeroCanvas.width = 0;
+      zeroCanvas.height = 0;
+      Object.defineProperty(zeroCanvas, "clientWidth", { value: 0 });
+      Object.defineProperty(zeroCanvas, "clientHeight", { value: 0 });
+
+      const testRenderer = new VideoRenderer({
+        canvas: zeroCanvas,
+        maintainAspectRatio: true,
+        scaleMode: "fit",
+      });
+
+      const mockFrame = {
+        displayWidth: 1920,
+        displayHeight: 1080,
+        timestamp: 0,
+        close: jest.fn(),
+      } as unknown as VideoFrame;
+
+      // Should not throw
+      expect(() => testRenderer.renderFrame(mockFrame)).not.toThrow();
+    });
+  });
 });

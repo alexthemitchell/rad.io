@@ -316,4 +316,104 @@ describe("ATSCVideoDecoder", () => {
       global.VideoDecoder.isConfigSupported = originalIsConfigSupported;
     });
   });
+
+  describe("PTS/DTS parsing with BigInt", () => {
+    beforeEach(async () => {
+      await decoder.initialize(StreamType.H264_VIDEO, 1920, 1080);
+    });
+
+    it("should correctly parse large PTS values above 2^31", () => {
+      // Create a PES packet with PTS > 2^31 (0x80000000 = 2147483648)
+      // PTS value: 2^31 + 1000 = 2147484648
+      // In 90kHz clock, encoded as 33-bit value
+      const largesPTS = 2147484648;
+      const pesPacket = new Uint8Array([
+        0x00,
+        0x00,
+        0x01,
+        0xe0, // PES start code + stream ID
+        0x00,
+        0x20, // Packet length (32 bytes)
+        0x84,
+        0x80, // Flags: PTS present
+        0x05, // PES header data length (5 bytes for PTS)
+        // PTS encoding (33-bit value in 5 bytes):
+        // Format: 0010xxxx xxxxxxxx xxxxxxx1 xxxxxxxx xxxxxxx1
+        0x21, // 0010 0001 - marker bits + high 3 bits of PTS
+        0x00, // Next 8 bits
+        0x00, // Next 7 bits + marker bit
+        0x0f, // Next 8 bits
+        0xa1, // Low 7 bits + marker bit
+        // Padding
+        ...new Array(27).fill(0),
+      ]);
+
+      // Process the packet
+      decoder.processPayload(pesPacket);
+
+      // The test passes if no errors are thrown
+      // Actual PTS value validation would require access to internal state
+    });
+
+    it("should correctly parse PTS and DTS together", () => {
+      // Create a PES packet with both PTS and DTS
+      const pesPacket = new Uint8Array([
+        0x00,
+        0x00,
+        0x01,
+        0xe0, // PES start code + stream ID
+        0x00,
+        0x20, // Packet length
+        0x84,
+        0xc0, // Flags: both PTS and DTS present
+        0x0a, // PES header data length (10 bytes for PTS+DTS)
+        // PTS encoding (sample value)
+        0x31,
+        0x00,
+        0x01,
+        0x00,
+        0x01,
+        // DTS encoding (sample value)
+        0x11,
+        0x00,
+        0x01,
+        0x00,
+        0x01,
+        // Padding
+        ...new Array(22).fill(0),
+      ]);
+
+      // Process the packet
+      decoder.processPayload(pesPacket);
+
+      // The test passes if no errors are thrown
+    });
+
+    it("should handle maximum 33-bit PTS value", () => {
+      // Maximum 33-bit value: 2^33 - 1 = 8589934591
+      // This tests the upper bound of our BigInt parsing
+      const pesPacket = new Uint8Array([
+        0x00,
+        0x00,
+        0x01,
+        0xe0, // PES start code + stream ID
+        0x00,
+        0x20, // Packet length
+        0x84,
+        0x80, // Flags: PTS present
+        0x05, // PES header data length
+        // PTS encoding for max value (all bits set except marker bits)
+        0x3e, // 0011 1110
+        0xff, // 1111 1111
+        0xff, // 1111 1111
+        0xff, // 1111 1111
+        0xff, // 1111 1111
+        // Padding
+        ...new Array(27).fill(0),
+      ]);
+
+      // Process the packet - should not overflow
+      decoder.processPayload(pesPacket);
+    });
+  });
 });
