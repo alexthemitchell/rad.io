@@ -147,6 +147,12 @@ export class AC3Decoder {
   // Audio buffer timeout (1 second)
   private static readonly AUDIO_BUFFER_TIMEOUT_MS = 1000;
 
+  // ITU-R BS.775 downmix gain: -3dB = 1/√2 ≈ 0.707
+  private static readonly CENTER_SURROUND_GAIN = Math.SQRT1_2;
+
+  // Maximum partial frame buffer size to prevent memory leaks (64KB)
+  private static readonly MAX_PARTIAL_FRAME_SIZE = 65536;
+
   private state: DecoderState = "unconfigured";
   private audioContext: AudioContext | null = null;
   private currentConfig: AudioConfig | null = null;
@@ -154,9 +160,6 @@ export class AC3Decoder {
   // WebCodecs AudioDecoder for native AC-3 decoding
   private audioDecoder: AudioDecoder | null = null;
   private useWebCodecs = false;
-
-  // Audio buffer for WebCodecs output
-  private audioDataQueue: AudioData[] = [];
 
   // PES packet assembly
   private pesBuffer: Uint8Array[] = [];
@@ -212,9 +215,7 @@ export class AC3Decoder {
     bufferSize = 4096,
   ): Promise<void> {
     if (this.state !== "unconfigured" && this.state !== "closed") {
-      throw new Error(
-        `Cannot initialize decoder in ${this.state} state. Close first.`,
-      );
+      throw new Error(`Cannot initialize decoder in ${this.state} state.`);
     }
 
     // Create audio context for output
@@ -431,7 +432,16 @@ export class AC3Decoder {
       if (syncOffset === -1) {
         // No sync word found, save remaining data as partial frame
         if (offset < processData.length) {
-          this.partialFrame = processData.slice(offset);
+          const remainingData = processData.slice(offset);
+          // Prevent memory leak: limit partial frame buffer size
+          if (remainingData.length > AC3Decoder.MAX_PARTIAL_FRAME_SIZE) {
+            console.warn(
+              "AC3Decoder: Partial frame buffer exceeded maximum size, clearing",
+            );
+            this.partialFrame = null;
+          } else {
+            this.partialFrame = remainingData;
+          }
         }
         break;
       }
@@ -537,17 +547,9 @@ export class AC3Decoder {
       numChannels = 5;
     }
 
-    // Check for LFE channel (need to parse more bits)
-    let lfeon = 0;
-    if (data.length > 6) {
-      // LFE on is at different bit positions depending on acmod
-      // For simplicity, assume bit parsing (would need full bitstream parser)
-      lfeon = 0; // Placeholder - would need proper bit-level parsing
-    }
-
-    if (lfeon) {
-      numChannels++; // Add LFE channel
-    }
+    // TODO: Proper LFE bit parsing not implemented. LFE channel is always assumed off.
+    // When implemented, parse the lfeon bit and increment numChannels if present.
+    const lfeon = 0; // Placeholder - would need proper bit-level parsing
 
     // Get bitrate
     const bitrate = AC3_BITRATES[Math.floor(frmsizecod / 2)] ?? 192;
@@ -682,14 +684,19 @@ export class AC3Decoder {
       const channelCount = audioData.numberOfChannels;
       const frameCount = audioData.numberOfFrames;
 
-      // Allocate buffer for planar audio
+      // Allocate buffer for planar audio (each channel stored sequentially)
       const planarBuffer = new Float32Array(channelCount * frameCount);
 
-      // Copy audio data (WebCodecs uses planar format)
-      audioData.copyTo(planarBuffer, {
-        planeIndex: 0,
-        format: "f32-planar",
-      });
+      // Copy each audio plane separately (WebCodecs uses planar format)
+      for (let channel = 0; channel < channelCount; channel++) {
+        const channelBuffer = new Float32Array(frameCount);
+        audioData.copyTo(channelBuffer, {
+          planeIndex: channel,
+          format: "f32-planar",
+        });
+        // Copy to the appropriate position in the planar buffer
+        planarBuffer.set(channelBuffer, channel * frameCount);
+      }
 
       // Convert planar to interleaved stereo
       let stereoSamples: Float32Array;
@@ -773,8 +780,8 @@ export class AC3Decoder {
     frameCount: number,
   ): Float32Array {
     const stereoSamples = new Float32Array(frameCount * 2);
-    const centerGain = 0.707; // -3dB for center channel
-    const surroundGain = 0.707; // -3dB for surround channels
+    const centerGain = AC3Decoder.CENTER_SURROUND_GAIN; // -3dB for center channel (1/√2)
+    const surroundGain = AC3Decoder.CENTER_SURROUND_GAIN; // -3dB for surround channels (1/√2)
 
     // Standard downmix matrices based on channel count
     if (channelCount === 6) {
@@ -918,9 +925,13 @@ export class AC3Decoder {
 
   /**
    * Set language track selection
+   * @param _language - Language code (not yet implemented)
    */
   public setLanguage(_language: string | null): void {
-    // Language selection would be implemented with multi-audio support
+    // Language selection is not yet implemented. This is a placeholder for future multi-audio support.
+    console.warn(
+      "AC3Decoder.setLanguage: Language selection is not yet implemented.",
+    );
   }
 
   /**
@@ -950,12 +961,6 @@ export class AC3Decoder {
     // Clear audio queue
     this.audioQueue.clear();
 
-    // Clear AudioData queue
-    for (const audioData of this.audioDataQueue) {
-      audioData.close();
-    }
-    this.audioDataQueue = [];
-
     // Reset AudioDecoder if it exists
     if (this.audioDecoder && this.audioDecoder.state !== "closed") {
       this.audioDecoder.reset();
@@ -982,12 +987,6 @@ export class AC3Decoder {
     // Clear queues
     this.audioQueue.clear();
     this.partialFrame = null;
-
-    // Close AudioData queue
-    for (const audioData of this.audioDataQueue) {
-      audioData.close();
-    }
-    this.audioDataQueue = [];
 
     // Close AudioDecoder
     if (this.audioDecoder) {

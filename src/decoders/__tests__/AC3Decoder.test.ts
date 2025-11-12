@@ -107,7 +107,7 @@ describe("AC3Decoder", () => {
 
   describe("initialization", () => {
     it("should initialize with default configuration", async () => {
-      await await decoder.initialize();
+      await decoder.initialize();
       expect(decoder.getState()).toBe("configured");
       const config = decoder.getConfig();
       expect(config).not.toBeNull();
@@ -125,7 +125,7 @@ describe("AC3Decoder", () => {
     });
 
     it("should throw error when initializing in non-unconfigured state", async () => {
-      await await decoder.initialize();
+      await decoder.initialize();
       await expect(decoder.initialize()).rejects.toThrow(
         "Cannot initialize decoder in configured state",
       );
@@ -134,17 +134,26 @@ describe("AC3Decoder", () => {
 
   describe("PES packet parsing", () => {
     beforeEach(async () => {
-      await await decoder.initialize();
+      await decoder.initialize();
     });
 
     it("should detect PES packet start", () => {
       // PES packet start code: 0x000001
       const payload = new Uint8Array([
-        0x00, 0x00, 0x01, 0xbd, // Start code + stream ID (private stream 1)
-        0x00, 0x20, // Packet length
-        0x84, 0x80, // PES header flags
+        0x00,
+        0x00,
+        0x01,
+        0xbd, // Start code + stream ID (private stream 1)
+        0x00,
+        0x20, // Packet length
+        0x84,
+        0x80, // PES header flags
         0x05, // Header data length
-        0x21, 0x00, 0x01, 0x00, 0x01, // PTS
+        0x21,
+        0x00,
+        0x01,
+        0x00,
+        0x01, // PTS
         ...new Array(23).fill(0), // Padding
       ]);
 
@@ -169,11 +178,20 @@ describe("AC3Decoder", () => {
     it("should extract PTS from PES header", () => {
       // PES packet with valid PTS
       const payload = new Uint8Array([
-        0x00, 0x00, 0x01, 0xbd, // Start code + stream ID
-        0x00, 0x30, // Packet length (48 bytes)
-        0x84, 0x80, // Flags (PTS present)
+        0x00,
+        0x00,
+        0x01,
+        0xbd, // Start code + stream ID
+        0x00,
+        0x30, // Packet length (48 bytes)
+        0x84,
+        0x80, // Flags (PTS present)
         0x05, // Header data length
-        0x21, 0x00, 0x01, 0x00, 0x01, // PTS = 1 (simplified)
+        0x21,
+        0x00,
+        0x01,
+        0x00,
+        0x01, // PTS = 1 (simplified)
         ...new Array(35).fill(0), // Padding
       ]);
 
@@ -190,8 +208,10 @@ describe("AC3Decoder", () => {
     it("should detect AC-3 sync word", () => {
       // Create a minimal AC-3 frame
       const ac3Frame = new Uint8Array([
-        0x0b, 0x77, // Sync word
-        0x00, 0x00, // CRC1
+        0x0b,
+        0x77, // Sync word
+        0x00,
+        0x00, // CRC1
         0x00, // fscod=0 (48kHz), frmsizecod=0
         0x50, // bsid=10, bsmod=0
         0x00, // acmod=0
@@ -199,10 +219,20 @@ describe("AC3Decoder", () => {
       ]);
 
       const pesPacket = new Uint8Array([
-        0x00, 0x00, 0x01, 0xbd, // PES start
-        0x00, 0x90, // Packet length
-        0x84, 0x80, 0x05, // Flags
-        0x21, 0x00, 0x01, 0x00, 0x01, // PTS
+        0x00,
+        0x00,
+        0x01,
+        0xbd, // PES start
+        0x00,
+        0x90, // Packet length
+        0x84,
+        0x80,
+        0x05, // Flags
+        0x21,
+        0x00,
+        0x01,
+        0x00,
+        0x01, // PTS
         ...ac3Frame,
         ...new Array(12).fill(0), // Padding
       ]);
@@ -213,8 +243,10 @@ describe("AC3Decoder", () => {
 
     it("should handle partial frames across packets", () => {
       const ac3FrameStart = new Uint8Array([
-        0x0b, 0x77, // Sync word
-        0x00, 0x00, // CRC1
+        0x0b,
+        0x77, // Sync word
+        0x00,
+        0x00, // CRC1
         0x00, // fscod=0 (48kHz), frmsizecod=0
         0x50, // bsid=10, bsmod=0
         0x00, // acmod=0
@@ -224,12 +256,36 @@ describe("AC3Decoder", () => {
 
       // First packet with partial frame
       const pesPacket1 = new Uint8Array([
-        0x00, 0x00, 0x01, 0xbd, 0x00, 0x10, 0x84, 0x80, 0x05, 0x21, 0x00,
-        0x01, 0x00, 0x01, ...ac3FrameStart,
+        0x00,
+        0x00,
+        0x01,
+        0xbd,
+        0x00,
+        0x10,
+        0x84,
+        0x80,
+        0x05,
+        0x21,
+        0x00,
+        0x01,
+        0x00,
+        0x01,
+        ...ac3FrameStart,
       ]);
 
       // Second packet completing the frame
-      const pesPacket2 = new Uint8Array([0x00, 0x00, 0x01, 0xbd, 0x00, 0x80, 0x84, 0x80, 0x00, ...ac3FrameEnd]);
+      const pesPacket2 = new Uint8Array([
+        0x00,
+        0x00,
+        0x01,
+        0xbd,
+        0x00,
+        0x80,
+        0x84,
+        0x80,
+        0x00,
+        ...ac3FrameEnd,
+      ]);
 
       decoder.processPayload(pesPacket1);
       decoder.processPayload(pesPacket2);
@@ -240,16 +296,31 @@ describe("AC3Decoder", () => {
     it("should validate frame size", () => {
       // AC-3 frame with invalid frmsizecod
       const invalidFrame = new Uint8Array([
-        0x0b, 0x77, // Sync word
-        0x00, 0x00, // CRC1
+        0x0b,
+        0x77, // Sync word
+        0x00,
+        0x00, // CRC1
         0x3f, // fscod=0, frmsizecod=63 (invalid, max is 37)
         0x50, // bsid=10, bsmod=0
         0x00, // acmod=0
       ]);
 
       const pesPacket = new Uint8Array([
-        0x00, 0x00, 0x01, 0xbd, 0x00, 0x10, 0x84, 0x80, 0x05, 0x21, 0x00,
-        0x01, 0x00, 0x01, ...invalidFrame,
+        0x00,
+        0x00,
+        0x01,
+        0xbd,
+        0x00,
+        0x10,
+        0x84,
+        0x80,
+        0x05,
+        0x21,
+        0x00,
+        0x01,
+        0x00,
+        0x01,
+        ...invalidFrame,
       ]);
 
       decoder.processPayload(pesPacket);
@@ -264,9 +335,7 @@ describe("AC3Decoder", () => {
     });
 
     it("should handle stereo input", () => {
-      const stereoSamples = new Float32Array([
-        0.5, -0.5, 0.3, -0.3, 0.1, -0.1,
-      ]);
+      const stereoSamples = new Float32Array([0.5, -0.5, 0.3, -0.3, 0.1, -0.1]);
 
       // Process through decoder (internally tested via processAC3Frame)
       // Direct testing would require exposing private method or integration test
@@ -423,14 +492,36 @@ describe("AC3Decoder", () => {
     it("should recover from sync loss", () => {
       // Garbage data followed by valid sync word
       const payload = new Uint8Array([
-        0xff, 0xff, 0xff, 0xff, // Garbage
-        0x0b, 0x77, // Sync word
-        0x00, 0x00, 0x00, 0x50, 0x00,
+        0xff,
+        0xff,
+        0xff,
+        0xff, // Garbage
+        0x0b,
+        0x77, // Sync word
+        0x00,
+        0x00,
+        0x00,
+        0x50,
+        0x00,
       ]);
 
       const pesPacket = new Uint8Array([
-        0x00, 0x00, 0x01, 0xbd, 0x00, 0x20, 0x84, 0x80, 0x05, 0x21, 0x00,
-        0x01, 0x00, 0x01, ...payload, ...new Array(10).fill(0),
+        0x00,
+        0x00,
+        0x01,
+        0xbd,
+        0x00,
+        0x20,
+        0x84,
+        0x80,
+        0x05,
+        0x21,
+        0x00,
+        0x01,
+        0x00,
+        0x01,
+        ...payload,
+        ...new Array(10).fill(0),
       ]);
 
       decoder.processPayload(pesPacket);
@@ -456,11 +547,13 @@ describe("AC3Decoder", () => {
   describe("WebCodecs integration", () => {
     it("should use WebCodecs AudioDecoder when available", async () => {
       await decoder.initialize();
-      
+
       // Create a minimal AC-3 frame
       const ac3Frame = new Uint8Array([
-        0x0b, 0x77, // Sync word
-        0x00, 0x00, // CRC1
+        0x0b,
+        0x77, // Sync word
+        0x00,
+        0x00, // CRC1
         0x00, // fscod=0 (48kHz), frmsizecod=0
         0x50, // bsid=10, bsmod=0
         0x00, // acmod=0
@@ -468,16 +561,26 @@ describe("AC3Decoder", () => {
       ]);
 
       const pesPacket = new Uint8Array([
-        0x00, 0x00, 0x01, 0xbd, // PES start
-        0x00, 0x90, // Packet length
-        0x84, 0x80, 0x05, // Flags
-        0x21, 0x00, 0x01, 0x00, 0x01, // PTS
+        0x00,
+        0x00,
+        0x01,
+        0xbd, // PES start
+        0x00,
+        0x90, // Packet length
+        0x84,
+        0x80,
+        0x05, // Flags
+        0x21,
+        0x00,
+        0x01,
+        0x00,
+        0x01, // PTS
         ...ac3Frame,
         ...new Array(12).fill(0), // Padding
       ]);
 
       decoder.processPayload(pesPacket);
-      
+
       // Should process without errors
       expect(mockOnError).not.toHaveBeenCalled();
     });

@@ -27,8 +27,12 @@ Implemented complete AC-3 (Dolby Digital) audio decoder for ATSC broadcasts in `
 
 ```typescript
 const decoder = new AC3Decoder(
-  (samples, sampleRate, channelCount, pts) => { /* output */ },
-  (error) => { /* handle error */ }
+  (samples, sampleRate, channelCount, pts) => {
+    /* output */
+  },
+  (error) => {
+    /* handle error */
+  },
 );
 decoder.initialize(48000, 2, 4096);
 decoder.processPayload(tsPayload); // Process TS packets
@@ -48,18 +52,20 @@ Works with `TransportStreamParser` to process complete broadcast pipeline:
 ## Current Limitations
 
 **Parser Framework Only**: Current implementation parses AC-3 structure but outputs **silent audio** (placeholder). Full decoding requires:
+
 - Bit allocation, exponent/mantissa decoding
 - IMDCT (Inverse Modified DCT)
 - Window/overlap-add
 
 **Production Solutions**:
+
 1. WebAssembly AC-3 decoder (port FFmpeg libavcodec)
 2. Server-side transcoding to AAC/Opus
 3. WebCodecs API (if browser supports AC-3 natively)
 
 ## Testing
 
-- 34 comprehensive unit tests covering all functionality
+- Comprehensive unit tests covering all functionality
 - Tests include PES parsing, frame sync, partial frames, downmix, DRC, state management
 - All tests passing with proper error handling
 

@@ -190,6 +190,7 @@ R_out = R + 0.707 * C;
 // Downmixing is automatic when using WebCodecs
 // Decoder detects channel count and applies appropriate matrix
 // Output is always stereo (2 channels)
+```
 
 ### 3. Dynamic Range Compression
 
@@ -346,13 +347,11 @@ The decoder uses the **WebCodecs AudioDecoder API** for native AC-3 decoding:
 If WebCodecs AC-3 support is not available on target platforms:
 
 1. **WebAssembly AC-3 Decoder** (for maximum compatibility)
-
    - Port FFmpeg's libavcodec AC-3 decoder to WebAssembly
    - Provides universal browser support
    - Requires additional bundle size (~500KB-1MB)
 
 2. **Server-Side Transcoding** (for lower client complexity)
-
    - Transcode AC-3 to AAC/Opus on server
    - Use WebCodecs AudioDecoder for widely-supported formats
    - Reduces client processing requirements
@@ -431,7 +430,7 @@ Get current audio configuration.
 
 The decoder includes comprehensive tests:
 
-- ✅ 34 unit tests covering all major functionality
+- ✅ 35 unit tests covering all major functionality
 - ✅ PES packet parsing and PTS extraction
 - ✅ AC-3 frame synchronization
 - ✅ Partial frame handling across packets
