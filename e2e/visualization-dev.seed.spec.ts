@@ -50,9 +50,6 @@ test.describe("Visualization dev-mode RDS seed", () => {
     });
 
     // Capture console warnings (non-ASCII should be logged)
-    const logged = await page.evaluate(() => {
-      return (window as any).__lastConsoleLogged || null;
-    });
     // We can't reliably read console output via evaluate; rely on getDecoderStats to reflect lastUpdate
     const stats = await page.evaluate(() =>
       (window as any).__DEV_RDS__.getDecoderStats(),
