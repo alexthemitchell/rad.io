@@ -1,4 +1,10 @@
-import { classifyNumber, toMask, summarize, categorizeDb, clamp } from "../coverageSupport";
+import {
+  classifyNumber,
+  toMask,
+  summarize,
+  categorizeDb,
+  clamp,
+} from "../coverageSupport";
 
 describe("coverageSupport", () => {
   it("classifies numbers across ranges", () => {
