@@ -4,24 +4,33 @@ This document describes the AC-3 audio decoder implementation for ATSC digital t
 
 ## Overview
 
-The AC-3 (Dolby Digital) decoder processes compressed audio streams from ATSC broadcasts, providing:
+The AC-3 (Dolby Digital) decoder processes compressed audio streams from ATSC broadcasts using the WebCodecs API when available, with a fallback parsing framework.
 
-- Multi-channel audio (up to 5.1 channels)
-- Channel downmixing to stereo
-- Audio/video synchronization
+**Features:**
+
+- **Native AC-3 decoding** using WebCodecs AudioDecoder (when supported by browser)
+- Multi-channel audio support (up to 5.1 channels)
+- ITU-R BS.775 compliant channel downmixing to stereo
+- Audio/video synchronization with PTS handling
 - Dynamic range compression
 - Multiple audio track support
+- Automatic codec detection and fallback
 
 ## Architecture
 
 ### Processing Pipeline
 
 ```
-Transport Stream → PES Parser → AC-3 Frame Parser → Audio Decoder → WebAudio API → Speakers
-     (MPEG-TS)         ↓              ↓                   ↓              ↓
-                    PTS/DTS      Sync Detection      Downmix to       Playback
-                   Extraction      + Header          Stereo Audio      Queue
+Transport Stream → PES Parser → AC-3 Frame Parser → WebCodecs Decoder → Downmix → WebAudio API → Speakers
+     (MPEG-TS)         ↓              ↓                      ↓              ↓              ↓
+                    PTS/DTS      Sync Detection      Native Decode    ITU-R BS.775   Playback
+                   Extraction      + Header          (or Fallback)     Downmix        Queue
 ```
+
+The decoder uses a **hybrid approach**:
+
+1. **Primary**: WebCodecs AudioDecoder for native AC-3 decoding (if browser supports it)
+2. **Fallback**: Frame parsing with placeholder audio generation
 
 ## Components
 
@@ -35,11 +44,13 @@ The main decoder class that handles AC-3 bitstream parsing and audio processing.
 
 - PES packet assembly and header parsing
 - AC-3 frame synchronization and header extraction
-- Audio sample generation (placeholder for full decoding)
-- Channel downmixing (5.1 → stereo)
+- **WebCodecs AudioDecoder integration** for native AC-3 decoding
+- Automatic codec detection (tries ac-3, mp4a.a5, mp4a.A5)
+- ITU-R BS.775 compliant multi-channel downmixing (5.1 → stereo)
+- Planar to interleaved audio conversion
 - Dynamic range compression
-- PTS-based synchronization
-- Audio buffer management
+- PTS-based synchronization with lip-sync correction
+- Audio buffer management with timestamp ordering
 
 ### Initialization
 
@@ -57,8 +68,8 @@ const decoder = new AC3Decoder(
   },
 );
 
-// Initialize decoder
-decoder.initialize(48000, 2, 4096);
+// Initialize decoder (async - checks for WebCodecs support)
+await decoder.initialize(48000, 2, 4096);
 ```
 
 ### Processing Transport Stream Data
@@ -143,20 +154,42 @@ pts =
 
 ### 2. Channel Downmixing
 
-Converts multi-channel audio to stereo using standard downmix matrices:
+Implements **ITU-R BS.775** compliant downmixing for multi-channel audio:
+
+**5.1 Surround (L, R, C, LFE, Ls, Rs) → Stereo:**
 
 ```typescript
-// 5.1 to Stereo downmix formula
-L_out = L + 0.707 * C + 0.707 * LS;
-R_out = R + 0.707 * C + 0.707 * RS;
+L_out = L + 0.707 * C + 0.707 * Ls + LFE;
+R_out = R + 0.707 * C + 0.707 * Rs + LFE;
 ```
 
-**Usage**:
+**5.0 Surround (L, R, C, Ls, Rs) → Stereo:**
 
 ```typescript
-// Downmixing is automatic when processing frames
+L_out = L + 0.707 * C + 0.707 * Ls;
+R_out = R + 0.707 * C + 0.707 * Rs;
+```
+
+**3.0 (L, R, C) → Stereo:**
+
+```typescript
+L_out = L + 0.707 * C;
+R_out = R + 0.707 * C;
+```
+
+**Implementation Details:**
+
+- Handles planar audio from WebCodecs AudioDecoder
+- Converts to interleaved stereo format
+- Applies -3dB gain (0.707) to center and surround channels
+- Includes LFE channel in downmix for 5.1 sources
+
+**Usage:**
+
+```typescript
+// Downmixing is automatic when using WebCodecs
+// Decoder detects channel count and applies appropriate matrix
 // Output is always stereo (2 channels)
-```
 
 ### 3. Dynamic Range Compression
 
@@ -285,58 +318,49 @@ for (const packet of packets) {
 
 ### Current Implementation
 
-The current implementation provides a **parsing framework** for AC-3 streams with:
+The implementation uses **WebCodecs AudioDecoder** for full AC-3 decoding when supported:
 
 - ✅ Complete frame header parsing
 - ✅ PTS extraction and synchronization
 - ✅ Frame boundary detection
 - ✅ Buffer management
-- ⚠️ **Placeholder audio generation** (silent frames)
+- ✅ **Native AC-3 decoding** via WebCodecs AudioDecoder (when available)
+- ✅ ITU-R BS.775 multi-channel downmixing
+- ⚠️ Fallback to placeholder audio when WebCodecs unavailable
 
-### Full AC-3 Decoding
+### WebCodecs AC-3 Decoding
 
-Complete AC-3 decoding requires complex DSP operations:
+The decoder uses the **WebCodecs AudioDecoder API** for native AC-3 decoding:
 
-1. **Bit Allocation**: Determine bits per mantissa
-2. **Exponent Decoding**: Recover spectral envelope
-3. **Mantissa Decoding**: Dequantize audio samples
-4. **IMDCT**: Inverse Modified Discrete Cosine Transform
-5. **Windowing**: Time-domain aliasing cancellation
-6. **Overlap-Add**: Reconstruct time-domain samples
+1. **Codec Detection**: Tries multiple AC-3 codec strings (ac-3, mp4a.a5, mp4a.A5)
+2. **EncodedAudioChunk**: Wraps AC-3 frames with PTS timestamps
+3. **Native Decode**: Browser's native decoder handles the complex DSP
+4. **AudioData Output**: Receives decoded planar audio samples
+5. **Channel Downmix**: ITU-R BS.775 compliant 5.1 → stereo downmix
+6. **Format Conversion**: Planar to interleaved stereo
 
-### Recommended Solutions
+**Browser Support**: WebCodecs AC-3 support varies by browser and platform. The decoder automatically detects support and falls back gracefully.
 
-For production use, consider:
+### Alternative Approaches
 
-1. **WebAssembly AC-3 Decoder**
+If WebCodecs AC-3 support is not available on target platforms:
 
-   - Port existing AC-3 decoder (e.g., FFmpeg's libavcodec)
-   - Compile to WebAssembly for browser execution
-   - Provides full decoding capability
+1. **WebAssembly AC-3 Decoder** (for maximum compatibility)
 
-2. **Server-Side Transcoding**
+   - Port FFmpeg's libavcodec AC-3 decoder to WebAssembly
+   - Provides universal browser support
+   - Requires additional bundle size (~500KB-1MB)
+
+2. **Server-Side Transcoding** (for lower client complexity)
 
    - Transcode AC-3 to AAC/Opus on server
-   - Use WebCodecs AudioDecoder for supported formats
-   - Reduces client-side complexity
+   - Use WebCodecs AudioDecoder for widely-supported formats
+   - Reduces client processing requirements
 
-3. **WebCodecs API** (if browser supports AC-3)
-
-   ```typescript
-   const audioDecoder = new AudioDecoder({
-     output: (audioData) => {
-       /* handle decoded samples */
-     },
-     error: (error) => {
-       /* handle error */
-     },
-   });
-   audioDecoder.configure({
-     codec: "ac-3",
-     sampleRate: 48000,
-     numberOfChannels: 6,
-   });
-   ```
+3. **Current Implementation** (recommended)
+   - Uses native WebCodecs when available (Chrome, Edge, modern browsers)
+   - Automatic fallback to parsing framework
+   - No additional dependencies
 
 ## API Reference
 
@@ -351,9 +375,9 @@ new AC3Decoder(
 
 ### Methods
 
-#### `initialize(sampleRate?, channelCount?, bufferSize?): void`
+#### `initialize(sampleRate?, channelCount?, bufferSize?): Promise<void>`
 
-Initialize the decoder with audio configuration.
+Initialize the decoder with audio configuration and detect WebCodecs support.
 
 **Parameters**:
 

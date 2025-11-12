@@ -14,18 +14,88 @@ class MockAudioContext {
   }
 }
 
+// Mock AudioDecoder
+class MockAudioDecoder {
+  public state: "unconfigured" | "configured" | "closed" = "unconfigured";
+  private outputCallback: ((audioData: AudioData) => void) | null = null;
+
+  constructor(init: {
+    output: (audioData: AudioData) => void;
+    error: (error: DOMException) => void;
+  }) {
+    this.outputCallback = init.output;
+  }
+
+  configure(_config: AudioDecoderConfig): void {
+    this.state = "configured";
+  }
+
+  decode(_chunk: EncodedAudioChunk): void {
+    // Mock decode - just call output with a mock AudioData
+    if (this.outputCallback) {
+      const mockAudioData = {
+        numberOfChannels: 2,
+        numberOfFrames: 1536,
+        sampleRate: 48000,
+        timestamp: 0,
+        copyTo: jest.fn(),
+        close: jest.fn(),
+      } as unknown as AudioData;
+      this.outputCallback(mockAudioData);
+    }
+  }
+
+  reset(): void {
+    this.state = "configured";
+  }
+
+  close(): void {
+    this.state = "closed";
+  }
+
+  static async isConfigSupported(
+    _config: AudioDecoderConfig,
+  ): Promise<{ supported: boolean }> {
+    // Mock: AC-3 is supported
+    return { supported: true };
+  }
+}
+
+// Mock EncodedAudioChunk
+class MockEncodedAudioChunk {
+  type: "key" | "delta";
+  timestamp: number;
+  duration: number;
+  data: BufferSource;
+
+  constructor(init: {
+    type: "key" | "delta";
+    timestamp: number;
+    duration: number;
+    data: BufferSource;
+  }) {
+    this.type = init.type;
+    this.timestamp = init.timestamp;
+    this.duration = init.duration;
+    this.data = init.data;
+  }
+}
+
 // Setup global mocks
 global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
 (
   global.window as unknown as { webkitAudioContext: typeof AudioContext }
 ).webkitAudioContext = MockAudioContext as unknown as typeof AudioContext;
+global.AudioDecoder = MockAudioDecoder as unknown as typeof AudioDecoder;
+global.EncodedAudioChunk =
+  MockEncodedAudioChunk as unknown as typeof EncodedAudioChunk;
 
 describe("AC3Decoder", () => {
   let decoder: AC3Decoder;
   let mockOnAudioOutput: jest.Mock;
   let mockOnError: jest.Mock;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockOnAudioOutput = jest.fn();
     mockOnError = jest.fn();
     decoder = new AC3Decoder(mockOnAudioOutput, mockOnError);
@@ -36,8 +106,8 @@ describe("AC3Decoder", () => {
   });
 
   describe("initialization", () => {
-    it("should initialize with default configuration", () => {
-      decoder.initialize();
+    it("should initialize with default configuration", async () => {
+      await await decoder.initialize();
       expect(decoder.getState()).toBe("configured");
       const config = decoder.getConfig();
       expect(config).not.toBeNull();
@@ -46,25 +116,25 @@ describe("AC3Decoder", () => {
       expect(config?.bufferSize).toBe(4096);
     });
 
-    it("should initialize with custom configuration", () => {
-      decoder.initialize(44100, 1, 2048);
+    it("should initialize with custom configuration", async () => {
+      await decoder.initialize(44100, 1, 2048);
       const config = decoder.getConfig();
       expect(config?.sampleRate).toBe(44100);
       expect(config?.channelCount).toBe(1);
       expect(config?.bufferSize).toBe(2048);
     });
 
-    it("should throw error when initializing in non-unconfigured state", () => {
-      decoder.initialize();
-      expect(() => decoder.initialize()).toThrow(
+    it("should throw error when initializing in non-unconfigured state", async () => {
+      await await decoder.initialize();
+      await expect(decoder.initialize()).rejects.toThrow(
         "Cannot initialize decoder in configured state",
       );
     });
   });
 
   describe("PES packet parsing", () => {
-    beforeEach(() => {
-      decoder.initialize();
+    beforeEach(async () => {
+      await await decoder.initialize();
     });
 
     it("should detect PES packet start", () => {
@@ -113,8 +183,8 @@ describe("AC3Decoder", () => {
   });
 
   describe("AC-3 frame parsing", () => {
-    beforeEach(() => {
-      decoder.initialize();
+    beforeEach(async () => {
+      await decoder.initialize();
     });
 
     it("should detect AC-3 sync word", () => {
@@ -189,8 +259,8 @@ describe("AC3Decoder", () => {
   });
 
   describe("channel downmix", () => {
-    beforeEach(() => {
-      decoder.initialize();
+    beforeEach(async () => {
+      await decoder.initialize();
     });
 
     it("should handle stereo input", () => {
@@ -205,8 +275,8 @@ describe("AC3Decoder", () => {
   });
 
   describe("dynamic range compression", () => {
-    beforeEach(() => {
-      decoder.initialize();
+    beforeEach(async () => {
+      await decoder.initialize();
     });
 
     it("should enable DRC with default ratio", () => {
@@ -227,8 +297,8 @@ describe("AC3Decoder", () => {
   });
 
   describe("audio synchronization", () => {
-    beforeEach(() => {
-      decoder.initialize();
+    beforeEach(async () => {
+      await decoder.initialize();
     });
 
     it("should set audio delay for lip-sync", () => {
@@ -249,8 +319,8 @@ describe("AC3Decoder", () => {
   });
 
   describe("language track selection", () => {
-    beforeEach(() => {
-      decoder.initialize();
+    beforeEach(async () => {
+      await decoder.initialize();
     });
 
     it("should set language track", () => {
@@ -270,19 +340,19 @@ describe("AC3Decoder", () => {
       expect(decoder.getState()).toBe("unconfigured");
     });
 
-    it("should transition to configured after initialization", () => {
-      decoder.initialize();
+    it("should transition to configured after initialization", async () => {
+      await decoder.initialize();
       expect(decoder.getState()).toBe("configured");
     });
 
-    it("should transition to closed after closing", () => {
-      decoder.initialize();
+    it("should transition to closed after closing", async () => {
+      await decoder.initialize();
       decoder.close();
       expect(decoder.getState()).toBe("closed");
     });
 
-    it("should ignore payloads in closed state", () => {
-      decoder.initialize();
+    it("should ignore payloads in closed state", async () => {
+      await decoder.initialize();
       decoder.close();
 
       const payload = new Uint8Array([0x00, 0x00, 0x01, 0xbd, 0x00, 0x10]);
@@ -293,8 +363,8 @@ describe("AC3Decoder", () => {
   });
 
   describe("flush and reset", () => {
-    beforeEach(() => {
-      decoder.initialize();
+    beforeEach(async () => {
+      await decoder.initialize();
     });
 
     it("should flush pending audio", () => {
@@ -312,8 +382,8 @@ describe("AC3Decoder", () => {
   });
 
   describe("metrics tracking", () => {
-    beforeEach(() => {
-      decoder.initialize();
+    beforeEach(async () => {
+      await decoder.initialize();
     });
 
     it("should initialize metrics to zero", () => {
@@ -334,8 +404,8 @@ describe("AC3Decoder", () => {
   });
 
   describe("error handling", () => {
-    beforeEach(() => {
-      decoder.initialize();
+    beforeEach(async () => {
+      await decoder.initialize();
     });
 
     it("should handle malformed PES packets", () => {
@@ -369,17 +439,47 @@ describe("AC3Decoder", () => {
   });
 
   describe("resource cleanup", () => {
-    it("should clean up resources on close", () => {
-      decoder.initialize();
+    it("should clean up resources on close", async () => {
+      await decoder.initialize();
       decoder.close();
       expect(decoder.getState()).toBe("closed");
     });
 
-    it("should allow reinitialization after close", () => {
-      decoder.initialize();
+    it("should allow reinitialization after close", async () => {
+      await decoder.initialize();
       decoder.close();
-      decoder.initialize();
+      await decoder.initialize();
       expect(decoder.getState()).toBe("configured");
+    });
+  });
+
+  describe("WebCodecs integration", () => {
+    it("should use WebCodecs AudioDecoder when available", async () => {
+      await decoder.initialize();
+      
+      // Create a minimal AC-3 frame
+      const ac3Frame = new Uint8Array([
+        0x0b, 0x77, // Sync word
+        0x00, 0x00, // CRC1
+        0x00, // fscod=0 (48kHz), frmsizecod=0
+        0x50, // bsid=10, bsmod=0
+        0x00, // acmod=0
+        ...new Array(121).fill(0), // Frame data (128 bytes total)
+      ]);
+
+      const pesPacket = new Uint8Array([
+        0x00, 0x00, 0x01, 0xbd, // PES start
+        0x00, 0x90, // Packet length
+        0x84, 0x80, 0x05, // Flags
+        0x21, 0x00, 0x01, 0x00, 0x01, // PTS
+        ...ac3Frame,
+        ...new Array(12).fill(0), // Padding
+      ]);
+
+      decoder.processPayload(pesPacket);
+      
+      // Should process without errors
+      expect(mockOnError).not.toHaveBeenCalled();
     });
   });
 
@@ -388,7 +488,7 @@ describe("AC3Decoder", () => {
       expect(decoder.getConfig()).toBeNull();
     });
 
-    it("should return config after initialization", () => {
+    it("should return config after initialization", async () => {
       decoder.initialize(44100, 2, 2048);
       const config = decoder.getConfig();
       expect(config).not.toBeNull();
@@ -397,8 +497,8 @@ describe("AC3Decoder", () => {
       expect(config?.bufferSize).toBe(2048);
     });
 
-    it("should return independent config copy", () => {
-      decoder.initialize();
+    it("should return independent config copy", async () => {
+      await decoder.initialize();
       const config1 = decoder.getConfig();
       const config2 = decoder.getConfig();
       expect(config1).not.toBe(config2); // Different objects

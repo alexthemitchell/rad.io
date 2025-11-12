@@ -151,6 +151,13 @@ export class AC3Decoder {
   private audioContext: AudioContext | null = null;
   private currentConfig: AudioConfig | null = null;
 
+  // WebCodecs AudioDecoder for native AC-3 decoding
+  private audioDecoder: AudioDecoder | null = null;
+  private useWebCodecs = false;
+
+  // Audio buffer for WebCodecs output
+  private audioDataQueue: AudioData[] = [];
+
   // PES packet assembly
   private pesBuffer: Uint8Array[] = [];
   private currentPESHeader: PESHeader | null = null;
@@ -199,11 +206,11 @@ export class AC3Decoder {
   /**
    * Initialize the decoder
    */
-  public initialize(
+  public async initialize(
     sampleRate = 48000,
     channelCount = 2,
     bufferSize = 4096,
-  ): void {
+  ): Promise<void> {
     if (this.state !== "unconfigured" && this.state !== "closed") {
       throw new Error(
         `Cannot initialize decoder in ${this.state} state. Close first.`,
@@ -219,7 +226,66 @@ export class AC3Decoder {
       bufferSize,
     };
 
+    // Try to initialize WebCodecs AudioDecoder for AC-3
+    await this.initializeWebCodecsDecoder(sampleRate, channelCount);
+
     this.state = "configured";
+  }
+
+  /**
+   * Initialize WebCodecs AudioDecoder for AC-3 decoding
+   */
+  private async initializeWebCodecsDecoder(
+    sampleRate: number,
+    channelCount: number,
+  ): Promise<void> {
+    // Check if AudioDecoder is available
+    if (typeof AudioDecoder === "undefined") {
+      console.warn("WebCodecs AudioDecoder not available, using fallback");
+      this.useWebCodecs = false;
+      return;
+    }
+
+    // Try AC-3 codec strings
+    const codecStrings = [
+      "ac-3", // Standard AC-3
+      "mp4a.a5", // AC-3 in MP4 container
+      "mp4a.A5", // AC-3 in MP4 container (alternate)
+    ];
+
+    for (const codec of codecStrings) {
+      try {
+        const config: AudioDecoderConfig = {
+          codec,
+          sampleRate,
+          numberOfChannels: channelCount,
+        };
+
+        const support = await AudioDecoder.isConfigSupported(config);
+        if (support.supported) {
+          this.useWebCodecs = true;
+
+          // Create AudioDecoder
+          this.audioDecoder = new AudioDecoder({
+            output: (audioData: AudioData): void =>
+              this.handleDecodedAudio(audioData),
+            error: (error: DOMException): void =>
+              this.handleDecoderError(error),
+          });
+
+          this.audioDecoder.configure(config);
+          // eslint-disable-next-line no-console
+          console.log(`AC-3 decoder initialized with codec: ${codec}`);
+          return;
+        }
+      } catch (_error) {
+        // Try next codec
+        continue;
+      }
+    }
+
+    console.warn("AC-3 codec not supported by WebCodecs, using fallback");
+    this.useWebCodecs = false;
   }
 
   /**
@@ -505,29 +571,69 @@ export class AC3Decoder {
   /**
    * Process AC-3 frame
    *
-   * Note: This is a placeholder for actual AC-3 decoding.
-   * Full AC-3 decoding requires:
-   * - Bit allocation
-   * - Exponent decoding
-   * - Mantissa decoding
-   * - IMDCT (Inverse Modified Discrete Cosine Transform)
-   * - Window and overlap-add
-   *
-   * For production, use a WebAssembly AC-3 decoder or server-side transcoding.
+   * Uses WebCodecs AudioDecoder if available, otherwise falls back to placeholder
    */
   private processAC3Frame(
-    _frame: Uint8Array,
+    frame: Uint8Array,
     header: AC3FrameHeader,
     pts?: number,
   ): void {
     const startTime = performance.now();
+
+    if (this.useWebCodecs && this.audioDecoder) {
+      // Use WebCodecs AudioDecoder for actual AC-3 decoding
+      try {
+        // Convert PTS from 90kHz to microseconds for WebCodecs
+        const timestamp = pts ? (pts * 1000000) / 90000 : 0;
+
+        // Create EncodedAudioChunk from AC-3 frame
+        const chunk = new EncodedAudioChunk({
+          type: "key", // AC-3 frames are self-contained
+          timestamp,
+          duration: (1536 * 1000000) / header.sampleRate, // 1536 samples per frame
+          data: frame,
+        });
+
+        // Decode the chunk
+        this.audioDecoder.decode(chunk);
+
+        // Update metrics
+        const decodeTime = performance.now() - startTime;
+        this.metrics.framesDecoded++;
+        this.metrics.totalDecodeTime += decodeTime;
+        this.metrics.averageDecodeTime =
+          this.metrics.totalDecodeTime / this.metrics.framesDecoded;
+        this.metrics.currentBitrate = header.bitrate;
+
+        this.state = "decoding";
+      } catch (error) {
+        console.error("WebCodecs decode error:", error);
+        this.fallbackDecode(frame, header, pts, startTime);
+      }
+    } else {
+      // Fallback to placeholder decoding
+      this.fallbackDecode(frame, header, pts, startTime);
+    }
+  }
+
+  /**
+   * Fallback decoding when WebCodecs is not available
+   * Generates placeholder audio to demonstrate the pipeline
+   */
+  private fallbackDecode(
+    _frame: Uint8Array,
+    header: AC3FrameHeader,
+    pts?: number,
+    startTime?: number,
+  ): void {
+    const begin = startTime ?? performance.now();
 
     // Calculate samples per frame
     // AC-3 has 1536 samples per frame
     const samplesPerFrame = 1536;
 
     // For demonstration, generate silent audio
-    // In production, this would be actual decoded samples
+    // In production with WebAssembly, this would be actual decoded samples
     const samples = new Float32Array(samplesPerFrame * 2); // Stereo output
 
     // Apply channel downmix if needed (5.1 -> stereo)
@@ -540,7 +646,7 @@ export class AC3Decoder {
       : stereoSamples;
 
     // Update metrics
-    const decodeTime = performance.now() - startTime;
+    const decodeTime = performance.now() - begin;
     this.metrics.framesDecoded++;
     this.metrics.totalDecodeTime += decodeTime;
     this.metrics.averageDecodeTime =
@@ -568,17 +674,157 @@ export class AC3Decoder {
   }
 
   /**
-   * Downmix multi-channel audio to stereo
+   * Handle decoded audio from WebCodecs AudioDecoder
+   */
+  private handleDecodedAudio(audioData: AudioData): void {
+    try {
+      // Extract audio samples from AudioData
+      const channelCount = audioData.numberOfChannels;
+      const frameCount = audioData.numberOfFrames;
+
+      // Allocate buffer for planar audio
+      const planarBuffer = new Float32Array(channelCount * frameCount);
+
+      // Copy audio data (WebCodecs uses planar format)
+      audioData.copyTo(planarBuffer, {
+        planeIndex: 0,
+        format: "f32-planar",
+      });
+
+      // Convert planar to interleaved stereo
+      let stereoSamples: Float32Array;
+      if (channelCount === 1) {
+        // Mono to stereo: duplicate channel
+        stereoSamples = new Float32Array(frameCount * 2);
+        for (let i = 0; i < frameCount; i++) {
+          const sample = planarBuffer[i] ?? 0;
+          stereoSamples[i * 2] = sample;
+          stereoSamples[i * 2 + 1] = sample;
+        }
+      } else if (channelCount === 2) {
+        // Already stereo, just interleave
+        stereoSamples = new Float32Array(frameCount * 2);
+        for (let i = 0; i < frameCount; i++) {
+          stereoSamples[i * 2] = planarBuffer[i] ?? 0;
+          stereoSamples[i * 2 + 1] = planarBuffer[frameCount + i] ?? 0;
+        }
+      } else {
+        // Multi-channel (5.1, etc.) - downmix to stereo
+        stereoSamples = this.downmixMultiChannelToStereo(
+          planarBuffer,
+          channelCount,
+          frameCount,
+        );
+      }
+
+      // Apply dynamic range compression if enabled
+      const processedSamples = this.compressionEnabled
+        ? this.applyDynamicRangeCompression(stereoSamples)
+        : stereoSamples;
+
+      // Get timestamp (already in 90kHz from processAC3Frame)
+      const pts = Math.floor((audioData.timestamp * 90000) / 1000000);
+      const adjustedPTS = pts + (this.audioDelay * 90000) / 1000;
+
+      // Queue for synchronized output
+      this.audioQueue.set(adjustedPTS, {
+        samples: processedSamples,
+        receivedAt: performance.now(),
+      });
+
+      this.presentAudio();
+
+      // Close the AudioData to free memory
+      audioData.close();
+    } catch (error) {
+      console.error("Error processing decoded audio:", error);
+      audioData.close();
+    }
+  }
+
+  /**
+   * Handle decoder errors
+   */
+  private handleDecoderError(error: Error | DOMException): void {
+    this.state = "error";
+    const errorMessage =
+      error instanceof Error ? error : new Error(String(error));
+    this.onError(errorMessage);
+  }
+
+  /**
+   * Downmix multi-channel audio to stereo (for fallback mode)
    */
   private downmixToStereo(
     samples: Float32Array,
     _numChannels: number,
   ): Float32Array {
-    // For now, assume samples are already stereo
-    // In production, implement proper downmix matrix:
-    // - 5.1: L' = L + 0.707*C + 0.707*Ls
-    //        R' = R + 0.707*C + 0.707*Rs
+    // For fallback mode, samples are already stereo placeholders
     return samples;
+  }
+
+  /**
+   * Downmix multi-channel planar audio to interleaved stereo
+   * Used for WebCodecs decoded audio with >2 channels
+   */
+  private downmixMultiChannelToStereo(
+    planarBuffer: Float32Array,
+    channelCount: number,
+    frameCount: number,
+  ): Float32Array {
+    const stereoSamples = new Float32Array(frameCount * 2);
+    const centerGain = 0.707; // -3dB for center channel
+    const surroundGain = 0.707; // -3dB for surround channels
+
+    // Standard downmix matrices based on channel count
+    if (channelCount === 6) {
+      // 5.1 surround: L, R, C, LFE, Ls, Rs
+      for (let i = 0; i < frameCount; i++) {
+        const L = planarBuffer[i] ?? 0;
+        const R = planarBuffer[frameCount + i] ?? 0;
+        const C = planarBuffer[frameCount * 2 + i] ?? 0;
+        const LFE = planarBuffer[frameCount * 3 + i] ?? 0;
+        const Ls = planarBuffer[frameCount * 4 + i] ?? 0;
+        const Rs = planarBuffer[frameCount * 5 + i] ?? 0;
+
+        // ITU-R BS.775 downmix
+        stereoSamples[i * 2] = L + centerGain * C + surroundGain * Ls + LFE;
+        stereoSamples[i * 2 + 1] = R + centerGain * C + surroundGain * Rs + LFE;
+      }
+    } else if (channelCount === 5) {
+      // 5.0 surround: L, R, C, Ls, Rs
+      for (let i = 0; i < frameCount; i++) {
+        const L = planarBuffer[i] ?? 0;
+        const R = planarBuffer[frameCount + i] ?? 0;
+        const C = planarBuffer[frameCount * 2 + i] ?? 0;
+        const Ls = planarBuffer[frameCount * 3 + i] ?? 0;
+        const Rs = planarBuffer[frameCount * 4 + i] ?? 0;
+
+        stereoSamples[i * 2] = L + centerGain * C + surroundGain * Ls;
+        stereoSamples[i * 2 + 1] = R + centerGain * C + surroundGain * Rs;
+      }
+    } else if (channelCount === 3) {
+      // 3.0: L, R, C
+      for (let i = 0; i < frameCount; i++) {
+        const L = planarBuffer[i] ?? 0;
+        const R = planarBuffer[frameCount + i] ?? 0;
+        const C = planarBuffer[frameCount * 2 + i] ?? 0;
+
+        stereoSamples[i * 2] = L + centerGain * C;
+        stereoSamples[i * 2 + 1] = R + centerGain * C;
+      }
+    } else {
+      // Generic: just use first two channels
+      for (let i = 0; i < frameCount; i++) {
+        stereoSamples[i * 2] = planarBuffer[i] ?? 0;
+        stereoSamples[i * 2 + 1] =
+          channelCount > 1
+            ? (planarBuffer[frameCount + i] ?? 0)
+            : (planarBuffer[i] ?? 0);
+      }
+    }
+
+    return stereoSamples;
   }
 
   /**
@@ -704,6 +950,17 @@ export class AC3Decoder {
     // Clear audio queue
     this.audioQueue.clear();
 
+    // Clear AudioData queue
+    for (const audioData of this.audioDataQueue) {
+      audioData.close();
+    }
+    this.audioDataQueue = [];
+
+    // Reset AudioDecoder if it exists
+    if (this.audioDecoder && this.audioDecoder.state !== "closed") {
+      this.audioDecoder.reset();
+    }
+
     // Reset metrics
     this.metrics = {
       framesDecoded: 0,
@@ -725,6 +982,18 @@ export class AC3Decoder {
     // Clear queues
     this.audioQueue.clear();
     this.partialFrame = null;
+
+    // Close AudioData queue
+    for (const audioData of this.audioDataQueue) {
+      audioData.close();
+    }
+    this.audioDataQueue = [];
+
+    // Close AudioDecoder
+    if (this.audioDecoder) {
+      this.audioDecoder.close();
+      this.audioDecoder = null;
+    }
 
     if (this.audioContext) {
       void this.audioContext.close();
