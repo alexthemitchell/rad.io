@@ -628,7 +628,10 @@ export class TransportStreamParser {
     }
 
     // Parse CRC
-    const crcOffset = 3 + sectionLength - 4;
+    let crcOffset = 3 + sectionLength - 4;
+    if (crcOffset + 4 > data.length) {
+      crcOffset = data.length - 4;
+    }
     const crc32 =
       (((data[crcOffset] ?? 0) << 24) |
         ((data[crcOffset + 1] ?? 0) << 16) |
@@ -745,7 +748,10 @@ export class TransportStreamParser {
     }
 
     // Parse CRC
-    const crcOffset = 3 + sectionLength - 4;
+    let crcOffset = 3 + sectionLength - 4;
+    if (crcOffset + 4 > data.length) {
+      crcOffset = data.length - 4;
+    }
     const crc32 =
       (((data[crcOffset] ?? 0) << 24) |
         ((data[crcOffset + 1] ?? 0) << 16) |
@@ -892,6 +898,11 @@ export class TransportStreamParser {
       });
     }
 
+    // Bounds check: ensure we have at least two bytes to read descriptorsLength
+    if (offset + 2 > data.length) {
+      return;
+    }
+
     const descriptorsLength =
       (((data[offset] ?? 0) & 0x0f) << 8) | (data[offset + 1] ?? 0);
     offset += 2;
@@ -987,6 +998,11 @@ export class TransportStreamParser {
         sourceid,
         descriptors,
       });
+    }
+
+    // Bounds check: ensure we have at least two bytes to read descriptorsLength
+    if (offset + 2 > data.length) {
+      return;
     }
 
     const descriptorsLength =
@@ -1093,6 +1109,9 @@ export class TransportStreamParser {
     const ettTableIdExtension = ((data[3] ?? 0) << 8) | (data[4] ?? 0);
 
     const messageLength = sectionLength - 10; // Subtract header and CRC
+    if (9 + messageLength > data.length) {
+      return;
+    }
     const extendedTextMessage = this.parseMultipleStringStructure(
       data.subarray(9, 9 + messageLength),
     );
