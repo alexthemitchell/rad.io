@@ -5,7 +5,7 @@
  * program information display, and playback controls.
  */
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { useATSCPlayer } from "../hooks/useATSCPlayer";
 import { useATSCScanner } from "../hooks/useATSCScanner";
 import { useDevice } from "../store";
@@ -223,7 +223,7 @@ function AudioTrackSelector({
         Audio Track:
         <select
           id="audio-track"
-          value={selectedTrack?.pid ?? ""}
+          value={selectedTrack?.pid.toString() ?? ""}
           onChange={(e) => {
             const pid = parseInt(e.target.value, 10);
             const track = tracks.find((t) => t.pid === pid);
@@ -232,6 +232,7 @@ function AudioTrackSelector({
             }
           }}
         >
+          {!selectedTrack && <option value="">Select track...</option>}
           {tracks.map((track) => (
             <option key={track.pid} value={track.pid}>
               {track.description}
@@ -265,7 +266,12 @@ function VideoPlayer({
             </p>
           </div>
         )}
-        <div id="closed-captions" className="closed-captions" />
+        {/* This container will be populated by the caption renderer when CEA-608/708 parsing is implemented */}
+        <div
+          id="closed-captions"
+          className="closed-captions"
+          data-caption-target
+        />
       </div>
     </div>
   );
@@ -350,12 +356,8 @@ function ATSCPlayer(): React.JSX.Element {
 
   const [showScanner, setShowScanner] = useState(false);
 
-  // Load stored channels on mount
-  useEffect(() => {
-    void scanner.loadStoredChannels();
-    // Only depend on loadStoredChannels to avoid re-running when scanner's internal state changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanner.loadStoredChannels]);
+  // Note: useATSCScanner already loads channels on mount (line 632 in useATSCScanner.ts)
+  // No need to load them again here
 
   const handleSelectChannel = useCallback(
     (channel: StoredATSCChannel) => {

@@ -107,6 +107,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
   const metricsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
+  const volumeRef = useRef(1.0); // Track current volume for unmute operation
 
   /**
    * Initialize audio context
@@ -289,13 +290,14 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
     const demod = demodulatorRef.current;
     const syncLocked = demod.isSyncLocked();
 
-    // TODO: Get actual SNR, BER, MER from demodulator
-    // For now, use placeholder values
+    // Note: SNR, BER, and MER calculations require additional demodulator instrumentation.
+    // These are simulated values based on sync lock status until the demodulator
+    // implements methods to calculate actual metrics from received symbols.
     setSignalQuality({
-      snr: 25.0, // dB
-      ber: syncLocked ? 0.0001 : 0.1, // Bit Error Rate
-      mer: 28.0, // dB
-      signalStrength: syncLocked ? 85 : 50, // 0-100 scale
+      snr: syncLocked ? 25.0 : 15.0, // dB (simulated - varies with sync)
+      ber: syncLocked ? 0.0001 : 0.1, // Bit Error Rate (simulated)
+      mer: syncLocked ? 28.0 : 18.0, // dB (simulated - varies with sync)
+      signalStrength: syncLocked ? 85 : 50, // 0-100 scale (simulated)
       syncLocked,
     });
   }, []);
@@ -369,8 +371,11 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
                 if (!tablesReceived) {
                   const pat = parserRef.current.getPAT();
                   if (pat && pat.programs.size > 0) {
-                    // Get first program
-                    const programNumber = Array.from(pat.programs.keys())[0];
+                    // Get first program - use iterator for safer access
+                    const firstKey = pat.programs.keys().next();
+                    const programNumber = firstKey.done
+                      ? undefined
+                      : firstKey.value;
                     if (programNumber !== undefined) {
                       const pmt = parserRef.current.getPMT(programNumber);
                       const vct = parserRef.current.getVCT();
@@ -451,6 +456,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
   const setVolume = useCallback((newVolume: number): void => {
     const clampedVolume = Math.max(0, Math.min(1, newVolume));
     setVolumeState(clampedVolume);
+    volumeRef.current = clampedVolume; // Update ref for unmute operation
     if (gainNodeRef.current) {
       gainNodeRef.current.gain.value = clampedVolume;
     }
@@ -459,15 +465,13 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
   /**
    * Set muted
    */
-  const setMuted = useCallback(
-    (newMuted: boolean): void => {
-      setMutedState(newMuted);
-      if (gainNodeRef.current) {
-        gainNodeRef.current.gain.value = newMuted ? 0 : volume;
-      }
-    },
-    [volume],
-  );
+  const setMuted = useCallback((newMuted: boolean): void => {
+    setMutedState(newMuted);
+    if (gainNodeRef.current) {
+      // Use volumeRef to get current volume value, avoiding stale closure
+      gainNodeRef.current.gain.value = newMuted ? 0 : volumeRef.current;
+    }
+  }, []);
 
   /**
    * Toggle closed captions
