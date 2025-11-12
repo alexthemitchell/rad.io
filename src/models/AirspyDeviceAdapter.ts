@@ -111,7 +111,6 @@ export class AirspyDeviceAdapter implements ISDRDevice {
 
   async setBandwidth(): Promise<void> {
     // Airspy bandwidth is determined by sample rate
-    console.debug("Airspy bandwidth is determined by sample rate");
     return Promise.resolve();
   }
 

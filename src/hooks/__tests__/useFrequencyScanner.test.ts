@@ -148,10 +148,16 @@ describe("useFrequencyScanner", () => {
         endFrequency: 108e6,
         stepSizeHz: 100e3,
         thresholdDb: 10,
-        dwellTime: 100,
+        dwellTime: 500,
         fftSize: 2048,
-        minPeakSpacing: 100e3,
+        minPeakSpacing: 100e3, // Updated to match new detection threshold
         enableRDS: true,
+        minSeparationHz: 100e3,
+        minValleyDepthDb: 6,
+        usePFBChannelizer: true,
+        useWorkerFFT: true,
+        scanAutoThreshold: true,
+        scanThresholdDbOffset: 12,
       });
     });
   });

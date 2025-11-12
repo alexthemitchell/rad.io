@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
+import { CalibrationManager } from "../lib/measurement/calibration";
 import { renderTierManager } from "../lib/render/RenderTierManager";
 import { useDevice } from "../store";
 import { RenderTier, maxTier } from "../types/rendering";
@@ -257,6 +258,56 @@ function StatusBar({
 
   const [showBufferDetails, setShowBufferDetails] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [ppm, setPpm] = useState<number | null>(null);
+
+  // Resolve current deviceId (vendor:product:serial)
+  const currentDeviceId = useMemo(() => {
+    const usb = extractUSBDevice(primaryDevice);
+    return usb
+      ? `${usb.vendorId}:${usb.productId}:${usb.serialNumber ?? ""}`
+      : null;
+  }, [primaryDevice]);
+
+  // Load PPM from CalibrationManager for current device
+  useEffect(() => {
+    const mgr = new CalibrationManager();
+    if (!currentDeviceId) {
+      setPpm(null);
+      return;
+    }
+    const profile = mgr.getProfile(currentDeviceId);
+    const ppmOffset = profile?.frequency?.ppmOffset;
+    setPpm(typeof ppmOffset === "number" ? ppmOffset : null);
+  }, [currentDeviceId]);
+
+  // Listen for calibration updates dispatched by pages (same-tab)
+  useEffect(() => {
+    const handler = (evt: Event): void => {
+      const e = evt as CustomEvent<{ deviceId: string; ppm?: number }>;
+      if (!currentDeviceId) return;
+      if (e.detail?.deviceId === currentDeviceId) {
+        if (typeof e.detail.ppm === "number") {
+          setPpm(e.detail.ppm);
+        } else {
+          // Fallback: re-read from storage in case only deviceId provided
+          const mgr = new CalibrationManager();
+          const profile = mgr.getProfile(currentDeviceId);
+          const ppmOffset = profile?.frequency?.ppmOffset;
+          setPpm(typeof ppmOffset === "number" ? ppmOffset : null);
+        }
+      }
+    };
+    window.addEventListener(
+      "rad:calibration-updated",
+      handler as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        "rad:calibration-updated",
+        handler as EventListener,
+      );
+    };
+  }, [currentDeviceId]);
 
   return (
     <div
@@ -478,6 +529,23 @@ function StatusBar({
           title={`${sampleRate} samples/second`}
         >
           {formatSampleRate(sampleRate)}
+        </span>
+      </div>
+
+      <div className="status-bar-separator" aria-hidden="true" />
+
+      <div className="status-bar-item">
+        <span className="status-bar-label">PPM</span>
+        <span
+          className="status-bar-value status-bar-mono"
+          aria-label="Frequency calibration PPM"
+          title={
+            ppm !== null
+              ? `Applied frequency correction: ${ppm.toFixed(1)} ppm`
+              : "No PPM calibration applied"
+          }
+        >
+          {ppm !== null ? `${ppm > 0 ? "+" : ""}${ppm.toFixed(1)}` : "—"}
         </span>
       </div>
 

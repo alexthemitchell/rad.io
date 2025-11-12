@@ -17,6 +17,13 @@ export interface SettingsState {
   colorMap: string; // key of WATERFALL_COLORMAPS; kept as string to avoid import cycles
   dbMin?: number;
   dbMax?: number;
+  // Multi-station FM / wideband scan settings
+  multiStationEnabled: boolean; // enable decoding multiple FM station RDS in-band
+  multiStationEnableRDS: boolean; // enable RDS decoding in processor
+  multiStationChannelBandwidthHz: number; // default channel bandwidth in Hz
+  multiStationScanFFTSize: number; // FFT size for scanning
+  multiStationScanIntervalMs: number; // how often to scan/process wideband samples
+  multiStationUsePFBChannelizer: boolean; // use PFB channelizer when available
 }
 
 const DEFAULTS: SettingsState = {
@@ -28,6 +35,13 @@ const DEFAULTS: SettingsState = {
   // Leave dB range undefined to allow auto-scaling by default
   dbMin: undefined,
   dbMax: undefined,
+  // MultiStation FM defaults
+  multiStationEnabled: false,
+  multiStationEnableRDS: true,
+  multiStationChannelBandwidthHz: 200000,
+  multiStationScanFFTSize: 8192,
+  multiStationScanIntervalMs: 1000,
+  multiStationUsePFBChannelizer: true,
 };
 
 const STORAGE_KEY = "rad.settings.v1";
@@ -91,6 +105,42 @@ function normalizeSettings(
     // Invalid manual range; fall back to auto
     next.dbMin = undefined;
     next.dbMax = undefined;
+  }
+
+  // Validate multi-station FM settings
+  if (typeof next.multiStationEnabled !== "boolean") {
+    next.multiStationEnabled =
+      base?.multiStationEnabled ?? DEFAULTS.multiStationEnabled;
+  }
+  if (typeof next.multiStationEnableRDS !== "boolean") {
+    next.multiStationEnableRDS =
+      base?.multiStationEnableRDS ?? DEFAULTS.multiStationEnableRDS;
+  }
+  if (
+    typeof next.multiStationChannelBandwidthHz !== "number" ||
+    Number.isNaN(next.multiStationChannelBandwidthHz) ||
+    next.multiStationChannelBandwidthHz <= 0
+  ) {
+    next.multiStationChannelBandwidthHz =
+      base?.multiStationChannelBandwidthHz ??
+      DEFAULTS.multiStationChannelBandwidthHz;
+  }
+  if (!ALLOWED_FFT_SIZES.includes(next.multiStationScanFFTSize)) {
+    next.multiStationScanFFTSize =
+      base?.multiStationScanFFTSize ?? DEFAULTS.multiStationScanFFTSize;
+  }
+  if (
+    typeof next.multiStationScanIntervalMs !== "number" ||
+    Number.isNaN(next.multiStationScanIntervalMs) ||
+    next.multiStationScanIntervalMs <= 0
+  ) {
+    next.multiStationScanIntervalMs =
+      base?.multiStationScanIntervalMs ?? DEFAULTS.multiStationScanIntervalMs;
+  }
+  if (typeof next.multiStationUsePFBChannelizer !== "boolean") {
+    next.multiStationUsePFBChannelizer =
+      base?.multiStationUsePFBChannelizer ??
+      DEFAULTS.multiStationUsePFBChannelizer;
   }
 
   return next;

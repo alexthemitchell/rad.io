@@ -14,22 +14,17 @@ jest.mock("../dspWasm", () => ({
   },
 }));
 
-// Mock logger to spy on dsp warning calls
-const warnSpy = jest.fn();
-jest.mock("../logger", () => {
-  const actual = jest.requireActual("../logger");
-  return {
-    ...actual,
-    dspLogger: {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: warnSpy,
-      error: jest.fn(),
-    },
-  };
-});
-
 describe("resetSpectrogramWasmDegenerateWarning", () => {
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, "warn").mockImplementation();
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
   it("resets the warning flag so future degenerate outputs warn again", () => {
     // Import after mocks are set up
     const {

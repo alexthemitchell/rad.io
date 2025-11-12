@@ -204,5 +204,103 @@ describe("PeakDetector", () => {
       expect(peaks.length).toBe(1);
       expect(peaks[0]!.binIndex).toBeGreaterThanOrEqual(90);
     });
+
+    it("should merge nearby peaks separated by small gaps (FM broadcast simulation)", () => {
+      const spectrum = new Float32Array(1024);
+      const noiseFloor = -80;
+      const sampleRate = 2_048_000; // 2.048 MHz (typical for FM)
+      const centerFreq = 100_000_000; // 100 MHz
+
+      spectrum.fill(noiseFloor);
+
+      // Simulate FM broadcast signal with characteristic dip at carrier
+      // Lower sideband: bins 400-460 (~120 kHz)
+      for (let i = 400; i <= 460; i++) {
+        spectrum[i] = -55;
+      }
+
+      // Carrier dip: bins 461-465 (shallow dip, ~10 kHz gap)
+      for (let i = 461; i <= 465; i++) {
+        spectrum[i] = -68; // Below threshold but relatively high
+      }
+
+      // Upper sideband: bins 466-526 (~120 kHz)
+      for (let i = 466; i <= 526; i++) {
+        spectrum[i] = -55;
+      }
+
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
+
+      // Should detect as ONE wideband FM signal, not two narrow signals
+      expect(peaks.length).toBe(1);
+      expect(peaks[0]!.bandwidth).toBeGreaterThan(200_000); // > 200 kHz
+      expect(peaks[0]!.bandwidth).toBeLessThan(300_000); // < 300 kHz
+    });
+
+    it("should NOT merge distant peaks (separate signals)", () => {
+      const spectrum = new Float32Array(1024);
+      const noiseFloor = -80;
+      const sampleRate = 2_048_000;
+      const centerFreq = 100_000_000;
+
+      spectrum.fill(noiseFloor);
+
+      // Two distinct signals with large gap (500 kHz)
+      // Signal 1: bins 200-250
+      for (let i = 200; i <= 250; i++) {
+        spectrum[i] = -55;
+      }
+
+      // Large gap: 250 kHz
+      // Signal 2: bins 450-500
+      for (let i = 450; i <= 500; i++) {
+        spectrum[i] = -55;
+      }
+
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
+
+      // Should detect as TWO separate signals
+      expect(peaks.length).toBe(2);
+    });
+
+    it("should merge multiple narrow peaks within FM bandwidth", () => {
+      const spectrum = new Float32Array(2048);
+      const noiseFloor = -80;
+      const sampleRate = 2_048_000;
+      const centerFreq = 100_000_000;
+
+      spectrum.fill(noiseFloor);
+
+      // Simulate FM with multiple narrow peaks (stereo pilot, L+R, L-R)
+      // This simulates what the bug report describes: FM split into 1-2 kHz signals
+      const peakPositions = [900, 920, 940, 960, 980, 1000]; // ~20 kHz apart each
+      for (const pos of peakPositions) {
+        for (let i = pos - 1; i <= pos + 1; i++) {
+          // ~2 kHz wide each
+          spectrum[i] = -55;
+        }
+      }
+
+      const peaks = detector.detect(
+        spectrum,
+        noiseFloor,
+        sampleRate,
+        centerFreq,
+      );
+
+      // Should merge into ONE wideband FM signal
+      expect(peaks.length).toBe(1);
+      expect(peaks[0]!.bandwidth).toBeGreaterThan(80_000); // > 80 kHz
+    });
   });
 });

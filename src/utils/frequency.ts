@@ -12,7 +12,11 @@ export function formatFrequency(freqHz: number): string {
     return `${(freqHz / 1e9).toFixed(6)} GHz`;
   }
   if (freqHz >= 1e6) {
-    return `${(freqHz / 1e6).toFixed(3)} MHz`;
+    // Use up to 3 decimal places for MHz but trim trailing zeros
+    const raw = (freqHz / 1e6).toFixed(3);
+    // Remove trailing zeros and optional trailing decimal point (e.g. 100.000 -> 100; 100.100 -> 100.1)
+    const prettier = raw.replace(/\.?0+$/u, "");
+    return `${prettier} MHz`;
   }
   if (freqHz >= 1e3) {
     return `${(freqHz / 1e3).toFixed(1)} kHz`;

@@ -397,19 +397,7 @@ void main() {
             workerRef.current = null;
           }
           if (workerRef.current) {
-            workerRef.current.onmessage = (ev): void => {
-              const d = ev.data as {
-                type?: string;
-                viz?: string;
-                renderTimeMs?: number;
-              };
-              if (d.type === "metrics") {
-                console.debug("IQConstellation: Worker render metrics", {
-                  visualization: d.viz,
-                  renderTimeMs: d.renderTimeMs?.toFixed(2),
-                });
-              }
-            };
+            // Worker metrics logging removed to reduce noise
           }
         }
 

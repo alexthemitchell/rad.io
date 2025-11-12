@@ -56,6 +56,7 @@ class FFTWorkerPool {
     samples: Float32Array,
     sampleRate: number,
     priority = 0,
+    fftSize?: number,
   ): Promise<FFTResult> {
     return new Promise((resolve, reject) => {
       const id = this.generateId();
@@ -65,6 +66,7 @@ class FFTWorkerPool {
         priority,
         samples,
         sampleRate,
+        fftSize,
         resolve,
         reject,
       };
@@ -96,6 +98,7 @@ class FFTWorkerPool {
         id: task.id,
         samples: task.samples,
         sampleRate: task.sampleRate,
+        fftSize: task.fftSize,
       },
       [task.samples.buffer],
     );

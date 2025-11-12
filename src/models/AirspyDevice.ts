@@ -93,8 +93,6 @@ export class AirspyDevice {
     // so this explicit initialization ensures predictable operation and device safety
     // before further configuration.
     await this.setReceiverMode(ReceiverMode.OFF);
-
-    console.debug("Airspy device opened successfully");
   }
 
   async close(): Promise<void> {
@@ -119,8 +117,6 @@ export class AirspyDevice {
     } finally {
       this.closing = false;
     }
-
-    console.debug("Airspy device closed successfully");
   }
 
   isOpen(): boolean {
@@ -151,7 +147,6 @@ export class AirspyDevice {
     );
 
     this.frequency = frequencyHz;
-    console.debug(`Airspy frequency set to ${frequencyHz / 1e6} MHz`);
   }
 
   getFrequency(): number {
@@ -193,7 +188,6 @@ export class AirspyDevice {
     );
 
     this.sampleRate = sampleRateHz;
-    console.debug(`Airspy sample rate set to ${sampleRateHz / 1e6} MS/s`);
   }
 
   getSampleRate(): number {
@@ -218,10 +212,6 @@ export class AirspyDevice {
       },
       buffer,
     );
-
-    console.debug(
-      `Airspy LNA gain set to ${clampedGain} (${clampedGain * 3} dB)`,
-    );
   }
 
   async setMixerGain(gain: number): Promise<void> {
@@ -242,8 +232,6 @@ export class AirspyDevice {
       },
       buffer,
     );
-
-    console.debug(`Airspy Mixer gain set to ${clampedGain} dB`);
   }
 
   async setVGAGain(gain: number): Promise<void> {
@@ -264,8 +252,6 @@ export class AirspyDevice {
       },
       buffer,
     );
-
-    console.debug(`Airspy VGA gain set to ${clampedGain} dB`);
   }
 
   async setLNAAGC(enabled: boolean): Promise<void> {
@@ -283,8 +269,6 @@ export class AirspyDevice {
       },
       buffer,
     );
-
-    console.debug(`Airspy LNA AGC ${enabled ? "enabled" : "disabled"}`);
   }
 
   async setMixerAGC(enabled: boolean): Promise<void> {
@@ -302,8 +286,6 @@ export class AirspyDevice {
       },
       buffer,
     );
-
-    console.debug(`Airspy Mixer AGC ${enabled ? "enabled" : "disabled"}`);
   }
 
   private async setReceiverMode(mode: ReceiverMode): Promise<void> {
@@ -372,7 +354,6 @@ export class AirspyDevice {
   async stopRx(): Promise<void> {
     this.streaming = false;
     await this.setReceiverMode(ReceiverMode.OFF);
-    console.debug("Airspy streaming stopped");
   }
 
   isReceiving(): boolean {

@@ -156,7 +156,7 @@ Key rules enforced:
 
 - **No unused variables** - Clean up unused imports and variables
 - **Curly braces required** - All control structures must use braces
-- **No console.log** - Use `console.warn` or `console.error` instead
+- **No console.log** - Use `console.info`, `console.warn`, or `console.error` for production code
 - **React Hooks rules** - Follow hooks best practices
 - **Strict equality** - Use `===` instead of `==`
 - **Prefer const** - Use `const` over `let` when possible

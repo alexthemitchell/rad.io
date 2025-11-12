@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { SignalClassifier } from "../lib/detection/signal-classifier";
 import { type ISDRDevice, type IQSample } from "../models/SDRDevice";
-import { AudioStreamProcessor, DemodulationType } from "../utils/audioStream";
+import { updateBulkCachedRDSData } from "../store/rdsCache";
+import { BulkRDSProcessor } from "../utils/bulkRDSProcessor";
 import {
   calculateFFTSync,
   detectSpectralPeaks,
@@ -27,6 +28,18 @@ export interface FrequencyScanConfig {
   fftSize: number;
   /** Minimum spacing between detected peaks in Hz (prevents duplicates) */
   minPeakSpacing: number;
+  /** Minimum separation between distinct detected peaks (Hz) for valley merging logic */
+  minSeparationHz?: number;
+  /** Minimum valley depth (dB) used when deciding if nearby peaks are distinct */
+  minValleyDepthDb?: number;
+  /** Use FFT worker pool when available */
+  useWorkerFFT?: boolean;
+  /** Use polyphase filter bank channelizer */
+  usePFBChannelizer?: boolean;
+  /** Automatically determine threshold from noise floor */
+  scanAutoThreshold?: boolean;
+  /** Offset in dB above noise floor for auto threshold */
+  scanThresholdDbOffset?: number;
   /** Enable RDS decoding for FM scans (default: false) */
   enableRDS?: boolean;
 }
@@ -84,10 +97,17 @@ export function useFrequencyScanner(
     endFrequency: 108e6, // 108 MHz (FM radio end)
     stepSizeHz: 100e3, // Default 100 kHz channel spacing (UI in MHz)
     thresholdDb: 10, // 10 dB above noise floor
-    dwellTime: 100, // 100ms per frequency chunk
+    dwellTime: 500, // 500ms per frequency chunk (increased for RDS)
     fftSize: 2048, // 2048-point FFT for good resolution
     minPeakSpacing: 100e3, // 100 kHz minimum between peaks (FM station spacing)
     enableRDS: true, // Enable RDS decoding by default for FM scans
+    // Detection tuning defaults
+    minSeparationHz: 100e3,
+    minValleyDepthDb: 6,
+    useWorkerFFT: true,
+    usePFBChannelizer: true,
+    scanAutoThreshold: true,
+    scanThresholdDbOffset: 12,
   });
   const [currentFrequency, setCurrentFrequency] = useState<number | null>(null);
   const [activeSignals, setActiveSignals] = useState<ActiveSignal[]>([]);
@@ -103,8 +123,8 @@ export function useFrequencyScanner(
   const iqSamplesRef = useRef<IQSample[]>([]);
   const isScanningRef = useRef<boolean>(false);
   const receivePromiseRef = useRef<Promise<void> | null>(null);
-  const audioProcessorRef = useRef<AudioStreamProcessor | null>(null);
   const signalClassifierRef = useRef<SignalClassifier | null>(null);
+  const bulkRDSProcessorRef = useRef<BulkRDSProcessor | null>(null);
 
   const clearPendingTimers = useCallback((): void => {
     if (scanTimeoutRef.current) {
@@ -176,12 +196,8 @@ export function useFrequencyScanner(
           // More efficient: concat instead of push with spread to avoid call stack issues
           iqSamplesRef.current = iqSamplesRef.current.concat(samples);
 
-          if (
-            iqSamplesRef.current.length >= config.fftSize &&
-            dwellResolveRef.current
-          ) {
-            dwellResolveRef.current();
-          }
+          // Note: We continue collecting for full dwellTime for RDS processing
+          // (removed early exit on fftSize reached)
         });
 
         // Wait for dwell time to collect samples (abortable)
@@ -203,20 +219,13 @@ export function useFrequencyScanner(
               finalize();
               return;
             }
-            if (iqSamplesRef.current.length >= config.fftSize) {
-              finalize();
-              return;
-            }
+            // Continue monitoring - we want to collect for full dwellTime for RDS
             sampleCheckTimeoutRef.current = setTimeout(monitorSamples, 10);
           };
 
           dwellResolveRef.current = finalize;
           scanTimeoutRef.current = setTimeout(finalize, config.dwellTime);
           sampleCheckTimeoutRef.current = setTimeout(monitorSamples, 10);
-
-          if (iqSamplesRef.current.length >= config.fftSize) {
-            finalize();
-          }
         });
 
         // Ensure timers are cleared if the promise resolved via external signal
@@ -292,6 +301,14 @@ export function useFrequencyScanner(
         // Process each detected peak
         // Initialize signal classifier once (reuse across scans)
         signalClassifierRef.current ??= new SignalClassifier();
+
+        // Collect FM stations for bulk RDS processing
+        const fmStations: Array<{
+          frequency: number;
+          strength: number;
+          signal: ActiveSignal;
+        }> = [];
+
         for (const peak of peaks) {
           // Classify the signal
           const classifiedSignal = signalClassifierRef.current.classify(
@@ -340,37 +357,14 @@ export function useFrequencyScanner(
             confidence: classifiedSignal.confidence,
           };
 
-          // For FM frequencies, optionally decode RDS
+          // Collect FM stations for bulk RDS processing
           const isFM = peak.frequency >= 88e6 && peak.frequency <= 108e6;
-          if (isFM && config.enableRDS && iqSamplesRef.current.length > 0) {
-            try {
-              // Initialize audio processor if not already created
-              audioProcessorRef.current ??= new AudioStreamProcessor(
-                sampleRate,
-              );
-
-              // Process a batch of IQ samples for RDS extraction
-              const sampleBatch = iqSamplesRef.current.slice(0, 50000);
-              const result = audioProcessorRef.current.extractAudio(
-                sampleBatch,
-                DemodulationType.FM,
-                {
-                  sampleRate: 48000,
-                  enableRDS: true,
-                },
-              );
-
-              // Attach RDS data if available
-              if (result.rdsData) {
-                signal.rdsData = result.rdsData;
-                signal.rdsStats = result.rdsStats;
-              }
-            } catch (error) {
-              console.warn(
-                `RDS extraction failed for ${peak.frequency}:`,
-                error,
-              );
-            }
+          if (isFM && config.enableRDS) {
+            fmStations.push({
+              frequency: peak.frequency,
+              strength: strengthNormalized,
+              signal,
+            });
           }
 
           // Add or update signal in list
@@ -385,6 +379,98 @@ export function useFrequencyScanner(
           });
 
           onSignalDetected?.(signal);
+        }
+
+        // Process all FM stations for RDS in bulk
+        if (fmStations.length > 0 && iqSamplesRef.current.length > 0) {
+          try {
+            // Initialize bulk RDS processor if needed
+            bulkRDSProcessorRef.current ??= new BulkRDSProcessor();
+
+            // Extract RDS from all FM stations
+            const rdsResults =
+              await bulkRDSProcessorRef.current.processStations(
+                fmStations.map((s) => ({
+                  frequency: s.frequency,
+                  strength: s.strength,
+                })),
+                iqSamplesRef.current,
+                sampleRate,
+                centerFrequency,
+                {
+                  minSeparationHz: config.minSeparationHz,
+                  minValleyDepthDb: config.minValleyDepthDb,
+                  useWorkerFFT: config.useWorkerFFT,
+                  usePFBChannelizer: config.usePFBChannelizer,
+                  scanAutoThreshold: config.scanAutoThreshold,
+                  scanThresholdDbOffset: config.scanThresholdDbOffset,
+                  scanThresholdDb: config.thresholdDb,
+                },
+              );
+
+            // Build map of frequency -> RDS data for efficient lookup
+            const rdsMap = new Map<
+              number,
+              {
+                rdsData: RDSStationData;
+                rdsStats?: RDSDecoderStats;
+              }
+            >();
+
+            for (const result of rdsResults) {
+              if (result.rdsData) {
+                rdsMap.set(result.frequency, {
+                  rdsData: result.rdsData,
+                  rdsStats: result.rdsStats,
+                });
+              }
+            }
+
+            // Update all signals with RDS data in a SINGLE setState call
+            if (rdsMap.size > 0) {
+              // Debug: Log actual RDS data
+              console.debug("RDS data extracted:", {
+                count: rdsMap.size,
+                samples: Array.from(rdsMap.entries())
+                  .slice(0, 3)
+                  .map(([freq, info]) => ({
+                    frequency: freq,
+                    ps: info.rdsData.ps,
+                    rt: info.rdsData.rt,
+                    pi: info.rdsData.pi,
+                  })),
+              });
+
+              setActiveSignals((prev) =>
+                prev.map((s) => {
+                  const rdsInfo = rdsMap.get(s.frequency);
+                  if (rdsInfo) {
+                    return {
+                      ...s,
+                      rdsData: rdsInfo.rdsData,
+                      rdsStats: rdsInfo.rdsStats,
+                    };
+                  }
+                  return s;
+                }),
+              );
+
+              // Bulk update RDS cache
+              const rdsUpdates = Array.from(rdsMap.entries()).map(
+                ([freq, info]) => ({
+                  frequencyHz: freq,
+                  data: info.rdsData,
+                }),
+              );
+
+              updateBulkCachedRDSData(rdsUpdates);
+              console.info(
+                `Scanner: Extracted RDS from ${rdsUpdates.length}/${fmStations.length} FM stations`,
+              );
+            }
+          } catch (error) {
+            console.warn("Bulk RDS processing failed:", error);
+          }
         }
 
         // Clear samples for next chunk

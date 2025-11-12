@@ -84,8 +84,10 @@ export class RDSDecoder {
   // Block synchronization state
   private blockSync = false;
   private blockBuffer: number[] = [];
-  // TODO: Use blockPosition for error recovery - currently only written to, commented out for noUnusedLocals
-  // private blockPosition = 0;
+  // Track current position in the 4-block group (0=A,1=B,2=C/C',3=D)
+  private blockPosition = 0;
+  // Map of syndrome effect -> bit position for single-bit correction
+  private effectMaskToBit = new Map<number, number>();
   private currentGroupBlocks: RDSBlock[] = [];
 
   // RDS data buffers
@@ -110,6 +112,44 @@ export class RDSDecoder {
       lastSync: 0,
     };
     this.tmcStats = createEmptyTMCStats();
+    // Precompute effect masks for single-bit flips (for fast syndrome correction)
+    this.precomputeEffectMasks();
+  }
+
+  /**
+   * Debug-only: Inject a preformed RDSGroup into this decoder.
+   * This bypasses the usual bit-level processing and is only intended
+   * for development/test helpers to validate parsing/assembly and logging.
+   */
+  public injectGroup(group: RDSGroup): void {
+    try {
+      const type = group.blocks[1] ? (group.blocks[1].data >> 12) & 0xf : 0;
+      if (type === 0) {
+        this.parseGroup0(group);
+      } else if (type === 2) {
+        this.parseGroup2(group);
+      } else if (type === 8) {
+        this.parseGroup8A(group);
+      }
+      this.stationData.lastUpdate = Date.now();
+    } catch (err) {
+      // Swallow errors in debug injection; log for visibility
+
+      console.warn("[RDS] injectGroup failed:", err);
+    }
+  }
+
+  /** Precompute syndrome effect masks for each single bit flip in 26-bit block */
+  private precomputeEffectMasks(): void {
+    // For positions 0..25 (16 data bits, 10 checkword bits)
+    for (let pos = 0; pos < RDS_BLOCK_BITS; pos++) {
+      const bits = new Array<number>(RDS_BLOCK_BITS).fill(0);
+      bits[pos] = 1;
+      const block = this.decodeBlock(bits);
+      const s = this.calculateSyndrome(block.data, block.checkword);
+      // Only store if not zero (shouldn't be zero for a single-bit flip)
+      this.effectMaskToBit.set(s, pos);
+    }
   }
 
   /**
@@ -215,14 +255,63 @@ export class RDSDecoder {
       // Check if we have a complete block
       if (this.blockBuffer.length >= RDS_BLOCK_BITS) {
         const blockBits = this.blockBuffer.splice(0, RDS_BLOCK_BITS);
-        const block = this.decodeBlock(blockBits);
+        let block = this.decodeBlock(blockBits);
 
-        if (block.valid) {
-          this.processBlock(block);
+        // If we're synced, verify the block matches the expected offset word
+        if (this.blockSync) {
+          const pos = this.blockPosition % 4;
+          const offsetNames = ["A", "B", "C", "D"]; // mapping
+          const expected = offsetNames[pos] as keyof typeof OFFSET_WORDS;
+          let syndrome = this.calculateSyndrome(block.data, block.checkword);
+          const expectedVal = OFFSET_WORDS[expected];
+          // For C we also accept C' alternate syndrome
+          let accepted =
+            syndrome === expectedVal ||
+            (expected === "C" && syndrome === OFFSET_WORDS.Cp);
+
+          if (!accepted) {
+            // Try correcting a single bit if mismatch; restrict to current block size
+            // Use the already-extracted blockBits, not the buffer (which was spliced)
+            const correctedBits = this.trySingleBitCorrection(
+              blockBits,
+              expectedVal,
+            );
+            if (correctedBits) {
+              const corrected = this.decodeBlock(correctedBits);
+              // update syndrome & block info
+              syndrome = this.calculateSyndrome(
+                corrected.data,
+                corrected.checkword,
+              );
+              accepted =
+                syndrome === expectedVal ||
+                (expected === "C" && syndrome === OFFSET_WORDS.Cp);
+              if (accepted) {
+                block = corrected;
+                block.corrected = true;
+                this.stats.correctedBlocks++;
+                console.warn(
+                  `[RDS] Corrected single-bit error for synced block offset=${expected} data=0x${block.data.toString(16)}`,
+                );
+              }
+            }
+          }
+
+          if (accepted) {
+            block.offsetWord = expected;
+            block.valid = true;
+            this.processBlock(block);
+            // Advance position for next expected block
+            this.blockPosition = (this.blockPosition + 1) % 4;
+          } else {
+            // Lost sync
+            this.blockSync = false;
+            this.blockPosition = 0;
+          }
         } else {
-          // Lost sync
+          // if not synced at this moment - mark invalid to trigger resync
           this.blockSync = false;
-          // this.blockPosition = 0;
+          this.blockPosition = 0;
         }
       }
     }
@@ -238,18 +327,29 @@ export class RDSDecoder {
 
     // Try to decode a block and check all possible offset words
     const blockBits = this.blockBuffer.slice(0, RDS_BLOCK_BITS);
-    const block = this.decodeBlock(blockBits);
+    let block = this.decodeBlock(blockBits);
 
     // Check if syndrome matches any offset word
-    const syndrome = this.calculateSyndrome(block.data, block.checkword);
+    let syndrome = this.calculateSyndrome(block.data, block.checkword);
 
-    if (
-      syndrome === OFFSET_WORDS.A ||
-      syndrome === OFFSET_WORDS.B ||
-      syndrome === OFFSET_WORDS.C ||
-      syndrome === OFFSET_WORDS.Cp ||
-      syndrome === OFFSET_WORDS.D
-    ) {
+    const matchesOffsetWord = (s: number): boolean =>
+      s === OFFSET_WORDS.A ||
+      s === OFFSET_WORDS.B ||
+      s === OFFSET_WORDS.C ||
+      s === OFFSET_WORDS.Cp ||
+      s === OFFSET_WORDS.D;
+
+    if (!matchesOffsetWord(syndrome)) {
+      // Try a single-bit correction on the block (expensive but only for sync attempt)
+      const correctedBits = this.trySingleBitCorrection(blockBits);
+      if (correctedBits) {
+        block = this.decodeBlock(correctedBits);
+        block.corrected = true;
+        syndrome = this.calculateSyndrome(block.data, block.checkword);
+      }
+    }
+
+    if (matchesOffsetWord(syndrome)) {
       // Found sync!
       this.blockSync = true;
       // this.blockPosition = 0;
@@ -259,17 +359,28 @@ export class RDSDecoder {
       // Determine offset word
       if (syndrome === OFFSET_WORDS.A) {
         block.offsetWord = "A";
+        this.blockPosition = 1; // Next block is B
       } else if (syndrome === OFFSET_WORDS.B) {
         block.offsetWord = "B";
+        this.blockPosition = 2; // Next block is C
       } else if (syndrome === OFFSET_WORDS.C) {
         block.offsetWord = "C";
+        this.blockPosition = 3; // Next block is D
       } else if (syndrome === OFFSET_WORDS.Cp) {
         block.offsetWord = "C'";
+        this.blockPosition = 3; // Next block is D (C' also goes to D)
       } else if (syndrome === OFFSET_WORDS.D) {
         block.offsetWord = "D";
+        this.blockPosition = 0; // Next block is A (new group)
       }
 
       block.valid = true;
+      if (block.corrected) {
+        this.stats.correctedBlocks++;
+        console.warn(
+          `[RDS] Corrected single-bit error during sync for block offset=${block.offsetWord} data=0x${block.data.toString(16)}`,
+        );
+      }
       this.blockBuffer.splice(0, RDS_BLOCK_BITS);
       this.processBlock(block);
     }
@@ -298,6 +409,53 @@ export class RDSDecoder {
       valid: false,
       corrected: false,
     };
+  }
+
+  /**
+   * Try to correct a single-bit error in a 26-bit block bit array.
+   * Returns corrected bits if single-bit flip yields valid syndrome for any offset word, otherwise undefined.
+   */
+  private trySingleBitCorrection(
+    bits: number[],
+    expectedSyndrome?: number,
+  ): number[] | undefined {
+    if (!bits || bits.length < RDS_BLOCK_BITS) return undefined;
+    // Clone bits
+    const candidate = bits.slice(0, RDS_BLOCK_BITS);
+    // Try flipping each bit position
+    // Fast path: if expectedSyndrome provided, compute delta and lookup position
+    if (typeof expectedSyndrome === "number") {
+      const base = this.calculateSyndrome(
+        this.decodeBlock(candidate).data,
+        this.decodeBlock(candidate).checkword,
+      );
+      const delta = base ^ expectedSyndrome;
+      const pos = this.effectMaskToBit.get(delta);
+      if (typeof pos === "number") {
+        const flipped = candidate.slice();
+        flipped[pos] = flipped[pos] ? 0 : 1;
+        return flipped;
+      }
+      // Fall back to brute force below
+    }
+
+    // Brute-force fallback: try flipping each bit
+    for (let pos = 0; pos < RDS_BLOCK_BITS; pos++) {
+      const flipped = candidate.slice();
+      flipped[pos] = flipped[pos] ? 0 : 1;
+      const b = this.decodeBlock(flipped);
+      const s = this.calculateSyndrome(b.data, b.checkword);
+      if (
+        s === OFFSET_WORDS.A ||
+        s === OFFSET_WORDS.B ||
+        s === OFFSET_WORDS.C ||
+        s === OFFSET_WORDS.Cp ||
+        s === OFFSET_WORDS.D
+      ) {
+        return flipped;
+      }
+    }
+    return undefined;
   }
 
   /**
@@ -459,6 +617,17 @@ export class RDSDecoder {
     // Update PS name if we have all segments
     if (this.psBuffer.every((c) => c !== "")) {
       this.stationData.ps = this.psBuffer.join("").trim();
+      // Instrumentation: PS contains non-ASCII or control chars? Log for diagnosis
+      const psText = this.stationData.ps;
+      for (let i = 0; i < psText.length; i++) {
+        const code = psText.charCodeAt(i);
+        if (code < 32 || code > 127) {
+          console.warn(
+            `[RDS] Program Service (PS) contains unusual characters for PI=${group.pi?.toString(16) || "?"} text=${psText}`,
+          );
+          break;
+        }
+      }
     }
   }
 
@@ -502,6 +671,25 @@ export class RDSDecoder {
     const rtText = this.rtBuffer.join("").trim();
     if (rtText.length > 0) {
       this.stationData.rt = rtText;
+    }
+
+    // Instrumentation: if RT contains likely non-ASCII or invalid characters,
+    // log details to help diagnose corruption in the wild (e.g., encoding or bit errors).
+    for (let i = 0; i < rtText.length; i++) {
+      const code = rtText.charCodeAt(i);
+      if (code < 32 && code !== 13) {
+        console.warn(
+          `[RDS] Radio Text contains control characters for PI=${group.pi.toString(16)} seg=${segmentAddress} v=${group.version} ts=${group.timestamp}`,
+        );
+        break;
+      }
+      if (code > 127) {
+        // Non-ASCII detected (Latin1 vs Unicode mismatch or corruption)
+        console.warn(
+          `[RDS] Radio Text contains non-ASCII characters for PI=${group.pi.toString(16)} seg=${segmentAddress} v=${group.version} ts=${group.timestamp} chars=${rtText}`,
+        );
+        break;
+      }
     }
   }
 
@@ -690,7 +878,7 @@ export class RDSDecoder {
     this.tmcMessages.clear();
     this.blockSync = false;
     this.blockBuffer = [];
-    // this.blockPosition = 0;
+    this.blockPosition = 0;
     this.currentGroupBlocks = [];
     this.psBuffer = new Array<string>(8).fill("");
     this.rtBuffer = new Array<string>(64).fill("");

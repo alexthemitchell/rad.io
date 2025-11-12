@@ -135,7 +135,6 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
   // RTL-SDR doesn't have separate VGA gain control
   async setVGAGain?(): Promise<void> {
     // No-op for RTL-SDR
-    console.debug("RTL-SDR does not support separate VGA gain control");
     return Promise.resolve();
   }
 
@@ -148,7 +147,6 @@ export class RTLSDRDeviceAdapter implements ISDRDevice {
   // RTL-SDR doesn't have configurable bandwidth filter
   async setBandwidth?(): Promise<void> {
     // No-op for RTL-SDR - bandwidth is determined by sample rate
-    console.debug("RTL-SDR bandwidth is determined by sample rate");
     return Promise.resolve();
   }
 

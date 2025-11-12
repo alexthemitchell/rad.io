@@ -9,14 +9,14 @@ import { useSignalDetection } from "../useSignalDetection";
 jest.mock("../../utils/dsp", () => ({
   detectSpectralPeaks: jest.fn(() => [
     {
-      frequency: 100e6,
+      frequency: 99_300_000, // 99.3 MHz
       powerDb: -40,
-      binIndex: 512,
+      binIndex: 666, // ~99.3 MHz with center=99 MHz, SR=2 MHz
     },
     {
-      frequency: 101e6,
+      frequency: 99_700_000, // 99.7 MHz (400 kHz spacing for FM grid)
       powerDb: -50,
-      binIndex: 612,
+      binIndex: 870, // ~99.7 MHz with center=99 MHz, SR=2 MHz
     },
   ]),
   estimateNoiseFloor: jest.fn(() => -80),
@@ -51,12 +51,13 @@ describe("useSignalDetection", () => {
 
   it("should detect signals when enabled", async () => {
     const fftData = new Float32Array(1024).fill(-80);
-    // Add some peaks to the FFT data
-    fftData[512] = -40; // 100 MHz
-    fftData[612] = -50; // 101 MHz
+    // Add some peaks to the FFT data - space them so they don't snap to same FM grid
+    fftData[666] = -40; // ~99.3 MHz (will snap to 99.3 FM grid)
+    fftData[870] = -50; // ~99.7 MHz (will snap to 99.7 FM grid, 400 kHz apart)
 
+    // Center frequency is 99 MHz to avoid DC spike filtering (which excludes ±100 kHz from center)
     const { result } = renderHook(() =>
-      useSignalDetection(fftData, 2e6, 100e6, true),
+      useSignalDetection(fftData, 2e6, 99e6, true),
     );
 
     // Manually trigger detection

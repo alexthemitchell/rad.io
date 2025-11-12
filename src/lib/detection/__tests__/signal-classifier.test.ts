@@ -103,7 +103,7 @@ describe("SignalClassifier", () => {
     it("should return unknown for unrecognized signals", () => {
       const peak: Peak = {
         binIndex: 512,
-        frequency: 100_000_000,
+        frequency: 50_000_000, // 50 MHz (outside FM broadcast band)
         bandwidth: 500_000, // Very wide, doesn't match any pattern
         power: -50,
         snr: 30,
@@ -138,7 +138,7 @@ describe("SignalClassifier", () => {
     it("should handle edge sharpness measurement", () => {
       const peak: Peak = {
         binIndex: 512,
-        frequency: 100_000_000,
+        frequency: 150_000_000, // Changed from 100 MHz (FM broadcast) to 150 MHz to test digital classification
         power: 10, // Positive power value
         bandwidth: 2_000,
         snr: 40,
@@ -187,6 +187,46 @@ describe("SignalClassifier", () => {
       const signalNFMUpper = classifier.classify(peakNFMUpper, spectrum);
 
       expect(signalNFMUpper.type).toBe("narrowband-fm");
+    });
+
+    it("should always classify FM broadcast band (88-108 MHz) as wideband-fm", () => {
+      const spectrum = new Float32Array(1024).fill(-80);
+
+      // Test low end of FM band - even with narrow measured bandwidth
+      const peak88MHz: Peak = {
+        binIndex: 512,
+        frequency: 88_100_000,
+        power: -50,
+        bandwidth: 5_000, // Very narrow measurement due to fading
+        snr: 15,
+      };
+      const signal88 = classifier.classify(peak88MHz, spectrum);
+      expect(signal88.type).toBe("wideband-fm");
+      expect(signal88.confidence).toBeGreaterThan(0.7);
+
+      // Test middle of FM band - with moderate bandwidth
+      const peak100MHz: Peak = {
+        binIndex: 512,
+        frequency: 100_300_000,
+        power: -40,
+        bandwidth: 40_000,
+        snr: 25,
+      };
+      const signal100 = classifier.classify(peak100MHz, spectrum);
+      expect(signal100.type).toBe("wideband-fm");
+      expect(signal100.confidence).toBeGreaterThan(0.8);
+
+      // Test high end of FM band - with full bandwidth
+      const peak108MHz: Peak = {
+        binIndex: 512,
+        frequency: 107_900_000,
+        power: -30,
+        bandwidth: 200_000,
+        snr: 35,
+      };
+      const signal108 = classifier.classify(peak108MHz, spectrum);
+      expect(signal108.type).toBe("wideband-fm");
+      expect(signal108.confidence).toBeGreaterThan(0.9);
     });
   });
 });
