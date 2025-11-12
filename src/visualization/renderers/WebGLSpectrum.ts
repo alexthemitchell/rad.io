@@ -5,6 +5,7 @@
 
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
+import { DEFAULT_MARGIN } from "../grid";
 import type { Renderer, SpectrumData } from "./types";
 
 type GL = WebGL2RenderingContext | WebGLRenderingContext;
@@ -172,16 +173,29 @@ export class WebGLSpectrum implements Renderer {
     // y: normalized magnitude (0-1)
     const vertices: number[] = [];
 
+    // Chart margins must match CanvasSpectrum so overlay annotations align.
+    const margin = DEFAULT_MARGIN;
+    const chartWidth = this.width - margin.left - margin.right;
+    const chartHeight = this.height - margin.top - margin.bottom;
+
     for (let i = freqMin; i < freqMax && i < magnitudes.length; i++) {
       const mag = magnitudes[i];
       if (mag === undefined || !isFinite(mag)) {
         continue;
       }
 
-      const x = (i - freqMin) / binCount;
-      const y = (mag - minMag) / Math.max(1e-9, magRange);
+      // Normalized coordinates within the chart area
+      const xNorm = (i - freqMin) / binCount; // 0..1 across data bins
+      const yNorm = (mag - minMag) / Math.max(1e-9, magRange); // 0..1 across magnitude
 
-      vertices.push(x, y);
+      // Map normalized chart coords into full canvas normalized coords
+      const fullX =
+        (margin.left + xNorm * chartWidth) / Math.max(1, this.width);
+      // Invert y so 0 -> top of chart; compute pixel Y first
+      const pixelY = margin.top + chartHeight - yNorm * chartHeight;
+      const fullY = pixelY / Math.max(1, this.height);
+
+      vertices.push(fullX, fullY);
     }
 
     if (vertices.length === 0) {

@@ -243,6 +243,96 @@ export function generateFMIQ(options: {
 }
 
 /**
+ * Generate FM-stereo IQ with an RDS BPSK subcarrier.
+ *
+ * This is a simplified composite FM generator intended for tests. It creates
+ * mono L/R audio tones, constructs L+R and L-R channels for stereo, inserts a
+ * 19kHz pilot tone and a 38kHz DSB suppressed carrier for stereo, and adds a
+ * 57kHz BPSK RDS subcarrier carrying a simple repeating bit pattern.
+ */
+export function generateFMStereoWithRDSIQ(options: {
+  sampleRate: number;
+  carrierFreq: number; // center carrier frequency of the FM signal
+  audioFreqLeft: number; // frequency of left channel audio tone
+  audioFreqRight: number; // frequency of right channel audio tone
+  deviation: number;
+  amplitude: number;
+  duration: number;
+  noiseLevel?: number;
+}): ComplexIQSamples {
+  const {
+    sampleRate,
+    carrierFreq,
+    audioFreqLeft,
+    audioFreqRight,
+    deviation,
+    amplitude,
+    duration,
+    noiseLevel = 0,
+  } = options;
+
+  const numSamples = Math.floor(sampleRate * duration);
+  const out = new Float32Array(numSamples * 2);
+
+  // Audio (baseband) samples
+  // stereo: L+R (mono) baseband, and L-R modulated onto 38kHz DSB suppressed.
+  const pilotFreq = 19000; // 19 kHz pilot tone
+  const stereoCarrierFreq = 38000; // 38 kHz suppressed carrier
+  const rdsSubcarrierFreq = 57000; // 57 kHz RDS subcarrier
+  const rdsBitRate = 1187.5; // bits per second for RDS
+
+  // We will approximate a simple RDS bit pattern using BPSK (diff. is not simulated)
+  const rdsPattern = new Array(64)
+    .fill(0)
+    .map((_, i) => (i % 2 === 0 ? 1 : -1)); // basic alternating pattern
+
+  // Phase accumulators
+  let carrierPhase = 0;
+
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+
+    // generate left and right audio tones
+    const leftSample = Math.sin(2 * Math.PI * audioFreqLeft * t);
+    const rightSample = Math.sin(2 * Math.PI * audioFreqRight * t);
+
+    const lPlusR = (leftSample + rightSample) / 2; // baseband mono
+    const lMinusR = (leftSample - rightSample) / 2; // stereo difference
+
+    // Stereo: DSB-SC at 38kHz for L-R
+    const stereoDSB = lMinusR * Math.cos(2 * Math.PI * stereoCarrierFreq * t);
+
+    // 19kHz pilot tone (small amplitude)
+    const pilot = 0.1 * Math.cos(2 * Math.PI * pilotFreq * t);
+
+    // RDS BPSK: choose bit from pattern using bit rate
+    const bitIdx = Math.floor(t * rdsBitRate) % rdsPattern.length;
+    const rdsBit = rdsPattern[bitIdx] ?? 1;
+    const rdsCarrier = rdsBit * Math.cos(2 * Math.PI * rdsSubcarrierFreq * t);
+
+    // Composite baseband (mono + stereo DSB + pilot + rds)
+    const composite = lPlusR + stereoDSB + pilot + 0.05 * rdsCarrier;
+
+    // FM frequency deviation proportional to composite
+    const instantaneousFreq = carrierFreq + deviation * composite;
+    carrierPhase += (2 * Math.PI * instantaneousFreq) / sampleRate;
+
+    let iValue = amplitude * Math.cos(carrierPhase);
+    let qValue = amplitude * Math.sin(carrierPhase);
+
+    if (noiseLevel > 0) {
+      iValue += (Math.random() - 0.5) * 2 * noiseLevel;
+      qValue += (Math.random() - 0.5) * 2 * noiseLevel;
+    }
+
+    out[i * 2] = iValue;
+    out[i * 2 + 1] = qValue;
+  }
+
+  return { samples: out, length: numSamples, sampleRate };
+}
+
+/**
  * Generate AM modulated IQ samples
  *
  * Creates an AM signal with a sinusoidal modulating signal.

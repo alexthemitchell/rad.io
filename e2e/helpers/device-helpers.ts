@@ -23,7 +23,14 @@ export async function waitForDeviceReady(page: Page): Promise<void> {
  * Wait for the start button to be ready
  */
 export async function waitForStartButton(page: Page) {
-  const startBtn = page.getByRole("button", { name: "Start reception" });
+  // If connect button is visible, attempt to click it (this will open a browser WebUSB prompt
+  // which may require manual approval; if pre-paired, it will connect instantly)
+  const connectBtn = page.getByRole("button", { name: /connect device/i });
+  if ((await connectBtn.count()) > 0 && (await connectBtn.isVisible())) {
+    await connectBtn.click();
+  }
+
+  const startBtn = page.getByRole("button", { name: /start reception/i });
   await expect(startBtn).toBeVisible({ timeout: 15000 });
   await expect(startBtn).toBeEnabled({ timeout: 5000 });
   return startBtn;

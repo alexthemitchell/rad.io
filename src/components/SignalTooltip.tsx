@@ -121,6 +121,20 @@ export function SignalTooltip({
             <span className="signal-tooltip-value">{signal.label}</span>
           </div>
         )}
+
+        {signal.rdsData?.ps && (
+          <div className="signal-tooltip-row">
+            <span className="signal-tooltip-label">RDS:</span>
+            <span className="signal-tooltip-value">{signal.rdsData.ps}</span>
+          </div>
+        )}
+
+        {signal.rdsData?.rt && (
+          <div className="signal-tooltip-row">
+            <span className="signal-tooltip-label">Radio Text:</span>
+            <span className="signal-tooltip-value">{signal.rdsData.rt}</span>
+          </div>
+        )}
       </div>
     </div>
   );

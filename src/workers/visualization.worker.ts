@@ -59,6 +59,8 @@ type MessageResize = {
   dpr?: number;
 };
 
+import { DEFAULT_MARGIN, WATERFALL_MARGIN } from "../visualization/grid";
+
 let offscreen: OffscreenCanvas | null = null;
 let ctx: OffscreenCanvasRenderingContext2D | null = null;
 let vizType: MessageInit["vizType"] | null = null;
@@ -121,7 +123,7 @@ function drawConstellation(samples: Sample[], transform?: ViewTransform): void {
     c.translate(transform.offsetX, transform.offsetY);
     c.scale(transform.scale, transform.scale);
   }
-  const margin = { top: 60, bottom: 70, left: 80, right: 60 };
+  const margin = DEFAULT_MARGIN;
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
 
@@ -211,7 +213,7 @@ function drawSpectrogram(
   const c = ctx;
   const start = performance.now();
   clearBackground();
-  const margin = { top: 70, bottom: 70, left: 80, right: 120 };
+  const margin = WATERFALL_MARGIN;
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
   const numFrames = fftData.length;
@@ -280,7 +282,7 @@ function drawWaveform(samples: WaveformSample[]): void {
   const c = ctx;
   const start = performance.now();
   clearBackground();
-  const margin = { top: 60, bottom: 60, left: 70, right: 60 };
+  const margin = DEFAULT_MARGIN;
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
 

@@ -52,7 +52,6 @@ export default function Spectrum({
         if (webglSuccess) {
           rendererRef.current = webglRenderer;
           setRendererType("webgl");
-          console.info("[Spectrum] Using WebGL renderer");
           return;
         }
       } catch (err) {
@@ -67,7 +66,6 @@ export default function Spectrum({
         if (canvasSuccess) {
           rendererRef.current = canvasRenderer;
           setRendererType("canvas");
-          console.info("[Spectrum] Using Canvas2D renderer");
           return;
         }
       } catch (err) {

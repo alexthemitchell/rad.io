@@ -10,6 +10,7 @@ import {
   getColormapLUT256,
   type ColormapName as GLColormapName,
 } from "../../utils/webgl";
+import { WATERFALL_MARGIN } from "../grid";
 import type { WebGPUTextureRenderer } from "../../utils/webgpu";
 import type { ReactElement } from "react";
 
@@ -625,7 +626,7 @@ export default function Spectrogram({
       ctx.fillStyle = "#0a0e1a";
       ctx.fillRect(0, 0, width, height);
 
-      const margin = { top: 70, bottom: 70, left: 80, right: 120 };
+      const margin = WATERFALL_MARGIN;
       const chartWidth = width - margin.left - margin.right;
       const chartHeight = height - margin.top - margin.bottom;
 
@@ -769,21 +770,7 @@ export default function Spectrogram({
       }
 
       // Hint to browser to run GC (doesn't force it, but helps)
-      if (typeof performance !== "undefined") {
-        const perfWithMemory = performance as {
-          memory?: { usedJSHeapSize?: number; totalJSHeapSize?: number };
-        };
-        if (perfWithMemory.memory) {
-          console.debug("[Spectrogram] Memory usage:", {
-            usedJSHeapSize: Math.round(
-              (perfWithMemory.memory.usedJSHeapSize ?? 0) / 1024 / 1024,
-            ),
-            totalJSHeapSize: Math.round(
-              (perfWithMemory.memory.totalJSHeapSize ?? 0) / 1024 / 1024,
-            ),
-          });
-        }
-      }
+      // Memory monitoring removed to reduce logging noise
     }, CLEANUP_INTERVAL);
 
     return () => clearInterval(cleanupTimer);

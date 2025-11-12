@@ -744,7 +744,7 @@ test.describe("Help Page", () => {
   test("should display help content", async ({ page }) => {
     await page.goto("/help");
 
-    const helpContent = page.locator('main, [role="main"]');
+    const helpContent = page.locator("#main-content");
     await expect(helpContent).toBeVisible();
 
     // Should have some help text or headings

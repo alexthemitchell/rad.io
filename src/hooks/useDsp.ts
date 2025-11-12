@@ -8,6 +8,8 @@ import type { DspWorkerMessage } from "../workers/dspWorkerPool";
 interface UseDspOptions {
   fftSize: number;
   onNewFft: (fft: Float32Array) => void;
+  /** Optional callback with raw parsed IQ samples for opportunistic decoders (RDS, etc.) */
+  onIQSamples?: (samples: ReturnType<ISDRDevice["parseSamples"]>) => void;
 }
 
 // Use the shared DspWorkerMessage type from the worker pool to keep MessageEvent generic consistent
@@ -20,7 +22,7 @@ export function useDsp(
   start: () => Promise<void>;
   stop: () => Promise<void>;
 } {
-  const { fftSize, onNewFft } = options;
+  const { fftSize, onNewFft, onIQSamples } = options;
   const [magnitudes, setMagnitudes] = useState(new Float32Array(fftSize));
   const simTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const simPhaseRef = useRef<number>(0);
@@ -118,6 +120,10 @@ export function useDsp(
       // Convert transport format (DataView) to IQSample[] using device's parser
       try {
         const iq = device.parseSamples(raw);
+        // Provide raw IQ samples upstream if requested
+        if (onIQSamples) {
+          onIQSamples(iq);
+        }
 
         // Convert IQSample[] to interleaved Float32Array for zero-copy transfer
         const interleavedSamples = new Float32Array(iq.length * 2);
@@ -143,7 +149,7 @@ export function useDsp(
       }
     };
     await device.receive(sampleCallback);
-  }, [device, fftSize]);
+  }, [device, fftSize, onIQSamples]);
 
   const stop = useCallback(async () => {
     // Stop simulated stream if running

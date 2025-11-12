@@ -5,12 +5,14 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { SignalClassifier } from "../lib/detection/signal-classifier";
+import { getCachedRDSData } from "../store/rdsCache";
 import {
   detectSpectralPeaks,
   estimateNoiseFloor,
   type SpectralPeak,
 } from "../utils/dsp";
 import type { ClassifiedSignal } from "../lib/detection/signal-classifier";
+import type { RDSStationData } from "../models/RDSData";
 
 /**
  * Detected signal with visualization metadata
@@ -22,6 +24,8 @@ export interface DetectedSignal extends ClassifiedSignal {
   isActive: boolean;
   /** Signal label (optional) */
   label?: string;
+  /** Optional RDS station data */
+  rdsData?: RDSStationData;
 }
 
 /**
@@ -180,6 +184,7 @@ export function useSignalDetection(
         ...classified,
         lastSeen: now,
         isActive: true,
+        rdsData: getCachedRDSData(peak.frequency),
       });
     }
 
