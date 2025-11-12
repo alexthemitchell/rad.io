@@ -326,7 +326,6 @@ describe("ATSCVideoDecoder", () => {
       // Create a PES packet with PTS > 2^31 (0x80000000 = 2147483648)
       // PTS value: 2^31 + 1000 = 2147484648
       // In 90kHz clock, encoded as 33-bit value
-      const largesPTS = 2147484648;
       const pesPacket = new Uint8Array([
         0x00,
         0x00,
@@ -348,11 +347,8 @@ describe("ATSCVideoDecoder", () => {
         ...new Array(27).fill(0),
       ]);
 
-      // Process the packet
-      decoder.processPayload(pesPacket);
-
-      // The test passes if no errors are thrown
-      // Actual PTS value validation would require access to internal state
+      // Process the packet - should not throw or overflow
+      expect(() => decoder.processPayload(pesPacket)).not.toThrow();
     });
 
     it("should correctly parse PTS and DTS together", () => {
@@ -383,10 +379,8 @@ describe("ATSCVideoDecoder", () => {
         ...new Array(22).fill(0),
       ]);
 
-      // Process the packet
-      decoder.processPayload(pesPacket);
-
-      // The test passes if no errors are thrown
+      // Process the packet - should not throw
+      expect(() => decoder.processPayload(pesPacket)).not.toThrow();
     });
 
     it("should handle maximum 33-bit PTS value", () => {
@@ -412,8 +406,8 @@ describe("ATSCVideoDecoder", () => {
         ...new Array(27).fill(0),
       ]);
 
-      // Process the packet - should not overflow
-      decoder.processPayload(pesPacket);
+      // Process the packet - should not throw or overflow
+      expect(() => decoder.processPayload(pesPacket)).not.toThrow();
     });
   });
 });

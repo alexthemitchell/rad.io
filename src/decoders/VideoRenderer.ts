@@ -107,11 +107,7 @@ export class VideoRenderer {
     }
 
     // Guard against division by zero before computing aspect ratios
-    if (
-      this.videoHeight === 0 ||
-      this.canvas.clientHeight === 0 ||
-      this.canvas.clientWidth === 0
-    ) {
+    if (this.canvas.clientHeight === 0 || this.canvas.clientWidth === 0) {
       return;
     }
 
