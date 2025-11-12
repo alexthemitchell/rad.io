@@ -44,7 +44,10 @@ export interface VideoCodecConfig {
   codedWidth: number;
   codedHeight: number;
   description?: ArrayBuffer; // SPS/PPS for H.264, sequence header for MPEG-2
-  hardwareAcceleration?: "no-preference" | "prefer-hardware" | "prefer-software";
+  hardwareAcceleration?:
+    | "no-preference"
+    | "prefer-hardware"
+    | "prefer-software";
   optimizeForLatency?: boolean;
 }
 
@@ -98,7 +101,7 @@ export class ATSCVideoDecoder {
   private awaitingPESStart = true;
 
   // Frame buffer for ordering and timing
-  private frameBuffer: Map<number, VideoFrame> = new Map();
+  private frameBuffer = new Map<number, VideoFrame>();
   private lastPresentedPTS = 0;
 
   // Performance metrics
@@ -167,14 +170,14 @@ export class ATSCVideoDecoder {
     }
 
     this.currentConfig = config;
-    await this.configureDecoder(config);
+    this.configureDecoder(config);
     this.state = "configured";
   }
 
   /**
    * Configure or reconfigure the VideoDecoder
    */
-  private async configureDecoder(config: VideoCodecConfig): Promise<void> {
+  private configureDecoder(config: VideoCodecConfig): void {
     // Close existing decoder if any
     if (this.decoder) {
       this.decoder.close();
@@ -183,8 +186,8 @@ export class ATSCVideoDecoder {
 
     // Create new decoder
     this.decoder = new VideoDecoder({
-      output: (frame: VideoFrame) => this.handleDecodedFrame(frame),
-      error: (error: DOMException) => this.handleDecoderError(error),
+      output: (frame: VideoFrame): void => this.handleDecodedFrame(frame),
+      error: (error: DOMException): void => this.handleDecoderError(error),
     });
 
     // Configure decoder
@@ -409,7 +412,7 @@ export class ATSCVideoDecoder {
       };
 
       this.currentConfig = newConfig;
-      void this.configureDecoder(newConfig);
+      this.configureDecoder(newConfig);
       this.h264SPSPPSExtracted = true;
     }
   }
@@ -428,8 +431,10 @@ export class ATSCVideoDecoder {
       ) {
         // Found sequence header
         // Extract width and height
-        const width = (((data[i + 4] ?? 0) << 4) | ((data[i + 5] ?? 0) >> 4)) & 0xfff;
-        const height = ((((data[i + 5] ?? 0) & 0x0f) << 8) | (data[i + 6] ?? 0)) & 0xfff;
+        const width =
+          (((data[i + 4] ?? 0) << 4) | ((data[i + 5] ?? 0) >> 4)) & 0xfff;
+        const height =
+          ((((data[i + 5] ?? 0) & 0x0f) << 8) | (data[i + 6] ?? 0)) & 0xfff;
 
         // Extract sequence header (typically ~12 bytes, but can vary)
         let seqHeaderEnd = i + 12;
@@ -456,7 +461,7 @@ export class ATSCVideoDecoder {
           };
 
           this.currentConfig = newConfig;
-          void this.configureDecoder(newConfig);
+          this.configureDecoder(newConfig);
           this.mpeg2SequenceHeaderExtracted = true;
         }
 
@@ -475,10 +480,10 @@ export class ATSCVideoDecoder {
         if (
           data[i] === 0x00 &&
           data[i + 1] === 0x00 &&
-          (data[i + 2] === 0x01 || (data[i + 2] === 0x00 && data[i + 3] === 0x01))
+          (data[i + 2] === 0x01 ||
+            (data[i + 2] === 0x00 && data[i + 3] === 0x01))
         ) {
-          const nalStart =
-            data[i + 2] === 0x01 ? i + 3 : i + 4;
+          const nalStart = data[i + 2] === 0x01 ? i + 3 : i + 4;
           const nalType = (data[nalStart] ?? 0) & 0x1f;
           if (nalType === 5) {
             return true; // IDR frame
@@ -515,6 +520,7 @@ export class ATSCVideoDecoder {
     this.metrics.framesDecoded++;
 
     // Add to frame buffer for ordering
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     const pts = Math.floor(frame.timestamp ?? 0);
     this.frameBuffer.set(pts, frame);
 
@@ -569,7 +575,8 @@ export class ATSCVideoDecoder {
    */
   private handleDecoderError(error: Error | DOMException): void {
     this.state = "error";
-    const errorMessage = error instanceof Error ? error : new Error(String(error));
+    const errorMessage =
+      error instanceof Error ? error : new Error(String(error));
     this.onError(errorMessage);
   }
 

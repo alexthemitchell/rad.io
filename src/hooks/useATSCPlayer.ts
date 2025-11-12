@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { ATSCVideoDecoder, VideoRenderer } from "../decoders";
 import { type ISDRDevice } from "../models/SDRDevice";
 import {
   TransportStreamParser,
@@ -17,7 +18,6 @@ import {
 import { ATSC8VSBDemodulator } from "../plugins/demodulators/ATSC8VSBDemodulator";
 import { ATSC_CONSTANTS } from "../utils/atscChannels";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
-import { ATSCVideoDecoder, VideoRenderer } from "../decoders";
 
 /**
  * Audio track information
@@ -163,20 +163,18 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       // Get canvas element
       const canvas = document.getElementById(
         "atsc-video-canvas",
-      ) as HTMLCanvasElement;
+      ) as HTMLCanvasElement | null;
       if (!canvas) {
         console.error("ATSC Player: Video canvas not found");
         return;
       }
 
       // Initialize renderer
-      if (!videoRendererRef.current) {
-        videoRendererRef.current = new VideoRenderer({
-          canvas,
-          maintainAspectRatio: true,
-          scaleMode: "fit",
-        });
-      }
+      videoRendererRef.current ??= new VideoRenderer({
+        canvas,
+        maintainAspectRatio: true,
+        scaleMode: "fit",
+      });
 
       // Initialize decoder
       if (!videoDecoderRef.current) {
@@ -198,9 +196,13 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
 
         try {
           await videoDecoderRef.current.initialize(streamType);
-          console.log(
-            `ATSC Video Decoder initialized for PID ${videoPid} with ${getStreamTypeDescription(streamType)}`,
-          );
+          // Log successful initialization
+          if (process.env.NODE_ENV !== "production") {
+            // eslint-disable-next-line no-console
+            console.log(
+              `ATSC Video Decoder initialized for PID ${videoPid} with ${getStreamTypeDescription(streamType)}`,
+            );
+          }
         } catch (error) {
           console.error("Failed to initialize video decoder:", error);
           videoDecoderRef.current = null;
@@ -391,7 +393,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
         }
 
         // Ensure parser is initialized
-        parserRef.current ??= new TransportStreamParser();
+        parserRef.current = parserRef.current ?? new TransportStreamParser();
 
         // Reset parser
         parserRef.current.reset();
@@ -422,7 +424,9 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
 
               // Parse transport stream
               if (parserRef.current && tsData.length > 0) {
-                const packets = parserRef.current.parseStream(new Uint8Array(tsData.buffer));
+                const packets = parserRef.current.parseStream(
+                  new Uint8Array(tsData.buffer),
+                );
 
                 // Once we have PAT/PMT/VCT, extract program info
                 if (!tablesReceived) {
@@ -483,7 +487,12 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
                 }
 
                 // Demultiplex and decode video using WebCodecs
-                if (tablesReceived && videoPID !== null && videoDecoderRef.current && packets.length > 0) {
+                if (
+                  tablesReceived &&
+                  videoPID !== null &&
+                  videoDecoderRef.current &&
+                  packets.length > 0
+                ) {
                   const videoPayloads = parserRef.current.demultiplex(
                     packets,
                     videoPID,
@@ -516,6 +525,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       parseAudioTracks,
       parseProgramInfo,
       updateSignalQuality,
+      videoPID,
     ],
   );
 
