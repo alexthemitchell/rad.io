@@ -285,7 +285,7 @@ function StatusBar({
     const handler = (evt: Event): void => {
       const e = evt as CustomEvent<{ deviceId: string; ppm?: number }>;
       if (!currentDeviceId) return;
-      if (e.detail?.deviceId === currentDeviceId) {
+      if (e.detail.deviceId === currentDeviceId) {
         if (typeof e.detail.ppm === "number") {
           setPpm(e.detail.ppm);
         } else {
@@ -301,7 +301,7 @@ function StatusBar({
       "rad:calibration-updated",
       handler as EventListener,
     );
-    return () => {
+    return (): void => {
       window.removeEventListener(
         "rad:calibration-updated",
         handler as EventListener,

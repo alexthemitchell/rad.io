@@ -17,12 +17,25 @@ describe("PFB Channelizer worker integration", () => {
     // Fake computeFFT to ensure called
     const computeSpy = jest
       .spyOn(fftWorkerPool, "computeFFT")
-      .mockResolvedValue({ magnitude: new Float32Array(M), phase: new Float32Array(M), processingTime: 1 });
+      .mockResolvedValue({
+        magnitude: new Float32Array(M),
+        phase: new Float32Array(M),
+        processingTime: 1,
+      });
 
     // Prepare a short sample array of complex IQs
-    const samples: IQSample[] = new Array(512).fill(0).map((_v, i) => ({ I: Math.cos(i * 0.1), Q: Math.sin(i * 0.1) }));
+    const samples: IQSample[] = new Array(512)
+      .fill(0)
+      .map((_v, i) => ({ I: Math.cos(i * 0.1), Q: Math.sin(i * 0.1) }));
     const channelFreqs = [100e6];
-    const out = await pfbChannelize(samples, sampleRate, 100e6, channelBandwidth, channelFreqs, { tapsPerPhase: 4 });
+    const out = await pfbChannelize(
+      samples,
+      sampleRate,
+      100e6,
+      channelBandwidth,
+      channelFreqs,
+      { tapsPerPhase: 4 },
+    );
 
     expect(computeSpy).toHaveBeenCalled();
     expect(out.has(channelFreqs[0]!)).toBe(true);

@@ -88,12 +88,10 @@ test("Multi-station FM scan finds multiple tones", async () => {
   // eslint-disable-next-line no-console
   console.log(
     "Top spectral peaks:",
-    peaks
-      .slice(0, 12)
-      .map((p) => ({
-        freq: centerFrequency + (p.bin - half) * binWidth,
-        db: p.db,
-      })),
+    peaks.slice(0, 12).map((p) => ({
+      freq: centerFrequency + (p.bin - half) * binWidth,
+      db: p.db,
+    })),
   );
   const detected: Array<{ frequency: number; db: number }> = [];
   for (const p of peaks) {

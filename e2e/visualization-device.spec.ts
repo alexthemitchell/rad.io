@@ -390,7 +390,9 @@ test.describe("Visualization with Physical Device @device", () => {
     await stopStreaming(page);
   });
 
-  test("should detect at least one FM station with RDS data @device", async ({ page }) => {
+  test("should detect at least one FM station with RDS data @device", async ({
+    page,
+  }) => {
     await page.goto("/monitor");
 
     const startBtn = await waitForStartButton(page);
@@ -406,7 +408,9 @@ test.describe("Visualization with Physical Device @device", () => {
     await freqInput.press("Enter");
     await expect(freqInput).toHaveValue("100000000", { timeout: 5000 });
 
-    const canvas = page.locator('canvas[aria-label="Spectrum Analyzer"]').first();
+    const canvas = page
+      .locator('canvas[aria-label="Spectrum Analyzer"]')
+      .first();
     await expect(canvas).toBeVisible();
 
     // Give the RDS decoder some time to find groups (slow and noisy)
@@ -422,14 +426,18 @@ test.describe("Visualization with Physical Device @device", () => {
 
     let foundRDS = false;
     // Probe across canvas horizontally for signal tooltips showing RDS
-    for (let px = Math.floor(box.x + 10); px < Math.floor(box.x + box.width - 10); px += 40) {
+    for (
+      let px = Math.floor(box.x + 10);
+      px < Math.floor(box.x + box.width - 10);
+      px += 40
+    ) {
       await page.mouse.move(px, midY);
       try {
         const tooltip = page.locator('div.signal-tooltip[role="tooltip"]');
         // Wait briefly for tooltip
-        await tooltip.waitFor({ state: 'visible', timeout: 800 });
+        await tooltip.waitFor({ state: "visible", timeout: 800 });
         const rdsRow = tooltip.locator('.signal-tooltip-row:has-text("RDS:")');
-        if (await rdsRow.count() > 0) {
+        if ((await rdsRow.count()) > 0) {
           foundRDS = true;
           break;
         }

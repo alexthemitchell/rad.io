@@ -123,7 +123,7 @@ export class RDSDecoder {
    */
   public injectGroup(group: RDSGroup): void {
     try {
-      const type = group.blocks[1] ? (group.blocks[1].data >> 12) & 0xf : 0;
+      const type = (group.blocks[1].data >> 12) & 0xf;
       if (type === 0) {
         this.parseGroup0(group);
       } else if (type === 2) {
@@ -257,59 +257,53 @@ export class RDSDecoder {
         const blockBits = this.blockBuffer.splice(0, RDS_BLOCK_BITS);
         let block = this.decodeBlock(blockBits);
 
-        // If we're synced, verify the block matches the expected offset word
-        if (this.blockSync) {
-          const pos = this.blockPosition % 4;
-          const offsetNames = ["A", "B", "C", "D"]; // mapping
-          const expected = offsetNames[pos] as keyof typeof OFFSET_WORDS;
-          let syndrome = this.calculateSyndrome(block.data, block.checkword);
-          const expectedVal = OFFSET_WORDS[expected];
-          // For C we also accept C' alternate syndrome
-          let accepted =
-            syndrome === expectedVal ||
-            (expected === "C" && syndrome === OFFSET_WORDS.Cp);
+        // Verify the block matches the expected offset word
+        const pos = this.blockPosition % 4;
+        const offsetNames = ["A", "B", "C", "D"]; // mapping
+        const expected = offsetNames[pos] as keyof typeof OFFSET_WORDS;
+        let syndrome = this.calculateSyndrome(block.data, block.checkword);
+        const expectedVal = OFFSET_WORDS[expected];
+        // For C we also accept C' alternate syndrome
+        let accepted =
+          syndrome === expectedVal ||
+          (expected === "C" && syndrome === OFFSET_WORDS.Cp);
 
-          if (!accepted) {
-            // Try correcting a single bit if mismatch; restrict to current block size
-            // Use the already-extracted blockBits, not the buffer (which was spliced)
-            const correctedBits = this.trySingleBitCorrection(
-              blockBits,
-              expectedVal,
+        if (!accepted) {
+          // Try correcting a single bit if mismatch; restrict to current block size
+          // Use the already-extracted blockBits, not the buffer (which was spliced)
+          const correctedBits = this.trySingleBitCorrection(
+            blockBits,
+            expectedVal,
+          );
+          if (correctedBits) {
+            const corrected = this.decodeBlock(correctedBits);
+            // update syndrome & block info
+            syndrome = this.calculateSyndrome(
+              corrected.data,
+              corrected.checkword,
             );
-            if (correctedBits) {
-              const corrected = this.decodeBlock(correctedBits);
-              // update syndrome & block info
-              syndrome = this.calculateSyndrome(
-                corrected.data,
-                corrected.checkword,
+            accepted =
+              syndrome === expectedVal ||
+              (expected === "C" && syndrome === OFFSET_WORDS.Cp);
+            if (accepted) {
+              block = corrected;
+              block.corrected = true;
+              this.stats.correctedBlocks++;
+              console.warn(
+                `[RDS] Corrected single-bit error for synced block offset=${expected} data=0x${block.data.toString(16)}`,
               );
-              accepted =
-                syndrome === expectedVal ||
-                (expected === "C" && syndrome === OFFSET_WORDS.Cp);
-              if (accepted) {
-                block = corrected;
-                block.corrected = true;
-                this.stats.correctedBlocks++;
-                console.warn(
-                  `[RDS] Corrected single-bit error for synced block offset=${expected} data=0x${block.data.toString(16)}`,
-                );
-              }
             }
           }
+        }
 
-          if (accepted) {
-            block.offsetWord = expected;
-            block.valid = true;
-            this.processBlock(block);
-            // Advance position for next expected block
-            this.blockPosition = (this.blockPosition + 1) % 4;
-          } else {
-            // Lost sync
-            this.blockSync = false;
-            this.blockPosition = 0;
-          }
+        if (accepted) {
+          block.offsetWord = expected;
+          block.valid = true;
+          this.processBlock(block);
+          // Advance position for next expected block
+          this.blockPosition = (this.blockPosition + 1) % 4;
         } else {
-          // if not synced at this moment - mark invalid to trigger resync
+          // Lost sync
           this.blockSync = false;
           this.blockPosition = 0;
         }
@@ -419,7 +413,7 @@ export class RDSDecoder {
     bits: number[],
     expectedSyndrome?: number,
   ): number[] | undefined {
-    if (!bits || bits.length < RDS_BLOCK_BITS) return undefined;
+    if (bits.length < RDS_BLOCK_BITS) return undefined;
     // Clone bits
     const candidate = bits.slice(0, RDS_BLOCK_BITS);
     // Try flipping each bit position
@@ -623,7 +617,7 @@ export class RDSDecoder {
         const code = psText.charCodeAt(i);
         if (code < 32 || code > 127) {
           console.warn(
-            `[RDS] Program Service (PS) contains unusual characters for PI=${group.pi?.toString(16) || "?"} text=${psText}`,
+            `[RDS] Program Service (PS) contains unusual characters for PI=${group.pi.toString(16)} text=${psText}`,
           );
           break;
         }

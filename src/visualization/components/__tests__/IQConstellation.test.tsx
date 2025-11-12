@@ -1,5 +1,5 @@
 import { render } from "@testing-library/react";
-import IQConstellation from "../IQConstellation";
+import IQConstellation, { type Sample } from "../IQConstellation";
 import {
   createTestSamples,
   createMockCanvasContext,

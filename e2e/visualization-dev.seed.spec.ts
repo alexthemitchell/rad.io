@@ -1,10 +1,14 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Visualization dev-mode RDS seed", () => {
-  test("should seed RDS cache and retrieve via global helper", async ({ page }) => {
+  test("should seed RDS cache and retrieve via global helper", async ({
+    page,
+  }) => {
     await page.goto("/monitor");
     // only run dev test if helper available
-    const hasDev = await page.evaluate(() => (window as any).__DEV_RDS__ !== undefined);
+    const hasDev = await page.evaluate(
+      () => (window as any).__DEV_RDS__ !== undefined,
+    );
     if (!hasDev) {
       test.skip();
       return;
@@ -16,7 +20,9 @@ test.describe("Visualization dev-mode RDS seed", () => {
       ]);
     });
 
-    const cached = await page.evaluate(() => (window as any).__DEV_RDS__.getDebugRDS());
+    const cached = await page.evaluate(() =>
+      (window as any).__DEV_RDS__.getDebugRDS(),
+    );
     expect(Array.isArray(cached)).toBe(true);
     const found = cached.find((s: any) => s.ps === "DEVTEST");
     expect(found).toBeDefined();
@@ -30,7 +36,7 @@ test.describe("Visualization dev-mode RDS seed", () => {
           { data: 0x1234 },
           { data: (2 << 12) | (0 << 11) | 0x0 },
           { data: ("H".charCodeAt(0) << 8) | "E".charCodeAt(0) },
-          { data: (0x00C9 << 8) | " ".charCodeAt(0) },
+          { data: (0x00c9 << 8) | " ".charCodeAt(0) },
         ],
         pi: 0x1234,
         pty: 0,
@@ -48,7 +54,9 @@ test.describe("Visualization dev-mode RDS seed", () => {
       return (window as any).__lastConsoleLogged || null;
     });
     // We can't reliably read console output via evaluate; rely on getDecoderStats to reflect lastUpdate
-    const stats = await page.evaluate(() => (window as any).__DEV_RDS__.getDecoderStats());
+    const stats = await page.evaluate(() =>
+      (window as any).__DEV_RDS__.getDecoderStats(),
+    );
     expect(stats).toBeTruthy();
   });
 });

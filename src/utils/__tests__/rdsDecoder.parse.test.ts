@@ -14,7 +14,12 @@ describe("rdsDecoder parseGroup0 / parseGroup2", () => {
       corrected: false,
     });
 
-    const makeGroup = (groupType: number, version: "A" | "B", seg: number, dataForBlock3: number): RDSGroup => {
+    const makeGroup = (
+      groupType: number,
+      version: "A" | "B",
+      seg: number,
+      dataForBlock3: number,
+    ): RDSGroup => {
       const blocks: [RDSBlock, RDSBlock, RDSBlock, RDSBlock] = [
         makeBlock(0x1234),
         makeBlock((groupType << 12) | (version === "B" ? 0x800 : 0) | seg),
@@ -23,7 +28,11 @@ describe("rdsDecoder parseGroup0 / parseGroup2", () => {
       ];
       return {
         blocks,
-        groupType: (groupType === 0 ? (version === "A" ? "0A" : "0B") : "UNKNOWN") as any,
+        groupType: (groupType === 0
+          ? version === "A"
+            ? "0A"
+            : "0B"
+          : "UNKNOWN") as any,
         version,
         pi: 0x1234,
         pty: 0,
@@ -35,10 +44,18 @@ describe("rdsDecoder parseGroup0 / parseGroup2", () => {
 
     // PS "RADIOFM " (8 chars) split across 4 segments:
     // seg0: 'RA', seg1: 'DI', seg2: 'OF', seg3: 'M '
-    dec.parseGroup0(makeGroup(0, "A", 0, ("R".charCodeAt(0) << 8) | "A".charCodeAt(0)));
-    dec.parseGroup0(makeGroup(0, "A", 1, ("D".charCodeAt(0) << 8) | "I".charCodeAt(0)));
-    dec.parseGroup0(makeGroup(0, "A", 2, ("O".charCodeAt(0) << 8) | "F".charCodeAt(0)));
-    dec.parseGroup0(makeGroup(0, "A", 3, ("M".charCodeAt(0) << 8) | " ".charCodeAt(0)));
+    dec.parseGroup0(
+      makeGroup(0, "A", 0, ("R".charCodeAt(0) << 8) | "A".charCodeAt(0)),
+    );
+    dec.parseGroup0(
+      makeGroup(0, "A", 1, ("D".charCodeAt(0) << 8) | "I".charCodeAt(0)),
+    );
+    dec.parseGroup0(
+      makeGroup(0, "A", 2, ("O".charCodeAt(0) << 8) | "F".charCodeAt(0)),
+    );
+    dec.parseGroup0(
+      makeGroup(0, "A", 3, ("M".charCodeAt(0) << 8) | " ".charCodeAt(0)),
+    );
 
     const stationData = dec.getStationData();
     expect(stationData.ps).toBe("RADIOFM");
@@ -55,7 +72,13 @@ describe("rdsDecoder parseGroup0 / parseGroup2", () => {
       corrected: false,
     });
 
-    const makeGroup = (groupType: number, version: "A" | "B", seg: number, block2: number, block3: number) => {
+    const makeGroup = (
+      groupType: number,
+      version: "A" | "B",
+      seg: number,
+      block2: number,
+      block3: number,
+    ) => {
       const blocks: [RDSBlock, RDSBlock, RDSBlock, RDSBlock] = [
         makeBlock(0x1234),
         makeBlock((groupType << 12) | (version === "B" ? 0x800 : 0) | seg),
@@ -64,7 +87,11 @@ describe("rdsDecoder parseGroup0 / parseGroup2", () => {
       ];
       return {
         blocks,
-        groupType: (groupType === 2 ? (version === "A" ? "2A" : "2B") : "UNKNOWN") as any,
+        groupType: (groupType === 2
+          ? version === "A"
+            ? "2A"
+            : "2B"
+          : "UNKNOWN") as any,
         version,
         pi: 0x1234,
         pty: 0,
@@ -75,8 +102,18 @@ describe("rdsDecoder parseGroup0 / parseGroup2", () => {
     };
 
     // RT "HELLO" -> segment 0: 'HELL', segment 1: 'O' + '\r' to end
-    dec.parseGroup2(makeGroup(2, "A", 0, ("H".charCodeAt(0) << 8) | "E".charCodeAt(0), ("L".charCodeAt(0) << 8) | "L".charCodeAt(0)));
-    dec.parseGroup2(makeGroup(2, "A", 1, ("O".charCodeAt(0) << 8) | "\r".charCodeAt(0), 0));
+    dec.parseGroup2(
+      makeGroup(
+        2,
+        "A",
+        0,
+        ("H".charCodeAt(0) << 8) | "E".charCodeAt(0),
+        ("L".charCodeAt(0) << 8) | "L".charCodeAt(0),
+      ),
+    );
+    dec.parseGroup2(
+      makeGroup(2, "A", 1, ("O".charCodeAt(0) << 8) | "\r".charCodeAt(0), 0),
+    );
 
     const stationData = dec.getStationData();
     expect(stationData.rt).toBe("HELLO");

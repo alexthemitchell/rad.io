@@ -24,6 +24,8 @@ export interface SettingsState {
   multiStationScanFFTSize: number; // FFT size for scanning
   multiStationScanIntervalMs: number; // how often to scan/process wideband samples
   multiStationUsePFBChannelizer: boolean; // use PFB channelizer when available
+  showGridlines: boolean; // show frequency gridlines in the visualization
+  showGridLabels: boolean; // show frequency grid labels
 }
 
 const DEFAULTS: SettingsState = {
@@ -42,6 +44,8 @@ const DEFAULTS: SettingsState = {
   multiStationScanFFTSize: 8192,
   multiStationScanIntervalMs: 1000,
   multiStationUsePFBChannelizer: true,
+  showGridlines: true,
+  showGridLabels: true,
 };
 
 const STORAGE_KEY = "rad.settings.v1";
@@ -141,6 +145,12 @@ function normalizeSettings(
     next.multiStationUsePFBChannelizer =
       base?.multiStationUsePFBChannelizer ??
       DEFAULTS.multiStationUsePFBChannelizer;
+  }
+  if (typeof next.showGridlines !== "boolean") {
+    next.showGridlines = base?.showGridlines ?? DEFAULTS.showGridlines;
+  }
+  if (typeof next.showGridLabels !== "boolean") {
+    next.showGridLabels = base?.showGridLabels ?? DEFAULTS.showGridLabels;
   }
 
   return next;

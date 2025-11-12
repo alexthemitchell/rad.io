@@ -83,7 +83,9 @@ test.describe("Monitor - Core Functionality", () => {
     expect(new URL(page.url()).pathname).toMatch(/^\/$|\/monitor$/);
 
     // Verify main heading
-    const heading = page.getByRole("heading", { name: "rad.io", level: 1 }).first();
+    const heading = page
+      .getByRole("heading", { name: "rad.io", level: 1 })
+      .first();
     await expect(heading).toBeVisible();
   });
 
@@ -97,7 +99,9 @@ test.describe("Monitor - Core Functionality", () => {
     await expect(topBar.first()).toBeVisible();
 
     // Frequency display should be visible (JetBrains Mono, tabular figures)
-    const freqDisplay = page.getByRole('spinbutton', { name: /frequency/i }).first();
+    const freqDisplay = page
+      .getByRole("spinbutton", { name: /frequency/i })
+      .first();
     await expect(freqDisplay).toBeVisible();
 
     // Navigation should be present
@@ -614,7 +618,9 @@ test.describe("Monitor - Performance", () => {
     await page.goto("/monitor?mockSdr=1");
 
     const startBtn = await findStartButton(page);
-    const stopBtn = page.getByRole("button", { name: /stop reception/i }).first();
+    const stopBtn = page
+      .getByRole("button", { name: /stop reception/i })
+      .first();
 
     // Cycle 3 times
     for (let i = 0; i < 3; i++) {

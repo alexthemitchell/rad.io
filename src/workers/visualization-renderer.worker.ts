@@ -14,6 +14,8 @@ type Transform = {
   scale: number;
 };
 
+import { DEFAULT_MARGIN, WATERFALL_MARGIN } from "../visualization/grid";
+
 type Config = {
   width: number;
   height: number;
@@ -430,7 +432,7 @@ function renderConstellation2D(
     context2D.scale(transform.scale, transform.scale);
   }
 
-  const margin = { top: 60, bottom: 70, left: 80, right: 60 };
+  const margin = DEFAULT_MARGIN;
   const chartWidth = renderConfig.width - margin.left - margin.right;
   const chartHeight = renderConfig.height - margin.top - margin.bottom;
 
@@ -541,7 +543,7 @@ function renderSpectrogram2D(fftData: Float32Array[]): void {
 
   clearBg();
 
-  const margin = { top: 70, bottom: 70, left: 80, right: 120 };
+  const margin = WATERFALL_MARGIN;
   const chartWidth = renderConfig.width - margin.left - margin.right;
   const chartHeight = renderConfig.height - margin.top - margin.bottom;
   const numFrames = fftData.length;

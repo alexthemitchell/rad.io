@@ -69,6 +69,13 @@ const VisualizationControls: React.FC<VisualizationControlsProps> = ({
     setSettings({ multiStationEnabled: !settings.multiStationEnabled });
   };
 
+  const toggleGridlines = (): void => {
+    setSettings({ showGridlines: !settings.showGridlines });
+  };
+  const toggleGridLabels = (): void => {
+    setSettings({ showGridLabels: !settings.showGridLabels });
+  };
+
   const toggleMultiStationRDS = (): void => {
     setSettings({ multiStationEnableRDS: !settings.multiStationEnableRDS });
   };
@@ -328,6 +335,40 @@ const VisualizationControls: React.FC<VisualizationControlsProps> = ({
                   style={{ width: "16px", height: "16px", cursor: "pointer" }}
                 />
                 <span>Show Waterfall</span>
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={settings.showGridlines}
+                  onChange={toggleGridlines}
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                />
+                <span>Show Gridlines</span>
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={settings.showGridLabels}
+                  onChange={toggleGridLabels}
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                />
+                <span>Show Grid Labels</span>
               </label>
             </div>
           )}

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import { performanceMonitor } from "../../utils/performanceMonitor";
 import { WebGLSpectrum, WebGLWaterfall } from "../../visualization";
+import { WATERFALL_MARGIN } from "../../visualization/grid";
 import { SpectrumAnnotations } from "../../visualization/renderers/SpectrumAnnotations";
 import { SignalTooltip } from "../SignalTooltip";
 import type { WATERFALL_COLORMAPS } from "../../constants";
@@ -22,6 +23,9 @@ interface PrimaryVisualizationProps {
   signals?: DetectedSignal[];
   /** Whether to show signal annotations */
   showAnnotations?: boolean;
+  /** Whether to show frequency gridlines independent from annotations */
+  showGridlines?: boolean;
+  showGridLabels?: boolean;
 }
 
 const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
@@ -36,6 +40,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   onTune,
   signals = [],
   showAnnotations = true,
+  showGridlines = true,
+  showGridLabels = true,
 }) => {
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
   const waterfallCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -85,6 +91,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   const centerFrequencyRef = useRef<number>(centerFrequency);
   const signalsRef = useRef<DetectedSignal[]>(signals);
   const showAnnotationsRef = useRef<boolean>(showAnnotations);
+  const showGridlinesRef = useRef<boolean>(showGridlines);
+  const showGridLabelsRef = useRef<boolean>(showGridLabels);
   const lastAnnotationRenderTime = useRef<number>(0);
   // Slightly slower annotation cadence to reduce flicker; spectrum vs waterfall staggered
   const ANNOTATION_RENDER_INTERVAL_MS = 150; // 6-7 FPS for labels is sufficient
@@ -137,6 +145,12 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   useEffect((): void => {
     showAnnotationsRef.current = showAnnotations;
   }, [showAnnotations]);
+  useEffect((): void => {
+    showGridlinesRef.current = showGridlines;
+  }, [showGridlines]);
+  useEffect((): void => {
+    showGridLabelsRef.current = showGridLabels;
+  }, [showGridLabels]);
 
   const transform = useMemo(
     (): RenderTransform => ({
@@ -356,6 +370,23 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
           freqMax: size,
           transform,
         });
+        // Ensure gridlines are rendered even when annotations are hidden
+        if (
+          showGridlinesRef.current &&
+          annotationsRendererRef.current?.isReady()
+        ) {
+          annotationsRendererRef.current.renderGridlines(
+            canvasDimensions.width,
+            canvasDimensions.height,
+            centerFrequencyRef.current - sampleRateRef.current / 2,
+            centerFrequencyRef.current + sampleRateRef.current / 2,
+            centerFrequencyRef.current,
+            sampleRateRef.current,
+            {
+              drawLabels: showGridLabelsRef.current,
+            },
+          );
+        }
 
         // Render annotations on spectrum (throttled to reduce visual jumpiness)
         const now = Date.now();
@@ -445,6 +476,25 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
             );
           }
         }
+        // For waterfall, we still want gridlines visible if the caller enables them
+        if (
+          showGridlinesRef.current &&
+          waterfallAnnotationsRendererRef.current?.isReady()
+        ) {
+          waterfallAnnotationsRendererRef.current.renderGridlines(
+            canvasDimensions.width,
+            canvasDimensions.height,
+            centerFrequencyRef.current - sampleRateRef.current / 2,
+            centerFrequencyRef.current + sampleRateRef.current / 2,
+            centerFrequencyRef.current,
+            sampleRateRef.current,
+            {
+              margin: WATERFALL_MARGIN,
+              drawLabels: showGridLabelsRef.current,
+              lineColor: "rgba(255,255,255,0.10)",
+            },
+          );
+        }
       }
 
       performanceMonitor.measure("rendering", "render-start");
@@ -458,7 +508,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         rafIdRef.current = null;
       }
     };
-  }, [transform]);
+  }, [transform, canvasDimensions.width, canvasDimensions.height]);
 
   // Handle mouse move for tooltip (throttled)
   const handleMouseMove = (evt: React.MouseEvent<HTMLCanvasElement>): void => {
@@ -549,7 +599,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         ref={annotationsCanvasRef}
         style={{
           display:
-            showAnnotations && (mode === "fft" || mode === "spectrogram")
+            (showAnnotations || showGridlines) &&
+            (mode === "fft" || mode === "spectrogram")
               ? "block"
               : "none",
           position: "absolute",
@@ -579,7 +630,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         ref={waterfallAnnotationsCanvasRef}
         style={{
           display:
-            showAnnotations && (mode === "waterfall" || mode === "spectrogram")
+            (showAnnotations || showGridlines) &&
+            (mode === "waterfall" || mode === "spectrogram")
               ? "block"
               : "none",
           position: "absolute",

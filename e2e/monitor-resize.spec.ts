@@ -3,7 +3,9 @@ import { test, expect } from "@playwright/test";
 test.use({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 800 } });
 
 async function startReception(page) {
-  const startBtn = page.getByRole("button", { name: /start receiving|start reception/i });
+  const startBtn = page.getByRole("button", {
+    name: /start receiving|start reception/i,
+  });
   await expect(startBtn).toBeVisible({ timeout: 10000 });
   await expect(startBtn).toBeEnabled();
   await startBtn.click();
@@ -31,7 +33,11 @@ test("canvas resizes when viewport changes", async ({ page }) => {
   await page.waitForFunction(
     (w) => {
       const el = document.querySelector('canvas[aria-label*="spectrum" i]');
-      return !!el && Math.round((el as HTMLCanvasElement).getBoundingClientRect().width) !== w;
+      return (
+        !!el &&
+        Math.round((el as HTMLCanvasElement).getBoundingClientRect().width) !==
+          w
+      );
     },
     width1,
     { timeout: 2000 },
@@ -41,16 +47,16 @@ test("canvas resizes when viewport changes", async ({ page }) => {
   const width2 = Math.round(rect2.width);
   const innerWidthAfterShrink = await page.evaluate(() => window.innerWidth);
   const containerWidthAfterShrink = await page.evaluate(() => {
-    const el = document.querySelector('.container') as HTMLElement | null;
+    const el = document.querySelector(".container") as HTMLElement | null;
     return el ? el.getBoundingClientRect().width : null;
   });
 
   // Accept either an explicit reduction or a no-op (for very small layout shifts).
   // Fail only if the width didn't change and viewport did change.
   if (innerWidthAfterShrink < 1280) {
-      if (containerWidthAfterShrink === null) {
-        // No .container element — don't fail; proceed to expansion check
-      } else {
+    if (containerWidthAfterShrink === null) {
+      // No .container element — don't fail; proceed to expansion check
+    } else {
       // If the container width tracked the canvas width, ensure it changed
       if (Math.round(containerWidthAfterShrink) !== width1) {
         // If the container shrank, expect the canvas to have shrunk too
@@ -67,7 +73,11 @@ test("canvas resizes when viewport changes", async ({ page }) => {
   await page.waitForFunction(
     (w) => {
       const el = document.querySelector('canvas[aria-label*="spectrum" i]');
-      return !!el && Math.round((el as HTMLCanvasElement).getBoundingClientRect().width) !== w;
+      return (
+        !!el &&
+        Math.round((el as HTMLCanvasElement).getBoundingClientRect().width) !==
+          w
+      );
     },
     width2,
     { timeout: 2000 },
@@ -83,7 +93,10 @@ test("canvas resizes when viewport changes", async ({ page }) => {
   // The canvas backing store (canvas.width/height) should be approximately
   // clientWidth * devicePixelRatio and clientHeight * devicePixelRatio.
   const dpr = await page.evaluate(() => window.devicePixelRatio || 1);
-  const backingSize = await canvas.evaluate((c: HTMLCanvasElement) => ({ w: c.width, h: c.height }));
+  const backingSize = await canvas.evaluate((c: HTMLCanvasElement) => ({
+    w: c.width,
+    h: c.height,
+  }));
   expect(backingSize.w).toBeGreaterThan(0);
   expect(backingSize.h).toBeGreaterThan(0);
   // Compare with rounded value to avoid small fractional mismatches

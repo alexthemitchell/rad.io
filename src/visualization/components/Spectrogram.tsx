@@ -10,6 +10,7 @@ import {
   getColormapLUT256,
   type ColormapName as GLColormapName,
 } from "../../utils/webgl";
+import { WATERFALL_MARGIN } from "../grid";
 import type { WebGPUTextureRenderer } from "../../utils/webgpu";
 import type { ReactElement } from "react";
 
@@ -625,7 +626,7 @@ export default function Spectrogram({
       ctx.fillStyle = "#0a0e1a";
       ctx.fillRect(0, 0, width, height);
 
-      const margin = { top: 70, bottom: 70, left: 80, right: 120 };
+      const margin = WATERFALL_MARGIN;
       const chartWidth = width - margin.left - margin.right;
       const chartHeight = height - margin.top - margin.bottom;
 

@@ -74,7 +74,9 @@ export const rdsCacheStore = create<RDSCacheState>()((set, get) => ({
       return { entries: next };
     });
   },
-  updateBulkRDSData: (updates: Array<{ frequencyHz: number; data: RDSStationData }>): void => {
+  updateBulkRDSData: (
+    updates: Array<{ frequencyHz: number; data: RDSStationData }>,
+  ): void => {
     if (updates.length === 0) return;
     const now = Date.now();
     set((state) => {
@@ -97,7 +99,10 @@ export const rdsCacheStore = create<RDSCacheState>()((set, get) => ({
     pairs.sort((a, b) => a.freq - b.freq);
     return pairs.map((p) => p.data);
   },
-  getStationsForBandwidth: (centerFrequencyHz: number, sampleRateHz: number): RDSStationData[] => {
+  getStationsForBandwidth: (
+    centerFrequencyHz: number,
+    sampleRateHz: number,
+  ): RDSStationData[] => {
     const half = sampleRateHz / 2;
     const lower = centerFrequencyHz - half;
     const upper = centerFrequencyHz + half;

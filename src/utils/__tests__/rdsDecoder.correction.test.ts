@@ -6,7 +6,10 @@ const TEST_OFFSET_WORD_A = 0x0fc;
 // Local helper: compute checkword for a data word and desired syndrome by
 // mirroring calculateSyndrome logic in the decoder. This duplicates logic
 // for tests to construct valid blocks.
-function computeCheckwordForSyndrome(data: number, desiredSyndrome: number): number {
+function computeCheckwordForSyndrome(
+  data: number,
+  desiredSyndrome: number,
+): number {
   const GENERATOR_POLY = 0x1b9;
   let dataWord = data & 0xffff;
   for (let i = 0; i < 16; i++) {
@@ -68,7 +71,7 @@ describe("RDS decoder single-bit correction & logging", () => {
         { data: 0x1234 },
         { data: 0x2000 },
         { data: 0x4141 },
-        { data: (0x00C3 << 8) | 0x20 },
+        { data: (0x00c3 << 8) | 0x20 },
       ],
       groupType: "2A",
       version: "A",
@@ -99,10 +102,42 @@ describe("RDS decoder single-bit correction & logging", () => {
       timestamp: Date.now(),
     } as any;
 
-    const seg0 = { ...baseGroup, blocks: [{ data: 0x1234 }, { data: 0x0000 | 0x0 }, { data: 0x0000 }, { data: ("A".charCodeAt(0) << 8) | "B".charCodeAt(0) }] };
-    const seg1 = { ...baseGroup, blocks: [{ data: 0x1234 }, { data: 0x0000 | 0x1 }, { data: 0x0000 }, { data: ("C".charCodeAt(0) << 8) | "D".charCodeAt(0) }] };
-    const seg2 = { ...baseGroup, blocks: [{ data: 0x1234 }, { data: 0x0000 | 0x2 }, { data: 0x0000 }, { data: ("E".charCodeAt(0) << 8) | "F".charCodeAt(0) }] };
-    const seg3 = { ...baseGroup, blocks: [{ data: 0x1234 }, { data: 0x0000 | 0x3 }, { data: 0x0000 }, { data: ("\u00C3".charCodeAt(0) << 8) | "G".charCodeAt(0) }] };
+    const seg0 = {
+      ...baseGroup,
+      blocks: [
+        { data: 0x1234 },
+        { data: 0x0000 | 0x0 },
+        { data: 0x0000 },
+        { data: ("A".charCodeAt(0) << 8) | "B".charCodeAt(0) },
+      ],
+    };
+    const seg1 = {
+      ...baseGroup,
+      blocks: [
+        { data: 0x1234 },
+        { data: 0x0000 | 0x1 },
+        { data: 0x0000 },
+        { data: ("C".charCodeAt(0) << 8) | "D".charCodeAt(0) },
+      ],
+    };
+    const seg2 = {
+      ...baseGroup,
+      blocks: [
+        { data: 0x1234 },
+        { data: 0x0000 | 0x2 },
+        { data: 0x0000 },
+        { data: ("E".charCodeAt(0) << 8) | "F".charCodeAt(0) },
+      ],
+    };
+    const seg3 = {
+      ...baseGroup,
+      blocks: [
+        { data: 0x1234 },
+        { data: 0x0000 | 0x3 },
+        { data: 0x0000 },
+        { data: ("\u00C3".charCodeAt(0) << 8) | "G".charCodeAt(0) },
+      ],
+    };
 
     dec.parseGroup0(seg0 as any);
     dec.parseGroup0(seg1 as any);

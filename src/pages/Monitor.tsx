@@ -197,7 +197,6 @@ const Monitor: React.FC = () => {
   const autoDetection = useSignalDetection(
     isReceiving ? fftData : null, // Only detect when receiving
     sampleRate,
-    hardwareConfig.bandwidth,
     frequency,
     isReceiving, // Enable when receiving
   );
@@ -269,7 +268,7 @@ const Monitor: React.FC = () => {
       if (msIntervalRef.current) {
         clearInterval(msIntervalRef.current);
         // Explicitly clear timer ref
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
         msIntervalRef.current = null;
       }
       msProcessorRef.current = null;
@@ -277,18 +276,16 @@ const Monitor: React.FC = () => {
     }
 
     // Create processor if not present
-    if (!msProcessorRef.current) {
-      msProcessorRef.current = createMultiStationFMProcessor({
-        sampleRate: sampleRate,
-        centerFrequency: frequency,
-        bandwidth: hardwareConfig.bandwidth,
-        enableRDS: settings.multiStationEnableRDS,
-        channelBandwidth: settings.multiStationChannelBandwidthHz,
-        scanFFTSize: settings.multiStationScanFFTSize,
-        scanIntervalMs: settings.multiStationScanIntervalMs,
-        usePFBChannelizer: settings.multiStationUsePFBChannelizer,
-      });
-    }
+    msProcessorRef.current ??= createMultiStationFMProcessor({
+      sampleRate: sampleRate,
+      centerFrequency: frequency,
+      bandwidth: hardwareConfig.bandwidth,
+      enableRDS: settings.multiStationEnableRDS,
+      channelBandwidth: settings.multiStationChannelBandwidthHz,
+      scanFFTSize: settings.multiStationScanFFTSize,
+      scanIntervalMs: settings.multiStationScanIntervalMs,
+      usePFBChannelizer: settings.multiStationUsePFBChannelizer,
+    });
 
     // Update config when settings change
     msProcessorRef.current.updateConfig({
@@ -341,7 +338,7 @@ const Monitor: React.FC = () => {
     if (msIntervalRef.current) {
       clearInterval(msIntervalRef.current);
       // Explicitly clear timer ref
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+
       msIntervalRef.current = null;
     }
     msIntervalRef.current = setInterval(
@@ -364,6 +361,7 @@ const Monitor: React.FC = () => {
     settings.multiStationScanIntervalMs,
     settings.multiStationUsePFBChannelizer,
     sampleRate,
+    hardwareConfig.bandwidth,
     frequency,
   ]);
 
@@ -377,7 +375,7 @@ const Monitor: React.FC = () => {
   // Merge autodedetected signals and multi-station channels (if enabled) for visualization annotations
   const msChannels = msProcessorRef.current?.getChannels() ?? [];
   // Map msChannels into DetectedSignal-like objects and merge with autoDetected signals by frequency (prefer rdsData)
-  const mergedSignals = (() : DetectedSignal[] => {
+  const mergedSignals = ((): DetectedSignal[] => {
     const map = new Map<number, DetectedSignal>();
     // Grab auto detected first
     for (const s of autoDetection.signals) {
@@ -389,7 +387,7 @@ const Monitor: React.FC = () => {
       const base: DetectedSignal =
         existing ??
         ({
-          binIndex: Math.max(0, Math.floor((settings.fftSize ?? 2048) / 2)),
+          binIndex: Math.max(0, Math.floor(settings.fftSize / 2)),
           frequency: ch.frequency,
           power: ch.strength * 100,
           bandwidth: settings.multiStationChannelBandwidthHz,
@@ -398,7 +396,7 @@ const Monitor: React.FC = () => {
           isActive: true,
           label: undefined,
           type: "wideband-fm",
-          confidence: Math.min(1, Math.max(0, ch.strength ?? 0.8)),
+          confidence: Math.min(1, Math.max(0, ch.strength)),
         } as DetectedSignal);
       // Attach RDS data if present
       if (ch.rdsData) {
@@ -490,6 +488,8 @@ const Monitor: React.FC = () => {
             // Show annotations if receiving or if we have merged signals available
             // (e.g., multi-station scan produced channels, or auto-detection found carriers)
             showAnnotations={isReceiving || mergedSignals.length > 0}
+            showGridlines={settings.showGridlines}
+            showGridLabels={settings.showGridLabels}
             onTune={(fHz) => {
               const snapped = Math.round(fHz / 1_000) * 1_000;
               setFrequency(snapped);

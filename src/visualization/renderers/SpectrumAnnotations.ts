@@ -5,6 +5,11 @@
 
 import { getCachedRDSData } from "../../store/rdsCache";
 import { formatFrequency } from "../../utils";
+import {
+  DEFAULT_MARGIN,
+  WATERFALL_MARGIN,
+  determineGridSpacing,
+} from "../grid";
 import type { RenderTransform } from "./types";
 import type { DetectedSignal } from "../../hooks/useSignalDetection";
 
@@ -29,7 +34,7 @@ const DEFAULT_SIGNAL_BANDWIDTHS = new Map<string, number>([
  * Exported for unit testing and reuse.
  */
 export function isSignalVisibleForAnnotation(
-  signal: DetectedSignal,
+  signal: DetectedSignal | null | undefined,
   freqMin: number,
   freqMax: number,
   now = Date.now(),
@@ -151,7 +156,7 @@ export class SpectrumAnnotations {
     ctx.clearRect(0, 0, width, height);
 
     // Match CanvasSpectrum's internal chart margins for perfect overlay alignment
-    const margin = { top: 60, bottom: 60, left: 80, right: 40 } as const;
+    const margin = DEFAULT_MARGIN;
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
     if (chartWidth <= 0 || chartHeight <= 0) {
@@ -172,7 +177,9 @@ export class SpectrumAnnotations {
     ctx.save();
     ctx.beginPath();
     ctx.rect(margin.left, margin.top, chartWidth, chartHeight);
-    ctx.clip();
+    if (typeof ctx.clip === "function") {
+      ctx.clip();
+    }
 
     // Draw frequency gridlines first (behind signal annotations)
     this.renderFrequencyGridlines(
@@ -201,6 +208,40 @@ export class SpectrumAnnotations {
     // Restore context state
     ctx.restore();
 
+    return true;
+  }
+
+  /**
+   * Public helper to explicitly render only gridlines. This keeps gridlines
+   * available even if full annotations are disabled by the caller.
+   */
+  public renderGridlines(
+    width: number,
+    height: number,
+    freqMin: number,
+    freqMax: number,
+    centerFrequency: number,
+    sampleRate: number,
+    options?: {
+      margin?: { top: number; bottom: number; left: number; right: number };
+      drawLabels?: boolean;
+      lineColor?: string;
+      labelColor?: string;
+      lineDash?: number[];
+      labelBaseline?: "top" | "bottom";
+      labelOffsetPx?: number;
+    },
+  ): boolean {
+    if (!this.canvas || !this.ctx) return false;
+    this.renderFrequencyGridlines(
+      width,
+      height,
+      freqMin,
+      freqMax,
+      centerFrequency,
+      sampleRate,
+      options,
+    );
     return true;
   }
 
@@ -244,7 +285,7 @@ export class SpectrumAnnotations {
     }
 
     // Match CanvasWaterfall's internal chart margins for perfect overlay alignment
-    const margin = { top: 70, bottom: 70, left: 80, right: 120 } as const;
+    const margin = WATERFALL_MARGIN;
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
     if (chartWidth <= 0 || chartHeight <= 0) {
@@ -280,7 +321,9 @@ export class SpectrumAnnotations {
     ctx.save();
     ctx.beginPath();
     ctx.rect(margin.left, margin.top, chartWidth, chartHeight);
-    ctx.clip();
+    if (typeof ctx.clip === "function") {
+      ctx.clip();
+    }
 
     for (const signal of visibleSignals) {
       const color = this.getSignalColor(signal.type);
@@ -311,12 +354,16 @@ export class SpectrumAnnotations {
       // Center frequency line (vertical) as dashed with moderate opacity
       ctx.strokeStyle = color.replace("rgb(", "rgba(").replace(")", ", 0.7)");
       ctx.lineWidth = 2;
-      ctx.setLineDash([8, 4]);
+      if (typeof ctx.setLineDash === "function") {
+        ctx.setLineDash([8, 4]);
+      }
       ctx.beginPath();
       ctx.moveTo(xCenter, margin.top);
       ctx.lineTo(xCenter, margin.top + chartHeight);
       ctx.stroke();
-      ctx.setLineDash([]);
+      if (typeof ctx.setLineDash === "function") {
+        ctx.setLineDash([]);
+      }
     }
 
     ctx.restore(); // clip
@@ -373,14 +420,7 @@ export class SpectrumAnnotations {
     }
 
     const ctx = this.ctx;
-    const margin =
-      options?.margin ??
-      ({
-        top: 60,
-        bottom: 60,
-        left: 80,
-        right: 40,
-      } as const);
+    const margin = options?.margin ?? DEFAULT_MARGIN;
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
     if (chartWidth <= 0 || chartHeight <= 0) {
@@ -388,10 +428,7 @@ export class SpectrumAnnotations {
     }
 
     const bandwidth = Math.max(1, Math.min(sampleRate, freqMax - freqMin));
-    const { spacing, formatter } = this.determineGridSpacing(
-      bandwidth,
-      chartWidth,
-    );
+    const { spacing, formatter } = determineGridSpacing(bandwidth, chartWidth);
     const firstGridFreq = Math.ceil(freqMin / spacing) * spacing;
     const lineColor = options?.lineColor ?? "rgba(255, 255, 255, 0.16)";
     const labelColor = options?.labelColor ?? "rgba(255, 255, 255, 0.7)";
@@ -412,13 +449,16 @@ export class SpectrumAnnotations {
     ctx.save();
     ctx.beginPath();
     ctx.rect(margin.left, margin.top, chartWidth, chartHeight);
-    ctx.clip();
+    if (typeof ctx.clip === "function") {
+      ctx.clip();
+    }
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = 1;
     if (options?.lineDash) {
-      ctx.setLineDash(options.lineDash);
+      if (typeof ctx.setLineDash === "function")
+        ctx.setLineDash(options.lineDash);
     } else {
-      ctx.setLineDash([6, 10]);
+      if (typeof ctx.setLineDash === "function") ctx.setLineDash([6, 10]);
     }
 
     for (const freq of gridFrequencies) {
@@ -460,7 +500,7 @@ export class SpectrumAnnotations {
       ctx.save();
       ctx.strokeStyle = options?.centerLineColor ?? "rgba(100, 200, 255, 0.5)";
       ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
+      if (typeof ctx.setLineDash === "function") ctx.setLineDash([6, 4]);
       ctx.beginPath();
       ctx.moveTo(centerX, margin.top);
       ctx.lineTo(centerX, margin.top + chartHeight);
@@ -484,38 +524,7 @@ export class SpectrumAnnotations {
     }
   }
 
-  private determineGridSpacing(
-    bandwidth: number,
-    chartWidth: number,
-  ): { spacing: number; formatter: (freq: number) => string } {
-    const niceSteps = [
-      1e3, 2e3, 5e3, 10e3, 20e3, 50e3, 100e3, 200e3, 500e3, 1e6, 2e6, 5e6, 10e6,
-      20e6, 50e6, 100e6,
-    ];
-    const maxLines = Math.max(4, Math.floor(chartWidth / 110));
-    for (const step of niceSteps) {
-      if (bandwidth / step <= maxLines) {
-        return { spacing: step, formatter: this.getGridLabelFormatter(step) };
-      }
-    }
-    const fallback = niceSteps[niceSteps.length - 1] ?? 1e6;
-    return {
-      spacing: fallback,
-      formatter: this.getGridLabelFormatter(fallback),
-    };
-  }
-
-  private getGridLabelFormatter(step: number): (freq: number) => string {
-    if (step >= 1e6) {
-      const decimals = step >= 5e6 ? 0 : 1;
-      return (freq: number) => `${(freq / 1e6).toFixed(decimals)} MHz`;
-    }
-    if (step >= 1e3) {
-      const decimals = step >= 5e3 ? 0 : 1;
-      return (freq: number) => `${(freq / 1e3).toFixed(decimals)} kHz`;
-    }
-    return (freq: number) => `${freq.toFixed(0)} Hz`;
-  }
+  // Grid spacing and label formatting are provided by shared visualization/grid module
 
   /**
    * Render annotation for a single signal
@@ -541,7 +550,7 @@ export class SpectrumAnnotations {
         FREQUENCY_EPSILON;
 
     // Match CanvasSpectrum's margins for coordinate mapping
-    const margin = { top: 60, bottom: 60, left: 80, right: 40 } as const;
+    const margin = DEFAULT_MARGIN;
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
 
@@ -591,12 +600,12 @@ export class SpectrumAnnotations {
       .replace("rgb(", "rgba(")
       .replace(")", `, ${isHovered ? 0.85 : 0.75})`);
     ctx.lineWidth = isHovered ? 2.5 : 2;
-    ctx.setLineDash([8, 4]);
+    if (typeof ctx.setLineDash === "function") ctx.setLineDash([8, 4]);
     ctx.beginPath();
     ctx.moveTo(x, margin.top);
     ctx.lineTo(x, margin.top + chartHeight);
     ctx.stroke();
-    ctx.setLineDash([]);
+    if (typeof ctx.setLineDash === "function") ctx.setLineDash([]);
 
     // Draw label if enabled
     if (config.showLabels) {
@@ -800,7 +809,7 @@ export class SpectrumAnnotations {
     const width = rect.width;
 
     // Match CanvasSpectrum margins to compute chart area mapping
-    const margin = { top: 60, bottom: 60, left: 80, right: 40 } as const;
+    const margin = DEFAULT_MARGIN;
     const chartWidth = width - margin.left - margin.right;
     if (chartWidth <= 0) {
       return null;

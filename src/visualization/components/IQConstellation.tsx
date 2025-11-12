@@ -5,6 +5,7 @@ import { useVisualizationInteraction } from "../../hooks/useVisualizationInterac
 import { renderTierManager } from "../../lib/render/RenderTierManager";
 import { RenderTier } from "../../types/rendering";
 import { performanceMonitor } from "../../utils/performanceMonitor";
+import { DEFAULT_MARGIN } from "../grid";
 import type { IVisualizationRenderer } from "../../types/visualization";
 import type { GL } from "../../utils/webgl";
 import type { ReactElement } from "react";
@@ -496,7 +497,7 @@ void main() {
       ctx.fillStyle = "#0a0e1a";
       ctx.fillRect(0, 0, width, height);
       // draw simple points for fallback (keeps UI responsive)
-      const margin = { top: 60, bottom: 70, left: 80, right: 60 } as const;
+      const margin = DEFAULT_MARGIN;
       const chartWidth = width - margin.left - margin.right;
       const chartHeight = height - margin.top - margin.bottom;
       const iValues2 = samples.map((s) => s.I);

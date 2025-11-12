@@ -5,6 +5,20 @@ import "./styles/main.css";
 import { registerBuiltinDrivers } from "./drivers";
 import { seedDebugRDS } from "./lib/devRDS";
 
+/* eslint-disable @typescript-eslint/naming-convention */
+interface DevRdsDebug {
+  seedDebugRDS: typeof seedDebugRDS;
+  getDebugRDS: () => unknown;
+  injectGroup?: (g: unknown) => void;
+  getDecoderStats?: () => unknown;
+}
+
+interface DevGlobal {
+  __DEV_RDS__?: DevRdsDebug;
+  __lastConsoleLogged?: string | null;
+}
+/* eslint-enable @typescript-eslint/naming-convention */
+
 // Register all built-in SDR drivers before the app renders to ensure
 // driver metadata (USB filters) are available during initial render.
 // This prevents a race where hooks read an empty registry on first mount.
@@ -49,7 +63,7 @@ if (hotModule.hot) {
 }
 
 // Best-effort on navigation away
-window.addEventListener("beforeunload", () => {
+window.addEventListener("beforeunload", (): void => {
   callGlobalShutdown();
 });
 
@@ -63,26 +77,35 @@ if (process.env["NODE_ENV"] !== "production") {
       import("./store/rdsCache"),
     ]);
     const debugDecoder = createRDSDecoder(228000);
-    (globalThis as any).__DEV_RDS__ = {
+    // Naming conventions for development globals use all caps and underscores,
+    // which doesn't fit the default naming convention rules. We explicitly
+    // disable the naming convention rule for these debug globals.
+
+    (globalThis as unknown as DevGlobal).__DEV_RDS__ = {
       seedDebugRDS,
-      getDebugRDS: () => getAllCachedStations(),
+      getDebugRDS: (): unknown => getAllCachedStations(),
       // Attach decoder helpers using safe, typed proxies
       injectGroup: (group: unknown): void => {
-        (debugDecoder as { injectGroup?: (g: unknown) => void }).injectGroup?.(group);
+        (debugDecoder as { injectGroup?: (g: unknown) => void }).injectGroup?.(
+          group,
+        );
       },
-      getDecoderStats: () => (debugDecoder as { getStats?: () => unknown }).getStats?.(),
+      getDecoderStats: (): unknown =>
+        (debugDecoder as { getStats?: () => unknown }).getStats?.(),
     };
   })();
 }
 
 // Small helper to capture latest console messages for automated tests
 if (process.env["NODE_ENV"] !== "production") {
-  (globalThis as any).__lastConsoleLogged = null as string | null;
+  const dev: DevGlobal = globalThis as unknown as DevGlobal;
+  dev.__lastConsoleLogged = null as string | null;
 
   const origWarn = console.warn;
   console.warn = function (...args: unknown[]): void {
-    (globalThis as any).__lastConsoleLogged = args.map(String).join(" ");
-    // origWarn expects any[]; cast to any for compatibility
-    origWarn.apply(console, args as any[]);
+    const warnArgs = args as Parameters<typeof console.warn>;
+    dev.__lastConsoleLogged = args.map(String).join(" ");
+    // Call original console.warn with properly typed args
+    origWarn.apply(console, warnArgs);
   } as unknown as typeof console.warn;
 }
