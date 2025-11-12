@@ -2,18 +2,6 @@ import { test, expect } from "@playwright/test";
 
 test.use({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 800 } });
 
-async function startReception(page) {
-  const startBtn = page.getByRole("button", {
-    name: /start receiving|start reception/i,
-  });
-  await expect(startBtn).toBeVisible({ timeout: 10000 });
-  await expect(startBtn).toBeEnabled();
-  await startBtn.click();
-  await page.waitForFunction(() => (window as any).dbgReceiving === true, {
-    timeout: 10000,
-  });
-}
-
 test("canvas resizes when viewport changes", async ({ page }) => {
   await page.goto("/monitor?mockSdr=1");
 
