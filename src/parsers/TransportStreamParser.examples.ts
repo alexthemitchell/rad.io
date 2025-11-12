@@ -12,6 +12,12 @@ import { TransportStreamParser } from "./TransportStreamParser";
 import type { IQSample } from "../models/SDRDevice";
 
 /**
+ * GPS epoch offset: seconds between Unix epoch (1970-01-01 00:00:00 UTC)
+ * and GPS epoch (1980-01-06 00:00:00 UTC)
+ */
+const GPS_TO_UNIX_EPOCH_OFFSET = 315964800;
+
+/**
  * Example: Parse ATSC broadcast and extract program information
  */
 export async function parseATSCBroadcast(iqSamples: IQSample[]): Promise<void> {
@@ -112,8 +118,8 @@ export async function parseATSCBroadcast(iqSamples: IQSample[]): Promise<void> {
 
       for (const event of eit.events) {
         const startTime = new Date(
-          (event.startTime + 315964800) * 1000,
-        ).toLocaleString(); // GPS to Unix epoch
+          (event.startTime + GPS_TO_UNIX_EPOCH_OFFSET) * 1000,
+        ).toLocaleString();
         const duration = Math.floor(event.lengthInSeconds / 60);
         const titleText = extractTitle(event.title);
 
@@ -180,7 +186,7 @@ export function filterSpecificPIDs(
     `Filtered PIDs: ${pidsToFilter.map((p) => `0x${p.toString(16)}`).join(", ")}`,
   );
 
-  // Get PAT (always processed regardless of filter)
+  // Get PAT (always processed because PAT_PID is allowed through filters)
   const pat = parser.getPAT();
   if (pat) {
     console.info(`Found ${pat.programs.size} programs`);

@@ -276,7 +276,10 @@ export class TransportStreamParser {
   private pmtTables = new Map<number, ProgramMapTable>();
   private pidFilters = new Set<number>();
   private continuityCounters = new Map<number, number>();
+  // Reserved for future use: multi-packet section reassembly
   private sectionBuffers = new Map<number, Uint8Array>();
+  // Reverse lookup map: PMT PID → program number (for efficient PMT detection)
+  private pmtPidToProgram = new Map<number, number>();
 
   // PSIP tables
   private mgtTable: MasterGuideTable | null = null;
@@ -488,7 +491,13 @@ export class TransportStreamParser {
     }
 
     // Check if this PID should be filtered
-    if (this.pidFilters.size > 0 && !this.pidFilters.has(pid)) {
+    // Always allow PAT and PSIP base tables through
+    if (
+      this.pidFilters.size > 0 &&
+      !this.pidFilters.has(pid) &&
+      pid !== TransportStreamParser.PAT_PID &&
+      pid !== TransportStreamParser.PSIP_BASE_PID
+    ) {
       return;
     }
 
@@ -504,14 +513,11 @@ export class TransportStreamParser {
       return;
     }
 
-    // Process PMT if this PID is registered as PMT
-    if (this.patTable) {
-      for (const [programNumber, pmtPid] of this.patTable.programs.entries()) {
-        if (pmtPid === pid) {
-          this.processPMT(packet, programNumber);
-          return;
-        }
-      }
+    // Process PMT if this PID is registered as PMT (efficient O(1) lookup)
+    const programNumber = this.pmtPidToProgram.get(pid);
+    if (programNumber !== undefined) {
+      this.processPMT(packet, programNumber);
+      return;
     }
   }
 
@@ -577,6 +583,14 @@ export class TransportStreamParser {
 
     const section = data.subarray(offset, offset + 3 + sectionLength);
     this.patTable = this.parsePAT(section);
+
+    // Update reverse lookup map for efficient PMT detection
+    if (this.patTable) {
+      this.pmtPidToProgram.clear();
+      for (const [programNumber, pmtPid] of this.patTable.programs.entries()) {
+        this.pmtPidToProgram.set(pmtPid, programNumber);
+      }
+    }
   }
 
   /**
@@ -1229,6 +1243,7 @@ export class TransportStreamParser {
   public reset(): void {
     this.patTable = null;
     this.pmtTables.clear();
+    this.pmtPidToProgram.clear();
     this.continuityCounters.clear();
     this.sectionBuffers.clear();
     this.mgtTable = null;
