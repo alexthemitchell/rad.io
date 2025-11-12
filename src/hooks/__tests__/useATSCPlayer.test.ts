@@ -90,6 +90,8 @@ describe("useATSCPlayer", () => {
         frequency: 177_000_000,
         band: "VHF-High",
         pilotFrequency: 177_309_440,
+        lowerEdge: 174_000_000,
+        upperEdge: 180_000_000,
       },
       strength: 0.8,
       snr: 25.0,
