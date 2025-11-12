@@ -17,6 +17,7 @@ import {
 import { ATSC8VSBDemodulator } from "../plugins/demodulators/ATSC8VSBDemodulator";
 import { ATSC_CONSTANTS } from "../utils/atscChannels";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
+import { ATSCVideoDecoder, VideoRenderer } from "../decoders";
 
 /**
  * Audio track information
@@ -98,7 +99,8 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
   // Refs
   const demodulatorRef = useRef<ATSC8VSBDemodulator | null>(null);
   const parserRef = useRef<TransportStreamParser | null>(null);
-  const videoDecoderRef = useRef<VideoDecoder | null>(null);
+  const videoDecoderRef = useRef<ATSCVideoDecoder | null>(null);
+  const videoRendererRef = useRef<VideoRenderer | null>(null);
   const audioDecoderRef = useRef<AudioDecoder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
@@ -152,6 +154,61 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       return `Unknown (0x${streamType.toString(16)})`;
     }
   }, []);
+
+  /**
+   * Initialize video decoder and renderer
+   */
+  const initializeVideoDecoder = useCallback(
+    async (streamType: StreamType, videoPid: number): Promise<void> => {
+      // Get canvas element
+      const canvas = document.getElementById(
+        "atsc-video-canvas",
+      ) as HTMLCanvasElement;
+      if (!canvas) {
+        console.error("ATSC Player: Video canvas not found");
+        return;
+      }
+
+      // Initialize renderer
+      if (!videoRendererRef.current) {
+        videoRendererRef.current = new VideoRenderer({
+          canvas,
+          maintainAspectRatio: true,
+          scaleMode: "fit",
+        });
+      }
+
+      // Initialize decoder
+      if (!videoDecoderRef.current) {
+        videoDecoderRef.current = new ATSCVideoDecoder(
+          (frame: VideoFrame) => {
+            // Render frame callback
+            if (videoRendererRef.current) {
+              videoRendererRef.current.renderFrame(frame);
+            } else {
+              frame.close();
+            }
+          },
+          (error: Error) => {
+            // Error callback
+            console.error("ATSC Video Decoder error:", error);
+            setPlayerState("error");
+          },
+        );
+
+        try {
+          await videoDecoderRef.current.initialize(streamType);
+          console.log(
+            `ATSC Video Decoder initialized for PID ${videoPid} with ${getStreamTypeDescription(streamType)}`,
+          );
+        } catch (error) {
+          console.error("Failed to initialize video decoder:", error);
+          videoDecoderRef.current = null;
+        }
+      }
+    },
+    [getStreamTypeDescription],
+  );
 
   /**
    * Parse audio tracks from PMT
@@ -365,7 +422,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
 
               // Parse transport stream
               if (parserRef.current && tsData.length > 0) {
-                parserRef.current.parseStream(new Uint8Array(tsData.buffer));
+                const packets = parserRef.current.parseStream(new Uint8Array(tsData.buffer));
 
                 // Once we have PAT/PMT/VCT, extract program info
                 if (!tablesReceived) {
@@ -407,17 +464,36 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
 
                         tablesReceived = true;
                         setPlayerState("playing");
+
+                        // Initialize video decoder for detected video stream
+                        if (vPID !== null && pmt.streams.length > 0) {
+                          const videoStream = pmt.streams.find(
+                            (s) => s.elementaryPid === vPID,
+                          );
+                          if (videoStream) {
+                            void initializeVideoDecoder(
+                              videoStream.streamType as StreamType,
+                              vPID,
+                            );
+                          }
+                        }
                       }
                     }
                   }
                 }
 
-                // TODO: Demultiplex and decode video/audio using WebCodecs
-                // This would involve:
-                // 1. Demultiplexing video/audio PIDs
-                // 2. Decoding PES packets
-                // 3. Feeding to VideoDecoder/AudioDecoder
-                // 4. Rendering decoded frames
+                // Demultiplex and decode video using WebCodecs
+                if (tablesReceived && videoPID !== null && videoDecoderRef.current && packets.length > 0) {
+                  const videoPayloads = parserRef.current.demultiplex(
+                    packets,
+                    videoPID,
+                  );
+
+                  // Feed payloads to video decoder
+                  for (const payload of videoPayloads) {
+                    videoDecoderRef.current.processPayload(payload);
+                  }
+                }
               }
             }
           } catch (error) {
@@ -435,6 +511,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
     [
       device,
       initializeAudioContext,
+      initializeVideoDecoder,
       findVideoPID,
       parseAudioTracks,
       parseProgramInfo,
@@ -508,12 +585,18 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       receivePromiseRef.current = null;
     }
 
-    // Cleanup decoders
+    // Cleanup video decoder and renderer
     if (videoDecoderRef.current) {
       videoDecoderRef.current.close();
       videoDecoderRef.current = null;
     }
 
+    if (videoRendererRef.current) {
+      videoRendererRef.current.clear();
+      videoRendererRef.current = null;
+    }
+
+    // Cleanup audio decoder
     if (audioDecoderRef.current) {
       audioDecoderRef.current.close();
       audioDecoderRef.current = null;
@@ -549,6 +632,10 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
 
         if (videoDecoderRef.current) {
           videoDecoderRef.current.close();
+        }
+
+        if (videoRendererRef.current) {
+          videoRendererRef.current.clear();
         }
 
         if (audioDecoderRef.current) {
