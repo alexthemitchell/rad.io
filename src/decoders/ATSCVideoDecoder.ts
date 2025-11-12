@@ -13,17 +13,7 @@
  */
 
 import { StreamType } from "../parsers/TransportStreamParser";
-
-/**
- * PES (Packetized Elementary Stream) Header
- */
-export interface PESHeader {
-  streamId: number;
-  packetLength: number;
-  pts?: number; // Presentation timestamp (90 kHz clock)
-  dts?: number; // Decode timestamp (90 kHz clock)
-  headerDataLength: number;
-}
+import type { PESHeader, DecoderState, DecoderErrorCallback } from "./types";
 
 /**
  * Video frame metadata
@@ -62,22 +52,6 @@ export interface DecoderMetrics {
   currentBitrate: number; // bits per second
   lastUpdateTime: number;
 }
-
-/**
- * Decoder state
- */
-export type DecoderState =
-  | "unconfigured"
-  | "configured"
-  | "decoding"
-  | "flushing"
-  | "closed"
-  | "error";
-
-/**
- * Decoder error callback
- */
-export type DecoderErrorCallback = (error: Error) => void;
 
 /**
  * Frame output callback
