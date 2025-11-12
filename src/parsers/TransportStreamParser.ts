@@ -528,7 +528,7 @@ export class TransportStreamParser {
     }
 
     if (this.continuityCounters.has(pid)) {
-      const expectedCC = (this.continuityCounters.get(pid) ?? 0 + 1) & 0x0f;
+      const expectedCC = ((this.continuityCounters.get(pid) ?? 0) + 1) & 0x0f;
       if (cc !== expectedCC) {
         // Continuity error - might indicate packet loss
         // Update to current value and continue

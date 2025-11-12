@@ -76,7 +76,7 @@ describe("TransportStreamParser", () => {
       packetData[1] = 0x40; // Payload unit start
       packetData[2] = 0x00; // PID = 0x0000
       packetData[3] = 0x10; // Adaptation field control = 01, CC = 0
-      packetData[4] = 0xAA; // First payload byte
+      packetData[4] = 0xaa; // First payload byte
 
       const packet = parser.parsePacket(packetData);
 

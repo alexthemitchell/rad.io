@@ -5,6 +5,8 @@
  * with the ATSC 8-VSB demodulator to extract program information and elementary streams.
  */
 
+// NOTE: This import is for illustration purposes only. In production or other contexts,
+// you may need to adjust or remove this dependency.
 import { ATSC8VSBDemodulator } from "../plugins/demodulators/ATSC8VSBDemodulator";
 import { TransportStreamParser } from "./TransportStreamParser";
 import type { IQSample } from "../models/SDRDevice";
