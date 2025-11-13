@@ -76,7 +76,7 @@ export function ProgramCell({
     <div
       className={`epg-program-cell ${isCurrentlyAiring ? "airing" : ""}`}
       style={{
-        gridColumn: `${Math.floor(left) + 1} / span ${Math.max(1, Math.ceil(width))}`,
+        gridColumn: `${Math.ceil(left) + 1} / span ${Math.max(1, Math.ceil(width))}`,
       }}
       onClick={handleClick}
       onKeyDown={handleKeyDown}

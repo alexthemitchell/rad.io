@@ -205,7 +205,9 @@ describe("ProgramDetailModal", () => {
 
     rerender(<ProgramDetailModal {...mockProps} isOpen={true} />);
 
-    const closeButton = screen.getByRole("button", { name: /close/i });
+    const closeButton = screen.getByRole("button", {
+      name: "Close program details",
+    });
     expect(closeButton).toHaveFocus();
   });
 });

@@ -47,8 +47,12 @@ export function ProgramGrid({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [gridStartTime, setGridStartTime] = useState(() => {
     const now = new Date();
-    // Round down to nearest half hour
-    now.setMinutes(Math.floor(now.getMinutes() / 30) * 30, 0, 0);
+    // Round down to nearest slot duration
+    now.setMinutes(
+      Math.floor(now.getMinutes() / slotDurationMinutes) * slotDurationMinutes,
+      0,
+      0,
+    );
     return now;
   });
 
@@ -96,7 +100,11 @@ export function ProgramGrid({
 
   const goToNow = (): void => {
     const now = new Date();
-    now.setMinutes(Math.floor(now.getMinutes() / 30) * 30, 0, 0);
+    now.setMinutes(
+      Math.floor(now.getMinutes() / slotDurationMinutes) * slotDurationMinutes,
+      0,
+      0,
+    );
     setGridStartTime(now);
   };
 

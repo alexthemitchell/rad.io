@@ -98,9 +98,9 @@ export function decodeStringSegment(segment: StringSegment): string {
     case 0x3f: // UNICODE_UTF8
       return decodeUTF8(decompressed);
     case 0x3e: // SCSU
-      // SCSU is complex; fall back to UTF-8 for now
-      console.warn("SCSU mode not yet supported, attempting UTF-8");
-      return decodeUTF8(decompressed);
+      // SCSU is complex and not yet supported
+      console.warn("SCSU mode (0x3e) not supported; returning empty string");
+      return "";
     default:
       // For other modes (0x01-0x3d), interpret as ISO 8859 variants
       // or use UTF-8 as fallback

@@ -78,19 +78,25 @@ The EPG storage is ready to accept data from PSIP tables. The TransportStreamPar
 To populate the EPG with real data, call `EPGStorage.storeEPGData()` when PSIP tables are received:
 
 ```typescript
-import { EPGStorage } from '../utils/epgStorage';
-import type { EventInformationTable, ExtendedTextTable, VirtualChannel } from '../parsers/TransportStreamParser';
+import { EPGStorage } from "../utils/epgStorage";
+import type {
+  EventInformationTable,
+  ExtendedTextTable,
+  VirtualChannel,
+} from "../parsers/TransportStreamParser";
 
 // When EIT is parsed
 const eit: EventInformationTable = parser.getEIT(sourceId);
 const vct: VirtualChannelTable = parser.getVCT();
-const channel: VirtualChannel = vct.channels.find(ch => ch.sourceid === sourceId);
+const channel: VirtualChannel = vct.channels.find(
+  (ch) => ch.sourceid === sourceId,
+);
 
 // Store EPG data
 if (eit && channel) {
   // Optionally get ETT for extended descriptions
   const ett: ExtendedTextTable | null = parser.getETT(eventId);
-  
+
   EPGStorage.storeEPGData(eit, ett, channel);
 }
 ```
@@ -115,20 +121,20 @@ Example integration in useATSCPlayer:
 
 ```typescript
 // In useATSCPlayer.ts
-import { EPGStorage } from '../utils/epgStorage';
+import { EPGStorage } from "../utils/epgStorage";
 
 // After parsing transport stream
 const processTransportStream = (data: Uint8Array) => {
   const packets = parser.parseStream(data);
-  
+
   // Check for new EIT data
   const vct = parser.getVCT();
   if (vct) {
-    vct.channels.forEach(channel => {
+    vct.channels.forEach((channel) => {
       const eit = parser.getEIT(channel.sourceid);
       if (eit) {
         // Try to get ETT for each event
-        eit.events.forEach(event => {
+        eit.events.forEach((event) => {
           const ett = parser.getETT(event.eventid);
           EPGStorage.storeEPGData(eit, ett, channel);
         });
@@ -187,20 +193,20 @@ EPG data is stored in localStorage with:
 
 ATSC genre codes are mapped to readable strings:
 
-| Code | Genre |
-|------|-------|
-| 0x01 | News |
-| 0x02 | Sports |
-| 0x03 | Talk Show |
-| 0x04 | Drama |
-| 0x05 | Comedy |
+| Code | Genre       |
+| ---- | ----------- |
+| 0x01 | News        |
+| 0x02 | Sports      |
+| 0x03 | Talk Show   |
+| 0x04 | Drama       |
+| 0x05 | Comedy      |
 | 0x06 | Documentary |
-| 0x07 | Music |
-| 0x08 | Movies |
-| 0x09 | Children |
+| 0x07 | Music       |
+| 0x08 | Movies      |
+| 0x09 | Children    |
 | 0x0a | Educational |
-| 0x0b | Reality |
-| 0x0c | Game Show |
+| 0x0b | Reality     |
+| 0x0c | Game Show   |
 
 Additional genre codes can be added in `epgStorage.ts`.
 

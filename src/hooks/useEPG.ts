@@ -64,14 +64,12 @@ export function useEPG(): UseEPGResult {
   // Get current programs
   const currentPrograms = useMemo(() => {
     return EPGStorage.getCurrentPrograms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channels]);
+  }, []);
 
   // Get all genres
   const allGenres = useMemo(() => {
     return EPGStorage.getAllGenres();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channels]);
+  }, []);
 
   // Search results
   const searchResults = useMemo(() => {
@@ -96,8 +94,7 @@ export function useEPG(): UseEPGResult {
     }
 
     return results;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, selectedGenre, channels]);
+  }, [searchQuery, selectedGenre]);
 
   // Refresh EPG data
   const refreshEPG = useCallback(() => {

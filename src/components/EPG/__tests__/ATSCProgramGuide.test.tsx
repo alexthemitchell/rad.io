@@ -54,8 +54,12 @@ describe("ATSCProgramGuide", () => {
   it("should render search bar", () => {
     render(<ATSCProgramGuide />);
 
-    expect(screen.getByPlaceholderText("Search programs...")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: /filter by genre/i })).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Search programs..."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: /filter by genre/i }),
+    ).toBeInTheDocument();
   });
 
   it("should display grid view by default", () => {
@@ -111,7 +115,9 @@ describe("ATSCProgramGuide", () => {
 
     render(<ATSCProgramGuide />);
 
-    const genreSelect = screen.getByRole("combobox", { name: /filter by genre/i });
+    const genreSelect = screen.getByRole("combobox", {
+      name: /filter by genre/i,
+    });
     fireEvent.change(genreSelect, { target: { value: "News" } });
 
     waitFor(() => {
@@ -163,7 +169,9 @@ describe("ATSCProgramGuide", () => {
   it("should display genre options from EPG data", () => {
     render(<ATSCProgramGuide />);
 
-    const genreSelect = screen.getByRole("combobox", { name: /filter by genre/i });
+    const genreSelect = screen.getByRole("combobox", {
+      name: /filter by genre/i,
+    });
     expect(genreSelect).toBeInTheDocument();
 
     // Check that genres are populated

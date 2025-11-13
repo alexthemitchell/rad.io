@@ -321,14 +321,50 @@ function parseDescriptors(
  * @returns Rating string or null
  */
 function parseContentAdvisoryDescriptor(data: Uint8Array): string | null {
-  // Simplified parsing - full implementation would parse rating regions
-  // For now, return null; can be enhanced later
-  if (data.length < 1) {
+  // Minimal implementation: parse first rating region (usually US TV Parental Guidelines)
+  // See ATSC A/65, Section 6.9.5
+  if (data.length < 2) {
     return null;
   }
 
-  // Rating region table parsing would go here
-  return null;
+  // data[0]: rating_region_count (number of regions present)
+  const ratingRegionCount = data[0] & 0x0f;
+  let offset = 1;
+
+  if (ratingRegionCount < 1 || data.length < offset + 2) {
+    return null;
+  }
+
+  // Only parse the first region (most common: US TV Parental Guidelines, region 1)
+  const ratingRegion = data[offset];
+  const ratedDimensions = data[offset + 1] & 0x0f;
+  offset += 2;
+
+  // US TV Parental Guidelines is region 1
+  if (ratingRegion !== 1 || ratedDimensions < 1) {
+    return null;
+  }
+
+  // Each dimension: 2 bytes (value, reserved)
+  if (data.length < offset + 2 * ratedDimensions) {
+    return null;
+  }
+
+  // Only parse the first dimension
+  const ratingValue = data[offset] & 0x0f;
+
+  // Map rating value to string (see ATSC A/65 Table 6.30)
+  const usTvRatings = new Map<number, string>([
+    [0, "None"],
+    [1, "TV-Y"],
+    [2, "TV-Y7"],
+    [3, "TV-G"],
+    [4, "TV-PG"],
+    [5, "TV-14"],
+    [6, "TV-MA"],
+  ]);
+
+  return usTvRatings.get(ratingValue) ?? null;
 }
 
 /**

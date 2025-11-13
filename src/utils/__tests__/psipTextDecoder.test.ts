@@ -78,8 +78,8 @@ describe("psipTextDecoder", () => {
       const segment1: StringSegment = {
         compressionType: CompressionType.NO_COMPRESSION,
         mode: TextMode.UNICODE_UTF8,
-        numberOfBytes: 6,
-        compressedString: textEncoder.encode("Hello "),
+        numberOfBytes: 5,
+        compressedString: textEncoder.encode("Hello"),
       };
 
       const segment2: StringSegment = {
