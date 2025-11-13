@@ -28,3 +28,4 @@ export {
   type ProgramInfo,
   type PlayerState,
 } from "./useATSCPlayer";
+export { useEPG, type UseEPGResult } from "./useEPG";

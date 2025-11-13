@@ -6,12 +6,14 @@
  */
 
 import React, { useState, useCallback } from "react";
+import { ATSCProgramGuide } from "../components/EPG";
 import { useATSCPlayer } from "../hooks/useATSCPlayer";
 import { useATSCScanner } from "../hooks/useATSCScanner";
 import { useDevice } from "../store";
 import { formatATSCChannel } from "../utils/atscChannels";
 import type { AudioTrack } from "../hooks/useATSCPlayer";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
+import type { EPGProgram } from "../utils/epgStorage";
 
 /**
  * Channel selector component
@@ -355,6 +357,7 @@ function ATSCPlayer(): React.JSX.Element {
   const player = useATSCPlayer(device);
 
   const [showScanner, setShowScanner] = useState(false);
+  const [viewMode, setViewMode] = useState<"player" | "epg">("player");
 
   // Note: useATSCScanner already loads channels on mount (line 632 in useATSCScanner.ts)
   // No need to load them again here
@@ -374,16 +377,57 @@ function ATSCPlayer(): React.JSX.Element {
     player.setMuted(!player.muted);
   }, [player]);
 
+  const handleTuneFromEPG = useCallback(
+    (channelNumber: string, _startTime: Date) => {
+      // Find channel by exact formatted channel number
+      const channel = scanner.foundChannels.find(
+        (ch) => formatATSCChannel(ch.channel) === channelNumber,
+      );
+
+      if (channel) {
+        void player.tuneToChannel(channel);
+        setViewMode("player");
+      }
+    },
+    [scanner.foundChannels, player],
+  );
+
+  const handleSetReminder = useCallback((program: EPGProgram) => {
+    // TODO: Implement proper reminder notification UI
+    console.info("Set reminder for:", program.title);
+  }, []);
+
+  const handleScheduleRecording = useCallback((program: EPGProgram) => {
+    // TODO: Implement proper recording notification UI
+    console.info("Schedule recording for:", program.title);
+  }, []);
+
   return (
     <div className="atsc-player-page">
       <div className="page-header">
         <h1>ATSC Digital TV Player</h1>
-        <button
-          className="btn btn-secondary"
-          onClick={() => setShowScanner(!showScanner)}
-        >
-          {showScanner ? "Hide Scanner" : "Show Scanner"}
-        </button>
+        <div className="header-controls">
+          <div className="view-tabs">
+            <button
+              className={`tab-button ${viewMode === "player" ? "active" : ""}`}
+              onClick={() => setViewMode("player")}
+            >
+              Player
+            </button>
+            <button
+              className={`tab-button ${viewMode === "epg" ? "active" : ""}`}
+              onClick={() => setViewMode("epg")}
+            >
+              Program Guide
+            </button>
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowScanner(!showScanner)}
+          >
+            {showScanner ? "Hide Scanner" : "Show Scanner"}
+          </button>
+        </div>
       </div>
 
       {showScanner && (
@@ -448,43 +492,51 @@ function ATSCPlayer(): React.JSX.Element {
         </div>
       )}
 
-      <div className="player-layout">
-        <aside className="sidebar">
-          <ChannelSelector
-            channels={scanner.foundChannels}
-            currentChannel={player.currentChannel}
-            onSelectChannel={handleSelectChannel}
-          />
-        </aside>
-
-        <main className="player-main">
-          <VideoPlayer playerState={player.playerState} />
-
-          <PlaybackControls
-            volume={player.volume}
-            muted={player.muted}
-            closedCaptionsEnabled={player.closedCaptionsEnabled}
-            onVolumeChange={player.setVolume}
-            onMuteToggle={handleMuteToggle}
-            onCCToggle={player.toggleClosedCaptions}
-            onStop={handleStop}
-            disabled={player.playerState === "idle"}
-          />
-
-          <div className="player-info-grid">
-            <ProgramInfoDisplay programInfo={player.programInfo} />
-            <SignalQualityMeters quality={player.signalQuality} />
-          </div>
-
-          {player.audioTracks.length > 0 && (
-            <AudioTrackSelector
-              tracks={player.audioTracks}
-              selectedTrack={player.selectedAudioTrack}
-              onSelectTrack={player.selectAudioTrack}
+      {viewMode === "epg" ? (
+        <ATSCProgramGuide
+          onTuneToChannel={handleTuneFromEPG}
+          onSetReminder={handleSetReminder}
+          onScheduleRecording={handleScheduleRecording}
+        />
+      ) : (
+        <div className="player-layout">
+          <aside className="sidebar">
+            <ChannelSelector
+              channels={scanner.foundChannels}
+              currentChannel={player.currentChannel}
+              onSelectChannel={handleSelectChannel}
             />
-          )}
-        </main>
-      </div>
+          </aside>
+
+          <main className="player-main">
+            <VideoPlayer playerState={player.playerState} />
+
+            <PlaybackControls
+              volume={player.volume}
+              muted={player.muted}
+              closedCaptionsEnabled={player.closedCaptionsEnabled}
+              onVolumeChange={player.setVolume}
+              onMuteToggle={handleMuteToggle}
+              onCCToggle={player.toggleClosedCaptions}
+              onStop={handleStop}
+              disabled={player.playerState === "idle"}
+            />
+
+            <div className="player-info-grid">
+              <ProgramInfoDisplay programInfo={player.programInfo} />
+              <SignalQualityMeters quality={player.signalQuality} />
+            </div>
+
+            {player.audioTracks.length > 0 && (
+              <AudioTrackSelector
+                tracks={player.audioTracks}
+                selectedTrack={player.selectedAudioTrack}
+                onSelectTrack={player.selectAudioTrack}
+              />
+            )}
+          </main>
+        </div>
+      )}
 
       <style>{`
         .atsc-player-page {
@@ -503,6 +555,42 @@ function ATSCPlayer(): React.JSX.Element {
         .page-header h1 {
           margin: 0;
           font-size: 1.75rem;
+        }
+
+        .header-controls {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .view-tabs {
+          display: flex;
+          gap: 0.5rem;
+          background: #1f2937;
+          border-radius: 0.5rem;
+          padding: 0.25rem;
+        }
+
+        .tab-button {
+          padding: 0.5rem 1rem;
+          background: transparent;
+          border: none;
+          color: #9ca3af;
+          cursor: pointer;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .tab-button:hover {
+          color: #f9fafb;
+          background: #374151;
+        }
+
+        .tab-button.active {
+          background: #3b82f6;
+          color: #fff;
         }
 
         .scanner-section {

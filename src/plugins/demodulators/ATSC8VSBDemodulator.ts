@@ -545,6 +545,13 @@ export class ATSC8VSBDemodulator
   }
 
   /**
+   * Get equalizer tap coefficients
+   */
+  getEqualizerTaps(): Float32Array {
+    return new Float32Array(this.equalizer.taps);
+  }
+
+  /**
    * Get plugin configuration schema
    */
   override getConfigSchema(): PluginConfigSchema {

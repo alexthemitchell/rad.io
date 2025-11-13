@@ -14,3 +14,5 @@ export * from "./id";
 export * from "./usb";
 export * from "./frequency";
 export * from "./e2e";
+export * from "./epgStorage";
+export * from "./psipTextDecoder";
