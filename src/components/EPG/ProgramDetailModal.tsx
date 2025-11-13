@@ -91,7 +91,7 @@ export function ProgramDetailModal({
             aria-label="Close program details"
             title="Close"
           >
-            ✕
+            <span aria-hidden="true">✕</span>
           </button>
         </div>
 

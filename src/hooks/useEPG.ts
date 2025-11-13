@@ -62,15 +62,28 @@ export function useEPG(): UseEPGResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- loadEPGData is stable and does not need to be a dependency
   }, []);
 
-  // Get current programs
-  const currentPrograms = useMemo(() => {
-    return EPGStorage.getCurrentPrograms();
-  }, []);
+  // Get current programs - update periodically as time changes
+  const [currentPrograms, setCurrentPrograms] = useState<EPGProgram[]>(() =>
+    EPGStorage.getCurrentPrograms(),
+  );
+
+  useEffect(() => {
+    // Update immediately when channels change
+    setCurrentPrograms(EPGStorage.getCurrentPrograms());
+
+    // Set up interval to update current programs every 30 seconds
+    const interval = setInterval((): void => {
+      setCurrentPrograms(EPGStorage.getCurrentPrograms());
+    }, 30000);
+
+    return (): void => clearInterval(interval);
+  }, [channels]);
 
   // Get all genres
   const allGenres = useMemo(() => {
     return EPGStorage.getAllGenres();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Trigger re-computation when channels change in localStorage
+  }, [channels]);
 
   // Search results
   const searchResults = useMemo(() => {
@@ -95,7 +108,8 @@ export function useEPG(): UseEPGResult {
     }
 
     return results;
-  }, [searchQuery, selectedGenre]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Trigger re-computation when channels change in localStorage
+  }, [searchQuery, selectedGenre, channels]);
 
   // Refresh EPG data
   const refreshEPG = useCallback(() => {

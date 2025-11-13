@@ -393,15 +393,13 @@ function ATSCPlayer(): React.JSX.Element {
   );
 
   const handleSetReminder = useCallback((program: EPGProgram) => {
-    // TODO: Implement reminder functionality
+    // TODO: Implement proper reminder notification UI
     console.info("Set reminder for:", program.title);
-    alert(`Reminder set for: ${program.title}`);
   }, []);
 
   const handleScheduleRecording = useCallback((program: EPGProgram) => {
-    // TODO: Implement recording scheduler
+    // TODO: Implement proper recording notification UI
     console.info("Schedule recording for:", program.title);
-    alert(`Recording scheduled for: ${program.title}`);
   }, []);
 
   return (

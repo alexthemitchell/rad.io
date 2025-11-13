@@ -5,7 +5,7 @@
  * and their programs across a time range.
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { ChannelRow } from "./ChannelRow";
 import type { EPGChannelData, EPGProgram } from "../../utils/epgStorage";
 
@@ -60,15 +60,15 @@ export function ProgramGrid({
   const currentTimeMarkerRef = useRef<HTMLDivElement>(null);
 
   // Calculate grid end time
-  const gridEndTime = new Date(
-    gridStartTime.getTime() + visibleHours * 60 * 60 * 1000,
+  const gridEndTime = useMemo(
+    () => new Date(gridStartTime.getTime() + visibleHours * 60 * 60 * 1000),
+    [gridStartTime, visibleHours],
   );
 
   // Generate time slots
-  const timeSlots = generateTimeSlots(
-    gridStartTime,
-    gridEndTime,
-    slotDurationMinutes,
+  const timeSlots = useMemo(
+    () => generateTimeSlots(gridStartTime, gridEndTime, slotDurationMinutes),
+    [gridStartTime, gridEndTime, slotDurationMinutes],
   );
 
   // Update current time every minute
