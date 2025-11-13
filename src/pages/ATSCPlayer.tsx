@@ -378,7 +378,7 @@ function ATSCPlayer(): React.JSX.Element {
   }, [player]);
 
   const handleTuneFromEPG = useCallback(
-    (channelNumber: string) => {
+    (channelNumber: string, _startTime: Date) => {
       // Find channel by exact formatted channel number
       const channel = scanner.foundChannels.find(
         (ch) => formatATSCChannel(ch.channel) === channelNumber,

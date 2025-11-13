@@ -46,10 +46,10 @@ export interface EPGChannelData {
 /**
  * EPG Storage Manager
  */
-// eslint-disable-next-line @typescript-eslint/no-extraneous-class
-export class EPGStorage {
-  private static readonly STORAGE_KEY = "rad_io_epg_data";
-  private static readonly MAX_AGE_HOURS = 24; // Keep EPG data for 24 hours
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace EPGStorage {
+  const STORAGE_KEY = "rad_io_epg_data";
+  const MAX_AGE_HOURS = 24; // Keep EPG data for 24 hours
 
   /**
    * Store EPG data from EIT/ETT tables
@@ -58,7 +58,7 @@ export class EPGStorage {
    * @param ett - Extended Text Table (optional)
    * @param channel - Virtual Channel information
    */
-  public static storeEPGData(
+  export function storeEPGData(
     eit: EventInformationTable,
     ett: ExtendedTextTable | null,
     channel: VirtualChannel,
@@ -99,7 +99,7 @@ export class EPGStorage {
     });
 
     // Get existing EPG data
-    const existingData = this.getAllEPGData();
+    const existingData = getAllEPGData();
 
     // Update or add channel data
     const channelIndex = existingData.findIndex(
@@ -120,7 +120,7 @@ export class EPGStorage {
     }
 
     // Save to localStorage
-    this.saveEPGData(existingData);
+    saveEPGData(existingData);
   }
 
   /**
@@ -128,9 +128,9 @@ export class EPGStorage {
    *
    * @returns Array of EPG channel data
    */
-  public static getAllEPGData(): EPGChannelData[] {
+  export function getAllEPGData(): EPGChannelData[] {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
+      const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) {
         return [];
       }
@@ -142,9 +142,9 @@ export class EPGStorage {
 
       // Check if data is too old
       const age = Date.now() - parsed.timestamp;
-      const maxAge = this.MAX_AGE_HOURS * 60 * 60 * 1000;
+      const maxAge = MAX_AGE_HOURS * 60 * 60 * 1000;
       if (age > maxAge) {
-        this.clearEPGData();
+        clearEPGData();
         return [];
       }
 
@@ -169,8 +169,8 @@ export class EPGStorage {
    * @param sourceId - Channel source ID
    * @returns EPG channel data or null
    */
-  public static getChannelEPGData(sourceId: number): EPGChannelData | null {
-    const allData = this.getAllEPGData();
+  export function getChannelEPGData(sourceId: number): EPGChannelData | null {
+    const allData = getAllEPGData();
     return allData.find((ch) => ch.sourceId === sourceId) ?? null;
   }
 
@@ -180,8 +180,8 @@ export class EPGStorage {
    * @param now - Current time (defaults to now)
    * @returns Array of currently airing programs
    */
-  public static getCurrentPrograms(now: Date = new Date()): EPGProgram[] {
-    const allData = this.getAllEPGData();
+  export function getCurrentPrograms(now: Date = new Date()): EPGProgram[] {
+    const allData = getAllEPGData();
     const currentPrograms: EPGProgram[] = [];
 
     allData.forEach((channel) => {
@@ -202,8 +202,8 @@ export class EPGStorage {
    * @param query - Search query
    * @returns Array of matching programs
    */
-  public static searchPrograms(query: string): EPGProgram[] {
-    const allData = this.getAllEPGData();
+  export function searchPrograms(query: string): EPGProgram[] {
+    const allData = getAllEPGData();
     const lowerQuery = query.toLowerCase();
     const results: EPGProgram[] = [];
 
@@ -227,8 +227,8 @@ export class EPGStorage {
    * @param genre - Genre to filter by
    * @returns Array of programs in the genre
    */
-  public static filterByGenre(genre: string): EPGProgram[] {
-    const allData = this.getAllEPGData();
+  export function filterByGenre(genre: string): EPGProgram[] {
+    const allData = getAllEPGData();
     const results: EPGProgram[] = [];
 
     allData.forEach((channel) => {
@@ -247,8 +247,8 @@ export class EPGStorage {
    *
    * @returns Array of genre strings
    */
-  public static getAllGenres(): string[] {
-    const allData = this.getAllEPGData();
+  export function getAllGenres(): string[] {
+    const allData = getAllEPGData();
     const genreSet = new Set<string>();
 
     allData.forEach((channel) => {
@@ -263,8 +263,8 @@ export class EPGStorage {
   /**
    * Clear all EPG data
    */
-  public static clearEPGData(): void {
-    localStorage.removeItem(this.STORAGE_KEY);
+  export function clearEPGData(): void {
+    localStorage.removeItem(STORAGE_KEY);
   }
 
   /**
@@ -272,13 +272,13 @@ export class EPGStorage {
    *
    * @param data - EPG data to save
    */
-  private static saveEPGData(data: EPGChannelData[]): void {
+  function saveEPGData(data: EPGChannelData[]): void {
     try {
       const toStore = {
         timestamp: Date.now(),
         data,
       };
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toStore));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
     } catch (error) {
       console.error("Error saving EPG data:", error);
     }
