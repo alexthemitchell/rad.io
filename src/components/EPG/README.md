@@ -58,6 +58,7 @@ The EPG is integrated into the ATSCPlayer page with a tab-based interface:
 2. **Program Guide Tab** - EPG grid view
 
 When a program is selected in the EPG, users can:
+
 - Tune to the channel (for live programs)
 - Set reminders (for upcoming programs)
 - Schedule recordings (for upcoming programs)
@@ -67,6 +68,7 @@ When a program is selected in the EPG, users can:
 ### Current State
 
 The EPG storage is ready to accept data from PSIP tables. The TransportStreamParser already supports:
+
 - **EIT** (Event Information Table) - Program schedules
 - **ETT** (Extended Text Table) - Detailed descriptions
 - **VCT** (Virtual Channel Table) - Channel information
@@ -139,22 +141,26 @@ const processTransportStream = (data: Uint8Array) => {
 ## Features
 
 ### Search
+
 - Full-text search across program titles and descriptions
 - Case-insensitive matching
 - Real-time results
 
 ### Filtering
+
 - Genre-based filtering
 - Automatic genre extraction from PSIP descriptors
 - Combinable with search
 
 ### Time Navigation
+
 - "Now" button to jump to current time
 - Earlier/Later buttons for 3-hour increments
 - Auto-scroll to current time on load
 - Current time marker in grid
 
 ### Program Details
+
 - Modal dialog with full program information
 - Channel, time, duration, genre, rating
 - HD indicator
@@ -162,6 +168,7 @@ const processTransportStream = (data: Uint8Array) => {
 - Context-aware action buttons
 
 ### Accessibility
+
 - Full keyboard navigation
 - ARIA labels and roles
 - Focus management in modals
@@ -170,6 +177,7 @@ const processTransportStream = (data: Uint8Array) => {
 ## Data Retention
 
 EPG data is stored in localStorage with:
+
 - 24-hour retention policy
 - Automatic cleanup of old data
 - Per-channel storage
@@ -222,6 +230,7 @@ Additional genre codes can be added in `epgStorage.ts`.
 ## Testing
 
 Comprehensive test coverage includes:
+
 - PSIP text decoding (UTF-8, UTF-16)
 - EPG storage operations
 - Search and filtering
@@ -230,6 +239,7 @@ Comprehensive test coverage includes:
 - Keyboard navigation
 
 Run tests:
+
 ```bash
 npm test -- --testPathPatterns="(EPG|epgStorage|psipTextDecoder)"
 ```
