@@ -161,11 +161,15 @@ export interface CEA708DecoderMetrics {
 export class CEA708Decoder {
   // Constants
   private static readonly DTVCC_PACKET_START = 0x03;
-  private static readonly MAX_SERVICE_COUNT = 6;
-  private static readonly MAX_WINDOW_COUNT = 8;
+  // Reserved for future use
+  // private static readonly MAX_SERVICE_COUNT = 6;
+  // private static readonly MAX_WINDOW_COUNT = 8;
 
   // State
   private state: CEA708DecoderState = "unconfigured";
+  // Config is stored but currently not used for runtime behavior
+  // Future enhancement: use for dynamic configuration
+  // @ts-expect-error - Reserved for future use
   private config: CaptionDecoderConfig = {};
 
   // Service data
@@ -188,7 +192,8 @@ export class CEA708Decoder {
     availableServices: [],
   };
 
-  // Buffer for partial data
+  // Buffer for partial data (reserved for future streaming support)
+  // @ts-expect-error - Reserved for future use
   private userDataBuffer: Uint8Array = new Uint8Array(0);
 
   /**
@@ -266,7 +271,7 @@ export class CEA708Decoder {
         payload[i + 2] === 0x00 &&
         payload[i + 3] === 0x01
       ) {
-        const nalType = payload[i + 4] & 0x1f;
+        const nalType = (payload[i + 4] ?? 0) & 0x1f;
 
         // SEI NAL unit (type 6)
         if (nalType === 6) {
@@ -279,7 +284,7 @@ export class CEA708Decoder {
           // Extract until next start code
           let end = i + 5;
           while (
-            end < payload.length - 2 &&
+            end + 2 < payload.length &&
             !(
               payload[end] === 0x00 &&
               payload[end + 1] === 0x00 &&
@@ -344,7 +349,7 @@ export class CEA708Decoder {
     for (let i = 0; i < userData.length - 2; i++) {
       // Look for DTVCC packet start (0x03)
       if (userData[i] === CEA708Decoder.DTVCC_PACKET_START) {
-        const packetSize = userData[i + 1] & 0x3f;
+        const packetSize = (userData[i + 1] ?? 0) & 0x3f;
 
         if (i + 2 + packetSize <= userData.length) {
           const packet = userData.slice(i + 2, i + 2 + packetSize);
@@ -455,6 +460,9 @@ export class CEA708Decoder {
 
     while (offset < data.length) {
       const command = data[offset];
+      if (command === undefined) {
+        break;
+      }
 
       // C0 commands (0x00-0x1F)
       if (command <= 0x1f) {
@@ -483,7 +491,7 @@ export class CEA708Decoder {
   private processC0Command(
     service: DecodedCaption,
     command: number,
-    data: Uint8Array,
+    _data: Uint8Array,
     offset: number,
   ): number {
     switch (command) {

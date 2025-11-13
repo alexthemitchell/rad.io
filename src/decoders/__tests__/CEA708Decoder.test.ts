@@ -3,27 +3,21 @@
  */
 
 import { CEA708Decoder } from "../CEA708Decoder";
-import type {
-  DecodedCaption,
-  CaptionService,
-  CEA708DecoderMetrics,
-} from "../CEA708Decoder";
+import type { DecodedCaption, CaptionService } from "../CEA708Decoder";
 
 describe("CEA708Decoder", () => {
   let decoder: CEA708Decoder;
   let captionOutput: DecodedCaption | null;
-  let errorOutput: Error | null;
 
   beforeEach(() => {
     captionOutput = null;
-    errorOutput = null;
 
     decoder = new CEA708Decoder(
       (caption) => {
         captionOutput = caption;
       },
-      (error) => {
-        errorOutput = error;
+      (_error) => {
+        // Error callback - errors are logged but not captured in tests
       },
     );
   });

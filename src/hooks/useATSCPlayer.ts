@@ -262,7 +262,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
         enabled: closedCaptionsEnabledRef.current,
       });
     }
-  }, []); // No dependencies needed since we use refs
+  }, []); // No dependencies needed: decoder/renderer setup uses refs; the nested callback uses closedCaptionsEnabledRef
 
   /**
    * Extract PTS from PES packet header

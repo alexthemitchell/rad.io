@@ -154,7 +154,7 @@ export class CaptionRenderer {
     }
 
     // eslint-disable-next-line no-param-reassign
-    element.style.cssText = styles.join("; ");
+    element.style.cssText = styles.join("; ") + ";";
   }
 
   /**
