@@ -102,9 +102,9 @@ export function decodeStringSegment(segment: StringSegment): string {
       console.warn("SCSU mode (0x3e) not supported; returning empty string");
       return "";
     default:
-      // For other modes (0x01-0x3d), interpret as ISO 8859 variants
-      // or use UTF-8 as fallback
-      return decodeUTF8(decompressed);
+      // ISO 8859 variants (modes 0x01-0x3d) are not yet supported
+      console.warn(`Text mode ${mode} not supported; returning empty string`);
+      return "";
   }
 }
 
@@ -141,6 +141,8 @@ function decodeUTF8(data: Uint8Array): string {
   }
 }
 
+const GPS_EPOCH_MS = new Date("1980-01-06T00:00:00Z").getTime();
+
 /**
  * Convert GPS seconds (since 1980-01-06 00:00:00 UTC) to JavaScript Date
  *
@@ -148,9 +150,7 @@ function decodeUTF8(data: Uint8Array): string {
  * @returns JavaScript Date object
  */
 export function gpsTimeToDate(gpsSeconds: number): Date {
-  // GPS epoch is January 6, 1980 00:00:00 UTC
-  const GPS_EPOCH = new Date("1980-01-06T00:00:00Z").getTime();
-  const milliseconds = GPS_EPOCH + gpsSeconds * 1000;
+  const milliseconds = GPS_EPOCH_MS + gpsSeconds * 1000;
   return new Date(milliseconds);
 }
 

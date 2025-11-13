@@ -212,7 +212,9 @@ export function ProgramDetailModal({
           {isPast && onTuneToChannel && (
             <button
               className="btn btn-secondary"
-              onClick={() => onTuneToChannel(program.channelNumber, new Date())}
+              onClick={() =>
+                onTuneToChannel(program.channelNumber, program.startTime)
+              }
               title="Tune to this channel"
             >
               Tune to Channel

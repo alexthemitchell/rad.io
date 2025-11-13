@@ -59,7 +59,8 @@ export function useEPG(): UseEPGResult {
 
   useEffect(() => {
     loadEPGData();
-  }, [loadEPGData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadEPGData is stable and does not need to be a dependency
+  }, []);
 
   // Get current programs
   const currentPrograms = useMemo(() => {

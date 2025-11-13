@@ -350,7 +350,9 @@ function parseContentAdvisoryDescriptor(data: Uint8Array): string | null {
     return null;
   }
 
-  // Only parse the first dimension
+  // Only parse the first dimension (age-based rating)
+  // Note: ATSC A/65 allows multiple rated dimensions (Violence, Sexual Content, Language),
+  // but we only extract the primary age-based rating for simplicity
   const ratingValue = data[offset] & 0x0f;
 
   // Map rating value to string (see ATSC A/65 Table 6.30)
