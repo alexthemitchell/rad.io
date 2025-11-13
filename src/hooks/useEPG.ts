@@ -59,8 +59,7 @@ export function useEPG(): UseEPGResult {
 
   useEffect(() => {
     loadEPGData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadEPGData is stable and does not need to be a dependency
-  }, []);
+  }, [loadEPGData]);
 
   // Get current programs - update periodically as time changes
   const [currentPrograms, setCurrentPrograms] = useState<EPGProgram[]>(() =>

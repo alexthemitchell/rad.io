@@ -115,7 +115,7 @@ export function ATSCProgramGuide({
               aria-label="Clear search"
               title="Clear search"
             >
-              ✕
+              <span aria-hidden="true">✕</span>
             </button>
           )}
         </div>

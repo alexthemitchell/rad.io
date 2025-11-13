@@ -99,10 +99,14 @@ export function ProgramCell({
           {showFullTitle ? program.title : program.title.substring(0, 20)}
         </div>
         {program.isHD && width >= 2 && (
-          <span className="program-cell-hd">HD</span>
+          <span className="program-cell-hd" aria-hidden="true">
+            HD
+          </span>
         )}
         {isCurrentlyAiring && (
-          <span className="program-cell-live-indicator">●</span>
+          <span className="program-cell-live-indicator" aria-hidden="true">
+            ●
+          </span>
         )}
       </div>
     </div>

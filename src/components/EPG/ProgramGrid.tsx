@@ -139,7 +139,7 @@ export function ProgramGrid({
 
       <div className="epg-grid" ref={gridRef}>
         <div className="epg-time-header">
-          <div className="epg-channel-header-spacer" />
+          <div className="epg-channel-header-spacer" aria-hidden="true" />
           <div
             className="epg-time-slots"
             style={{
@@ -187,7 +187,7 @@ export function ProgramGrid({
               style={{
                 left: `calc(${currentTimePosition} * (100% / ${timeSlots.length}))`,
               }}
-              aria-label="Current time"
+              aria-hidden="true"
             />
           )}
         </div>
