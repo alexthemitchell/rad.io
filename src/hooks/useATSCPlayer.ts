@@ -6,7 +6,12 @@
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { ATSCVideoDecoder, VideoRenderer } from "../decoders";
+import {
+  ATSCVideoDecoder,
+  VideoRenderer,
+  CEA708Decoder,
+  CaptionRenderer,
+} from "../decoders";
 import { type ISDRDevice } from "../models/SDRDevice";
 import {
   TransportStreamParser,
@@ -17,6 +22,7 @@ import {
 } from "../parsers/TransportStreamParser";
 import { ATSC8VSBDemodulator } from "../plugins/demodulators/ATSC8VSBDemodulator";
 import { ATSC_CONSTANTS } from "../utils/atscChannels";
+import type { DecodedCaption } from "../decoders";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
 
 /**
@@ -104,6 +110,8 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
   const audioDecoderRef = useRef<AudioDecoder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
+  const captionDecoderRef = useRef<CEA708Decoder | null>(null);
+  const captionRendererRef = useRef<CaptionRenderer | null>(null);
   const receivePromiseRef = useRef<Promise<void> | null>(null);
   const isPlayingRef = useRef(false);
   const metricsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
@@ -211,6 +219,49 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
     },
     [getStreamTypeDescription],
   );
+
+  /**
+   * Initialize caption decoder and renderer
+   */
+  const initializeCaptionDecoder = useCallback((): void => {
+    // Find caption container
+    const captionContainer = document.getElementById("closed-captions");
+    if (!captionContainer) {
+      console.warn("ATSC Player: Caption container not found");
+      return;
+    }
+
+    // Initialize caption renderer
+    captionRendererRef.current ??= new CaptionRenderer({
+      container: captionContainer,
+      config: {
+        fontSize: 20,
+        edgeStyle: "drop_shadow",
+        windowOpacity: 0.8,
+      },
+    });
+
+    // Initialize caption decoder
+    if (!captionDecoderRef.current) {
+      captionDecoderRef.current = new CEA708Decoder(
+        (caption: DecodedCaption) => {
+          // Caption output callback
+          if (closedCaptionsEnabled && captionRendererRef.current) {
+            captionRendererRef.current.render(caption);
+          }
+        },
+        (error: Error) => {
+          // Error callback
+          console.error("CEA-708 Decoder error:", error);
+        },
+      );
+
+      captionDecoderRef.current.initialize({
+        preferredService: 1,
+        enabled: closedCaptionsEnabled,
+      });
+    }
+  }, [closedCaptionsEnabled]);
 
   /**
    * Parse audio tracks from PMT
@@ -483,6 +534,8 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
                                   videoStream.streamType as StreamType,
                                   vPID,
                                 );
+                                // Initialize caption decoder after video decoder
+                                initializeCaptionDecoder();
                               } catch (error) {
                                 console.error(
                                   "Failed to initialize video decoder:",
@@ -510,9 +563,29 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
                     currentVideoPID,
                   );
 
+                  // Get video packets for PTS extraction
+                  const videoPackets = packets.filter(
+                    (p) => p.header.pid === currentVideoPID,
+                  );
+
                   // Feed payloads to video decoder
-                  for (const payload of videoPayloads) {
+                  for (let i = 0; i < videoPayloads.length; i++) {
+                    const payload = videoPayloads[i];
+                    if (!payload) continue;
+
                     videoDecoderRef.current.processPayload(payload);
+
+                    // Also process payload for captions if enabled
+                    if (closedCaptionsEnabled && captionDecoderRef.current) {
+                      // Extract PTS from corresponding packet if available
+                      const packet = videoPackets[i];
+                      const pts = packet?.adaptationField?.pcr;
+
+                      captionDecoderRef.current.processVideoPayload(
+                        payload,
+                        pts,
+                      );
+                    }
                   }
                 }
               }
@@ -531,8 +604,10 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
     },
     [
       device,
+      closedCaptionsEnabled,
       initializeAudioContext,
       initializeVideoDecoder,
+      initializeCaptionDecoder,
       findVideoPID,
       parseAudioTracks,
       parseProgramInfo,
@@ -575,7 +650,16 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
    * Toggle closed captions
    */
   const toggleClosedCaptions = useCallback((): void => {
-    setClosedCaptionsEnabled((prev) => !prev);
+    setClosedCaptionsEnabled((prev) => {
+      const newValue = !prev;
+
+      // Clear captions when disabling
+      if (!newValue && captionRendererRef.current) {
+        captionRendererRef.current.clear();
+      }
+
+      return newValue;
+    });
   }, []);
 
   /**
@@ -615,6 +699,17 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
     if (videoRendererRef.current) {
       videoRendererRef.current.clear();
       videoRendererRef.current = null;
+    }
+
+    // Cleanup caption decoder and renderer
+    if (captionDecoderRef.current) {
+      captionDecoderRef.current.close();
+      captionDecoderRef.current = null;
+    }
+
+    if (captionRendererRef.current) {
+      captionRendererRef.current.destroy();
+      captionRendererRef.current = null;
     }
 
     // Cleanup audio decoder
