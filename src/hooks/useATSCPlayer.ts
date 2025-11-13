@@ -683,6 +683,9 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
     setClosedCaptionsEnabled((prev) => {
       const newValue = !prev;
 
+      // Update ref immediately to prevent race condition
+      closedCaptionsEnabledRef.current = newValue;
+
       // Clear captions when disabling
       if (!newValue && captionRendererRef.current) {
         captionRendererRef.current.clear();
@@ -741,6 +744,9 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       captionRendererRef.current.destroy();
       captionRendererRef.current = null;
     }
+
+    // Reset closed captions enabled ref
+    closedCaptionsEnabledRef.current = false;
 
     // Cleanup audio decoder
     if (audioDecoderRef.current) {

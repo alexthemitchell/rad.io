@@ -275,11 +275,11 @@ export class CEA708Decoder {
           userData.push(...seiData);
         }
         // User data start code (MPEG-2: 0x000001B2)
-        else if (payload[i + 4] === 0xb2) {
+        else if (payload[i + 4] === 0xb2 && i < payload.length - 5) {
           // Extract until next start code
           let end = i + 5;
           while (
-            end < payload.length - 3 &&
+            end < payload.length - 2 &&
             !(
               payload[end] === 0x00 &&
               payload[end + 1] === 0x00 &&
@@ -388,13 +388,14 @@ export class CEA708Decoder {
     }
 
     const header = data[offset];
-    const serviceNumber = ((header >> 5) & 0x07) as CaptionService;
-    const blockSize = header & 0x1f;
+    const serviceNumberRaw = ((header ?? 0) >> 5) & 0x07;
+    const blockSize = (header ?? 0) & 0x1f;
 
     // Service number must be 1-6
-    if (serviceNumber < 1 || serviceNumber > 6) {
+    if (serviceNumberRaw < 1 || serviceNumberRaw > 6) {
       return null;
     }
+    const serviceNumber = serviceNumberRaw as CaptionService;
 
     if (offset + 1 + blockSize > data.length) {
       return null;
@@ -547,7 +548,7 @@ export class CEA708Decoder {
         if (offset + 1 < data.length) {
           const windowBitmap = data[offset + 1];
           for (let i = 0; i < 8; i++) {
-            if (windowBitmap && windowBitmap & (1 << i)) {
+            if (windowBitmap !== undefined && windowBitmap & (1 << i)) {
               // Clear window i
               // eslint-disable-next-line no-param-reassign
               service.text = [];
@@ -567,7 +568,7 @@ export class CEA708Decoder {
         if (offset + 1 < data.length) {
           const windowBitmap = data[offset + 1];
           for (let i = 0; i < 8; i++) {
-            if (windowBitmap & (1 << i)) {
+            if (windowBitmap !== undefined && windowBitmap & (1 << i)) {
               service.windows.delete(i);
             }
           }

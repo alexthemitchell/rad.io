@@ -255,11 +255,7 @@ export class CaptionRenderer {
       case "depressed":
         return `text-shadow: -1px -1px 0 ${edgeColor}, 1px 1px 0 ${edgeColor}`;
       case "uniform":
-        return `text-shadow: 
-          -1px -1px 0 ${edgeColor},
-          1px -1px 0 ${edgeColor},
-          -1px 1px 0 ${edgeColor},
-          1px 1px 0 ${edgeColor}`;
+        return `text-shadow: -1px -1px 0 ${edgeColor}, 1px -1px 0 ${edgeColor}, -1px 1px 0 ${edgeColor}, 1px 1px 0 ${edgeColor}`;
       case "drop_shadow":
         return `text-shadow: 2px 2px 3px ${edgeColor}`;
       case "none":
