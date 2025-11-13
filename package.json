@@ -11,8 +11,8 @@
     "lint:fix": "eslint src --fix",
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",
-    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#coverage\" \"#dist\" \"#build\" \"#test-results\" \"#playwright-report\"",
-    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#coverage\" \"#dist\" \"#build\" \"#test-results\" \"#playwright-report\"",
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#coverage\" \"#dist\" \"#build\" \"#test-results\" \"#playwright-report\" \"#.github\" \"#.serena\"",
+    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\" \"#coverage\" \"#dist\" \"#build\" \"#test-results\" \"#playwright-report\" \"#.github\" \"#.serena\"",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:components": "jest --coverage src/components/__tests__/",
@@ -40,7 +40,8 @@
   "private": true,
   "markdownlint-cli2": {
     "config": {
-      "MD036": false
+      "MD036": false,
+      "MD049": false
     }
   },
   "devDependencies": {

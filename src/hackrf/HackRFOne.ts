@@ -527,18 +527,13 @@ export class HackRFOne {
    * @param gain RX IF gain value in dB
    */
   async setLNAGain(gain: number): Promise<void> {
-    const { data } = await this.controlTransferIn({
+    // HackRF firmware expects a vendor OUT control transfer with gain in wValue
+    // Matching libhackrf: HACKRF_VENDOR_REQUEST_SET_LNA_GAIN (OUT)
+    await this.controlTransferOut({
       command: RequestCommand.SET_LNA_GAIN,
-      index: gain,
-      length: 1,
+      value: gain,
+      index: 0,
     });
-
-    if (!data) {
-      throw new Error("No data returned from controlTransferIn");
-    }
-    if (data.byteLength !== 1 || !data.getUint8(data.byteOffset)) {
-      throw new Error("Invalid Param");
-    }
     this.lastLNAGain = gain;
   }
 
