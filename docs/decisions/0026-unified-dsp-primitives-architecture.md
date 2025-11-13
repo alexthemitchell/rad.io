@@ -50,6 +50,7 @@ src/lib/dsp/
 ```
 
 **Approach**:
+
 - Move all window functions to `primitives.ts` with unified API
 - Move all DC correction functions to `primitives.ts`
 - Provide both `Sample[]` and `Float32Array` interfaces via adapter functions
@@ -61,6 +62,7 @@ src/lib/dsp/
 Document why duplication exists and mark it as "intentional for performance isolation."
 
 **Approach**:
+
 - Add comments explaining duplication rationale
 - Create test suites ensuring implementations stay in sync
 - Update architecture docs to acknowledge parallel implementations
@@ -70,6 +72,7 @@ Document why duplication exists and mark it as "intentional for performance isol
 Force all DSP operations through WASM, removing TypeScript implementations entirely.
 
 **Approach**:
+
 - Delete JavaScript/TypeScript DSP implementations
 - Make WASM loading mandatory
 - Fallback to no-op or error if WASM unavailable
@@ -79,6 +82,7 @@ Force all DSP operations through WASM, removing TypeScript implementations entir
 Allow each demodulator/processor to implement its own DSP operations.
 
 **Approach**:
+
 - Remove shared DSP utilities
 - Each plugin implements needed primitives
 - Optimize for plugin-specific use cases
@@ -117,6 +121,7 @@ Chosen option: **"Option 1: Unified DSP Primitives Layer"** because it provides 
 ### Shared vs. Module-Specific Logic
 
 **Shared Primitives** (in `src/lib/dsp/`):
+
 - Window functions: Hann, Hamming, Blackman, Kaiser
 - DC offset correction: Static, IIR, Combined
 - FFT/IFFT: Forward/inverse transforms with configurable sizes
@@ -126,6 +131,7 @@ Chosen option: **"Option 1: Unified DSP Primitives Layer"** because it provides 
 - Signal metrics: RMS, peak, SNR calculation
 
 **Module-Specific Logic** (in plugins/demodulators):
+
 - Demodulation algorithms (AM, FM, SSB, 8-VSB, etc.)
 - Specialized equalization (ATSC adaptive equalizer)
 - Timing recovery (Gardner detector, symbol sync)
@@ -134,6 +140,7 @@ Chosen option: **"Option 1: Unified DSP Primitives Layer"** because it provides 
 - Forward error correction (Reed-Solomon, convolutional)
 
 **Rationale for Separation**:
+
 - **Primitives are reusable** across multiple demodulators and processors
 - **Module logic is specialized** to specific modulation schemes or protocols
 - **Primitives have standard implementations** with well-known optimal algorithms
@@ -142,6 +149,7 @@ Chosen option: **"Option 1: Unified DSP Primitives Layer"** because it provides 
 ### Implementation Plan
 
 #### Phase 1: Create Shared Layer
+
 1. Create `src/lib/dsp/` directory structure
 2. Move window functions from `dspProcessing.ts` to `primitives.ts`
 3. Move DC correction functions to `primitives.ts`
@@ -149,12 +157,14 @@ Chosen option: **"Option 1: Unified DSP Primitives Layer"** because it provides 
 5. Maintain WASM integration through existing `dspWasm.ts` facade
 
 #### Phase 2: Update Consumers
+
 1. Update ATSC demodulator to import from shared primitives
 2. Update visualization pipeline to use new imports
 3. Update workers to use shared primitives
 4. Remove duplicate implementations
 
 #### Phase 3: Testing & Documentation
+
 1. Move/consolidate tests to `src/lib/dsp/__tests__/`
 2. Update architecture documentation
 3. Add inline JSDoc with references to shared implementations
@@ -224,11 +234,13 @@ export function applyAGC(
 ### Migration Strategy
 
 **Backward Compatibility**:
+
 - Existing `src/utils/dspProcessing.ts` functions remain as thin wrappers calling `src/lib/dsp/primitives.ts`
 - Deprecation warnings added via JSDoc `@deprecated` tags
 - Full removal of wrappers in next major version
 
 **Import Migration**:
+
 ```typescript
 // OLD (deprecated but still works)
 import { applyHannWindow } from "@/utils/dspProcessing";
@@ -267,6 +279,7 @@ applyWindow(samples, "hann");
 ### Validation
 
 **Success Criteria**:
+
 1. All existing tests pass with no functional regressions
 2. ATSC demodulator functions identically with shared primitives
 3. No performance degradation in benchmark tests
@@ -274,6 +287,7 @@ applyWindow(samples, "hann");
 5. Documentation updated to reflect new architecture
 
 **Performance Benchmarks**:
+
 - FFT 8192-point: < 8ms (unchanged)
 - DC correction 1024 samples: < 1ms (unchanged)
 - Window application 1024 samples: < 0.5ms (unchanged)
@@ -283,6 +297,7 @@ applyWindow(samples, "hann");
 ### Alternative 1: Option 2 - Keep Duplication
 
 **Rejected** because:
+
 - Doesn't solve maintenance burden
 - Bug fixes won't propagate automatically
 - Violates DRY principle without compelling performance justification
@@ -291,6 +306,7 @@ applyWindow(samples, "hann");
 ### Alternative 2: Option 3 - WASM-Only
 
 **Rejected** because:
+
 - Breaks graceful degradation for browsers without WASM
 - Increases load time (WASM initialization required)
 - Reduces debuggability (harder to step through WASM)
@@ -299,6 +315,7 @@ applyWindow(samples, "hann");
 ### Alternative 3: Option 4 - Module-Specific DSP
 
 **Rejected** because:
+
 - Maximizes code duplication
 - Each plugin would reimplement FFT, windowing, etc.
 - No shared testing or optimization
@@ -315,16 +332,19 @@ applyWindow(samples, "hann");
 ## References
 
 ### Internal Documentation
+
 - `docs/reference/dsp-fundamentals.md` - DSP concepts and algorithms
 - `docs/reference/dc-offset-correction.md` - DC correction algorithms explained
 - `docs/reference/fft-implementation.md` - FFT implementation details
 
 ### Academic References
+
 - Lyons, Richard G. "Understanding Digital Signal Processing" (3rd Edition). Prentice Hall, 2010. - Standard DSP reference
 - Smith, Julius O. III. "Spectral Audio Signal Processing." W3K Publishing, 2011. - Window functions and FFT
 - Oppenheim, Alan V., and Ronald W. Schafer. "Discrete-Time Signal Processing." Pearson, 2009. - IIR/FIR filters
 
 ### Implementation References
+
 - [GNU Radio - gr::blocks::dc_blocker_cc](https://www.gnuradio.org/doc/doxygen/classgr_1_1blocks_1_1dc__blocker__cc.html) - Reference IIR DC blocker implementation
 - [LiquidDSP - Windowing Functions](https://liquidsdr.org/doc/window/) - Standard window function implementations
 - [fft.js](https://github.com/indutny/fft.js) - JavaScript FFT library used in rad.io
@@ -334,10 +354,12 @@ applyWindow(samples, "hann");
 ### File Locations After Migration
 
 **Removed/Deprecated**:
+
 - Individual window function exports from `dspProcessing.ts` (use `applyWindow` instead)
 - Individual DC correction exports (use `removeDCOffset` instead)
 
 **New Shared Layer**:
+
 ```
 src/lib/dsp/
 ├── index.ts                    # Public API exports
@@ -355,6 +377,7 @@ src/lib/dsp/
 ```
 
 **Maintained Compatibility Layer**:
+
 - `src/utils/dspProcessing.ts` - Re-exports from `src/lib/dsp/` with deprecation warnings
 - `src/utils/dspWasm.ts` - WASM loader, unchanged
 - `assembly/dsp.ts` - WASM implementations, unchanged
@@ -387,6 +410,7 @@ These remain in the demodulator as they are not reusable primitives.
 ### Extension Points
 
 New primitives can be added to `src/lib/dsp/` without breaking existing code:
+
 - Wavelet transforms
 - Polyphase filterbanks
 - Adaptive noise cancellation

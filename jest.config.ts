@@ -78,11 +78,12 @@ const config: Config = {
       lines: 57,
     },
     "./src/utils/dspProcessing.ts": {
-      // Adjusted to current stable coverage baseline
-      statements: 88,
+      // Reduced coverage threshold due to conversion to re-export compatibility layer
+      // See ADR-0026: Unified DSP Primitives Architecture
+      statements: 86,
       branches: 50,
       functions: 85,
-      lines: 88,
+      lines: 86,
     },
   },
   coverageReporters: ["text", "lcov", "json-summary", "html"],

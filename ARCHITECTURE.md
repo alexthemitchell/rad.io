@@ -127,6 +127,7 @@ rad.io employs a **unified DSP primitives layer** that consolidates core signal 
 ### Shared vs. Module-Specific DSP Logic
 
 **Shared Primitives** (\`src/lib/dsp/\`):
+
 - **Window Functions**: Hann, Hamming, Blackman, Kaiser for spectral leakage reduction
 - **DC Offset Correction**: Static, IIR, and combined modes for DC removal
 - **FFT/IFFT**: Forward and inverse transforms with configurable sizes
@@ -135,6 +136,7 @@ rad.io employs a **unified DSP primitives layer** that consolidates core signal 
 - **Signal Analysis**: RMS, peak detection, SNR calculation
 
 **Module-Specific Logic** (in \`src/plugins/demodulators/\`):
+
 - **Demodulation Algorithms**: AM/FM/SSB/8-VSB specific implementations
 - **Timing Recovery**: Gardner detector, symbol synchronization
 - **Carrier Recovery**: PLL, Costas loops for phase tracking
