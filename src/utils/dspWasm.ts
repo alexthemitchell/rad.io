@@ -4,7 +4,6 @@
  * with automatic fallback to JavaScript implementation
  */
 
-import { dspLogger } from "./logger";
 import type { Sample } from "./dsp";
 
 // WASM module interface
@@ -420,8 +419,8 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
         wasmSupported = true;
         // One-time visibility into loaded exports
         try {
-          dspLogger.info(
-            `WASM module loaded${loadedWithSIMD ? " (SIMD-optimized)" : ""}`,
+          console.info(
+            `📡 DSP: WASM module loaded${loadedWithSIMD ? " (SIMD-optimized)" : ""}`,
             {
               url,
               variant: loadedWithSIMD ? "simd" : "standard",
@@ -438,11 +437,15 @@ export async function loadWasmModule(): Promise<WasmDSPModule | null> {
       }
     }
 
-    dspLogger.warn("Failed to load WASM module, falling back to JavaScript", {
-      attemptedPaths: ["../assembly/dsp", "./wasm-build/dsp"],
-      wasmSupported: typeof WebAssembly !== "undefined",
-      errorType: lastError instanceof Error ? lastError.name : typeof lastError,
-    });
+    console.warn(
+      "📡 DSP: Failed to load WASM module, falling back to JavaScript",
+      {
+        attemptedPaths: ["../assembly/dsp", "./wasm-build/dsp"],
+        wasmSupported: typeof WebAssembly !== "undefined",
+        errorType:
+          lastError instanceof Error ? lastError.name : typeof lastError,
+      },
+    );
     wasmModule = null;
     wasmSupported = false;
     return null;
@@ -576,7 +579,7 @@ export function calculateFFTWasm(
     // Prefer return-by-value API if available (avoids copy-back issue)
     if (typeof wasmModule.calculateFFTOut === "function") {
       if (!loggedFFTChoice) {
-        dspLogger.info("Using calculateFFTOut (return-by-value)");
+        console.info("📡 DSP: Using calculateFFTOut (return-by-value)");
         loggedFFTChoice = true;
       }
       return wasmModule.calculateFFTOut(iSamples, qSamples, fftSize);
@@ -586,15 +589,15 @@ export function calculateFFTWasm(
     // do not copy results back to JS when passing an output array.
     // We'll still use it and rely on higher-level sanity checks/fallbacks.
     if (!loggedFFTChoice) {
-      dspLogger.info("Using calculateFFT with output parameter");
+      console.info("📡 DSP: Using calculateFFT with output parameter");
       loggedFFTChoice = true;
     }
     const output = wasmModule.allocateFloat32Array(fftSize);
     wasmModule.calculateFFT(iSamples, qSamples, fftSize, output);
     return output;
   } catch (error) {
-    dspLogger.warn(
-      "FFT calculation failed, falling back to JS implementation",
+    console.warn(
+      "📡 DSP: FFT calculation failed, falling back to JS implementation",
       {
         fftSize,
         inputSampleCount: samples.length,
@@ -633,7 +636,9 @@ export function calculateWaveformWasm(
     // Prefer SIMD return-by-value if available (best performance)
     if (typeof wasmModule.calculateWaveformOutSIMD === "function") {
       if (!loggedWaveformOutSIMD) {
-        dspLogger.info("Using calculateWaveformOutSIMD (SIMD return-by-value)");
+        console.info(
+          "📡 DSP: Using calculateWaveformOutSIMD (SIMD return-by-value)",
+        );
         loggedWaveformOutSIMD = true;
       }
       const flat = wasmModule.calculateWaveformOutSIMD(
@@ -649,7 +654,7 @@ export function calculateWaveformWasm(
     // Fall back to standard return-by-value if available
     if (typeof wasmModule.calculateWaveformOut === "function") {
       if (!loggedWaveformOut) {
-        dspLogger.info("Using calculateWaveformOut (return-by-value)");
+        console.info("📡 DSP: Using calculateWaveformOut (return-by-value)");
         loggedWaveformOut = true;
       }
       const flat = wasmModule.calculateWaveformOut(iSamples, qSamples, count);
@@ -664,7 +669,7 @@ export function calculateWaveformWasm(
 
     if (typeof wasmModule.calculateWaveformSIMD === "function") {
       if (!loggedWaveformSIMD) {
-        dspLogger.info("Using calculateWaveformSIMD (SIMD legacy)");
+        console.info("📡 DSP: Using calculateWaveformSIMD (SIMD legacy)");
         loggedWaveformSIMD = true;
       }
       wasmModule.calculateWaveformSIMD(
@@ -676,7 +681,7 @@ export function calculateWaveformWasm(
       );
     } else {
       if (!loggedWaveformStandard) {
-        dspLogger.info("Using calculateWaveform (standard legacy)");
+        console.info("📡 DSP: Using calculateWaveform (standard legacy)");
         loggedWaveformStandard = true;
       }
       wasmModule.calculateWaveform(iSamples, qSamples, amplitude, phase, count);
@@ -684,8 +689,8 @@ export function calculateWaveformWasm(
 
     return { amplitude, phase };
   } catch (error) {
-    dspLogger.warn(
-      "Waveform calculation failed, falling back to JS implementation",
+    console.warn(
+      "📡 DSP: Waveform calculation failed, falling back to JS implementation",
       {
         inputLength: samples.length,
         errorType: error instanceof Error ? error.name : typeof error,
@@ -728,7 +733,7 @@ export function calculateSpectrogramWasm(
     // Prefer return-by-value API if available to avoid copy-back issue
     if (typeof wasmModule.calculateSpectrogramOut === "function") {
       if (!loggedSpectrogramChoice) {
-        dspLogger.info("Using calculateSpectrogramOut (return-by-value)");
+        console.info("📡 DSP: Using calculateSpectrogramOut (return-by-value)");
         loggedSpectrogramChoice = true;
       }
       const flat = wasmModule.calculateSpectrogramOut(
@@ -746,7 +751,7 @@ export function calculateSpectrogramWasm(
 
     // Allocate output array in WASM memory and call legacy API
     if (!loggedSpectrogramChoice) {
-      dspLogger.info("Using calculateSpectrogram with output parameter");
+      console.info("📡 DSP: Using calculateSpectrogram with output parameter");
       loggedSpectrogramChoice = true;
     }
     const output = wasmModule.allocateFloat32Array(rowCount * fftSize);
@@ -764,8 +769,8 @@ export function calculateSpectrogramWasm(
     }
     return rows;
   } catch (error) {
-    dspLogger.warn(
-      "Spectrogram calculation failed, falling back to JS implementation",
+    console.warn(
+      "📡 DSP: Spectrogram calculation failed, falling back to JS implementation",
       {
         fftSize,
         inputLength: samples.length,
@@ -880,8 +885,8 @@ function selectWindowFn(
 
   // Log once which variant is being used
   if (!loggedWindowChoice) {
-    dspLogger.info(
-      `Using ${simdFn ? simdName : standardName} for window functions`,
+    console.info(
+      `📡 DSP: Using ${simdFn ? simdName : standardName} for window functions`,
     );
     loggedWindowChoice = true;
   }
@@ -922,8 +927,8 @@ export function removeDCOffsetStaticWasm(samples: Sample[]): boolean {
     copyIQToSamples(samples, iSamples, qSamples);
     return true;
   } catch (error) {
-    dspLogger.warn(
-      "WASM static DC offset removal failed",
+    console.warn(
+      "📡 DSP: WASM static DC offset removal failed",
       error instanceof Error ? { error: error.message } : undefined,
     );
     return false;
@@ -981,8 +986,8 @@ export function removeDCOffsetIIRWasm(
     copyIQToSamples(samples, iSamples, qSamples);
     return true;
   } catch (error) {
-    dspLogger.warn(
-      "WASM IIR DC offset removal failed",
+    console.warn(
+      "📡 DSP: WASM IIR DC offset removal failed",
       error instanceof Error ? { error: error.message } : undefined,
     );
     return false;

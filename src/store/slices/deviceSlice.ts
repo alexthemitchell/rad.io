@@ -10,7 +10,6 @@
  */
 
 import { type StateCreator } from "zustand";
-import { deviceLogger } from "../../utils/logger";
 import type { ISDRDevice } from "../../models/SDRDevice";
 
 /**
@@ -118,14 +117,14 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
   // eslint-disable-next-line @typescript-eslint/require-await
   requestDevice: async (): Promise<void> => {
     const error = "requestDevice called before initialization";
-    deviceLogger.warn(error);
+    console.warn("🔌 DEVICE:", error);
     throw new Error(error);
   },
 
   // eslint-disable-next-line @typescript-eslint/require-await
   connectPairedUSBDevice: async (): Promise<void> => {
     const error = "connectPairedUSBDevice called before initialization";
-    deviceLogger.warn(error);
+    console.warn("🔌 DEVICE:", error);
     throw new Error(error);
   },
 
@@ -133,7 +132,7 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
     set((state: DeviceSlice) => {
       // Skip if already initialized
       if (state.devices.has(deviceId)) {
-        deviceLogger.debug("Device already initialized", { deviceId });
+        console.debug("🔌 DEVICE: Device already initialized", { deviceId });
         return state;
       }
 
@@ -144,7 +143,7 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
       const primaryDevice =
         newDevices.size === 1 ? entry.device : state.primaryDevice;
 
-      deviceLogger.info("Device added to store", { deviceId });
+      console.info("🔌 DEVICE: Device added to store", { deviceId });
 
       // Persist last-used device for future preference
       try {
@@ -189,7 +188,7 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
         primaryDevice = undefined;
       }
 
-      deviceLogger.info("Device removed from store", { deviceId });
+      console.info("🔌 DEVICE: Device removed from store", { deviceId });
 
       return {
         devices: newDevices,
@@ -203,16 +202,18 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
     const entry = state.devices.get(deviceId);
 
     if (!entry) {
-      deviceLogger.warn("Attempted to close unknown device", { deviceId });
+      console.warn("🔌 DEVICE: Attempted to close unknown device", {
+        deviceId,
+      });
       return;
     }
 
     try {
       await entry.device.close();
       state.removeDevice(deviceId);
-      deviceLogger.info("Device closed", { deviceId });
+      console.info("🔌 DEVICE: Device closed", { deviceId });
     } catch (err) {
-      deviceLogger.error("Failed to close device", err, { deviceId });
+      console.error("🔌 DEVICE: Failed to close device", err, { deviceId });
       throw err;
     }
   },
@@ -233,15 +234,19 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
         try {
           await entry.device.close();
         } catch (err) {
-          deviceLogger.error("Failed to close device during cleanup", err, {
-            deviceId,
-          });
+          console.error(
+            "🔌 DEVICE: Failed to close device during cleanup",
+            err,
+            {
+              deviceId,
+            },
+          );
         }
       },
     );
 
     await Promise.allSettled(closePromises);
-    deviceLogger.info("All devices closed");
+    console.info("🔌 DEVICE: All devices closed");
   },
 
   setIsCheckingPaired: (checking: boolean): void => {

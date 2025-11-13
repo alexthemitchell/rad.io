@@ -24,6 +24,7 @@ export interface FFTTask {
   priority: number;
   samples: Float32Array;
   sampleRate: number;
+  fftSize?: number;
   resolve: (result: FFTResult) => void;
   reject: (error: Error) => void;
 }

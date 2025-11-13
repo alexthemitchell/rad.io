@@ -37,14 +37,15 @@ describe("Monitor", () => {
     expect(screen.getByRole("main")).toBeInTheDocument();
   });
 
-  it("displays heading", () => {
+  it("displays frequency control", () => {
     render(
       <BrowserRouter>
         <Monitor />
       </BrowserRouter>,
     );
+    // The Monitor page now leads with FrequencyDisplay instead of a page title
     expect(
-      screen.getByRole("heading", { name: /monitor/i }),
+      screen.getByRole("heading", { name: /frequency control/i }),
     ).toBeInTheDocument();
   });
 

@@ -9,15 +9,46 @@ test.use({
 });
 
 test.describe("Monitor (mock SDR @ CI)", () => {
+  async function findStartButton(page) {
+    const selectors = [
+      'button[aria-label*="Start receiving" i]',
+      'button:has-text("Start Reception")',
+      'button:has-text("Start receiving")',
+      'button[aria-label*="Start reception" i]',
+      'button[title*="Start reception" i]',
+    ];
+    for (const s of selectors) {
+      const loc = page.locator(s).first();
+      try {
+        if ((await loc.count()) > 0) {
+          return loc;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  }
   test("should start and stop reception using mock SDR", async ({ page }) => {
     await page.goto("https://localhost:8080/monitor?mockSdr=1");
 
-    // Wait for Start button to appear and be enabled
-    const startBtn = page.getByRole("button", { name: "Start reception" });
+    // Wait for Start button to appear and be enabled; be tolerant of varying UI locations
+    let startBtn = await findStartButton(page);
+    if (!startBtn) {
+      const connectBtn = page.getByRole("button", { name: /connect/i }).first();
+      if ((await connectBtn.count()) > 0) {
+        await connectBtn.click();
+        await page.waitForTimeout(500);
+        startBtn = await findStartButton(page);
+      }
+    }
+    if (!startBtn) {
+      throw new Error("Start Reception button not found for mock SDR test");
+    }
     await expect(startBtn).toBeVisible({ timeout: 10000 });
     await expect(startBtn).toBeEnabled();
 
-    // Click Start to satisfy any audio unlock gesture and begin streaming
+    // Click Start to begin streaming
     await startBtn.click();
 
     // Status text should update

@@ -1,9 +1,27 @@
+import { formatFrequency, formatSampleRate } from "../frequency";
+import { generateBookmarkId } from "../id";
+
+describe("formatFrequency", () => {
+  it("formats MHz with trimmed decimals", () => {
+    expect(formatFrequency(100100000)).toBe("100.1 MHz");
+    expect(formatFrequency(100000000)).toBe("100 MHz");
+  });
+
+  it("formats kHz and Hz appropriately", () => {
+    expect(formatFrequency(1000)).toBe("1.0 kHz");
+    expect(formatFrequency(100)).toBe("100 Hz");
+  });
+});
+
+describe("formatSampleRate", () => {
+  it("formats MSPS and kSPS", () => {
+    expect(formatSampleRate(2048000)).toBe("2.05 MSPS");
+    expect(formatSampleRate(48000)).toBe("48.00 kSPS");
+  });
+});
 /**
  * Tests for frequency utility functions
  */
-
-import { formatFrequency, formatSampleRate } from "../frequency";
-import { generateBookmarkId } from "../id";
 
 describe("frequency utilities", () => {
   describe("formatFrequency", () => {
@@ -13,11 +31,11 @@ describe("frequency utilities", () => {
       expect(formatFrequency(5.8e9)).toBe("5.800000 GHz");
     });
 
-    it("should format MHz frequencies", () => {
-      expect(formatFrequency(1e6)).toBe("1.000 MHz");
-      expect(formatFrequency(100e6)).toBe("100.000 MHz");
-      expect(formatFrequency(433.92e6)).toBe("433.920 MHz");
-      expect(formatFrequency(915e6)).toBe("915.000 MHz");
+    it("should format MHz frequencies using trimmed decimals", () => {
+      expect(formatFrequency(1e6)).toBe("1 MHz");
+      expect(formatFrequency(100e6)).toBe("100 MHz");
+      expect(formatFrequency(433.92e6)).toBe("433.92 MHz");
+      expect(formatFrequency(915e6)).toBe("915 MHz");
     });
 
     it("should format kHz frequencies", () => {

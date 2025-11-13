@@ -88,8 +88,6 @@ export class RTLSDRDevice {
 
     // Initialize device
     await this.initialize();
-
-    console.debug("RTL-SDR opened successfully");
   }
 
   private async initialize(): Promise<void> {
@@ -107,7 +105,6 @@ export class RTLSDRDevice {
 
     if (result.data) {
       this.tunerType = result.data.getUint8(0);
-      console.debug("RTL-SDR tuner type:", this.tunerType);
     }
 
     // Reset demod
@@ -133,8 +130,6 @@ export class RTLSDRDevice {
 
     // Set manual gain mode
     await this.writeDemodReg(0x01, 0x05, 0);
-
-    console.debug("RTL-SDR initialized");
   }
 
   async close(): Promise<void> {
@@ -147,7 +142,6 @@ export class RTLSDRDevice {
       await this.stopRx();
       await this.device.releaseInterface(this.INTERFACE_NUM);
       await this.device.close();
-      console.debug("RTL-SDR closed successfully");
     } catch (err) {
       console.error("RTL-SDR close error:", err);
     } finally {
@@ -178,7 +172,6 @@ export class RTLSDRDevice {
     await this.writeTunerI2C(0x13, freqKHz & 0xff);
 
     this.frequency = frequencyHz;
-    console.debug("RTL-SDR frequency set:", frequencyHz / 1e6, "MHz");
   }
 
   async getFrequency(): Promise<number> {
@@ -210,7 +203,6 @@ export class RTLSDRDevice {
     await this.writeDemodReg(0x01, 0x10, 1);
 
     this.sampleRate = realRate;
-    console.debug("RTL-SDR sample rate set:", realRate / 1e6, "MSPS");
   }
 
   async getSampleRate(): Promise<number> {
@@ -228,13 +220,11 @@ export class RTLSDRDevice {
     await this.writeTunerI2C(0x05, (gainTenthsDb >> 8) & 0xff);
     await this.writeTunerI2C(0x06, gainTenthsDb & 0xff);
     // TODO: Store gain value when AGC is implemented
-    console.debug("RTL-SDR gain set:", gainDb, "dB");
   }
 
   async setAGC(enabled: boolean): Promise<void> {
     // Enable/disable automatic gain control
     await this.writeDemodReg(0x01, 0x05, enabled ? 1 : 0);
-    console.debug("RTL-SDR AGC:", enabled ? "enabled" : "disabled");
   }
 
   async receive(callback: (samples: IQSample[]) => void): Promise<void> {
@@ -278,7 +268,6 @@ export class RTLSDRDevice {
 
   async stopRx(): Promise<void> {
     this.streaming = false;
-    console.debug("RTL-SDR streaming stopped");
     return Promise.resolve();
   }
 

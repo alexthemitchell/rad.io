@@ -8,7 +8,6 @@ import {
   isWasmSIMDSupported,
   getWasmVariant,
 } from "./dspWasm";
-import { dspLogger } from "./logger";
 import { performanceMonitor } from "./performanceMonitor";
 import {
   canUseSharedArrayBuffer,
@@ -52,7 +51,7 @@ export function logOptimizationStatus(): void {
   const status = getOptimizationStatus();
   const sharedBufferCaps = getSharedBufferCapabilities();
 
-  dspLogger.info("DSP Optimization Status", {
+  console.info("📡 DSP Optimization Status", {
     wasm: status.wasmAvailable
       ? `enabled (${status.wasmVariant}${status.wasmVariant === "simd" ? " - 2-4x faster" : ""})`
       : "disabled",
@@ -242,8 +241,8 @@ export function calculateFFTSync(
 
         // Degenerate or suspicious output detected — use JS implementation instead
         // to ensure meaningful spectra for scanning/detection.
-        dspLogger.warn(
-          "calculateFFTSync: Degenerate WASM FFT output detected; falling back to JS",
+        console.warn(
+          "📡 DSP: calculateFFTSync: Degenerate WASM FFT output detected; falling back to JS",
           { min, max, range, length: wasmResult.length },
         );
       }
@@ -378,8 +377,8 @@ export function calculateSpectrogram(
         // Degenerate or suspicious output; try a safer per-row WASM FFT path first,
         // then fall back to pure JS if needed.
         if (!spectrogramWasmDegenerateWarned) {
-          dspLogger.warn(
-            "calculateSpectrogram: Degenerate WASM spectrogram output detected; falling back to JS",
+          console.warn(
+            "📡 DSP: calculateSpectrogram: Degenerate WASM spectrogram output detected; falling back to JS",
             { min, max, range, rows: wasmResult.length, fftSize },
           );
           spectrogramWasmDegenerateWarned = true;
@@ -532,8 +531,8 @@ export function calculateWaveform(samples: Sample[]): {
           performanceMonitor.measure("waveform-wasm", markStart);
           return wasmResult;
         }
-        dspLogger.warn(
-          "calculateWaveform: Degenerate WASM waveform output detected; falling back to JS",
+        console.warn(
+          "📡 DSP: calculateWaveform: Degenerate WASM waveform output detected; falling back to JS",
           { len: n },
         );
       }
@@ -647,7 +646,7 @@ export function detectSpectralPeaks(
   sampleRate: number,
   centerFrequency: number,
   thresholdDb: number,
-  minPeakSpacing = 100e3, // 100 kHz default for FM stations
+  minPeakSpacing = 200e3, // 200 kHz default for wideband FM signals
   edgeMargin = 10, // Ignore edge bins
 ): SpectralPeak[] {
   const peaks: SpectralPeak[] = [];

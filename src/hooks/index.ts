@@ -21,3 +21,11 @@ export {
   type UseFrequencyInputOptions,
   type UseFrequencyInputResult,
 } from "./useFrequencyInput";
+export {
+  useATSCPlayer,
+  type AudioTrack,
+  type SignalQuality,
+  type ProgramInfo,
+  type PlayerState,
+} from "./useATSCPlayer";
+export { useEPG, type UseEPGResult } from "./useEPG";

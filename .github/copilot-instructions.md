@@ -2,6 +2,9 @@
 - Use [`docs/decisions/`](../docs/decisions/) for architectural decision records that may inform your work.
 - Use [`docs/reference/`](../docs/reference/) for specialized domain knowledge about SDR and related technologies.
 
+- Look for existing implementations before writing new ones; there may be similar code used elsewhere and we want to minimize duplication.
+- Streamline duplicate implementations into a single, reusable implementation when possible.
+
 Check output of `npm start` to get deployed server URL (usually https://localhost:8080)
 
 - Always think step-by-step, be methodical and deliberate in your approach. Eliminate guesswork, assumptions, and shortcuts.

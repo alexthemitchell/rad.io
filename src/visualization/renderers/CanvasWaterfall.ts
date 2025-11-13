@@ -3,6 +3,7 @@
  * Uses Viridis colormap for power-to-color mapping
  */
 
+import { WATERFALL_MARGIN } from "../grid";
 import type { Renderer, WaterfallData } from "./types";
 
 // Viridis colormap control points (11 stops)
@@ -86,7 +87,7 @@ export class CanvasWaterfall implements Renderer {
     ctx.fillRect(0, 0, this.width, this.height);
 
     // Chart margins
-    const margin = { top: 70, bottom: 70, left: 80, right: 120 };
+    const margin = WATERFALL_MARGIN;
     const chartWidth = this.width - margin.left - margin.right;
     const chartHeight = this.height - margin.top - margin.bottom;
 

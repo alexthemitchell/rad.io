@@ -39,6 +39,7 @@ const KEYBOARD_SHORTCUTS: Record<string, string> = {
   "3": "/decode",
   "4": "/analysis",
   "5": "/recordings",
+  "6": "/atsc-player",
   "?": "/help",
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
@@ -120,6 +121,16 @@ function Navigation(): React.JSX.Element {
         aria-keyshortcuts="5"
       >
         Recordings
+      </NavLink>
+      <NavLink
+        to="/atsc-player"
+        className={({ isActive }: { isActive: boolean }) =>
+          isActive ? "nav-link active" : "nav-link"
+        }
+        title="ATSC Digital TV Player (Keyboard: 6)"
+        aria-keyshortcuts="6"
+      >
+        ATSC Player
       </NavLink>
       <NavLink
         to="/help"

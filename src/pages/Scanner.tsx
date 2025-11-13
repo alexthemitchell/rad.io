@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import ATSCScanner from "../components/ATSCScanner";
 import Card from "../components/Card";
 import FrequencyScanner from "../components/FrequencyScanner";
 import SignalTypeSelector, {
@@ -10,15 +11,18 @@ import TalkgroupScanner, {
 } from "../components/TalkgroupScanner";
 import TalkgroupStatus from "../components/TalkgroupStatus";
 import TransmissionLogViewer from "../components/TransmissionLogViewer";
+import { useATSCScanner } from "../hooks/useATSCScanner";
 import { useFrequencyScanner } from "../hooks/useFrequencyScanner";
 import { notify } from "../lib/notifications";
 import { useDevice } from "../store";
+import { downloadJSON } from "../utils/exportUtils";
 
 function Scanner(): React.JSX.Element {
   const navigate = useNavigate();
   const { primaryDevice: device } = useDevice();
   const [signalType, setSignalType] = useState<SignalType>("FM");
   const scanner = useFrequencyScanner(device);
+  const atscScanner = useATSCScanner(device);
 
   // Live region for screen reader announcements
   // Unified notifications
@@ -105,17 +109,39 @@ function Scanner(): React.JSX.Element {
       {null}
 
       <main id="main-content" role="main">
-        <Card
-          title="Scanner Configuration"
-          subtitle="Select signal type for scanning"
-        >
+        <Card title="Scanner Configuration" subtitle="Select scanner type">
           <SignalTypeSelector
             signalType={signalType}
             onSignalTypeChange={handleSignalTypeChange}
           />
         </Card>
 
-        {signalType !== "P25" ? (
+        {signalType === "ATSC" ? (
+          <ATSCScanner
+            state={atscScanner.state}
+            config={atscScanner.config}
+            currentChannel={atscScanner.currentChannel}
+            progress={atscScanner.progress}
+            foundChannels={atscScanner.foundChannels}
+            onStartScan={() => {
+              void atscScanner.startScan();
+            }}
+            onPauseScan={atscScanner.pauseScan}
+            onResumeScan={atscScanner.resumeScan}
+            onStopScan={atscScanner.stopScan}
+            onConfigChange={atscScanner.updateConfig}
+            onClearChannels={() => {
+              void atscScanner.clearChannels();
+            }}
+            onExportChannels={() => {
+              void atscScanner.exportChannels().then((json) => {
+                downloadJSON(json, `atsc-channels-${Date.now()}.json`);
+              });
+            }}
+            deviceAvailable={device?.isOpen() ?? false}
+            onTuneToChannel={handleTuneToSignal}
+          />
+        ) : signalType !== "P25" ? (
           <FrequencyScanner
             state={scanner.state}
             config={scanner.config}

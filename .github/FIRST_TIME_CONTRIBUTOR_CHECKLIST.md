@@ -183,7 +183,7 @@ Before submitting, verify:
 - [ ] Build succeeds
 - [ ] Documentation updated
 - [ ] Commit messages follow convention
-- [ ] No console.log statements (use console.warn/error)
+- [ ] No console.log statements (use console.info/warn/error)
 - [ ] Accessibility considered (if UI changes)
 
 ### 4. Add Yourself to Contributors
