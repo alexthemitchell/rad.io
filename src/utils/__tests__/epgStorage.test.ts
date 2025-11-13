@@ -5,7 +5,6 @@
 import { EPGStorage } from "../epgStorage";
 import type {
   EventInformationTable,
-  ExtendedTextTable,
   VirtualChannel,
   Event,
   MultipleStringStructure,

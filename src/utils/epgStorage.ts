@@ -328,7 +328,11 @@ function parseContentAdvisoryDescriptor(data: Uint8Array): string | null {
   }
 
   // data[0]: rating_region_count (number of regions present)
-  const ratingRegionCount = data[0] & 0x0f;
+  const firstByte = data[0];
+  if (firstByte === undefined) {
+    return null;
+  }
+  const ratingRegionCount = firstByte & 0x0f;
   let offset = 1;
 
   if (ratingRegionCount < 1 || data.length < offset + 2) {
@@ -337,7 +341,11 @@ function parseContentAdvisoryDescriptor(data: Uint8Array): string | null {
 
   // Only parse the first region (most common: US TV Parental Guidelines, region 1)
   const ratingRegion = data[offset];
-  const ratedDimensions = data[offset + 1] & 0x0f;
+  const ratedDimensionsByte = data[offset + 1];
+  if (ratingRegion === undefined || ratedDimensionsByte === undefined) {
+    return null;
+  }
+  const ratedDimensions = ratedDimensionsByte & 0x0f;
   offset += 2;
 
   // US TV Parental Guidelines is region 1
@@ -353,7 +361,11 @@ function parseContentAdvisoryDescriptor(data: Uint8Array): string | null {
   // Only parse the first dimension (age-based rating)
   // Note: ATSC A/65 allows multiple rated dimensions (Violence, Sexual Content, Language),
   // but we only extract the primary age-based rating for simplicity
-  const ratingValue = data[offset] & 0x0f;
+  const ratingValueByte = data[offset];
+  if (ratingValueByte === undefined) {
+    return null;
+  }
+  const ratingValue = ratingValueByte & 0x0f;
 
   // Map rating value to string (see ATSC A/65 Table 6.30)
   const usTvRatings = new Map<number, string>([
