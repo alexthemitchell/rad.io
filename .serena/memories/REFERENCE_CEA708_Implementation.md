@@ -11,6 +11,7 @@ Comprehensive CEA-708 digital closed caption decoder and renderer for ATSC broad
 Core decoder supporting up to 6 caption services with full CEA-708 DTVCC packet parsing.
 
 **Key Features:**
+
 - H.264 SEI and MPEG-2 user data extraction
 - Service block parsing with command processing
 - Window management (up to 8 windows per service)
@@ -19,6 +20,7 @@ Core decoder supporting up to 6 caption services with full CEA-708 DTVCC packet 
 - Comprehensive metrics and error handling
 
 **Usage:**
+
 ```typescript
 const decoder = new CEA708Decoder(
   (caption: DecodedCaption) => {
@@ -28,7 +30,7 @@ const decoder = new CEA708Decoder(
   (error: Error) => {
     // Error callback
     console.error(error);
-  }
+  },
 );
 
 decoder.initialize({ preferredService: 1 });
@@ -40,6 +42,7 @@ decoder.processVideoPayload(videoData, pts);
 HTML/CSS-based renderer with full styling support.
 
 **Key Features:**
+
 - Font family support (serif, sans-serif, monospace, casual, cursive)
 - Color customization (foreground, background, edge)
 - Edge effects (drop shadow, raised, depressed, uniform)
@@ -47,14 +50,15 @@ HTML/CSS-based renderer with full styling support.
 - Position and alignment
 
 **Usage:**
+
 ```typescript
 const renderer = new CaptionRenderer({
-  container: document.getElementById('captions'),
+  container: document.getElementById("captions"),
   config: {
     fontSize: 20,
-    edgeStyle: 'drop_shadow',
+    edgeStyle: "drop_shadow",
     windowOpacity: 0.8,
-  }
+  },
 });
 
 renderer.render(decodedCaption);
@@ -63,6 +67,7 @@ renderer.render(decodedCaption);
 ### CaptionPreferences (`src/components/CaptionPreferences.tsx`)
 
 React component for user caption preferences with:
+
 - Service/language selection
 - Font size control (12-36px)
 - Color pickers with presets
@@ -82,6 +87,7 @@ Caption processing integrated into video pipeline:
 5. **Cleanup**: Proper disposal on playback stop
 
 **Key Code Points:**
+
 - `initializeCaptionDecoder()`: Sets up decoder and renderer
 - Video payload loop: Processes same payloads for captions
 - `toggleClosedCaptions()`: Enables/disables and clears display
@@ -106,16 +112,19 @@ Transport Stream → Parser → Video Packets (PID filtered)
 ## Caption Data Structure
 
 ### DTVCC Packet Format
+
 ```
 [0x03] [packet_size] [service_blocks...]
 ```
 
 ### Service Block Format
+
 ```
 [header: service_num|block_size] [commands and text...]
 ```
 
 ### Commands Supported
+
 - **C0 Commands**: ETX, BS, FF, CR, HCR
 - **C1 Commands**: CW0-7, CLW, DSW, HDW, TGW, DLW, DLC, RST, SPA, SPC, SPL, SWA, DF0-7
 - **Text**: G0 (ASCII) and G1 (extended) character sets

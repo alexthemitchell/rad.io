@@ -771,7 +771,8 @@ export class CEA708Decoder {
    * Handle decoder errors
    */
   private handleError(error: Error): void {
-    this.state = "error";
+    // Don't transition to error state - just log and increment counter
+    // This allows the decoder to recover from transient errors
     this.metrics.errors++;
 
     if (this.onError) {

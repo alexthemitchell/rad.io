@@ -24,7 +24,7 @@ describe("CEA708Decoder", () => {
       },
       (error) => {
         errorOutput = error;
-      }
+      },
     );
   });
 
@@ -374,7 +374,7 @@ describe("CEA708Decoder", () => {
  */
 function createTestDTVCCPacket(
   service: CaptionService,
-  text: string
+  text: string,
 ): Uint8Array {
   // Create a simple DTVCC packet with text
   const packet: number[] = [];
@@ -440,7 +440,7 @@ function createCaptionData(service: CaptionService, text: string): number[] {
  */
 function createTestDTVCCPacketWithMultipleSegments(
   service: CaptionService,
-  segments: string[]
+  segments: string[],
 ): Uint8Array {
   const packet: number[] = [];
 

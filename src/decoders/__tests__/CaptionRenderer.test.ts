@@ -232,7 +232,7 @@ describe("CaptionRenderer", () => {
       renderer.render(caption);
 
       const overlay = container.querySelector(
-        ".cea708-caption-overlay"
+        ".cea708-caption-overlay",
       ) as HTMLElement;
       expect(overlay?.style.opacity).toBe("0.5");
     });
@@ -303,7 +303,7 @@ function createTestCaption(text: string): DecodedCaption {
  * Helper function to create a caption with multiple segments
  */
 function createTestCaptionWithMultipleSegments(
-  segments: string[]
+  segments: string[],
 ): DecodedCaption {
   return {
     serviceNumber: 1,
@@ -332,7 +332,7 @@ function createTestCaptionWithMultipleSegments(
  */
 function createTestCaptionWithStyling(
   text: string,
-  styling: { italics?: boolean; underline?: boolean }
+  styling: { italics?: boolean; underline?: boolean },
 ): DecodedCaption {
   const caption = createTestCaption(text);
   if (caption.text[0]) {
@@ -348,9 +348,19 @@ function createTestCaptionWithStyling(
 function createTestCaptionWithColor(
   text: string,
   colors: {
-    foregroundColor?: { red: number; green: number; blue: number; opacity: "solid" | "flash" | "translucent" | "transparent" };
-    backgroundColor?: { red: number; green: number; blue: number; opacity: "solid" | "flash" | "translucent" | "transparent" };
-  }
+    foregroundColor?: {
+      red: number;
+      green: number;
+      blue: number;
+      opacity: "solid" | "flash" | "translucent" | "transparent";
+    };
+    backgroundColor?: {
+      red: number;
+      green: number;
+      blue: number;
+      opacity: "solid" | "flash" | "translucent" | "transparent";
+    };
+  },
 ): DecodedCaption {
   const caption = createTestCaption(text);
   if (caption.text[0]) {
@@ -369,7 +379,7 @@ function createTestCaptionWithColor(
  */
 function createTestCaptionWithPenSize(
   text: string,
-  penSize: "small" | "standard" | "large"
+  penSize: "small" | "standard" | "large",
 ): DecodedCaption {
   const caption = createTestCaption(text);
   if (caption.text[0]) {
@@ -383,7 +393,7 @@ function createTestCaptionWithPenSize(
  */
 function createTestCaptionWithEdge(
   text: string,
-  edgeType: "none" | "raised" | "depressed" | "uniform" | "drop_shadow"
+  edgeType: "none" | "raised" | "depressed" | "uniform" | "drop_shadow",
 ): DecodedCaption {
   const caption = createTestCaption(text);
   if (caption.text[0]) {
@@ -397,7 +407,7 @@ function createTestCaptionWithEdge(
  */
 function createTestCaptionWithOffset(
   text: string,
-  offset: "subscript" | "normal" | "superscript"
+  offset: "subscript" | "normal" | "superscript",
 ): DecodedCaption {
   const caption = createTestCaption(text);
   if (caption.text[0]) {
@@ -419,7 +429,7 @@ function createTestCaptionWithFont(
     | "prop_sans"
     | "casual"
     | "cursive"
-    | "small_caps"
+    | "small_caps",
 ): DecodedCaption {
   const caption = createTestCaption(text);
   if (caption.text[0]) {
