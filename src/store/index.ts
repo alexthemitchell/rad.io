@@ -31,6 +31,14 @@ import {
   type SettingsSlice,
   type SettingsState,
 } from "./slices/settingsSlice";
+import {
+  diagnosticsSlice,
+  type DiagnosticsSlice,
+  type DiagnosticEvent,
+  type DemodulatorMetrics,
+  type TSParserMetrics,
+  type DecoderMetrics,
+} from "./slices/diagnosticsSlice";
 import type { ISDRDevice } from "../models/SDRDevice";
 
 /**
@@ -39,7 +47,8 @@ import type { ISDRDevice } from "../models/SDRDevice";
 export type RootState = SettingsSlice &
   FrequencySlice &
   NotificationSlice &
-  DeviceSlice;
+  DeviceSlice &
+  DiagnosticsSlice;
 
 /**
  * Create the root store with all slices
@@ -54,6 +63,7 @@ export const useStore = create<RootState>()(
       ...frequencySlice(...args),
       ...notificationSlice(...args),
       ...deviceSlice(...args),
+      ...diagnosticsSlice(...args),
     }),
     { name: "rad.io-store" },
   ),
@@ -134,7 +144,98 @@ export const useDevice = (): {
   };
 };
 
+// Diagnostics slice selectors
+export const useDiagnostics = (): {
+  events: DiagnosticEvent[];
+  demodulatorMetrics: DemodulatorMetrics | null;
+  tsParserMetrics: TSParserMetrics | null;
+  videoDecoderMetrics: DecoderMetrics | null;
+  audioDecoderMetrics: DecoderMetrics | null;
+  captionDecoderMetrics: DecoderMetrics | null;
+  overlayVisible: boolean;
+  addDiagnosticEvent: (
+    event: Omit<DiagnosticEvent, "id" | "timestamp">,
+  ) => void;
+  updateDemodulatorMetrics: (metrics: Partial<DemodulatorMetrics>) => void;
+  updateTSParserMetrics: (metrics: Partial<TSParserMetrics>) => void;
+  updateVideoDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
+  updateAudioDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
+  updateCaptionDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
+  clearDiagnosticEvents: () => void;
+  resetDiagnostics: () => void;
+  setOverlayVisible: (visible: boolean) => void;
+} => {
+  const events = useStore((state: RootState) => state.events);
+  const demodulatorMetrics = useStore(
+    (state: RootState) => state.demodulatorMetrics,
+  );
+  const tsParserMetrics = useStore((state: RootState) => state.tsParserMetrics);
+  const videoDecoderMetrics = useStore(
+    (state: RootState) => state.videoDecoderMetrics,
+  );
+  const audioDecoderMetrics = useStore(
+    (state: RootState) => state.audioDecoderMetrics,
+  );
+  const captionDecoderMetrics = useStore(
+    (state: RootState) => state.captionDecoderMetrics,
+  );
+  const overlayVisible = useStore((state: RootState) => state.overlayVisible);
+  const addDiagnosticEvent = useStore(
+    (state: RootState) => state.addDiagnosticEvent,
+  );
+  const updateDemodulatorMetrics = useStore(
+    (state: RootState) => state.updateDemodulatorMetrics,
+  );
+  const updateTSParserMetrics = useStore(
+    (state: RootState) => state.updateTSParserMetrics,
+  );
+  const updateVideoDecoderMetrics = useStore(
+    (state: RootState) => state.updateVideoDecoderMetrics,
+  );
+  const updateAudioDecoderMetrics = useStore(
+    (state: RootState) => state.updateAudioDecoderMetrics,
+  );
+  const updateCaptionDecoderMetrics = useStore(
+    (state: RootState) => state.updateCaptionDecoderMetrics,
+  );
+  const clearDiagnosticEvents = useStore(
+    (state: RootState) => state.clearDiagnosticEvents,
+  );
+  const resetDiagnostics = useStore((state: RootState) => state.resetDiagnostics);
+  const setOverlayVisible = useStore(
+    (state: RootState) => state.setOverlayVisible,
+  );
+
+  return {
+    events,
+    demodulatorMetrics,
+    tsParserMetrics,
+    videoDecoderMetrics,
+    audioDecoderMetrics,
+    captionDecoderMetrics,
+    overlayVisible,
+    addDiagnosticEvent,
+    updateDemodulatorMetrics,
+    updateTSParserMetrics,
+    updateVideoDecoderMetrics,
+    updateAudioDecoderMetrics,
+    updateCaptionDecoderMetrics,
+    clearDiagnosticEvents,
+    resetDiagnostics,
+    setOverlayVisible,
+  };
+};
+
 // Export types
 export type { SettingsState, VizMode } from "./slices/settingsSlice";
 export type { Notification } from "./slices/notificationSlice";
 export type { DeviceId, DeviceEntry } from "./slices/deviceSlice";
+export type {
+  DiagnosticEvent,
+  DiagnosticSeverity,
+  DiagnosticSource,
+  DemodulatorMetrics,
+  TSParserMetrics,
+  DecoderMetrics,
+  SignalQualityMetrics,
+} from "./slices/diagnosticsSlice";
