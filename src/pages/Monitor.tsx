@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import AudioControls from "../components/AudioControls";
+import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import VisualizationControls from "../components/Monitor/VisualizationControls";
 import RDSDisplay from "../components/RDSDisplay";
@@ -700,6 +701,7 @@ const Monitor: React.FC = () => {
       </details>
 
       {/* StatusBar is rendered globally in the App shell */}
+      <DiagnosticsOverlay />
     </div>
   );
 };

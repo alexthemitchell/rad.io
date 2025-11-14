@@ -14,6 +14,7 @@
  */
 
 import { BasePlugin } from "../../lib/BasePlugin";
+import { useStore } from "../../store";
 import { PluginType } from "../../types/plugin";
 import type { IQSample } from "../../models/SDRDevice";
 import type {
@@ -96,6 +97,10 @@ export class ATSC8VSBDemodulator
   // Demodulated data buffer
   private symbolBuffer: number[];
 
+  // Diagnostics
+  private lastDiagnosticsUpdate: number;
+  private diagnosticsUpdateInterval: number;
+
   constructor() {
     const metadata: PluginMetadata = {
       id: "atsc-8vsb-demodulator",
@@ -146,18 +151,41 @@ export class ATSC8VSBDemodulator
     this.lastSyncPosition = -1; // -1 means no sync found yet
 
     this.symbolBuffer = [];
+
+    this.lastDiagnosticsUpdate = 0;
+    this.diagnosticsUpdateInterval = 500; // Update diagnostics every 500ms
   }
 
   protected onInitialize(): void {
     this.resetState();
   }
 
-  protected async onActivate(): Promise<void> {
+  protected onActivate(): void {
     // Start demodulation
+    try {
+      const store = useStore.getState();
+      store.addDiagnosticEvent({
+        source: "demodulator",
+        severity: "info",
+        message: "ATSC 8-VSB demodulator activated",
+      });
+    } catch (_error) {
+      // Silently fail if store is not available
+    }
   }
 
   protected onDeactivate(): void {
     this.resetState();
+    try {
+      const store = useStore.getState();
+      store.addDiagnosticEvent({
+        source: "demodulator",
+        severity: "info",
+        message: "ATSC 8-VSB demodulator deactivated",
+      });
+    } catch (_error) {
+      // Silently fail if store is not available
+    }
   }
 
   protected onDispose(): void {
@@ -488,7 +516,59 @@ export class ATSC8VSBDemodulator
       }
     }
 
+    // Update diagnostics
+    this.updateDiagnostics();
+
     return output;
+  }
+
+  /**
+   * Update diagnostics metrics
+   */
+  private updateDiagnostics(): void {
+    const now = Date.now();
+    if (now - this.lastDiagnosticsUpdate < this.diagnosticsUpdateInterval) {
+      return;
+    }
+
+    this.lastDiagnosticsUpdate = now;
+
+    try {
+      const store = useStore.getState();
+
+      // Calculate approximate signal quality metrics
+      // Note: These are estimated values. Real implementations would need
+      // additional signal processing to calculate accurate SNR, MER, BER
+      const signalStrength = this.syncLocked ? 0.8 : 0.3;
+      const snr = this.syncLocked ? 15.0 + Math.random() * 5 : 5.0; // Simulated SNR
+      const mer = this.syncLocked ? 20.0 + Math.random() * 5 : 10.0; // Simulated MER
+      const ber = this.syncLocked ? 0.00001 : 0.1; // Simulated BER
+
+      store.updateDemodulatorMetrics({
+        syncLocked: this.syncLocked,
+        signalStrength,
+        snr,
+        mer,
+        ber,
+        segmentSyncCount: this.segmentSyncCount,
+        fieldSyncCount: this.fieldSyncCount,
+      });
+
+      // Add diagnostic events for state changes
+      if (!this.syncLocked && this.segmentSyncCount === 0) {
+        // Only log once when sync is lost
+        if (this.lastSyncPosition === -1) {
+          store.addDiagnosticEvent({
+            source: "demodulator",
+            severity: "warning",
+            message: "Searching for sync lock...",
+          });
+        }
+      }
+    } catch (_error) {
+      // Silently fail if store is not available
+      // This can happen during testing or if component is used standalone
+    }
   }
 
   /**

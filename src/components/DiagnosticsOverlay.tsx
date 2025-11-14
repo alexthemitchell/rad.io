@@ -30,7 +30,7 @@ function formatMetric(
   unit: string,
   decimals = 2,
 ): string {
-  if (value === undefined || value === null || !isFinite(value)) {
+  if (value === undefined || !isFinite(value)) {
     return "N/A";
   }
   return `${value.toFixed(decimals)} ${unit}`;
@@ -47,7 +47,7 @@ function getStatusClass(
   if (typeof value === "boolean") {
     return value ? "status-good" : "status-bad";
   }
-  if (value === undefined || value === null || !isFinite(value)) {
+  if (value === undefined || !isFinite(value)) {
     return "status-unknown";
   }
   if (goodThreshold !== undefined && value >= goodThreshold) {
@@ -97,19 +97,25 @@ function DemodulatorMetricsDisplay({
         </div>
         <div className="metric-item">
           <span className="metric-label">SNR:</span>
-          <span className={`metric-value ${getStatusClass(metrics.snr, 15, 10)}`}>
+          <span
+            className={`metric-value ${getStatusClass(metrics.snr, 15, 10)}`}
+          >
             {formatMetric(metrics.snr, "dB", 1)}
           </span>
         </div>
         <div className="metric-item">
           <span className="metric-label">MER:</span>
-          <span className={`metric-value ${getStatusClass(metrics.mer, 20, 15)}`}>
+          <span
+            className={`metric-value ${getStatusClass(metrics.mer, 20, 15)}`}
+          >
             {formatMetric(metrics.mer, "dB", 1)}
           </span>
         </div>
         <div className="metric-item">
           <span className="metric-label">BER:</span>
-          <span className={`metric-value ${getStatusClass(metrics.ber !== undefined ? 1 - metrics.ber : undefined, 0.9, 0.7)}`}>
+          <span
+            className={`metric-value ${getStatusClass(metrics.ber !== undefined ? 1 - metrics.ber : undefined, 0.9, 0.7)}`}
+          >
             {metrics.ber !== undefined && isFinite(metrics.ber)
               ? metrics.ber.toExponential(2)
               : "N/A"}
@@ -377,7 +383,7 @@ export function DiagnosticsOverlay({
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+    (e: React.MouseEvent<HTMLDivElement>): void => {
       if ((e.target as HTMLElement).closest(".overlay-header")) {
         setDragging(true);
         dragStartRef.current = {
@@ -410,7 +416,7 @@ export function DiagnosticsOverlay({
     if (dragging) {
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
-      return () => {
+      return (): void => {
         window.removeEventListener("mousemove", handleMouseMove);
         window.removeEventListener("mouseup", handleMouseUp);
       };
@@ -422,6 +428,7 @@ export function DiagnosticsOverlay({
   }
 
   return (
+    /* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */
     <div
       className={`diagnostics-overlay ${className} ${minimized ? "minimized" : ""} ${dragging ? "dragging" : ""}`}
       style={{
@@ -429,6 +436,8 @@ export function DiagnosticsOverlay({
         top: `${position.y}px`,
       }}
       onMouseDown={handleMouseDown}
+      role="dialog"
+      aria-label="Pipeline diagnostics overlay"
     >
       <div className="overlay-header">
         <h3>Pipeline Diagnostics</h3>
@@ -437,7 +446,9 @@ export function DiagnosticsOverlay({
             className="overlay-button"
             onClick={() => setMinimized(!minimized)}
             title={minimized ? "Maximize" : "Minimize"}
-            aria-label={minimized ? "Maximize diagnostics" : "Minimize diagnostics"}
+            aria-label={
+              minimized ? "Maximize diagnostics" : "Minimize diagnostics"
+            }
           >
             {minimized ? "▢" : "−"}
           </button>
@@ -457,7 +468,10 @@ export function DiagnosticsOverlay({
             metrics={demodulatorMetrics}
             detailed={detailed}
           />
-          <TSParserMetricsDisplay metrics={tsParserMetrics} detailed={detailed} />
+          <TSParserMetricsDisplay
+            metrics={tsParserMetrics}
+            detailed={detailed}
+          />
           {videoDecoderMetrics && (
             <DecoderMetricsDisplay
               title="Video Decoder"

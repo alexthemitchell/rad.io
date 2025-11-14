@@ -15,6 +15,8 @@
  * - ATSC A/65 (Program and System Information Protocol)
  */
 
+import { useStore } from "../store";
+
 /**
  * Transport Stream Packet Header
  */
@@ -287,6 +289,16 @@ export class TransportStreamParser {
   private eitTables = new Map<number, EventInformationTable>();
   private ettTables = new Map<number, ExtendedTextTable>();
 
+  // Diagnostics
+  private packetsProcessed = 0;
+  private continuityErrors = 0;
+  private teiErrors = 0;
+  private syncErrors = 0;
+  private patUpdates = 0;
+  private pmtUpdates = 0;
+  private lastDiagnosticsUpdate = 0;
+  private diagnosticsUpdateInterval = 1000; // Update diagnostics every 1 second
+
   /**
    * Parse transport stream data
    */
@@ -300,18 +312,21 @@ export class TransportStreamParser {
       data[offset] !== TransportStreamParser.SYNC_BYTE
     ) {
       offset++;
+      this.syncErrors++;
     }
 
     // Parse packets
     while (offset + TransportStreamParser.PACKET_SIZE <= data.length) {
       if (data[offset] !== TransportStreamParser.SYNC_BYTE) {
         // Lost sync - try to resync
+        this.syncErrors++;
         offset++;
         while (
           offset < data.length &&
           data[offset] !== TransportStreamParser.SYNC_BYTE
         ) {
           offset++;
+          this.syncErrors++;
         }
         continue;
       }
@@ -322,10 +337,14 @@ export class TransportStreamParser {
       if (packet) {
         packets.push(packet);
         this.processPacket(packet);
+        this.packetsProcessed++;
       }
 
       offset += TransportStreamParser.PACKET_SIZE;
     }
+
+    // Update diagnostics
+    this.updateDiagnostics();
 
     return packets;
   }
@@ -528,6 +547,11 @@ export class TransportStreamParser {
     const pid = packet.header.pid;
     const cc = packet.header.continuityCounter;
 
+    // Track TEI errors
+    if (packet.header.transportErrorIndicator) {
+      this.teiErrors++;
+    }
+
     // Skip validation if no payload
     if (!packet.payload || packet.payload.length === 0) {
       return true;
@@ -537,6 +561,7 @@ export class TransportStreamParser {
       const expectedCC = ((this.continuityCounters.get(pid) ?? 0) + 1) & 0x0f;
       if (cc !== expectedCC) {
         // Continuity error - might indicate packet loss
+        this.continuityErrors++;
         // Update to current value and continue
         this.continuityCounters.set(pid, cc);
         return false;
@@ -583,6 +608,11 @@ export class TransportStreamParser {
 
     const section = data.subarray(offset, offset + 3 + sectionLength);
     this.patTable = this.parsePAT(section);
+
+    // Track PAT update
+    if (this.patTable) {
+      this.patUpdates++;
+    }
 
     // Update reverse lookup map for efficient PMT detection
     if (this.patTable) {
@@ -693,6 +723,7 @@ export class TransportStreamParser {
     const pmt = this.parsePMT(section, programNumber);
     if (pmt) {
       this.pmtTables.set(programNumber, pmt);
+      this.pmtUpdates++;
     }
   }
 
@@ -1399,5 +1430,49 @@ export class TransportStreamParser {
     }
 
     return audioPIDs;
+  }
+
+  /**
+   * Update diagnostics metrics
+   */
+  private updateDiagnostics(): void {
+    const now = Date.now();
+    if (now - this.lastDiagnosticsUpdate < this.diagnosticsUpdateInterval) {
+      return;
+    }
+
+    this.lastDiagnosticsUpdate = now;
+
+    try {
+      const store = useStore.getState();
+
+      store.updateTSParserMetrics({
+        packetsProcessed: this.packetsProcessed,
+        continuityErrors: this.continuityErrors,
+        teiErrors: this.teiErrors,
+        syncErrors: this.syncErrors,
+        patUpdates: this.patUpdates,
+        pmtUpdates: this.pmtUpdates,
+      });
+
+      // Add diagnostic events for errors
+      if (this.continuityErrors > 0 && this.packetsProcessed % 1000 === 0) {
+        store.addDiagnosticEvent({
+          source: "ts-parser",
+          severity: "warning",
+          message: `Continuity errors detected: ${this.continuityErrors}`,
+        });
+      }
+
+      if (this.syncErrors > 100) {
+        store.addDiagnosticEvent({
+          source: "ts-parser",
+          severity: "error",
+          message: `High sync error rate: ${this.syncErrors} errors`,
+        });
+      }
+    } catch (_error) {
+      // Silently fail if store is not available
+    }
   }
 }

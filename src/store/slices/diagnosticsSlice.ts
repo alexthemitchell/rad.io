@@ -194,9 +194,7 @@ export const diagnosticsSlice: StateCreator<DiagnosticsSlice> = (
     });
   },
 
-  updateDemodulatorMetrics: (
-    metrics: Partial<DemodulatorMetrics>,
-  ): void => {
+  updateDemodulatorMetrics: (metrics: Partial<DemodulatorMetrics>): void => {
     set((state: DiagnosticsSlice) => ({
       demodulatorMetrics: {
         ...(state.demodulatorMetrics ?? {}),

@@ -20,6 +20,14 @@ import {
   type DeviceId,
   type DeviceSlice,
 } from "./slices/deviceSlice";
+import {
+  diagnosticsSlice,
+  type DiagnosticsSlice,
+  type DiagnosticEvent,
+  type DemodulatorMetrics,
+  type TSParserMetrics,
+  type DecoderMetrics,
+} from "./slices/diagnosticsSlice";
 import { frequencySlice, type FrequencySlice } from "./slices/frequencySlice";
 import {
   notificationSlice,
@@ -31,14 +39,6 @@ import {
   type SettingsSlice,
   type SettingsState,
 } from "./slices/settingsSlice";
-import {
-  diagnosticsSlice,
-  type DiagnosticsSlice,
-  type DiagnosticEvent,
-  type DemodulatorMetrics,
-  type TSParserMetrics,
-  type DecoderMetrics,
-} from "./slices/diagnosticsSlice";
 import type { ISDRDevice } from "../models/SDRDevice";
 
 /**
@@ -201,7 +201,9 @@ export const useDiagnostics = (): {
   const clearDiagnosticEvents = useStore(
     (state: RootState) => state.clearDiagnosticEvents,
   );
-  const resetDiagnostics = useStore((state: RootState) => state.resetDiagnostics);
+  const resetDiagnostics = useStore(
+    (state: RootState) => state.resetDiagnostics,
+  );
   const setOverlayVisible = useStore(
     (state: RootState) => state.setOverlayVisible,
   );
