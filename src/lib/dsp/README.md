@@ -225,12 +225,12 @@ Tests verify:
 
 ## Future Enhancements
 
-Planned additions to the DSP primitives library:
+The unified DSP library is designed for incremental expansion. Planned enhancements include:
 
-- **FFT operations** (currently in `src/utils/dsp.ts`)
-- **Digital filters** (FIR, IIR, Butterworth, Chebyshev)
-- **Sample rate conversion** (decimation, interpolation)
-- **Signal analysis** (RMS, peak, SNR calculation)
-- **Format conversions** (Sample[] ↔ Float32Array)
+- **Advanced filter designs** (Butterworth, Chebyshev, elliptic IIR filters)
+- **Sample rate conversion** (decimation, interpolation, rational resampling)
+- **Adaptive filtering** (LMS, RLS algorithms for channel equalization)
+- **Advanced spectral analysis** (STFT with overlap-add, wavelet transforms)
+- **Polyphase filterbanks** (efficient multi-rate processing)
 
-These will be added incrementally while maintaining backward compatibility.
+These enhancements will be added incrementally while maintaining backward compatibility and comprehensive test coverage.

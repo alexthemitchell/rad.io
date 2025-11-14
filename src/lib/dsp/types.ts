@@ -10,13 +10,12 @@
 /**
  * IQ Sample representation (complex-valued signal sample)
  * Used throughout the application for baseband SDR signals
+ *
+ * Re-exported from the canonical source in @/utils/dsp for backward compatibility.
+ * The Sample type is defined in utils/dsp.ts where it's used extensively by
+ * FFT and signal processing functions.
  */
-export interface Sample {
-  /** In-phase component (real part) */
-  I: number;
-  /** Quadrature component (imaginary part) */
-  Q: number;
-}
+export type { Sample } from "../../utils/dsp";
 
 /**
  * Window function types for spectral analysis

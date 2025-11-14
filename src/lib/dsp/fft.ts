@@ -14,7 +14,7 @@ import {
   isWasmValidationEnabled,
 } from "../../utils/dspWasm";
 import { performanceMonitor } from "../../utils/performanceMonitor";
-import type { Sample } from "../../utils/dsp";
+import type { Sample } from "./types";
 
 /**
  * Minimum magnitude to prevent underflow in dB calculations

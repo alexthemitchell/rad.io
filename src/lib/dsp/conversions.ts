@@ -7,7 +7,7 @@
  * @module dsp/conversions
  */
 
-import type { Sample } from "../../utils/dsp";
+import type { Sample } from "./types";
 
 /**
  * Convert raw IQ sample pairs to Sample objects

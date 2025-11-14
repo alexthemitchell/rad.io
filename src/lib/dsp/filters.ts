@@ -7,7 +7,7 @@
  * @module dsp/filters
  */
 
-import type { Sample } from "../../utils/dsp";
+import type { Sample } from "./types";
 
 /**
  * Filter type enumeration

@@ -7,7 +7,7 @@
  * @module dsp/analysis
  */
 
-import type { Sample } from "../../utils/dsp";
+import type { Sample } from "./types";
 
 /**
  * Signal metrics computed from IQ samples
