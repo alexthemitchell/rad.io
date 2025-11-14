@@ -128,13 +128,6 @@ export enum RequestCommand {
   CPLD_CHECKSUM = 36,
   UI_ENABLE = 37,
 }
-type ControlTransferInProps = {
-  command: RequestCommand;
-  value?: number;
-  data?: BufferSource;
-  length: number;
-  index?: number;
-};
 
 type ControlTransferOutProps = {
   command: RequestCommand;
@@ -174,6 +167,42 @@ export class HackRFOne {
 
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice;
+  }
+
+  // Attempt to rebind to a freshly enumerated paired USBDevice when the
+  // original reference has become invalid (e.g., after RESET or OS-level
+  // re-enumeration). Returns true if a replacement was found and bound.
+  private async rebindUSBDevice(): Promise<boolean> {
+    type NavigatorWithUSB = Navigator & {
+      usb?: {
+        getDevices: () => Promise<USBDevice[]>;
+      };
+    };
+    const navUsb = (globalThis as { navigator?: NavigatorWithUSB }).navigator
+      ?.usb;
+    if (!navUsb || typeof navUsb.getDevices !== "function") {
+      return false;
+    }
+    const prev = this.usbDevice;
+    try {
+      const devices = await navUsb.getDevices();
+      const match = devices.find(
+        (d) =>
+          d.vendorId === prev.vendorId &&
+          d.productId === prev.productId &&
+          (prev.serialNumber ? d.serialNumber === prev.serialNumber : true),
+      );
+      if (match) {
+        this.usbDevice = match;
+        // Force full re-claim on next open
+        this.interfaceNumber = null;
+        this.inEndpointNumber = 1;
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -237,7 +266,25 @@ export class HackRFOne {
 
     // Step 1: Open USB device
     if (!this.usbDevice.opened) {
-      await this.usbDevice.open();
+      try {
+        await this.usbDevice.open();
+      } catch (err) {
+        const e = err as Error & { name?: string; message?: string };
+        const msg = typeof e.message === "string" ? e.message : "";
+        const disconnected =
+          e.name === "NotFoundError" || /disconnected/i.test(msg);
+        if (disconnected) {
+          // Try to rebind to a fresh USBDevice reference and open again
+          const rebound = await this.rebindUSBDevice();
+          if (rebound) {
+            await this.usbDevice.open();
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
     }
 
     // Step 2: Select configuration (use first available)
@@ -295,6 +342,8 @@ export class HackRFOne {
       this.interfaceNumber,
       selectedAlternate.alternateSetting,
     );
+    // Give Windows/WebUSB stack a brief settle time before first control transfer
+    await this.delay(250);
   }
 
   async close(): Promise<void> {
@@ -317,79 +366,7 @@ export class HackRFOne {
     this.interfaceNumber = null;
   }
 
-  private async controlTransferIn({
-    command,
-    value = 0,
-    index = 0,
-    length,
-  }: ControlTransferInProps): Promise<USBInTransferResult> {
-    const release = await this.acquireLock();
-    try {
-      if (this.closing || !this.usbDevice.opened) {
-        throw new Error(
-          "Device is closing or closed. Aborting controlTransferIn.",
-        );
-      }
-      const options: USBControlTransferParameters = {
-        requestType: "vendor",
-        recipient: "device",
-        request: command,
-        value,
-        index,
-      };
-
-      let attempts = 3;
-      let lastError: unknown;
-      while (attempts > 0) {
-        try {
-          const result = await this.usbDevice.controlTransferIn(
-            options,
-            length,
-          );
-          // Small delay to allow the device state to settle
-          await this.delay(50);
-          return result;
-        } catch (err: unknown) {
-          const error = err as Error & { name?: string; message?: string };
-          const isInvalidState = error.name === "InvalidStateError";
-          const msg = error.message;
-          const isNetworkError =
-            error.name === "NetworkError" || /transfer error/i.test(msg);
-
-          if (isInvalidState || isNetworkError) {
-            lastError = err;
-            // Attempt automatic recovery for NetworkError by closing/reopening
-            if (isNetworkError) {
-              try {
-                await this.usbDevice.close();
-              } catch {
-                // ignore
-              }
-              // Clear interface state so open() will re-claim
-              this.interfaceNumber = null;
-              this.inEndpointNumber = 1;
-              await this.delay(150);
-              try {
-                await this.open();
-              } catch {
-                // If re-open fails, fall through to retry decrement
-              }
-            } else {
-              // brief backoff for InvalidStateError
-              await this.delay(100);
-            }
-            attempts--;
-            continue;
-          }
-          // Non-retryable error
-          throw err;
-        }
-      }
-      throw lastError;
-    } finally {
-      release();
-    }
-  }
+  // Note: controlTransferIn removed due to no current call sites.
 
   private async acquireLock(): Promise<() => void> {
     let release: (() => void) | undefined;
@@ -417,17 +394,28 @@ export class HackRFOne {
   }: ControlTransferOutProps): Promise<USBOutTransferResult> {
     const release = await this.acquireLock();
     try {
-      if (this.closing || !this.usbDevice.opened) {
+      if (this.closing) {
         throw new Error(
           "Device is closing or closed. Aborting controlTransferOut.",
         );
       }
+      // Best-effort auto-open if not yet opened to avoid race with adapter initialization
+      if (!this.usbDevice.opened) {
+        try {
+          await this.open();
+        } catch (e) {
+          throw new Error(
+            `Device is closing or closed. Aborting controlTransferOut. ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+      }
+      const { recipient, ix } = this.resolveRecipientAndIndex(command, index);
       const options: USBControlTransferParameters = {
         requestType: "vendor",
-        recipient: "device",
+        recipient,
         request: command,
         value,
-        index,
+        index: ix,
       };
       let attempts = 3;
       let lastError: unknown;
@@ -438,6 +426,19 @@ export class HackRFOne {
           await this.delay(50);
           return result;
         } catch (err: unknown) {
+          if (process.env["NODE_ENV"] === "development") {
+            try {
+              console.warn("HackRFOne.controlTransferOut: transfer failed", {
+                command,
+                value,
+                index,
+                attemptsRemaining: attempts - 1,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            } catch {
+              // ignore logging errors
+            }
+          }
           const error = err as Error & { name?: string; message?: string };
           const isInvalidState = error.name === "InvalidStateError";
           const msg = (error as { message?: string }).message;
@@ -446,16 +447,11 @@ export class HackRFOne {
           if (isInvalidState || isNetworkError) {
             lastError = err;
             if (isNetworkError) {
-              // Attempt to recover by resetting and re-initializing interface
+              // Prefer close+reopen over reset on Windows/WebUSB to avoid flakiness
               try {
-                await this.usbDevice.reset();
+                await this.usbDevice.close();
               } catch {
-                // If reset fails, fall back to close/reopen
-                try {
-                  await this.usbDevice.close();
-                } catch {
-                  // ignore
-                }
+                // ignore
               }
               // Clear cached interface info to force re-claim
               this.interfaceNumber = null;
@@ -481,11 +477,39 @@ export class HackRFOne {
     }
   }
 
+  // Decide the proper control recipient and index per command. Some HackRF
+  // vendor requests target the interface and expect wIndex to be the interface
+  // number (e.g., gain controls). Others target the device with index 0.
+  private resolveRecipientAndIndex(
+    command: RequestCommand,
+    providedIndex: number,
+  ): { recipient: USBRecipient; ix: number } {
+    if (
+      command === RequestCommand.SET_LNA_GAIN ||
+      command === RequestCommand.SET_VGA_GAIN ||
+      command === RequestCommand.SET_TXVGA_GAIN ||
+      command === RequestCommand.SET_TRANSCEIVER_MODE
+    ) {
+      return {
+        recipient: "interface",
+        ix: this.interfaceNumber ?? 0,
+      } as { recipient: USBRecipient; ix: number };
+    }
+    return { recipient: "device", ix: providedIndex } as {
+      recipient: USBRecipient;
+      ix: number;
+    };
+  }
+
   /**
    *
    * @param frequency Center Frequency, in Hertz
    */
   async setFrequency(frequency: number): Promise<void> {
+    // Ensure device is open before issuing control transfers
+    if (!this.usbDevice.opened && !this.closing) {
+      await this.open();
+    }
     // Validate frequency is within HackRF One's supported range
     if (frequency < MIN_FREQUENCY_HZ || frequency > MAX_FREQUENCY_HZ) {
       throw new Error(
@@ -527,6 +551,9 @@ export class HackRFOne {
    * @param gain RX IF gain value in dB
    */
   async setLNAGain(gain: number): Promise<void> {
+    if (!this.usbDevice.opened && !this.closing) {
+      await this.open();
+    }
     // HackRF firmware expects a vendor OUT control transfer with gain in wValue
     // Matching libhackrf: HACKRF_VENDOR_REQUEST_SET_LNA_GAIN (OUT)
     await this.controlTransferOut({
@@ -573,6 +600,10 @@ export class HackRFOne {
    * @see {@link receive} - Must call setSampleRate before receive
    */
   async setSampleRate(sampleRate: number): Promise<void> {
+    // Ensure device is open before configuring sample rate to prevent hangs/races
+    if (!this.usbDevice.opened && !this.closing) {
+      await this.open();
+    }
     // Validate sample rate is within HackRF One's supported range
     if (sampleRate < MIN_SAMPLE_RATE || sampleRate > MAX_SAMPLE_RATE) {
       throw new Error(
@@ -582,19 +613,116 @@ export class HackRFOne {
     }
 
     const { freqHz, divider } = computeSampleRateParams(sampleRate);
-    const payload = createUint32LEBuffer([freqHz, divider]);
+    // Put transceiver into OFF mode before reconfiguring clocks to avoid firmware hiccups
     try {
-      await this.controlTransferOut({
-        command: RequestCommand.SAMPLE_RATE_SET,
-        data: payload,
-      });
-    } catch (err: unknown) {
-      const msg = (err as { message?: string }).message ?? String(err);
-      // Provide actionable guidance for common Windows/WebUSB issues
+      await this.setTransceiverMode(TransceiverMode.OFF);
+      await this.delay(50);
+    } catch {
+      // best-effort; continue
+    }
+    const payload = createUint32LEBuffer([freqHz, divider]);
+    // More robust retry/backoff specifically for Windows/WebUSB transfer errors
+    const MAX_ATTEMPTS = 5;
+    let attempt = 0;
+    let lastErr: unknown = null;
+    let backoff = 150; // ms
+    // Avoid an eager reset on first-time configuration because Windows/WebUSB
+    // may transiently drop the device during re-enumeration. Only reset here
+    // if the device was previously configured in this session.
+    if (this.configuredOnce) {
+      try {
+        await this.controlTransferOut({
+          command: RequestCommand.RESET,
+          value: 0,
+          index: 0,
+        });
+        await this.delay(200);
+      } catch {
+        // Ignore; continue with attempts
+      }
+    }
+    while (attempt < MAX_ATTEMPTS) {
+      try {
+        await this.controlTransferOut({
+          command: RequestCommand.SAMPLE_RATE_SET,
+          data: payload,
+        });
+        // success
+        break;
+      } catch (err: unknown) {
+        lastErr = err;
+        const e = err as Error & { name?: string; message?: string };
+        const msg =
+          typeof e.message === "string" && e.message.length > 0
+            ? e.message
+            : String(e);
+        const isNetworkError =
+          e.name === "NetworkError" || /transfer error/i.test(msg);
+        const isInvalidState = e.name === "InvalidStateError";
+        // If not a transient transfer issue, fail immediately
+        if (!isNetworkError && !isInvalidState) {
+          throw new Error(
+            `Failed to set sample rate (${(sampleRate / 1e6).toFixed(2)} MSPS): ${msg}`,
+          );
+        }
+
+        // Graceful recovery path: short settle on first try, then reset+reopen
+        attempt++;
+        if (attempt >= MAX_ATTEMPTS) {
+          break;
+        }
+
+        try {
+          if (attempt === 1) {
+            await this.delay(backoff);
+          } else {
+            // Attempt device reset; if it fails, close and reopen
+            try {
+              await this.usbDevice.reset();
+            } catch {
+              try {
+                await this.usbDevice.close();
+              } catch {
+                // ignore
+              }
+            }
+            // Force re-claim on reopen
+            this.interfaceNumber = null;
+            this.inEndpointNumber = 1;
+            await this.delay(backoff);
+            try {
+              await this.open();
+            } catch {
+              // ignore, will retry again
+            }
+            // Ensure mode is OFF again before retrying sample-rate programming
+            try {
+              await this.setTransceiverMode(TransceiverMode.OFF);
+              await this.delay(50);
+            } catch {}
+            backoff = Math.min(backoff * 2, 1000);
+          }
+        } catch {
+          // ignore recovery errors; continue loop
+        }
+      }
+    }
+
+    if (attempt >= MAX_ATTEMPTS && lastErr) {
+      const errMsg = ((): string => {
+        const anyErr = lastErr as { message?: unknown } | undefined;
+        if (typeof anyErr?.message === "string" && anyErr.message) {
+          return anyErr.message;
+        }
+        try {
+          return JSON.stringify(anyErr ?? {});
+        } catch {
+          return "Unknown error";
+        }
+      })();
+      const msg = errMsg;
       throw new Error(
-        `Failed to set sample rate (${(sampleRate / 1e6).toFixed(2)} MSPS): ${msg}. ` +
-          `Try: 1) close other SDR apps (SDR#, hackrf_transfer), 2) replug the device, 3) use a direct USB 3.0 port, ` +
-          `4) ensure HackRF has WinUSB driver (Zadig) and up-to-date firmware.`,
+        `Failed to set sample rate after ${MAX_ATTEMPTS} attempts (${(sampleRate / 1e6).toFixed(2)} MSPS): ${msg}`,
       );
     }
     this.lastSampleRate = sampleRate;
@@ -616,6 +744,9 @@ export class HackRFOne {
    * @param bandwidthHz Bandwidth in Hz (1.75 MHz to 28 MHz)
    */
   async setBandwidth(bandwidthHz: number): Promise<void> {
+    if (!this.usbDevice.opened && !this.closing) {
+      await this.open();
+    }
     assertFiniteNonNegative(bandwidthHz, "Bandwidth");
     const rounded = Math.round(bandwidthHz);
     if (rounded > UINT32_MAX) {
@@ -801,8 +932,18 @@ export class HackRFOne {
   async receive(callback?: (data: DataView) => void): Promise<void> {
     // Validate device health before streaming
     this.validateDeviceHealth();
-
+    // Disable UI to allow continuous streaming, then enter RX mode
+    try {
+      await this.controlTransferOut({
+        command: RequestCommand.UI_ENABLE,
+        value: 0,
+      });
+    } catch {
+      // Non-fatal; proceed to set RX mode
+    }
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
+    // Give firmware a brief moment to start DMA before first transfer
+    await this.delay(50);
     this.streaming = true;
 
     // Create a stop signal that allows us to break out of a pending transfer
@@ -1253,10 +1394,10 @@ export class HackRFOne {
     }
 
     if (this.lastLNAGain !== null) {
-      await this.controlTransferIn({
+      await this.controlTransferOut({
         command: RequestCommand.SET_LNA_GAIN,
-        index: this.lastLNAGain,
-        length: 1,
+        value: this.lastLNAGain,
+        index: 0,
       });
     }
 

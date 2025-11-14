@@ -26,6 +26,10 @@ export function useDsp(
   const [magnitudes, setMagnitudes] = useState(new Float32Array(fftSize));
   const simTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const simPhaseRef = useRef<number>(0);
+  // Throttling for FFT processing to match display refresh rate (~60 FPS)
+  const lastProcessTime = useRef<number>(0);
+  const MIN_PROCESS_INTERVAL_MS = 16; // ~60 Hz maximum FFT processing rate
+  const pendingSamplesBuffer = useRef<Float32Array | null>(null);
 
   const handleWorkerMessage = useCallback(
     (event: MessageEvent<DspWorkerMessage>) => {
@@ -131,6 +135,20 @@ export function useDsp(
           interleavedSamples[i * 2] = iq[i]?.I ?? 0;
           interleavedSamples[i * 2 + 1] = iq[i]?.Q ?? 0;
         }
+
+        // Throttle FFT processing to match display refresh rate
+        const now = performance.now();
+        const timeSinceLastProcess = now - lastProcessTime.current;
+
+        if (timeSinceLastProcess < MIN_PROCESS_INTERVAL_MS) {
+          // Store latest samples but don't process yet
+          pendingSamplesBuffer.current = interleavedSamples;
+          return;
+        }
+
+        // Process immediately if enough time has passed
+        lastProcessTime.current = now;
+        pendingSamplesBuffer.current = null;
 
         // Transfer the buffer to worker (zero-copy)
         const buffer = interleavedSamples.buffer;

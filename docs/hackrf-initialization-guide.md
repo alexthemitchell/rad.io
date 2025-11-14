@@ -282,33 +282,6 @@ await hackrf.receive(callback); // Works!
 4. Try different USB port (avoid hubs)
 5. Update device firmware
 
-### Problem: Windows/WebUSB Transfer Errors (NetworkError)
-
-**Symptom:**
-
-- "Failed to execute 'controlTransferOut' on 'USBDevice': A transfer error has occurred."
-- Errors occur immediately when setting sample rate or other vendor commands
-
-**Cause:**
-
-- On Windows, WebUSB requires the WinUSB driver. If the HackRF interface is bound to another driver (libusbK, WinUSB not installed, or used by another app), vendor control transfers may fail.
-
-**Fix (Windows, using Zadig):**
-
-1. Disconnect other SDR applications (SDR#, CubicSDR, HackRF_transfer)
-2. Install Zadig from https://zadig.akeo.ie/
-3. Plug in the HackRF, then open Zadig and select:
-
-- Options → List All Devices
-- Choose "HackRF One" (or "Great Scott Gadgets HackRF One")
-- Driver: WinUSB (v6.x)
-- Click "Install Driver" (or "Replace Driver")
-
-1. Unplug/replug the HackRF
-2. Retry in the browser (https://localhost:8080/monitor)
-
-If issues persist, reflash or update HackRF firmware: https://greatscottgadgets.com/hackrf/one/
-
 ### Problem: Invalid Configuration Values
 
 **Symptom:**

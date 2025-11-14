@@ -43,6 +43,8 @@ export class WebGLSpectrum implements Renderer {
   private width = 0;
   private height = 0;
   private dpr = 1;
+  private lastCanvasWidth = 0;
+  private lastCanvasHeight = 0;
 
   async initialize(canvas: HTMLCanvasElement): Promise<boolean> {
     this.canvas = canvas;
@@ -140,14 +142,28 @@ export class WebGLSpectrum implements Renderer {
       return false;
     }
 
-    // Update canvas size
+    // Update canvas size only if it changed (avoid expensive getBoundingClientRect on every frame)
     const rect = this.canvas.getBoundingClientRect();
-    this.width = rect.width;
-    this.height = rect.height;
-    this.canvas.width = this.width * this.dpr;
-    this.canvas.height = this.height * this.dpr;
-    this.canvas.style.width = `${this.width}px`;
-    this.canvas.style.height = `${this.height}px`;
+    const newWidth = rect.width;
+    const newHeight = rect.height;
+    const scaledWidth = newWidth * this.dpr;
+    const scaledHeight = newHeight * this.dpr;
+
+    if (
+      scaledWidth !== this.lastCanvasWidth ||
+      scaledHeight !== this.lastCanvasHeight
+    ) {
+      this.width = newWidth;
+      this.height = newHeight;
+      this.canvas.width = scaledWidth;
+      this.canvas.height = scaledHeight;
+      this.canvas.style.width = `${newWidth}px`;
+      this.canvas.style.height = `${newHeight}px`;
+      this.lastCanvasWidth = scaledWidth;
+      this.lastCanvasHeight = scaledHeight;
+      // Viewport needs update when canvas size changes
+      gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    }
 
     // Calculate data range
     let minMag = Infinity;
@@ -206,8 +222,7 @@ export class WebGLSpectrum implements Renderer {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
 
-    // Setup viewport and clear
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    // Clear canvas
     gl.clearColor(0.04, 0.06, 0.1, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 

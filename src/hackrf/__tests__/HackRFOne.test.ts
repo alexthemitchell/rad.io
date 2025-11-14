@@ -225,23 +225,17 @@ describe("HackRFOne control formatting", () => {
   });
 
   it("sets LNA gain correctly", async () => {
-    const { device } = createMockUSBDevice();
+    const { device, controlTransferOut } = createMockUSBDevice();
     const hackRF = new HackRFOne(device);
-
-    // Mock controlTransferIn for LNA gain - must return 1 byte with non-zero value
-    (device.controlTransferIn as jest.Mock).mockResolvedValue({
-      data: new DataView(new Uint8Array([1]).buffer), // Return 1 byte with value 1
-      status: "ok",
-    } as USBInTransferResult);
 
     await hackRF.setLNAGain(24);
 
-    expect(device.controlTransferIn).toHaveBeenCalledWith(
+    expect(controlTransferOut).toHaveBeenCalledWith(
       expect.objectContaining({
         request: RequestCommand.SET_LNA_GAIN,
-        index: 24,
+        value: 24,
       }),
-      1,
+      undefined,
     );
   });
 

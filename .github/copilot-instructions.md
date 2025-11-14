@@ -7,7 +7,14 @@
 
 Check output of `npm start` to get deployed server URL (usually https://localhost:8080)
 
+- Always use a language server when possible
+- Prefer to use tools over raw bash commands
+
 - Always think step-by-step, be methodical and deliberate in your approach. Eliminate guesswork, assumptions, and shortcuts.
+
+- Every time you end your turn, first perform a self-review of your changes. Look for potential issues, edge cases, and improvements.
+
+- If your changes do not pass quality checks by the end of your turn, your turn is not over. Fix all issues before ending your turn. If there are still issues after your fixes, you will recieve another set of comments to address, in addition to fixing the remaining issues. It is in your best interest to ensure your changes pass all quality checks before ending your turn.
 
 **Take as long as you need to do research using all of the tools available to you. Prioritize correctness and quality over speed.**
 
@@ -28,6 +35,9 @@ Check output of `npm start` to get deployed server URL (usually https://localhos
 - Use Playwright MCP browser tools to test your code in a browser environment. Take screenshots and analyze them to verify your work.
 - **Prefer to read symbol data with serena tools over reading entirety of files**: use #oraios/serena/find_referencing_symbols #oraios/serena/get_symbols_overview #oraios/serena/search_for_pattern
 - The goal of this project includes the creation of TypeScript-first WebUSB drivers for SDR hardware. This is a complex task that requires careful planning and execution. Use the tools available to you to research and implement these drivers, and always keep the user in mind as a resource to help you solve problems.
+
+- For HackRF integration specifically, assume we are using our own TypeScript/WebUSB driver under `src/hackrf/**` rather than any external/native SDR stack.
+- When HackRF behavior looks wrong (e.g., control transfer failures, tuning/sample-rate issues), inspect and debug our WebUSB driver and adapter code first, not the host OS driver configuration.
 - If you can check the PR quality yourself before submitting, do so. Use #problems to identify any issues and fix them before creating a PR.
 - Always finish your turn by checking for #problems and fixing them before returning to the user
 - Keep track of best practices for interacting with the User in the USER_INTERACTION_GUIDE memory. The goal is to minimize the number of turns needed to complete tasks by learning the User's preferences and expectations.

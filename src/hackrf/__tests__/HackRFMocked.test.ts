@@ -517,7 +517,7 @@ describe("HackRF Mocked Logic Tests", () => {
     });
 
     it("should round to nearest valid LNA gain", async () => {
-      const { device, controlTransferIn } = createMockUSBDevice();
+      const { device, controlTransferOut } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Test rounding behavior
@@ -526,7 +526,7 @@ describe("HackRF Mocked Logic Tests", () => {
       await expect(adapter.setLNAGain(37)).resolves.toBeUndefined(); // Rounds to 40
 
       // Verify calls were made
-      expect(controlTransferIn).toHaveBeenCalled();
+      expect(controlTransferOut).toHaveBeenCalled();
     });
   });
 });

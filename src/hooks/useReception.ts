@@ -111,14 +111,9 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
       if (!device.isOpen()) {
         await device.open();
       }
+      // Configure only critical params synchronously to maximize start reliability
+      // Non-critical controls (gains/bandwidth) will be applied after streaming starts
       await device.setSampleRate(config.sampleRate);
-      await device.setLNAGain(config.lnaGain);
-      if (device.setVGAGain) {
-        await device.setVGAGain(config.vgaGain);
-      }
-      if (device.setBandwidth && config.bandwidth) {
-        await device.setBandwidth(config.bandwidth);
-      }
       await device.setFrequency(frequency);
       updateStatus(
         `Tuned to ${formatFrequency(frequency)} @ ${(config.sampleRate / 1e6).toFixed(2)} MSPS`,
@@ -151,23 +146,119 @@ export function useReception(options: UseReceptionOptions): UseReceptionResult {
     try {
       isStartingRef.current = true;
       stopScanner();
-      if (device) {
-        await tuneDevice();
+
+      const delay = async (ms: number): Promise<void> =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+      const MAX_ATTEMPTS = 3;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          if (device) {
+            await tuneDevice();
+          }
+          setIsReceiving(true);
+          updateStatus("Receiving started");
+          await startDsp();
+
+          // Apply optional hardware settings best-effort after streaming starts
+          // This avoids aborting start due to flaky control transfers on some stacks
+          if (device) {
+            void (async (): Promise<void> => {
+              try {
+                type DeviceWithOptionalMethods = {
+                  setLNAGain?: (gain: number) => Promise<void>;
+                  setVGAGain?: (gain: number) => Promise<void>;
+                  setBandwidth?: (bandwidth: number) => Promise<void>;
+                };
+                const deviceWithMethods =
+                  device as unknown as DeviceWithOptionalMethods;
+
+                if (typeof deviceWithMethods.setLNAGain === "function") {
+                  try {
+                    await deviceWithMethods.setLNAGain(config.lnaGain);
+                  } catch (err) {
+                    console.warn(
+                      "Post-start: Failed to set LNA gain; continuing",
+                      err instanceof Error ? err.message : String(err),
+                    );
+                  }
+                }
+                if (typeof deviceWithMethods.setVGAGain === "function") {
+                  try {
+                    await deviceWithMethods.setVGAGain(config.vgaGain);
+                  } catch (err) {
+                    console.warn(
+                      "Post-start: Failed to set VGA gain; continuing",
+                      err instanceof Error ? err.message : String(err),
+                    );
+                  }
+                }
+                if (
+                  typeof deviceWithMethods.setBandwidth === "function" &&
+                  config.bandwidth
+                ) {
+                  try {
+                    await deviceWithMethods.setBandwidth(config.bandwidth);
+                  } catch (err) {
+                    console.warn(
+                      "Post-start: Failed to set bandwidth; continuing",
+                      err instanceof Error ? err.message : String(err),
+                    );
+                  }
+                }
+              } catch {
+                // swallow all post-start config errors
+              }
+            })();
+          }
+          return;
+        } catch (err) {
+          console.error("Start failed", err);
+          setIsReceiving(false);
+          const base =
+            err instanceof Error
+              ? `Start failed: ${err.message}`
+              : "Start failed";
+          const willRetry = attempt < MAX_ATTEMPTS;
+          updateStatus(
+            willRetry
+              ? `${base} • Retrying (${attempt}/${MAX_ATTEMPTS})`
+              : base,
+          );
+
+          if (willRetry) {
+            if (
+              device &&
+              typeof (
+                device as unknown as { fastRecovery?: () => Promise<void> }
+              ).fastRecovery === "function"
+            ) {
+              try {
+                await (
+                  device as unknown as { fastRecovery: () => Promise<void> }
+                ).fastRecovery();
+              } catch {
+                // best-effort recovery
+              }
+            }
+            await delay(200 * attempt);
+          }
+        }
       }
-      // Optimistically mark receiving before awaiting DSP start to unblock E2E readiness checks
-      setIsReceiving(true);
-      updateStatus("Receiving started");
-      await startDsp();
-    } catch (err) {
-      console.error("Start failed", err);
-      setIsReceiving(false);
-      const message =
-        err instanceof Error ? `Start failed: ${err.message}` : "Start failed";
-      updateStatus(message);
     } finally {
       isStartingRef.current = false;
     }
-  }, [device, tuneDevice, startDsp, stopScanner, useMock, updateStatus]);
+  }, [
+    device,
+    tuneDevice,
+    startDsp,
+    stopScanner,
+    useMock,
+    updateStatus,
+    config.lnaGain,
+    config.vgaGain,
+    config.bandwidth,
+  ]);
 
   /**
    * Stop reception

@@ -203,18 +203,8 @@ describe("HackRFOneAdapter initialization and configuration", () => {
           if (options.request === 16) appliedSettings.push("FREQ");
           if (options.request === 7) appliedSettings.push("BANDWIDTH");
           if (options.request === 17) appliedSettings.push("AMP");
-          return {} as USBOutTransferResult;
-        },
-      );
-
-      const controlTransferIn = device.controlTransferIn as jest.Mock;
-      controlTransferIn.mockImplementation(
-        async (options: USBControlTransferParameters) => {
           if (options.request === 19) appliedSettings.push("LNA_GAIN");
-          return {
-            data: new DataView(new Uint8Array([1]).buffer),
-            status: "ok",
-          } as USBInTransferResult;
+          return {} as USBOutTransferResult;
         },
       );
 

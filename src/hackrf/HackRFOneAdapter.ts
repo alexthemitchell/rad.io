@@ -97,8 +97,11 @@ export class HackRFOneAdapter implements ISDRDevice {
       this.deviceId,
       frequencyHz,
     );
-    this.currentFrequency = corrected;
+    if (this.currentFrequency === corrected) {
+      return;
+    }
     await this.device.setFrequency(corrected);
+    this.currentFrequency = corrected;
   }
 
   async getFrequency(): Promise<number> {
@@ -106,8 +109,12 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   async setSampleRate(sampleRateHz: number): Promise<void> {
-    this.currentSampleRate = sampleRateHz;
+    // Always program hardware at least once on first configuration even if value matches default
+    if (this.currentSampleRate === sampleRateHz && this.isInitialized) {
+      return;
+    }
     await this.device.setSampleRate(sampleRateHz);
+    this.currentSampleRate = sampleRateHz;
     // Mark as initialized once sample rate is set (critical for HackRF)
     this.isInitialized = true;
   }
@@ -139,7 +146,19 @@ export class HackRFOneAdapter implements ISDRDevice {
       });
       adjustedGain = nearest;
     }
-    await this.device.setLNAGain(adjustedGain);
+    try {
+      await this.device.setLNAGain(adjustedGain);
+    } catch (err) {
+      console.warn(
+        "HackRFOneAdapter: Failed to set LNA gain; continuing with default",
+        {
+          requestedGain: gainDb,
+          adjustedGain,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
+      // Do not rethrow; allow pipeline to continue so streaming can start
+    }
   }
 
   async setAmpEnable(enabled: boolean): Promise<void> {

@@ -161,12 +161,9 @@ export interface CEA708DecoderMetrics {
 export class CEA708Decoder {
   // Constants
   private static readonly DTVCC_PACKET_START = 0x03;
-  private static readonly MAX_SERVICE_COUNT = 6;
-  private static readonly MAX_WINDOW_COUNT = 8;
 
   // State
   private state: CEA708DecoderState = "unconfigured";
-  private config: CaptionDecoderConfig = {};
 
   // Service data
   private services: Map<CaptionService, DecodedCaption> = new Map<
@@ -188,9 +185,6 @@ export class CEA708Decoder {
     availableServices: [],
   };
 
-  // Buffer for partial data
-  private userDataBuffer: Uint8Array = new Uint8Array(0);
-
   /**
    * Create a new CEA-708 decoder
    */
@@ -205,10 +199,9 @@ export class CEA708Decoder {
   /**
    * Initialize the decoder with configuration
    */
-  public initialize(config: CaptionDecoderConfig): void {
-    this.config = { ...config };
+  public initialize(_config: CaptionDecoderConfig): void {
     this.state = "configured";
-    this.currentService = config.preferredService ?? 1;
+    this.currentService = _config.preferredService ?? 1;
     this.metrics.currentService = this.currentService;
   }
 
@@ -266,7 +259,7 @@ export class CEA708Decoder {
         payload[i + 2] === 0x00 &&
         payload[i + 3] === 0x01
       ) {
-        const nalType = payload[i + 4] & 0x1f;
+        const nalType = (payload[i + 4] ?? 0) & 0x1f;
 
         // SEI NAL unit (type 6)
         if (nalType === 6) {
@@ -275,7 +268,7 @@ export class CEA708Decoder {
           userData.push(...seiData);
         }
         // User data start code (MPEG-2: 0x000001B2)
-        else if (payload[i + 4] === 0xb2) {
+        else if ((payload[i + 4] ?? 0) === 0xb2) {
           // Extract until next start code
           let end = i + 5;
           while (
@@ -344,7 +337,7 @@ export class CEA708Decoder {
     for (let i = 0; i < userData.length - 2; i++) {
       // Look for DTVCC packet start (0x03)
       if (userData[i] === CEA708Decoder.DTVCC_PACKET_START) {
-        const packetSize = userData[i + 1] & 0x3f;
+        const packetSize = (userData[i + 1] ?? 0) & 0x3f;
 
         if (i + 2 + packetSize <= userData.length) {
           const packet = userData.slice(i + 2, i + 2 + packetSize);
@@ -388,6 +381,9 @@ export class CEA708Decoder {
     }
 
     const header = data[offset];
+    if (header === undefined) {
+      return null;
+    }
     const serviceNumber = ((header >> 5) & 0x07) as CaptionService;
     const blockSize = header & 0x1f;
 
@@ -454,6 +450,9 @@ export class CEA708Decoder {
 
     while (offset < data.length) {
       const command = data[offset];
+      if (command === undefined) {
+        break;
+      }
 
       // C0 commands (0x00-0x1F)
       if (command <= 0x1f) {
@@ -482,7 +481,7 @@ export class CEA708Decoder {
   private processC0Command(
     service: DecodedCaption,
     command: number,
-    data: Uint8Array,
+    _data: Uint8Array,
     offset: number,
   ): number {
     switch (command) {
@@ -565,7 +564,7 @@ export class CEA708Decoder {
 
       case 0x8c: // DLW (Delete Windows)
         if (offset + 1 < data.length) {
-          const windowBitmap = data[offset + 1];
+          const windowBitmap = data[offset + 1] ?? 0;
           for (let i = 0; i < 8; i++) {
             if (windowBitmap & (1 << i)) {
               service.windows.delete(i);
@@ -753,7 +752,6 @@ export class CEA708Decoder {
       currentService: this.currentService,
       availableServices: [],
     };
-    this.userDataBuffer = new Uint8Array(0);
     this.state = "configured";
   }
 

@@ -2,7 +2,6 @@
  * Caption Preferences Component Tests
  */
 
-import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { CaptionPreferences } from "../CaptionPreferences";
 import type { CaptionDecoderConfig } from "../../decoders/CEA708Decoder";
