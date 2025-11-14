@@ -381,6 +381,8 @@ export function DiagnosticsOverlay({
   const [position, setPosition] = useState({ x: 20, y: 20 });
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>): void => {
@@ -412,6 +414,44 @@ export function DiagnosticsOverlay({
     dragStartRef.current = null;
   }, []);
 
+  // Keyboard navigation for moving dialog
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>): void => {
+      const step = e.shiftKey ? 10 : 1;
+      const newPosition = { ...position };
+
+      switch (e.key) {
+        case "ArrowLeft":
+          e.preventDefault();
+          newPosition.x = Math.max(0, position.x - step);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          newPosition.x = Math.min(window.innerWidth - 400, position.x + step);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          newPosition.y = Math.max(0, position.y - step);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          newPosition.y = Math.min(window.innerHeight - 100, position.y + step);
+          break;
+        case "Escape":
+          e.preventDefault();
+          setOverlayVisible(false);
+          break;
+        default:
+          return;
+      }
+
+      if (newPosition.x !== position.x || newPosition.y !== position.y) {
+        setPosition(newPosition);
+      }
+    },
+    [position, setOverlayVisible],
+  );
+
   useEffect(() => {
     if (dragging) {
       window.addEventListener("mousemove", handleMouseMove);
@@ -423,6 +463,20 @@ export function DiagnosticsOverlay({
     }
   }, [dragging, handleMouseMove, handleMouseUp]);
 
+  // Focus management
+  useEffect(() => {
+    if (overlayVisible) {
+      // Store previous focus
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      // Focus the dialog
+      dialogRef.current?.focus();
+    } else if (previousFocusRef.current) {
+      // Restore focus when closing
+      previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    }
+  }, [overlayVisible]);
+
   if (!overlayVisible) {
     return <></>;
   }
@@ -430,14 +484,18 @@ export function DiagnosticsOverlay({
   return (
     /* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */
     <div
+      ref={dialogRef}
       className={`diagnostics-overlay ${className} ${minimized ? "minimized" : ""} ${dragging ? "dragging" : ""}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
       }}
       onMouseDown={handleMouseDown}
+      onKeyDown={handleKeyDown}
       role="dialog"
+      aria-modal="true"
       aria-label="Pipeline diagnostics overlay"
+      tabIndex={-1}
     >
       <div className="overlay-header">
         <h3>Pipeline Diagnostics</h3>
@@ -445,7 +503,11 @@ export function DiagnosticsOverlay({
           <button
             className="overlay-button"
             onClick={() => setMinimized(!minimized)}
-            title={minimized ? "Maximize" : "Minimize"}
+            title={
+              minimized
+                ? "Maximize (or use arrow keys to move)"
+                : "Minimize (or use arrow keys to move)"
+            }
             aria-label={
               minimized ? "Maximize diagnostics" : "Minimize diagnostics"
             }
@@ -455,7 +517,7 @@ export function DiagnosticsOverlay({
           <button
             className="overlay-button"
             onClick={() => setOverlayVisible(false)}
-            title="Close"
+            title="Close (or press Escape)"
             aria-label="Close diagnostics"
           >
             ×

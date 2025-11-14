@@ -124,28 +124,28 @@
 }
 
 .metric-value.status-good {
-  background: rgb(16 185 129 / 20%);
-  color: #10b981;
+  background: color-mix(in srgb, var(--rad-success) 20%, transparent);
+  color: var(--rad-success);
 }
 
 .metric-value.status-warn {
-  background: rgb(245 158 11 / 20%);
-  color: #f59e0b;
+  background: color-mix(in srgb, var(--rad-warning) 20%, transparent);
+  color: var(--rad-warning);
 }
 
 .metric-value.status-bad {
-  background: rgb(239 68 68 / 20%);
-  color: #ef4444;
+  background: color-mix(in srgb, var(--rad-danger) 20%, transparent);
+  color: var(--rad-danger);
 }
 
 .metric-value.status-unknown {
-  background: rgb(156 163 175 / 20%);
-  color: #9ca3af;
+  background: color-mix(in srgb, var(--rad-fg-muted) 20%, transparent);
+  color: var(--rad-fg-muted);
 }
 
 .metric-value.status-info {
-  background: rgb(59 130 246 / 20%);
-  color: #3b82f6;
+  background: color-mix(in srgb, var(--rad-accent) 20%, transparent);
+  color: var(--rad-accent);
 }
 
 .events-section {
@@ -177,23 +177,23 @@
 }
 
 .event-item.status-good {
-  border-left-color: #10b981;
-  background: rgb(16 185 129 / 10%);
+  border-left-color: var(--rad-success);
+  background: color-mix(in srgb, var(--rad-success) 10%, transparent);
 }
 
 .event-item.status-warn {
-  border-left-color: #f59e0b;
-  background: rgb(245 158 11 / 10%);
+  border-left-color: var(--rad-warning);
+  background: color-mix(in srgb, var(--rad-warning) 10%, transparent);
 }
 
 .event-item.status-bad {
-  border-left-color: #ef4444;
-  background: rgb(239 68 68 / 10%);
+  border-left-color: var(--rad-danger);
+  background: color-mix(in srgb, var(--rad-danger) 10%, transparent);
 }
 
 .event-item.status-info {
-  border-left-color: #3b82f6;
-  background: rgb(59 130 246 / 10%);
+  border-left-color: var(--rad-accent);
+  background: color-mix(in srgb, var(--rad-accent) 10%, transparent);
 }
 
 .event-source {

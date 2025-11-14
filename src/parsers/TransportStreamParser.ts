@@ -298,6 +298,9 @@ export class TransportStreamParser {
   private pmtUpdates = 0;
   private lastDiagnosticsUpdate = 0;
   private diagnosticsUpdateInterval = 1000; // Update diagnostics every 1 second
+  // Track previous error counts to detect deltas
+  private lastContinuityErrors = 0;
+  private lastSyncErrors = 0;
 
   /**
    * Parse transport stream data
@@ -1455,21 +1458,27 @@ export class TransportStreamParser {
         pmtUpdates: this.pmtUpdates,
       });
 
-      // Add diagnostic events for errors
-      if (this.continuityErrors > 0 && this.packetsProcessed % 1000 === 0) {
+      // Add diagnostic events for new errors only (track deltas)
+      const newContinuityErrors =
+        this.continuityErrors - this.lastContinuityErrors;
+      if (newContinuityErrors > 0) {
         store.addDiagnosticEvent({
           source: "ts-parser",
           severity: "warning",
-          message: `Continuity errors detected: ${this.continuityErrors}`,
+          message: `Continuity errors: +${newContinuityErrors} (total: ${this.continuityErrors})`,
         });
+        this.lastContinuityErrors = this.continuityErrors;
       }
 
-      if (this.syncErrors > 100) {
+      const newSyncErrors = this.syncErrors - this.lastSyncErrors;
+      if (newSyncErrors > 10) {
+        // Only report if significant new errors
         store.addDiagnosticEvent({
           source: "ts-parser",
           severity: "error",
-          message: `High sync error rate: ${this.syncErrors} errors`,
+          message: `High sync error rate: +${newSyncErrors} errors (total: ${this.syncErrors})`,
         });
+        this.lastSyncErrors = this.syncErrors;
       }
     } catch (_error) {
       // Silently fail if store is not available

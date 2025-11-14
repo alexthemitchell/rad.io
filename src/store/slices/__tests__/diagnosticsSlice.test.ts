@@ -3,10 +3,7 @@
  */
 
 import { create } from "zustand";
-import {
-  diagnosticsSlice,
-  type DiagnosticsSlice,
-} from "../diagnosticsSlice";
+import { diagnosticsSlice, type DiagnosticsSlice } from "../diagnosticsSlice";
 
 describe("diagnosticsSlice", () => {
   let useStore: ReturnType<typeof create<DiagnosticsSlice>>;
@@ -29,7 +26,7 @@ describe("diagnosticsSlice", () => {
 
   it("should add diagnostic events", () => {
     const { addDiagnosticEvent } = useStore.getState();
-    
+
     addDiagnosticEvent({
       source: "demodulator",
       severity: "info",
@@ -47,7 +44,7 @@ describe("diagnosticsSlice", () => {
 
   it("should limit events to 100", () => {
     const { addDiagnosticEvent } = useStore.getState();
-    
+
     // Add 150 events
     for (let i = 0; i < 150; i++) {
       addDiagnosticEvent({
@@ -66,7 +63,7 @@ describe("diagnosticsSlice", () => {
 
   it("should update demodulator metrics", () => {
     const { updateDemodulatorMetrics } = useStore.getState();
-    
+
     updateDemodulatorMetrics({
       syncLocked: true,
       snr: 15.5,
@@ -87,7 +84,7 @@ describe("diagnosticsSlice", () => {
 
   it("should clear diagnostic events", () => {
     const { addDiagnosticEvent, clearDiagnosticEvents } = useStore.getState();
-    
+
     // Add some events
     addDiagnosticEvent({
       source: "demodulator",
@@ -108,12 +105,9 @@ describe("diagnosticsSlice", () => {
   });
 
   it("should reset all diagnostics", () => {
-    const {
-      addDiagnosticEvent,
-      updateDemodulatorMetrics,
-      resetDiagnostics,
-    } = useStore.getState();
-    
+    const { addDiagnosticEvent, updateDemodulatorMetrics, resetDiagnostics } =
+      useStore.getState();
+
     // Add some data
     addDiagnosticEvent({
       source: "demodulator",

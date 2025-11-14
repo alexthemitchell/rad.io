@@ -18,7 +18,7 @@ import {
 import { CalibrationManager } from "../lib/measurement/calibration";
 import { estimateFMBroadcastPPM } from "../lib/measurement/fm-ppm-calibrator";
 import { type SDRCapabilities, type IQSample } from "../models/SDRDevice";
-import { useDevice, useFrequency, useSettings } from "../store";
+import { useDevice, useFrequency, useSettings, useDiagnostics } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
@@ -33,6 +33,7 @@ declare global {
 
 const Monitor: React.FC = () => {
   const { primaryDevice: device } = useDevice();
+  const { setOverlayVisible } = useDiagnostics();
 
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
@@ -463,6 +464,15 @@ const Monitor: React.FC = () => {
               {Math.round(scanner.progress)}%
             </span>
           )}
+
+          <button
+            className="btn btn-secondary"
+            onClick={() => setOverlayVisible(true)}
+            title="Show diagnostics overlay"
+            style={{ marginLeft: "auto" }}
+          >
+            Diagnostics
+          </button>
         </div>
         <div style={{ marginTop: 8, position: "relative" }}>
           <VisualizationControls

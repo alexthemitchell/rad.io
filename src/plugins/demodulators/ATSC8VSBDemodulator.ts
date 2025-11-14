@@ -100,6 +100,7 @@ export class ATSC8VSBDemodulator
   // Diagnostics
   private lastDiagnosticsUpdate: number;
   private diagnosticsUpdateInterval: number;
+  private previousSyncLocked: boolean; // Track previous sync state for transition detection
 
   constructor() {
     const metadata: PluginMetadata = {
@@ -154,6 +155,7 @@ export class ATSC8VSBDemodulator
 
     this.lastDiagnosticsUpdate = 0;
     this.diagnosticsUpdateInterval = 500; // Update diagnostics every 500ms
+    this.previousSyncLocked = false;
   }
 
   protected onInitialize(): void {
@@ -537,12 +539,13 @@ export class ATSC8VSBDemodulator
       const store = useStore.getState();
 
       // Calculate approximate signal quality metrics
-      // Note: These are estimated values. Real implementations would need
+      // Note: These are estimated/simulated values. Real implementations would need
       // additional signal processing to calculate accurate SNR, MER, BER
       const signalStrength = this.syncLocked ? 0.8 : 0.3;
-      const snr = this.syncLocked ? 15.0 + Math.random() * 5 : 5.0; // Simulated SNR
-      const mer = this.syncLocked ? 20.0 + Math.random() * 5 : 10.0; // Simulated MER
-      const ber = this.syncLocked ? 0.00001 : 0.1; // Simulated BER
+      // Use stable simulated values instead of random jitter
+      const snr = this.syncLocked ? 18.0 : 5.0; // Stable SNR (placeholder)
+      const mer = this.syncLocked ? 22.0 : 10.0; // Stable MER (placeholder)
+      const ber = this.syncLocked ? 0.00001 : 0.1; // Stable BER (placeholder)
 
       store.updateDemodulatorMetrics({
         syncLocked: this.syncLocked,
@@ -554,16 +557,37 @@ export class ATSC8VSBDemodulator
         fieldSyncCount: this.fieldSyncCount,
       });
 
-      // Add diagnostic events for state changes
-      if (!this.syncLocked && this.segmentSyncCount === 0) {
-        // Only log once when sync is lost
-        if (this.lastSyncPosition === -1) {
+      // Add diagnostic events for state transitions
+      if (this.previousSyncLocked && !this.syncLocked) {
+        // Transition from locked to unlocked
+        store.addDiagnosticEvent({
+          source: "demodulator",
+          severity: "warning",
+          message: "Sync lock lost",
+        });
+      } else if (!this.previousSyncLocked && this.syncLocked) {
+        // Transition from unlocked to locked
+        store.addDiagnosticEvent({
+          source: "demodulator",
+          severity: "info",
+          message: "Sync lock acquired",
+        });
+      } else if (!this.syncLocked && this.segmentSyncCount === 0) {
+        // Still searching for initial lock (only emit once at startup)
+        if (this.lastSyncPosition === -1 && !this.previousSyncLocked) {
           store.addDiagnosticEvent({
             source: "demodulator",
-            severity: "warning",
+            severity: "info",
             message: "Searching for sync lock...",
           });
+          // Mark that we've emitted this message by setting a flag
+          this.previousSyncLocked = true; // Reuse as "startup message sent" flag
         }
+      }
+
+      // Update previous state for next comparison
+      if (this.syncLocked !== this.previousSyncLocked) {
+        this.previousSyncLocked = this.syncLocked;
       }
     } catch (_error) {
       // Silently fail if store is not available

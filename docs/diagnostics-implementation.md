@@ -49,11 +49,13 @@ Real-time visual overlay displaying pipeline health:
 ## Integration Points
 
 ### ATSCPlayer Page
+
 - "Diagnostics" button in header to show overlay
 - Detailed mode enabled for comprehensive metrics view
 - Monitors full ATSC reception pipeline
 
 ### Monitor Page
+
 - Overlay automatically available
 - Compact mode for spectrum analysis workflow
 - Useful for SDR signal quality monitoring
@@ -71,27 +73,24 @@ Real-time visual overlay displaying pipeline health:
 ### For Developers
 
 ```typescript
-import { useDiagnostics } from '../store';
+import { useDiagnostics } from "../store";
 
 // In a component
-const { 
-  updateDemodulatorMetrics,
-  addDiagnosticEvent 
-} = useDiagnostics();
+const { updateDemodulatorMetrics, addDiagnosticEvent } = useDiagnostics();
 
 // Update metrics
 updateDemodulatorMetrics({
   syncLocked: true,
   snr: 18.5,
   mer: 22.3,
-  ber: 0.0001
+  ber: 0.0001,
 });
 
 // Add diagnostic event
 addDiagnosticEvent({
-  source: 'demodulator',
-  severity: 'warning',
-  message: 'Signal degradation detected'
+  source: "demodulator",
+  severity: "warning",
+  message: "Signal degradation detected",
 });
 ```
 
