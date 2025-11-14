@@ -6,8 +6,8 @@ import {
   processFFT,
   processDemodulation,
   processAudioOutput,
-  type WindowFunction,
 } from "../utils/dspProcessing";
+import type { WindowFunction } from "../lib/dsp";
 import type { ISDRDevice } from "../models/SDRDevice";
 import type { Sample } from "../utils/dsp";
 
@@ -212,7 +212,10 @@ export function useDSPPipeline(
       overlap: number;
       wasm: boolean;
     };
-    const fftResult = processFFT(iqResult.output, fftParams);
+    const fftResult = processFFT(iqResult.output, {
+      fftSize: fftParams.fftSize,
+      windowType: fftParams.window,
+    });
 
     // Stage 5: Demodulation
     const demodParams = (initialStages[4]?.parameters ?? {}) as {
@@ -221,7 +224,9 @@ export function useDSPPipeline(
       amDepth: number;
       audioBandwidth: number;
     };
-    const demodResult = processDemodulation(iqResult.output, demodParams);
+    const demodResult = processDemodulation(iqResult.output, {
+      mode: demodParams.demod,
+    });
 
     // Stage 6: Audio Output
     const audioParams = (initialStages[5]?.parameters ?? {}) as {
@@ -230,7 +235,10 @@ export function useDSPPipeline(
       audioFilter: string;
       cutoff: number;
     };
-    const audioResult = processAudioOutput(demodResult.output, audioParams);
+    const audioResult = processAudioOutput(demodResult.output, {
+      sampleRate: iqParams2.sampleRate,
+      volume: audioParams.volume,
+    });
 
     setStages((prev) => {
       return prev.map((s) => {

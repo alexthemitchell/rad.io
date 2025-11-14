@@ -172,22 +172,22 @@ export async function benchmarkWindowing(
 ): Promise<BenchmarkResult> {
   const samples = generateSineWave(1000, 1.0, sampleCount);
 
+  // Import once at the beginning
+  const { applyWindow } = await import("../lib/dsp");
+
   // Benchmark JavaScript
   let jsDuration = 0;
   if (windowType === "hann") {
-    const module = await import("./dspProcessing");
     jsDuration = measureTime(() => {
-      module.applyHannWindow(samples);
+      applyWindow(samples, "hann", false); // false = don't use WASM
     }, iterations);
   } else if (windowType === "hamming") {
-    const module = await import("./dspProcessing");
     jsDuration = measureTime(() => {
-      module.applyHammingWindow(samples);
+      applyWindow(samples, "hamming", false);
     }, iterations);
   } else {
-    const module = await import("./dspProcessing");
     jsDuration = measureTime(() => {
-      module.applyBlackmanWindow(samples);
+      applyWindow(samples, "blackman", false);
     }, iterations);
   }
 
@@ -229,10 +229,10 @@ export async function benchmarkAGC(
   iterations = 10,
 ): Promise<BenchmarkResult> {
   const samples = generateSineWave(1000, 0.5, sampleCount);
-  const module = await import("./dspProcessing");
+  const { applyAGC } = await import("../lib/dsp");
 
   const jsDuration = measureTime(() => {
-    module.applyAGC(samples);
+    applyAGC(samples);
   }, iterations);
 
   return {

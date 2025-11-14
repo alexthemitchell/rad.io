@@ -8,7 +8,7 @@ import {
   removeDCOffsetStatic,
   removeDCOffsetIIR,
   removeDCOffsetCombined,
-} from "../dspProcessing";
+} from "../../lib/dsp";
 import type { Sample } from "../dsp";
 
 /**
