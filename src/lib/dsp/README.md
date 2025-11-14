@@ -35,13 +35,15 @@ The `src/lib/dsp/` module consolidates DSP primitives that were previously dupli
 
 ## Usage
 
+> **Note on Sample Type**: The `Sample` type is currently imported from `@/utils/dsp` rather than `@/lib/dsp` because it's used extensively throughout the codebase in FFT and signal processing functions. While `Sample` is re-exported from `@/lib/dsp/types`, the canonical location remains `@/utils/dsp` for now to avoid breaking changes. Future versions may consolidate this.
+
 ### Window Functions
 
 Apply window functions to reduce spectral leakage in FFT analysis:
 
 ```typescript
 import { applyWindow } from "@/lib/dsp";
-import type { Sample } from "@/lib/dsp";
+import type { Sample } from "@/utils/dsp";
 
 const samples: Sample[] = [
   { I: 0.5, Q: 0.3 },
@@ -65,7 +67,8 @@ Remove DC offset caused by hardware imperfections:
 
 ```typescript
 import { removeDCOffset, createDCBlockerState } from "@/lib/dsp";
-import type { Sample, DCBlockerState } from "@/lib/dsp";
+import type { DCBlockerState } from "@/lib/dsp";
+import type { Sample } from "@/utils/dsp";
 
 const samples: Sample[] = /* ... */;
 
@@ -87,7 +90,8 @@ Maintain consistent signal amplitude:
 
 ```typescript
 import { applyAGC } from "@/lib/dsp";
-import type { Sample, AGCParameters } from "@/lib/dsp";
+import type { AGCParameters } from "@/lib/dsp";
+import type { Sample } from "@/utils/dsp";
 
 const samples: Sample[] = /* ... */;
 
