@@ -9,6 +9,10 @@
  * - Window functions (Hann, Hamming, Blackman, Kaiser)
  * - DC offset correction (Static, IIR, Combined)
  * - Automatic Gain Control (AGC)
+ * - FFT operations with WASM acceleration
+ * - Signal analysis (RMS, peak, SNR, spectral peaks)
+ * - Digital filters (FIR, IIR)
+ * - Sample format conversions
  * - TypeScript and WASM implementations with automatic fallback
  *
  * @module dsp
@@ -29,7 +33,7 @@ export type {
   SignalMetrics,
 } from "./types";
 
-// Re-export primitives
+// Re-export primitives (windowing, DC correction, AGC)
 export {
   applyHannWindow,
   applyHammingWindow,
@@ -44,8 +48,46 @@ export {
   createDCBlockerState,
 } from "./primitives";
 
-// TODO: Future exports (Phase 2)
-// export * from "./fft";
-// export * from "./filters";
-// export * from "./analysis";
-// export * from "./conversions";
+// Re-export FFT operations
+export { calculateFFT, calculateSpectrogram, clearFFTCache } from "./fft";
+
+// Re-export signal analysis functions
+export {
+  calculateSignalStrength,
+  calculateMetrics,
+  calculateRMS,
+  calculatePeak,
+  binToFrequency,
+  detectSpectralPeaks,
+  estimateSNR,
+} from "./analysis";
+export type {
+  SignalMetrics as SignalMetricsType,
+  SpectralPeak,
+} from "./analysis";
+
+// Re-export conversion utilities
+export {
+  convertToSamples,
+  convertFromSamples,
+  convertInterleavedToSamples,
+  convertSamplesToInterleaved,
+  convertSeparateToSamples,
+  convertSamplesToSeparate,
+  calculateMagnitude,
+  calculatePhase,
+  calculateWaveform,
+  normalizeSamples,
+} from "./conversions";
+
+// Re-export filter functions
+export {
+  createFIRFilter,
+  applyFIRFilter,
+  designLowpassFIR,
+  createIIRFilter,
+  applyIIRFilter,
+  designLowpassIIR,
+  movingAverage,
+} from "./filters";
+export type { FIRFilterState, IIRFilterState } from "./filters";
