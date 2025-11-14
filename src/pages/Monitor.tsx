@@ -711,7 +711,7 @@ const Monitor: React.FC = () => {
       </details>
 
       {/* StatusBar is rendered globally in the App shell */}
-      <DiagnosticsOverlay />
+      <DiagnosticsOverlay detailed={true} />
     </div>
   );
 };

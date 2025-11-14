@@ -114,7 +114,15 @@ function DemodulatorMetricsDisplay({
         <div className="metric-item">
           <span className="metric-label">BER:</span>
           <span
-            className={`metric-value ${getStatusClass(metrics.ber !== undefined ? 1 - metrics.ber : undefined, 0.9, 0.7)}`}
+            className={`metric-value ${
+              metrics.ber === undefined || !isFinite(metrics.ber)
+                ? ""
+                : metrics.ber < 0.0001
+                  ? "status-good"
+                  : metrics.ber < 0.001
+                    ? "status-warn"
+                    : "status-bad"
+            }`}
           >
             {metrics.ber !== undefined && isFinite(metrics.ber)
               ? metrics.ber.toExponential(2)
@@ -335,7 +343,7 @@ function RecentEventsDisplay({
       <div className="events-section">
         <h4>Recent Events</h4>
         <div className="events-list">
-          <div className="event-item status-good">No recent events</div>
+          <div className="event-item status-info">No events recorded</div>
         </div>
       </div>
     );

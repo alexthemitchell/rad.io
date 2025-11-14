@@ -128,4 +128,16 @@ describe("diagnosticsSlice", () => {
     expect(state.events).toHaveLength(0);
     expect(state.demodulatorMetrics).toBeNull();
   });
+
+  it("should toggle overlay visibility", () => {
+    const { setOverlayVisible } = useStore.getState();
+
+    expect(useStore.getState().overlayVisible).toBe(false);
+
+    setOverlayVisible(true);
+    expect(useStore.getState().overlayVisible).toBe(true);
+
+    setOverlayVisible(false);
+    expect(useStore.getState().overlayVisible).toBe(false);
+  });
 });

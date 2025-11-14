@@ -65,6 +65,11 @@
   border-color: var(--color-primary);
 }
 
+.overlay-button:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .overlay-button:active {
   transform: scale(0.95);
 }

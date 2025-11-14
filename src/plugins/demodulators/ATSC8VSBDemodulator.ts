@@ -101,6 +101,7 @@ export class ATSC8VSBDemodulator
   private lastDiagnosticsUpdate: number;
   private diagnosticsUpdateInterval: number;
   private previousSyncLocked: boolean; // Track previous sync state for transition detection
+  private startupMessageSent: boolean; // Track if startup message has been sent
 
   constructor() {
     const metadata: PluginMetadata = {
@@ -156,6 +157,7 @@ export class ATSC8VSBDemodulator
     this.lastDiagnosticsUpdate = 0;
     this.diagnosticsUpdateInterval = 500; // Update diagnostics every 500ms
     this.previousSyncLocked = false;
+    this.startupMessageSent = false;
   }
 
   protected onInitialize(): void {
@@ -574,21 +576,18 @@ export class ATSC8VSBDemodulator
         });
       } else if (!this.syncLocked && this.segmentSyncCount === 0) {
         // Still searching for initial lock (only emit once at startup)
-        if (this.lastSyncPosition === -1 && !this.previousSyncLocked) {
+        if (!this.startupMessageSent) {
           store.addDiagnosticEvent({
             source: "demodulator",
             severity: "info",
             message: "Searching for sync lock...",
           });
-          // Mark that we've emitted this message by setting a flag
-          this.previousSyncLocked = true; // Reuse as "startup message sent" flag
+          this.startupMessageSent = true;
         }
       }
 
       // Update previous state for next comparison
-      if (this.syncLocked !== this.previousSyncLocked) {
-        this.previousSyncLocked = this.syncLocked;
-      }
+      this.previousSyncLocked = this.syncLocked;
     } catch (_error) {
       // Silently fail if store is not available
       // This can happen during testing or if component is used standalone

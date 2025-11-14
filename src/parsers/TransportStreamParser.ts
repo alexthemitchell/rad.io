@@ -1459,9 +1459,10 @@ export class TransportStreamParser {
       });
 
       // Add diagnostic events for new errors only (track deltas)
+      // Use consistent threshold: report if significant new errors occur
       const newContinuityErrors =
         this.continuityErrors - this.lastContinuityErrors;
-      if (newContinuityErrors > 0) {
+      if (newContinuityErrors > 5) {
         store.addDiagnosticEvent({
           source: "ts-parser",
           severity: "warning",
