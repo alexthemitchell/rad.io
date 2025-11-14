@@ -161,9 +161,16 @@ export interface CEA708DecoderMetrics {
 export class CEA708Decoder {
   // Constants
   private static readonly DTVCC_PACKET_START = 0x03;
+  // Reserved for future use
+  // private static readonly MAX_SERVICE_COUNT = 6;
+  // private static readonly MAX_WINDOW_COUNT = 8;
 
   // State
   private state: CEA708DecoderState = "unconfigured";
+  // Config is stored but currently not used for runtime behavior
+  // Future enhancement: use for dynamic configuration
+  // @ts-expect-error - Reserved for future use
+  private config: CaptionDecoderConfig = {};
 
   // Service data
   private services: Map<CaptionService, DecodedCaption> = new Map<
@@ -185,6 +192,10 @@ export class CEA708Decoder {
     availableServices: [],
   };
 
+  // Buffer for partial data (reserved for future streaming support)
+  // @ts-expect-error - Reserved for future use
+  private userDataBuffer: Uint8Array = new Uint8Array(0);
+
   /**
    * Create a new CEA-708 decoder
    */
@@ -199,9 +210,10 @@ export class CEA708Decoder {
   /**
    * Initialize the decoder with configuration
    */
-  public initialize(_config: CaptionDecoderConfig): void {
+  public initialize(config: CaptionDecoderConfig): void {
+    this.config = { ...config };
     this.state = "configured";
-    this.currentService = _config.preferredService ?? 1;
+    this.currentService = config.preferredService ?? 1;
     this.metrics.currentService = this.currentService;
   }
 
@@ -268,11 +280,11 @@ export class CEA708Decoder {
           userData.push(...seiData);
         }
         // User data start code (MPEG-2: 0x000001B2)
-        else if ((payload[i + 4] ?? 0) === 0xb2) {
+        else if (payload[i + 4] === 0xb2 && i < payload.length - 5) {
           // Extract until next start code
           let end = i + 5;
           while (
-            end < payload.length - 3 &&
+            end + 2 < payload.length &&
             !(
               payload[end] === 0x00 &&
               payload[end + 1] === 0x00 &&
@@ -381,16 +393,14 @@ export class CEA708Decoder {
     }
 
     const header = data[offset];
-    if (header === undefined) {
-      return null;
-    }
-    const serviceNumber = ((header >> 5) & 0x07) as CaptionService;
-    const blockSize = header & 0x1f;
+    const serviceNumberRaw = ((header ?? 0) >> 5) & 0x07;
+    const blockSize = (header ?? 0) & 0x1f;
 
     // Service number must be 1-6
-    if (serviceNumber < 1 || serviceNumber > 6) {
+    if (serviceNumberRaw < 1 || serviceNumberRaw > 6) {
       return null;
     }
+    const serviceNumber = serviceNumberRaw as CaptionService;
 
     if (offset + 1 + blockSize > data.length) {
       return null;
@@ -546,7 +556,7 @@ export class CEA708Decoder {
         if (offset + 1 < data.length) {
           const windowBitmap = data[offset + 1];
           for (let i = 0; i < 8; i++) {
-            if (windowBitmap && windowBitmap & (1 << i)) {
+            if (windowBitmap !== undefined && windowBitmap & (1 << i)) {
               // Clear window i
               // eslint-disable-next-line no-param-reassign
               service.text = [];
@@ -564,9 +574,9 @@ export class CEA708Decoder {
 
       case 0x8c: // DLW (Delete Windows)
         if (offset + 1 < data.length) {
-          const windowBitmap = data[offset + 1] ?? 0;
+          const windowBitmap = data[offset + 1];
           for (let i = 0; i < 8; i++) {
-            if (windowBitmap & (1 << i)) {
+            if (windowBitmap !== undefined && windowBitmap & (1 << i)) {
               service.windows.delete(i);
             }
           }
@@ -752,6 +762,7 @@ export class CEA708Decoder {
       currentService: this.currentService,
       availableServices: [],
     };
+    this.userDataBuffer = new Uint8Array(0);
     this.state = "configured";
   }
 

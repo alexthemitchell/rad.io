@@ -273,7 +273,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
         enabled: closedCaptionsEnabledRef.current,
       });
     }
-  }, []); // No dependencies needed since we use refs
+  }, []); // No dependencies needed: decoder/renderer setup uses refs; the nested callback uses closedCaptionsEnabledRef
 
   /**
    * Extract PTS from PES packet header
@@ -736,6 +736,9 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
     setClosedCaptionsEnabled((prev) => {
       const newValue = !prev;
 
+      // Update ref immediately to prevent race condition
+      closedCaptionsEnabledRef.current = newValue;
+
       // Clear captions when disabling
       if (!newValue && captionRendererRef.current) {
         captionRendererRef.current.clear();
@@ -794,6 +797,9 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       captionRendererRef.current.destroy();
       captionRendererRef.current = null;
     }
+
+    // Reset closed captions enabled ref
+    closedCaptionsEnabledRef.current = false;
 
     // Cleanup audio decoder
     if (audioDecoderRef.current) {

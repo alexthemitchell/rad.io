@@ -17,7 +17,7 @@ describe("CEA708Decoder", () => {
         captionOutput = caption;
       },
       (_error) => {
-        // Error callback - parameter prefixed with _ to mark as intentionally unused
+        // Error callback - errors are logged but not captured in tests
       },
     );
   });
@@ -410,6 +410,9 @@ function createCaptionData(service: CaptionService, text: string): number[] {
   // Service block header
   // Block size = 1 (CW command) + text length
   const blockSize = 1 + text.length;
+  if (blockSize > 31) {
+    throw new Error(`Block size ${blockSize} exceeds maximum of 31 bytes`);
+  }
   const serviceHeader = ((service & 0x07) << 5) | (blockSize & 0x1f);
   data.push(serviceHeader);
 

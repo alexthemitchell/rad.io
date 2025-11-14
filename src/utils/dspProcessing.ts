@@ -1,26 +1,24 @@
-import { calculateSignalStrength, calculateFFTSync } from "./dsp";
 import {
-  isWasmAvailable,
-  applyHannWindowWasm,
-  applyHammingWindowWasm,
-  applyBlackmanWindowWasm,
-  removeDCOffsetStaticWasm,
-  removeDCOffsetIIRWasm,
-} from "./dspWasm";
-import type { Sample } from "./dsp";
+  applyHannWindow as unifiedApplyHannWindow,
+  applyHammingWindow as unifiedApplyHammingWindow,
+  applyBlackmanWindow as unifiedApplyBlackmanWindow,
+  applyKaiserWindow as unifiedApplyKaiserWindow,
+  applyWindow as unifiedApplyWindow,
+  removeDCOffsetStatic as unifiedRemoveDCOffsetStatic,
+  removeDCOffsetIIR as unifiedRemoveDCOffsetIIR,
+  removeDCOffsetCombined as unifiedRemoveDCOffsetCombined,
+  applyAGC as unifiedApplyAGC,
+  type WindowFunction,
+  type DCCorrectionMode,
+  type Sample,
+} from "../lib/dsp";
+import { calculateSignalStrength, calculateFFTSync } from "./dsp";
 import type { ISDRDevice } from "../models/SDRDevice";
 
-// Threshold constants (avoid magic numbers)
-const DC_OFFSET_THRESHOLD = 1e-3; // Minimum absolute DC component to correct
+// Threshold constants (maintained for backward compatibility in processIQSampling)
 const MIN_RMS_THRESHOLD = 1e-10; // Avoid divide-by-zero/instability
 const GAIN_ERROR_THRESHOLD = 1e-2; // Minimum gain error to warrant correction
 const PHASE_ERROR_THRESHOLD = 1e-2; // Minimum phase error (radians) to warrant correction
-
-/**
- * DC Correction Algorithm Selection
- * Determines which DC offset removal algorithm to use
- */
-export type DCCorrectionMode = "none" | "static" | "iir" | "combined";
 
 /**
  * IIR DC Blocker State
@@ -34,166 +32,70 @@ export interface DCBlockerState {
 }
 
 /**
- * Windowing Functions for DSP
- * Used to reduce spectral leakage in FFT analysis
- */
-
-/**
- * Window function type
- */
-export type WindowFunction =
-  | "rectangular"
-  | "hann"
-  | "hamming"
-  | "blackman"
-  | "kaiser";
-
-/**
  * Apply Hann window (cosine-based, smooth roll-off)
  * Hann window: w(n) = 0.5 * (1 - cos(2π*n/(N-1)))
+ *
+ * @deprecated Use applyWindow(samples, "hann") from @/lib/dsp instead
+ * @see {@link unifiedApplyWindow}
  */
 export function applyHannWindow(samples: Sample[]): Sample[] {
-  const N = samples.length;
-  const windowed: Sample[] = [];
-  for (let n = 0; n < N; n++) {
-    const sample = samples[n];
-    if (sample) {
-      const w = 0.5 * (1 - Math.cos((2 * Math.PI * n) / (N - 1)));
-      windowed.push({ I: sample.I * w, Q: sample.Q * w });
-    }
-  }
-  return windowed;
+  return unifiedApplyHannWindow(samples);
 }
 
 /**
  * Apply Hamming window (cosine-based, slightly narrower main lobe)
  * Hamming window: w(n) = 0.54 - 0.46 * cos(2π*n/(N-1))
+ *
+ * @deprecated Use applyWindow(samples, "hamming") from @/lib/dsp instead
+ * @see {@link unifiedApplyWindow}
  */
 export function applyHammingWindow(samples: Sample[]): Sample[] {
-  const N = samples.length;
-  const windowed: Sample[] = [];
-  for (let n = 0; n < N; n++) {
-    const sample = samples[n];
-    if (sample) {
-      const w = 0.54 - 0.46 * Math.cos((2 * Math.PI * n) / (N - 1));
-      windowed.push({ I: sample.I * w, Q: sample.Q * w });
-    }
-  }
-  return windowed;
+  return unifiedApplyHammingWindow(samples);
 }
 
 /**
  * Apply Blackman window (three-term cosine, better sidelobe suppression)
  * Blackman window: w(n) = 0.42 - 0.5 * cos(2π*n/(N-1)) + 0.08 * cos(4π*n/(N-1))
+ *
+ * @deprecated Use applyWindow(samples, "blackman") from @/lib/dsp instead
+ * @see {@link unifiedApplyWindow}
  */
 export function applyBlackmanWindow(samples: Sample[]): Sample[] {
-  const N = samples.length;
-  const windowed: Sample[] = [];
-  for (let n = 0; n < N; n++) {
-    const sample = samples[n];
-    if (sample) {
-      const w =
-        0.42 -
-        0.5 * Math.cos((2 * Math.PI * n) / (N - 1)) +
-        0.08 * Math.cos((4 * Math.PI * n) / (N - 1));
-      windowed.push({ I: sample.I * w, Q: sample.Q * w });
-    }
-  }
-  return windowed;
+  return unifiedApplyBlackmanWindow(samples);
 }
 
 /**
  * Apply Kaiser window (adjustable sidelobe level)
  * Simplified Kaiser window with beta=5 for general purpose use
+ *
+ * @deprecated Use applyWindow(samples, "kaiser") or applyKaiserWindow(samples, beta) from @/lib/dsp instead
+ * @see {@link unifiedApplyWindow}
  */
 export function applyKaiserWindow(samples: Sample[], beta = 5): Sample[] {
-  const N = samples.length;
-  const windowed: Sample[] = [];
-
-  // Modified Bessel function of the first kind (I0)
-  const besselI0 = (x: number): number => {
-    let sum = 1;
-    let term = 1;
-    for (let k = 1; k < 50; k++) {
-      term *= (x * x) / (4 * k * k);
-      sum += term;
-      if (term < 1e-10) {
-        break;
-      }
-    }
-    return sum;
-  };
-
-  const denominator = besselI0(beta);
-
-  for (let n = 0; n < N; n++) {
-    const alpha = (N - 1) / 2;
-    const sample = samples[n];
-    if (sample) {
-      const arg = beta * Math.sqrt(1 - Math.pow((n - alpha) / alpha, 2));
-      const w = besselI0(arg) / denominator;
-      windowed.push({ I: sample.I * w, Q: sample.Q * w });
-    }
-  }
-  return windowed;
+  return unifiedApplyKaiserWindow(samples, beta);
 }
 
 /**
  * Apply specified window function to samples
  * Uses WASM acceleration when available for better performance
+ *
+ * @deprecated Use applyWindow from @/lib/dsp instead
+ * @see {@link unifiedApplyWindow}
  */
 export function applyWindow(
   samples: Sample[],
   windowType: WindowFunction,
   useWasm = true,
 ): Sample[] {
-  // Try WASM first if requested and available
-  if (useWasm && isWasmAvailable()) {
-    // Make a copy to avoid modifying original
-    const copy = samples.map((s) => ({ I: s.I, Q: s.Q }));
-    let success = false;
-
-    switch (windowType) {
-      case "hann":
-        success = applyHannWindowWasm(copy);
-        break;
-      case "hamming":
-        success = applyHammingWindowWasm(copy);
-        break;
-      case "blackman":
-        success = applyBlackmanWindowWasm(copy);
-        break;
-      case "rectangular":
-      case "kaiser":
-        // Not available in WASM, will use JS fallback
-        break;
-    }
-
-    if (success) {
-      return copy;
-    }
-    // Fall through to JavaScript implementation if WASM fails
-  }
-
-  // JavaScript fallback
-  switch (windowType) {
-    case "hann":
-      return applyHannWindow(samples);
-    case "hamming":
-      return applyHammingWindow(samples);
-    case "blackman":
-      return applyBlackmanWindow(samples);
-    case "kaiser":
-      return applyKaiserWindow(samples);
-    case "rectangular":
-    default:
-      return samples; // No windowing
-  }
+  return unifiedApplyWindow(samples, windowType, useWasm);
 }
 
 /**
  * Automatic Gain Control (AGC)
  * Adjusts signal amplitude to maintain consistent output level
+ *
+ * @deprecated Use applyAGC from @/lib/dsp instead
+ * @see {@link unifiedApplyAGC}
  */
 export function applyAGC(
   samples: Sample[],
@@ -201,37 +103,11 @@ export function applyAGC(
   attackRate = 0.01,
   releaseRate = 0.001,
 ): Sample[] {
-  if (samples.length === 0) {
-    return samples;
-  }
-
-  const output: Sample[] = [];
-  let gain = 1.0;
-
-  for (const sample of samples) {
-    // Calculate sample magnitude
-    const sampleMagnitude = Math.sqrt(
-      sample.I * sample.I + sample.Q * sample.Q,
-    );
-
-    // Adjust gain based on difference from target
-    const error = targetLevel - sampleMagnitude * gain;
-    const rate = error > 0 ? releaseRate : attackRate;
-    gain += error * rate;
-
-    // Clamp gain to reasonable limits
-    const minGain = 0.01;
-    const maxGain = 10.0;
-    gain = Math.max(minGain, Math.min(maxGain, gain));
-
-    // Apply gain
-    output.push({
-      I: sample.I * gain,
-      Q: sample.Q * gain,
-    });
-  }
-
-  return output;
+  return unifiedApplyAGC(samples, {
+    targetLevel,
+    attackRate,
+    releaseRate,
+  });
 }
 
 /**
@@ -344,50 +220,15 @@ export function applyScaling(
  * - Low computational cost: O(n)
  * - Does not track time-varying DC offset
  * - WASM acceleration provides 2-4x speedup on large blocks
+ *
+ * @deprecated Use removeDCOffset(samples, "static") from @/lib/dsp instead
+ * @see {@link unifiedRemoveDCOffsetStatic}
  */
 export function removeDCOffsetStatic(
   samples: Sample[],
   useWasm = true,
 ): Sample[] {
-  if (samples.length === 0) {
-    return samples;
-  }
-
-  // Try WASM acceleration first
-  if (useWasm && isWasmAvailable()) {
-    // Make a copy to avoid modifying original
-    const copy = samples.map((s) => ({ I: s.I, Q: s.Q }));
-    if (removeDCOffsetStaticWasm(copy)) {
-      return copy;
-    }
-    // Fall through to JavaScript implementation if WASM fails
-  }
-
-  // JavaScript implementation
-  // Calculate DC offset (mean of I and Q)
-  let sumI = 0;
-  let sumQ = 0;
-  for (const sample of samples) {
-    sumI += sample.I;
-    sumQ += sample.Q;
-  }
-  const dcOffsetI = sumI / samples.length;
-  const dcOffsetQ = sumQ / samples.length;
-
-  // Only apply correction if DC offset is significant
-  if (
-    Math.abs(dcOffsetI) < DC_OFFSET_THRESHOLD &&
-    Math.abs(dcOffsetQ) < DC_OFFSET_THRESHOLD
-  ) {
-    // Return copy for consistent behavior with WASM path
-    return samples.map((s) => ({ I: s.I, Q: s.Q }));
-  }
-
-  // Remove DC offset (always returns new array)
-  return samples.map((sample) => ({
-    I: sample.I - dcOffsetI,
-    Q: sample.Q - dcOffsetQ,
-  }));
+  return unifiedRemoveDCOffsetStatic(samples, useWasm);
 }
 
 /**
@@ -415,6 +256,9 @@ export function removeDCOffsetStatic(
  * - Introduces minimal group delay (~1/fc)
  * - WASM acceleration provides significant speedup for large blocks
  *
+ * @deprecated Use removeDCOffset(samples, "iir", state) from @/lib/dsp instead
+ * @see {@link unifiedRemoveDCOffsetIIR}
+ *
  * @example
  * ```typescript
  * const state = { prevInputI: 0, prevInputQ: 0, prevOutputI: 0, prevOutputQ: 0 };
@@ -428,45 +272,7 @@ export function removeDCOffsetIIR(
   alpha = 0.99,
   useWasm = true,
 ): Sample[] {
-  if (samples.length === 0) {
-    return samples;
-  }
-
-  // Try WASM acceleration first
-  if (useWasm && isWasmAvailable()) {
-    // Make a copy to avoid modifying original
-    const copy = samples.map((s) => ({ I: s.I, Q: s.Q }));
-    if (removeDCOffsetIIRWasm(copy, state, alpha)) {
-      return copy;
-    }
-    // Fall through to JavaScript implementation if WASM fails
-  }
-
-  // JavaScript implementation
-  const output: Sample[] = [];
-  let { prevInputI, prevInputQ, prevOutputI, prevOutputQ } = state;
-
-  // IIR DC blocker: y[n] = x[n] - x[n-1] + α*y[n-1]
-  // This is a high-pass filter that removes DC component
-  for (const sample of samples) {
-    const outputI = sample.I - prevInputI + alpha * prevOutputI;
-    const outputQ = sample.Q - prevInputQ + alpha * prevOutputQ;
-
-    output.push({ I: outputI, Q: outputQ });
-
-    prevInputI = sample.I;
-    prevInputQ = sample.Q;
-    prevOutputI = outputI;
-    prevOutputQ = outputQ;
-  }
-
-  // Update state for next call
-  state.prevInputI = prevInputI;
-  state.prevInputQ = prevInputQ;
-  state.prevOutputI = prevOutputI;
-  state.prevOutputQ = prevOutputQ;
-
-  return output;
+  return unifiedRemoveDCOffsetIIR(samples, state, alpha, useWasm);
 }
 
 /**
@@ -488,6 +294,9 @@ export function removeDCOffsetIIR(
  * - Stage 2 (IIR): Handles residual and time-varying DC
  * - Provides best performance for real-world SDR signals
  * - WASM acceleration provides 2-4x overall speedup
+ *
+ * @deprecated Use removeDCOffset(samples, "combined", state) from @/lib/dsp instead
+ * @see {@link unifiedRemoveDCOffsetCombined}
  */
 export function removeDCOffsetCombined(
   samples: Sample[],
@@ -495,11 +304,7 @@ export function removeDCOffsetCombined(
   alpha = 0.99,
   useWasm = true,
 ): Sample[] {
-  // First pass: remove static DC offset
-  const staticCorrected = removeDCOffsetStatic(samples, useWasm);
-
-  // Second pass: apply IIR DC blocker for time-varying offset
-  return removeDCOffsetIIR(staticCorrected, state, alpha, useWasm);
+  return unifiedRemoveDCOffsetCombined(samples, state, alpha, useWasm);
 }
 
 export function processRFInput(
@@ -605,24 +410,24 @@ export function processIQSampling(
 
     switch (mode) {
       case "static":
-        output = removeDCOffsetStatic(output);
+        output = unifiedRemoveDCOffsetStatic(output);
         break;
 
       case "iir":
         if (params.dcBlockerState) {
-          output = removeDCOffsetIIR(output, params.dcBlockerState);
+          output = unifiedRemoveDCOffsetIIR(output, params.dcBlockerState);
         } else {
           // Fallback to static if no state provided
-          output = removeDCOffsetStatic(output);
+          output = unifiedRemoveDCOffsetStatic(output);
         }
         break;
 
       case "combined":
         if (params.dcBlockerState) {
-          output = removeDCOffsetCombined(output, params.dcBlockerState);
+          output = unifiedRemoveDCOffsetCombined(output, params.dcBlockerState);
         } else {
           // Fallback to static if no state provided
-          output = removeDCOffsetStatic(output);
+          output = unifiedRemoveDCOffsetStatic(output);
         }
         break;
 
@@ -725,8 +530,8 @@ export function processFFT(
   // Take first fftSize samples
   const chunk = samples.slice(0, params.fftSize);
 
-  // Apply windowing
-  const windowed = applyWindow(chunk, params.window);
+  // Apply windowing using unified DSP layer
+  const windowed = unifiedApplyWindow(chunk, params.window);
 
   // Calculate FFT
   const fftResult = calculateFFTSync(windowed, params.fftSize);
@@ -877,18 +682,18 @@ export function createVisualizationPipeline(config: {
     });
   }
 
-  // Optional AGC
+  // Optional AGC using unified DSP layer
   if (config.agcEnabled) {
     pipeline.push({
       name: "agc",
-      fn: (data) => applyAGC(data as Sample[]),
+      fn: (data) => unifiedApplyAGC(data as Sample[]),
     });
   }
 
-  // Windowing
+  // Windowing using unified DSP layer
   pipeline.push({
     name: "windowing",
-    fn: (data) => applyWindow(data as Sample[], config.windowType),
+    fn: (data) => unifiedApplyWindow(data as Sample[], config.windowType),
   });
 
   // FFT

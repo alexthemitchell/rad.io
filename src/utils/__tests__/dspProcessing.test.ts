@@ -15,8 +15,8 @@ import {
   processFFT,
   composePipeline,
   createVisualizationPipeline,
-  type WindowFunction,
 } from "../dspProcessing";
+import type { WindowFunction } from "../../lib/dsp";
 import type { Sample } from "../dsp";
 
 /**

@@ -1,5 +1,5 @@
+import { applyWindow, type WindowFunction } from "../../lib/dsp";
 import { calculateFFTSync } from "../../utils/dsp";
-import { applyWindow, type WindowFunction } from "../../utils/dspProcessing";
 import type { Sample } from "../../utils/dsp";
 import type { FrameProcessor, FrameProcessorConfig } from "../interfaces";
 
