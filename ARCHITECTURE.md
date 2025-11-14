@@ -54,14 +54,14 @@ src/
 │ └── **tests**/ # Device tests
 ├── lib/ # Core libraries
 │ └── dsp/ # Unified DSP primitives layer
-│   ├── index.ts # Public API exports
-│   ├── primitives.ts # Window, DC correction, AGC
-│   ├── fft.ts # FFT operations
-│   ├── filters.ts # Digital filters
-│   ├── analysis.ts # Spectrum analysis
-│   ├── conversions.ts # Format conversions
-│   ├── types.ts # Shared DSP types
-│   └── **tests**/ # DSP primitive tests
+│ ├── index.ts # Public API exports
+│ ├── primitives.ts # Window, DC correction, AGC
+│ ├── fft.ts # FFT operations
+│ ├── filters.ts # Digital filters
+│ ├── analysis.ts # Spectrum analysis
+│ ├── conversions.ts # Format conversions
+│ ├── types.ts # Shared DSP types
+│ └── **tests**/ # DSP primitive tests
 ├── plugins/ # Extensible plugin system
 │ ├── demodulators/ # Signal demodulators
 │ │ ├── ATSC8VSBDemodulator.ts # ATSC 8-VSB
@@ -85,8 +85,8 @@ src/
 ├── pages/ # Top-level pages
 │ └── Visualizer.tsx # Main application
 └── workers/ # Web Workers
-  └── visualization.worker.ts
-  
+└── visualization.worker.ts
+
 assembly/ # WebAssembly implementations
 └── dsp.ts # WASM DSP primitives (SIMD-optimized)
 \`\`\`
@@ -99,29 +99,29 @@ rad.io employs a **unified DSP primitives layer** that consolidates core signal 
 
 \`\`\`
 ┌─────────────────────────────────────────────────────────┐
-│              Application Layer                          │
-│  • Demodulators (AM, FM, SSB, ATSC 8-VSB)              │
-│  • Visualizations (Spectrum, Waterfall, IQ)            │
-│  • Analysis Plugins (Signal Detection, Metrics)        │
+│ Application Layer │
+│ • Demodulators (AM, FM, SSB, ATSC 8-VSB) │
+│ • Visualizations (Spectrum, Waterfall, IQ) │
+│ • Analysis Plugins (Signal Detection, Metrics) │
 └─────────────────────────────────────────────────────────┘
-                           │
-                           ↓
+│
+↓
 ┌─────────────────────────────────────────────────────────┐
-│         Unified DSP Primitives Layer                    │
-│  src/lib/dsp/                                           │
-│  ├── primitives.ts  (windowing, DC correction, AGC)    │
-│  ├── fft.ts        (FFT, IFFT, spectrum analysis)      │
-│  ├── filters.ts    (FIR, IIR, resampling)              │
-│  └── conversions.ts (Sample[] ↔ Float32Array)          │
+│ Unified DSP Primitives Layer │
+│ src/lib/dsp/ │
+│ ├── primitives.ts (windowing, DC correction, AGC) │
+│ ├── fft.ts (FFT, IFFT, spectrum analysis) │
+│ ├── filters.ts (FIR, IIR, resampling) │
+│ └── conversions.ts (Sample[] ↔ Float32Array) │
 └─────────────────────────────────────────────────────────┘
-                           │
-              ┌────────────┴────────────┐
-              ↓                         ↓
-┌──────────────────────┐   ┌──────────────────────┐
-│   TypeScript/JS      │   │   WASM (assembly/)   │
-│   Reference Impl.    │   │   SIMD-optimized     │
-│   (Fallback)         │   │   (Primary)          │
-└──────────────────────┘   └──────────────────────┘
+│
+┌────────────┴────────────┐
+↓ ↓
+┌──────────────────────┐ ┌──────────────────────┐
+│ TypeScript/JS │ │ WASM (assembly/) │
+│ Reference Impl. │ │ SIMD-optimized │
+│ (Fallback) │ │ (Primary) │
+└──────────────────────┘ └──────────────────────┘
 \`\`\`
 
 ### Shared vs. Module-Specific DSP Logic
@@ -150,13 +150,13 @@ rad.io employs a **unified DSP primitives layer** that consolidates core signal 
 
 All shared primitives support both JavaScript fallback and WASM/SIMD acceleration:
 
-| Operation | Size | JS Performance | WASM Performance | Speedup |
-|-----------|------|----------------|------------------|---------|
-| FFT | 2048 pts | ~2ms | ~0.5ms | 4x |
-| FFT | 8192 pts | ~8ms | ~2ms | 4x |
-| DC Static | 1024 samples | ~0.3ms | ~0.1ms | 3x |
-| DC IIR | 1024 samples | ~0.5ms | ~0.2ms | 2.5x |
-| Hann Window | 1024 samples | ~0.2ms | ~0.05ms | 4x |
+| Operation   | Size         | JS Performance | WASM Performance | Speedup |
+| ----------- | ------------ | -------------- | ---------------- | ------- |
+| FFT         | 2048 pts     | ~2ms           | ~0.5ms           | 4x      |
+| FFT         | 8192 pts     | ~8ms           | ~2ms             | 4x      |
+| DC Static   | 1024 samples | ~0.3ms         | ~0.1ms           | 3x      |
+| DC IIR      | 1024 samples | ~0.5ms         | ~0.2ms           | 2.5x    |
+| Hann Window | 1024 samples | ~0.2ms         | ~0.05ms          | 4x      |
 
 See **ADR-0026: Unified DSP Primitives Architecture** for detailed design decisions.
 

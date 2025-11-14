@@ -178,7 +178,12 @@ Chosen option: **"Option 1: Unified DSP Primitives Layer"** because it provides 
 /**
  * Window function types supported by the DSP library
  */
-export type WindowFunction = "rectangular" | "hann" | "hamming" | "blackman" | "kaiser";
+export type WindowFunction =
+  | "rectangular"
+  | "hann"
+  | "hamming"
+  | "blackman"
+  | "kaiser";
 
 /**
  * DC correction algorithm modes
@@ -192,14 +197,14 @@ export type DCCorrectionMode = "none" | "static" | "iir" | "combined";
 export function applyWindow(
   samples: Sample[],
   windowType: WindowFunction,
-  useWasm?: boolean
+  useWasm?: boolean,
 ): Sample[];
 
 export function applyWindow(
   iSamples: Float32Array,
   qSamples: Float32Array,
   windowType: WindowFunction,
-  useWasm?: boolean
+  useWasm?: boolean,
 ): void;
 
 /**
@@ -209,7 +214,7 @@ export function removeDCOffset(
   samples: Sample[],
   mode: DCCorrectionMode,
   state?: DCBlockerState,
-  useWasm?: boolean
+  useWasm?: boolean,
 ): Sample[];
 
 export function removeDCOffset(
@@ -217,7 +222,7 @@ export function removeDCOffset(
   qSamples: Float32Array,
   mode: DCCorrectionMode,
   state?: DCBlockerState,
-  useWasm?: boolean
+  useWasm?: boolean,
 ): void;
 
 /**
@@ -227,7 +232,7 @@ export function applyAGC(
   samples: Sample[],
   targetLevel?: number,
   attackRate?: number,
-  releaseRate?: number
+  releaseRate?: number,
 ): Sample[];
 ```
 

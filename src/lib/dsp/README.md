@@ -109,42 +109,42 @@ const normalized = applyAGC(samples, params);
 
 ### Window Functions
 
-| Function | Sidelobe Level | Main Lobe Width | Use Case |
-|----------|---------------|-----------------|----------|
-| Hann | -31 dB | 4 bins | General purpose spectrum analysis |
-| Hamming | -43 dB | 4 bins | Better sidelobe suppression |
-| Blackman | -58 dB | 6 bins | Weak signal detection |
-| Kaiser | Variable | Variable | Adjustable trade-off (beta parameter) |
-| Rectangular | 0 dB | 2 bins | No windowing (maximum leakage) |
+| Function    | Sidelobe Level | Main Lobe Width | Use Case                              |
+| ----------- | -------------- | --------------- | ------------------------------------- |
+| Hann        | -31 dB         | 4 bins          | General purpose spectrum analysis     |
+| Hamming     | -43 dB         | 4 bins          | Better sidelobe suppression           |
+| Blackman    | -58 dB         | 6 bins          | Weak signal detection                 |
+| Kaiser      | Variable       | Variable        | Adjustable trade-off (beta parameter) |
+| Rectangular | 0 dB           | 2 bins          | No windowing (maximum leakage)        |
 
 ### DC Correction Modes
 
-| Mode | Complexity | Tracks Varying DC | Use Case |
-|------|-----------|-------------------|----------|
-| static | O(n) | No | Large blocks with stable DC offset |
-| iir | O(n) | Yes | Time-varying DC offset |
-| combined | O(n) | Yes | Best quality (static + IIR) |
-| none | O(1) | N/A | No correction needed |
+| Mode     | Complexity | Tracks Varying DC | Use Case                           |
+| -------- | ---------- | ----------------- | ---------------------------------- |
+| static   | O(n)       | No                | Large blocks with stable DC offset |
+| iir      | O(n)       | Yes               | Time-varying DC offset             |
+| combined | O(n)       | Yes               | Best quality (static + IIR)        |
+| none     | O(1)       | N/A               | No correction needed               |
 
 ### AGC Parameters
 
-| Parameter | Default | Range | Description |
-|-----------|---------|-------|-------------|
-| targetLevel | 0.7 | 0-1 | Desired output amplitude |
-| attackRate | 0.01 | 0-1 | Rate of gain reduction |
-| releaseRate | 0.001 | 0-1 | Rate of gain increase |
-| minGain | 0.01 | >0 | Minimum allowed gain |
-| maxGain | 10.0 | >0 | Maximum allowed gain |
+| Parameter   | Default | Range | Description              |
+| ----------- | ------- | ----- | ------------------------ |
+| targetLevel | 0.7     | 0-1   | Desired output amplitude |
+| attackRate  | 0.01    | 0-1   | Rate of gain reduction   |
+| releaseRate | 0.001   | 0-1   | Rate of gain increase    |
+| minGain     | 0.01    | >0    | Minimum allowed gain     |
+| maxGain     | 10.0    | >0    | Maximum allowed gain     |
 
 ## Performance
 
 All primitives support both JavaScript and WASM implementations:
 
-| Operation | Size | JS Performance | WASM Performance | Speedup |
-|-----------|------|----------------|------------------|---------|
-| Hann Window | 1024 samples | ~0.2ms | ~0.05ms | 4x |
-| DC Static | 1024 samples | ~0.3ms | ~0.1ms | 3x |
-| DC IIR | 1024 samples | ~0.5ms | ~0.2ms | 2.5x |
+| Operation   | Size         | JS Performance | WASM Performance | Speedup |
+| ----------- | ------------ | -------------- | ---------------- | ------- |
+| Hann Window | 1024 samples | ~0.2ms         | ~0.05ms          | 4x      |
+| DC Static   | 1024 samples | ~0.3ms         | ~0.1ms           | 3x      |
+| DC IIR      | 1024 samples | ~0.5ms         | ~0.2ms           | 2.5x    |
 
 WASM acceleration is automatically enabled when available. To disable:
 

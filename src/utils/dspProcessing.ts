@@ -1,8 +1,5 @@
-import { calculateSignalStrength, calculateFFTSync } from "./dsp";
-import type { Sample } from "./dsp";
 import type { ISDRDevice } from "../models/SDRDevice";
-
-// Import from unified DSP layer for re-export
+import { calculateSignalStrength, calculateFFTSync } from "./dsp";
 import {
   applyHannWindow as unifiedApplyHannWindow,
   applyHammingWindow as unifiedApplyHammingWindow,
@@ -13,6 +10,7 @@ import {
   removeDCOffsetIIR as unifiedRemoveDCOffsetIIR,
   removeDCOffsetCombined as unifiedRemoveDCOffsetCombined,
   applyAGC as unifiedApplyAGC,
+  type Sample,
 } from "../lib/dsp";
 
 // Threshold constants (maintained for backward compatibility in processIQSampling)
@@ -46,6 +44,8 @@ export interface DCBlockerState {
 
 /**
  * Window function type
+ *
+ * @deprecated Use WindowFunction from @/lib/dsp instead
  */
 export type WindowFunction =
   | "rectangular"
@@ -91,7 +91,7 @@ export function applyBlackmanWindow(samples: Sample[]): Sample[] {
  * Apply Kaiser window (adjustable sidelobe level)
  * Simplified Kaiser window with beta=5 for general purpose use
  *
- * @deprecated Use applyWindow(samples, "kaiser", false) from @/lib/dsp instead
+ * @deprecated Use applyWindow(samples, "kaiser") or applyKaiserWindow(samples, beta) from @/lib/dsp instead
  * @see {@link unifiedApplyWindow}
  */
 export function applyKaiserWindow(samples: Sample[], beta = 5): Sample[] {
@@ -107,7 +107,7 @@ export function applyKaiserWindow(samples: Sample[], beta = 5): Sample[] {
  */
 export function applyWindow(
   samples: Sample[],
-  windowType: WindowFunction,
+  windowType: WindowFunction, // eslint-disable-line @typescript-eslint/no-deprecated
   useWasm = true,
 ): Sample[] {
   return unifiedApplyWindow(samples, windowType, useWasm);
@@ -418,7 +418,7 @@ export function processIQSampling(
   params: {
     sampleRate: number;
     dcCorrection: boolean;
-    dcCorrectionMode?: DCCorrectionMode;
+    dcCorrectionMode?: DCCorrectionMode; // eslint-disable-line @typescript-eslint/no-deprecated
     dcBlockerState?: DCBlockerState;
     iqBalance: boolean;
   },
@@ -433,23 +433,28 @@ export function processIQSampling(
 
     switch (mode) {
       case "static":
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
         output = removeDCOffsetStatic(output);
         break;
 
       case "iir":
         if (params.dcBlockerState) {
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
           output = removeDCOffsetIIR(output, params.dcBlockerState);
         } else {
           // Fallback to static if no state provided
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
           output = removeDCOffsetStatic(output);
         }
         break;
 
       case "combined":
         if (params.dcBlockerState) {
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
           output = removeDCOffsetCombined(output, params.dcBlockerState);
         } else {
           // Fallback to static if no state provided
+          // eslint-disable-next-line @typescript-eslint/no-deprecated
           output = removeDCOffsetStatic(output);
         }
         break;

@@ -440,10 +440,7 @@ export function removeDCOffset(
  * @param params - AGC parameters
  * @returns Gain-adjusted samples (new array)
  */
-export function applyAGC(
-  samples: Sample[],
-  params?: AGCParameters,
-): Sample[] {
+export function applyAGC(samples: Sample[], params?: AGCParameters): Sample[] {
   const targetLevel = params?.targetLevel ?? 0.7;
   const attackRate = params?.attackRate ?? 0.01;
   const releaseRate = params?.releaseRate ?? 0.001;
