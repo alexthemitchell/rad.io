@@ -1,5 +1,3 @@
-import type { ISDRDevice } from "../models/SDRDevice";
-import { calculateSignalStrength, calculateFFTSync } from "./dsp";
 import {
   applyHannWindow as unifiedApplyHannWindow,
   applyHammingWindow as unifiedApplyHammingWindow,
@@ -10,21 +8,17 @@ import {
   removeDCOffsetIIR as unifiedRemoveDCOffsetIIR,
   removeDCOffsetCombined as unifiedRemoveDCOffsetCombined,
   applyAGC as unifiedApplyAGC,
+  type WindowFunction,
+  type DCCorrectionMode,
   type Sample,
 } from "../lib/dsp";
+import { calculateSignalStrength, calculateFFTSync } from "./dsp";
+import type { ISDRDevice } from "../models/SDRDevice";
 
 // Threshold constants (maintained for backward compatibility in processIQSampling)
 const MIN_RMS_THRESHOLD = 1e-10; // Avoid divide-by-zero/instability
 const GAIN_ERROR_THRESHOLD = 1e-2; // Minimum gain error to warrant correction
 const PHASE_ERROR_THRESHOLD = 1e-2; // Minimum phase error (radians) to warrant correction
-
-/**
- * DC Correction Algorithm Selection
- * Determines which DC offset removal algorithm to use
- *
- * @deprecated Use DCCorrectionMode from @/lib/dsp instead
- */
-export type DCCorrectionMode = "none" | "static" | "iir" | "combined";
 
 /**
  * IIR DC Blocker State
@@ -36,23 +30,6 @@ export interface DCBlockerState {
   prevOutputI: number;
   prevOutputQ: number;
 }
-
-/**
- * Windowing Functions for DSP
- * Used to reduce spectral leakage in FFT analysis
- */
-
-/**
- * Window function type
- *
- * @deprecated Use WindowFunction from @/lib/dsp instead
- */
-export type WindowFunction =
-  | "rectangular"
-  | "hann"
-  | "hamming"
-  | "blackman"
-  | "kaiser";
 
 /**
  * Apply Hann window (cosine-based, smooth roll-off)
@@ -107,7 +84,7 @@ export function applyKaiserWindow(samples: Sample[], beta = 5): Sample[] {
  */
 export function applyWindow(
   samples: Sample[],
-  windowType: WindowFunction, // eslint-disable-line @typescript-eslint/no-deprecated
+  windowType: WindowFunction,
   useWasm = true,
 ): Sample[] {
   return unifiedApplyWindow(samples, windowType, useWasm);
@@ -418,7 +395,7 @@ export function processIQSampling(
   params: {
     sampleRate: number;
     dcCorrection: boolean;
-    dcCorrectionMode?: DCCorrectionMode; // eslint-disable-line @typescript-eslint/no-deprecated
+    dcCorrectionMode?: DCCorrectionMode;
     dcBlockerState?: DCBlockerState;
     iqBalance: boolean;
   },
@@ -433,29 +410,24 @@ export function processIQSampling(
 
     switch (mode) {
       case "static":
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        output = removeDCOffsetStatic(output);
+        output = unifiedRemoveDCOffsetStatic(output);
         break;
 
       case "iir":
         if (params.dcBlockerState) {
-          // eslint-disable-next-line @typescript-eslint/no-deprecated
-          output = removeDCOffsetIIR(output, params.dcBlockerState);
+          output = unifiedRemoveDCOffsetIIR(output, params.dcBlockerState);
         } else {
           // Fallback to static if no state provided
-          // eslint-disable-next-line @typescript-eslint/no-deprecated
-          output = removeDCOffsetStatic(output);
+          output = unifiedRemoveDCOffsetStatic(output);
         }
         break;
 
       case "combined":
         if (params.dcBlockerState) {
-          // eslint-disable-next-line @typescript-eslint/no-deprecated
-          output = removeDCOffsetCombined(output, params.dcBlockerState);
+          output = unifiedRemoveDCOffsetCombined(output, params.dcBlockerState);
         } else {
           // Fallback to static if no state provided
-          // eslint-disable-next-line @typescript-eslint/no-deprecated
-          output = removeDCOffsetStatic(output);
+          output = unifiedRemoveDCOffsetStatic(output);
         }
         break;
 
@@ -558,8 +530,8 @@ export function processFFT(
   // Take first fftSize samples
   const chunk = samples.slice(0, params.fftSize);
 
-  // Apply windowing
-  const windowed = applyWindow(chunk, params.window);
+  // Apply windowing using unified DSP layer
+  const windowed = unifiedApplyWindow(chunk, params.window);
 
   // Calculate FFT
   const fftResult = calculateFFTSync(windowed, params.fftSize);
@@ -710,18 +682,18 @@ export function createVisualizationPipeline(config: {
     });
   }
 
-  // Optional AGC
+  // Optional AGC using unified DSP layer
   if (config.agcEnabled) {
     pipeline.push({
       name: "agc",
-      fn: (data) => applyAGC(data as Sample[]),
+      fn: (data) => unifiedApplyAGC(data as Sample[]),
     });
   }
 
-  // Windowing
+  // Windowing using unified DSP layer
   pipeline.push({
     name: "windowing",
-    fn: (data) => applyWindow(data as Sample[], config.windowType),
+    fn: (data) => unifiedApplyWindow(data as Sample[], config.windowType),
   });
 
   // FFT

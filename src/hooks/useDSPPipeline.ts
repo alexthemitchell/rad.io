@@ -6,8 +6,8 @@ import {
   processFFT,
   processDemodulation,
   processAudioOutput,
-  type WindowFunction,
 } from "../utils/dspProcessing";
+import type { WindowFunction } from "../lib/dsp";
 import type { ISDRDevice } from "../models/SDRDevice";
 import type { Sample } from "../utils/dsp";
 
