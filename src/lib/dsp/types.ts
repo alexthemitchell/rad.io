@@ -99,17 +99,30 @@ export type FilterType = "lowpass" | "highpass" | "bandpass" | "bandstop";
 
 /**
  * Digital filter parameters
+ *
+ * Specifies the characteristics of a digital filter including type,
+ * cutoff frequencies, and filter order.
+ *
+ * @example
+ * ```typescript
+ * const params: FilterParameters = {
+ *   type: "lowpass",
+ *   cutoff: 1000,      // 1 kHz cutoff
+ *   sampleRate: 48000, // 48 kHz sample rate
+ *   order: 51          // 51-tap FIR filter
+ * };
+ * ```
  */
 export interface FilterParameters {
   /** Filter type */
   type: FilterType;
-  /** Cutoff frequency (Hz) or lower cutoff for bandpass/bandstop */
-  cutoffLow: number;
-  /** Upper cutoff frequency (Hz) for bandpass/bandstop */
-  cutoffHigh?: number;
-  /** Sample rate (Hz) */
+  /** Cutoff frequency (or lower cutoff for bandpass/bandstop) in Hz */
+  cutoff: number;
+  /** Upper cutoff frequency for bandpass/bandstop in Hz */
+  cutoff2?: number;
+  /** Sample rate in Hz */
   sampleRate: number;
-  /** Filter order (number of taps for FIR) */
+  /** Filter order (number of taps for FIR, poles for IIR) */
   order?: number;
 }
 

@@ -4,19 +4,21 @@
  */
 
 import {
-  applyHannWindow,
-  applyHammingWindow,
-  applyBlackmanWindow,
-  applyKaiserWindow,
-  applyWindow,
-  applyAGC,
   decimate,
   applyScaling,
   processFFT,
   composePipeline,
   createVisualizationPipeline,
 } from "../dspProcessing";
-import type { WindowFunction } from "../../lib/dsp";
+import {
+  applyHannWindow,
+  applyHammingWindow,
+  applyBlackmanWindow,
+  applyKaiserWindow,
+  applyWindow,
+  applyAGC,
+  type WindowFunction,
+} from "../../lib/dsp";
 import type { Sample } from "../dsp";
 
 /**
@@ -170,7 +172,11 @@ describe("Automatic Gain Control (AGC)", () => {
   it("should normalize signal amplitude", () => {
     const samples = generateTestSamples(5000, 0.1); // Low amplitude, longer signal
     const targetLevel = 0.7;
-    const agc = applyAGC(samples, targetLevel, 0.05, 0.005); // Faster rates
+    const agc = applyAGC(samples, {
+      targetLevel,
+      attackRate: 0.05,
+      releaseRate: 0.005,
+    }); // Faster rates
 
     // Calculate average magnitude after AGC stabilizes (last 20% of samples)
     const tailSamples = agc.slice(-1000);
@@ -196,7 +202,11 @@ describe("Automatic Gain Control (AGC)", () => {
       });
     }
 
-    const agc = applyAGC(samples, 0.7, 0.02, 0.002);
+    const agc = applyAGC(samples, {
+      targetLevel: 0.7,
+      attackRate: 0.02,
+      releaseRate: 0.002,
+    });
 
     // AGC should produce output with reasonable stability
     const tailSamples = agc.slice(-500);
@@ -230,10 +240,18 @@ describe("Automatic Gain Control (AGC)", () => {
     const samples = generateTestSamples(500, 1.0);
 
     // Fast attack, slow release
-    const fast = applyAGC(samples, 0.7, 0.1, 0.001);
+    const fast = applyAGC(samples, {
+      targetLevel: 0.7,
+      attackRate: 0.1,
+      releaseRate: 0.001,
+    });
 
     // Slow attack, fast release
-    const slow = applyAGC(samples, 0.7, 0.001, 0.1);
+    const slow = applyAGC(samples, {
+      targetLevel: 0.7,
+      attackRate: 0.001,
+      releaseRate: 0.1,
+    });
 
     // Results should differ based on rates
     const fastMag = magnitude(fast[10]!);
@@ -382,9 +400,7 @@ describe("processFFT", () => {
   it("should process FFT with windowing", () => {
     const result = processFFT(testSamples, {
       fftSize: 1024,
-      window: "hann",
-      overlap: 0,
-      wasm: false,
+      windowType: "hann",
     });
 
     expect(result.output).not.toBeNull();
@@ -406,9 +422,7 @@ describe("processFFT", () => {
     windows.forEach((windowType) => {
       const result = processFFT(testSamples, {
         fftSize: 512,
-        window: windowType,
-        overlap: 0,
-        wasm: false,
+        windowType,
       });
 
       expect(result.output).not.toBeNull();
@@ -420,9 +434,7 @@ describe("processFFT", () => {
     const fewSamples = generateTestSamples(10, 1.0);
     const result = processFFT(fewSamples, {
       fftSize: 1024,
-      window: "hann",
-      overlap: 0,
-      wasm: false,
+      windowType: "hann",
     });
 
     expect(result.output).toBeNull();
@@ -432,9 +444,7 @@ describe("processFFT", () => {
   it("should measure processing time", () => {
     const result = processFFT(testSamples, {
       fftSize: 1024,
-      window: "hann",
-      overlap: 0,
-      wasm: false,
+      windowType: "hann",
     });
 
     expect(result.metrics.processingTime).toBeGreaterThan(0);
@@ -445,93 +455,81 @@ describe("processFFT", () => {
 describe("Pipeline Composition", () => {
   describe("composePipeline", () => {
     it("should compose multiple transforms", () => {
-      const input = 10;
-      const pipeline = [
-        { name: "double", fn: (x: unknown) => (x as number) * 2 },
-        { name: "add5", fn: (x: unknown) => (x as number) + 5 },
-        { name: "square", fn: (x: unknown) => (x as number) * (x as number) },
-      ];
+      const double = (x: number) => ({
+        output: x * 2,
+        metrics: { doubled: true },
+      });
+      const add5 = (x: number) => ({ output: x + 5, metrics: { added: 5 } });
+      const square = (x: number) => ({
+        output: x * x,
+        metrics: { squared: true },
+      });
 
-      const result = composePipeline<number>(input, pipeline);
+      const pipeline = composePipeline<number>(double, add5, square);
+      const result = pipeline(10);
 
       // (10 * 2) + 5 = 25, then 25 * 25 = 625
-      expect(result.data).toBe(625);
-      expect(result.stageName).toBe("square");
+      expect(result.output).toBe(625);
+      expect(result.metrics["doubled"]).toBe(true);
+      expect(result.metrics["added"]).toBe(5);
+      expect(result.metrics["squared"]).toBe(true);
     });
 
-    it("should measure processing time for each stage", () => {
-      const input = 5;
-      const pipeline = [
-        { name: "stage1", fn: (x: unknown) => (x as number) * 2 },
-        { name: "stage2", fn: (x: unknown) => (x as number) + 10 },
-      ];
+    it("should handle single stage", () => {
+      const double = (x: number) => ({
+        output: x * 2,
+        metrics: { doubled: true },
+      });
+      const pipeline = composePipeline<number>(double);
+      const result = pipeline(5);
 
-      const result = composePipeline(input, pipeline);
-      expect(result.processingTime).toBeGreaterThanOrEqual(0);
-    });
-
-    it("should handle empty pipeline", () => {
-      expect(() => {
-        composePipeline(10, []);
-      }).toThrow("Pipeline must have at least one transform");
+      expect(result.output).toBe(10);
+      expect(result.metrics["doubled"]).toBe(true);
     });
   });
 
   describe("createVisualizationPipeline", () => {
-    it("should create pipeline with all stages", () => {
+    it("should create pipeline with DC correction", () => {
       const pipeline = createVisualizationPipeline({
         fftSize: 512,
         windowType: "hann",
-        agcEnabled: true,
-        decimationFactor: 2,
-        scalingMode: "dB",
-        scaleFactor: 6,
+        dcCorrection: true,
       });
 
-      // Should have: decimation, agc, windowing, fft, scaling
-      expect(pipeline.length).toBe(5);
-      expect(pipeline[0]!.name).toBe("decimation");
-      expect(pipeline[1]!.name).toBe("agc");
-      expect(pipeline[2]!.name).toBe("windowing");
-      expect(pipeline[3]!.name).toBe("fft");
-      expect(pipeline[4]!.name).toBe("scaling");
+      const samples = generateTestSamples(512, 1.0);
+      const result = pipeline(samples);
+
+      expect(result.output).toBeInstanceOf(Float32Array);
+      expect(result.output.length).toBe(512);
+      expect(result.metrics["dcCorrected"]).toBe(true);
     });
 
-    it("should create minimal pipeline", () => {
+    it("should create pipeline without DC correction", () => {
       const pipeline = createVisualizationPipeline({
         fftSize: 512,
         windowType: "rectangular",
+        dcCorrection: false,
       });
 
-      // Should have: windowing, fft (no optional stages)
-      expect(pipeline.length).toBe(2);
-      expect(pipeline[0]!.name).toBe("windowing");
-      expect(pipeline[1]!.name).toBe("fft");
+      const samples = generateTestSamples(512, 1.0);
+      const result = pipeline(samples);
+
+      expect(result.output).toBeInstanceOf(Float32Array);
+      expect(result.metrics["dcCorrected"]).toBe(false);
     });
 
     it("should execute pipeline on real samples", () => {
-      const samples = generateTestSamples(2048, 1.0);
+      const samples = generateTestSamples(1024, 1.0);
       const pipeline = createVisualizationPipeline({
         fftSize: 1024,
         windowType: "hann",
-        agcEnabled: true,
+        dcCorrection: true,
       });
 
-      const result = composePipeline<Float32Array>(samples, pipeline);
+      const result = pipeline(samples);
 
-      expect(result.data).toBeInstanceOf(Float32Array);
-      expect(result.data.length).toBe(1024);
-    });
-
-    it("should support decimation", () => {
-      const pipeline = createVisualizationPipeline({
-        fftSize: 512,
-        windowType: "hann",
-        decimationFactor: 4,
-      });
-
-      // Should include decimation stage
-      expect(pipeline.some((s) => s.name === "decimation")).toBe(true);
+      expect(result.output).toBeInstanceOf(Float32Array);
+      expect(result.output.length).toBe(1024);
     });
   });
 });
@@ -556,15 +554,13 @@ describe("Integration Tests", () => {
     const pipeline = createVisualizationPipeline({
       fftSize: 2048,
       windowType: "blackman",
-      agcEnabled: true,
-      decimationFactor: 2,
+      dcCorrection: true,
     });
 
-    const result = composePipeline<unknown>(samples, pipeline);
+    const result = pipeline(samples);
 
-    expect(result.data).toBeDefined();
-    expect(result.data).toBeInstanceOf(Float32Array);
-    expect(result.stageName).toBe("fft");
+    expect(result.output).toBeDefined();
+    expect(result.output).toBeInstanceOf(Float32Array);
   });
 
   it("should handle realistic SDR data", () => {
@@ -839,7 +835,7 @@ describe("Additional Coverage Tests", () => {
   });
 
   describe("processIQSampling", () => {
-    it("should pass through samples with correct metrics", () => {
+    it("should process samples with correct metrics", () => {
       const { processIQSampling } = require("../dspProcessing");
       const samples = generateTestSamples(100, 1.0);
       const result = processIQSampling(samples, {
@@ -848,53 +844,38 @@ describe("Additional Coverage Tests", () => {
         iqBalance: true,
       });
 
-      expect(result.output).toEqual(samples);
-      expect(result.metrics.sampleRate).toBe(2048000);
+      expect(result.output).toBeDefined();
+      expect(result.output.length).toBe(100);
+      expect(result.metrics.gainError).toBeDefined();
+      expect(result.metrics.phaseError).toBeDefined();
     });
   });
 
   describe("processDemodulation", () => {
-    it("should return null output with empty metrics", () => {
+    it("should demodulate samples", () => {
       const { processDemodulation } = require("../dspProcessing");
       const samples = generateTestSamples(100, 1.0);
-      const result = processDemodulation(samples, {
-        demod: "FM",
-        fmDeviation: 75000,
-        amDepth: 0.5,
-        audioBandwidth: 15000,
-      });
+      const result = processDemodulation(samples, { mode: "FM" });
 
-      expect(result.output).toBeNull();
+      expect(result.output).toBeInstanceOf(Float32Array);
+      expect(result.output.length).toBe(100);
       expect(result.metrics).toEqual({});
     });
   });
 
   describe("processAudioOutput", () => {
-    it("should return null output with empty metrics", () => {
+    it("should apply volume scaling", () => {
       const { processAudioOutput } = require("../dspProcessing");
-      const samples = generateTestSamples(100, 1.0);
+      const samples = new Float32Array([0.5, 0.6, 0.7, 0.8]);
       const result = processAudioOutput(samples, {
+        sampleRate: 48000,
         volume: 0.8,
-        mute: false,
-        audioFilter: "lowpass",
-        cutoff: 3000,
       });
 
-      expect(result.output).toBeNull();
-      expect(result.metrics).toEqual({});
-    });
-
-    it("should handle null input samples", () => {
-      const { processAudioOutput } = require("../dspProcessing");
-      const result = processAudioOutput(null, {
-        volume: 0.8,
-        mute: false,
-        audioFilter: "lowpass",
-        cutoff: 3000,
-      });
-
-      expect(result.output).toBeNull();
-      expect(result.metrics).toEqual({});
+      expect(result.output).toBeInstanceOf(Float32Array);
+      expect(result.output.length).toBe(4);
+      expect(result.output[0]).toBeCloseTo(0.4, 5);
+      expect(result.metrics.sampleRate).toBe(48000);
     });
   });
 });
@@ -919,7 +900,11 @@ describe("Edge Cases and Error Handling", () => {
   it("should handle extreme amplitudes", () => {
     const samples = generateTestSamples(2000, 100.0);
 
-    const agc = applyAGC(samples, 0.7, 0.01, 0.001);
+    const agc = applyAGC(samples, {
+      targetLevel: 0.7,
+      attackRate: 0.01,
+      releaseRate: 0.001,
+    });
 
     // Check that AGC brings amplitude down to reasonable range
     const tailSamples = agc.slice(-500);
