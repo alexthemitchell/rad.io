@@ -28,8 +28,8 @@ jest.mock("../../store", () => ({
     primaryDevice: null,
   })),
   useFrequency: jest.fn(() => ({
-    frequency: 50000000,
-    setFrequency: jest.fn(),
+    frequencyHz: 50000000,
+    setFrequencyHz: jest.fn(),
   })),
   useSettings: jest.fn(() => ({
     settings: {
