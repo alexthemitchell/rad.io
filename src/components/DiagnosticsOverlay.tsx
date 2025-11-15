@@ -116,7 +116,7 @@ function DemodulatorMetricsDisplay({
           <span
             className={`metric-value ${
               metrics.ber === undefined || !isFinite(metrics.ber)
-                ? ""
+                ? "status-unknown"
                 : metrics.ber < 0.0001
                   ? "status-good"
                   : metrics.ber < 0.001

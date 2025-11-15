@@ -540,15 +540,67 @@ export class ATSC8VSBDemodulator
     try {
       const store = useStore.getState();
 
-      // Calculate approximate signal quality metrics
-      // Note: These are estimated/simulated values. Real implementations would need
-      // additional signal processing to calculate accurate SNR, MER, BER
+      // Calculate real signal quality metrics from demodulator state
+      let snr: number | undefined;
+      let mer: number | undefined;
+      let ber: number | undefined;
       const signalStrength = this.syncLocked ? 0.8 : 0.3;
-      // Use stable simulated values instead of random jitter
-      const snr = this.syncLocked ? 18.0 : 5.0; // Stable SNR (placeholder)
-      const mer = this.syncLocked ? 22.0 : 10.0; // Stable MER (placeholder)
-      const ber = this.syncLocked ? 0.00001 : 0.1; // Stable BER (placeholder)
 
+      if (this.syncLocked && this.symbolBuffer.length > 0) {
+        // Calculate SNR from symbol variance
+        // SNR = signal power / noise power
+        // For 8-VSB, we can estimate noise from slicer error
+        const slicerErrors: number[] = [];
+        for (const symbol of this.symbolBuffer.slice(-100)) {
+          // Last 100 symbols
+          const decision = this.slicerDecision(symbol);
+          const error = symbol - decision;
+          slicerErrors.push(error);
+        }
+
+        if (slicerErrors.length > 0) {
+          // Calculate noise power (variance of slicer errors)
+          const noiseMean =
+            slicerErrors.reduce((sum, e) => sum + e, 0) / slicerErrors.length;
+          const noiseVariance =
+            slicerErrors.reduce((sum, e) => sum + (e - noiseMean) ** 2, 0) /
+            slicerErrors.length;
+
+          // Signal power for 8-VSB (variance of symbol levels)
+          // For VSB_LEVELS = [-7, -5, -3, -1, 1, 3, 5, 7], mean = 0, variance ≈ 21
+          const signalPower = 21; // Theoretical 8-VSB signal power
+
+          if (noiseVariance > 0) {
+            // SNR in dB = 10 * log10(signal_power / noise_power)
+            snr = 10 * Math.log10(signalPower / noiseVariance);
+            // Clamp to reasonable range (0-40 dB for ATSC)
+            snr = Math.max(0, Math.min(40, snr));
+          }
+
+          // MER (Modulation Error Ratio) is similar to SNR but uses RMS error
+          // MER in dB = 10 * log10(signal_power / mean_square_error)
+          const meanSquareError =
+            slicerErrors.reduce((sum, e) => sum + e * e, 0) /
+            slicerErrors.length;
+          if (meanSquareError > 0) {
+            mer = 10 * Math.log10(signalPower / meanSquareError);
+            // Clamp to reasonable range (0-40 dB for ATSC)
+            mer = Math.max(0, Math.min(40, mer));
+          }
+
+          // BER (Bit Error Rate) estimate from symbol errors
+          // Each 8-VSB symbol carries 3 bits
+          // Estimate bit errors from symbol errors (Gray coding reduces bit errors)
+          const symbolErrors = slicerErrors.filter(
+            (e) => Math.abs(e) > 1.5,
+          ).length; // Significant errors
+          ber = symbolErrors > 0 ? symbolErrors / slicerErrors.length : 0.00001;
+          // Clamp to reasonable range
+          ber = Math.max(0.00001, Math.min(0.5, ber));
+        }
+      }
+
+      // If not locked or no data, use undefined instead of fake values
       store.updateDemodulatorMetrics({
         syncLocked: this.syncLocked,
         signalStrength,
