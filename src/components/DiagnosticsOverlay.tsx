@@ -428,6 +428,15 @@ export function DiagnosticsOverlay({
       const step = e.shiftKey ? 10 : 1;
       const newPosition = { ...position };
 
+      // Get actual overlay dimensions for boundary calculations
+      const bounds = dialogRef.current?.getBoundingClientRect();
+      const maxX = bounds
+        ? window.innerWidth - bounds.width
+        : window.innerWidth - 400;
+      const maxY = bounds
+        ? window.innerHeight - bounds.height
+        : window.innerHeight - 100;
+
       switch (e.key) {
         case "ArrowLeft":
           e.preventDefault();
@@ -435,14 +444,7 @@ export function DiagnosticsOverlay({
           break;
         case "ArrowRight":
           e.preventDefault();
-          // Calculate based on actual overlay width
-          {
-            const bounds = dialogRef.current?.getBoundingClientRect();
-            const maxX = bounds
-              ? window.innerWidth - bounds.width
-              : window.innerWidth - 400;
-            newPosition.x = Math.min(maxX, position.x + step);
-          }
+          newPosition.x = Math.min(maxX, position.x + step);
           break;
         case "ArrowUp":
           e.preventDefault();
@@ -450,14 +452,7 @@ export function DiagnosticsOverlay({
           break;
         case "ArrowDown":
           e.preventDefault();
-          // Calculate based on actual overlay height
-          {
-            const bounds = dialogRef.current?.getBoundingClientRect();
-            const maxY = bounds
-              ? window.innerHeight - bounds.height
-              : window.innerHeight - 100;
-            newPosition.y = Math.min(maxY, position.y + step);
-          }
+          newPosition.y = Math.min(maxY, position.y + step);
           break;
         case "Escape":
           e.preventDefault();
@@ -502,7 +497,7 @@ export function DiagnosticsOverlay({
 
   // Cleanup previousFocusRef on unmount to prevent memory leaks
   useEffect((): (() => void) => {
-    return () => {
+    return (): void => {
       previousFocusRef.current = null;
     };
   }, []);
@@ -532,11 +527,7 @@ export function DiagnosticsOverlay({
           <button
             className="overlay-button"
             onClick={() => setMinimized(!minimized)}
-            title={
-              minimized
-                ? "Maximize (or use arrow keys to move)"
-                : "Minimize (or use arrow keys to move)"
-            }
+            title={minimized ? "Maximize" : "Minimize"}
             aria-label={
               minimized ? "Maximize diagnostics" : "Minimize diagnostics"
             }
@@ -546,7 +537,7 @@ export function DiagnosticsOverlay({
           <button
             className="overlay-button"
             onClick={() => setOverlayVisible(false)}
-            title="Close (or press Escape)"
+            title="Close (or press Escape; arrow keys move overlay)"
             aria-label="Close diagnostics"
           >
             ×

@@ -151,9 +151,19 @@ export interface DiagnosticsSlice extends DiagnosticsState {
 }
 
 /**
- * Generate a unique event ID using timestamp and random string
+ * Generate a unique event ID.
+ *
+ * Uses crypto.randomUUID() if available for robust collision resistance.
+ * Falls back to timestamp and random string for environments without crypto.randomUUID.
  */
 const generateEventId = (): string => {
+  if (
+    typeof globalThis.crypto !== "undefined" &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
+  }
+  // Fallback: timestamp + random string (~10^14 possibilities)
   return `diag-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 };
 

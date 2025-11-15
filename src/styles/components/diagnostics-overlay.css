@@ -159,11 +159,11 @@
 
 .events-section h4 {
   margin: 0 0 var(--rad-space-4) 0;
-  font-size: 13px;
+  font-size: var(--rad-font-size-1, 12px);
   font-weight: 600;
   color: var(--rad-fg-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--rad-letter-spacing-wide, 0.5px);
 }
 
 .events-list {
@@ -177,7 +177,7 @@
   background: color-mix(in oklch, var(--rad-surface) 50%, transparent);
   border-radius: var(--rad-radius-3);
   border-left: 3px solid transparent;
-  font-size: 11px;
+  font-size: var(--rad-font-size-0, 11px);
   line-height: 1.4;
 }
 

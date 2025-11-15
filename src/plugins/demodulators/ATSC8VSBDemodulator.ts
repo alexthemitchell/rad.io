@@ -40,6 +40,17 @@ const FIELD_SYNC_SEGMENTS = 313; // segments per field
 const CHANNEL_BANDWIDTH = 6e6; // 6 MHz
 
 /**
+ * Signal quality calculation constants
+ */
+const VSB_SIGNAL_POWER = 21; // Variance of 8-VSB symbol levels [-7,-5,-3,-1,1,3,5,7]
+const METRICS_SAMPLE_WINDOW = 100; // Number of symbols to use for rolling metrics
+const SNR_MAX_DB = 40; // Maximum SNR value for normalization
+const MER_MAX_DB = 40; // Maximum MER value for normalization
+const SYMBOL_ERROR_THRESHOLD = 1.5; // Threshold for detecting significant symbol errors
+const BER_MIN = 0.00001; // Minimum BER value for display (except true zero)
+const BER_MAX = 0.5; // Maximum BER value
+
+/**
  * Data segment sync pattern (4 symbols)
  * Uses actual 8-VSB symbol levels from the VSB_LEVELS array
  */
@@ -555,8 +566,7 @@ export class ATSC8VSBDemodulator
         // SNR = signal power / noise power
         // For 8-VSB, we can estimate noise from slicer error
         const slicerErrors: number[] = [];
-        for (const symbol of this.symbolBuffer.slice(-100)) {
-          // Last 100 symbols
+        for (const symbol of this.symbolBuffer.slice(-METRICS_SAMPLE_WINDOW)) {
           const decision = this.slicerDecision(symbol);
           const error = symbol - decision;
           slicerErrors.push(error);
@@ -570,18 +580,14 @@ export class ATSC8VSBDemodulator
             slicerErrors.reduce((sum, e) => sum + (e - noiseMean) ** 2, 0) /
             slicerErrors.length;
 
-          // Signal power for 8-VSB (variance of symbol levels)
-          // For VSB_LEVELS = [-7, -5, -3, -1, 1, 3, 5, 7], mean = 0, variance ≈ 21
-          const signalPower = 21; // Theoretical 8-VSB signal power
-
           if (noiseVariance > 0) {
             // SNR in dB = 10 * log10(signal_power / noise_power)
-            snr = 10 * Math.log10(signalPower / noiseVariance);
-            // Clamp to reasonable range (0-40 dB for ATSC)
-            snr = Math.max(0, Math.min(40, snr));
+            snr = 10 * Math.log10(VSB_SIGNAL_POWER / noiseVariance);
+            // Clamp to reasonable range
+            snr = Math.max(0, Math.min(SNR_MAX_DB, snr));
 
             // Derive signal strength from SNR (normalize to 0-1 range)
-            signalStrength = Math.min(1.0, snr / 40.0);
+            signalStrength = Math.min(1.0, snr / SNR_MAX_DB);
           }
 
           // MER (Modulation Error Ratio) is similar to SNR but uses RMS error
@@ -590,20 +596,25 @@ export class ATSC8VSBDemodulator
             slicerErrors.reduce((sum, e) => sum + e * e, 0) /
             slicerErrors.length;
           if (meanSquareError > 0) {
-            mer = 10 * Math.log10(signalPower / meanSquareError);
-            // Clamp to reasonable range (0-40 dB for ATSC)
-            mer = Math.max(0, Math.min(40, mer));
+            mer = 10 * Math.log10(VSB_SIGNAL_POWER / meanSquareError);
+            // Clamp to reasonable range
+            mer = Math.max(0, Math.min(MER_MAX_DB, mer));
           }
 
           // BER (Bit Error Rate) estimate from symbol errors
           // Each 8-VSB symbol carries 3 bits
           // Estimate bit errors from symbol errors (Gray coding reduces bit errors)
           const symbolErrors = slicerErrors.filter(
-            (e) => Math.abs(e) > 1.5,
+            (e) => Math.abs(e) > SYMBOL_ERROR_THRESHOLD,
           ).length; // Significant errors
-          ber = symbolErrors > 0 ? symbolErrors / slicerErrors.length : 0;
-          // Clamp to reasonable range
-          ber = Math.max(0.00001, Math.min(0.5, ber));
+          // Allow true zero when no errors detected
+          ber =
+            symbolErrors > 0
+              ? Math.max(
+                  BER_MIN,
+                  Math.min(BER_MAX, symbolErrors / slicerErrors.length),
+                )
+              : 0;
         }
       }
 

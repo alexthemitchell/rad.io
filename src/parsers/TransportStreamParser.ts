@@ -274,6 +274,10 @@ export class TransportStreamParser {
   private static readonly PAT_PID = 0x0000;
   private static readonly PSIP_BASE_PID = 0x1ffb;
 
+  // Diagnostic thresholds
+  private static readonly CONTINUITY_ERROR_THRESHOLD = 5;
+  private static readonly SYNC_ERROR_THRESHOLD = 10;
+
   private patTable: ProgramAssociationTable | null = null;
   private pmtTables = new Map<number, ProgramMapTable>();
   private pidFilters = new Set<number>();
@@ -1462,7 +1466,9 @@ export class TransportStreamParser {
       // Use consistent threshold: report if significant new errors occur
       const newContinuityErrors =
         this.continuityErrors - this.lastContinuityErrors;
-      if (newContinuityErrors > 5) {
+      if (
+        newContinuityErrors > TransportStreamParser.CONTINUITY_ERROR_THRESHOLD
+      ) {
         store.addDiagnosticEvent({
           source: "ts-parser",
           severity: "warning",
@@ -1472,7 +1478,7 @@ export class TransportStreamParser {
       }
 
       const newSyncErrors = this.syncErrors - this.lastSyncErrors;
-      if (newSyncErrors > 10) {
+      if (newSyncErrors > TransportStreamParser.SYNC_ERROR_THRESHOLD) {
         // Only report if significant new errors
         store.addDiagnosticEvent({
           source: "ts-parser",
