@@ -36,7 +36,11 @@ Real-time visual overlay displaying pipeline health:
 
 - Updates metrics every 500ms during demodulation
 - Tracks sync lock state, segment/field sync counts
-- Calculates signal quality metrics (SNR, MER, BER are currently simulated)
+- Calculates signal quality metrics from actual demodulator state:
+  - SNR: Calculated from slicer error variance (10\*log10(signal_power/noise_variance))
+  - MER: Calculated from RMS slicer error (10\*log10(signal_power/mean_square_error))
+  - BER: Estimated from symbol error rate using 1.5 threshold for significant errors
+  - All metrics use rolling 100-symbol window, only available when sync locked
 - Emits activation/deactivation events
 
 #### TransportStreamParser (`src/parsers/TransportStreamParser.ts`)
