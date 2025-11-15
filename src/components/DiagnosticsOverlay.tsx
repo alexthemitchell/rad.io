@@ -501,7 +501,6 @@ export function DiagnosticsOverlay({
       onMouseDown={handleMouseDown}
       onKeyDown={handleKeyDown}
       role="dialog"
-      aria-modal="true"
       aria-label="Pipeline diagnostics overlay"
       tabIndex={-1}
     >
