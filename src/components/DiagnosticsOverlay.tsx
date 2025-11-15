@@ -469,6 +469,7 @@ export function DiagnosticsOverlay({
         window.removeEventListener("mouseup", handleMouseUp);
       };
     }
+    return undefined;
   }, [dragging, handleMouseMove, handleMouseUp]);
 
   // Focus management

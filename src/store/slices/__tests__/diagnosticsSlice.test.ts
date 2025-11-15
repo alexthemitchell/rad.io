@@ -2,11 +2,11 @@
  * Tests for diagnostics slice
  */
 
-import { create } from "zustand";
+import { create, type UseBoundStore, type StoreApi } from "zustand";
 import { diagnosticsSlice, type DiagnosticsSlice } from "../diagnosticsSlice";
 
 describe("diagnosticsSlice", () => {
-  let useStore: ReturnType<typeof create<DiagnosticsSlice>>;
+  let useStore: UseBoundStore<StoreApi<DiagnosticsSlice>>;
 
   beforeEach(() => {
     // Create a fresh store for each test

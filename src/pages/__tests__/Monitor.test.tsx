@@ -22,6 +22,43 @@ jest.mock("../../visualization", () => ({
   })),
 }));
 
+// Mock the store hooks
+jest.mock("../../store", () => ({
+  useDevice: jest.fn(() => ({
+    primaryDevice: null,
+  })),
+  useFrequency: jest.fn(() => ({
+    frequency: 50000000,
+    setFrequency: jest.fn(),
+  })),
+  useSettings: jest.fn(() => ({
+    settings: {
+      sampleRate: 2000000,
+      gainMode: "automatic",
+      gain: 0,
+    },
+    updateSettings: jest.fn(),
+  })),
+  useDiagnostics: jest.fn(() => ({
+    events: [],
+    demodulatorMetrics: null,
+    tsParserMetrics: null,
+    videoDecoderMetrics: null,
+    audioDecoderMetrics: null,
+    captionDecoderMetrics: null,
+    overlayVisible: false,
+    addDiagnosticEvent: jest.fn(),
+    updateDemodulatorMetrics: jest.fn(),
+    updateTSParserMetrics: jest.fn(),
+    updateVideoDecoderMetrics: jest.fn(),
+    updateAudioDecoderMetrics: jest.fn(),
+    updateCaptionDecoderMetrics: jest.fn(),
+    clearDiagnosticEvents: jest.fn(),
+    resetDiagnostics: jest.fn(),
+    setOverlayVisible: jest.fn(),
+  })),
+}));
+
 // DeviceContext is removed; Zustand store requires no provider or mocking here
 
 import Monitor from "../Monitor";

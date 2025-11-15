@@ -14,7 +14,6 @@
 
 import { create, type StateCreator } from "zustand";
 import { devtools } from "zustand/middleware";
-import { shallow } from "zustand/shallow";
 import {
   deviceSlice,
   type DeviceEntry,
@@ -146,49 +145,68 @@ export const useDevice = (): {
 };
 
 // Diagnostics slice selectors
-// Uses a single selector with shallow equality to prevent re-renders
-// when unrelated properties change
-export const useDiagnostics = (): {
-  events: DiagnosticEvent[];
-  demodulatorMetrics: DemodulatorMetrics | null;
-  tsParserMetrics: TSParserMetrics | null;
-  videoDecoderMetrics: DecoderMetrics | null;
-  audioDecoderMetrics: DecoderMetrics | null;
-  captionDecoderMetrics: DecoderMetrics | null;
-  overlayVisible: boolean;
-  addDiagnosticEvent: (
-    event: Omit<DiagnosticEvent, "id" | "timestamp">,
-  ) => void;
-  updateDemodulatorMetrics: (metrics: Partial<DemodulatorMetrics>) => void;
-  updateTSParserMetrics: (metrics: Partial<TSParserMetrics>) => void;
-  updateVideoDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
-  updateAudioDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
-  updateCaptionDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
-  clearDiagnosticEvents: () => void;
-  resetDiagnostics: () => void;
-  setOverlayVisible: (visible: boolean) => void;
-} => {
-  return useStore(
-    (state: RootState) => ({
-      events: state.events,
-      demodulatorMetrics: state.demodulatorMetrics,
-      tsParserMetrics: state.tsParserMetrics,
-      videoDecoderMetrics: state.videoDecoderMetrics,
-      audioDecoderMetrics: state.audioDecoderMetrics,
-      captionDecoderMetrics: state.captionDecoderMetrics,
-      overlayVisible: state.overlayVisible,
-      addDiagnosticEvent: state.addDiagnosticEvent,
-      updateDemodulatorMetrics: state.updateDemodulatorMetrics,
-      updateTSParserMetrics: state.updateTSParserMetrics,
-      updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
-      updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
-      updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
-      clearDiagnosticEvents: state.clearDiagnosticEvents,
-      resetDiagnostics: state.resetDiagnostics,
-      setOverlayVisible: state.setOverlayVisible,
-    }),
-    shallow,
+export const useDiagnostics = () => {
+  const events = useStore((state: RootState) => state.events);
+  const demodulatorMetrics = useStore(
+    (state: RootState) => state.demodulatorMetrics,
   );
+  const tsParserMetrics = useStore((state: RootState) => state.tsParserMetrics);
+  const videoDecoderMetrics = useStore(
+    (state: RootState) => state.videoDecoderMetrics,
+  );
+  const audioDecoderMetrics = useStore(
+    (state: RootState) => state.audioDecoderMetrics,
+  );
+  const captionDecoderMetrics = useStore(
+    (state: RootState) => state.captionDecoderMetrics,
+  );
+  const overlayVisible = useStore((state: RootState) => state.overlayVisible);
+  const addDiagnosticEvent = useStore(
+    (state: RootState) => state.addDiagnosticEvent,
+  );
+  const updateDemodulatorMetrics = useStore(
+    (state: RootState) => state.updateDemodulatorMetrics,
+  );
+  const updateTSParserMetrics = useStore(
+    (state: RootState) => state.updateTSParserMetrics,
+  );
+  const updateVideoDecoderMetrics = useStore(
+    (state: RootState) => state.updateVideoDecoderMetrics,
+  );
+  const updateAudioDecoderMetrics = useStore(
+    (state: RootState) => state.updateAudioDecoderMetrics,
+  );
+  const updateCaptionDecoderMetrics = useStore(
+    (state: RootState) => state.updateCaptionDecoderMetrics,
+  );
+  const clearDiagnosticEvents = useStore(
+    (state: RootState) => state.clearDiagnosticEvents,
+  );
+  const resetDiagnostics = useStore(
+    (state: RootState) => state.resetDiagnostics,
+  );
+  const setOverlayVisible = useStore(
+    (state: RootState) => state.setOverlayVisible,
+  );
+
+  return {
+    events,
+    demodulatorMetrics,
+    tsParserMetrics,
+    videoDecoderMetrics,
+    audioDecoderMetrics,
+    captionDecoderMetrics,
+    overlayVisible,
+    addDiagnosticEvent,
+    updateDemodulatorMetrics,
+    updateTSParserMetrics,
+    updateVideoDecoderMetrics,
+    updateAudioDecoderMetrics,
+    updateCaptionDecoderMetrics,
+    clearDiagnosticEvents,
+    resetDiagnostics,
+    setOverlayVisible,
+  };
 };
 
 // Export types
