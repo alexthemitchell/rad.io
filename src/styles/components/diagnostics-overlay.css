@@ -5,7 +5,7 @@
 .diagnostics-overlay {
   position: fixed;
   z-index: var(--rad-z-modal);
-  background: color-mix(in srgb, var(--rad-bg) 95%, transparent);
+  background: color-mix(in oklch, var(--rad-bg) 95%, transparent);
   border: var(--rad-border-width) solid var(--rad-border);
   border-radius: var(--rad-radius-4);
   box-shadow: var(--rad-shadow-3);
@@ -30,7 +30,7 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--rad-space-4) var(--rad-space-5);
-  background: color-mix(in srgb, var(--rad-surface) 80%, transparent);
+  background: color-mix(in oklch, var(--rad-surface) 80%, transparent);
   border-bottom: var(--rad-border-width) solid var(--rad-border);
   cursor: move;
   border-radius: var(--rad-radius-4) var(--rad-radius-4) 0 0;
@@ -92,11 +92,11 @@
 
 .metrics-section h4 {
   margin: 0 0 var(--rad-space-4) 0;
-  font-size: 13px;
+  font-size: var(--rad-font-size-1);
   font-weight: 600;
   color: var(--rad-fg-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--rad-letter-spacing-wide, 0.5px);
 }
 
 .metrics-grid {
@@ -110,46 +110,46 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--rad-space-3);
-  background: color-mix(in srgb, var(--rad-surface) 50%, transparent);
+  background: color-mix(in oklch, var(--rad-surface) 50%, transparent);
   border-radius: var(--rad-radius-3);
 }
 
 .metric-label {
   color: var(--rad-fg-muted);
-  font-size: 11px;
+  font-size: var(--rad-font-size-0, 11px);
   margin-right: var(--rad-space-3);
 }
 
 .metric-value {
   font-weight: 600;
   color: var(--rad-fg);
-  font-size: 12px;
-  padding: 2px 6px;
+  font-size: var(--rad-font-size-1, 12px);
+  padding: var(--rad-space-1) var(--rad-space-2, 6px);
   border-radius: var(--rad-radius-2);
 }
 
 .metric-value.status-good {
-  background: color-mix(in srgb, var(--rad-success) 20%, transparent);
+  background: color-mix(in oklch, var(--rad-success) 20%, transparent);
   color: var(--rad-success);
 }
 
 .metric-value.status-warn {
-  background: color-mix(in srgb, var(--rad-warning) 20%, transparent);
+  background: color-mix(in oklch, var(--rad-warning) 20%, transparent);
   color: var(--rad-warning);
 }
 
 .metric-value.status-bad {
-  background: color-mix(in srgb, var(--rad-danger) 20%, transparent);
+  background: color-mix(in oklch, var(--rad-danger) 20%, transparent);
   color: var(--rad-danger);
 }
 
 .metric-value.status-unknown {
-  background: color-mix(in srgb, var(--rad-fg-muted) 20%, transparent);
+  background: color-mix(in oklch, var(--rad-fg-muted) 20%, transparent);
   color: var(--rad-fg-muted);
 }
 
 .metric-value.status-info {
-  background: color-mix(in srgb, var(--rad-accent) 20%, transparent);
+  background: color-mix(in oklch, var(--rad-accent) 20%, transparent);
   color: var(--rad-accent);
 }
 
@@ -174,7 +174,7 @@
 
 .event-item {
   padding: var(--rad-space-3) var(--rad-space-4);
-  background: color-mix(in srgb, var(--rad-surface) 50%, transparent);
+  background: color-mix(in oklch, var(--rad-surface) 50%, transparent);
   border-radius: var(--rad-radius-3);
   border-left: 3px solid transparent;
   font-size: 11px;
@@ -183,22 +183,22 @@
 
 .event-item.status-good {
   border-left-color: var(--rad-success);
-  background: color-mix(in srgb, var(--rad-success) 10%, transparent);
+  background: color-mix(in oklch, var(--rad-success) 10%, transparent);
 }
 
 .event-item.status-warn {
   border-left-color: var(--rad-warning);
-  background: color-mix(in srgb, var(--rad-warning) 10%, transparent);
+  background: color-mix(in oklch, var(--rad-warning) 10%, transparent);
 }
 
 .event-item.status-bad {
   border-left-color: var(--rad-danger);
-  background: color-mix(in srgb, var(--rad-danger) 10%, transparent);
+  background: color-mix(in oklch, var(--rad-danger) 10%, transparent);
 }
 
 .event-item.status-info {
   border-left-color: var(--rad-accent);
-  background: color-mix(in srgb, var(--rad-accent) 10%, transparent);
+  background: color-mix(in oklch, var(--rad-accent) 10%, transparent);
 }
 
 .event-source {
@@ -218,7 +218,7 @@
 }
 
 .overlay-content::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--rad-surface) 50%, transparent);
+  background: color-mix(in oklch, var(--rad-surface) 50%, transparent);
   border-radius: var(--rad-radius-3);
 }
 
@@ -229,4 +229,9 @@
 
 .overlay-content::-webkit-scrollbar-thumb:hover {
   background: var(--rad-primary);
+}
+
+/* Diagnostics button in Monitor page */
+.diagnostics-button {
+  margin-left: auto;
 }

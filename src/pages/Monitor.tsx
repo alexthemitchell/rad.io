@@ -466,10 +466,9 @@ const Monitor: React.FC = () => {
           )}
 
           <button
-            className="btn btn-secondary"
+            className="btn btn-secondary diagnostics-button"
             onClick={() => setOverlayVisible(true)}
             title="Show diagnostics overlay"
-            style={{ marginLeft: "auto" }}
           >
             Diagnostics
           </button>

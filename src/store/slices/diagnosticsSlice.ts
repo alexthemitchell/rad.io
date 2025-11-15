@@ -150,7 +150,12 @@ export interface DiagnosticsSlice extends DiagnosticsState {
   setOverlayVisible: (visible: boolean) => void;
 }
 
-let nextEventId = 0;
+/**
+ * Generate a unique event ID using timestamp and random string
+ */
+const generateEventId = (): string => {
+  return `diag-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+};
 
 /**
  * Create the diagnostics slice
@@ -180,7 +185,7 @@ export const diagnosticsSlice: StateCreator<DiagnosticsSlice> = (
   ): void => {
     const newEvent: DiagnosticEvent = {
       ...event,
-      id: `diag-${nextEventId++}`,
+      id: generateEventId(),
       timestamp: Date.now(),
     };
 

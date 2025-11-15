@@ -60,8 +60,8 @@ Real-time visual overlay displaying pipeline health:
 
 ### Monitor Page
 
-- Overlay automatically available
-- Compact mode for spectrum analysis workflow
+- Overlay available with "Diagnostics" button
+- Detailed mode enabled for comprehensive metrics view
 - Useful for SDR signal quality monitoring
 
 ## Usage
@@ -116,7 +116,7 @@ The system is designed to be extensible for:
 
 1. **Additional Decoders**: Easy to add video/audio/caption decoder metrics
 2. **Scanner Integration**: Can be added to Scanner page
-3. **Advanced Metrics**: Real SNR/MER/BER calculation (currently simulated)
+3. **Advanced Metrics**: Real SNR/MER calculation from demodulator state; BER is still an estimate
 4. **Export Functionality**: Could add ability to export diagnostic logs
 5. **Historical Graphs**: Could visualize metric trends over time
 6. **Alert Thresholds**: Could add configurable alerts for error conditions

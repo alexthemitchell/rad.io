@@ -213,6 +213,8 @@ export class ATSC8VSBDemodulator
     this.syncLocked = false;
     this.lastSyncPosition = -1;
     this.symbolBuffer = [];
+    this.previousSyncLocked = false;
+    this.startupMessageSent = false;
 
     // Reset equalizer
     this.equalizer.taps.fill(0);
@@ -544,7 +546,9 @@ export class ATSC8VSBDemodulator
       let snr: number | undefined;
       let mer: number | undefined;
       let ber: number | undefined;
-      const signalStrength = this.syncLocked ? 0.8 : 0.3;
+
+      // Derive signalStrength from SNR if available, else 0
+      let signalStrength = 0;
 
       if (this.syncLocked && this.symbolBuffer.length > 0) {
         // Calculate SNR from symbol variance
@@ -575,6 +579,9 @@ export class ATSC8VSBDemodulator
             snr = 10 * Math.log10(signalPower / noiseVariance);
             // Clamp to reasonable range (0-40 dB for ATSC)
             snr = Math.max(0, Math.min(40, snr));
+
+            // Derive signal strength from SNR (normalize to 0-1 range)
+            signalStrength = Math.min(1.0, snr / 40.0);
           }
 
           // MER (Modulation Error Ratio) is similar to SNR but uses RMS error
@@ -594,7 +601,7 @@ export class ATSC8VSBDemodulator
           const symbolErrors = slicerErrors.filter(
             (e) => Math.abs(e) > 1.5,
           ).length; // Significant errors
-          ber = symbolErrors > 0 ? symbolErrors / slicerErrors.length : 0.00001;
+          ber = symbolErrors > 0 ? symbolErrors / slicerErrors.length : 0;
           // Clamp to reasonable range
           ber = Math.max(0.00001, Math.min(0.5, ber));
         }

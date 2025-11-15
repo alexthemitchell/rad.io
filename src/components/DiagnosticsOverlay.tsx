@@ -373,7 +373,7 @@ function RecentEventsDisplay({
 export function DiagnosticsOverlay({
   className = "",
   detailed = false,
-}: DiagnosticsOverlayProps): React.JSX.Element {
+}: DiagnosticsOverlayProps): React.JSX.Element | null {
   const {
     events,
     demodulatorMetrics,
@@ -435,7 +435,14 @@ export function DiagnosticsOverlay({
           break;
         case "ArrowRight":
           e.preventDefault();
-          newPosition.x = Math.min(window.innerWidth - 400, position.x + step);
+          // Calculate based on actual overlay width
+          {
+            const bounds = dialogRef.current?.getBoundingClientRect();
+            const maxX = bounds
+              ? window.innerWidth - bounds.width
+              : window.innerWidth - 400;
+            newPosition.x = Math.min(maxX, position.x + step);
+          }
           break;
         case "ArrowUp":
           e.preventDefault();
@@ -443,7 +450,14 @@ export function DiagnosticsOverlay({
           break;
         case "ArrowDown":
           e.preventDefault();
-          newPosition.y = Math.min(window.innerHeight - 100, position.y + step);
+          // Calculate based on actual overlay height
+          {
+            const bounds = dialogRef.current?.getBoundingClientRect();
+            const maxY = bounds
+              ? window.innerHeight - bounds.height
+              : window.innerHeight - 100;
+            newPosition.y = Math.min(maxY, position.y + step);
+          }
           break;
         case "Escape":
           e.preventDefault();
@@ -486,8 +500,15 @@ export function DiagnosticsOverlay({
     }
   }, [overlayVisible]);
 
+  // Cleanup previousFocusRef on unmount to prevent memory leaks
+  useEffect((): (() => void) => {
+    return () => {
+      previousFocusRef.current = null;
+    };
+  }, []);
+
   if (!overlayVisible) {
-    return <></>;
+    return null;
   }
 
   return (
