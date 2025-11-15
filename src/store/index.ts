@@ -20,6 +20,14 @@ import {
   type DeviceId,
   type DeviceSlice,
 } from "./slices/deviceSlice";
+import {
+  diagnosticsSlice,
+  type DecoderMetrics,
+  type DemodulatorMetrics,
+  type DiagnosticEvent,
+  type DiagnosticsSlice,
+  type TSParserMetrics,
+} from "./slices/diagnosticsSlice";
 import { frequencySlice, type FrequencySlice } from "./slices/frequencySlice";
 import {
   notificationSlice,
@@ -39,7 +47,8 @@ import type { ISDRDevice } from "../models/SDRDevice";
 export type RootState = SettingsSlice &
   FrequencySlice &
   NotificationSlice &
-  DeviceSlice;
+  DeviceSlice &
+  DiagnosticsSlice;
 
 /**
  * Create the root store with all slices
@@ -54,6 +63,7 @@ export const useStore = create<RootState>()(
       ...frequencySlice(...args),
       ...notificationSlice(...args),
       ...deviceSlice(...args),
+      ...diagnosticsSlice(...args),
     }),
     { name: "rad.io-store" },
   ),
@@ -134,7 +144,127 @@ export const useDevice = (): {
   };
 };
 
+// Diagnostics slice selectors
+/**
+ * Granular diagnostics selectors for Zustand.
+ * Splitting selectors allows components to subscribe only to the state/actions they need,
+ * minimizing unnecessary re-renders.
+ */
+
+/**
+ * Hook for overlay visibility state and control.
+ * Use this in components that only need to show/hide the diagnostics overlay.
+ */
+export const useDiagnosticsOverlay = (): {
+  overlayVisible: boolean;
+  setOverlayVisible: (visible: boolean) => void;
+} =>
+  useStore((state: RootState) => ({
+    overlayVisible: state.overlayVisible,
+    setOverlayVisible: state.setOverlayVisible,
+  }));
+
+/**
+ * Hook for all metrics and their update actions.
+ * Use this in components that display or update diagnostic metrics.
+ */
+export const useDiagnosticsMetrics = (): {
+  demodulatorMetrics: DemodulatorMetrics | null;
+  tsParserMetrics: TSParserMetrics | null;
+  videoDecoderMetrics: DecoderMetrics | null;
+  audioDecoderMetrics: DecoderMetrics | null;
+  captionDecoderMetrics: DecoderMetrics | null;
+  updateDemodulatorMetrics: (metrics: Partial<DemodulatorMetrics>) => void;
+  updateTSParserMetrics: (metrics: Partial<TSParserMetrics>) => void;
+  updateVideoDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
+  updateAudioDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
+  updateCaptionDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
+} =>
+  useStore((state: RootState) => ({
+    demodulatorMetrics: state.demodulatorMetrics,
+    tsParserMetrics: state.tsParserMetrics,
+    videoDecoderMetrics: state.videoDecoderMetrics,
+    audioDecoderMetrics: state.audioDecoderMetrics,
+    captionDecoderMetrics: state.captionDecoderMetrics,
+    updateDemodulatorMetrics: state.updateDemodulatorMetrics,
+    updateTSParserMetrics: state.updateTSParserMetrics,
+    updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
+    updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
+    updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
+  }));
+
+/**
+ * Hook for diagnostic events.
+ * Use this in components that display or manage event logs.
+ */
+export const useDiagnosticsEvents = (): {
+  events: DiagnosticEvent[];
+  addDiagnosticEvent: (
+    event: Omit<DiagnosticEvent, "id" | "timestamp">,
+  ) => void;
+  clearDiagnosticEvents: () => void;
+} =>
+  useStore((state: RootState) => ({
+    events: state.events,
+    addDiagnosticEvent: state.addDiagnosticEvent,
+    clearDiagnosticEvents: state.clearDiagnosticEvents,
+  }));
+
+/**
+ * Legacy hook that returns all diagnostics state and actions.
+ * Note: This will cause re-renders on any diagnostics state change.
+ * Consider using more specific hooks (useDiagnosticsOverlay, useDiagnosticsMetrics, useDiagnosticsEvents)
+ * for better performance.
+ */
+export const useDiagnostics = (): Pick<
+  RootState,
+  | "events"
+  | "demodulatorMetrics"
+  | "tsParserMetrics"
+  | "videoDecoderMetrics"
+  | "audioDecoderMetrics"
+  | "captionDecoderMetrics"
+  | "overlayVisible"
+  | "addDiagnosticEvent"
+  | "updateDemodulatorMetrics"
+  | "updateTSParserMetrics"
+  | "updateVideoDecoderMetrics"
+  | "updateAudioDecoderMetrics"
+  | "updateCaptionDecoderMetrics"
+  | "clearDiagnosticEvents"
+  | "resetDiagnostics"
+  | "setOverlayVisible"
+> => {
+  return useStore((state: RootState) => ({
+    events: state.events,
+    demodulatorMetrics: state.demodulatorMetrics,
+    tsParserMetrics: state.tsParserMetrics,
+    videoDecoderMetrics: state.videoDecoderMetrics,
+    audioDecoderMetrics: state.audioDecoderMetrics,
+    captionDecoderMetrics: state.captionDecoderMetrics,
+    overlayVisible: state.overlayVisible,
+    addDiagnosticEvent: state.addDiagnosticEvent,
+    updateDemodulatorMetrics: state.updateDemodulatorMetrics,
+    updateTSParserMetrics: state.updateTSParserMetrics,
+    updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
+    updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
+    updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
+    clearDiagnosticEvents: state.clearDiagnosticEvents,
+    resetDiagnostics: state.resetDiagnostics,
+    setOverlayVisible: state.setOverlayVisible,
+  }));
+};
+
 // Export types
 export type { SettingsState, VizMode } from "./slices/settingsSlice";
 export type { Notification } from "./slices/notificationSlice";
 export type { DeviceId, DeviceEntry } from "./slices/deviceSlice";
+export type {
+  DiagnosticEvent,
+  DiagnosticSeverity,
+  DiagnosticSource,
+  DemodulatorMetrics,
+  TSParserMetrics,
+  DecoderMetrics,
+  SignalQualityMetrics,
+} from "./slices/diagnosticsSlice";

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import AudioControls from "../components/AudioControls";
+import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import VisualizationControls from "../components/Monitor/VisualizationControls";
 import RDSDisplay from "../components/RDSDisplay";
@@ -17,7 +18,7 @@ import {
 import { CalibrationManager } from "../lib/measurement/calibration";
 import { estimateFMBroadcastPPM } from "../lib/measurement/fm-ppm-calibrator";
 import { type SDRCapabilities, type IQSample } from "../models/SDRDevice";
-import { useDevice, useFrequency, useSettings } from "../store";
+import { useDevice, useFrequency, useSettings, useDiagnostics } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
@@ -32,6 +33,7 @@ declare global {
 
 const Monitor: React.FC = () => {
   const { primaryDevice: device } = useDevice();
+  const { setOverlayVisible } = useDiagnostics();
 
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
@@ -462,6 +464,14 @@ const Monitor: React.FC = () => {
               {Math.round(scanner.progress)}%
             </span>
           )}
+
+          <button
+            className="btn btn-secondary diagnostics-button"
+            onClick={() => setOverlayVisible(true)}
+            title="Show diagnostics overlay"
+          >
+            Diagnostics
+          </button>
         </div>
         <div style={{ marginTop: 8, position: "relative" }}>
           <VisualizationControls
@@ -700,6 +710,7 @@ const Monitor: React.FC = () => {
       </details>
 
       {/* StatusBar is rendered globally in the App shell */}
+      <DiagnosticsOverlay detailed={true} />
     </div>
   );
 };

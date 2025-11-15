@@ -6,10 +6,11 @@
  */
 
 import React, { useState, useCallback } from "react";
+import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import { ATSCProgramGuide } from "../components/EPG";
 import { useATSCPlayer } from "../hooks/useATSCPlayer";
 import { useATSCScanner } from "../hooks/useATSCScanner";
-import { useDevice } from "../store";
+import { useDevice, useDiagnostics } from "../store";
 import { formatATSCChannel } from "../utils/atscChannels";
 import type { AudioTrack } from "../hooks/useATSCPlayer";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
@@ -355,6 +356,7 @@ function ATSCPlayer(): React.JSX.Element {
   const { primaryDevice: device } = useDevice();
   const scanner = useATSCScanner(device);
   const player = useATSCPlayer(device);
+  const { setOverlayVisible } = useDiagnostics();
 
   const [showScanner, setShowScanner] = useState(false);
   const [viewMode, setViewMode] = useState<"player" | "epg">("player");
@@ -427,8 +429,17 @@ function ATSCPlayer(): React.JSX.Element {
           >
             {showScanner ? "Hide Scanner" : "Show Scanner"}
           </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setOverlayVisible(true)}
+            title="Show diagnostics overlay"
+          >
+            Diagnostics
+          </button>
         </div>
       </div>
+
+      <DiagnosticsOverlay detailed={true} />
 
       {showScanner && (
         <div className="scanner-section">
