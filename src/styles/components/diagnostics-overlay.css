@@ -53,8 +53,8 @@
   border: var(--rad-border-width) solid var(--rad-border);
   color: var(--rad-fg);
   cursor: pointer;
-  padding: 2px 8px;
-  font-size: 16px;
+  padding: var(--rad-space-1) var(--rad-space-3);
+  font-size: var(--rad-font-size-2);
   line-height: 1;
   border-radius: var(--rad-radius-3);
   transition: all 0.2s ease;
