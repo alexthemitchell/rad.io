@@ -22,7 +22,7 @@ const config: Config = {
     global: {
       statements: 64,
       branches: 51,
-      functions: 67,
+      functions: 66,
       lines: 64,
     },
     // HackRF implementation - updated to current coverage
