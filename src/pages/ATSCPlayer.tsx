@@ -439,6 +439,46 @@ function ATSCPlayer(): React.JSX.Element {
         </div>
       </div>
 
+      {/* Golden Path Context Banner */}
+      {scanner.foundChannels.length === 0 && !showScanner && (
+        <div
+          style={{
+            padding: "16px",
+            backgroundColor: "#1e3a5f",
+            borderLeft: "4px solid #3b82f6",
+            marginBottom: "16px",
+            borderRadius: "4px",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <h3 style={{ marginTop: 0, color: "#60a5fa", fontSize: "16px" }}>
+            🎯 First time using ATSC Player?
+          </h3>
+          <p style={{ marginBottom: "8px" }}>
+            <strong>Step 1:</strong> Click &quot;Show Scanner&quot; above to
+            scan for ATSC channels in your area
+            <br />
+            <strong>Step 2:</strong> Select a channel from the list to tune and
+            play
+            <br />
+            <strong>Step 3:</strong> Use the Program Guide tab to view
+            what&apos;s on TV
+          </p>
+          <p style={{ marginBottom: 0, fontSize: "14px" }}>
+            📖{" "}
+            <a
+              href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#60a5fa", textDecoration: "underline" }}
+            >
+              View complete ATSC Golden Path Guide
+            </a>
+          </p>
+        </div>
+      )}
+
       <DiagnosticsOverlay detailed={true} />
 
       {showScanner && (

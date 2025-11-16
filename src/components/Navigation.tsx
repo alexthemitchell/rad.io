@@ -77,7 +77,7 @@ function Navigation(): React.JSX.Element {
         className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
-        title="Live signal monitoring and audio playback (Keyboard: 1)"
+        title="Live signal monitoring and audio playback - Start here for general SDR use (Keyboard: 1)"
         aria-keyshortcuts="1"
       >
         Monitor
@@ -87,7 +87,7 @@ function Navigation(): React.JSX.Element {
         className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
-        title="Scan frequencies and talkgroups (Keyboard: 2)"
+        title="Scan for ATSC channels, FM/AM stations, and talkgroups - Essential for finding signals (Keyboard: 2)"
         aria-keyshortcuts="2"
       >
         Scanner
@@ -97,7 +97,7 @@ function Navigation(): React.JSX.Element {
         className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
-        title="Digital mode decoders (RTTY, PSK, SSTV) (Keyboard: 3)"
+        title="Digital mode decoders (RTTY, PSK, SSTV) - Advanced feature (Keyboard: 3)"
         aria-keyshortcuts="3"
       >
         Decode
@@ -107,7 +107,7 @@ function Navigation(): React.JSX.Element {
         className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
-        title="Deep signal analysis and DSP pipeline (Keyboard: 4)"
+        title="Deep signal analysis and DSP pipeline - Advanced feature (Keyboard: 4)"
         aria-keyshortcuts="4"
       >
         Analysis
@@ -117,7 +117,7 @@ function Navigation(): React.JSX.Element {
         className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
-        title="Recording library and playback (Keyboard: 5)"
+        title="Recording library and playback - Save signals for later (Keyboard: 5)"
         aria-keyshortcuts="5"
       >
         Recordings
@@ -127,7 +127,7 @@ function Navigation(): React.JSX.Element {
         className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
-        title="ATSC Digital TV Player (Keyboard: 6)"
+        title="ATSC Digital TV Player - Watch over-the-air TV broadcasts (Keyboard: 6)"
         aria-keyshortcuts="6"
       >
         ATSC Player
@@ -137,7 +137,7 @@ function Navigation(): React.JSX.Element {
         className={({ isActive }: { isActive: boolean }) =>
           isActive ? "nav-link active" : "nav-link"
         }
-        title="Help and documentation (Keyboard: ?)"
+        title="Help and documentation - Find guides and keyboard shortcuts (Keyboard: ?)"
         aria-keyshortcuts="?"
       >
         Help

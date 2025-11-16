@@ -116,6 +116,53 @@ function Scanner(): React.JSX.Element {
           />
         </Card>
 
+        {signalType === "ATSC" && atscScanner.foundChannels.length === 0 && (
+          <div
+            style={{
+              padding: "16px",
+              backgroundColor: "#1e3a5f",
+              borderLeft: "4px solid #3b82f6",
+              marginBottom: "16px",
+              marginTop: "16px",
+              borderRadius: "4px",
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <h3 style={{ marginTop: 0, color: "#60a5fa", fontSize: "16px" }}>
+              🔍 Scanning for ATSC Digital TV Channels
+            </h3>
+            <p style={{ marginBottom: "8px" }}>
+              This scanner will search VHF and UHF frequencies to discover ATSC
+              broadcasts in your area.
+            </p>
+            <p style={{ marginBottom: "8px" }}>
+              <strong>Quick Start:</strong>
+            </p>
+            <ol style={{ marginLeft: "20px", marginBottom: "8px" }}>
+              <li>Configure scan bands below (VHF-High and UHF recommended)</li>
+              <li>Click &quot;Start Scan&quot; and wait 2-5 minutes</li>
+              <li>
+                Found channels will appear in the table and save automatically
+              </li>
+              <li>
+                Navigate to ATSC Player (press <kbd>6</kbd>) to watch channels
+              </li>
+            </ol>
+            <p style={{ marginBottom: 0, fontSize: "14px" }}>
+              📖{" "}
+              <a
+                href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md#step-2-scan-for-atsc-channels"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#60a5fa", textDecoration: "underline" }}
+              >
+                View detailed scanning guide
+              </a>
+            </p>
+          </div>
+        )}
+
         {signalType === "ATSC" ? (
           <ATSCScanner
             state={atscScanner.state}

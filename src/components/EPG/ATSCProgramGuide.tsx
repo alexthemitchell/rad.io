@@ -147,6 +147,50 @@ export function ATSCProgramGuide({
         )}
       </div>
 
+      {epg.channels.length === 0 && (
+        <div
+          style={{
+            padding: "16px",
+            backgroundColor: "#1e3a5f",
+            borderLeft: "4px solid #3b82f6",
+            margin: "16px 0",
+            borderRadius: "4px",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <h3 style={{ marginTop: 0, color: "#60a5fa", fontSize: "16px" }}>
+            📺 Electronic Program Guide (EPG)
+          </h3>
+          <p style={{ marginBottom: "8px" }}>
+            The EPG displays TV schedules extracted from ATSC broadcast signals
+            (PSIP tables).
+          </p>
+          <p style={{ marginBottom: "8px" }}>
+            <strong>To view program information:</strong>
+          </p>
+          <ol style={{ marginLeft: "20px", marginBottom: "8px" }}>
+            <li>Scan for channels first (Scanner page, press 2)</li>
+            <li>Tune to a channel (ATSC Player, press 6)</li>
+            <li>
+              Wait 30-60 seconds for EPG data to be received from the broadcast
+            </li>
+            <li>Return here to view the complete program guide</li>
+          </ol>
+          <p style={{ marginBottom: 0, fontSize: "14px" }}>
+            📖{" "}
+            <a
+              href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md#step-4-view-electronic-program-guide-epg"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#60a5fa", textDecoration: "underline" }}
+            >
+              Learn more about EPG
+            </a>
+          </p>
+        </div>
+      )}
+
       {viewMode === "grid" ? (
         <ProgramGrid
           channels={epg.channels}

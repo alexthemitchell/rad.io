@@ -1,5 +1,22 @@
 # WebSDR Pro Development Roadmap
 
+## 🎯 Golden Path: ATSC Digital TV Workflow
+
+**For new users and ATSC beginners**, we've defined a clear "Golden Path" that guides you through the complete end-to-end workflow:
+
+1. **Connect Hardware** → Plug in your SDR device and grant browser permissions
+2. **Scan for Channels** → Use the ATSC Scanner to discover broadcasts (2-5 minutes)
+3. **Tune and Play** → Select a channel in ATSC Player to watch/listen
+4. **View Program Guide** → Browse EPG data to see what's on TV
+5. **Enable Captions** → Turn on closed captions for accessibility
+6. **Monitor Signal Health** → Check SNR, MER, BER to optimize antenna placement
+
+**📖 [Complete ATSC Golden Path Guide](docs/tutorials/atsc-golden-path.md)** - Detailed walkthrough with troubleshooting
+
+This golden path represents our commitment to providing a seamless user experience for the most common use case: watching over-the-air digital television. All features and documentation are organized to support this workflow first, with advanced features clearly labeled.
+
+---
+
 ## Overview
 
 This roadmap outlines the strategic development plan for WebSDR Pro, transitioning from a functional prototype to a complete, production-ready professional signal analysis platform. The roadmap is organized by user personas and capability tiers, ensuring features are prioritized based on real-world use cases and user value.

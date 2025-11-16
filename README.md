@@ -5,6 +5,23 @@
 
 A professional browser-based SDR application with industry-standard visualizations, universal device support, and comprehensive testing.
 
+## 🎯 New to rad.io? Start with the Golden Path
+
+**Want to watch digital TV with your SDR?** Follow our step-by-step [**ATSC Digital TV Golden Path Guide**](docs/tutorials/atsc-golden-path.md) to learn the complete end-to-end workflow:
+
+1. 🔌 **Connect** your SDR device
+2. 🔍 **Scan** for ATSC channels in your area
+3. 📺 **Tune and Play** a channel
+4. 📋 **View** the Electronic Program Guide (EPG)
+5. 💬 **Enable** closed captions
+6. 📊 **Monitor** signal health and quality
+
+**Estimated time**: 15-20 minutes | **No SDR experience required!**
+
+[**→ Start the ATSC Golden Path Guide**](docs/tutorials/atsc-golden-path.md)
+
+---
+
 ## Common Usecases
 
 ### Live FM Radio
@@ -202,7 +219,7 @@ Design rationale and concepts:
 
 - Modern web browser with WebUSB support (Chrome 61+, Edge 79+, Opera 48+)
 - HTTPS context (required for WebUSB)
-- Compatible SDR device (HackRF One, RTL-SDR, etc.) - _optional for development_
+- Compatible SDR device (HackRF One, RTL-SDR, etc.) - *optional for development*
 
 ### Installation
 
