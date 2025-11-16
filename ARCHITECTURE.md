@@ -190,17 +190,17 @@ rad.io employs a **multi-tier state management architecture** that balances perf
 
 ### State Taxonomy with Examples
 
-| State Type | Storage Mechanism | Location | Example Data | Survives Reload? |
-|------------|------------------|----------|--------------|-----------------|
-| **Long-term** | IndexedDB | `src/utils/atscChannelStorage.ts` | Scanned ATSC channels with signal quality | ✅ Yes |
-| **Long-term** | localStorage | `src/utils/epgStorage.ts` | Electronic Program Guide (EPG) data | ✅ Yes (24hr max) |
-| **Session** | Zustand + localStorage | `src/store/slices/settingsSlice.ts` | User preferences (FFT size, color scheme) | ✅ Yes |
-| **Session** | Zustand (no persist) | `src/store/slices/frequencySlice.ts` | Current VFO frequency | ❌ No |
-| **Session** | Zustand (no persist) | `src/store/slices/deviceSlice.ts` | Connected SDR devices | ❌ No |
-| **Ephemeral** | Zustand (no persist) | `src/store/slices/notificationSlice.ts` | Toast notifications | ❌ No |
-| **Ephemeral** | Zustand (no persist) | `src/store/slices/diagnosticsSlice.ts` | Performance metrics | ❌ No |
-| **Ephemeral** | React hooks | `src/hooks/useATSCScanner.ts` | Active scan state, progress | ❌ No |
-| **Ephemeral** | React hooks | `src/hooks/useEPG.ts` | Search query, filter selections | ❌ No |
+| State Type    | Storage Mechanism      | Location                                | Example Data                              | Survives Reload?  |
+| ------------- | ---------------------- | --------------------------------------- | ----------------------------------------- | ----------------- |
+| **Long-term** | IndexedDB              | `src/utils/atscChannelStorage.ts`       | Scanned ATSC channels with signal quality | ✅ Yes            |
+| **Long-term** | localStorage           | `src/utils/epgStorage.ts`               | Electronic Program Guide (EPG) data       | ✅ Yes (24hr max) |
+| **Session**   | Zustand + localStorage | `src/store/slices/settingsSlice.ts`     | User preferences (FFT size, color scheme) | ✅ Yes            |
+| **Session**   | Zustand (no persist)   | `src/store/slices/frequencySlice.ts`    | Current VFO frequency                     | ❌ No             |
+| **Session**   | Zustand (no persist)   | `src/store/slices/deviceSlice.ts`       | Connected SDR devices                     | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/notificationSlice.ts` | Toast notifications                       | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/diagnosticsSlice.ts`  | Performance metrics                       | ❌ No             |
+| **Ephemeral** | React hooks            | `src/hooks/useATSCScanner.ts`           | Active scan state, progress               | ❌ No             |
+| **Ephemeral** | React hooks            | `src/hooks/useEPG.ts`                   | Search query, filter selections           | ❌ No             |
 
 ### Storage Mechanisms in Detail
 
@@ -257,10 +257,13 @@ export namespace EPGStorage {
 
   export function storeEPGData(eit, ett, channel): void {
     // Stores to localStorage with timestamp
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      timestamp: Date.now(),
-      data: channelData
-    }));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        timestamp: Date.now(),
+        data: channelData,
+      }),
+    );
   }
 }
 ```
@@ -296,7 +299,7 @@ export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return { settings: next };
     });
-  }
+  },
 });
 ```
 
@@ -318,7 +321,7 @@ export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
 // Persistence: None (ephemeral, runtime-only)
 export const frequencySlice: StateCreator<FrequencySlice> = (set) => ({
   frequencyHz: 100_000_000, // Default to 100 MHz
-  setFrequencyHz: (hz) => set({ frequencyHz: hz })
+  setFrequencyHz: (hz) => set({ frequencyHz: hz }),
 });
 ```
 
