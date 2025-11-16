@@ -1,8 +1,17 @@
 /**
  * ATSC Scanner Hook
  *
+ * Persistence: None (ephemeral session state during active scan)
+ * Scope: Component-bound (React hook)
+ * Expiration: Cleared on component unmount
+ *
  * Business logic for scanning ATSC channels with pilot tone detection
  * and signal quality measurement.
+ *
+ * Note: Scan results are persisted to IndexedDB via atscChannelStorage,
+ * but the active scan state (progress, current channel) is ephemeral.
+ *
+ * Related: See ARCHITECTURE.md "State & Persistence" section for storage pattern guidance
  */
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";

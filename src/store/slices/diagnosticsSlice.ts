@@ -1,8 +1,16 @@
 /**
  * Diagnostics Slice
  *
+ * Persistence: None (ephemeral, runtime-only)
+ * Scope: Application-wide (Zustand store)
+ * Expiration: Cleared on page reload
+ *
  * Centralized event bus for runtime diagnostics and health metrics
  * across the signal pipeline (demodulator, TS parser, decoders).
+ *
+ * These are runtime-only performance metrics that don't need persistence.
+ *
+ * Related: See ARCHITECTURE.md "State & Persistence" section for storage pattern guidance
  */
 
 import { type StateCreator } from "zustand";

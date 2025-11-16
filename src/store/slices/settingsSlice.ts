@@ -1,8 +1,17 @@
 /**
  * Settings Slice
  *
+ * Persistence: Zustand + localStorage (session state, survives reload)
+ * Scope: Application-wide, single tab
+ * Expiration: None (manual reset only)
+ * Storage Key: "rad.settings.v1"
+ *
  * Manages visualization and rendering settings with localStorage persistence.
+ * User preferences are automatically saved and restored between sessions.
+ *
  * Migrated from SettingsContext.tsx to use Zustand for better performance.
+ *
+ * Related: See ARCHITECTURE.md "State & Persistence" section for storage pattern guidance
  */
 
 import { type StateCreator } from "zustand";

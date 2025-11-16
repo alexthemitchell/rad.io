@@ -75,7 +75,8 @@ rad.io features a **comprehensive device integration framework** that enables pl
 
 - 📖 [Add a New SDR Device Guide](docs/how-to/add-new-sdr-device.md) - Step-by-step instructions
 - 📚 [Architecture Documentation](ARCHITECTURE.md) - Framework design and patterns
-- � See existing device implementations in `src/models/` for reference
+- 🗄️ [State & Persistence Guide](ARCHITECTURE.md#state--persistence) - Managing state across the app
+- 📝 See existing device implementations in `src/models/` for reference
 
 Adding a new device takes ~200 lines of code following the patterns in existing implementations.
 
@@ -202,7 +203,7 @@ Design rationale and concepts:
 
 - Modern web browser with WebUSB support (Chrome 61+, Edge 79+, Opera 48+)
 - HTTPS context (required for WebUSB)
-- Compatible SDR device (HackRF One, RTL-SDR, etc.) - _optional for development_
+- Compatible SDR device (HackRF One, RTL-SDR, etc.) - *optional for development*
 
 ### Installation
 
