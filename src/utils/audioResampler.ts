@@ -178,11 +178,9 @@ export class AudioResampler {
     }
 
     // Update position for next call
-    // Handle fractional position tracking properly to avoid drift
-    this.position += input.length;
-    while (this.position >= this.ratio) {
-      this.position -= this.ratio;
-    }
+    // Carry over fractional part beyond input buffer
+    const totalInputConsumed = outputLength * this.ratio;
+    this.position = totalInputConsumed - input.length;
 
     return output;
   }
@@ -262,11 +260,9 @@ export class LinearResampler {
 
     this.lastSample = input[input.length - 1] ?? 0;
 
-    // Update position for next call to maintain phase continuity
-    this.position += input.length;
-    while (this.position >= this.ratio) {
-      this.position -= this.ratio;
-    }
+    // Update position: carry over fractional part beyond input buffer
+    const totalInputConsumed = outputLength * this.ratio;
+    this.position = totalInputConsumed - input.length;
 
     return output;
   }

@@ -453,6 +453,24 @@ export class AudioStreamProcessor {
 
     const { sampleRate = 48000, channels = 1 } = config;
 
+    // Map DemodulationType to WorkletDemodType
+    const demodTypeMap: Record<DemodulationType, WorkletDemodType> = {
+      [DemodulationType.AM]: WorkletDemodType.AM,
+      [DemodulationType.FM]: WorkletDemodType.FM,
+      [DemodulationType.NFM]: WorkletDemodType.NFM,
+      [DemodulationType.WFM]: WorkletDemodType.WFM,
+      [DemodulationType.USB]: WorkletDemodType.USB,
+      [DemodulationType.LSB]: WorkletDemodType.LSB,
+      [DemodulationType.CW]: WorkletDemodType.CW,
+      [DemodulationType.NONE]: WorkletDemodType.FM, // fallback
+    };
+
+    // Update demod type if it changed
+    const workletDemodType = demodTypeMap[demodType];
+    if (workletDemodType) {
+      this.audioWorkletManager.setDemodType(workletDemodType);
+    }
+
     // Process samples through AudioWorklet
     this.audioWorkletManager.processSamples(samples);
 
@@ -499,7 +517,7 @@ export class AudioStreamProcessor {
     this.audioWorkletManager = new AudioWorkletManager();
     await this.audioWorkletManager.initialize({
       demodType: WorkletDemodType.FM, // Default, will be updated
-      agcMode: agcModeMap[agcMode] ?? WorkletAGCMode.MEDIUM,
+      agcMode: agcModeMap[agcMode] ?? WorkletAGCMode.OFF,
       agcTarget,
       squelchThreshold,
       deemphasisEnabled: enableDeEmphasis,

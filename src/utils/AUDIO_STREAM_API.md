@@ -821,25 +821,21 @@ interface AudioWorkletConfig {
 
 ### Dynamic Control
 
-Update AudioWorklet parameters in real-time:
+Update AudioWorklet parameters by calling `extractAudio` with different configuration values. The demodulation type and other settings will be updated dynamically:
 
 ```typescript
-// Change demodulation type
-processor.audioWorkletManager?.setDemodType(WorkletDemodType.NFM);
-
-// Adjust AGC
-processor.audioWorkletManager?.setAGCMode(AGCMode.FAST);
-processor.audioWorkletManager?.setAGCTarget(0.7);
-
-// Control squelch
-processor.audioWorkletManager?.setSquelchThreshold(0.15);
-
-// Toggle deemphasis
-processor.audioWorkletManager?.setDeemphasisEnabled(false);
-
-// Adjust volume
-processor.audioWorkletManager?.setVolume(0.8);
+// Change demodulation type to NFM
+const result = processor.extractAudio(samples, DemodulationType.NFM, {
+  useAudioWorklet: true,
+  agcMode: "fast",
+  agcTarget: 0.7,
+  squelchThreshold: 0.15,
+  enableDeEmphasis: false,
+  volume: 0.8,
+});
 ```
+
+**Note:** The AudioWorkletManager is managed internally by AudioStreamProcessor. Configuration changes are applied through the `extractAudio` config parameter.
 
 ## AGC and Squelch
 

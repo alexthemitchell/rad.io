@@ -283,6 +283,10 @@ class AudioProcessor extends AudioWorkletProcessor {
     const blockSize = outputChannel.length;
 
     // Check if we have IQ samples to process
+    // Note: This implementation assumes IQ samples are pre-decimated to audio rate
+    // before being sent to the worklet. For typical SDR use cases where IQ samples
+    // arrive at much higher rates (e.g., 2.048 MHz), decimation must be performed
+    // in the main thread before calling processSamples().
     if (this.iqBuffer.length < blockSize) {
       // Not enough samples - output silence
       outputChannel.fill(0);
