@@ -45,7 +45,7 @@ export function InfoBanner({
   className = "",
   style = {},
 }: InfoBannerProps): React.JSX.Element {
-  const classes = ["info-banner", `info-banner--${variant}`, className]
+  const classes = ["info-banner", `info-banner-${variant}`, className]
     .filter(Boolean)
     .join(" ");
 
@@ -56,8 +56,8 @@ export function InfoBanner({
       role={role}
       aria-live={role === "status" ? ariaLive : undefined}
     >
-      {title && <h3 className="info-banner__title">{title}</h3>}
-      <div className="info-banner__content">{children}</div>
+      {title && <h3 className="info-banner-title">{title}</h3>}
+      <div className="info-banner-content">{children}</div>
     </div>
   );
 }

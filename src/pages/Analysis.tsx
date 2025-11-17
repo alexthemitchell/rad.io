@@ -505,7 +505,7 @@ function Analysis(): React.JSX.Element {
           role="note"
           style={{ padding: "12px 16px" }}
         >
-          <p style={{ marginBottom: 0, fontSize: "13px" }}>
+          <p className="info-banner-footer" style={{ fontSize: "13px" }}>
             This page provides deep signal analysis for experienced users.{" "}
             <strong>New to ATSC?</strong> Start with{" "}
             <a href="/scanner">Scanner (press 2)</a> to find channels, then{" "}

@@ -82,7 +82,7 @@ function Help(): React.JSX.Element {
             role="note"
             style={{ marginBottom: "24px" }}
           >
-            <p className="info-banner__paragraph">
+            <p className="info-banner-paragraph">
               Follow our comprehensive{" "}
               <a
                 href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md"
@@ -93,7 +93,7 @@ function Help(): React.JSX.Element {
               </a>{" "}
               for a step-by-step walkthrough:
             </p>
-            <ol style={{ marginBottom: 0 }}>
+            <ol className="info-banner-list">
               <li>Connect your SDR device</li>
               <li>Scan for ATSC channels</li>
               <li>Tune and play a channel</li>
@@ -101,7 +101,7 @@ function Help(): React.JSX.Element {
               <li>Enable closed captions</li>
               <li>Monitor signal health</li>
             </ol>
-            <p style={{ marginTop: "12px", marginBottom: 0 }}>
+            <p className="info-banner-footer" style={{ marginTop: "12px" }}>
               <strong>Estimated time:</strong> 15-20 minutes |{" "}
               <strong>No SDR experience required!</strong>
             </p>

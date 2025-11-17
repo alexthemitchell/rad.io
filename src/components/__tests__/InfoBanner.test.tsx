@@ -109,10 +109,10 @@ describe("InfoBanner", () => {
     );
 
     expect(
-      infoContainer.querySelector(".info-banner--info"),
+      infoContainer.querySelector(".info-banner-info"),
     ).toBeInTheDocument();
     expect(
-      advancedContainer.querySelector(".info-banner--advanced"),
+      advancedContainer.querySelector(".info-banner-advanced"),
     ).toBeInTheDocument();
   });
 });

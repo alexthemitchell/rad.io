@@ -13,64 +13,64 @@
 }
 
 /* Variant: Info (blue theme for beginner-friendly content) */
-.info-banner--info {
+.info-banner-info {
   background-color: var(--rad-info-bg);
   border-color: var(--rad-info-border);
 }
 
 /* Variant: Advanced (purple theme for expert content) */
-.info-banner--advanced {
+.info-banner-advanced {
   background-color: var(--rad-advanced-bg);
   border-color: var(--rad-advanced-border);
 }
 
 /* Title styles */
-.info-banner__title {
+.info-banner-title {
   margin-top: 0;
   margin-bottom: 8px;
   font-size: 16px;
   font-weight: 600;
 }
 
-.info-banner--info .info-banner__title {
+.info-banner-info .info-banner-title {
   color: var(--rad-info-fg);
 }
 
-.info-banner--advanced .info-banner__title {
+.info-banner-advanced .info-banner-title {
   color: var(--rad-advanced-fg);
 }
 
 /* Content wrapper */
-.info-banner__content {
+.info-banner-content {
   margin-bottom: 0;
 }
 
 /* Common text patterns */
-.info-banner__paragraph {
+.info-banner-paragraph {
   margin-bottom: 8px;
 }
 
-.info-banner__paragraph:last-child {
+.info-banner-paragraph:last-child {
   margin-bottom: 0;
 }
 
-.info-banner__footer {
+.info-banner-footer {
   margin-bottom: 0;
   font-size: 14px;
 }
 
-.info-banner__list {
+.info-banner-list {
   margin-left: 20px;
   margin-bottom: 8px;
 }
 
 /* Link styles */
-.info-banner--info a {
+.info-banner-info a {
   color: var(--rad-info-fg);
   text-decoration: underline;
 }
 
-.info-banner--advanced a {
+.info-banner-advanced a {
   color: var(--rad-advanced-fg);
   text-decoration: underline;
 }

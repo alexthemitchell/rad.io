@@ -121,16 +121,17 @@ function Scanner(): React.JSX.Element {
           <InfoBanner
             variant="info"
             title="🔍 Scanning for ATSC Digital TV Channels"
+            role="status"
             style={{ marginTop: "16px" }}
           >
-            <p className="info-banner__paragraph">
+            <p className="info-banner-paragraph">
               This scanner will search VHF and UHF frequencies to discover ATSC
               broadcasts in your area.
             </p>
-            <p className="info-banner__paragraph">
+            <p className="info-banner-paragraph">
               <strong>Quick Start:</strong>
             </p>
-            <ol className="info-banner__list">
+            <ol className="info-banner-list">
               <li>Configure scan bands below (VHF-High and UHF recommended)</li>
               <li>Click &quot;Start Scan&quot; and wait 2-5 minutes</li>
               <li>
@@ -140,7 +141,7 @@ function Scanner(): React.JSX.Element {
                 Navigate to ATSC Player (press <kbd>6</kbd>) to watch channels
               </li>
             </ol>
-            <p className="info-banner__footer">
+            <p className="info-banner-footer">
               📖{" "}
               <a
                 href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md#step-2-scan-for-atsc-channels"

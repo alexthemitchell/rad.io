@@ -132,6 +132,16 @@
   --rad-danger-foreground: oklch(98% 0 0deg);
   --rad-border: oklch(86% 0.01 240deg);
   --rad-ring: oklch(55% 0.18 240deg);
+
+  /* Info banner (blue theme for beginner-friendly content) */
+  --rad-info-bg: oklch(85% 0.03 240deg); /* Light blue background */
+  --rad-info-border: oklch(50% 0.15 240deg); /* Darker blue border */
+  --rad-info-fg: oklch(35% 0.15 240deg); /* Dark blue text */
+
+  /* Advanced banner (purple theme for expert content) */
+  --rad-advanced-bg: oklch(85% 0.08 285deg); /* Light purple background */
+  --rad-advanced-border: oklch(50% 0.18 285deg); /* Darker purple border */
+  --rad-advanced-fg: oklch(35% 0.18 285deg); /* Dark purple text */
 }
 
 /* Utility classes (non-invasive) - not used by current UI */

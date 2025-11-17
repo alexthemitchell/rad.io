@@ -58,7 +58,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
     await expect(onboardingTab).toHaveAttribute("aria-selected", "true");
 
     // Verify golden path banner is visible
-    const goldenPathBanner = page.locator(".info-banner--info").first();
+    const goldenPathBanner = page.locator(".info-banner-info").first();
     await expect(goldenPathBanner).toBeVisible();
 
     // Verify banner contains ATSC Digital TV reference
@@ -109,7 +109,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
     await expect(page.getByText(/atsc/i)).toBeVisible();
 
     // Verify context banner appears (when no channels are found)
-    const bannerSelector = page.locator(".info-banner--info");
+    const bannerSelector = page.locator(".info-banner-info");
 
     // The banner should appear when there are no scanned channels
     // Note: In a real test environment without channels, this would be visible
@@ -141,7 +141,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
     ).toBeVisible({ timeout: 10000 });
 
     // Verify context banner appears when scanner is not showing and no channels exist
-    const banner = page.locator(".info-banner--info").first();
+    const banner = page.locator(".info-banner-info").first();
 
     // The banner should contain first-time user guidance
     if ((await banner.count()) > 0) {
@@ -183,7 +183,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
       await programGuideTab.click();
 
       // Verify EPG context banner appears when no data
-      const banner = page.locator(".info-banner--info");
+      const banner = page.locator(".info-banner-info");
 
       if ((await banner.count()) > 0) {
         await expect(
@@ -219,7 +219,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
     });
 
     // Verify advanced feature banner is always visible
-    const advancedBanner = page.locator(".info-banner--advanced").first();
+    const advancedBanner = page.locator(".info-banner-advanced").first();
     await expect(advancedBanner).toBeVisible();
 
     // Verify content
@@ -314,7 +314,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
     ).toBeVisible();
 
     // Check that banner uses CSS custom properties (not hardcoded colors)
-    const banner = page.locator(".info-banner--info").first();
+    const banner = page.locator(".info-banner-info").first();
 
     if ((await banner.count()) > 0) {
       // Get computed background color
