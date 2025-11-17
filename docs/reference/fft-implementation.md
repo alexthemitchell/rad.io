@@ -631,9 +631,32 @@ console.log(`Resolution: ${result.resolution} Hz/bin`);
 5. **Consider WebGL**: For large FFT sizes (8192+)
 6. **Profile**: Measure before optimizing
 
+## WebGPU Acceleration
+
+For large FFT sizes (4096+), rad.io implements GPU-accelerated FFT using WebGPU compute shaders, achieving 5-15x speedup compared to WASM. This is critical for maintaining 60 FPS spectrum rendering at high resolutions.
+
+**See**: [WebGPU FFT Implementation](./webgpu-fft-implementation.md) for detailed documentation.
+
+**Key Features**:
+- Cooley-Tukey radix-2 algorithm with compute shaders
+- Multi-pass pipeline with ping-pong buffers
+- 8-15x speedup for FFT 4096+ vs WASM
+- Automatic fallback to WASM when WebGPU unavailable
+- Browser support: Chrome 113+, Edge 113+, Safari 18+ (85%+ coverage)
+
+**Usage**:
+```javascript
+import { WebGPUFFT } from './utils/webgpuCompute';
+
+const fft = new WebGPUFFT();
+await fft.initialize(4096);
+const spectrum = await fft.compute(iSamples, qSamples);
+```
+
 ## Resources
 
 - **fft.js**: GitHub.com/indutny/fft.js
 - **dsp.js**: GitHub.com/corbanbrook/dsp.js
 - **Understanding DSP**: dspguide.com
 - **FFT Tutorial**: jakevdp.GitHub.io/blog/2013/08/28/understanding-the-fft/
+- **WebGPU FFT**: See [webgpu-fft-implementation.md](./webgpu-fft-implementation.md)
