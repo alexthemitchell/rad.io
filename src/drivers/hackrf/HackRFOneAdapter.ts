@@ -7,6 +7,7 @@
  */
 
 import { CalibrationManager } from "../../lib/measurement/calibration";
+import { DeviceErrorHandler } from "../../models/DeviceError";
 import {
   type ISDRDevice,
   type IQSample,
@@ -18,7 +19,6 @@ import {
   type DeviceMemoryInfo,
   convertInt8ToIQ,
 } from "../../models/SDRDevice";
-import { DeviceErrorHandler } from "../../models/DeviceError";
 import { useStore } from "../../store";
 import { HackRFOne } from "./HackRFOne";
 
@@ -44,7 +44,11 @@ export class HackRFOneAdapter implements ISDRDevice {
   /**
    * Track device error in diagnostics store
    */
-  private trackError(error: Error | unknown, context?: Record<string, unknown>): void {
+  private trackError(
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+    error: Error | unknown,
+    context?: Record<string, unknown>,
+  ): void {
     try {
       const errorState = DeviceErrorHandler.mapError(error, {
         ...context,

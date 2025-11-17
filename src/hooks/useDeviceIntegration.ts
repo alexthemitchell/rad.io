@@ -7,9 +7,9 @@
 
 import { useEffect, useCallback, useRef } from "react";
 import { SDRDriverRegistry, registerBuiltinDrivers } from "../drivers";
-import { MockSDRDevice } from "../models/MockSDRDevice";
-import { DeviceErrorHandler } from "../models/DeviceError";
 import { notify } from "../lib/notifications";
+import { DeviceErrorHandler } from "../models/DeviceError";
+import { MockSDRDevice } from "../models/MockSDRDevice";
 import { useStore } from "../store";
 import { getDeviceId } from "../store/slices/deviceSlice";
 import { shouldUseMockSDR } from "../utils/e2e";

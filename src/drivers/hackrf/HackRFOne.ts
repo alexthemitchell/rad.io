@@ -1,6 +1,6 @@
-import { TransceiverMode } from "./constants";
 import { DeviceErrorHandler } from "../../models/DeviceError";
 import { useStore } from "../../store";
+import { TransceiverMode } from "./constants";
 
 const UINT32_MAX = 0xffffffff;
 const MHZ_IN_HZ = 1_000_000;
@@ -181,7 +181,11 @@ export class HackRFOne {
   /**
    * Track device error in diagnostics store
    */
-  private trackError(error: Error | unknown, context?: Record<string, unknown>): void {
+  private trackError(
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+    error: Error | unknown,
+    context?: Record<string, unknown>,
+  ): void {
     try {
       const errorState = DeviceErrorHandler.mapError(error, context);
       const store = useStore.getState();

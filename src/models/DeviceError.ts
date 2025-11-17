@@ -175,8 +175,7 @@ const ERROR_MAPPINGS: Array<{
     pattern: /InvalidStateError/i,
     mapping: {
       code: DeviceErrorCode.USB_INVALID_STATE,
-      message:
-        "Device is in an invalid state. Attempting automatic recovery.",
+      message: "Device is in an invalid state. Attempting automatic recovery.",
       recoveryAction: RecoveryAction.RETRY,
       severity: ErrorSeverity.WARNING,
     },
@@ -242,17 +241,20 @@ const ERROR_MAPPINGS: Array<{
  * - User-friendly error messages
  * - Recovery action suggestions
  * - Error history tracking
+ *
+ * Note: This class uses only static methods as a namespace for error handling utilities.
  */
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class DeviceErrorHandler {
   /**
    * Map a raw error to a standardized DeviceErrorState
    */
   static mapError(
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
     error: Error | unknown,
     context?: Record<string, unknown>,
   ): DeviceErrorState {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     const errorName = error instanceof Error ? error.name : undefined;
 
     // Try to match error message against known patterns

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
-import { DeviceErrorHandler } from "../models/DeviceError";
 import { notify } from "../lib/notifications";
+import { DeviceErrorHandler } from "../models/DeviceError";
 import { useDevice } from "../store";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
