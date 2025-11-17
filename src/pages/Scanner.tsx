@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ATSCScanner from "../components/ATSCScanner";
 import Card from "../components/Card";
 import FrequencyScanner from "../components/FrequencyScanner";
+import { InfoBanner } from "../components/InfoBanner";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
@@ -115,6 +116,43 @@ function Scanner(): React.JSX.Element {
             onSignalTypeChange={handleSignalTypeChange}
           />
         </Card>
+
+        {signalType === "ATSC" && atscScanner.foundChannels.length === 0 && (
+          <InfoBanner
+            variant="info"
+            title="🔍 Scanning for ATSC Digital TV Channels"
+            role="status"
+            className="info-banner-margin-top"
+          >
+            <p className="info-banner-paragraph">
+              This scanner will search VHF and UHF frequencies to discover ATSC
+              broadcasts in your area.
+            </p>
+            <p className="info-banner-paragraph">
+              <strong>Quick Start:</strong>
+            </p>
+            <ol className="info-banner-list">
+              <li>Configure scan bands below (VHF-High and UHF recommended)</li>
+              <li>Click &quot;Start Scan&quot; and wait 2-5 minutes</li>
+              <li>
+                Found channels will appear in the table and save automatically
+              </li>
+              <li>
+                Navigate to ATSC Player (press <kbd>6</kbd>) to watch channels
+              </li>
+            </ol>
+            <p className="info-banner-footer">
+              📖{" "}
+              <a
+                href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md#step-2-scan-for-atsc-channels"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View detailed scanning guide
+              </a>
+            </p>
+          </InfoBanner>
+        )}
 
         {signalType === "ATSC" ? (
           <ATSCScanner

@@ -94,6 +94,9 @@ describe("Help", () => {
       </BrowserRouter>,
     );
     expect(screen.getByText(/getting started/i)).toBeInTheDocument();
-    expect(screen.getByText(/connect your sdr device/i)).toBeInTheDocument();
+    // Text appears multiple times now (golden path + general), so use getAllByText
+    expect(
+      screen.getAllByText(/connect your sdr device/i).length,
+    ).toBeGreaterThan(0);
   });
 });
