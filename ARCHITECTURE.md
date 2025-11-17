@@ -211,16 +211,19 @@ rad.io implements a **three-tier fallback system** to ensure the application wor
 The application automatically detects runtime capabilities and selects the appropriate DSP mode:
 
 **1. SharedArrayBuffer Mode (Optimal)**
+
 - **Requirements**: COOP/COEP headers, HTTPS, modern browser
 - **Performance**: 10+ GB/s throughput, <0.1ms latency, zero-copy transfers
 - **Deployment**: Vercel, Netlify, Cloudflare Pages, or custom server with headers
 
 **2. MessageChannel Mode (Fallback)**
+
 - **Requirements**: Web Workers support
 - **Performance**: ~200 MB/s throughput, 1-5ms latency, buffer copying overhead
 - **Deployment**: GitHub Pages, browsers without cross-origin isolation
 
 **3. Pure JavaScript Mode (Emergency)**
+
 - **Requirements**: None (always available)
 - **Performance**: Blocks UI thread, not suitable for real-time processing
 - **Deployment**: Unsupported browsers, debugging scenarios
@@ -243,6 +246,7 @@ const capabilities = detectDSPCapabilities();
 ```
 
 The detection checks:
+
 1. `typeof SharedArrayBuffer !== "undefined"` (browser support)
 2. `crossOriginIsolated === true` (COOP/COEP headers present)
 3. `typeof Worker !== "undefined"` (Web Workers available)
@@ -251,11 +255,13 @@ The detection checks:
 #### User Visibility
 
 The current DSP mode is visible to users via:
+
 - **Diagnostics Panel**: Detailed view with feature breakdown and recommendations
 - **Console Logs**: Developer-friendly capability report on startup
 - **Diagnostic Events**: Warnings logged for fallback modes
 
 Example console output:
+
 ```
 🚀 DSP Environment Capabilities {
   mode: "shared-array-buffer",
@@ -270,12 +276,14 @@ Example console output:
 **For Optimal Performance (SharedArrayBuffer Mode)**:
 
 Deploy to a platform that supports custom HTTP headers:
+
 - **Vercel**: Add `vercel.json` with headers configuration
 - **Netlify**: Add `_headers` file to repository
 - **Cloudflare Pages**: Configure headers in dashboard
 - **Custom Server**: Set COOP and COEP headers in web server config
 
 Example headers configuration:
+
 ```
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
@@ -284,6 +292,7 @@ Cross-Origin-Embedder-Policy: require-corp
 **For GitHub Pages Deployment (MessageChannel Mode)**:
 
 The application will automatically fall back to MessageChannel mode. Users will see:
+
 - Warning about reduced performance
 - Recommendation to deploy on platforms supporting custom headers
 - Links to migration guides

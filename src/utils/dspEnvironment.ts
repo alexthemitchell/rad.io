@@ -8,6 +8,7 @@
  * Related: ARCHITECTURE.md "DSP Processing Architecture"
  */
 
+import { isWasmSIMDSupported } from "./dspWasm";
 import { getSharedBufferCapabilities } from "./sharedRingBuffer";
 
 /**
@@ -38,6 +39,14 @@ export enum DSPMode {
 
 /**
  * DSP environment capabilities
+ *
+ * This interface extends and complements the OptimizationStatus interface in dsp.ts:
+ * - OptimizationStatus: Low-level DSP optimization features (WASM, SAB, WebGPU)
+ * - DSPCapabilities: High-level deployment detection, mode selection, and user messaging
+ *
+ * The two systems work together:
+ * - DSPCapabilities uses capability detection to select execution mode
+ * - OptimizationStatus tracks which optimizations are active within that mode
  */
 export interface DSPCapabilities {
   /** Selected execution mode */
@@ -128,11 +137,10 @@ function checkWasmAvailable(): boolean {
 
 /**
  * Check if WASM SIMD is supported
+ * Uses the proper SIMD validation from dspWasm.ts
  */
 function checkWasmSIMDSupported(): boolean {
-  // Feature detection for WASM SIMD
-  // This is a simplified check - actual SIMD support requires feature test
-  return checkWasmAvailable() && typeof WebAssembly.validate === "function";
+  return isWasmSIMDSupported();
 }
 
 /**
@@ -179,20 +187,25 @@ function generateWarnings(
   const warnings: string[] = [];
 
   if (mode === DSPMode.MESSAGE_CHANNEL) {
-    warnings.push(
-      "SharedArrayBuffer not available. Using MessageChannel fallback (slower performance).",
-    );
-
-    if (!sharedBufferCaps.isolated) {
+    // Check if browser supports SharedArrayBuffer at all
+    if (!sharedBufferCaps.supported) {
+      warnings.push(
+        "SharedArrayBuffer not supported by this browser. Using MessageChannel fallback (slower performance).",
+      );
+    } else if (!sharedBufferCaps.isolated) {
+      // Browser supports SAB but headers are missing
+      warnings.push(
+        "SharedArrayBuffer not available. Using MessageChannel fallback (slower performance).",
+      );
       warnings.push(
         "Cross-origin isolation not enabled. Server must send COOP and COEP headers for optimal performance.",
       );
-    }
 
-    if (deploymentEnv === "github-pages") {
-      warnings.push(
-        "GitHub Pages does not support custom HTTP headers. Consider deploying to Vercel, Netlify, or Cloudflare Pages for full performance.",
-      );
+      if (deploymentEnv === "github-pages") {
+        warnings.push(
+          "GitHub Pages does not support custom HTTP headers. Consider deploying to Vercel, Netlify, or Cloudflare Pages for full performance.",
+        );
+      }
     }
   }
 

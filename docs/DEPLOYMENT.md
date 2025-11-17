@@ -471,12 +471,14 @@ Monitor these metrics for deployment health:
 ### Current Deployment: GitHub Pages (Fallback Mode)
 
 rad.io is currently deployed to GitHub Pages, which provides:
+
 - ✅ Free hosting
 - ✅ Automatic deployment
 - ✅ CDN distribution
 - ❌ **No custom HTTP headers** (performance limitation)
 
 **Impact:** The application runs in **MessageChannel fallback mode** with ~50x reduced DSP performance:
+
 - MessageChannel Mode: ~200 MB/s throughput, 1-5ms latency
 - Optimal (SAB) Mode: 10+ GB/s throughput, <0.1ms latency
 
@@ -496,22 +498,26 @@ GitHub Pages cannot send these headers, forcing fallback to slower MessageChanne
 For production deployments requiring maximum DSP performance, consider these platforms:
 
 #### Option 1: Vercel (Recommended)
+
 - Free tier available
 - Easy header configuration via `vercel.json`
 - Automatic HTTPS and CDN
 - Deploy command: `vercel --prod`
 
 #### Option 2: Netlify
-- Free tier available  
+
+- Free tier available
 - Header configuration via `_headers` file (already in repo)
 - Deploy command: `netlify deploy --prod`
 
 #### Option 3: Cloudflare Pages
+
 - Free tier with unlimited bandwidth
 - Header configuration via `_headers` file
 - Cloudflare's global network
 
 #### Option 4: Custom Server
+
 - Full control over headers and caching
 - Requires server maintenance
 - See ADR-0028 for Nginx/Apache examples
@@ -521,6 +527,7 @@ For production deployments requiring maximum DSP performance, consider these pla
 After deployment, verify the DSP execution mode:
 
 **Via Console:**
+
 ```javascript
 // Open DevTools → Console
 // Look for startup message:
@@ -529,6 +536,7 @@ After deployment, verify the DSP execution mode:
 ```
 
 **Via Diagnostics Panel:**
+
 1. Navigate to Diagnostics in the app
 2. Check DSP Status section
 3. Verify mode indicator and features

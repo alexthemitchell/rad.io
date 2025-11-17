@@ -7,12 +7,14 @@ This implementation adds comprehensive environment capability detection and user
 ## Problem Statement
 
 **GitHub Pages Limitation:**
+
 - Cannot configure custom HTTP headers (COOP/COEP)
 - SharedArrayBuffer unavailable → zero-copy DSP pipeline fails
 - Performance degrades from 10+ GB/s to ~200 MB/s
 - Users confused by features that work in dev but not production
 
 **Service Workers Cannot Help:**
+
 - Security headers must come from initial HTTP response
 - JavaScript cannot inject COOP/COEP headers after page load
 - This is a fundamental browser security model, not a workaround opportunity
@@ -39,6 +41,7 @@ This implementation adds comprehensive environment capability detection and user
 ### Key Components
 
 #### 1. Environment Detection (`src/utils/dspEnvironment.ts`)
+
 - Detects SharedArrayBuffer support
 - Checks crossOriginIsolated flag
 - Identifies deployment environment
@@ -46,6 +49,7 @@ This implementation adds comprehensive environment capability detection and user
 - Generates warnings and performance impact messages
 
 #### 2. DSP Status Component (`src/components/DSPStatus.tsx`)
+
 - Visual indicator of current mode
 - Feature checklist (SAB, COEP, Workers, WASM, etc.)
 - Performance impact explanation
@@ -53,12 +57,14 @@ This implementation adds comprehensive environment capability detection and user
 - Warnings about limitations
 
 #### 3. Diagnostics Integration
+
 - Added `dspCapabilities` to diagnostics store
 - Initialization hook runs on app startup
 - Console logging for developers
 - Diagnostic events for warnings
 
 #### 4. Comprehensive Documentation
+
 - ADR-0028: Design decisions and rationale
 - ARCHITECTURE.md: Fallback system explanation
 - DEPLOYMENT.md: Platform comparison and migration guide
@@ -88,12 +94,14 @@ docs/DEPLOYMENT.md                     - Added optimization guide (66 lines)
 ## Testing
 
 **Test Coverage:**
+
 - ✅ 10/10 tests passing for environment detection
 - ✅ Build successful (production and development)
 - ✅ Linting passed (no errors)
 - ✅ Type checking passed
 
 **Test Scenarios:**
+
 - Capability detection with various browser states
 - Mode selection logic (SAB → MessageChannel → Pure JS)
 - Warning generation for each mode
@@ -103,6 +111,7 @@ docs/DEPLOYMENT.md                     - Added optimization guide (66 lines)
 ## User Experience
 
 ### Development Environment (webpack-dev-server)
+
 ```
 🚀 DSP Environment Capabilities {
   mode: "shared-array-buffer",
@@ -121,6 +130,7 @@ docs/DEPLOYMENT.md                     - Added optimization guide (66 lines)
 ```
 
 ### GitHub Pages Deployment (Current)
+
 ```
 ⚡ DSP Environment Capabilities {
   mode: "message-channel",
@@ -147,12 +157,14 @@ docs/DEPLOYMENT.md                     - Added optimization guide (66 lines)
 Users see a colored status card:
 
 **Optimal Mode (Green):**
+
 - ✅ Title: "Optimal Performance Mode"
 - ✅ Message: "Your browser supports zero-copy SharedArrayBuffer transfers..."
 - ✅ All features checked green
 - ✅ No warnings displayed
 
 **Fallback Mode (Yellow):**
+
 - ⚠️ Title: "Fallback Performance Mode"
 - ⚠️ Message: "Running with MessageChannel fallback. Performance is reduced..."
 - ⚠️ CrossOriginIsolated unchecked (red X)
@@ -161,13 +173,13 @@ Users see a colored status card:
 
 ## Platform Comparison
 
-| Platform | COOP/COEP | Cost | Setup | DSP Mode |
-|----------|-----------|------|-------|----------|
-| **Vercel** | ✅ Yes | Free tier | Easy (`vercel.json`) | 🚀 Optimal |
-| **Netlify** | ✅ Yes | Free tier | Easy (`_headers`) | 🚀 Optimal |
-| **Cloudflare Pages** | ✅ Yes | Free | Easy (`_headers`) | 🚀 Optimal |
-| **GitHub Pages** | ❌ No | Free | Easiest | ⚡ Fallback |
-| **Custom Server** | ✅ Yes | Varies | Advanced | 🚀 Optimal |
+| Platform             | COOP/COEP | Cost      | Setup                | DSP Mode    |
+| -------------------- | --------- | --------- | -------------------- | ----------- |
+| **Vercel**           | ✅ Yes    | Free tier | Easy (`vercel.json`) | 🚀 Optimal  |
+| **Netlify**          | ✅ Yes    | Free tier | Easy (`_headers`)    | 🚀 Optimal  |
+| **Cloudflare Pages** | ✅ Yes    | Free      | Easy (`_headers`)    | 🚀 Optimal  |
+| **GitHub Pages**     | ❌ No     | Free      | Easiest              | ⚡ Fallback |
+| **Custom Server**    | ✅ Yes    | Varies    | Advanced             | 🚀 Optimal  |
 
 ## Migration Path
 
@@ -184,11 +196,13 @@ Complete guide in `docs/DEPLOYMENT.md` and ADR-0028.
 ## Performance Impact
 
 **MessageChannel vs SharedArrayBuffer:**
+
 - Throughput: 200 MB/s vs 10+ GB/s (~50x difference)
 - Latency: 1-5ms vs <0.1ms (~10-50x difference)
 - GC Pressure: Higher (buffer copying) vs None (zero-copy)
 
 **Real-World Impact:**
+
 - Waterfall rendering: Still 30-60 FPS in both modes
 - Sample processing: More CPU usage in fallback mode
 - Battery life: Slightly reduced in fallback mode
@@ -197,12 +211,14 @@ Complete guide in `docs/DEPLOYMENT.md` and ADR-0028.
 ## Future Work (Not in This PR)
 
 ### Phase 2: MessageChannel Fallback Implementation
+
 - [ ] Implement MessageChannel-based ring buffer
 - [ ] Add fallback path in DSP worker pool
 - [ ] Performance benchmarks comparing modes
 - [ ] Tests for MessageChannel communication
 
 ### Phase 3: Advanced Features
+
 - [ ] User preference to force specific mode (debugging)
 - [ ] Performance profiling to verify mode effectiveness
 - [ ] Automatic platform recommendation on first launch
@@ -216,7 +232,7 @@ Complete guide in `docs/DEPLOYMENT.md` and ADR-0028.
 
 1. **Service Workers cannot inject security headers:**
    - COOP and COEP must come from the initial HTTP response
-   - Service Workers intercept requests *after* page load
+   - Service Workers intercept requests _after_ page load
    - Browser security model prevents header injection for Spectre mitigation
 
 2. **Web Workers alone don't solve the problem:**
@@ -234,6 +250,7 @@ Complete guide in `docs/DEPLOYMENT.md` and ADR-0028.
 ## Summary
 
 This implementation provides:
+
 - ✅ Automatic detection of runtime capabilities
 - ✅ Clear user feedback about performance mode
 - ✅ Graceful degradation on GitHub Pages

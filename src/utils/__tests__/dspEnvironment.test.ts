@@ -79,7 +79,9 @@ describe("DSP Environment Detection", () => {
       if (capabilities.mode === DSPMode.PURE_JS) {
         expect(capabilities.warnings.length).toBeGreaterThan(0);
         expect(
-          capabilities.warnings.some((w) => w.includes("Web Workers not supported")),
+          capabilities.warnings.some((w) =>
+            w.includes("Web Workers not supported"),
+          ),
         ).toBe(true);
       }
     });
