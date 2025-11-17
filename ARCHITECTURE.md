@@ -126,6 +126,7 @@ The main `ATSCPlayer.tsx` (650 lines, down from 975) composes these components a
 ### Benefits
 
 This modular organization provides:
+
 - **Improved Readability**: Each module has a clear, focused purpose
 - **Easier Maintenance**: Changes are isolated to relevant submodules
 - **Better Testability**: Smaller modules are easier to test in isolation

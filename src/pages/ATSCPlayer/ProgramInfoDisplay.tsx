@@ -5,13 +5,7 @@
  */
 
 import React from "react";
-
-interface ProgramInfo {
-  title: string;
-  description: string;
-  startTime?: Date;
-  duration?: number;
-}
+import type { ProgramInfo } from "../../hooks/useATSCPlayer";
 
 interface ProgramInfoDisplayProps {
   programInfo: ProgramInfo | null;

@@ -5,9 +5,10 @@
  */
 
 import React from "react";
+import type { PlayerState } from "../../hooks/useATSCPlayer";
 
 interface VideoPlayerProps {
-  playerState: string;
+  playerState: PlayerState;
 }
 
 export function VideoPlayer({

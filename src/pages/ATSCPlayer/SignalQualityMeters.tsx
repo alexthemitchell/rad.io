@@ -5,14 +5,7 @@
  */
 
 import React from "react";
-
-interface SignalQuality {
-  snr: number;
-  ber: number;
-  mer: number;
-  signalStrength: number;
-  syncLocked: boolean;
-}
+import type { SignalQuality } from "../../hooks/useATSCPlayer";
 
 interface SignalQualityMetersProps {
   quality: SignalQuality | null;

@@ -25,7 +25,6 @@ import {
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
 import type { EPGProgram } from "../utils/epgStorage";
 
-// Import sub-components
 function ATSCPlayer(): React.JSX.Element {
   const { primaryDevice: device } = useDevice();
   const scanner = useATSCScanner(device);
