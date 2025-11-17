@@ -99,15 +99,15 @@ describe("Navigation", () => {
 
     expect(monitorLink).toHaveAttribute(
       "title",
-      "Live signal monitoring and audio playback (Keyboard: 1)",
+      "Live signal monitoring and audio playback - Start here for general SDR use (Keyboard: 1)",
     );
     expect(scannerLink).toHaveAttribute(
       "title",
-      "Scan frequencies and talkgroups (Keyboard: 2)",
+      "Scan for ATSC channels, FM/AM stations, and talkgroups - Essential for finding signals (Keyboard: 2)",
     );
     expect(analysisLink).toHaveAttribute(
       "title",
-      "Deep signal analysis and DSP pipeline (Keyboard: 4)",
+      "Deep signal analysis and DSP pipeline - Advanced feature (Keyboard: 4)",
     );
   });
 

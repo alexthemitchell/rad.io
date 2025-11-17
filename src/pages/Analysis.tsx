@@ -7,6 +7,7 @@ import {
 } from "react";
 import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
+import { InfoBanner } from "../components/InfoBanner";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import { notify } from "../lib/notifications";
@@ -497,6 +498,21 @@ function Analysis(): React.JSX.Element {
       {null}
 
       <main id="main-content" role="main">
+        {/* Advanced Feature Label */}
+        <InfoBanner
+          variant="advanced"
+          title="🔬 Advanced Analysis Tools"
+          role="note"
+          className="info-banner-compact"
+        >
+          <p className="info-banner-footer info-banner-footer-small">
+            This page provides deep signal analysis for experienced users.{" "}
+            <strong>New to ATSC?</strong> Start with{" "}
+            <a href="/scanner">Scanner (press 2)</a> to find channels, then{" "}
+            <a href="/atsc-player">ATSC Player (press 6)</a> to watch TV.
+          </p>
+        </InfoBanner>
+
         <DeviceControlBar
           device={device}
           listening={listening}

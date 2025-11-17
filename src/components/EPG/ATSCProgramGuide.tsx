@@ -16,6 +16,7 @@
 
 import React, { useState, useCallback } from "react";
 import { useEPG } from "../../hooks/useEPG";
+import { InfoBanner } from "../InfoBanner";
 import { ProgramDetailModal } from "./ProgramDetailModal";
 import { ProgramGrid } from "./ProgramGrid";
 import type { EPGProgram } from "../../utils/epgStorage";
@@ -146,6 +147,41 @@ export function ATSCProgramGuide({
           </button>
         )}
       </div>
+
+      {epg.channels.length === 0 && (
+        <InfoBanner
+          variant="info"
+          title="📺 Electronic Program Guide (EPG)"
+          role="status"
+          className="info-banner-margin-vertical"
+        >
+          <p className="info-banner-paragraph">
+            The EPG displays TV schedules extracted from ATSC broadcast signals
+            (PSIP tables).
+          </p>
+          <p className="info-banner-paragraph">
+            <strong>To view program information:</strong>
+          </p>
+          <ol className="info-banner-list">
+            <li>Scan for channels first (Scanner page, press 2)</li>
+            <li>Tune to a channel (ATSC Player, press 6)</li>
+            <li>
+              Wait 30-60 seconds for EPG data to be received from the broadcast
+            </li>
+            <li>Return here to view the complete program guide</li>
+          </ol>
+          <p className="info-banner-footer">
+            📖{" "}
+            <a
+              href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md#step-4-view-electronic-program-guide-epg"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn more about EPG
+            </a>
+          </p>
+        </InfoBanner>
+      )}
 
       {viewMode === "grid" ? (
         <ProgramGrid

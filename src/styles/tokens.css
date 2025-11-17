@@ -100,6 +100,16 @@
   /* Visualization defaults */
   --rad-grid: oklch(35% 0.02 240deg);
   --rad-grid-subtle: oklch(28% 0.015 240deg);
+
+  /* Info banner (blue theme for beginner-friendly content) */
+  --rad-info-bg: oklch(20% 0.04 240deg); /* #1e3a5f equivalent */
+  --rad-info-border: oklch(55% 0.15 240deg); /* #3b82f6 equivalent */
+  --rad-info-fg: oklch(75% 0.12 240deg); /* #60a5fa equivalent */
+
+  /* Advanced banner (purple theme for expert content) */
+  --rad-advanced-bg: oklch(25% 0.12 285deg); /* #4a1d96 equivalent */
+  --rad-advanced-border: oklch(60% 0.18 285deg); /* #8b5cf6 equivalent */
+  --rad-advanced-fg: oklch(80% 0.12 285deg); /* #c4b5fd equivalent */
 }
 
 /* Light theme (placeholder for future) */
@@ -122,6 +132,16 @@
   --rad-danger-foreground: oklch(98% 0 0deg);
   --rad-border: oklch(86% 0.01 240deg);
   --rad-ring: oklch(55% 0.18 240deg);
+
+  /* Info banner (blue theme for beginner-friendly content) */
+  --rad-info-bg: oklch(85% 0.03 240deg); /* Light blue background */
+  --rad-info-border: oklch(50% 0.15 240deg); /* Darker blue border */
+  --rad-info-fg: oklch(35% 0.15 240deg); /* Dark blue text */
+
+  /* Advanced banner (purple theme for expert content) */
+  --rad-advanced-bg: oklch(85% 0.08 285deg); /* Light purple background */
+  --rad-advanced-border: oklch(50% 0.18 285deg); /* Darker purple border */
+  --rad-advanced-fg: oklch(35% 0.18 285deg); /* Dark purple text */
 }
 
 /* Utility classes (non-invasive) - not used by current UI */
