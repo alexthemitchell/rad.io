@@ -27,6 +27,12 @@
 import { RDSDecoder } from "./rdsDecoder";
 import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
 import type { IQSample } from "../models/SDRDevice";
+import {
+  AudioWorkletManager,
+  WorkletDemodType,
+  AGCMode as WorkletAGCMode,
+} from "./audioWorkletManager";
+import { AudioResampler, ResamplerQuality } from "./audioResampler";
 
 /**
  * Audio output format configuration
@@ -38,8 +44,18 @@ export type AudioOutputConfig = {
   channels?: 1 | 2;
   /** Enable de-emphasis filter for FM (default: true) */
   enableDeEmphasis?: boolean;
+  /** De-emphasis time constant in microseconds (default: 75 for USA, 50 for Europe) */
+  deemphasisTau?: number;
   /** Enable RDS decoding for FM signals (default: false) */
   enableRDS?: boolean;
+  /** Enable AudioWorklet for low-latency processing (default: false) */
+  useAudioWorklet?: boolean;
+  /** AGC mode: 'off', 'slow', 'medium', 'fast' (default: 'medium') */
+  agcMode?: "off" | "slow" | "medium" | "fast";
+  /** AGC target level 0.0-1.0 (default: 0.5) */
+  agcTarget?: number;
+  /** Squelch threshold 0.0-1.0, 0.0 = off (default: 0.0) */
+  squelchThreshold?: number;
 };
 
 /**
@@ -48,6 +64,11 @@ export type AudioOutputConfig = {
 export enum DemodulationType {
   FM = "FM",
   AM = "AM",
+  NFM = "NFM", // Narrow FM
+  WFM = "WFM", // Wide FM (broadcast)
+  USB = "USB", // Upper sideband
+  LSB = "LSB", // Lower sideband
+  CW = "CW", // Continuous wave (morse)
   NONE = "NONE",
 }
 
@@ -92,10 +113,14 @@ class FMDemodulator {
   private readonly deEmphasisAlpha: number;
   private readonly dcBlockerAlpha: number;
 
-  constructor(sampleRate: number, enableDeEmphasis = true) {
-    // De-emphasis filter: 75μs time constant for broadcast FM
-    // α = 1 / (1 + RC*fs) where RC = 75e-6 for broadcast FM
-    const RC = 75e-6;
+  constructor(
+    sampleRate: number,
+    enableDeEmphasis = true,
+    deemphasisTau = 75,
+  ) {
+    // De-emphasis filter: time constant (75μs for USA, 50μs for Europe)
+    // α = 1 / (1 + RC*fs) where RC is the time constant in seconds
+    const RC = deemphasisTau * 1e-6; // Convert microseconds to seconds
     this.deEmphasisAlpha = enableDeEmphasis ? 1 / (1 + RC * sampleRate) : 1.0;
 
     // DC blocking filter: High-pass at ~0.5 Hz to remove DC drift
@@ -250,6 +275,9 @@ export class AudioStreamProcessor {
   private rdsDecoder: RDSDecoder | null = null;
   private audioContext: AudioContext;
   private currentDemodType: DemodulationType = DemodulationType.NONE;
+  private audioWorkletManager: AudioWorkletManager | null = null;
+  private useWorklet = false;
+  private resampler: AudioResampler | null = null;
 
   constructor(private sdrSampleRate: number) {
     // Create audio context for buffer generation
@@ -289,8 +317,18 @@ export class AudioStreamProcessor {
       sampleRate = 48000,
       channels = 1,
       enableDeEmphasis = true,
+      deemphasisTau = 75,
       enableRDS = false,
+      useAudioWorklet = false,
+      agcMode = "medium",
+      agcTarget = 0.5,
+      squelchThreshold = 0.0,
     } = config;
+
+    // If AudioWorklet is requested and available, use it
+    if (useAudioWorklet && this.audioWorkletManager) {
+      return this.extractAudioWithWorklet(samples, demodType, config);
+    }
 
     // Initialize demodulator if needed
     if (this.currentDemodType !== demodType) {
@@ -298,10 +336,15 @@ export class AudioStreamProcessor {
       this.fmDemodulator = null;
       this.amDemodulator = null;
 
-      if (demodType === DemodulationType.FM) {
+      if (
+        demodType === DemodulationType.FM ||
+        demodType === DemodulationType.NFM ||
+        demodType === DemodulationType.WFM
+      ) {
         this.fmDemodulator = new FMDemodulator(
           this.sdrSampleRate,
           enableDeEmphasis,
+          deemphasisTau,
         );
       } else if (demodType === DemodulationType.AM) {
         this.amDemodulator = new AMDemodulator();
@@ -309,15 +352,37 @@ export class AudioStreamProcessor {
     }
 
     // Initialize RDS decoder if requested and using FM
-    if (enableRDS && demodType === DemodulationType.FM && !this.rdsDecoder) {
+    if (
+      enableRDS &&
+      (demodType === DemodulationType.FM ||
+        demodType === DemodulationType.WFM) &&
+      !this.rdsDecoder
+    ) {
       this.rdsDecoder = new RDSDecoder(this.sdrSampleRate);
     } else if (!enableRDS && this.rdsDecoder) {
       this.rdsDecoder = null;
     }
 
+    // Initialize resampler if needed
+    if (
+      !this.resampler ||
+      this.resampler.getRatio() !== this.sdrSampleRate / sampleRate
+    ) {
+      this.resampler = new AudioResampler(
+        this.sdrSampleRate,
+        sampleRate,
+        ResamplerQuality.MEDIUM,
+      );
+    }
+
     // Demodulate based on type
     let audioSamples: Float32Array;
-    if (demodType === DemodulationType.FM && this.fmDemodulator) {
+    if (
+      (demodType === DemodulationType.FM ||
+        demodType === DemodulationType.NFM ||
+        demodType === DemodulationType.WFM) &&
+      this.fmDemodulator
+    ) {
       audioSamples = this.fmDemodulator.demodulate(samples);
 
       // Extract RDS data from FM baseband if enabled
@@ -327,35 +392,44 @@ export class AudioStreamProcessor {
     } else if (demodType === DemodulationType.AM && this.amDemodulator) {
       audioSamples = this.amDemodulator.demodulate(samples);
     } else {
-      // No demodulation - just convert I/Q to mono by taking I channel
+      // No demodulation or unsupported type - just convert I/Q to mono by taking I channel
       audioSamples = new Float32Array(samples.length);
       for (let i = 0; i < samples.length; i++) {
         audioSamples[i] = samples[i]?.I ?? 0;
       }
     }
 
-    // Decimate to target sample rate if needed
-    const decimatedSamples = this.decimateAudio(
-      audioSamples,
-      this.sdrSampleRate,
-      sampleRate,
+    // Resample to target sample rate using high-quality resampler
+    const resampledSamples = this.resampler.resample(audioSamples);
+
+    // Apply simple AGC if requested (for non-worklet path)
+    const processedSamples = this.applySimpleAGC(
+      resampledSamples,
+      agcMode,
+      agcTarget,
+    );
+
+    // Apply squelch if requested
+    const finalSamples = this.applySimpleSquelch(
+      processedSamples,
+      squelchThreshold,
     );
 
     // Create AudioBuffer for Web Audio API
     const audioBuffer = this.audioContext.createBuffer(
       channels,
-      decimatedSamples.length,
+      finalSamples.length,
       sampleRate,
     );
 
     // Fill audio buffer channels
     for (let ch = 0; ch < channels; ch++) {
       const channelData = audioBuffer.getChannelData(ch);
-      channelData.set(decimatedSamples);
+      channelData.set(finalSamples);
     }
 
     const result: AudioStreamResult = {
-      audioData: decimatedSamples,
+      audioData: finalSamples,
       sampleRate,
       channels,
       demodType,
@@ -438,20 +512,176 @@ export class AudioStreamProcessor {
   }
 
   /**
+   * Extract audio using AudioWorklet for low-latency processing
+   */
+  private extractAudioWithWorklet(
+    samples: IQSample[],
+    demodType: DemodulationType,
+    config: AudioOutputConfig,
+  ): AudioStreamResult {
+    if (!this.audioWorkletManager) {
+      throw new Error("AudioWorklet manager not initialized");
+    }
+
+    const { sampleRate = 48000, channels = 1 } = config;
+
+    // Process samples through AudioWorklet
+    this.audioWorkletManager.processSamples(samples);
+
+    // For AudioWorklet, we return an empty buffer as audio is played directly
+    // This is a placeholder result for API compatibility
+    const audioData = new Float32Array(0);
+    const audioBuffer = this.audioContext.createBuffer(channels, 0, sampleRate);
+
+    return {
+      audioData,
+      sampleRate,
+      channels,
+      demodType,
+      audioBuffer,
+    };
+  }
+
+  /**
+   * Initialize AudioWorklet for low-latency processing
+   */
+  async initializeAudioWorklet(config?: AudioOutputConfig): Promise<void> {
+    if (this.audioWorkletManager) {
+      console.warn("AudioWorklet already initialized");
+      return;
+    }
+
+    const {
+      agcMode = "medium",
+      agcTarget = 0.5,
+      squelchThreshold = 0.0,
+      deemphasisEnabled = true,
+      deemphasisTau = 75,
+      volume = 1.0,
+    } = config ?? {};
+
+    // Map AGC mode string to enum
+    const agcModeMap: Record<string, WorkletAGCMode> = {
+      off: WorkletAGCMode.OFF,
+      slow: WorkletAGCMode.SLOW,
+      medium: WorkletAGCMode.MEDIUM,
+      fast: WorkletAGCMode.FAST,
+    };
+
+    this.audioWorkletManager = new AudioWorkletManager();
+    await this.audioWorkletManager.initialize({
+      demodType: WorkletDemodType.FM, // Default, will be updated
+      agcMode: agcModeMap[agcMode] ?? WorkletAGCMode.MEDIUM,
+      agcTarget,
+      squelchThreshold,
+      deemphasisEnabled,
+      deemphasisTau,
+      volume,
+    });
+
+    this.useWorklet = true;
+  }
+
+  /**
+   * Apply simple AGC for non-worklet path
+   */
+  private applySimpleAGC(
+    samples: Float32Array,
+    mode: string,
+    target: number,
+  ): Float32Array {
+    if (mode === "off") {
+      return samples;
+    }
+
+    const output = new Float32Array(samples.length);
+    let rms = 0.1; // Initial RMS estimate
+
+    // Time constants based on mode
+    const alphaMap: Record<string, { attack: number; decay: number }> = {
+      fast: { attack: 0.9, decay: 0.99 },
+      medium: { attack: 0.95, decay: 0.995 },
+      slow: { attack: 0.98, decay: 0.998 },
+    };
+
+    const { attack, decay } = alphaMap[mode] ?? alphaMap.medium;
+
+    for (let i = 0; i < samples.length; i++) {
+      const sample = samples[i] ?? 0;
+      const abs = Math.abs(sample);
+
+      // Update RMS estimate
+      if (abs > rms) {
+        rms = attack * rms + (1 - attack) * abs;
+      } else {
+        rms = decay * rms + (1 - decay) * abs;
+      }
+
+      // Calculate and apply gain
+      const gain = rms > 0.001 ? target / rms : 1.0;
+      const limitedGain = Math.max(0.1, Math.min(10.0, gain));
+      output[i] = sample * limitedGain;
+    }
+
+    return output;
+  }
+
+  /**
+   * Apply simple squelch for non-worklet path
+   */
+  private applySimpleSquelch(
+    samples: Float32Array,
+    threshold: number,
+  ): Float32Array {
+    if (threshold <= 0) {
+      return samples;
+    }
+
+    const output = new Float32Array(samples.length);
+    let rms = 0.0;
+    let isOpen = true;
+    const alpha = 0.99; // Smoothing factor
+
+    for (let i = 0; i < samples.length; i++) {
+      const sample = samples[i] ?? 0;
+
+      // Update RMS estimate
+      rms = alpha * rms + (1 - alpha) * Math.abs(sample);
+
+      // Determine squelch state with hysteresis
+      if (rms > threshold) {
+        isOpen = true;
+      } else if (rms < threshold * 0.7) {
+        isOpen = false;
+      }
+
+      output[i] = isOpen ? sample : 0;
+    }
+
+    return output;
+  }
+
+  /**
    * Reset all demodulator states
    */
   reset(): void {
     this.fmDemodulator?.reset();
     this.amDemodulator?.reset();
     this.rdsDecoder?.reset();
+    this.resampler?.reset();
   }
 
   /**
    * Clean up resources
    */
   async cleanup(): Promise<void> {
+    if (this.audioWorkletManager) {
+      await this.audioWorkletManager.cleanup();
+      this.audioWorkletManager = null;
+    }
     await this.audioContext.close();
     this.rdsDecoder = null;
+    this.resampler = null;
   }
 }
 
