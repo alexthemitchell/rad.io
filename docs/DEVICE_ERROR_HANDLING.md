@@ -29,24 +29,28 @@ This document describes the consolidated error handling system for SDR device dr
 The system defines 15 standard error codes:
 
 **Connection Errors:**
+
 - `DEVICE_NOT_FOUND` - Device not available
 - `DEVICE_DISCONNECTED` - Device unplugged or lost connection
 - `DEVICE_BUSY` - Device claimed by another application
 - `DEVICE_ACCESS_DENIED` - Permission denied
 
 **Configuration Errors:**
+
 - `INVALID_CONFIGURATION` - Invalid device settings
 - `SAMPLE_RATE_NOT_SET` - Sample rate not configured (critical for HackRF)
 - `FREQUENCY_OUT_OF_RANGE` - Frequency outside device range
 - `SAMPLE_RATE_OUT_OF_RANGE` - Sample rate outside device range
 
 **USB Communication Errors:**
+
 - `USB_TRANSFER_TIMEOUT` - USB transfer timed out
 - `USB_TRANSFER_FAILED` - USB transfer failed
 - `USB_INVALID_STATE` - Invalid USB device state
 - `USB_NETWORK_ERROR` - Network/transfer error
 
 **Device State Errors:**
+
 - `DEVICE_NOT_OPEN` - Device not opened
 - `DEVICE_CLOSING` - Device is being closed
 - `RECOVERY_FAILED` - Automatic recovery failed
@@ -127,7 +131,7 @@ const recentErrors = deviceErrors.slice(-10);
 
 // Filter by error code
 const timeoutErrors = deviceErrors.filter(
-  e => e.code === DeviceErrorCode.USB_TRANSFER_TIMEOUT
+  (e) => e.code === DeviceErrorCode.USB_TRANSFER_TIMEOUT,
 );
 
 // Clear error history
@@ -228,6 +232,7 @@ Technical details logged to console for debugging
 ## Example Error Messages
 
 ### Before (Inconsistent)
+
 ```
 "Failed to initialize device"
 "Error: Device not responding"
@@ -235,6 +240,7 @@ Technical details logged to console for debugging
 ```
 
 ### After (Standardized)
+
 ```
 "Device has been disconnected. Please reconnect the device.
 

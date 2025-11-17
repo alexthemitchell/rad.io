@@ -169,9 +169,7 @@ describe("Device Error Handling Integration", () => {
       const nonRecoverableState =
         DeviceErrorHandler.mapError(nonRecoverableError);
 
-      expect(DeviceErrorHandler.isRecoverable(nonRecoverableState)).toBe(
-        false,
-      );
+      expect(DeviceErrorHandler.isRecoverable(nonRecoverableState)).toBe(false);
       expect(
         DeviceErrorHandler.shouldAttemptAutoRecovery(nonRecoverableState),
       ).toBe(false);

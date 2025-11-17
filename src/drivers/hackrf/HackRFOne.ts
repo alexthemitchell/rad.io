@@ -975,7 +975,7 @@ export class HackRFOne {
             } catch (recoveryError) {
               // Track recovery failure in diagnostics
               this.trackError(recoveryError, {
-                context: "fastRecovery",
+                operation: "fastRecovery",
                 iteration: iterationCount,
                 sampleRate: this.lastSampleRate,
                 frequency: this.lastFrequency,
@@ -1008,7 +1008,7 @@ export class HackRFOne {
         } else {
           // Track unexpected error in diagnostics
           this.trackError(err, {
-            context: "receive_loop",
+            operation: "receive_loop",
             iteration: iterationCount,
             streaming: this.streaming,
             opened: this.usbDevice.opened,
