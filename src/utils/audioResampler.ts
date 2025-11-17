@@ -53,7 +53,9 @@ export class AudioResampler {
     outputRate: number,
     quality: ResamplerQuality = ResamplerQuality.MEDIUM,
   ) {
-    console.log(`AudioResampler: ${inputRate} Hz → ${outputRate} Hz, quality: ${quality}`);
+    console.info(
+      `AudioResampler: ${inputRate} Hz → ${outputRate} Hz, quality: ${quality}`,
+    );
     this.inputRate = inputRate;
     this.outputRate = outputRate;
     this.ratio = inputRate / outputRate;
@@ -288,7 +290,11 @@ export function createResampler(
   const ratio = inputRate / outputRate;
 
   // Use linear resampler for small ratios or when quality is low
-  if (!quality || quality === ResamplerQuality.LOW || Math.abs(ratio - 1) < 0.1) {
+  if (
+    !quality ||
+    quality === ResamplerQuality.LOW ||
+    Math.abs(ratio - 1) < 0.1
+  ) {
     return new LinearResampler(inputRate, outputRate);
   }
 

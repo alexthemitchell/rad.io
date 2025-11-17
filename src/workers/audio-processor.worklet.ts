@@ -17,8 +17,8 @@
 
 // AudioWorklet global types
 declare const sampleRate: number;
-declare const currentFrame: number;
-declare const currentTime: number;
+declare const _currentFrame: number;
+declare const _currentTime: number;
 declare class AudioWorkletProcessor {
   readonly port: MessagePort;
   process(
@@ -29,7 +29,9 @@ declare class AudioWorkletProcessor {
 }
 declare function registerProcessor(
   name: string,
-  processorCtor: new (options: AudioWorkletNodeOptions) => AudioWorkletProcessor,
+  processorCtor: new (
+    options: AudioWorkletNodeOptions,
+  ) => AudioWorkletProcessor,
 ): void;
 
 /**
@@ -132,13 +134,16 @@ class AudioProcessor extends AudioWorkletProcessor {
     this.ssbHilbertBuffer = new Float32Array(64);
 
     // Set up parameter listeners
-    this.port.onmessage = (event: MessageEvent) => {
+    this.port.onmessage = (event: MessageEvent): void => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const { type, params } = event.data;
 
       if (type === "configure") {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         this.updateConfiguration(params);
       } else if (type === "iqSamples") {
         // Receive IQ samples from main thread
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         const samples = event.data.samples as IQSample[];
         this.iqBuffer.push(...samples);
       }
@@ -154,9 +159,7 @@ class AudioProcessor extends AudioWorkletProcessor {
   private updateFilterCoefficients(fs: number): void {
     // De-emphasis filter: α = 1 / (1 + RC*fs)
     const RC = this.deemphasisTau * 1e-6; // Convert μs to seconds
-    this.deEmphasisAlpha = this.deemphasisEnabled
-      ? 1 / (1 + RC * fs)
-      : 1.0;
+    this.deEmphasisAlpha = this.deemphasisEnabled ? 1 / (1 + RC * fs) : 1.0;
 
     // DC blocker: High-pass at ~0.5 Hz
     const dcCutoffHz = 0.5;
@@ -176,7 +179,7 @@ class AudioProcessor extends AudioWorkletProcessor {
 
     // CW filter: Low-pass for morse code audio (~800 Hz)
     const cwCutoffHz = 800;
-    this.cwFilterAlpha = Math.exp(-2 * Math.PI * cwCutoffHz / fs);
+    this.cwFilterAlpha = Math.exp((-2 * Math.PI * cwCutoffHz) / fs);
   }
 
   /**
@@ -184,14 +187,14 @@ class AudioProcessor extends AudioWorkletProcessor {
    */
   private getAGCAttackTime(): number {
     switch (this.agcMode) {
+      case AGCMode.OFF:
+        return 0;
       case AGCMode.FAST:
         return 10; // 10ms
       case AGCMode.MEDIUM:
         return 50; // 50ms
       case AGCMode.SLOW:
         return 200; // 200ms
-      default:
-        return 0;
     }
   }
 
@@ -200,14 +203,14 @@ class AudioProcessor extends AudioWorkletProcessor {
    */
   private getAGCDecayTime(): number {
     switch (this.agcMode) {
+      case AGCMode.OFF:
+        return 0;
       case AGCMode.FAST:
         return 100; // 100ms
       case AGCMode.MEDIUM:
         return 500; // 500ms
       case AGCMode.SLOW:
         return 2000; // 2s
-      default:
-        return 0;
     }
   }
 
@@ -421,14 +424,16 @@ class AudioProcessor extends AudioWorkletProcessor {
   private applyHilbertTransform(input: number): number {
     // Store input in circular buffer
     this.ssbHilbertBuffer[this.ssbHilbertIndex] = input;
-    this.ssbHilbertIndex = (this.ssbHilbertIndex + 1) % this.ssbHilbertBuffer.length;
+    this.ssbHilbertIndex =
+      (this.ssbHilbertIndex + 1) % this.ssbHilbertBuffer.length;
 
     // Simple Hilbert transform approximation using delay
     // For better quality, use proper Hilbert FIR coefficients
-    const delayedSample = this.ssbHilbertBuffer[
-      (this.ssbHilbertIndex + this.ssbHilbertBuffer.length / 2) %
-        this.ssbHilbertBuffer.length
-    ];
+    const delayedSample =
+      this.ssbHilbertBuffer[
+        (this.ssbHilbertIndex + this.ssbHilbertBuffer.length / 2) %
+          this.ssbHilbertBuffer.length
+      ];
     return delayedSample ?? 0;
   }
 
@@ -459,7 +464,8 @@ class AudioProcessor extends AudioWorkletProcessor {
    */
   private applyCWFilter(audio: number): number {
     this.cwFilterState =
-      this.cwFilterAlpha * this.cwFilterState + (1 - this.cwFilterAlpha) * audio;
+      this.cwFilterAlpha * this.cwFilterState +
+      (1 - this.cwFilterAlpha) * audio;
     return this.cwFilterState;
   }
 

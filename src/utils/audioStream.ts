@@ -24,15 +24,15 @@
  * @module audioStream
  */
 
-import { RDSDecoder } from "./rdsDecoder";
-import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
-import type { IQSample } from "../models/SDRDevice";
+import { LinearResampler } from "./audioResampler";
 import {
   AudioWorkletManager,
   WorkletDemodType,
   AGCMode as WorkletAGCMode,
 } from "./audioWorkletManager";
-import { LinearResampler } from "./audioResampler";
+import { RDSDecoder } from "./rdsDecoder";
+import type { RDSStationData, RDSDecoderStats } from "../models/RDSData";
+import type { IQSample } from "../models/SDRDevice";
 
 /**
  * Audio output format configuration
@@ -117,11 +117,7 @@ class FMDemodulator {
   private readonly deEmphasisAlpha: number;
   private readonly dcBlockerAlpha: number;
 
-  constructor(
-    sampleRate: number,
-    enableDeEmphasis = true,
-    deemphasisTau = 75,
-  ) {
+  constructor(sampleRate: number, enableDeEmphasis = true, deemphasisTau = 75) {
     // De-emphasis filter: time constant (75μs for USA, 50μs for Europe)
     // α = 1 / (1 + RC*fs) where RC is the time constant in seconds
     const RC = deemphasisTau * 1e-6; // Convert microseconds to seconds
@@ -573,7 +569,7 @@ export class AudioStreamProcessor {
       agcMode: agcModeMap[agcMode] ?? WorkletAGCMode.MEDIUM,
       agcTarget,
       squelchThreshold,
-      deemphasisEnabled: deemphasisEnabled ?? true,
+      deemphasisEnabled,
       deemphasisTau,
       volume,
     });
