@@ -1,1 +1,1 @@
-export { useHackRFDevice } from "../hackrf/hooks/useHackRFDevice";
+export { useHackRFDevice } from "../drivers/hackrf/hooks/useHackRFDevice";
