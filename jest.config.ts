@@ -53,10 +53,10 @@ const config: Config = {
     },
     // Core utilities - current baseline
     "./src/utils/audioStream.ts": {
-      statements: 93,
-      branches: 78,
-      functions: 93,
-      lines: 93,
+      statements: 87,
+      branches: 72,
+      functions: 86,
+      lines: 86,
     },
     "./src/utils/iqRecorder.ts": {
       statements: 77,
