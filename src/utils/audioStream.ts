@@ -46,13 +46,11 @@ export type AudioOutputConfig = {
   enableDeEmphasis?: boolean;
   /** De-emphasis time constant in microseconds (default: 75 for USA, 50 for Europe) */
   deemphasisTau?: number;
-  /** Enable de-emphasis (alias for enableDeEmphasis) */
-  deemphasisEnabled?: boolean;
   /** Enable RDS decoding for FM signals (default: false) */
   enableRDS?: boolean;
   /** Enable AudioWorklet for low-latency processing (default: false) */
   useAudioWorklet?: boolean;
-  /** AGC mode: 'off', 'slow', 'medium', 'fast' (default: 'medium') */
+  /** AGC mode: 'off', 'slow', 'medium', 'fast' (default: 'off') */
   agcMode?: "off" | "slow" | "medium" | "fast";
   /** AGC target level 0.0-1.0 (default: 0.5) */
   agcTarget?: number;
@@ -442,71 +440,6 @@ export class AudioStreamProcessor {
   }
 
   /**
-   * Decimate audio samples to target sample rate (legacy method)
-   *
-   * Note: This method is kept for backward compatibility.
-   * New code should use AudioResampler instead for better quality.
-   *
-   * @deprecated Use AudioResampler instead for better quality
-   */
-  // @ts-expect-error - Kept for backward compatibility
-  private decimateAudio(
-    samples: Float32Array,
-    inputRate: number,
-    outputRate: number,
-  ): Float32Array {
-    if (inputRate === outputRate) {
-      return samples;
-    }
-
-    const ratio = inputRate / outputRate;
-
-    // Step 1: Anti-aliasing low-pass filter
-    // Filter cutoff should be at Nyquist frequency of output rate (outputRate / 2)
-    // Moving average filter size based on decimation ratio
-    const filterSize = Math.max(1, Math.ceil(ratio / 2));
-    const filtered = new Float32Array(samples.length);
-
-    // Apply moving average filter (simple but effective anti-aliasing)
-    for (let i = 0; i < samples.length; i++) {
-      let sum = 0;
-      let count = 0;
-
-      // Average samples within filter window
-      const startIdx = Math.max(0, i - filterSize);
-      const endIdx = Math.min(samples.length - 1, i + filterSize);
-
-      for (let j = startIdx; j <= endIdx; j++) {
-        const sample = samples[j];
-        if (sample !== undefined) {
-          sum += sample;
-          count++;
-        }
-      }
-
-      filtered[i] = sum / count;
-    }
-
-    // Step 2: Decimate with linear interpolation
-    const outputLength = Math.floor(samples.length / ratio);
-    const decimated = new Float32Array(outputLength);
-
-    for (let i = 0; i < outputLength; i++) {
-      const sourceIndex = i * ratio;
-      const index0 = Math.floor(sourceIndex);
-      const index1 = Math.min(index0 + 1, filtered.length - 1);
-      const frac = sourceIndex - index0;
-
-      // Linear interpolation on filtered samples
-      const val0 = filtered[index0] ?? 0;
-      const val1 = filtered[index1] ?? 0;
-      decimated[i] = val0 * (1 - frac) + val1 * frac;
-    }
-
-    return decimated;
-  }
-
-  /**
    * Extract audio using AudioWorklet for low-latency processing
    */
   private extractAudioWithWorklet(
@@ -550,7 +483,7 @@ export class AudioStreamProcessor {
       agcMode = "medium",
       agcTarget = 0.5,
       squelchThreshold = 0.0,
-      deemphasisEnabled = true,
+      enableDeEmphasis = true,
       deemphasisTau = 75,
       volume = 1.0,
     } = config ?? {};
@@ -569,7 +502,7 @@ export class AudioStreamProcessor {
       agcMode: agcModeMap[agcMode] ?? WorkletAGCMode.MEDIUM,
       agcTarget,
       squelchThreshold,
-      deemphasisEnabled,
+      deemphasisEnabled: enableDeEmphasis,
       deemphasisTau,
       volume,
     });
@@ -599,7 +532,7 @@ export class AudioStreamProcessor {
 
     const timeConstants = alphaMap[mode] ?? alphaMap["medium"];
     if (!timeConstants) {
-      return samples; // Fallback if mode is invalid
+      return samples;
     }
     const { attack, decay } = timeConstants;
 

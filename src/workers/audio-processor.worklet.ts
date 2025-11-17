@@ -192,9 +192,9 @@ class AudioProcessor extends AudioWorkletProcessor {
       case AGCMode.FAST:
         return 10; // 10ms
       case AGCMode.MEDIUM:
-        return 50; // 50ms
-      case AGCMode.SLOW:
         return 200; // 200ms
+      case AGCMode.SLOW:
+        return 2000; // 2s
     }
   }
 
@@ -208,9 +208,9 @@ class AudioProcessor extends AudioWorkletProcessor {
       case AGCMode.FAST:
         return 100; // 100ms
       case AGCMode.MEDIUM:
-        return 500; // 500ms
+        return 50; // 50ms
       case AGCMode.SLOW:
-        return 2000; // 2s
+        return 500; // 500ms
     }
   }
 

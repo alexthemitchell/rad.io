@@ -1057,7 +1057,7 @@ import { AudioResampler, ResamplerQuality } from "./utils/audioResampler";
 const resampler = new AudioResampler(
   2048000,
   48000,
-  ResamplerQuality.HIGH // or VERY_HIGH for best quality
+  ResamplerQuality.HIGH, // or VERY_HIGH for best quality
 );
 ```
 

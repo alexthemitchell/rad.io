@@ -91,7 +91,11 @@ describe("LinearResampler", () => {
 describe("AudioResampler", () => {
   describe("Constructor", () => {
     it("should create resampler with specified quality", () => {
-      const resampler = new AudioResampler(48000, 44100, ResamplerQuality.MEDIUM);
+      const resampler = new AudioResampler(
+        48000,
+        44100,
+        ResamplerQuality.MEDIUM,
+      );
       expect(resampler.getRatio()).toBeCloseTo(48000 / 44100, 5);
       expect(resampler.getInputRate()).toBe(48000);
       expect(resampler.getOutputRate()).toBe(44100);
@@ -110,9 +114,9 @@ describe("AudioResampler", () => {
         24000,
         ResamplerQuality.MEDIUM,
       );
-      const input = new Float32Array(480).fill(0).map((_, i) =>
-        Math.sin((2 * Math.PI * 1000 * i) / 48000),
-      );
+      const input = new Float32Array(480)
+        .fill(0)
+        .map((_, i) => Math.sin((2 * Math.PI * 1000 * i) / 48000));
       const output = resampler.resample(input);
 
       expect(output.length).toBeGreaterThan(200);
@@ -160,7 +164,11 @@ describe("AudioResampler", () => {
 
   describe("State management", () => {
     it("should reset state", () => {
-      const resampler = new AudioResampler(48000, 24000, ResamplerQuality.MEDIUM);
+      const resampler = new AudioResampler(
+        48000,
+        24000,
+        ResamplerQuality.MEDIUM,
+      );
       const input = new Float32Array(100).fill(0.5);
       resampler.resample(input);
 

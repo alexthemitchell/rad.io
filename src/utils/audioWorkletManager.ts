@@ -60,9 +60,10 @@ export class AudioWorkletManager {
 
   constructor() {
     // Default configuration
+    // Note: agcMode defaults to OFF here to match AudioStreamProcessor behavior
     this.config = {
       demodType: WorkletDemodType.FM,
-      agcMode: AGCMode.MEDIUM,
+      agcMode: AGCMode.OFF,
       agcTarget: 0.5,
       squelchThreshold: 0.0,
       deemphasisEnabled: true,

@@ -178,7 +178,11 @@ export class AudioResampler {
     }
 
     // Update position for next call
-    this.position = (this.position + input.length) % this.ratio;
+    // Handle fractional position tracking properly to avoid drift
+    this.position += input.length;
+    while (this.position >= this.ratio) {
+      this.position -= this.ratio;
+    }
 
     return output;
   }
