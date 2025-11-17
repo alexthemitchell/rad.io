@@ -463,6 +463,87 @@ Monitor these metrics for deployment health:
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - Contribution guidelines
 - [Deploy Pages Workflow](../.github/workflows/deploy-pages.yml)
 - [Cleanup Artifacts Workflow](../.github/workflows/cleanup-artifacts.yml)
+- [ADR-0028: DSP Environment Detection](./decisions/0028-dsp-environment-detection.md)
+- [ADR-0027: DSP Pipeline Architecture](./decisions/0027-dsp-pipeline-architecture.md)
+
+## Performance Optimization and Alternative Platforms
+
+### Current Deployment: GitHub Pages (Fallback Mode)
+
+rad.io is currently deployed to GitHub Pages, which provides:
+- ✅ Free hosting
+- ✅ Automatic deployment
+- ✅ CDN distribution
+- ❌ **No custom HTTP headers** (performance limitation)
+
+**Impact:** The application runs in **MessageChannel fallback mode** with ~50x reduced DSP performance:
+- MessageChannel Mode: ~200 MB/s throughput, 1-5ms latency
+- Optimal (SAB) Mode: 10+ GB/s throughput, <0.1ms latency
+
+### Why Headers Matter
+
+SharedArrayBuffer enables zero-copy data transfer between threads, critical for real-time SDR processing. It requires these HTTP headers:
+
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+GitHub Pages cannot send these headers, forcing fallback to slower MessageChannel communication.
+
+### Deployment Options for Optimal Performance
+
+For production deployments requiring maximum DSP performance, consider these platforms:
+
+#### Option 1: Vercel (Recommended)
+- Free tier available
+- Easy header configuration via `vercel.json`
+- Automatic HTTPS and CDN
+- Deploy command: `vercel --prod`
+
+#### Option 2: Netlify
+- Free tier available  
+- Header configuration via `_headers` file (already in repo)
+- Deploy command: `netlify deploy --prod`
+
+#### Option 3: Cloudflare Pages
+- Free tier with unlimited bandwidth
+- Header configuration via `_headers` file
+- Cloudflare's global network
+
+#### Option 4: Custom Server
+- Full control over headers and caching
+- Requires server maintenance
+- See ADR-0028 for Nginx/Apache examples
+
+### Verifying DSP Mode
+
+After deployment, verify the DSP execution mode:
+
+**Via Console:**
+```javascript
+// Open DevTools → Console
+// Look for startup message:
+🚀 DSP Environment Capabilities { mode: "shared-array-buffer", ... }  // Optimal
+⚡ DSP Environment Capabilities { mode: "message-channel", ... }       // Fallback
+```
+
+**Via Diagnostics Panel:**
+1. Navigate to Diagnostics in the app
+2. Check DSP Status section
+3. Verify mode indicator and features
+
+### Migration Guide
+
+To migrate from GitHub Pages to a platform with optimal performance:
+
+1. **Choose platform** (Vercel/Netlify recommended)
+2. **Configure headers** (see platform-specific guides in ADR-0028)
+3. **Deploy and verify** optimal mode activated
+4. **Update DNS** (if using custom domain)
+5. **Monitor performance** via diagnostics panel
+
+See [ADR-0028](./decisions/0028-dsp-environment-detection.md) for detailed migration instructions and platform comparisons.
 
 ## Support
 
