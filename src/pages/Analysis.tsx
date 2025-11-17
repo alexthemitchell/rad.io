@@ -503,7 +503,7 @@ function Analysis(): React.JSX.Element {
           variant="advanced"
           title="🔬 Advanced Analysis Tools"
           role="note"
-          style={{ padding: "12px 16px" }}
+          className="info-banner-compact"
         >
           <p className="info-banner-footer" style={{ fontSize: "13px" }}>
             This page provides deep signal analysis for experienced users.{" "}

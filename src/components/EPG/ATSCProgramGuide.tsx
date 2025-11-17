@@ -153,7 +153,7 @@ export function ATSCProgramGuide({
           variant="info"
           title="📺 Electronic Program Guide (EPG)"
           role="status"
-          style={{ margin: "16px 0" }}
+          className="info-banner-margin-vertical"
         >
           <p className="info-banner-paragraph">
             The EPG displays TV schedules extracted from ATSC broadcast signals

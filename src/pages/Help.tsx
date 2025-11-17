@@ -80,7 +80,7 @@ function Help(): React.JSX.Element {
             variant="info"
             title="🎯 New to ATSC Digital TV?"
             role="note"
-            style={{ marginBottom: "24px" }}
+            className="info-banner-margin-bottom-lg"
           >
             <p className="info-banner-paragraph">
               Follow our comprehensive{" "}
@@ -101,7 +101,7 @@ function Help(): React.JSX.Element {
               <li>Enable closed captions</li>
               <li>Monitor signal health</li>
             </ol>
-            <p className="info-banner-footer" style={{ marginTop: "12px" }}>
+            <p className="info-banner-footer-spaced">
               <strong>Estimated time:</strong> 15-20 minutes |{" "}
               <strong>No SDR experience required!</strong>
             </p>

@@ -442,7 +442,11 @@ function ATSCPlayer(): React.JSX.Element {
 
       {/* Golden Path Context Banner */}
       {scanner.foundChannels.length === 0 && !showScanner && (
-        <InfoBanner variant="info" title="🎯 First time using ATSC Player?">
+        <InfoBanner
+          variant="info"
+          title="🎯 First time using ATSC Player?"
+          role="status"
+        >
           <p className="info-banner-paragraph">
             <strong>Step 1:</strong> Click &quot;Show Scanner&quot; above to
             scan for ATSC channels in your area

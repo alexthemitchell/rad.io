@@ -122,7 +122,7 @@ function Scanner(): React.JSX.Element {
             variant="info"
             title="🔍 Scanning for ATSC Digital TV Channels"
             role="status"
-            style={{ marginTop: "16px" }}
+            className="info-banner-margin-top"
           >
             <p className="info-banner-paragraph">
               This scanner will search VHF and UHF frequencies to discover ATSC
