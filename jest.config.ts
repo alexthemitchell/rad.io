@@ -25,14 +25,14 @@ const config: Config = {
       functions: 66,
       lines: 64,
     },
-    // HackRF implementation - updated to current coverage
-    "./src/hackrf/HackRFOne.ts": {
+    // HackRF implementation - updated paths after moving to src/drivers/hackrf
+    "./src/drivers/hackrf/HackRFOne.ts": {
       statements: 76,
       branches: 60,
       functions: 95,
       lines: 75,
     },
-    "./src/hackrf/HackRFOneAdapter.ts": {
+    "./src/drivers/hackrf/HackRFOneAdapter.ts": {
       statements: 96,
       branches: 83,
       functions: 93,

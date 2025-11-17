@@ -5,11 +5,11 @@
 
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { useHackRFDevice } from "../hooks/useHackRFDevice";
-import { useUSBDevice } from "../../hooks/useUSBDevice";
+import { useUSBDevice } from "../../../hooks/useUSBDevice";
 import { HackRFOneAdapter } from "../HackRFOneAdapter";
 
 // Mock the dependencies
-jest.mock("../../hooks/useUSBDevice");
+jest.mock("../../../hooks/useUSBDevice");
 jest.mock("../HackRFOneAdapter");
 
 const mockUseUSBDevice = useUSBDevice as jest.MockedFunction<

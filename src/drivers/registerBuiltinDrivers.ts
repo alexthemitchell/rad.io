@@ -6,9 +6,9 @@
  * automatic driver discovery and device creation.
  */
 
-import { HackRFOneAdapter } from "../hackrf/HackRFOneAdapter";
 import { RTLSDRDeviceAdapter } from "../models/RTLSDRDeviceAdapter";
 import { SDRDeviceType } from "../models/SDRDevice";
+import { HackRFOneAdapter } from "./hackrf/HackRFOneAdapter";
 import { SDRDriverRegistry } from "./SDRDriverRegistry";
 
 /**

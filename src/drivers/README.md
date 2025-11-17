@@ -138,8 +138,11 @@ registerBuiltinDrivers();
 
 ## Built-in Drivers
 
+All built-in drivers are located in subdirectories under `src/drivers/`:
+
 ### HackRF One
 
+- **Location**: `src/drivers/hackrf/`
 - **ID**: `hackrf-one`
 - **Frequency Range**: 1 MHz - 6 GHz
 - **Sample Rates**: 1-20 MHz
@@ -147,6 +150,7 @@ registerBuiltinDrivers();
 
 ### RTL-SDR
 
+- **Location**: `src/models/` (planned to be moved to `src/drivers/rtlsdr/`)
 - **ID**: `rtl-sdr`
 - **Frequency Range**: 24 MHz - 1.7 GHz
 - **Sample Rates**: 225 kHz - 3.2 MHz
@@ -391,11 +395,26 @@ All components are fully tested:
 - `DeviceDiscovery.test.ts` - 14 tests
 - `DriverHotReload.test.ts` - 14 tests
 - `registerBuiltinDrivers.test.ts` - 16 tests
+- `DriverConformance.test.ts` - 36 tests (validates HAL contract)
+
+### Conformance Tests
+
+The `DriverConformance.test.ts` suite validates that all drivers properly implement the `ISDRDevice` HAL interface. Every driver must pass these tests to ensure:
+
+- Correct interface implementation
+- Consistent capability reporting
+- Proper lifecycle management
+- Standard sample processing
+- Memory management compliance
 
 Run tests:
 
 ```bash
+# All driver tests
 npm test -- src/drivers/__tests__
+
+# Conformance tests only
+npm test -- src/drivers/__tests__/DriverConformance.test.ts
 ```
 
 ## Migration Guide
