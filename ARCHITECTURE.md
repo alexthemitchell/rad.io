@@ -355,12 +355,12 @@ When adding new stateful features, follow this decision tree:
 - **Yes** → Use IndexedDB
 - **No** → Continue to step 3
 
-#### 3. Should it be shared across all tabs?
+#### 3. Does the data need reactive state management across components?
 
-- **Yes** → Use localStorage (with namespace)
-- **No** → Use Zustand + localStorage†
+- **Yes** → Use Zustand + localStorage†
+- **No** → Use plain localStorage (with namespace)
 
-†**Note:** localStorage is shared across all tabs in the same domain. "Zustand + localStorage" means each tab maintains its own Zustand state instance (not synchronized in real-time), but the data persists to shared localStorage and will be loaded when a new tab opens. If you need true tab isolation where data is not accessible from other tabs, use `sessionStorage` instead of `localStorage`.
+†**Note:** localStorage is always shared across all tabs in the same domain. "Zustand + localStorage" provides reactive state management within each tab, while the data persists to shared localStorage and will be loaded when a new tab opens. Each tab maintains its own Zustand state instance (not synchronized in real-time). If you need true tab isolation where data is not accessible from other tabs, use `sessionStorage` instead of `localStorage`.
 
 #### 4. Is it component-specific or app-wide?
 
@@ -371,6 +371,7 @@ When adding new stateful features, follow this decision tree:
 
 - IndexedDB database: `rad-io-{feature}` (e.g., `rad-io-atsc-channels`)
 - localStorage key: `rad.{feature}.v{version}` (e.g., `rad.settings.v1`)
+  - **Note:** Some legacy features may use different key formats (e.g., `rad_io_epg_data` in `epgStorage.ts` uses underscores and no version). New features should follow the documented convention. When migrating legacy keys, ensure backward compatibility.
 - Zustand store: Export from `src/store/index.ts` with typed hooks
 
 #### Common Pitfalls to Avoid
