@@ -1,8 +1,16 @@
 /**
  * Notification Slice
  *
+ * Persistence: None (ephemeral, runtime-only)
+ * Scope: Application-wide (Zustand store)
+ * Expiration: Auto-removed after duration (default 5s), cleared on page reload
+ *
  * Manages application notifications and toasts.
+ * Notifications are transient UI elements that don't need persistence.
+ *
  * Migrated from NotificationContext.tsx to use Zustand.
+ *
+ * Related: See ARCHITECTURE.md "State & Persistence" section for storage pattern guidance
  */
 
 import { type StateCreator } from "zustand";

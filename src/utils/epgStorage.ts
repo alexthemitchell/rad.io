@@ -1,8 +1,17 @@
 /**
  * EPG Data Storage
  *
+ * Persistence: localStorage (long-term with time-based expiration)
+ * Scope: Application-wide, shared across all tabs
+ * Expiration: 24 hours (MAX_AGE_HOURS)
+ *
  * Manages storage and retrieval of Electronic Program Guide data
  * extracted from ATSC PSIP tables (EIT and ETT).
+ *
+ * Note: EPG data auto-expires after 24 hours to prevent stale program listings.
+ * Use getAllEPGData() to retrieve data - it automatically validates freshness.
+ *
+ * Related: See ARCHITECTURE.md "State & Persistence" section for storage pattern guidance
  */
 
 import {

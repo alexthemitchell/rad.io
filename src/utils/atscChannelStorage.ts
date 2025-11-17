@@ -1,7 +1,14 @@
 /**
  * IndexedDB storage for ATSC channel scan results
  *
+ * Persistence: IndexedDB (long-term, survives browser restart)
+ * Scope: Application-wide, survives tab/window closure
+ * Expiration: Manual deletion only (no automatic expiration)
+ *
  * Provides persistent storage for discovered ATSC channels with signal quality metrics.
+ * Use this for storing channel scan results that users expect to persist between sessions.
+ *
+ * Related: See ARCHITECTURE.md "State & Persistence" section for storage pattern guidance
  */
 
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
