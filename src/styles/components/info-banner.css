@@ -112,3 +112,8 @@
   margin-bottom: 0;
   font-size: 14px;
 }
+
+/* Footer with smaller font size */
+.info-banner-footer-small {
+  font-size: 13px;
+}
