@@ -6,6 +6,7 @@
  * ETT (Extended Text Table).
  */
 
+import { parseDescriptors } from "./descriptors";
 import type {
   MasterGuideTable,
   TableDefinition,
@@ -17,7 +18,6 @@ import type {
   MultipleStringStructure,
   StringSegment,
 } from "./types";
-import { parseDescriptors } from "./descriptors";
 
 /**
  * Parse Master Guide Table (MGT)

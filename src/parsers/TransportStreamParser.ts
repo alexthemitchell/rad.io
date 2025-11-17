@@ -23,26 +23,10 @@
  */
 
 import { useStore } from "../store";
-
-// Re-export all types and enums for backward compatibility
-export * from "./ts/types";
-
-// Import parsing functions from internal modules
-import {
-  PACKET_SIZE,
-  SYNC_BYTE,
-  parsePacket,
-} from "./ts/tsPacket";
-import {
-  parsePAT,
-  parsePMT,
-} from "./ts/psi";
-import {
-  parseMGT,
-  parseVCT,
-  parseEIT,
-  parseETT,
-} from "./ts/psip";
+import { parsePAT, parsePMT } from "./ts/psi";
+import { parseMGT, parseVCT, parseEIT, parseETT } from "./ts/psip";
+import { PACKET_SIZE, SYNC_BYTE, parsePacket } from "./ts/tsPacket";
+import { TableId, StreamType } from "./ts/types";
 import type {
   TSPacket,
   ProgramAssociationTable,
@@ -52,7 +36,9 @@ import type {
   EventInformationTable,
   ExtendedTextTable,
 } from "./ts/types";
-import { TableId, StreamType } from "./ts/types";
+
+// Re-export all types and enums for backward compatibility
+export * from "./ts/types";
 
 /**
  * MPEG-2 Transport Stream Parser

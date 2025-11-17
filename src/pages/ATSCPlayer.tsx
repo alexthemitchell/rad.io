@@ -14,10 +14,6 @@ import { useATSCPlayer } from "../hooks/useATSCPlayer";
 import { useATSCScanner } from "../hooks/useATSCScanner";
 import { useDevice, useDiagnostics } from "../store";
 import { formatATSCChannel } from "../utils/atscChannels";
-import type { StoredATSCChannel } from "../utils/atscChannelStorage";
-import type { EPGProgram } from "../utils/epgStorage";
-
-// Import sub-components
 import {
   ChannelSelector,
   ProgramInfoDisplay,
@@ -26,6 +22,10 @@ import {
   VideoPlayer,
   PlaybackControls,
 } from "./ATSCPlayer/index";
+import type { StoredATSCChannel } from "../utils/atscChannelStorage";
+import type { EPGProgram } from "../utils/epgStorage";
+
+// Import sub-components
 function ATSCPlayer(): React.JSX.Element {
   const { primaryDevice: device } = useDevice();
   const scanner = useATSCScanner(device);

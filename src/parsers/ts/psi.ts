@@ -5,12 +5,12 @@
  * and PMT (Program Map Table).
  */
 
+import { parseDescriptors } from "./descriptors";
 import type {
   ProgramAssociationTable,
   ProgramMapTable,
   StreamInfo,
 } from "./types";
-import { parseDescriptors } from "./descriptors";
 
 /**
  * Parse Program Association Table (PAT)

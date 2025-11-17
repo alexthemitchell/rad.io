@@ -5,11 +5,7 @@
  * including packet headers, adaptation fields, and PCR.
  */
 
-import type {
-  TSPacket,
-  TSPacketHeader,
-  AdaptationField,
-} from "./types";
+import type { TSPacket, TSPacketHeader, AdaptationField } from "./types";
 
 /** Standard MPEG-2 TS packet size in bytes */
 export const PACKET_SIZE = 188;
@@ -135,9 +131,7 @@ export function parsePacket(data: Uint8Array): TSPacket | null {
     const afLength = data[offset] ?? 0;
     offset++;
     if (afLength > 0 && offset + afLength <= data.length) {
-      const af = parseAdaptationField(
-        data.subarray(offset, offset + afLength),
-      );
+      const af = parseAdaptationField(data.subarray(offset, offset + afLength));
       if (af) {
         adaptationField = af;
       }

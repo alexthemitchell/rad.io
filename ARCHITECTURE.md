@@ -92,6 +92,46 @@ assembly/ # WebAssembly implementations
 └── dsp.ts # WASM DSP primitives (SIMD-optimized)
 \`\`\`
 
+## Module Organization & Maintainability
+
+To improve code maintainability and reduce complexity, large modules have been refactored into logical sub-modules:
+
+### Transport Stream Parser (`src/parsers/`)
+
+The MPEG-2 Transport Stream parser has been split into internal submodules within `src/parsers/ts/`:
+
+- **types.ts**: All interface and enum definitions (StreamType, TableId, etc.)
+- **tsPacket.ts**: Low-level packet parsing (headers, adaptation fields, PCR)
+- **psi.ts**: PSI table parsing (PAT, PMT)
+- **psip.ts**: PSIP table parsing (MGT, VCT, EIT, ETT)
+- **descriptors.ts**: Generic descriptor parsing
+- **index.ts**: Re-exports for easy importing
+
+The main `TransportStreamParser.ts` (641 lines, down from 1494) orchestrates these modules and maintains the public API for backward compatibility.
+
+### ATSC Player Components (`src/pages/ATSCPlayer/`)
+
+The ATSC Player page has been refactored into focused sub-components:
+
+- **ChannelSelector.tsx**: Channel selection UI with signal strength indicators
+- **ProgramInfoDisplay.tsx**: Current program metadata (title, description, timing)
+- **SignalQualityMeters.tsx**: SNR, MER, BER, and sync lock indicators
+- **AudioTrackSelector.tsx**: Audio track selection dropdown
+- **VideoPlayer.tsx**: Video canvas with status overlays and captions container
+- **PlaybackControls.tsx**: Stop, volume, mute, and closed caption controls
+- **index.ts**: Component re-exports
+
+The main `ATSCPlayer.tsx` (650 lines, down from 975) composes these components and manages application state.
+
+### Benefits
+
+This modular organization provides:
+- **Improved Readability**: Each module has a clear, focused purpose
+- **Easier Maintenance**: Changes are isolated to relevant submodules
+- **Better Testability**: Smaller modules are easier to test in isolation
+- **Reduced Cognitive Load**: Contributors can understand and modify code more easily
+- **Backward Compatibility**: Public APIs remain unchanged through re-exports
+
 ## DSP Processing Architecture
 
 rad.io employs a **unified DSP primitives layer** that consolidates core signal processing operations into a single, well-tested, performance-optimized module. This architecture eliminates code duplication while maintaining high performance through WASM/SIMD acceleration.
