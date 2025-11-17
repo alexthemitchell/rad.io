@@ -6,7 +6,7 @@
  * Expiration: Cleared on page reload
  *
  * Manages the current tuned frequency (VFO) for the SDR.
- * This is session-only state - the frequency resets to default (100 MHz) on reload.
+ * This is ephemeral state - the frequency resets to default (100 MHz) on reload.
  *
  * Migrated from FrequencyContext.tsx to use Zustand.
  *
