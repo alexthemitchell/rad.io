@@ -3,7 +3,7 @@
  */
 
 import { HackRFOneAdapter } from "../HackRFOneAdapter";
-import { HackRFOne } from "../HackRFOne";
+import { HackRFOne, RequestCommand } from "../HackRFOne";
 
 function createMockUSBDevice(options?: {
   transferInBehavior?: "success" | "timeout" | "error";
@@ -318,17 +318,16 @@ describe("HackRF Error Handling and Recovery", () => {
   });
 
   describe("Reset Functionality", () => {
-    it("sends reset command successfully", async () => {
+    it("clears state without vendor reset command", async () => {
       const device = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
       await adapter.setSampleRate(20_000_000);
 
       await expect(adapter.reset()).resolves.not.toThrow();
-
-      // Verify reset command was sent (RequestCommand.RESET = 30)
+      // Verify no vendor RESET command (30) was sent
       const calls = (device.controlTransferOut as jest.Mock).mock.calls;
-      const resetCall = calls.find((call) => call[0].request === 30);
-      expect(resetCall).toBeDefined();
+        const resetCall = calls.find((call) => call[0].request === 30);
+      expect(resetCall).toBeUndefined();
     });
 
     it("resets initialization flag after reset", async () => {
@@ -355,7 +354,7 @@ describe("HackRF Error Handling and Recovery", () => {
   });
 
   describe("Fast Recovery", () => {
-    it("performs fast recovery with configuration restoration", async () => {
+    it("performs fast recovery reapplying configuration without vendor reset", async () => {
       const device = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
@@ -367,13 +366,14 @@ describe("HackRF Error Handling and Recovery", () => {
       // Perform fast recovery
       await expect(adapter.fastRecovery()).resolves.not.toThrow();
 
-      // Verify reset command was sent (RequestCommand.RESET = 30)
       const calls = (device.controlTransferOut as jest.Mock).mock.calls;
-      const resetCall = calls.find((call) => call[0].request === 30);
-      expect(resetCall).toBeDefined();
-
-      // Verify multiple configuration commands were sent
-      expect(calls.length).toBeGreaterThan(3);
+        const resetCall = calls.find((call) => call[0].request === 30);
+      expect(resetCall).toBeUndefined();
+      // Verify configuration commands were sent (sample rate, freq, amp enable)
+        const hasSampleRate = calls.some((c) => c[0].request === 6);
+        const hasFreq = calls.some((c) => c[0].request === 16);
+        const hasAmp = calls.some((c) => c[0].request === 17);
+      expect(hasSampleRate && hasFreq && hasAmp).toBe(true);
 
       // Should still be initialized after fastRecovery
       const status = adapter.getUnderlyingDevice().getConfigurationStatus();
@@ -647,16 +647,10 @@ describe("HackRF Error Handling and Recovery", () => {
   });
 
   describe("Adapter Error Propagation", () => {
-    it("propagates reset errors to caller", async () => {
+    it("reset resolves (no vendor command to fail)", async () => {
       const device = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
-
-      // Mock reset failure
-      (device.controlTransferOut as jest.Mock).mockRejectedValueOnce(
-        new Error("USB communication error"),
-      );
-
-      await expect(adapter.reset()).rejects.toThrow();
+      await expect(adapter.reset()).resolves.not.toThrow();
     });
 
     it("propagates fastRecovery errors to caller", async () => {
@@ -669,6 +663,7 @@ describe("HackRF Error Handling and Recovery", () => {
         new Error("USB communication error"),
       );
 
+      // fastRecovery still issues configuration transfers which can fail
       await expect(adapter.fastRecovery()).rejects.toThrow();
     });
   });

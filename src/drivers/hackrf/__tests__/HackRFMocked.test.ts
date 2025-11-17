@@ -146,13 +146,20 @@ describe("HackRF Mocked Logic Tests", () => {
       await hackRF.setSampleRate(10_000_000);
       await hackRF.setFrequency(100_000_000);
 
-      // Check that both calls completed
-      expect(controlTransferOut).toHaveBeenCalledTimes(2);
+      // Check that both calls completed (there may be an extra OFF mode call)
+      expect(controlTransferOut.mock.calls.length).toBeGreaterThanOrEqual(2);
 
-      // Verify calls were made in order
+      // Verify the first occurrence of each command was in order
       const calls = controlTransferOut.mock.calls;
-      expect(calls[0]?.[0].request).toBe(RequestCommand.SAMPLE_RATE_SET);
-      expect(calls[1]?.[0].request).toBe(RequestCommand.SET_FREQ);
+      const firstSampleRateIdx = calls.findIndex(
+        ([opts]) => opts?.request === RequestCommand.SAMPLE_RATE_SET,
+      );
+      const firstFreqIdx = calls.findIndex(
+        ([opts]) => opts?.request === RequestCommand.SET_FREQ,
+      );
+      expect(firstSampleRateIdx).toBeGreaterThanOrEqual(0);
+      expect(firstFreqIdx).toBeGreaterThanOrEqual(0);
+      expect(firstSampleRateIdx).toBeLessThan(firstFreqIdx);
     });
 
     it("should track streaming state correctly", async () => {

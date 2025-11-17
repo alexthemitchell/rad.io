@@ -28,6 +28,7 @@ import { ATSC8VSBDemodulator } from "../plugins/demodulators/ATSC8VSBDemodulator
 import { ATSC_CONSTANTS } from "../utils/atscChannels";
 import type { DecodedCaption } from "../decoders";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
+import { notify } from "../lib/notifications";
 
 /**
  * Audio track information
@@ -683,6 +684,17 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       } catch (error) {
         console.error("Error tuning to channel:", error);
         setPlayerState("error");
+        
+        // Check if this is a firmware corruption error requiring physical reset
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes("firmware corruption") || errorMessage.includes("Physical reset required")) {
+          notify({
+            message: "HackRF requires physical reset. Press the RESET button, then reload this page.",
+            tone: "error",
+            duration: 10000, // 10 seconds
+            sr: "assertive", // Important alert
+          });
+        }
       }
     },
     [

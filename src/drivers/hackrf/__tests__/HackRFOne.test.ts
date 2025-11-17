@@ -73,8 +73,14 @@ describe("HackRFOne control formatting", () => {
 
     await hackRF.setSampleRate(sampleRate);
 
-    expect(controlTransferOut).toHaveBeenCalledTimes(1);
-    const [, data] = controlTransferOut.mock.calls[0] ?? [];
+    // There may be a preceding SET_TRANSCEIVER_MODE(OFF) call; instead of
+    // asserting exact call count, verify that a SAMPLE_RATE_SET control with
+    // the expected payload was issued.
+    const matching = controlTransferOut.mock.calls.filter(
+      ([opts]) => (opts?.request as number) === RequestCommand.SAMPLE_RATE_SET,
+    );
+    expect(matching.length).toBeGreaterThanOrEqual(1);
+    const [, data] = matching[0] ?? [];
     expect(data).toBeInstanceOf(ArrayBuffer);
 
     const view = new DataView(data as ArrayBuffer);
@@ -160,8 +166,12 @@ describe("HackRFOne control formatting", () => {
       (call) => call[0].request === RequestCommand.SET_TRANSCEIVER_MODE,
     );
     expect(setTransceiverCalls.length).toBeGreaterThan(0);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    expect(setTransceiverCalls[0]![0]).toMatchObject({
+    // The driver may set OFF before switching to RECEIVE; assert the last
+    // mode command is RECEIVE rather than the first.
+    const lastModeCall = [...setTransceiverCalls]
+      .reverse()
+      .find(([opts]) => (opts?.request as number) === RequestCommand.SET_TRANSCEIVER_MODE);
+    expect(lastModeCall?.[0]).toMatchObject({
       request: RequestCommand.SET_TRANSCEIVER_MODE,
       value: 1, // RECEIVE mode
     });
@@ -294,13 +304,11 @@ describe("HackRFOne control formatting", () => {
     const hackRF = new HackRFOne(device);
 
     await hackRF.reset();
-
-    expect(controlTransferOut).toHaveBeenCalledWith(
-      expect.objectContaining({
-        request: RequestCommand.RESET,
-      }),
-      undefined,
+    // Reset no longer issues vendor RESET; ensure no request 30 was sent.
+    const resetCall = (controlTransferOut as jest.Mock).mock.calls.find(
+      (call) => call[0].request === RequestCommand.RESET,
     );
+    expect(resetCall).toBeUndefined();
   });
 
   it("logs configuration in development mode for setSampleRate", async () => {
