@@ -15,10 +15,7 @@ import { RTLSDRDeviceAdapter } from "../../models/RTLSDRDeviceAdapter";
 /**
  * Create a mock USB device for testing
  */
-function createMockUSBDevice(
-  vendorId: number,
-  productId: number,
-): USBDevice {
+function createMockUSBDevice(vendorId: number, productId: number): USBDevice {
   // Create mock endpoints for bulk transfers
   const mockEndpointIn: USBEndpoint = {
     endpointNumber: 1,
@@ -174,7 +171,9 @@ function createDriverConformanceTests(
       it("should define valid frequency range in capabilities", () => {
         const capabilities = device.getCapabilities();
         expect(capabilities.minFrequency).toBeGreaterThan(0);
-        expect(capabilities.maxFrequency).toBeGreaterThan(capabilities.minFrequency);
+        expect(capabilities.maxFrequency).toBeGreaterThan(
+          capabilities.minFrequency,
+        );
       });
     });
 
@@ -215,18 +214,18 @@ function createDriverConformanceTests(
       it("should parse samples", () => {
         // Create test data
         const testData = new DataView(new ArrayBuffer(1024));
-        
+
         const samples = device.parseSamples(testData);
         expect(Array.isArray(samples)).toBe(true);
-        
+
         // Each sample should have I and Q components
-        if (samples.length > 0) {
+        if (samples.length > 0 && samples[0]) {
           const firstSample = samples[0];
           expect(firstSample).toBeDefined();
           expect(firstSample).toHaveProperty("I");
           expect(firstSample).toHaveProperty("Q");
-          expect(typeof firstSample!.I).toBe("number");
-          expect(typeof firstSample!.Q).toBe("number");
+          expect(typeof firstSample.I).toBe("number");
+          expect(typeof firstSample.Q).toBe("number");
         }
       });
     });
