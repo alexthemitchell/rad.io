@@ -5,7 +5,7 @@
 
 import { WebGPUFFT, isWebGPUSupported } from "../webgpuCompute";
 import { calculateFFTWasm, isWasmAvailable } from "../dspWasm";
-import { Sample } from "../../types/rendering";
+import { Sample } from "../dsp";
 
 describe("WebGPU FFT Performance Benchmarks", () => {
   const runTests = isWebGPUSupported() && isWasmAvailable();
@@ -22,9 +22,11 @@ describe("WebGPU FFT Performance Benchmarks", () => {
 
     for (let i = 0; i < size; i++) {
       const phase = (2 * Math.PI * i * 10) / size;
-      iSamples[i] = Math.cos(phase);
-      qSamples[i] = Math.sin(phase);
-      samples.push({ I: iSamples[i], Q: qSamples[i] });
+      const iVal = Math.cos(phase);
+      const qVal = Math.sin(phase);
+      iSamples[i] = iVal;
+      qSamples[i] = qVal;
+      samples.push({ I: iVal, Q: qVal });
     }
 
     return { iSamples, qSamples, samples };

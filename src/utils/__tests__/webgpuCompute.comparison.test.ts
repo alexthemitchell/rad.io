@@ -5,7 +5,7 @@
 
 import { WebGPUFFT, isWebGPUSupported } from "../webgpuCompute";
 import { calculateFFTWasm } from "../dspWasm";
-import { Sample } from "../../types/rendering";
+import { Sample } from "../dsp";
 
 describe("WebGPU FFT vs WASM FFT Comparison", () => {
   // Skip tests if WebGPU is not supported
@@ -59,7 +59,7 @@ describe("WebGPU FFT vs WASM FFT Comparison", () => {
   ): Sample[] {
     const samples: Sample[] = [];
     for (let i = 0; i < iSamples.length; i++) {
-      samples.push({ I: iSamples[i], Q: qSamples[i] });
+      samples.push({ I: iSamples[i] ?? 0, Q: qSamples[i] ?? 0 });
     }
     return samples;
   }
@@ -74,7 +74,7 @@ describe("WebGPU FFT vs WASM FFT Comparison", () => {
 
     let sum = 0;
     for (let i = 0; i < a.length; i++) {
-      sum += Math.abs(a[i] - b[i]);
+      sum += Math.abs((a[i] ?? 0) - (b[i] ?? 0));
     }
     return sum / a.length;
   }
@@ -89,7 +89,7 @@ describe("WebGPU FFT vs WASM FFT Comparison", () => {
 
     let sum = 0;
     for (let i = 0; i < a.length; i++) {
-      const diff = a[i] - b[i];
+      const diff = (a[i] ?? 0) - (b[i] ?? 0);
       sum += diff * diff;
     }
     return Math.sqrt(sum / a.length);
