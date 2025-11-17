@@ -30,7 +30,7 @@ describe("PipelinePerformanceMonitor", () => {
     it("should calculate samples per second", () => {
       // Record samples and ensure some time passes between start and calculation
       pipelineMetrics.recordProducerSamples(1000);
-      
+
       const metrics = pipelineMetrics.getMetrics();
       // Since we just started, samplesPerSecond should be calculated from elapsed time
       // It may be very high if calculated immediately, but should be >= 0

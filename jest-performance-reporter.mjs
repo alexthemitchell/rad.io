@@ -18,6 +18,6 @@ export default class PerformanceReporter {
     console.log(`  Total tests: ${results.numTotalTests}`);
     console.log(`  Passed: ${results.numPassedTests}`);
     console.log(`  Failed: ${results.numFailedTests}`);
-    console.log(`  Duration: ${(results.startTime - Date.now()) / 1000}s\n`);
+    console.log(`  Duration: ${(Date.now() - results.startTime) / 1000}s\n`);
   }
 }

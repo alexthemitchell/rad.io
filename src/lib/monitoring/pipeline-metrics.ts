@@ -1,7 +1,7 @@
 /**
  * Comprehensive DSP Pipeline Metrics
  * Implements ADR-0027: DSP Pipeline Architecture
- * 
+ *
  * Tracks metrics at each stage:
  * - Producer (SDR device acquisition)
  * - Buffer (SharedRingBuffer utilization)
@@ -69,15 +69,14 @@ class PipelinePerformanceMonitor {
   private producerSamplesProcessed = 0;
   private producerDroppedSamples = 0;
   private producerStartTime = Date.now();
-  private producerLastUpdateTime = Date.now();
-  
+
   // Buffer metrics
   private bufferOverruns = 0;
   private bufferUnderruns = 0;
   private bufferAvailableSpace = 0;
   private bufferAvailableData = 0;
   private bufferCapacity = 0;
-  
+
   // DSP worker metrics
   private dspProcessingTimes: number[] = [];
   private dspQueueDepth = 0;
@@ -86,19 +85,18 @@ class PipelinePerformanceMonitor {
   private dspTotalOps = 0;
   private dspDroppedTasks = 0;
   private maxSamples = 200; // Increased for better percentile accuracy
-  
+
   // Audio consumer metrics
   private audioUnderruns = 0;
   private audioLatency = 0;
   private audioSampleRate = 48000;
   private audioBufferSize = 2048;
-  
+
   // Visualization consumer metrics
   private vizFrameTimes: number[] = [];
   private vizDroppedFrames = 0;
   private vizTotalFrames = 0;
   private vizTargetFPS = 60;
-  private vizLastFrameTime = Date.now();
   private maxFrameSamples = 60; // 1 second of frames at 60 FPS
 
   /**
@@ -107,7 +105,6 @@ class PipelinePerformanceMonitor {
   recordProducerSamples(count: number, dropped = 0): void {
     this.producerSamplesProcessed += count;
     this.producerDroppedSamples += dropped;
-    this.producerLastUpdateTime = Date.now();
   }
 
   /**
@@ -133,7 +130,7 @@ class PipelinePerformanceMonitor {
   recordDSPProcessingTime(ms: number): void {
     this.dspProcessingTimes.push(ms);
     this.dspTotalOps++;
-    
+
     // Keep only recent samples for percentile calculation
     if (this.dspProcessingTimes.length > this.maxSamples) {
       this.dspProcessingTimes.shift();
@@ -152,7 +149,7 @@ class PipelinePerformanceMonitor {
    */
   initDSPWorkers(count: number): void {
     this.dspWorkerCount = count;
-    this.dspWorkerBusy = new Array(count).fill(false);
+    this.dspWorkerBusy = Array(count).fill(false) as boolean[];
   }
 
   /**
@@ -190,17 +187,13 @@ class PipelinePerformanceMonitor {
    * Record visualization frame
    */
   recordVisualizationFrame(renderTime: number, dropped = false): void {
-    const now = Date.now();
-    const actualFPS = 1000 / (now - this.vizLastFrameTime);
-    this.vizLastFrameTime = now;
-    
     this.vizFrameTimes.push(renderTime);
     this.vizTotalFrames++;
-    
+
     if (dropped) {
       this.vizDroppedFrames++;
     }
-    
+
     // Keep only recent frame times
     if (this.vizFrameTimes.length > this.maxFrameSamples) {
       this.vizFrameTimes.shift();
@@ -229,11 +222,10 @@ class PipelinePerformanceMonitor {
   getMetrics(): PipelineMetrics {
     const now = Date.now();
     const elapsedSeconds = (now - this.producerStartTime) / 1000;
-    const recentSeconds = (now - this.producerLastUpdateTime) / 1000;
-    
-    // Calculate producer metrics
+
+    // Calculate producer metrics (average rate over entire session)
     const samplesPerSecond =
-      recentSeconds > 0 ? this.producerSamplesProcessed / elapsedSeconds : 0;
+      elapsedSeconds > 0 ? this.producerSamplesProcessed / elapsedSeconds : 0;
     const bufferUtilization =
       this.bufferCapacity > 0
         ? this.bufferAvailableData / this.bufferCapacity
@@ -280,8 +272,10 @@ class PipelinePerformanceMonitor {
       dsp: {
         avgProcessingTime: avgDSPTime,
         maxProcessingTime:
-          sortedTimes.length > 0 ? sortedTimes[sortedTimes.length - 1]! : 0,
-        minProcessingTime: sortedTimes.length > 0 ? sortedTimes[0]! : 0,
+          sortedTimes.length > 0
+            ? (sortedTimes[sortedTimes.length - 1] ?? 0)
+            : 0,
+        minProcessingTime: sortedTimes.length > 0 ? (sortedTimes[0] ?? 0) : 0,
         p95ProcessingTime: this.calculatePercentile(sortedTimes, 95),
         p99ProcessingTime: this.calculatePercentile(sortedTimes, 99),
         queueDepth: this.dspQueueDepth,
@@ -313,27 +307,25 @@ class PipelinePerformanceMonitor {
     this.producerSamplesProcessed = 0;
     this.producerDroppedSamples = 0;
     this.producerStartTime = Date.now();
-    this.producerLastUpdateTime = Date.now();
-    
+
     this.bufferOverruns = 0;
     this.bufferUnderruns = 0;
     this.bufferAvailableSpace = 0;
     this.bufferAvailableData = 0;
     this.bufferCapacity = 0;
-    
+
     this.dspProcessingTimes = [];
     this.dspQueueDepth = 0;
-    this.dspWorkerBusy = new Array(this.dspWorkerCount).fill(false);
+    this.dspWorkerBusy = Array(this.dspWorkerCount).fill(false) as boolean[];
     this.dspTotalOps = 0;
     this.dspDroppedTasks = 0;
-    
+
     this.audioUnderruns = 0;
     this.audioLatency = 0;
-    
+
     this.vizFrameTimes = [];
     this.vizDroppedFrames = 0;
     this.vizTotalFrames = 0;
-    this.vizLastFrameTime = Date.now();
   }
 
   /**
@@ -354,15 +346,11 @@ class PipelinePerformanceMonitor {
       if (dropRate > 0.01) {
         // > 1% drop rate
         status = "critical";
-        issues.push(
-          `High sample drop rate: ${(dropRate * 100).toFixed(1)}%`,
-        );
+        issues.push(`High sample drop rate: ${(dropRate * 100).toFixed(1)}%`);
       } else if (dropRate > 0.001) {
         // > 0.1% drop rate
-        if (status === "healthy") status = "warning";
-        issues.push(
-          `Sample drops detected: ${(dropRate * 100).toFixed(2)}%`,
-        );
+        status = "warning";
+        issues.push(`Sample drops detected: ${(dropRate * 100).toFixed(2)}%`);
       }
     }
 
@@ -373,7 +361,7 @@ class PipelinePerformanceMonitor {
         `Buffer nearly full: ${(metrics.buffer.utilization * 100).toFixed(0)}%`,
       );
     } else if (metrics.buffer.utilization > 0.85) {
-      if (status === "healthy") status = "warning";
+      status = status === "healthy" ? "warning" : status;
       issues.push(
         `High buffer utilization: ${(metrics.buffer.utilization * 100).toFixed(0)}%`,
       );
@@ -400,7 +388,8 @@ class PipelinePerformanceMonitor {
 
     // Check visualization health (only if frames have been recorded)
     if (metrics.visualization.totalFrames > 0) {
-      const fpsRatio = metrics.visualization.actualFPS / metrics.visualization.targetFPS;
+      const fpsRatio =
+        metrics.visualization.actualFPS / metrics.visualization.targetFPS;
       if (!isNaN(fpsRatio) && fpsRatio < 0.5) {
         status = "critical";
         issues.push(
@@ -418,9 +407,7 @@ class PipelinePerformanceMonitor {
       if (!isNaN(dropRate) && dropRate > 0.05) {
         // > 5% drops
         status = "critical";
-        issues.push(
-          `High frame drop rate: ${(dropRate * 100).toFixed(1)}%`,
-        );
+        issues.push(`High frame drop rate: ${(dropRate * 100).toFixed(1)}%`);
       } else if (!isNaN(dropRate) && dropRate > 0.01) {
         // > 1% drops
         if (status === "healthy") status = "warning";
