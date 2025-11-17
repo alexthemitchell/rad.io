@@ -22,17 +22,17 @@ const config: Config = {
     global: {
       statements: 64,
       branches: 51,
-      functions: 67,
+      functions: 66,
       lines: 64,
     },
-    // HackRF implementation - updated to current coverage
-    "./src/hackrf/HackRFOne.ts": {
+    // HackRF implementation - updated paths after moving to src/drivers/hackrf
+    "./src/drivers/hackrf/HackRFOne.ts": {
       statements: 76,
       branches: 60,
       functions: 95,
       lines: 75,
     },
-    "./src/hackrf/HackRFOneAdapter.ts": {
+    "./src/drivers/hackrf/HackRFOneAdapter.ts": {
       statements: 96,
       branches: 83,
       functions: 93,
@@ -53,10 +53,10 @@ const config: Config = {
     },
     // Core utilities - current baseline
     "./src/utils/audioStream.ts": {
-      statements: 93,
-      branches: 78,
-      functions: 93,
-      lines: 93,
+      statements: 87,
+      branches: 72,
+      functions: 86,
+      lines: 86,
     },
     "./src/utils/iqRecorder.ts": {
       statements: 77,

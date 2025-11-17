@@ -4,7 +4,8 @@
 
 1. [Overview](#overview)
 2. [Core Architecture](#core-architecture)
-3. [Device Integration Framework](#device-integration-framework)
+3. [State & Persistence](#state--persistence)
+4. [Device Integration Framework](#device-integration-framework)
 
 ## Overview
 
@@ -91,6 +92,47 @@ assembly/ # WebAssembly implementations
 └── dsp.ts # WASM DSP primitives (SIMD-optimized)
 \`\`\`
 
+## Module Organization & Maintainability
+
+To improve code maintainability and reduce complexity, large modules have been refactored into logical sub-modules:
+
+### Transport Stream Parser (`src/parsers/`)
+
+The MPEG-2 Transport Stream parser has been split into internal submodules within `src/parsers/ts/`:
+
+- **types.ts**: All interface and enum definitions (StreamType, TableId, etc.)
+- **tsPacket.ts**: Low-level packet parsing (headers, adaptation fields, PCR)
+- **psi.ts**: PSI table parsing (PAT, PMT)
+- **psip.ts**: PSIP table parsing (MGT, VCT, EIT, ETT)
+- **descriptors.ts**: Generic descriptor parsing
+- **index.ts**: Re-exports for easy importing
+
+The main `TransportStreamParser.ts` (641 lines, down from 1494) orchestrates these modules and maintains the public API for backward compatibility.
+
+### ATSC Player Components (`src/pages/ATSCPlayer/`)
+
+The ATSC Player page has been refactored into focused sub-components:
+
+- **ChannelSelector.tsx**: Channel selection UI with signal strength indicators
+- **ProgramInfoDisplay.tsx**: Current program metadata (title, description, timing)
+- **SignalQualityMeters.tsx**: SNR, MER, BER, and sync lock indicators
+- **AudioTrackSelector.tsx**: Audio track selection dropdown
+- **VideoPlayer.tsx**: Video canvas with status overlays and captions container
+- **PlaybackControls.tsx**: Stop, volume, mute, and closed caption controls
+- **index.ts**: Component re-exports
+
+The main `ATSCPlayer.tsx` (650 lines, down from 975) composes these components and manages application state.
+
+### Benefits
+
+This modular organization provides:
+
+- **Improved Readability**: Each module has a clear, focused purpose
+- **Easier Maintenance**: Changes are isolated to relevant submodules
+- **Better Testability**: Smaller modules are easier to test in isolation
+- **Reduced Cognitive Load**: Contributors can understand and modify code more easily
+- **Backward Compatibility**: Public APIs remain unchanged through re-exports
+
 ## DSP Processing Architecture
 
 rad.io employs a **unified DSP primitives layer** that consolidates core signal processing operations into a single, well-tested, performance-optimized module. This architecture eliminates code duplication while maintaining high performance through WASM/SIMD acceleration.
@@ -159,6 +201,233 @@ All shared primitives support both JavaScript fallback and WASM/SIMD acceleratio
 | Hann Window | 1024 samples | ~0.2ms         | ~0.05ms          | 4x      |
 
 See **ADR-0026: Unified DSP Primitives Architecture** for detailed design decisions.
+
+## State & Persistence
+
+rad.io employs a **multi-tier state management architecture** that balances performance, persistence requirements, and data lifecycle needs. Understanding which mechanism to use for different types of state is critical for maintainability and proper data handling.
+
+### State Lifecycle Categories
+
+**Long-term Persistent State** (survives app reloads, browser sessions, and device changes):
+
+- **Purpose**: User preferences and discovered data that should persist indefinitely
+- **Mechanism**: IndexedDB or localStorage
+- **Scope**: Browser-wide, domain-scoped
+- **Expiration**: Manual deletion or age-based pruning
+
+**Ephemeral State** (cleared on page reload or component unmount):
+
+- **Purpose**: UI interaction state, temporary data, runtime-only values
+- **Mechanism**: Zustand (in-memory) or React hooks
+- **Scope**: Component or app-wide (memory only)
+- **Expiration**: Page reload or component unmount
+
+### State Taxonomy with Examples
+
+| State Type    | Storage Mechanism      | Location                                | Example Data                              | Survives Reload?  |
+| ------------- | ---------------------- | --------------------------------------- | ----------------------------------------- | ----------------- |
+| **Long-term** | IndexedDB              | `src/utils/atscChannelStorage.ts`       | Scanned ATSC channels with signal quality | ✅ Yes            |
+| **Long-term** | localStorage           | `src/utils/epgStorage.ts`               | Electronic Program Guide (EPG) data       | ✅ Yes (24hr max) |
+| **Long-term** | Zustand + localStorage | `src/store/slices/settingsSlice.ts`     | User preferences (FFT size, color scheme) | ✅ Yes            |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/frequencySlice.ts`    | Current VFO frequency                     | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/deviceSlice.ts`       | Connected SDR devices                     | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/notificationSlice.ts` | Toast notifications                       | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/diagnosticsSlice.ts`  | Performance metrics                       | ❌ No             |
+| **Ephemeral** | React hooks            | `src/hooks/useATSCScanner.ts`           | Active scan state, progress               | ❌ No             |
+| **Ephemeral** | React hooks            | `src/hooks/useEPG.ts`                   | Search query, filter selections           | ❌ No             |
+
+### Storage Mechanisms in Detail
+
+#### 1. IndexedDB (Long-term, Structured Data)
+
+**Use for**: Large datasets, complex queries, relational data, binary blobs
+
+**Characteristics**:
+
+- Transactional database with ACID guarantees
+- Supports indexes for efficient querying
+- Async API (Promise-based)
+- ~50MB+ quota (browser-dependent)
+- Survives tab close, browser restart
+
+**Example**: ATSC Channel Storage
+
+```typescript
+// src/utils/atscChannelStorage.ts
+// Persistence: IndexedDB (long-term, survives browser restart)
+export interface StoredATSCChannel {
+  channel: ATSCChannel;
+  strength: number;
+  snr: number;
+  discoveredAt: Date;
+  lastScanned: Date;
+  // ...metadata
+}
+
+await saveATSCChannel(channelData); // Persists to IndexedDB
+const channels = await getAllATSCChannels(); // Query with indexes
+```
+
+#### 2. localStorage (Long-term, Key-Value)
+
+**Use for**: Simple key-value data, application-wide caches, JSON-serializable objects
+
+**Characteristics**:
+
+- Synchronous API (blocking)
+- String-based storage (JSON.stringify required)
+- ~5-10MB quota
+- Survives tab close, browser restart
+- Shared across all tabs (same domain)
+
+**Example**: EPG Data Storage
+
+```typescript
+// src/utils/epgStorage.ts
+// Persistence: localStorage (long-term with 24hr expiration)
+export namespace EPGStorage {
+  const STORAGE_KEY = "rad_io_epg_data";
+  const MAX_AGE_HOURS = 24;
+
+  export function storeEPGData(eit, ett, channel): void {
+    // Stores to localStorage with timestamp
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        timestamp: Date.now(),
+        data: channelData,
+      }),
+    );
+  }
+}
+```
+
+#### 3. Zustand with localStorage (Application Preferences)
+
+**Use for**: User preferences, UI settings, cross-component state with persistence
+
+**Characteristics**:
+
+- React-friendly state management
+- Selective persistence via middleware
+- Type-safe with TypeScript
+- Performance-optimized (fine-grained subscriptions)
+- Persists to localStorage automatically (survives browser restart)
+
+**Example**: Settings Slice
+
+```typescript
+// src/store/slices/settingsSlice.ts
+// Persistence: Zustand + localStorage (long-term, survives browser restart)
+export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
+  settings: (() => {
+    // Load from localStorage on init
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : DEFAULTS;
+  })(),
+
+  setSettings: (partial) => {
+    set((state) => {
+      const next = normalizeSettings(partial, state.settings);
+      // Persist to localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return { settings: next };
+    });
+  },
+});
+```
+
+#### 4. Zustand (In-Memory Only)
+
+**Use for**: Runtime state, device connections, temporary UI state
+
+**Characteristics**:
+
+- No persistence (cleared on reload)
+- Fast in-memory access
+- Shared across components
+- DevTools integration for debugging
+
+**Example**: Frequency Slice
+
+```typescript
+// src/store/slices/frequencySlice.ts
+// Persistence: None (ephemeral, runtime-only)
+export const frequencySlice: StateCreator<FrequencySlice> = (set) => ({
+  frequencyHz: 100_000_000, // Default to 100 MHz
+  setFrequencyHz: (hz) => set({ frequencyHz: hz }),
+});
+```
+
+#### 5. React Hooks (Component-Scoped State)
+
+**Use for**: Component-local state, session-specific workflows, temporary calculations
+
+**Characteristics**:
+
+- Component lifecycle-bound
+- No cross-component sharing (unless lifted)
+- Cleaned up on unmount
+- React DevTools visibility
+
+**Example**: ATSC Scanner Hook
+
+```typescript
+// src/hooks/useATSCScanner.ts
+// Persistence: None (ephemeral runtime state during active scan)
+export function useATSCScanner(device) {
+  const [state, setState] = useState<ScannerState>("idle");
+  const [progress, setProgress] = useState(0);
+  // State cleared when component unmounts or scan stops
+}
+```
+
+### Guidance for Future Features
+
+When adding new stateful features, follow this decision tree:
+
+#### 1. Does the data need to survive browser restart?
+
+- **No** → Use Zustand (in-memory) or React hooks
+- **Yes** → Continue to step 2
+
+#### 2. Is the data large (>1MB) or needs complex queries?
+
+- **Yes** → Use IndexedDB
+- **No** → Continue to step 3
+
+#### 3. Does the data need reactive state management across components?
+
+- **Yes** → Use Zustand + localStorage†
+- **No** → Use plain localStorage (with namespace)
+
+†**Note:** localStorage is always shared across all tabs in the same domain. "Zustand + localStorage" provides reactive state management within each tab, while the data persists to shared localStorage and will be loaded when a new tab opens. Each tab maintains its own Zustand state instance (not synchronized in real-time). If you need true tab isolation where data is not accessible from other tabs, use `sessionStorage` instead of `localStorage`.
+
+#### 4. Is it component-specific or app-wide?
+
+- **Component-specific** → React hooks (useState, useReducer)
+- **App-wide** → Zustand slice
+
+#### Storage Key Naming Conventions
+
+- IndexedDB database: `rad-io-{feature}` (e.g., `rad-io-atsc-channels`)
+- localStorage key: `rad.{feature}.v{version}` (e.g., `rad.settings.v1`)
+  - **Note:** Some legacy features may use different key formats (e.g., `rad_io_epg_data` in `epgStorage.ts` uses underscores and no version). New features should follow the documented convention. When migrating legacy keys, ensure backward compatibility.
+- Zustand store: Export from `src/store/index.ts` with typed hooks
+
+#### Common Pitfalls to Avoid
+
+- ❌ Storing device instances in localStorage (not serializable)
+- ❌ Mixing persistence mechanisms for same data type
+- ❌ Forgetting to handle localStorage quota exceeded errors
+- ❌ Not versioning localStorage keys (breaking changes)
+- ❌ Using localStorage synchronously in hot paths (blocks UI)
+
+#### Type Consistency
+
+- Export interfaces for all persistent data structures
+- Use consistent naming: `{Feature}Data`, `Stored{Feature}`, `{Feature}State`
+- Document serialization requirements (Date → ISO string, etc.)
 
 ## Device Integration Framework
 

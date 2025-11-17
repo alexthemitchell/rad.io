@@ -1,8 +1,17 @@
 /**
  * useEPG Hook
  *
+ * Persistence: Delegates to EPGStorage (localStorage, 24hr expiration)
+ * Scope: Component-bound (React hook)
+ * Expiration: Search/filter state cleared on unmount; EPG data has 24hr expiration
+ *
  * React hook for managing Electronic Program Guide data,
  * including loading, searching, and filtering programs.
+ *
+ * Note: The hook manages ephemeral search/filter state,
+ * while actual EPG data persistence is handled by EPGStorage.
+ *
+ * Related: See ARCHITECTURE.md "State & Persistence" section for storage pattern guidance
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";

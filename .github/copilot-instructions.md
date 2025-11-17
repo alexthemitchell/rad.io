@@ -1,6 +1,7 @@
 - Use [`package.json`](../package.json) scripts to run, build, and test the project.
 - Use [`docs/decisions/`](../docs/decisions/) for architectural decision records that may inform your work.
 - Use [`docs/reference/`](../docs/reference/) for specialized domain knowledge about SDR and related technologies.
+- When adding stateful features, follow the patterns in [ARCHITECTURE.md - State & Persistence](../ARCHITECTURE.md#state--persistence) to choose the appropriate storage mechanism (IndexedDB, localStorage, Zustand, or React hooks).
 
 - Look for existing implementations before writing new ones; there may be similar code used elsewhere and we want to minimize duplication.
 - Streamline duplicate implementations into a single, reusable implementation when possible.

@@ -131,6 +131,23 @@ git commit -m "feat: add support for new SDR device"
 - **Keep components focused** - Single responsibility principle
 - **Use TypeScript for props** - Always define prop types
 
+### State Management Guidelines
+
+When adding stateful features, follow the patterns in [ARCHITECTURE.md - State & Persistence](ARCHITECTURE.md#state--persistence):
+
+- **Long-term data** (survives browser restart) → IndexedDB, localStorage, or Zustand + localStorage
+- **Ephemeral state** (runtime only) → Zustand (in-memory) or React hooks
+- **Document persistence strategy** in top-of-file comments
+- **Use consistent naming**: `{Feature}Data`, `Stored{Feature}`, `{Feature}State`
+- **Version localStorage keys**: `rad.{feature}.v{version}`
+
+See existing examples:
+
+- IndexedDB: `src/utils/atscChannelStorage.ts`
+- localStorage: `src/utils/epgStorage.ts`
+- Zustand + localStorage: `src/store/slices/settingsSlice.ts`
+- React hooks: `src/hooks/useATSCScanner.ts`
+
 ### Code Organization
 
 - **Barrel exports** - Use `index.ts` files for cleaner imports

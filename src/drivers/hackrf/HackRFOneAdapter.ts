@@ -6,7 +6,7 @@
  * compatibility with the visualization and control components.
  */
 
-import { CalibrationManager } from "../lib/measurement/calibration";
+import { CalibrationManager } from "../../lib/measurement/calibration";
 import {
   type ISDRDevice,
   type IQSample,
@@ -17,7 +17,7 @@ import {
   type SDRStreamConfig,
   type DeviceMemoryInfo,
   convertInt8ToIQ,
-} from "../models/SDRDevice";
+} from "../../models/SDRDevice";
 import { HackRFOne } from "./HackRFOne";
 
 export class HackRFOneAdapter implements ISDRDevice {

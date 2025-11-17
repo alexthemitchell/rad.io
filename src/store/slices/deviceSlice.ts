@@ -1,12 +1,21 @@
 /**
  * Device Slice
  *
+ * Persistence: None (ephemeral, runtime-only)
+ * Scope: Application-wide (Zustand store)
+ * Expiration: Cleared on page reload
+ *
  * Manages SDR device state and connections.
+ * Device instances cannot be serialized, so this state is always ephemeral.
+ * Users must reconnect devices after browser reload.
+ *
  * Migrated from DeviceContext.tsx to use Zustand.
  *
  * Note: This slice manages device state, but device initialization logic
  * that depends on React hooks (like useUSBDevice) is handled in a separate
  * integration layer in App.tsx or similar.
+ *
+ * Related: See ARCHITECTURE.md "State & Persistence" section for storage pattern guidance
  */
 
 import { type StateCreator } from "zustand";

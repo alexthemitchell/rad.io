@@ -3,358 +3,34 @@
  *
  * Dedicated page for playing ATSC broadcasts with channel selection,
  * program information display, and playback controls.
+ *
+ * This file has been refactored with components extracted to the ATSCPlayer/ directory.
  */
 
 import React, { useState, useCallback } from "react";
+import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import { ATSCProgramGuide } from "../components/EPG";
+import { InfoBanner } from "../components/InfoBanner";
 import { useATSCPlayer } from "../hooks/useATSCPlayer";
 import { useATSCScanner } from "../hooks/useATSCScanner";
-import { useDevice } from "../store";
+import { useDevice, useDiagnostics } from "../store";
 import { formatATSCChannel } from "../utils/atscChannels";
-import type { AudioTrack } from "../hooks/useATSCPlayer";
+import {
+  ChannelSelector,
+  ProgramInfoDisplay,
+  SignalQualityMeters,
+  AudioTrackSelector,
+  VideoPlayer,
+  PlaybackControls,
+} from "./ATSCPlayer/index";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
 import type { EPGProgram } from "../utils/epgStorage";
 
-/**
- * Channel selector component
- */
-function ChannelSelector({
-  channels,
-  currentChannel,
-  onSelectChannel,
-}: {
-  channels: StoredATSCChannel[];
-  currentChannel: StoredATSCChannel | null;
-  onSelectChannel: (channel: StoredATSCChannel) => void;
-}): React.JSX.Element {
-  return (
-    <div className="channel-selector">
-      <h3>Available Channels</h3>
-      {channels.length === 0 ? (
-        <p className="empty-state">
-          No channels available. Please scan for channels first.
-        </p>
-      ) : (
-        <div className="channel-list">
-          {channels.map((channel) => (
-            <button
-              key={channel.channel.channel}
-              className={`channel-item ${
-                currentChannel?.channel.channel === channel.channel.channel
-                  ? "active"
-                  : ""
-              }`}
-              onClick={() => onSelectChannel(channel)}
-              title={`Tune to ${formatATSCChannel(channel.channel)}`}
-            >
-              <div className="channel-number">{channel.channel.channel}</div>
-              <div className="channel-info">
-                <div className="channel-name">
-                  {formatATSCChannel(channel.channel)}
-                </div>
-                <div className="channel-frequency">
-                  {(channel.channel.frequency / 1e6).toFixed(1)} MHz
-                </div>
-              </div>
-              <div className="channel-strength">
-                <div
-                  className="strength-bar"
-                  style={{
-                    width: `${channel.strength * 100}%`,
-                    backgroundColor:
-                      channel.strength > 0.7
-                        ? "#10b981"
-                        : channel.strength > 0.4
-                          ? "#f59e0b"
-                          : "#ef4444",
-                  }}
-                />
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Program info display component
- */
-function ProgramInfoDisplay({
-  programInfo,
-}: {
-  programInfo: {
-    title: string;
-    description: string;
-    startTime?: Date;
-    duration?: number;
-  } | null;
-}): React.JSX.Element {
-  if (!programInfo) {
-    return (
-      <div className="program-info">
-        <h3>Program Information</h3>
-        <p className="empty-state">No program information available</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="program-info">
-      <h3>Now Playing</h3>
-      <div className="program-details">
-        <h4 className="program-title">{programInfo.title}</h4>
-        {programInfo.description && (
-          <p className="program-description">{programInfo.description}</p>
-        )}
-        {programInfo.startTime && (
-          <div className="program-meta">
-            <span className="meta-label">Start Time:</span>
-            <span className="meta-value">
-              {programInfo.startTime.toLocaleTimeString()}
-            </span>
-          </div>
-        )}
-        {programInfo.duration !== undefined && (
-          <div className="program-meta">
-            <span className="meta-label">Duration:</span>
-            <span className="meta-value">
-              {Math.floor(programInfo.duration / 60)} minutes
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Signal quality meters component
- */
-function SignalQualityMeters({
-  quality,
-}: {
-  quality: {
-    snr: number;
-    ber: number;
-    mer: number;
-    signalStrength: number;
-    syncLocked: boolean;
-  } | null;
-}): React.JSX.Element {
-  if (!quality) {
-    return (
-      <div className="signal-quality">
-        <h3>Signal Quality</h3>
-        <p className="empty-state">No signal quality data</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="signal-quality">
-      <h3>Signal Quality</h3>
-      <div className="quality-metrics">
-        <div className="metric">
-          <span className="metric-label">Signal Strength</span>
-          <div className="metric-bar-container">
-            <div
-              className="metric-bar"
-              style={{
-                width: `${quality.signalStrength}%`,
-                backgroundColor:
-                  quality.signalStrength > 70
-                    ? "#10b981"
-                    : quality.signalStrength > 40
-                      ? "#f59e0b"
-                      : "#ef4444",
-              }}
-            />
-          </div>
-          <span className="metric-value">{quality.signalStrength}%</span>
-        </div>
-
-        <div className="metric">
-          <span className="metric-label">SNR</span>
-          <span className="metric-value">{quality.snr.toFixed(1)} dB</span>
-        </div>
-
-        <div className="metric">
-          <span className="metric-label">MER</span>
-          <span className="metric-value">{quality.mer.toFixed(1)} dB</span>
-        </div>
-
-        <div className="metric">
-          <span className="metric-label">BER</span>
-          <span className="metric-value">{quality.ber.toExponential(2)}</span>
-        </div>
-
-        <div className="metric">
-          <span className="metric-label">Sync Lock</span>
-          <span
-            className={`metric-status ${quality.syncLocked ? "locked" : "unlocked"}`}
-          >
-            {quality.syncLocked ? "Locked" : "Unlocked"}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Audio track selector component
- */
-function AudioTrackSelector({
-  tracks,
-  selectedTrack,
-  onSelectTrack,
-}: {
-  tracks: AudioTrack[];
-  selectedTrack: AudioTrack | null;
-  onSelectTrack: (track: AudioTrack) => void;
-}): React.JSX.Element {
-  if (tracks.length === 0) {
-    return <div className="audio-selector" />;
-  }
-
-  return (
-    <div className="audio-selector">
-      <label htmlFor="audio-track">
-        Audio Track:
-        <select
-          id="audio-track"
-          value={selectedTrack?.pid.toString() ?? ""}
-          onChange={(e) => {
-            const pid = parseInt(e.target.value, 10);
-            const track = tracks.find((t) => t.pid === pid);
-            if (track) {
-              onSelectTrack(track);
-            }
-          }}
-        >
-          {!selectedTrack && <option value="">Select track...</option>}
-          {tracks.map((track) => (
-            <option key={track.pid} value={track.pid}>
-              {track.description}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
-  );
-}
-
-/**
- * Video player component
- */
-function VideoPlayer({
-  playerState,
-}: {
-  playerState: string;
-}): React.JSX.Element {
-  return (
-    <div className="video-player">
-      <div className="video-container">
-        <canvas id="atsc-video-canvas" width={1280} height={720} />
-        {playerState !== "playing" && (
-          <div className="video-overlay">
-            <p className="video-status">
-              {playerState === "idle" && "Select a channel to start playback"}
-              {playerState === "tuning" && "Tuning..."}
-              {playerState === "buffering" && "Buffering..."}
-              {playerState === "error" && "Playback error"}
-            </p>
-          </div>
-        )}
-        {/* This container will be populated by the caption renderer when CEA-608/708 parsing is implemented */}
-        <div
-          id="closed-captions"
-          className="closed-captions"
-          data-caption-target
-        />
-      </div>
-    </div>
-  );
-}
-
-/**
- * Playback controls component
- */
-function PlaybackControls({
-  volume,
-  muted,
-  closedCaptionsEnabled,
-  onVolumeChange,
-  onMuteToggle,
-  onCCToggle,
-  onStop,
-  disabled,
-}: {
-  volume: number;
-  muted: boolean;
-  closedCaptionsEnabled: boolean;
-  onVolumeChange: (volume: number) => void;
-  onMuteToggle: () => void;
-  onCCToggle: () => void;
-  onStop: () => void;
-  disabled: boolean;
-}): React.JSX.Element {
-  return (
-    <div className="playback-controls">
-      <button
-        className="btn btn-danger"
-        onClick={onStop}
-        disabled={disabled}
-        title="Stop playback"
-      >
-        Stop
-      </button>
-
-      <div className="volume-control">
-        <button
-          className="btn btn-icon"
-          onClick={onMuteToggle}
-          title={muted ? "Unmute" : "Mute"}
-        >
-          {muted ? "🔇" : "🔊"}
-        </button>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={volume * 100}
-          onChange={(e) => onVolumeChange(parseInt(e.target.value, 10) / 100)}
-          disabled={disabled}
-          title={`Volume: ${Math.round(volume * 100)}%`}
-        />
-        <span className="volume-label">{Math.round(volume * 100)}%</span>
-      </div>
-
-      <button
-        className={`btn ${closedCaptionsEnabled ? "btn-primary" : "btn-secondary"}`}
-        onClick={onCCToggle}
-        disabled={disabled}
-        title={
-          closedCaptionsEnabled
-            ? "Disable closed captions"
-            : "Enable closed captions"
-        }
-      >
-        CC
-      </button>
-    </div>
-  );
-}
-
-/**
- * ATSC Player Page Component
- */
 function ATSCPlayer(): React.JSX.Element {
   const { primaryDevice: device } = useDevice();
   const scanner = useATSCScanner(device);
   const player = useATSCPlayer(device);
+  const { setOverlayVisible } = useDiagnostics();
 
   const [showScanner, setShowScanner] = useState(false);
   const [viewMode, setViewMode] = useState<"player" | "epg">("player");
@@ -427,8 +103,47 @@ function ATSCPlayer(): React.JSX.Element {
           >
             {showScanner ? "Hide Scanner" : "Show Scanner"}
           </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setOverlayVisible(true)}
+            title="Show diagnostics overlay"
+          >
+            Diagnostics
+          </button>
         </div>
       </div>
+
+      {/* Golden Path Context Banner */}
+      {scanner.foundChannels.length === 0 && !showScanner && (
+        <InfoBanner
+          variant="info"
+          title="🎯 First time using ATSC Player?"
+          role="status"
+        >
+          <p className="info-banner-paragraph">
+            <strong>Step 1:</strong> Click &quot;Show Scanner&quot; above to
+            scan for ATSC channels in your area
+            <br />
+            <strong>Step 2:</strong> Select a channel from the list to tune and
+            play
+            <br />
+            <strong>Step 3:</strong> Use the Program Guide tab to view
+            what&apos;s on TV
+          </p>
+          <p className="info-banner-footer">
+            📖{" "}
+            <a
+              href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View complete ATSC Golden Path Guide
+            </a>
+          </p>
+        </InfoBanner>
+      )}
+
+      <DiagnosticsOverlay detailed={true} />
 
       {showScanner && (
         <div className="scanner-section">

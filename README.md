@@ -5,6 +5,23 @@
 
 A professional browser-based SDR application with industry-standard visualizations, universal device support, and comprehensive testing.
 
+## 🎯 New to rad.io? Start with the Golden Path
+
+**Want to watch digital TV with your SDR?** Follow our step-by-step [**ATSC Digital TV Golden Path Guide**](docs/tutorials/atsc-golden-path.md) to learn the complete end-to-end workflow:
+
+1. 🔌 **Connect** your SDR device
+2. 🔍 **Scan** for ATSC channels in your area
+3. 📺 **Tune and Play** a channel
+4. 📋 **View** the Electronic Program Guide (EPG)
+5. 💬 **Enable** closed captions
+6. 📊 **Monitor** signal health and quality
+
+**Estimated time**: 15-20 minutes | **No SDR experience required!**
+
+[**→ Start the ATSC Golden Path Guide**](docs/tutorials/atsc-golden-path.md)
+
+---
+
 ## Common Usecases
 
 ### Live FM Radio
@@ -75,7 +92,8 @@ rad.io features a **comprehensive device integration framework** that enables pl
 
 - 📖 [Add a New SDR Device Guide](docs/how-to/add-new-sdr-device.md) - Step-by-step instructions
 - 📚 [Architecture Documentation](ARCHITECTURE.md) - Framework design and patterns
-- � See existing device implementations in `src/models/` for reference
+- 🗄️ [State & Persistence Guide](ARCHITECTURE.md#state--persistence) - Managing state across the app
+- 📝 See existing device implementations in `src/models/` for reference
 
 Adding a new device takes ~200 lines of code following the patterns in existing implementations.
 

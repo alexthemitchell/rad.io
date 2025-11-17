@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { InfoBanner } from "../components/InfoBanner";
 
 /**
  * Help page with onboarding, keyboard shortcuts, and release notes
@@ -75,7 +76,38 @@ function Help(): React.JSX.Element {
             Welcome to rad.io, a professional software-defined radio visualizer.
           </p>
 
-          <h4>Quick Start Guide</h4>
+          <InfoBanner
+            variant="info"
+            title="🎯 New to ATSC Digital TV?"
+            role="note"
+            className="info-banner-margin-bottom-lg"
+          >
+            <p className="info-banner-paragraph">
+              Follow our comprehensive{" "}
+              <a
+                href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                ATSC Golden Path Guide
+              </a>{" "}
+              for a step-by-step walkthrough:
+            </p>
+            <ol className="info-banner-list">
+              <li>Connect your SDR device</li>
+              <li>Scan for ATSC channels</li>
+              <li>Tune and play a channel</li>
+              <li>View the Electronic Program Guide (EPG)</li>
+              <li>Enable closed captions</li>
+              <li>Monitor signal health</li>
+            </ol>
+            <p className="info-banner-footer-spaced">
+              <strong>Estimated time:</strong> 15-20 minutes |{" "}
+              <strong>No SDR experience required!</strong>
+            </p>
+          </InfoBanner>
+
+          <h4>Quick Start Guide (General SDR)</h4>
           <ol>
             <li>Connect your SDR device (RTL-SDR, HackRF, etc.)</li>
             <li>Go to Devices panel and scan for devices</li>
@@ -120,6 +152,11 @@ function Help(): React.JSX.Element {
               <kbd>5</kbd>
             </dt>
             <dd>Navigate to Recordings</dd>
+
+            <dt>
+              <kbd>6</kbd>
+            </dt>
+            <dd>Navigate to ATSC Player</dd>
 
             <dt>
               <kbd>?</kbd>

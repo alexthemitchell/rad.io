@@ -2,6 +2,16 @@
 
 This guide helps you find the right documentation for your needs in the rad.io documentation system.
 
+## 🎯 New to ATSC Digital TV?
+
+**Start here**: [**ATSC Digital TV Golden Path Guide**](./tutorials/atsc-golden-path.md)
+
+This comprehensive guide walks you through the complete end-to-end workflow: Connect SDR → Scan channels → Tune/Play → View EPG → Enable captions → Monitor signal health.
+
+**Perfect for**: First-time users, ATSC newcomers, anyone wanting a structured learning path.
+
+---
+
 ## Quick Decision Tree
 
 ```

@@ -14,6 +14,7 @@
  */
 
 import { BasePlugin } from "../../lib/BasePlugin";
+import { useStore } from "../../store";
 import { PluginType } from "../../types/plugin";
 import type { IQSample } from "../../models/SDRDevice";
 import type {
@@ -37,6 +38,17 @@ const SEGMENT_LENGTH = 832; // symbols per segment
 const SEGMENT_SYNC_LENGTH = 4; // sync symbols at start of segment
 const FIELD_SYNC_SEGMENTS = 313; // segments per field
 const CHANNEL_BANDWIDTH = 6e6; // 6 MHz
+
+/**
+ * Signal quality calculation constants
+ */
+const VSB_SIGNAL_POWER = 21; // Variance of 8-VSB symbol levels [-7,-5,-3,-1,1,3,5,7]
+const METRICS_SAMPLE_WINDOW = 100; // Number of symbols to use for rolling metrics
+const SNR_MAX_DB = 40; // Maximum SNR value for normalization
+const MER_MAX_DB = 40; // Maximum MER value for normalization
+const SYMBOL_ERROR_THRESHOLD = 1.5; // Threshold for detecting significant symbol errors
+const BER_MIN = 0.00001; // Minimum BER value for display (except true zero)
+const BER_MAX = 0.5; // Maximum BER value
 
 /**
  * Data segment sync pattern (4 symbols)
@@ -96,6 +108,12 @@ export class ATSC8VSBDemodulator
   // Demodulated data buffer
   private symbolBuffer: number[];
 
+  // Diagnostics
+  private lastDiagnosticsUpdate: number;
+  private diagnosticsUpdateInterval: number;
+  private previousSyncLocked: boolean; // Track previous sync state for transition detection
+  private startupMessageSent: boolean; // Track if startup message has been sent
+
   constructor() {
     const metadata: PluginMetadata = {
       id: "atsc-8vsb-demodulator",
@@ -146,18 +164,43 @@ export class ATSC8VSBDemodulator
     this.lastSyncPosition = -1; // -1 means no sync found yet
 
     this.symbolBuffer = [];
+
+    this.lastDiagnosticsUpdate = 0;
+    this.diagnosticsUpdateInterval = 500; // Update diagnostics every 500ms
+    this.previousSyncLocked = false;
+    this.startupMessageSent = false;
   }
 
   protected onInitialize(): void {
     this.resetState();
   }
 
-  protected async onActivate(): Promise<void> {
+  protected onActivate(): void {
     // Start demodulation
+    try {
+      const store = useStore.getState();
+      store.addDiagnosticEvent({
+        source: "demodulator",
+        severity: "info",
+        message: "ATSC 8-VSB demodulator activated",
+      });
+    } catch (_error) {
+      // Silently fail if store is not available
+    }
   }
 
   protected onDeactivate(): void {
     this.resetState();
+    try {
+      const store = useStore.getState();
+      store.addDiagnosticEvent({
+        source: "demodulator",
+        severity: "info",
+        message: "ATSC 8-VSB demodulator deactivated",
+      });
+    } catch (_error) {
+      // Silently fail if store is not available
+    }
   }
 
   protected onDispose(): void {
@@ -181,6 +224,8 @@ export class ATSC8VSBDemodulator
     this.syncLocked = false;
     this.lastSyncPosition = -1;
     this.symbolBuffer = [];
+    this.previousSyncLocked = false;
+    this.startupMessageSent = false;
 
     // Reset equalizer
     this.equalizer.taps.fill(0);
@@ -488,7 +533,135 @@ export class ATSC8VSBDemodulator
       }
     }
 
+    // Update diagnostics
+    this.updateDiagnostics();
+
     return output;
+  }
+
+  /**
+   * Update diagnostics metrics
+   */
+  private updateDiagnostics(): void {
+    const now = Date.now();
+    if (now - this.lastDiagnosticsUpdate < this.diagnosticsUpdateInterval) {
+      return;
+    }
+
+    this.lastDiagnosticsUpdate = now;
+
+    try {
+      const store = useStore.getState();
+
+      // Calculate real signal quality metrics from demodulator state
+      let snr: number | undefined;
+      let mer: number | undefined;
+      let ber: number | undefined;
+
+      // Derive signalStrength from SNR if available, else 0
+      let signalStrength = 0;
+
+      if (this.syncLocked && this.symbolBuffer.length > 0) {
+        // Calculate SNR from symbol variance
+        // SNR = signal power / noise power
+        // For 8-VSB, we can estimate noise from slicer error
+        const slicerErrors: number[] = [];
+        for (const symbol of this.symbolBuffer.slice(-METRICS_SAMPLE_WINDOW)) {
+          const decision = this.slicerDecision(symbol);
+          const error = symbol - decision;
+          slicerErrors.push(error);
+        }
+
+        if (slicerErrors.length > 0) {
+          // Calculate noise power (variance of slicer errors)
+          const noiseMean =
+            slicerErrors.reduce((sum, e) => sum + e, 0) / slicerErrors.length;
+          const noiseVariance =
+            slicerErrors.reduce((sum, e) => sum + (e - noiseMean) ** 2, 0) /
+            slicerErrors.length;
+
+          if (noiseVariance > 0) {
+            // SNR in dB = 10 * log10(signal_power / noise_power)
+            snr = 10 * Math.log10(VSB_SIGNAL_POWER / noiseVariance);
+            // Clamp to reasonable range
+            snr = Math.max(0, Math.min(SNR_MAX_DB, snr));
+
+            // Derive signal strength from SNR (normalize to 0-1 range)
+            signalStrength = Math.min(1.0, snr / SNR_MAX_DB);
+          }
+
+          // MER (Modulation Error Ratio) is similar to SNR but uses RMS error
+          // MER in dB = 10 * log10(signal_power / mean_square_error)
+          const meanSquareError =
+            slicerErrors.reduce((sum, e) => sum + e * e, 0) /
+            slicerErrors.length;
+          if (meanSquareError > 0) {
+            mer = 10 * Math.log10(VSB_SIGNAL_POWER / meanSquareError);
+            // Clamp to reasonable range
+            mer = Math.max(0, Math.min(MER_MAX_DB, mer));
+          }
+
+          // BER (Bit Error Rate) estimate from symbol errors
+          // Each 8-VSB symbol carries 3 bits
+          // Estimate bit errors from symbol errors (Gray coding reduces bit errors)
+          const symbolErrors = slicerErrors.filter(
+            (e) => Math.abs(e) > SYMBOL_ERROR_THRESHOLD,
+          ).length; // Significant errors
+          // Allow true zero when no errors detected
+          ber =
+            symbolErrors > 0
+              ? Math.max(
+                  BER_MIN,
+                  Math.min(BER_MAX, symbolErrors / slicerErrors.length),
+                )
+              : 0;
+        }
+      }
+
+      // If not locked or no data, use undefined instead of fake values
+      store.updateDemodulatorMetrics({
+        syncLocked: this.syncLocked,
+        signalStrength,
+        snr,
+        mer,
+        ber,
+        segmentSyncCount: this.segmentSyncCount,
+        fieldSyncCount: this.fieldSyncCount,
+      });
+
+      // Add diagnostic events for state transitions
+      if (this.previousSyncLocked && !this.syncLocked) {
+        // Transition from locked to unlocked
+        store.addDiagnosticEvent({
+          source: "demodulator",
+          severity: "warning",
+          message: "Sync lock lost",
+        });
+      } else if (!this.previousSyncLocked && this.syncLocked) {
+        // Transition from unlocked to locked
+        store.addDiagnosticEvent({
+          source: "demodulator",
+          severity: "info",
+          message: "Sync lock acquired",
+        });
+      } else if (!this.syncLocked && this.segmentSyncCount === 0) {
+        // Still searching for initial lock (only emit once at startup)
+        if (!this.startupMessageSent) {
+          store.addDiagnosticEvent({
+            source: "demodulator",
+            severity: "info",
+            message: "Searching for sync lock...",
+          });
+          this.startupMessageSent = true;
+        }
+      }
+
+      // Update previous state for next comparison
+      this.previousSyncLocked = this.syncLocked;
+    } catch (_error) {
+      // Silently fail if store is not available
+      // This can happen during testing or if component is used standalone
+    }
   }
 
   /**

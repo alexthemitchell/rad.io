@@ -11,11 +11,13 @@
 @import url("./components/status-bar.css") layer(status-bar);
 @import url("./components/toast.css") layer(toast);
 @import url("./components/diagnostics.css") layer(diagnostics);
+@import url("./components/diagnostics-overlay.css") layer(diagnostics-overlay);
 @import url("./components/rds.css") layer(rds);
 @import url("./components/tmc.css") layer(tmc);
 @import url("./components/audio.css") layer(audio);
 @import url("./components/transmission-log.css") layer(transmission-log);
 @import url("./components/digital-mode.css") layer(digital-mode);
+@import url("./components/info-banner.css") layer(info-banner);
 
 /* Global base, accessibility, and focus styles moved to base.css and a11y.css */
 

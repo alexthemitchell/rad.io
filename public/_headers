@@ -1,0 +1,6 @@
+# Headers for GitHub Pages deployment
+# Enables SharedArrayBuffer support (ADR-0027)
+
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
