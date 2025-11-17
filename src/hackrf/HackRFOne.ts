@@ -613,34 +613,12 @@ export class HackRFOne {
     }
 
     const { freqHz, divider } = computeSampleRateParams(sampleRate);
-    // Put transceiver into OFF mode before reconfiguring clocks to avoid firmware hiccups
-    try {
-      await this.setTransceiverMode(TransceiverMode.OFF);
-      await this.delay(50);
-    } catch {
-      // best-effort; continue
-    }
     const payload = createUint32LEBuffer([freqHz, divider]);
     // More robust retry/backoff specifically for Windows/WebUSB transfer errors
     const MAX_ATTEMPTS = 5;
     let attempt = 0;
     let lastErr: unknown = null;
     let backoff = 150; // ms
-    // Avoid an eager reset on first-time configuration because Windows/WebUSB
-    // may transiently drop the device during re-enumeration. Only reset here
-    // if the device was previously configured in this session.
-    if (this.configuredOnce) {
-      try {
-        await this.controlTransferOut({
-          command: RequestCommand.RESET,
-          value: 0,
-          index: 0,
-        });
-        await this.delay(200);
-      } catch {
-        // Ignore; continue with attempts
-      }
-    }
     while (attempt < MAX_ATTEMPTS) {
       try {
         await this.controlTransferOut({
@@ -932,6 +910,20 @@ export class HackRFOne {
   async receive(callback?: (data: DataView) => void): Promise<void> {
     // Validate device health before streaming
     this.validateDeviceHealth();
+
+    // Set streaming to true at the very start to allow stopRx() to detect it
+    this.streaming = true;
+
+    // Create a stop signal early so stopRx() can signal us during startup
+    let stopSignal: (() => void) | null = null;
+    const stopPromise = new Promise<USBInTransferResult>((resolve) => {
+      stopSignal = (): void => {
+        // Resolve with a sentinel result so the loop can exit cleanly
+        resolve({} as unknown as USBInTransferResult);
+      };
+      this.stopReject = stopSignal;
+    });
+
     // Disable UI to allow continuous streaming, then enter RX mode
     try {
       await this.controlTransferOut({
@@ -944,17 +936,11 @@ export class HackRFOne {
     await this.setTransceiverMode(TransceiverMode.RECEIVE);
     // Give firmware a brief moment to start DMA before first transfer
     await this.delay(50);
-    this.streaming = true;
-
-    // Create a stop signal that allows us to break out of a pending transfer
-    // immediately when stopRx() is called, rather than waiting for timeouts.
-    const stopPromise = new Promise<USBInTransferResult>((_, reject) => {
-      this.stopReject = (): void => {
-        // Use DOMException with name 'AbortError' for standard abort signaling
-        const abortErr = new DOMException("Aborted", "AbortError");
-        reject(abortErr);
-      };
-    });
+    // Check if stop was requested during startup; if so, exit immediately
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!this.streaming) {
+      return;
+    }
 
     const isDev = process.env["NODE_ENV"] === "development";
     if (isDev) {
@@ -999,6 +985,12 @@ export class HackRFOne {
           stopPromise,
         ]);
 
+        // If stop was requested, exit immediately
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!this.streaming) {
+          break;
+        }
+
         // Reset timeout counter on successful transfer
         consecutiveTimeouts = 0;
 
@@ -1035,6 +1027,11 @@ export class HackRFOne {
           });
         }
       } catch (err: unknown) {
+        // If streaming was requested to stop, exit immediately regardless of error type
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!this.streaming) {
+          break;
+        }
         const error = err as Error & { name?: string };
         if (error.name === "AbortError") {
           // transferIn aborted as expected during shutdown
@@ -1054,6 +1051,17 @@ export class HackRFOne {
           });
 
           if (consecutiveTimeouts >= MAX_CONSECUTIVE_TIMEOUTS) {
+            // If streaming was stopped, exit immediately without recovery
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (!this.streaming) {
+              console.warn(
+                "HackRFOne.receive: Max timeouts reached but streaming stopped; exiting without recovery",
+                {
+                  iteration: iterationCount,
+                },
+              );
+              break;
+            }
             // If a shutdown is in progress, do not attempt recovery
             if (this.closing) {
               console.warn(
@@ -1162,9 +1170,9 @@ export class HackRFOne {
     this.streaming = false;
     // Trigger stop signal to break out of pending races immediately
     if (this.stopReject) {
-      const reject = this.stopReject;
+      const signal = this.stopReject;
       this.stopReject = null;
-      reject(new DOMException("Aborted", "AbortError"));
+      signal();
     }
   }
 

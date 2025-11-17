@@ -28,6 +28,8 @@ export class HackRFOneAdapter implements ISDRDevice {
   private currentBandwidth = 20e6; // 20 MHz default
   private isReceivingFlag = false;
   private isInitialized = false; // Track if device has been properly configured
+  // Ensure we program frequency to hardware at least once, even if equal to default
+  private isFrequencyConfigured = false;
   private calibration = new CalibrationManager();
   private deviceId: string; // Per-device identifier derived from USB properties
 
@@ -80,6 +82,7 @@ export class HackRFOneAdapter implements ISDRDevice {
       // ignore
     }
     this.isInitialized = false; // Reset initialization state on close
+    this.isFrequencyConfigured = false; // Require re-programming frequency on next configuration
     await this.device.close();
   }
 
@@ -97,11 +100,13 @@ export class HackRFOneAdapter implements ISDRDevice {
       this.deviceId,
       frequencyHz,
     );
-    if (this.currentFrequency === corrected) {
+    // Only skip if we've already programmed frequency once and the value is unchanged
+    if (this.isFrequencyConfigured && this.currentFrequency === corrected) {
       return;
     }
     await this.device.setFrequency(corrected);
     this.currentFrequency = corrected;
+    this.isFrequencyConfigured = true;
   }
 
   async getFrequency(): Promise<number> {
@@ -299,6 +304,7 @@ export class HackRFOneAdapter implements ISDRDevice {
    */
   async reset(): Promise<void> {
     this.isInitialized = false; // Reset will clear device configuration
+    this.isFrequencyConfigured = false;
     await this.device.reset();
   }
 
@@ -318,6 +324,15 @@ export class HackRFOneAdapter implements ISDRDevice {
         await this.device.setSampleRate(this.currentSampleRate);
       } catch {
         // Best-effort; underlying device fastRecovery already attempted restore
+      }
+    }
+
+    // Re-assert frequency if we had one configured previously to ensure mirrors and hardware match
+    if (this.isFrequencyConfigured && this.currentFrequency > 0) {
+      try {
+        await this.device.setFrequency(this.currentFrequency);
+      } catch {
+        // Best-effort
       }
     }
 
