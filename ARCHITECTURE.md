@@ -202,6 +202,103 @@ All shared primitives support both JavaScript fallback and WASM/SIMD acceleratio
 
 See **ADR-0026: Unified DSP Primitives Architecture** for detailed design decisions.
 
+### DSP Environment Detection and Fallback System
+
+rad.io implements a **three-tier fallback system** to ensure the application works across different deployment environments and browser capabilities, while providing optimal performance when conditions allow.
+
+#### Execution Modes
+
+The application automatically detects runtime capabilities and selects the appropriate DSP mode:
+
+**1. SharedArrayBuffer Mode (Optimal)**
+
+- **Requirements**: COOP/COEP headers, HTTPS, modern browser
+- **Performance**: 10+ GB/s throughput, <0.1ms latency, zero-copy transfers
+- **Deployment**: Vercel, Netlify, Cloudflare Pages, or custom server with headers
+
+**2. MessageChannel Mode (Fallback)**
+
+- **Requirements**: Web Workers support
+- **Performance**: ~200 MB/s throughput, 1-5ms latency, buffer copying overhead
+- **Deployment**: GitHub Pages, browsers without cross-origin isolation
+
+**3. Pure JavaScript Mode (Emergency)**
+
+- **Requirements**: None (always available)
+- **Performance**: Blocks UI thread, not suitable for real-time processing
+- **Deployment**: Unsupported browsers, debugging scenarios
+
+#### Detection Logic
+
+On application startup (`App.tsx` via `useDSPInitialization()` hook):
+
+```typescript
+const capabilities = detectDSPCapabilities();
+// Returns: {
+//   mode: DSPMode.SHARED_ARRAY_BUFFER | MESSAGE_CHANNEL | PURE_JS,
+//   sharedArrayBufferSupported: boolean,
+//   crossOriginIsolated: boolean,
+//   webWorkersSupported: boolean,
+//   deploymentEnvironment: "development" | "github-pages" | "custom-headers" | "unknown",
+//   warnings: string[],
+//   performanceImpact: string,
+// }
+```
+
+The detection checks:
+
+1. `typeof SharedArrayBuffer !== "undefined"` (browser support)
+2. `crossOriginIsolated === true` (COOP/COEP headers present)
+3. `typeof Worker !== "undefined"` (Web Workers available)
+4. Hostname and header presence (deployment environment)
+
+#### User Visibility
+
+The current DSP mode is visible to users via:
+
+- **Diagnostics Panel**: Detailed view with feature breakdown and recommendations
+- **Console Logs**: Developer-friendly capability report on startup
+- **Diagnostic Events**: Warnings logged for fallback modes
+
+Example console output:
+
+```
+🚀 DSP Environment Capabilities {
+  mode: "shared-array-buffer",
+  environment: "custom-headers",
+  performance: "Optimal performance: Zero-copy transfers, 10+ GB/s throughput",
+  features: { sharedArrayBuffer: true, crossOriginIsolated: true, ... }
+}
+```
+
+#### Deployment Recommendations
+
+**For Optimal Performance (SharedArrayBuffer Mode)**:
+
+Deploy to a platform that supports custom HTTP headers:
+
+- **Vercel**: Add `vercel.json` with headers configuration
+- **Netlify**: Add `_headers` file to repository
+- **Cloudflare Pages**: Configure headers in dashboard
+- **Custom Server**: Set COOP and COEP headers in web server config
+
+Example headers configuration:
+
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+**For GitHub Pages Deployment (MessageChannel Mode)**:
+
+The application will automatically fall back to MessageChannel mode. Users will see:
+
+- Warning about reduced performance
+- Recommendation to deploy on platforms supporting custom headers
+- Links to migration guides
+
+See **ADR-0028: DSP Environment Detection and Fallback System** for implementation details.
+
 ## State & Persistence
 
 rad.io employs a **multi-tier state management architecture** that balances performance, persistence requirements, and data lifecycle needs. Understanding which mechanism to use for different types of state is critical for maintainability and proper data handling.
@@ -232,7 +329,7 @@ rad.io employs a **multi-tier state management architecture** that balances perf
 | **Ephemeral** | Zustand (no persist)   | `src/store/slices/frequencySlice.ts`    | Current VFO frequency                     | ❌ No             |
 | **Ephemeral** | Zustand (no persist)   | `src/store/slices/deviceSlice.ts`       | Connected SDR devices                     | ❌ No             |
 | **Ephemeral** | Zustand (no persist)   | `src/store/slices/notificationSlice.ts` | Toast notifications                       | ❌ No             |
-| **Ephemeral** | Zustand (no persist)   | `src/store/slices/diagnosticsSlice.ts`  | Performance metrics                       | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/diagnosticsSlice.ts`  | Performance metrics, DSP capabilities     | ❌ No             |
 | **Ephemeral** | React hooks            | `src/hooks/useATSCScanner.ts`           | Active scan state, progress               | ❌ No             |
 | **Ephemeral** | React hooks            | `src/hooks/useEPG.ts`                   | Search query, filter selections           | ❌ No             |
 

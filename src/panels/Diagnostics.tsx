@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { DSPStatus } from "../components/DSPStatus";
 
 /**
  * Diagnostics panel/page for telemetry and system health
@@ -84,6 +85,9 @@ function Diagnostics({ isPanel = false }: DiagnosticsProps): React.JSX.Element {
       aria-labelledby="diagnostics-heading"
     >
       <h2 id="diagnostics-heading">Diagnostics & Telemetry</h2>
+
+      {/* DSP Environment Status */}
+      <DSPStatus detailed />
 
       <section aria-label="System Status">
         <h3>System Status</h3>

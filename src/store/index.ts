@@ -224,6 +224,7 @@ export const useDiagnostics = (): Pick<
   | "videoDecoderMetrics"
   | "audioDecoderMetrics"
   | "captionDecoderMetrics"
+  | "dspCapabilities"
   | "overlayVisible"
   | "addDiagnosticEvent"
   | "updateDemodulatorMetrics"
@@ -231,6 +232,7 @@ export const useDiagnostics = (): Pick<
   | "updateVideoDecoderMetrics"
   | "updateAudioDecoderMetrics"
   | "updateCaptionDecoderMetrics"
+  | "setDSPCapabilities"
   | "clearDiagnosticEvents"
   | "resetDiagnostics"
   | "setOverlayVisible"
@@ -242,6 +244,7 @@ export const useDiagnostics = (): Pick<
     videoDecoderMetrics: state.videoDecoderMetrics,
     audioDecoderMetrics: state.audioDecoderMetrics,
     captionDecoderMetrics: state.captionDecoderMetrics,
+    dspCapabilities: state.dspCapabilities,
     overlayVisible: state.overlayVisible,
     addDiagnosticEvent: state.addDiagnosticEvent,
     updateDemodulatorMetrics: state.updateDemodulatorMetrics,
@@ -249,6 +252,7 @@ export const useDiagnostics = (): Pick<
     updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
     updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
     updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
+    setDSPCapabilities: state.setDSPCapabilities,
     clearDiagnosticEvents: state.clearDiagnosticEvents,
     resetDiagnostics: state.resetDiagnostics,
     setOverlayVisible: state.setOverlayVisible,

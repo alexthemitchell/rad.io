@@ -14,6 +14,7 @@
  */
 
 import { type StateCreator } from "zustand";
+import { type DSPCapabilities } from "../../utils/dspEnvironment";
 
 /**
  * Diagnostic event severity levels
@@ -128,6 +129,8 @@ export interface DiagnosticsState {
   audioDecoderMetrics: DecoderMetrics | null;
   /** Current caption decoder metrics */
   captionDecoderMetrics: DecoderMetrics | null;
+  /** DSP environment capabilities */
+  dspCapabilities: DSPCapabilities | null;
   /** Whether diagnostics overlay is visible */
   overlayVisible: boolean;
 }
@@ -150,6 +153,8 @@ export interface DiagnosticsSlice extends DiagnosticsState {
   updateAudioDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
   /** Update caption decoder metrics */
   updateCaptionDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
+  /** Set DSP capabilities */
+  setDSPCapabilities: (capabilities: DSPCapabilities) => void;
   /** Clear all diagnostic events */
   clearDiagnosticEvents: () => void;
   /** Reset all metrics */
@@ -195,6 +200,7 @@ export const diagnosticsSlice: StateCreator<DiagnosticsSlice> = (
   videoDecoderMetrics: null,
   audioDecoderMetrics: null,
   captionDecoderMetrics: null,
+  dspCapabilities: null,
   overlayVisible: false,
 
   // Actions
@@ -287,6 +293,10 @@ export const diagnosticsSlice: StateCreator<DiagnosticsSlice> = (
         timestamp: Date.now(),
       },
     }));
+  },
+
+  setDSPCapabilities: (capabilities: DSPCapabilities): void => {
+    set({ dspCapabilities: capabilities });
   },
 
   clearDiagnosticEvents: (): void => {
