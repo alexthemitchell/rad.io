@@ -4,7 +4,7 @@
  */
 
 import { WebGPUFFT, isWebGPUSupported } from "../webgpuCompute";
-import { calculateFFTWasm, isWasmAvailable } from "../dspWasm";
+import { calculateFFTWasm } from "../dspWasm";
 import { Sample } from "../../types/rendering";
 
 describe("WebGPU FFT vs WASM FFT Comparison", () => {

@@ -100,7 +100,7 @@ fn compute_magnitude(@builtin(global_invocation_id) id: vec3<u32>) {
   let db = DB_SCALE_FACTOR * log(magnitude + 1e-10);
   
   // FFT shift: center DC component
-  let shiftedIdx = select(idx + half, idx - half, idx < half);
+  let shiftedIdx = select(idx - half, idx + half, idx < half);
   output[shiftedIdx] = db;
 }
 ```

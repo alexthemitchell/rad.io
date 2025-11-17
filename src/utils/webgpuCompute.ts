@@ -27,17 +27,17 @@ export class WebGPUFFT {
   private bitReversalPipeline: GPUComputePipeline | null = null;
   private butterflyPipelines: GPUComputePipeline[] = [];
   private magnitudePipeline: GPUComputePipeline | null = null;
-  
+
   private dataBuffer: GPUBuffer | null = null;
   private workBuffer: GPUBuffer | null = null;
   private twiddleBuffer: GPUBuffer | null = null;
   private outputBuffer: GPUBuffer | null = null;
   private stagingBuffer: GPUBuffer | null = null;
-  
+
   private bitReversalBindGroup: GPUBindGroup | null = null;
   private butterflyBindGroups: GPUBindGroup[] = [];
   private magnitudeBindGroup: GPUBindGroup | null = null;
-  
+
   private fftSize = 0;
   private numStages = 0;
 
@@ -50,9 +50,9 @@ export class WebGPUFFT {
       return false;
     }
 
-    // Validate FFT size is power of 2
-    if ((fftSize & (fftSize - 1)) !== 0) {
-      console.error("FFT size must be a power of 2");
+    // Validate FFT size is a positive power of 2 (>= 2)
+    if (fftSize < 2 || (fftSize & (fftSize - 1)) !== 0) {
+      console.error("FFT size must be a positive power of 2 (>= 2)");
       return false;
     }
 
@@ -112,10 +112,10 @@ export class WebGPUFFT {
       });
 
       // Precompute and upload twiddle factors
-      await this.computeTwiddleFactors();
+      this.computeTwiddleFactors();
 
       // Create compute pipelines
-      await this.createPipelines();
+      this.createPipelines();
 
       return true;
     } catch (error) {
@@ -128,13 +128,13 @@ export class WebGPUFFT {
    * Precompute twiddle factors for FFT butterfly operations
    * W_N^k = exp(-2πi * k / N) = cos(-2πk/N) + i*sin(-2πk/N)
    */
-  private async computeTwiddleFactors(): Promise<void> {
+  private computeTwiddleFactors(): void {
     if (!this.device || !this.twiddleBuffer) {
       return;
     }
 
     const twiddleFactors = new Float32Array(this.fftSize * 2);
-    
+
     for (let k = 0; k < this.fftSize; k++) {
       const angle = (-2 * Math.PI * k) / this.fftSize;
       twiddleFactors[k * 2] = Math.cos(angle); // Real
@@ -147,8 +147,14 @@ export class WebGPUFFT {
   /**
    * Create all compute pipelines for FFT stages
    */
-  private async createPipelines(): Promise<void> {
-    if (!this.device) {
+  private createPipelines(): void {
+    if (
+      !this.device ||
+      !this.dataBuffer ||
+      !this.workBuffer ||
+      !this.twiddleBuffer ||
+      !this.outputBuffer
+    ) {
       return;
     }
 
@@ -170,11 +176,11 @@ export class WebGPUFFT {
       entries: [
         {
           binding: 0,
-          resource: { buffer: this.dataBuffer! },
+          resource: { buffer: this.dataBuffer },
         },
         {
           binding: 1,
-          resource: { buffer: this.workBuffer! },
+          resource: { buffer: this.workBuffer },
         },
       ],
     });
@@ -198,8 +204,8 @@ export class WebGPUFFT {
       });
 
       // Alternate between workBuffer and dataBuffer for ping-pong
-      const inputBuffer = stage % 2 === 0 ? this.workBuffer! : this.dataBuffer!;
-      const outputBuffer = stage % 2 === 0 ? this.dataBuffer! : this.workBuffer!;
+      const inputBuffer = stage % 2 === 0 ? this.workBuffer : this.dataBuffer;
+      const outputBuffer = stage % 2 === 0 ? this.dataBuffer : this.workBuffer;
 
       const bindGroup = this.device.createBindGroup({
         layout: pipeline.getBindGroupLayout(0),
@@ -214,7 +220,7 @@ export class WebGPUFFT {
           },
           {
             binding: 2,
-            resource: { buffer: this.twiddleBuffer! },
+            resource: { buffer: this.twiddleBuffer },
           },
         ],
       });
@@ -237,7 +243,8 @@ export class WebGPUFFT {
     });
 
     // Final FFT result is in the buffer based on number of stages
-    const finalBuffer = this.numStages % 2 === 0 ? this.workBuffer! : this.dataBuffer!;
+    const finalBuffer =
+      this.numStages % 2 === 0 ? this.workBuffer : this.dataBuffer;
 
     this.magnitudeBindGroup = this.device.createBindGroup({
       layout: this.magnitudePipeline.getBindGroupLayout(0),
@@ -248,7 +255,7 @@ export class WebGPUFFT {
         },
         {
           binding: 1,
-          resource: { buffer: this.outputBuffer! },
+          resource: { buffer: this.outputBuffer },
         },
       ],
     });
@@ -262,7 +269,16 @@ export class WebGPUFFT {
     iSamples: Float32Array,
     qSamples: Float32Array,
   ): Promise<Float32Array | null> {
-    if (!this.device || !this.bitReversalPipeline || !this.magnitudePipeline) {
+    if (
+      !this.device ||
+      !this.bitReversalPipeline ||
+      !this.magnitudePipeline ||
+      !this.bitReversalBindGroup ||
+      !this.magnitudeBindGroup ||
+      !this.dataBuffer ||
+      !this.outputBuffer ||
+      !this.stagingBuffer
+    ) {
       return null;
     }
 
@@ -279,9 +295,6 @@ export class WebGPUFFT {
       }
 
       // Upload data to GPU
-      if (!this.dataBuffer) {
-        throw new Error("Data buffer not initialized");
-      }
       this.device.queue.writeBuffer(this.dataBuffer, 0, interleavedData);
 
       // Create command encoder
@@ -291,17 +304,24 @@ export class WebGPUFFT {
       {
         const computePass = commandEncoder.beginComputePass();
         computePass.setPipeline(this.bitReversalPipeline);
-        computePass.setBindGroup(0, this.bitReversalBindGroup!);
+        computePass.setBindGroup(0, this.bitReversalBindGroup);
         computePass.dispatchWorkgroups(Math.ceil(this.fftSize / 64));
         computePass.end();
       }
 
       // Stage 2: Butterfly operations (log2(N) passes)
       for (let stage = 0; stage < this.numStages; stage++) {
+        const pipeline = this.butterflyPipelines[stage];
+        const bindGroup = this.butterflyBindGroups[stage];
+
+        if (!pipeline || !bindGroup) {
+          throw new Error(`Butterfly stage ${stage} not initialized`);
+        }
+
         const computePass = commandEncoder.beginComputePass();
-        computePass.setPipeline(this.butterflyPipelines[stage]!);
-        computePass.setBindGroup(0, this.butterflyBindGroups[stage]!);
-        
+        computePass.setPipeline(pipeline);
+        computePass.setBindGroup(0, bindGroup);
+
         // Each stage processes N/2 butterfly operations
         const numOps = this.fftSize / 2;
         computePass.dispatchWorkgroups(Math.ceil(numOps / 64));
@@ -312,15 +332,12 @@ export class WebGPUFFT {
       {
         const computePass = commandEncoder.beginComputePass();
         computePass.setPipeline(this.magnitudePipeline);
-        computePass.setBindGroup(0, this.magnitudeBindGroup!);
+        computePass.setBindGroup(0, this.magnitudeBindGroup);
         computePass.dispatchWorkgroups(Math.ceil(this.fftSize / 64));
         computePass.end();
       }
 
       // Copy results to staging buffer
-      if (!this.outputBuffer || !this.stagingBuffer) {
-        throw new Error("Buffers not initialized");
-      }
       commandEncoder.copyBufferToBuffer(
         this.outputBuffer,
         0,
@@ -351,7 +368,7 @@ export class WebGPUFFT {
    */
   private getBitReversalShaderCode(): string {
     const numBits = this.numStages;
-    
+
     return `
       @group(0) @binding(0) var<storage, read> input: array<vec2<f32>>;
       @group(0) @binding(1) var<storage, read_write> output: array<vec2<f32>>;
@@ -385,7 +402,7 @@ export class WebGPUFFT {
   /**
    * WGSL shader for butterfly operations
    * Performs one stage of the Cooley-Tukey FFT
-   * 
+   *
    * @param stage - FFT stage number (0 to log2(N)-1)
    */
   private getButterflyShaderCode(stage: number): string {
@@ -393,7 +410,7 @@ export class WebGPUFFT {
     const stageSize = 1 << (stage + 1); // 2^(stage+1)
     const halfStageSize = stageSize >> 1; // stageSize / 2
     const numGroups = this.fftSize / stageSize;
-    
+
     return `
       @group(0) @binding(0) var<storage, read> input: array<vec2<f32>>;
       @group(0) @binding(1) var<storage, read_write> output: array<vec2<f32>>;
@@ -487,7 +504,7 @@ export class WebGPUFFT {
         // FFT shift: move DC to center
         // First half goes to second half, second half goes to first half
         let half = size / 2u;
-        let shiftedIdx = select(idx + half, idx - half, idx < half);
+        let shiftedIdx = select(idx - half, idx + half, idx < half);
         
         output[shiftedIdx] = db;
       }
