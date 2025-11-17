@@ -19,6 +19,12 @@ Object.defineProperty(global.navigator, "usb", {
 // Mock the WASM module preload
 jest.mock("../utils/dspWasm", () => ({
   preloadWasmModule: jest.fn(),
+  isWasmSIMDSupported: jest.fn(() => false),
+}));
+
+// Mock the DSP initialization hook
+jest.mock("../hooks/useDSPInitialization", () => ({
+  useDSPInitialization: jest.fn(),
 }));
 
 // Mock the global shell components

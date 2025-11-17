@@ -224,6 +224,7 @@ export const useDiagnostics = (): Pick<
   | "videoDecoderMetrics"
   | "audioDecoderMetrics"
   | "captionDecoderMetrics"
+  | "dspCapabilities"
   | "overlayVisible"
   | "addDiagnosticEvent"
   | "updateDemodulatorMetrics"
@@ -231,72 +232,31 @@ export const useDiagnostics = (): Pick<
   | "updateVideoDecoderMetrics"
   | "updateAudioDecoderMetrics"
   | "updateCaptionDecoderMetrics"
+  | "setDSPCapabilities"
   | "clearDiagnosticEvents"
   | "resetDiagnostics"
   | "setOverlayVisible"
 > => {
-  // Subscribe to individual state values separately to avoid infinite loops
-  const events = useStore((state: RootState) => state.events);
-  const demodulatorMetrics = useStore(
-    (state: RootState) => state.demodulatorMetrics,
-  );
-  const tsParserMetrics = useStore((state: RootState) => state.tsParserMetrics);
-  const videoDecoderMetrics = useStore(
-    (state: RootState) => state.videoDecoderMetrics,
-  );
-  const audioDecoderMetrics = useStore(
-    (state: RootState) => state.audioDecoderMetrics,
-  );
-  const captionDecoderMetrics = useStore(
-    (state: RootState) => state.captionDecoderMetrics,
-  );
-  const overlayVisible = useStore((state: RootState) => state.overlayVisible);
-  const addDiagnosticEvent = useStore(
-    (state: RootState) => state.addDiagnosticEvent,
-  );
-  const updateDemodulatorMetrics = useStore(
-    (state: RootState) => state.updateDemodulatorMetrics,
-  );
-  const updateTSParserMetrics = useStore(
-    (state: RootState) => state.updateTSParserMetrics,
-  );
-  const updateVideoDecoderMetrics = useStore(
-    (state: RootState) => state.updateVideoDecoderMetrics,
-  );
-  const updateAudioDecoderMetrics = useStore(
-    (state: RootState) => state.updateAudioDecoderMetrics,
-  );
-  const updateCaptionDecoderMetrics = useStore(
-    (state: RootState) => state.updateCaptionDecoderMetrics,
-  );
-  const clearDiagnosticEvents = useStore(
-    (state: RootState) => state.clearDiagnosticEvents,
-  );
-  const resetDiagnostics = useStore(
-    (state: RootState) => state.resetDiagnostics,
-  );
-  const setOverlayVisible = useStore(
-    (state: RootState) => state.setOverlayVisible,
-  );
-
-  return {
-    events,
-    demodulatorMetrics,
-    tsParserMetrics,
-    videoDecoderMetrics,
-    audioDecoderMetrics,
-    captionDecoderMetrics,
-    overlayVisible,
-    addDiagnosticEvent,
-    updateDemodulatorMetrics,
-    updateTSParserMetrics,
-    updateVideoDecoderMetrics,
-    updateAudioDecoderMetrics,
-    updateCaptionDecoderMetrics,
-    clearDiagnosticEvents,
-    resetDiagnostics,
-    setOverlayVisible,
-  };
+  return useStore((state: RootState) => ({
+    events: state.events,
+    demodulatorMetrics: state.demodulatorMetrics,
+    tsParserMetrics: state.tsParserMetrics,
+    videoDecoderMetrics: state.videoDecoderMetrics,
+    audioDecoderMetrics: state.audioDecoderMetrics,
+    captionDecoderMetrics: state.captionDecoderMetrics,
+    dspCapabilities: state.dspCapabilities,
+    overlayVisible: state.overlayVisible,
+    addDiagnosticEvent: state.addDiagnosticEvent,
+    updateDemodulatorMetrics: state.updateDemodulatorMetrics,
+    updateTSParserMetrics: state.updateTSParserMetrics,
+    updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
+    updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
+    updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
+    setDSPCapabilities: state.setDSPCapabilities,
+    clearDiagnosticEvents: state.clearDiagnosticEvents,
+    resetDiagnostics: state.resetDiagnostics,
+    setOverlayVisible: state.setOverlayVisible,
+  }));
 };
 
 // Export types

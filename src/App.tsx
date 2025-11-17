@@ -8,6 +8,7 @@ import StatusBar from "./components/StatusBar";
 import ToastProvider from "./components/ToastProvider";
 import TopAppBar from "./components/TopAppBar";
 import { useDeviceIntegration } from "./hooks/useDeviceIntegration";
+import { useDSPInitialization } from "./hooks/useDSPInitialization";
 import { useFrequencySync } from "./hooks/useFrequencySync";
 import { useStatusMetrics } from "./hooks/useStatusMetrics";
 import Analysis from "./pages/Analysis";
@@ -31,6 +32,9 @@ function App(): React.JSX.Element {
   useEffect(() => {
     preloadWasmModule();
   }, []);
+
+  // Initialize DSP environment detection and capability reporting
+  useDSPInitialization();
 
   // Initialize device management integration (bridges React hooks with Zustand store)
   useDeviceIntegration();
