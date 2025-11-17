@@ -1,4 +1,6 @@
 import { TransceiverMode } from "./constants";
+import { DeviceErrorHandler } from "../../models/DeviceError";
+import { useStore } from "../../store";
 
 const UINT32_MAX = 0xffffffff;
 const MHZ_IN_HZ = 1_000_000;
@@ -174,6 +176,20 @@ export class HackRFOne {
 
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice;
+  }
+
+  /**
+   * Track device error in diagnostics store
+   */
+  private trackError(error: Error | unknown, context?: Record<string, unknown>): void {
+    try {
+      const errorState = DeviceErrorHandler.mapError(error, context);
+      const store = useStore.getState();
+      store.addDeviceError(errorState);
+    } catch (err) {
+      // Ignore errors during error tracking to prevent infinite loops
+      console.warn("Failed to track device error", err);
+    }
   }
 
   /**
@@ -953,8 +969,15 @@ export class HackRFOne {
               consecutiveTimeouts = 0;
               continue;
             } catch (recoveryError) {
+              // Track recovery failure in diagnostics
+              this.trackError(recoveryError, {
+                context: "fastRecovery",
+                iteration: iterationCount,
+                sampleRate: this.lastSampleRate,
+                frequency: this.lastFrequency,
+              });
+
               // If fast recovery fails, throw error with manual instructions
-              // Use debug level if closing to reduce noise
               console.error(
                 "HackRFOne.receive: Automatic recovery failed",
                 recoveryError,
@@ -979,6 +1002,14 @@ export class HackRFOne {
           }
           // Continue loop to retry (for timeouts < MAX_CONSECUTIVE_TIMEOUTS)
         } else {
+          // Track unexpected error in diagnostics
+          this.trackError(err, {
+            context: "receive_loop",
+            iteration: iterationCount,
+            streaming: this.streaming,
+            opened: this.usbDevice.opened,
+          });
+
           console.error(
             "HackRFOne.receive: Unexpected error during USB transfer",
             err,

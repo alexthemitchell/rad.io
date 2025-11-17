@@ -8,6 +8,8 @@
 import { useEffect, useCallback, useRef } from "react";
 import { SDRDriverRegistry, registerBuiltinDrivers } from "../drivers";
 import { MockSDRDevice } from "../models/MockSDRDevice";
+import { DeviceErrorHandler } from "../models/DeviceError";
+import { notify } from "../lib/notifications";
 import { useStore } from "../store";
 import { getDeviceId } from "../store/slices/deviceSlice";
 import { shouldUseMockSDR } from "../utils/e2e";
@@ -93,13 +95,41 @@ export function useDeviceIntegration(): void {
           deviceId,
           deviceInfo: await adapter.getDeviceInfo(),
         });
+
+        // Notify user of successful connection
+        notify({
+          message: "Device connected successfully",
+          tone: "success",
+          sr: "polite",
+          visual: true,
+        });
       } catch (err) {
+        // Map error to standardized format and track it
+        const errorState = DeviceErrorHandler.mapError(err, {
+          operation: "initializeDevice",
+          deviceId,
+          productId: usb.productId,
+          vendorId: usb.vendorId,
+        });
+
+        useStore.getState().addDeviceError(errorState);
+
         console.error("🔌 DEVICE: Failed to initialize device", err, {
           deviceId,
           productId: usb.productId,
           vendorId: usb.vendorId,
           wasOpened: usb.opened,
         });
+
+        // Notify user with appropriate error message
+        notify({
+          message: DeviceErrorHandler.formatUserMessage(errorState),
+          tone: "error",
+          sr: "assertive",
+          visual: true,
+          duration: 6000,
+        });
+
         throw err;
       }
     },
