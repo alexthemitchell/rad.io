@@ -15,6 +15,23 @@
  * @module audio-processor.worklet
  */
 
+// AudioWorklet global types
+declare const sampleRate: number;
+declare const currentFrame: number;
+declare const currentTime: number;
+declare class AudioWorkletProcessor {
+  readonly port: MessagePort;
+  process(
+    inputs: Float32Array[][],
+    outputs: Float32Array[][],
+    parameters: Record<string, Float32Array>,
+  ): boolean;
+}
+declare function registerProcessor(
+  name: string,
+  processorCtor: new (options: AudioWorkletNodeOptions) => AudioWorkletProcessor,
+): void;
+
 /**
  * Demodulation types supported by the processor
  */
@@ -108,7 +125,7 @@ class AudioProcessor extends AudioWorkletProcessor {
   // Input buffer for IQ samples
   private iqBuffer: IQSample[] = [];
 
-  constructor(options: AudioWorkletNodeOptions) {
+  constructor(_options?: AudioWorkletNodeOptions) {
     super();
 
     // Initialize Hilbert transform buffer for SSB
@@ -245,8 +262,8 @@ class AudioProcessor extends AudioWorkletProcessor {
   /**
    * Main processing function called by the audio system
    */
-  process(
-    inputs: Float32Array[][],
+  override process(
+    _inputs: Float32Array[][],
     outputs: Float32Array[][],
     _parameters: Record<string, Float32Array>,
   ): boolean {

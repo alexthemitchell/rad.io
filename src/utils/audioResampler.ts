@@ -53,6 +53,7 @@ export class AudioResampler {
     outputRate: number,
     quality: ResamplerQuality = ResamplerQuality.MEDIUM,
   ) {
+    console.log(`AudioResampler: ${inputRate} Hz → ${outputRate} Hz, quality: ${quality}`);
     this.inputRate = inputRate;
     this.outputRate = outputRate;
     this.ratio = inputRate / outputRate;
@@ -186,6 +187,20 @@ export class AudioResampler {
   reset(): void {
     this.inputBuffer.fill(0);
     this.position = 0;
+  }
+
+  /**
+   * Get input sample rate
+   */
+  getInputRate(): number {
+    return this.inputRate;
+  }
+
+  /**
+   * Get output sample rate
+   */
+  getOutputRate(): number {
+    return this.outputRate;
   }
 
   /**

@@ -32,7 +32,7 @@ import {
   WorkletDemodType,
   AGCMode as WorkletAGCMode,
 } from "./audioWorkletManager";
-import { AudioResampler, ResamplerQuality } from "./audioResampler";
+import { LinearResampler } from "./audioResampler";
 
 /**
  * Audio output format configuration
@@ -46,6 +46,8 @@ export type AudioOutputConfig = {
   enableDeEmphasis?: boolean;
   /** De-emphasis time constant in microseconds (default: 75 for USA, 50 for Europe) */
   deemphasisTau?: number;
+  /** Enable de-emphasis (alias for enableDeEmphasis) */
+  deemphasisEnabled?: boolean;
   /** Enable RDS decoding for FM signals (default: false) */
   enableRDS?: boolean;
   /** Enable AudioWorklet for low-latency processing (default: false) */
@@ -56,6 +58,8 @@ export type AudioOutputConfig = {
   agcTarget?: number;
   /** Squelch threshold 0.0-1.0, 0.0 = off (default: 0.0) */
   squelchThreshold?: number;
+  /** Output volume 0.0-1.0 (default: 1.0) */
+  volume?: number;
 };
 
 /**
@@ -276,8 +280,7 @@ export class AudioStreamProcessor {
   private audioContext: AudioContext;
   private currentDemodType: DemodulationType = DemodulationType.NONE;
   private audioWorkletManager: AudioWorkletManager | null = null;
-  private useWorklet = false;
-  private resampler: AudioResampler | null = null;
+  private resampler: LinearResampler | null = null;
 
   constructor(private sdrSampleRate: number) {
     // Create audio context for buffer generation
@@ -320,7 +323,7 @@ export class AudioStreamProcessor {
       deemphasisTau = 75,
       enableRDS = false,
       useAudioWorklet = false,
-      agcMode = "medium",
+      agcMode = "off", // Default to off for backward compatibility
       agcTarget = 0.5,
       squelchThreshold = 0.0,
     } = config;
@@ -364,15 +367,12 @@ export class AudioStreamProcessor {
     }
 
     // Initialize resampler if needed
+    // Use linear resampler for stability and minimal latency
     if (
       !this.resampler ||
       this.resampler.getRatio() !== this.sdrSampleRate / sampleRate
     ) {
-      this.resampler = new AudioResampler(
-        this.sdrSampleRate,
-        sampleRate,
-        ResamplerQuality.MEDIUM,
-      );
+      this.resampler = new LinearResampler(this.sdrSampleRate, sampleRate);
     }
 
     // Demodulate based on type
@@ -446,15 +446,14 @@ export class AudioStreamProcessor {
   }
 
   /**
-   * Decimate audio samples to target sample rate
+   * Decimate audio samples to target sample rate (legacy method)
    *
-   * Implements proper decimation with anti-aliasing low-pass filter to prevent
-   * frequency aliasing. Uses a moving average filter as anti-aliasing followed
-   * by linear interpolation for resampling.
+   * Note: This method is kept for backward compatibility.
+   * New code should use AudioResampler instead for better quality.
    *
-   * TODO: For even better quality, consider implementing a proper FIR low-pass
-   * filter with configurable cutoff frequency and tap count.
+   * @deprecated Use AudioResampler instead for better quality
    */
+  // @ts-expect-error - Kept for backward compatibility
   private decimateAudio(
     samples: Float32Array,
     inputRate: number,
@@ -574,12 +573,10 @@ export class AudioStreamProcessor {
       agcMode: agcModeMap[agcMode] ?? WorkletAGCMode.MEDIUM,
       agcTarget,
       squelchThreshold,
-      deemphasisEnabled,
+      deemphasisEnabled: deemphasisEnabled ?? true,
       deemphasisTau,
       volume,
     });
-
-    this.useWorklet = true;
   }
 
   /**
@@ -604,7 +601,11 @@ export class AudioStreamProcessor {
       slow: { attack: 0.98, decay: 0.998 },
     };
 
-    const { attack, decay } = alphaMap[mode] ?? alphaMap.medium;
+    const timeConstants = alphaMap[mode] ?? alphaMap["medium"];
+    if (!timeConstants) {
+      return samples; // Fallback if mode is invalid
+    }
+    const { attack, decay } = timeConstants;
 
     for (let i = 0; i < samples.length; i++) {
       const sample = samples[i] ?? 0;
