@@ -8,7 +8,7 @@
  * across different hardware implementations.
  */
 
-import type { ISDRDevice, SDRCapabilities } from "../../models/SDRDevice";
+import type { ISDRDevice } from "../../models/SDRDevice";
 import { HackRFOneAdapter } from "../hackrf/HackRFOneAdapter";
 import { RTLSDRDeviceAdapter } from "../../models/RTLSDRDeviceAdapter";
 
@@ -221,10 +221,12 @@ function createDriverConformanceTests(
         
         // Each sample should have I and Q components
         if (samples.length > 0) {
-          expect(samples[0]).toHaveProperty("I");
-          expect(samples[0]).toHaveProperty("Q");
-          expect(typeof samples[0].I).toBe("number");
-          expect(typeof samples[0].Q).toBe("number");
+          const firstSample = samples[0];
+          expect(firstSample).toBeDefined();
+          expect(firstSample).toHaveProperty("I");
+          expect(firstSample).toHaveProperty("Q");
+          expect(typeof firstSample!.I).toBe("number");
+          expect(typeof firstSample!.Q).toBe("number");
         }
       });
     });
