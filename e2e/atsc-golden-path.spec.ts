@@ -62,9 +62,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
     await expect(goldenPathBanner).toBeVisible();
 
     // Verify banner contains ATSC Digital TV reference
-    await expect(
-      page.getByText(/new to atsc digital tv/i),
-    ).toBeVisible();
+    await expect(page.getByText(/new to atsc digital tv/i)).toBeVisible();
 
     // Verify link to golden path guide exists
     const goldenPathLink = page.getByRole("link", {
@@ -102,7 +100,9 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
     ).toBeVisible({ timeout: 10000 });
 
     // Select ATSC signal type
-    const signalTypeSelector = page.locator('select, [role="combobox"]').first();
+    const signalTypeSelector = page
+      .locator('select, [role="combobox"]')
+      .first();
     await signalTypeSelector.selectOption("ATSC");
 
     // Wait for ATSC scanner to appear
@@ -122,9 +122,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
         page.getByText(/scanning for atsc digital tv channels/i),
       ).toBeVisible();
       await expect(page.getByText(/quick start/i)).toBeVisible();
-      await expect(
-        page.getByText(/configure scan bands below/i),
-      ).toBeVisible();
+      await expect(page.getByText(/configure scan bands below/i)).toBeVisible();
       await expect(page.getByText(/click "start scan"/i)).toBeVisible();
       await expect(
         page.getByRole("link", { name: /view detailed scanning guide/i }),
@@ -152,15 +150,11 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
       ).toBeVisible();
 
       // Verify 3-step workflow
-      await expect(
-        page.getByText(/click "show scanner" above/i),
-      ).toBeVisible();
+      await expect(page.getByText(/click "show scanner" above/i)).toBeVisible();
       await expect(
         page.getByText(/select a channel from the list/i),
       ).toBeVisible();
-      await expect(
-        page.getByText(/use the program guide tab/i),
-      ).toBeVisible();
+      await expect(page.getByText(/use the program guide tab/i)).toBeVisible();
 
       // Verify link to complete guide
       await expect(
@@ -197,9 +191,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
         ).toBeVisible();
 
         // Verify 4-step workflow
-        await expect(
-          page.getByText(/scan for channels first/i),
-        ).toBeVisible();
+        await expect(page.getByText(/scan for channels first/i)).toBeVisible();
         await expect(page.getByText(/tune to a channel/i)).toBeVisible();
         await expect(
           page.getByText(/wait 30-60 seconds for epg data/i),
@@ -231,9 +223,7 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
     await expect(advancedBanner).toBeVisible();
 
     // Verify content
-    await expect(
-      page.getByText(/advanced analysis tools/i),
-    ).toBeVisible();
+    await expect(page.getByText(/advanced analysis tools/i)).toBeVisible();
     await expect(
       page.getByText(/deep signal analysis for experienced users/i),
     ).toBeVisible();
@@ -328,8 +318,8 @@ test.describe("ATSC Golden Path - Documentation Verification @simulated", () => 
 
     if ((await banner.count()) > 0) {
       // Get computed background color
-      const bgColor = await banner.evaluate((el) =>
-        window.getComputedStyle(el).backgroundColor,
+      const bgColor = await banner.evaluate(
+        (el) => window.getComputedStyle(el).backgroundColor,
       );
 
       // Verify it's not the old hardcoded color (#1e3a5f would be rgb(30, 58, 95))

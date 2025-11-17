@@ -8,6 +8,8 @@
  * - Uses role="status" with aria-live="polite" for dynamic content
  * - Uses role="note" for static content
  * - High contrast colors from design tokens
+ *
+ * Styles are defined in src/styles/components/info-banner.css
  */
 
 import React from "react";
@@ -43,45 +45,19 @@ export function InfoBanner({
   className = "",
   style = {},
 }: InfoBannerProps): React.JSX.Element {
-  const variantStyles: React.CSSProperties = {
-    padding: "16px",
-    borderLeft: "4px solid",
-    marginBottom: "16px",
-    borderRadius: "4px",
-    ...(variant === "info"
-      ? {
-          backgroundColor: "var(--rad-info-bg)",
-          borderColor: "var(--rad-info-border)",
-        }
-      : {
-          backgroundColor: "var(--rad-advanced-bg)",
-          borderColor: "var(--rad-advanced-border)",
-        }),
-    ...style,
-  };
-
-  const titleStyles: React.CSSProperties = {
-    marginTop: 0,
-    fontSize: "16px",
-    fontWeight: 600,
-    ...(variant === "info"
-      ? { color: "var(--rad-info-fg)" }
-      : { color: "var(--rad-advanced-fg)" }),
-  };
-
-  const contentStyles: React.CSSProperties = {
-    marginBottom: 0,
-  };
+  const classes = ["info-banner", `info-banner--${variant}`, className]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div
-      className={`info-banner info-banner--${variant} ${className}`}
-      style={variantStyles}
+      className={classes}
+      style={style}
       role={role}
       aria-live={role === "status" ? ariaLive : undefined}
     >
-      {title && <h3 style={titleStyles}>{title}</h3>}
-      <div style={contentStyles}>{children}</div>
+      {title && <h3 className="info-banner__title">{title}</h3>}
+      <div className="info-banner__content">{children}</div>
     </div>
   );
 }

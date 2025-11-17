@@ -154,14 +154,14 @@ export function ATSCProgramGuide({
           title="📺 Electronic Program Guide (EPG)"
           style={{ margin: "16px 0" }}
         >
-          <p style={{ marginBottom: "8px" }}>
+          <p className="info-banner__paragraph">
             The EPG displays TV schedules extracted from ATSC broadcast signals
             (PSIP tables).
           </p>
-          <p style={{ marginBottom: "8px" }}>
+          <p className="info-banner__paragraph">
             <strong>To view program information:</strong>
           </p>
-          <ol style={{ marginLeft: "20px", marginBottom: "8px" }}>
+          <ol className="info-banner__list">
             <li>Scan for channels first (Scanner page, press 2)</li>
             <li>Tune to a channel (ATSC Player, press 6)</li>
             <li>
@@ -169,16 +169,12 @@ export function ATSCProgramGuide({
             </li>
             <li>Return here to view the complete program guide</li>
           </ol>
-          <p style={{ marginBottom: 0, fontSize: "14px" }}>
+          <p className="info-banner__footer">
             📖{" "}
             <a
               href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md#step-4-view-electronic-program-guide-epg"
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                color: "var(--rad-info-fg)",
-                textDecoration: "underline",
-              }}
             >
               Learn more about EPG
             </a>

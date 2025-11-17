@@ -508,26 +508,8 @@ function Analysis(): React.JSX.Element {
           <p style={{ marginBottom: 0, fontSize: "13px" }}>
             This page provides deep signal analysis for experienced users.{" "}
             <strong>New to ATSC?</strong> Start with{" "}
-            <a
-              href="/scanner"
-              style={{
-                color: "var(--rad-advanced-fg)",
-                textDecoration: "underline",
-              }}
-            >
-              Scanner (press 2)
-            </a>{" "}
-            to find channels, then{" "}
-            <a
-              href="/atsc-player"
-              style={{
-                color: "var(--rad-advanced-fg)",
-                textDecoration: "underline",
-              }}
-            >
-              ATSC Player (press 6)
-            </a>{" "}
-            to watch TV.
+            <a href="/scanner">Scanner (press 2)</a> to find channels, then{" "}
+            <a href="/atsc-player">ATSC Player (press 6)</a> to watch TV.
           </p>
         </InfoBanner>
 

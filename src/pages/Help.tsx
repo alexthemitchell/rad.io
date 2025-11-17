@@ -82,16 +82,12 @@ function Help(): React.JSX.Element {
             role="note"
             style={{ marginBottom: "24px" }}
           >
-            <p>
+            <p className="info-banner__paragraph">
               Follow our comprehensive{" "}
               <a
                 href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  color: "var(--rad-info-fg)",
-                  textDecoration: "underline",
-                }}
               >
                 ATSC Golden Path Guide
               </a>{" "}

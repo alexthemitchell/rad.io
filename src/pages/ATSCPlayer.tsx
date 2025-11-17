@@ -443,7 +443,7 @@ function ATSCPlayer(): React.JSX.Element {
       {/* Golden Path Context Banner */}
       {scanner.foundChannels.length === 0 && !showScanner && (
         <InfoBanner variant="info" title="🎯 First time using ATSC Player?">
-          <p style={{ marginBottom: "8px" }}>
+          <p className="info-banner__paragraph">
             <strong>Step 1:</strong> Click &quot;Show Scanner&quot; above to
             scan for ATSC channels in your area
             <br />
@@ -453,16 +453,12 @@ function ATSCPlayer(): React.JSX.Element {
             <strong>Step 3:</strong> Use the Program Guide tab to view
             what&apos;s on TV
           </p>
-          <p style={{ marginBottom: 0, fontSize: "14px" }}>
+          <p className="info-banner__footer">
             📖{" "}
             <a
               href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md"
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                color: "var(--rad-info-fg)",
-                textDecoration: "underline",
-              }}
             >
               View complete ATSC Golden Path Guide
             </a>
