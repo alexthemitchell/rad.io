@@ -110,6 +110,11 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
             to: "dsp-simd.js",
             noErrorOnMissing: true,
           },
+          {
+            from: "public/_headers",
+            to: "",
+            noErrorOnMissing: true,
+          },
         ],
       }),
     ],
@@ -120,6 +125,11 @@ export default (_env: unknown, argv: { mode?: string }): Configuration => {
       historyApiFallback: true,
       hot: true,
       server: "https",
+      headers: {
+        // Enable SharedArrayBuffer support (ADR-0027)
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp",
+      },
     },
     performance: {
       maxEntrypointSize: 630000,
