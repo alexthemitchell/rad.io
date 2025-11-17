@@ -8,6 +8,7 @@
 import React, { useState, useCallback } from "react";
 import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import { ATSCProgramGuide } from "../components/EPG";
+import { InfoBanner } from "../components/InfoBanner";
 import { useATSCPlayer } from "../hooks/useATSCPlayer";
 import { useATSCScanner } from "../hooks/useATSCScanner";
 import { useDevice, useDiagnostics } from "../store";
@@ -441,20 +442,7 @@ function ATSCPlayer(): React.JSX.Element {
 
       {/* Golden Path Context Banner */}
       {scanner.foundChannels.length === 0 && !showScanner && (
-        <div
-          style={{
-            padding: "16px",
-            backgroundColor: "#1e3a5f",
-            borderLeft: "4px solid #3b82f6",
-            marginBottom: "16px",
-            borderRadius: "4px",
-          }}
-          role="status"
-          aria-live="polite"
-        >
-          <h3 style={{ marginTop: 0, color: "#60a5fa", fontSize: "16px" }}>
-            🎯 First time using ATSC Player?
-          </h3>
+        <InfoBanner variant="info" title="🎯 First time using ATSC Player?">
           <p style={{ marginBottom: "8px" }}>
             <strong>Step 1:</strong> Click &quot;Show Scanner&quot; above to
             scan for ATSC channels in your area
@@ -471,12 +459,15 @@ function ATSCPlayer(): React.JSX.Element {
               href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "#60a5fa", textDecoration: "underline" }}
+              style={{
+                color: "var(--rad-info-fg)",
+                textDecoration: "underline",
+              }}
             >
               View complete ATSC Golden Path Guide
             </a>
           </p>
-        </div>
+        </InfoBanner>
       )}
 
       <DiagnosticsOverlay detailed={true} />

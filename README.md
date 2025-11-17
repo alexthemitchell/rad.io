@@ -219,7 +219,7 @@ Design rationale and concepts:
 
 - Modern web browser with WebUSB support (Chrome 61+, Edge 79+, Opera 48+)
 - HTTPS context (required for WebUSB)
-- Compatible SDR device (HackRF One, RTL-SDR, etc.) - *optional for development*
+- Compatible SDR device (HackRF One, RTL-SDR, etc.) - _optional for development_
 
 ### Installation
 

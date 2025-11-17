@@ -16,6 +16,7 @@
 
 import React, { useState, useCallback } from "react";
 import { useEPG } from "../../hooks/useEPG";
+import { InfoBanner } from "../InfoBanner";
 import { ProgramDetailModal } from "./ProgramDetailModal";
 import { ProgramGrid } from "./ProgramGrid";
 import type { EPGProgram } from "../../utils/epgStorage";
@@ -148,20 +149,11 @@ export function ATSCProgramGuide({
       </div>
 
       {epg.channels.length === 0 && (
-        <div
-          style={{
-            padding: "16px",
-            backgroundColor: "#1e3a5f",
-            borderLeft: "4px solid #3b82f6",
-            margin: "16px 0",
-            borderRadius: "4px",
-          }}
-          role="status"
-          aria-live="polite"
+        <InfoBanner
+          variant="info"
+          title="📺 Electronic Program Guide (EPG)"
+          style={{ margin: "16px 0" }}
         >
-          <h3 style={{ marginTop: 0, color: "#60a5fa", fontSize: "16px" }}>
-            📺 Electronic Program Guide (EPG)
-          </h3>
           <p style={{ marginBottom: "8px" }}>
             The EPG displays TV schedules extracted from ATSC broadcast signals
             (PSIP tables).
@@ -183,12 +175,15 @@ export function ATSCProgramGuide({
               href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md#step-4-view-electronic-program-guide-epg"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "#60a5fa", textDecoration: "underline" }}
+              style={{
+                color: "var(--rad-info-fg)",
+                textDecoration: "underline",
+              }}
             >
               Learn more about EPG
             </a>
           </p>
-        </div>
+        </InfoBanner>
       )}
 
       {viewMode === "grid" ? (

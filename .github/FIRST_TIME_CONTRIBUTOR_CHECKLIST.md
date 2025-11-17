@@ -353,4 +353,4 @@ Every contribution matters, whether it's code, documentation, bug reports, or he
 
 **Questions?** Open a [Discussion](https://github.com/alexthemitchell/rad.io/discussions) or ask in your PR!
 
-*Last updated: 2025-10-30*
+_Last updated: 2025-10-30_

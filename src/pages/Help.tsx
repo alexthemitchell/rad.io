@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { InfoBanner } from "../components/InfoBanner";
 
 /**
  * Help page with onboarding, keyboard shortcuts, and release notes
@@ -75,24 +76,22 @@ function Help(): React.JSX.Element {
             Welcome to rad.io, a professional software-defined radio visualizer.
           </p>
 
-          <div
-            style={{
-              padding: "16px",
-              backgroundColor: "#1e3a5f",
-              borderLeft: "4px solid #3b82f6",
-              marginBottom: "24px",
-            }}
+          <InfoBanner
+            variant="info"
+            title="🎯 New to ATSC Digital TV?"
+            role="note"
+            style={{ marginBottom: "24px" }}
           >
-            <h4 style={{ marginTop: 0, color: "#60a5fa" }}>
-              🎯 New to ATSC Digital TV?
-            </h4>
             <p>
               Follow our comprehensive{" "}
               <a
                 href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "#60a5fa", textDecoration: "underline" }}
+                style={{
+                  color: "var(--rad-info-fg)",
+                  textDecoration: "underline",
+                }}
               >
                 ATSC Golden Path Guide
               </a>{" "}
@@ -110,7 +109,7 @@ function Help(): React.JSX.Element {
               <strong>Estimated time:</strong> 15-20 minutes |{" "}
               <strong>No SDR experience required!</strong>
             </p>
-          </div>
+          </InfoBanner>
 
           <h4>Quick Start Guide (General SDR)</h4>
           <ol>

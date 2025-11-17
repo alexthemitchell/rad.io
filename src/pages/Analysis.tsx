@@ -7,6 +7,7 @@ import {
 } from "react";
 import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
+import { InfoBanner } from "../components/InfoBanner";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import { notify } from "../lib/notifications";
@@ -498,46 +499,37 @@ function Analysis(): React.JSX.Element {
 
       <main id="main-content" role="main">
         {/* Advanced Feature Label */}
-        <div
-          style={{
-            padding: "12px 16px",
-            backgroundColor: "#4a1d96",
-            borderLeft: "4px solid #8b5cf6",
-            marginBottom: "16px",
-            borderRadius: "4px",
-          }}
+        <InfoBanner
+          variant="advanced"
+          title="🔬 Advanced Analysis Tools"
           role="note"
+          style={{ padding: "12px 16px" }}
         >
-          <h3
-            style={{
-              marginTop: 0,
-              marginBottom: "4px",
-              color: "#c4b5fd",
-              fontSize: "14px",
-              fontWeight: 600,
-            }}
-          >
-            🔬 Advanced Analysis Tools
-          </h3>
           <p style={{ marginBottom: 0, fontSize: "13px" }}>
             This page provides deep signal analysis for experienced users.{" "}
             <strong>New to ATSC?</strong> Start with{" "}
             <a
               href="/scanner"
-              style={{ color: "#c4b5fd", textDecoration: "underline" }}
+              style={{
+                color: "var(--rad-advanced-fg)",
+                textDecoration: "underline",
+              }}
             >
               Scanner (press 2)
             </a>{" "}
             to find channels, then{" "}
             <a
               href="/atsc-player"
-              style={{ color: "#c4b5fd", textDecoration: "underline" }}
+              style={{
+                color: "var(--rad-advanced-fg)",
+                textDecoration: "underline",
+              }}
             >
               ATSC Player (press 6)
             </a>{" "}
             to watch TV.
           </p>
-        </div>
+        </InfoBanner>
 
         <DeviceControlBar
           device={device}

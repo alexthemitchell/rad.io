@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ATSCScanner from "../components/ATSCScanner";
 import Card from "../components/Card";
 import FrequencyScanner from "../components/FrequencyScanner";
+import { InfoBanner } from "../components/InfoBanner";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
@@ -117,21 +118,11 @@ function Scanner(): React.JSX.Element {
         </Card>
 
         {signalType === "ATSC" && atscScanner.foundChannels.length === 0 && (
-          <div
-            style={{
-              padding: "16px",
-              backgroundColor: "#1e3a5f",
-              borderLeft: "4px solid #3b82f6",
-              marginBottom: "16px",
-              marginTop: "16px",
-              borderRadius: "4px",
-            }}
-            role="status"
-            aria-live="polite"
+          <InfoBanner
+            variant="info"
+            title="🔍 Scanning for ATSC Digital TV Channels"
+            style={{ marginTop: "16px" }}
           >
-            <h3 style={{ marginTop: 0, color: "#60a5fa", fontSize: "16px" }}>
-              🔍 Scanning for ATSC Digital TV Channels
-            </h3>
             <p style={{ marginBottom: "8px" }}>
               This scanner will search VHF and UHF frequencies to discover ATSC
               broadcasts in your area.
@@ -155,12 +146,15 @@ function Scanner(): React.JSX.Element {
                 href="https://github.com/alexthemitchell/rad.io/blob/main/docs/tutorials/atsc-golden-path.md#step-2-scan-for-atsc-channels"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: "#60a5fa", textDecoration: "underline" }}
+                style={{
+                  color: "var(--rad-info-fg)",
+                  textDecoration: "underline",
+                }}
               >
                 View detailed scanning guide
               </a>
             </p>
-          </div>
+          </InfoBanner>
         )}
 
         {signalType === "ATSC" ? (

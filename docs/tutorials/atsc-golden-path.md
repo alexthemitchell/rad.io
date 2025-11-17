@@ -92,12 +92,12 @@ You'll see the Scanner page with multiple scanning options.
 - **Bands to Scan**:
   - ✅ VHF-High (Ch 7-13): 174-216 MHz
   - ✅ UHF (Ch 14-36): 470-608 MHz
-  - ☐ VHF-Low (Ch 2-6): 54-88 MHz *(optional, fewer stations)*
+  - ☐ VHF-Low (Ch 2-6): 54-88 MHz _(optional, fewer stations)_
 
-- **Detection Threshold**: 15 dB *(default - good for most areas)*
-- **Dwell Time**: 500 ms *(default - balances speed and accuracy)*
-- **Require Pilot Tone**: ✅ Enabled *(reduces false positives)*
-- **Require Sync Lock**: ☐ Disabled *(faster scan, still reliable)*
+- **Detection Threshold**: 15 dB _(default - good for most areas)_
+- **Dwell Time**: 500 ms _(default - balances speed and accuracy)_
+- **Require Pilot Tone**: ✅ Enabled _(reduces false positives)_
+- **Require Sync Lock**: ☐ Disabled _(faster scan, still reliable)_
 
 ### 2.4 Start Scanning
 

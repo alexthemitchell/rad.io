@@ -23,3 +23,5 @@ export { default as TalkgroupScanner } from "./TalkgroupScanner";
 export { default as TalkgroupStatus } from "./TalkgroupStatus";
 export { default as P25SystemPresets } from "./P25SystemPresets";
 export { default as TransmissionLogViewer } from "./TransmissionLogViewer";
+export { InfoBanner } from "./InfoBanner";
+export type { InfoBannerProps, InfoBannerVariant } from "./InfoBanner";
