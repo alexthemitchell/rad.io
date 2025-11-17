@@ -61,5 +61,9 @@ export function useDSPInitialization(): void {
         message: "DSP running in optimal mode with SharedArrayBuffer support",
       });
     }
-  }, [setDSPCapabilities, addDiagnosticEvent]);
+    // We intentionally use an empty dependency array here:
+    // - Zustand action references are stable
+    // - This effect should only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }
