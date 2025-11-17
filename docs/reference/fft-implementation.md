@@ -638,6 +638,7 @@ For large FFT sizes (4096+), rad.io implements GPU-accelerated FFT using WebGPU 
 **See**: [WebGPU FFT Implementation](./webgpu-fft-implementation.md) for detailed documentation.
 
 **Key Features**:
+
 - Cooley-Tukey radix-2 algorithm with compute shaders
 - Multi-pass pipeline with ping-pong buffers
 - 8-15x speedup for FFT 4096+ vs WASM
@@ -645,8 +646,9 @@ For large FFT sizes (4096+), rad.io implements GPU-accelerated FFT using WebGPU 
 - Browser support: Chrome 113+, Edge 113+, Safari 18+ (85%+ coverage)
 
 **Usage**:
+
 ```javascript
-import { WebGPUFFT } from './utils/webgpuCompute';
+import { WebGPUFFT } from "./utils/webgpuCompute";
 
 const fft = new WebGPUFFT();
 await fft.initialize(4096);

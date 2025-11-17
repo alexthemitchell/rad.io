@@ -13,9 +13,11 @@ describe("WebGPU FFT Performance Benchmarks", () => {
   /**
    * Generate test signal
    */
-  function generateTestSignal(
-    size: number,
-  ): { iSamples: Float32Array; qSamples: Float32Array; samples: Sample[] } {
+  function generateTestSignal(size: number): {
+    iSamples: Float32Array;
+    qSamples: Float32Array;
+    samples: Sample[];
+  } {
     const iSamples = new Float32Array(size);
     const qSamples = new Float32Array(size);
     const samples: Sample[] = [];
@@ -242,7 +244,9 @@ FFT 8192 Benchmark:
           );
         }
 
-        console.log("\nNote: Run with actual WebGPU hardware for real speedup metrics");
+        console.log(
+          "\nNote: Run with actual WebGPU hardware for real speedup metrics",
+        );
       },
       120000,
     );

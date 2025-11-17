@@ -409,7 +409,6 @@ export class WebGPUFFT {
     // Calculate stage-specific parameters
     const stageSize = 1 << (stage + 1); // 2^(stage+1)
     const halfStageSize = stageSize >> 1; // stageSize / 2
-    const numGroups = this.fftSize / stageSize;
 
     return `
       @group(0) @binding(0) var<storage, read> input: array<vec2<f32>>;
@@ -439,7 +438,6 @@ export class WebGPUFFT {
         // Stage parameters
         const stageSize = ${stageSize}u;
         const halfStageSize = ${halfStageSize}u;
-        const numGroups = ${numGroups}u;
         
         // Determine which group and position within group
         let groupIdx = idx / halfStageSize;

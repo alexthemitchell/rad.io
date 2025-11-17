@@ -115,39 +115,30 @@ describe("WebGPU Compute", () => {
     });
 
     describe("Input Validation", () => {
-      (runTest ? it : it.skip)(
-        "should reject FFT size of 0",
-        async () => {
-          const fft = new WebGPUFFT();
-          const initialized = await fft.initialize(0);
-          expect(initialized).toBe(false);
-        },
-      );
+      (runTest ? it : it.skip)("should reject FFT size of 0", async () => {
+        const fft = new WebGPUFFT();
+        const initialized = await fft.initialize(0);
+        expect(initialized).toBe(false);
+      });
 
-      (runTest ? it : it.skip)(
-        "should reject FFT size of 1",
-        async () => {
-          const fft = new WebGPUFFT();
-          const initialized = await fft.initialize(1);
-          expect(initialized).toBe(false);
-        },
-      );
+      (runTest ? it : it.skip)("should reject FFT size of 1", async () => {
+        const fft = new WebGPUFFT();
+        const initialized = await fft.initialize(1);
+        expect(initialized).toBe(false);
+      });
 
-      (runTest ? it : it.skip)(
-        "should reject negative FFT sizes",
-        async () => {
-          const fft = new WebGPUFFT();
-          const initialized = await fft.initialize(-1024);
-          expect(initialized).toBe(false);
-        },
-      );
+      (runTest ? it : it.skip)("should reject negative FFT sizes", async () => {
+        const fft = new WebGPUFFT();
+        const initialized = await fft.initialize(-1024);
+        expect(initialized).toBe(false);
+      });
 
       (runTest ? it : it.skip)(
         "should reject non-power-of-2 FFT sizes",
         async () => {
           const fft = new WebGPUFFT();
           const nonPowerOf2Sizes = [3, 5, 100, 1000, 1023, 1025];
-          
+
           for (const size of nonPowerOf2Sizes) {
             const initialized = await fft.initialize(size);
             expect(initialized).toBe(false);
@@ -159,8 +150,10 @@ describe("WebGPU Compute", () => {
         "should accept valid power-of-2 FFT sizes",
         async () => {
           const fft = new WebGPUFFT();
-          const validSizes = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
-          
+          const validSizes = [
+            2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096,
+          ];
+
           for (const size of validSizes) {
             const initialized = await fft.initialize(size);
             // May fail if WebGPU not available, but should not reject due to size

@@ -53,10 +53,7 @@ describe("WebGPU FFT vs WASM FFT Comparison", () => {
   /**
    * Convert I/Q arrays to Sample array for WASM
    */
-  function toSamples(
-    iSamples: Float32Array,
-    qSamples: Float32Array,
-  ): Sample[] {
+  function toSamples(iSamples: Float32Array, qSamples: Float32Array): Sample[] {
     const samples: Sample[] = [];
     for (let i = 0; i < iSamples.length; i++) {
       samples.push({ I: iSamples[i] ?? 0, Q: qSamples[i] ?? 0 });
@@ -103,8 +100,9 @@ describe("WebGPU FFT vs WASM FFT Comparison", () => {
     let maxVal = spectrum[0] ?? -Infinity;
 
     for (let i = 1; i < spectrum.length; i++) {
-      if (spectrum[i]! > maxVal) {
-        maxVal = spectrum[i]!;
+      const val = spectrum[i];
+      if (val !== undefined && val > maxVal) {
+        maxVal = val;
         maxIdx = i;
       }
     }
@@ -310,8 +308,8 @@ describe("WebGPU FFT vs WASM FFT Comparison", () => {
         const iSamples = new Float32Array(fftSize);
         const qSamples = new Float32Array(fftSize);
         for (let i = 0; i < fftSize; i++) {
-          iSamples[i] = i1[i]! + i2[i]! + i3[i]!;
-          qSamples[i] = q1[i]! + q2[i]! + q3[i]!;
+          iSamples[i] = (i1[i] ?? 0) + (i2[i] ?? 0) + (i3[i] ?? 0);
+          qSamples[i] = (q1[i] ?? 0) + (q2[i] ?? 0) + (q3[i] ?? 0);
         }
 
         const webgpuFFT = new WebGPUFFT();

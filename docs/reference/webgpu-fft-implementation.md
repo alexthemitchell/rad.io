@@ -17,17 +17,20 @@ The implementation uses the classic Cooley-Tukey decimation-in-time (DIT) algori
 ### Mathematical Foundation
 
 **DFT Definition**:
+
 ```
 X[k] = Σ(n=0 to N-1) x[n] × e^(-j2πkn/N)
 ```
 
 **Cooley-Tukey Decomposition**:
+
 ```
 X[k] = E[k] + W_N^k × O[k]
 X[k + N/2] = E[k] - W_N^k × O[k]
 ```
 
 Where:
+
 - `E[k]` = FFT of even-indexed samples
 - `O[k]` = FFT of odd-indexed samples
 - `W_N^k = e^(-j2πk/N)` = twiddle factor
@@ -39,7 +42,7 @@ Where:
 The implementation uses a **ping-pong buffer** architecture for efficient memory usage:
 
 - **dataBuffer**: Input/intermediate buffer A
-- **workBuffer**: Intermediate buffer B  
+- **workBuffer**: Intermediate buffer B
 - **twiddleBuffer**: Precomputed twiddle factors (read-only)
 - **outputBuffer**: Final magnitude spectrum in dB
 - **stagingBuffer**: CPU-readable buffer for results
@@ -72,7 +75,7 @@ fn butterfly_operation(@builtin(global_invocation_id) id: vec3<u32>) {
   let even = input[evenIdx];
   let odd = input[oddIdx];
   let w = twiddle[twiddleIdx];
-  
+
   // Butterfly: out[even] = even + w*odd, out[odd] = even - w*odd
   let t = complexMul(w, odd);
   output[evenIdx] = even + t;
@@ -81,6 +84,7 @@ fn butterfly_operation(@builtin(global_invocation_id) id: vec3<u32>) {
 ```
 
 **For each stage s = 0 to log2(N)-1**:
+
 - Stage size: `2^(s+1)`
 - Stride: `N / stageSize`
 - Operations: `N/2` butterfly computations
@@ -94,18 +98,19 @@ fn butterfly_operation(@builtin(global_invocation_id) id: vec3<u32>) {
 fn compute_magnitude(@builtin(global_invocation_id) id: vec3<u32>) {
   let sample = data[idx];
   let magnitude = sqrt(sample.x * sample.x + sample.y * sample.y);
-  
+
   // Convert to dB: 20*log10(magnitude)
   const DB_SCALE_FACTOR = 8.685889638065036; // 20/ln(10)
   let db = DB_SCALE_FACTOR * log(magnitude + 1e-10);
-  
+
   // FFT shift: center DC component
   let shiftedIdx = select(idx - half, idx + half, idx < half);
   output[shiftedIdx] = db;
 }
 ```
 
-**Purpose**: 
+**Purpose**:
+
 - Compute magnitude spectrum
 - Convert to logarithmic (dB) scale
 - Apply FFT shift to center DC
@@ -121,8 +126,9 @@ W_N^k = exp(-j2πk/N) = cos(-2πk/N) + j*sin(-2πk/N)
 **Storage**: Float32Array of size N×2 (interleaved real/imaginary)
 
 **Usage**: Each butterfly stage uses stride-dependent twiddle factors:
+
 ```typescript
-twiddleIdx = posInGroup * (N / stageSize)
+twiddleIdx = posInGroup * (N / stageSize);
 ```
 
 ## Performance Characteristics
@@ -138,25 +144,29 @@ twiddleIdx = posInGroup * (N / stageSize)
 ### Measured Performance (Real Hardware)
 
 | FFT Size | WASM (ms) | WebGPU (ms) | Speedup |
-|----------|-----------|-------------|---------|
+| -------- | --------- | ----------- | ------- |
 | 1024     | 2-3       | 0.5-0.8     | 3-5x    |
 | 2048     | 6-8       | 0.8-1.2     | 6-8x    |
 | 4096     | 25-30     | 2-5         | 8-12x   |
 | 8192     | 100-120   | 10-15       | 8-10x   |
 
 **Target**: 60 FPS rendering at 4096 bins
+
 - Frame budget: 16.67ms
 - FFT budget: <5ms
 - ✅ WebGPU achieves 2-5ms (within budget)
 
 ### Browser Compatibility
 
-| Browser       | Version | Support |
-|---------------|---------|---------|
-| Chrome        | 113+    | ✅      |
-| Edge          | 113+    | ✅      |
-| Firefox       | 🚧      | Experimental |
-| Safari        | 18+     | ✅      |
+| Browser | Version       | Support                         |
+| ------- | ------------- | ------------------------------- |
+| Chrome  | 113+          | ✅                              |
+| Edge    | 113+          | ✅                              |
+| Firefox | Nightly 122+¹ | 🚧 Experimental (Nightly, flag) |
+| Safari  | 18+           | ✅                              |
+
+¹ **Firefox**: WebGPU is available in Nightly builds (version 122+), behind the `dom.webgpu.enabled` flag.  
+See [Mozilla tracking bug 1740224](https://bugzilla.mozilla.org/show_bug.cgi?id=1740224) for status updates.
 
 **Coverage**: ~85% of users (2024)
 
@@ -167,7 +177,7 @@ twiddleIdx = posInGroup * (N / stageSize)
 ### Basic Usage
 
 ```typescript
-import { WebGPUFFT } from './utils/webgpuCompute';
+import { WebGPUFFT } from "./utils/webgpuCompute";
 
 // Create FFT instance
 const fft = new WebGPUFFT();
@@ -176,7 +186,7 @@ const fft = new WebGPUFFT();
 const initialized = await fft.initialize(4096);
 
 if (!initialized) {
-  console.error('WebGPU not available');
+  console.error("WebGPU not available");
   // Fall back to WASM
 }
 
@@ -198,7 +208,7 @@ fft.destroy();
 // In visualization render loop
 async function updateSpectrum(iSamples, qSamples) {
   const spectrum = await webgpuFFT.compute(iSamples, qSamples);
-  
+
   if (spectrum) {
     // Draw spectrum
     ctx.beginPath();
@@ -218,21 +228,20 @@ async function updateSpectrum(iSamples, qSamples) {
 try {
   const fft = new WebGPUFFT();
   const initialized = await fft.initialize(4096);
-  
+
   if (!initialized) {
-    throw new Error('Failed to initialize WebGPU FFT');
+    throw new Error("Failed to initialize WebGPU FFT");
   }
-  
+
   const result = await fft.compute(iSamples, qSamples);
-  
+
   if (!result) {
-    throw new Error('FFT computation failed');
+    throw new Error("FFT computation failed");
   }
-  
+
   // Use result...
-  
 } catch (error) {
-  console.error('WebGPU FFT error:', error);
+  console.error("WebGPU FFT error:", error);
   // Fall back to WASM
   const wasmResult = calculateFFTWasm(samples, fftSize);
 }
@@ -256,6 +265,7 @@ const rmse = calculateRMSE(webgpuResult, wasmResult); // < 2dB
 ```
 
 **Test Coverage**:
+
 - ✅ Single frequency tones
 - ✅ Multi-tone signals
 - ✅ DC component
@@ -271,6 +281,7 @@ npm run test -- webgpuCompute.benchmark.test.ts
 ```
 
 **Metrics Measured**:
+
 - Average FFT computation time
 - Throughput (FFTs per second)
 - Frame budget compliance (60 FPS)
@@ -283,7 +294,8 @@ npm run test -- webgpuCompute.benchmark.test.ts
 
 **Current**: 64 threads per workgroup
 
-**Rationale**: 
+**Rationale**:
+
 - Balances parallelism vs occupancy
 - Fits most GPU architectures
 - Tested on NVIDIA, AMD, Intel, Apple GPUs
@@ -311,6 +323,7 @@ npm run test -- webgpuCompute.benchmark.test.ts
 ### WebGPU Inspector
 
 Use Chrome DevTools WebGPU inspector:
+
 1. Open DevTools → More Tools → WebGPU
 2. Capture frame
 3. Inspect compute passes, buffers, shaders
@@ -318,35 +331,42 @@ Use Chrome DevTools WebGPU inspector:
 ### Common Issues
 
 **Issue**: "No WebGPU adapter found"
+
 - **Fix**: Update browser to latest version
 - **Fix**: Check GPU drivers
 - **Fallback**: Use WASM FFT
 
 **Issue**: "FFT results all zeros"
+
 - **Cause**: Buffer not initialized or destroyed
 - **Fix**: Ensure `initialize()` succeeded before `compute()`
 
 **Issue**: "NaN or Infinity in output"
+
 - **Cause**: Invalid input or buffer overflow
 - **Fix**: Validate input data, check FFT size
 
 ## References
 
 ### Academic Papers
+
 - Cooley, J. W.; Tukey, J. W. (1965). "An algorithm for the machine calculation of complex Fourier series"
 - Stockham, T. G. (1966). "High-speed convolution and correlation"
 
 ### Implementation Guides
+
 - [WebGPU Specification](https://www.w3.org/TR/webgpu/)
 - [WGSL Specification](https://www.w3.org/TR/WGSL/)
 - [GPU FFT Best Practices](https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-38-parallel-prefix-sum-scan-cuda)
 
 ### Related ADRs
+
 - [ADR-0003: WebGL2/WebGPU GPU Acceleration](../decisions/0003-webgl2-webgpu-gpu-acceleration.md)
 - [ADR-0004: Signal Processing Library Selection](../decisions/0004-signal-processing-library-selection.md)
 - [ADR-0012: Parallel FFT Worker Pool](../decisions/0012-parallel-fft-worker-pool.md)
 
 ### Project Files
+
 - Implementation: `src/utils/webgpuCompute.ts`
 - Tests: `src/utils/__tests__/webgpuCompute.test.ts`
 - Comparison: `src/utils/__tests__/webgpuCompute.comparison.test.ts`
