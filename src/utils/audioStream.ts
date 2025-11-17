@@ -480,7 +480,7 @@ export class AudioStreamProcessor {
     }
 
     const {
-      agcMode = "medium",
+      agcMode = "off",
       agcTarget = 0.5,
       squelchThreshold = 0.0,
       enableDeEmphasis = true,
@@ -510,6 +510,11 @@ export class AudioStreamProcessor {
 
   /**
    * Apply simple AGC for non-worklet path
+   *
+   * Note: This implementation uses sample-rate independent alpha values
+   * for simplicity and performance. The values approximate the documented
+   * time constants but do not match the worklet's precise calculations.
+   * For exact timing behavior, use AudioWorklet mode.
    */
   private applySimpleAGC(
     samples: Float32Array,
@@ -524,6 +529,8 @@ export class AudioStreamProcessor {
     let rms = 0.1; // Initial RMS estimate
 
     // Time constants based on mode
+    // These are approximate alpha values (sample-rate independent)
+    // For precise timing, use AudioWorklet mode
     const alphaMap: Record<string, { attack: number; decay: number }> = {
       fast: { attack: 0.9, decay: 0.99 },
       medium: { attack: 0.95, decay: 0.995 },
@@ -531,8 +538,9 @@ export class AudioStreamProcessor {
     };
 
     const timeConstants = alphaMap[mode] ?? alphaMap["medium"];
+    // TypeScript can't prove the fallback exists, so we need the assertion
     if (!timeConstants) {
-      return samples;
+      return samples; // Should never happen, but satisfies type checker
     }
     const { attack, decay } = timeConstants;
 

@@ -109,7 +109,7 @@ class AudioProcessor extends AudioWorkletProcessor {
 
   // Configuration
   private demodType: DemodType = DemodType.FM;
-  private agcMode: AGCMode = AGCMode.MEDIUM;
+  private agcMode: AGCMode = AGCMode.OFF;
   private agcTarget = 0.5;
   private squelchThreshold = 0.0;
   private deemphasisEnabled = true;

@@ -232,6 +232,7 @@ export class AudioResampler {
 export class LinearResampler {
   private readonly ratio: number;
   private lastSample = 0;
+  private position = 0; // Track fractional position across calls
 
   constructor(inputRate: number, outputRate: number) {
     this.ratio = inputRate / outputRate;
@@ -249,7 +250,7 @@ export class LinearResampler {
     const output = new Float32Array(outputLength);
 
     for (let i = 0; i < outputLength; i++) {
-      const srcPos = i * this.ratio;
+      const srcPos = i * this.ratio + this.position;
       const index0 = Math.floor(srcPos);
       const index1 = Math.min(index0 + 1, input.length - 1);
       const frac = srcPos - index0;
@@ -260,11 +261,19 @@ export class LinearResampler {
     }
 
     this.lastSample = input[input.length - 1] ?? 0;
+
+    // Update position for next call to maintain phase continuity
+    this.position += input.length;
+    while (this.position >= this.ratio) {
+      this.position -= this.ratio;
+    }
+
     return output;
   }
 
   reset(): void {
     this.lastSample = 0;
+    this.position = 0;
   }
 
   getRatio(): number {
