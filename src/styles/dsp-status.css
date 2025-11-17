@@ -6,7 +6,7 @@
   border-radius: 8px;
   padding: 16px;
   margin: 16px 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
   border-left: 4px solid;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .dsp-status-details {
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgb(255 255 255 / 50%);
   padding: 12px;
   border-radius: 4px;
   display: flex;
@@ -85,13 +85,13 @@
 }
 
 .dsp-status-warnings {
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgb(255 255 255 / 50%);
   padding: 12px;
   border-radius: 4px;
 }
 
 .dsp-status-warnings h4 {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   font-size: 14px;
   font-weight: 600;
 }
@@ -107,13 +107,13 @@
 }
 
 .dsp-status-features {
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgb(255 255 255 / 50%);
   padding: 12px;
   border-radius: 4px;
 }
 
 .dsp-status-features h4 {
-  margin: 0 0 12px 0;
+  margin: 0 0 12px;
   font-size: 14px;
   font-weight: 600;
 }
@@ -129,7 +129,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px;
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgb(255 255 255 / 50%);
   border-radius: 4px;
 }
 
@@ -151,21 +151,21 @@
 }
 
 .dsp-status-recommendation {
-  background-color: rgba(59, 130, 246, 0.1);
+  background-color: rgb(59 130 246 / 10%);
   padding: 12px;
   border-radius: 4px;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  border: 1px solid rgb(59 130 246 / 30%);
 }
 
 .dsp-status-recommendation h4 {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   font-size: 14px;
   font-weight: 600;
   color: #1e40af;
 }
 
 .dsp-status-recommendation p {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   line-height: 1.5;
 }
 
@@ -189,7 +189,7 @@
 }
 
 /* Responsive design */
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .dsp-status {
     padding: 12px;
     margin: 12px 0;
