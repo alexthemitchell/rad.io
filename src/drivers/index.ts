@@ -60,3 +60,8 @@ export {
 } from "./DriverHotReload";
 
 export { registerBuiltinDrivers } from "./registerBuiltinDrivers";
+
+// Export HackRF driver for direct use
+export { HackRFOne, HackRFOneAdapter, createHackRFAdapter } from "./hackrf";
+export type { DeviceInfo, StreamOptions } from "./hackrf";
+export { useHackRFDevice } from "./hackrf/hooks/useHackRFDevice";
