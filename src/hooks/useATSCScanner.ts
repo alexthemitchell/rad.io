@@ -1,7 +1,7 @@
 /**
  * ATSC Scanner Hook
  *
- * Persistence: None (ephemeral session state during active scan)
+ * Persistence: None (ephemeral runtime state during active scan)
  * Scope: Component-bound (React hook)
  * Expiration: Cleared on component unmount
  *

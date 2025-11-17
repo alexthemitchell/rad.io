@@ -1,8 +1,8 @@
 /**
  * Settings Slice
  *
- * Persistence: Zustand + localStorage (session state, survives reload)
- * Scope: Application-wide, single tab
+ * Persistence: Zustand + localStorage (long-term, survives browser restart)
+ * Scope: Application-wide (localStorage shared across tabs, Zustand state per-tab)
  * Expiration: None (manual reset only)
  * Storage Key: "rad.settings.v1"
  *

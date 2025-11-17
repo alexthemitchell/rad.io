@@ -174,13 +174,6 @@ rad.io employs a **multi-tier state management architecture** that balances perf
 - **Scope**: Browser-wide, domain-scoped
 - **Expiration**: Manual deletion or age-based pruning
 
-**Session State** (survives page reloads within same session, cleared on tab close):
-
-- **Purpose**: Application settings and UI preferences
-- **Mechanism**: Zustand with localStorage persistence
-- **Scope**: Single browser tab/window
-- **Expiration**: Tab/window closure
-
 **Ephemeral State** (cleared on page reload or component unmount):
 
 - **Purpose**: UI interaction state, temporary data, runtime-only values
@@ -194,7 +187,7 @@ rad.io employs a **multi-tier state management architecture** that balances perf
 | ------------- | ---------------------- | --------------------------------------- | ----------------------------------------- | ----------------- |
 | **Long-term** | IndexedDB              | `src/utils/atscChannelStorage.ts`       | Scanned ATSC channels with signal quality | ✅ Yes            |
 | **Long-term** | localStorage           | `src/utils/epgStorage.ts`               | Electronic Program Guide (EPG) data       | ✅ Yes (24hr max) |
-| **Session**   | Zustand + localStorage | `src/store/slices/settingsSlice.ts`     | User preferences (FFT size, color scheme) | ✅ Yes            |
+| **Long-term** | Zustand + localStorage | `src/store/slices/settingsSlice.ts`     | User preferences (FFT size, color scheme) | ✅ Yes            |
 | **Ephemeral** | Zustand (no persist)   | `src/store/slices/frequencySlice.ts`    | Current VFO frequency                     | ❌ No             |
 | **Ephemeral** | Zustand (no persist)   | `src/store/slices/deviceSlice.ts`       | Connected SDR devices                     | ❌ No             |
 | **Ephemeral** | Zustand (no persist)   | `src/store/slices/notificationSlice.ts` | Toast notifications                       | ❌ No             |
@@ -268,7 +261,7 @@ export namespace EPGStorage {
 }
 ```
 
-#### 3. Zustand with localStorage (Session State)
+#### 3. Zustand with localStorage (Application Preferences)
 
 **Use for**: User preferences, UI settings, cross-component state with persistence
 
@@ -278,13 +271,13 @@ export namespace EPGStorage {
 - Selective persistence via middleware
 - Type-safe with TypeScript
 - Performance-optimized (fine-grained subscriptions)
-- Persists to localStorage automatically
+- Persists to localStorage automatically (survives browser restart)
 
 **Example**: Settings Slice
 
 ```typescript
 // src/store/slices/settingsSlice.ts
-// Persistence: Zustand + localStorage (session state, survives reload)
+// Persistence: Zustand + localStorage (long-term, survives browser restart)
 export const settingsSlice: StateCreator<SettingsSlice> = (set) => ({
   settings: (() => {
     // Load from localStorage on init
@@ -340,7 +333,7 @@ export const frequencySlice: StateCreator<FrequencySlice> = (set) => ({
 
 ```typescript
 // src/hooks/useATSCScanner.ts
-// Persistence: None (ephemeral session state during active scan)
+// Persistence: None (ephemeral runtime state during active scan)
 export function useATSCScanner(device) {
   const [state, setState] = useState<ScannerState>("idle");
   const [progress, setProgress] = useState(0);
@@ -365,7 +358,9 @@ When adding new stateful features, follow this decision tree:
 #### 3. Should it be shared across all tabs?
 
 - **Yes** → Use localStorage (with namespace)
-- **No** → Use Zustand + localStorage
+- **No** → Use Zustand + localStorage†
+
+†**Note:** localStorage is shared across all tabs in the same domain. "Zustand + localStorage" means each tab maintains its own Zustand state instance (not synchronized in real-time), but the data persists to shared localStorage and will be loaded when a new tab opens. If you need true tab isolation where data is not accessible from other tabs, use `sessionStorage` instead of `localStorage`.
 
 #### 4. Is it component-specific or app-wide?
 

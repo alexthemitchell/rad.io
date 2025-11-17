@@ -135,8 +135,7 @@ git commit -m "feat: add support for new SDR device"
 
 When adding stateful features, follow the patterns in [ARCHITECTURE.md - State & Persistence](ARCHITECTURE.md#state--persistence):
 
-- **Long-term data** (survives browser restart) → IndexedDB or localStorage
-- **Session state** (survives reload) → Zustand + localStorage
+- **Long-term data** (survives browser restart) → IndexedDB, localStorage, or Zustand + localStorage
 - **Ephemeral state** (runtime only) → Zustand (in-memory) or React hooks
 - **Document persistence strategy** in top-of-file comments
 - **Use consistent naming**: `{Feature}Data`, `Stored{Feature}`, `{Feature}State`
