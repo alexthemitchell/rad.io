@@ -293,30 +293,46 @@ await hackrf.receive(callback); // Works!
 - "USB communication error" notifications
 
 **Cause:**
-HackRF firmware enters corrupted state after repeated HMR (Hot Module Replacement) reloads or extended operation. This is a hardware-level issue specific to Windows/Chrome WebUSB implementation.
+HackRF firmware enters corrupted state after repeated HMR (Hot Module Replacement) reloads or extended operation. All USB control OUT transfers fail while control IN transfers continue to work.
 
 **Why software recovery fails:**
-- `usbDevice.reset()` returns "Unable to reset the device" on Windows
-- Vendor RESET command (30) is itself a control OUT transfer, so it also fails
-- `forget()` causes USB disconnect but firmware corruption persists
-- Control IN (read) transfers work, but control OUT (write) transfers all fail
+**Why `usbDevice.reset()` fails:**
 
-**Solution (Physical Power Cycle Required):**
+- Direct `reset()` returns "Unable to reset the device" on Windows when interfaces are claimed
+- Chrome security policy prevents forceful resets that could affect other apps
+- Vendor RESET command (30) is itself a control OUT transfer, so it also fails
+
+**Solution (Software Recovery - Recommended First):**
 
 ```
-1. Unplug the HackRF USB cable from the computer
+1. Open Diagnostics overlay (click "Diagnostics" button)
+2. Click "🔄 Reset Device" button
+3. Grant permission when prompted to re-pair the device
+4. Device will reconnect with fresh firmware state
+```
+
+This works because `usbDevice.forget()` triggers a USB disconnect/reconnect cycle, causing the OS to re-enumerate the device and reset its firmware state.
+
+**Fallback (Physical Power Cycle):**
+
+If software recovery fails:
+
+```
+1. Unplug the HackRF USB cable
 2. Wait 10 seconds
 3. Plug the cable back in
-4. Device will reconnect automatically with clean firmware
+4. Device will reconnect automatically
 ```
 
 **Prevention:**
+
 - Avoid excessive HMR reloads during development
 - Use full page refresh instead when needed
 - Ensure proper device cleanup before page navigation
 - The app includes automatic cleanup on page unload to minimize risk
 
 **Note:** The diagnostics overlay includes a "Reset Device" button that attempts software recovery, but on Windows this will typically fail when firmware is severely corrupted. Always try the button first, but if it doesn't work, physical power cycle is required.
+**Note:** The `forget()` + re-pair approach (via the "Reset Device" button) is the recommended first recovery method. It triggers a USB disconnect/reconnect that resets firmware state without requiring physical access to the device. Physical power cycle is only needed as a fallback if software recovery fails.
 
 See `docs/DEVICE_ERROR_HANDLING.md` and `.serena/memories/HACKRF_FIRMWARE_CORRUPTION_WINDOWS_2025-11-18.md` for complete details.
 
