@@ -17,24 +17,29 @@ This document contains 10 GitHub issues designed for junior-level engineers to i
 Add a visual cursor/marker on the spectrum display showing the current VFO (Variable Frequency Oscillator) frequency position.
 
 ### Current State
+
 - FrequencyDisplay component works and shows frequency
 - Spectrum renders but has no visual indicator of current frequency
 
 ### Expected Behavior
+
 - Vertical line/cursor on spectrum at current frequency
 - Updates in real-time as frequency changes
 - Clear visual style (cyan color per design spec)
 
 ### Files to Modify
+
 - `src/visualization/components/Spectrum.tsx`
 - `src/visualization/renderers/SpectrumAnnotations.ts`
 
 ### Technical Hints
+
 - Subscribe to frequency changes from Zustand store
 - Render vertical line using canvas overlay
 - Use `--rad-accent` CSS variable for color (cyan)
 
 ### Acceptance Criteria
+
 - [ ] VFO cursor displays on spectrum at current frequency
 - [ ] Cursor color matches design spec (cyan)
 - [ ] Cursor updates when frequency changes
@@ -42,6 +47,7 @@ Add a visual cursor/marker on the spectrum display showing the current VFO (Vari
 - [ ] Tests added for VFO cursor rendering
 
 ### References
+
 - UI-DESIGN-SPEC.md Section 4.1
 - docs/GAP_ANALYSIS_REPORT.md
 - Related: ROADMAP.md Iteration 6
@@ -59,25 +65,30 @@ Add a visual cursor/marker on the spectrum display showing the current VFO (Vari
 Add storage quota information display to the Recordings page to show users how much browser storage they're using.
 
 ### Current State
+
 - Recordings page is placeholder with TODOs
 - No storage information displayed
 
 ### Expected Behavior
+
 - Display total storage quota
 - Show used storage
 - Show available storage
 - Visual indicator (progress bar or percentage)
 
 ### Files to Modify
+
 - `src/pages/Recordings.tsx`
 
 ### Technical Details
+
 - Use StorageManager API: `navigator.storage.estimate()`
 - Display quota, usage, and percentage used
 - Add warning when >85% full (per PRD)
 - Handle browsers that don't support the API
 
 ### Example Code
+
 ```typescript
 const estimate = await navigator.storage.estimate();
 const usage = estimate.usage || 0;
@@ -86,6 +97,7 @@ const percentUsed = (usage / quota) * 100;
 ```
 
 ### Acceptance Criteria
+
 - [ ] Storage quota displayed with total and used space
 - [ ] Visual progress bar or percentage indicator
 - [ ] Warning shown when storage >85% full
@@ -93,6 +105,7 @@ const percentUsed = (usage / quota) * 100;
 - [ ] Tests added for quota display logic
 
 ### References
+
 - PRD.md Feature #6 (Recording System)
 - docs/ACTIONABLE_RECOMMENDATIONS.md
 
@@ -109,19 +122,23 @@ const percentUsed = (usage / quota) * 100;
 Implement CSV export functionality for the bookmarks panel to allow users to export their frequency bookmarks.
 
 ### Current State
+
 - Bookmark management works (create, edit, delete, search)
 - No import/export functionality
 
 ### Expected Behavior
+
 - Export button in bookmarks panel
 - Exports to CSV format with standard fields
 - Includes frequency, mode, label, tags, description
 
 ### Files to Create/Modify
+
 - Create: `src/utils/bookmark-import-export.ts`
 - Modify: `src/panels/Bookmarks.tsx`
 
 ### CSV Format Example
+
 ```csv
 Frequency (Hz),Mode,Label,Tags,Description,Bandwidth,Squelch
 100000000,FM,Local FM Station,"broadcast,fm","Local radio station",200000,0.5
@@ -129,12 +146,14 @@ Frequency (Hz),Mode,Label,Tags,Description,Bandwidth,Squelch
 ```
 
 ### Technical Hints
+
 - Convert bookmarks array to CSV string
 - Use `Blob` and `URL.createObjectURL` for download
 - Escape special characters in CSV (quotes, commas)
 - Include timestamp in filename
 
 ### Acceptance Criteria
+
 - [ ] Export button added to Bookmarks panel
 - [ ] Clicking export downloads CSV file
 - [ ] CSV includes all bookmark metadata
@@ -143,6 +162,7 @@ Frequency (Hz),Mode,Label,Tags,Description,Bandwidth,Squelch
 - [ ] Handles special characters in bookmark data (quotes, commas, newlines)
 
 ### References
+
 - ROADMAP.md Iteration 7
 - docs/GAP_ANALYSIS_REPORT.md
 
@@ -159,44 +179,50 @@ Frequency (Hz),Mode,Label,Tags,Description,Bandwidth,Squelch
 Wire up the existing MarkerTable component to the Analysis page and connect it to frequency marker state.
 
 ### Current State
+
 - MarkerTable component exists as UI shell (`src/components/MarkerTable.tsx`)
 - Analysis page exists but marker table not integrated
 - No marker state management
 
 ### Expected Behavior
+
 - MarkerTable displayed on Analysis page
 - Shows frequency markers (M1, M2, M3...)
 - Updates when markers are added/removed
 - Calculates delta measurements (M2 - M1)
 
 ### Files to Modify
+
 - `src/pages/Analysis.tsx`
 - `src/components/MarkerTable.tsx`
 - Create: `src/store/slices/markerSlice.ts`
 
 ### Technical Details
+
 - Create Zustand slice for marker state
 - Store marker positions (frequency, power)
 - Support delta measurements (M2 - M1)
 
 ### Marker State Schema
+
 ```typescript
 interface Marker {
   id: string;
   label: string; // "M1", "M2", etc.
-  frequency: number; // Hz
-  power: number; // dBFS or dBm
+  freqHz: number; // Hz (matches MarkerTable.tsx)
+  powerDb?: number; // dBFS or dBm (matches MarkerTable.tsx)
 }
 
 interface MarkerState {
   markers: Marker[];
-  addMarker: (frequency: number, power: number) => void;
+  addMarker: (freqHz: number, powerDb?: number) => void;
   removeMarker: (id: string) => void;
   clearMarkers: () => void;
 }
 ```
 
 ### Acceptance Criteria
+
 - [ ] MarkerTable component displayed on Analysis page
 - [ ] Marker state managed in Zustand store
 - [ ] Can add markers (placeholder button for now)
@@ -206,6 +232,7 @@ interface MarkerState {
 - [ ] Tests added for marker state management
 
 ### References
+
 - PRD.md Feature #5 (Measurement Suite)
 - docs/ACTIONABLE_RECOMMENDATIONS.md
 - Related issue: Will be used by Issue #10 (Spectrum marker placement)
@@ -223,19 +250,23 @@ interface MarkerState {
 Add an empty state table to the Scanner page showing the structure of the activity log that will populate when scanning works.
 
 ### Current State
+
 - Scanner page exists with minimal UI
 - No activity log table
 
 ### Expected Behavior
+
 - Empty table with column headers
 - Helpful message when no scan data
 - Ready to populate when scanner logic is implemented
 
 ### Files to Modify
+
 - `src/pages/Scanner.tsx`
 - Create: `src/components/Scanner/ActivityLog.tsx`
 
 ### Table Columns
+
 - Timestamp (ISO format)
 - Frequency (MHz with 3 decimals)
 - Signal Strength (dBm or S-units)
@@ -244,11 +275,13 @@ Add an empty state table to the Scanner page showing the structure of the activi
 - Actions (bookmark button, record button)
 
 ### Empty State Message
+
 ```
 "No scan activity yet. Start a scan to see detected signals here."
 ```
 
 ### Acceptance Criteria
+
 - [ ] ActivityLog component created
 - [ ] Displayed on Scanner page
 - [ ] Shows empty state with helpful message
@@ -258,6 +291,7 @@ Add an empty state table to the Scanner page showing the structure of the activi
 - [ ] Tests added for component rendering
 
 ### References
+
 - ROADMAP.md Iteration 9
 - docs/ACTIONABLE_RECOMMENDATIONS.md
 
@@ -274,10 +308,12 @@ Add an empty state table to the Scanner page showing the structure of the activi
 Add a quick actions toolbar to the Monitor page for common tasks (bookmark current frequency, start recording, toggle grid).
 
 ### Current State
+
 - Monitor page has visualization but limited quick actions
 - Common tasks require navigation to other panels
 
 ### Expected Behavior
+
 - Toolbar with icon buttons for quick actions
 - Bookmark current frequency (star icon)
 - Start/stop recording (record icon)
@@ -285,26 +321,30 @@ Add a quick actions toolbar to the Monitor page for common tasks (bookmark curre
 - Show keyboard shortcuts (? icon)
 
 ### Files to Modify
+
 - `src/pages/Monitor.tsx`
 - Create: `src/components/Monitor/QuickActions.tsx`
 
 ### Technical Details
+
 - Use Phosphor Icons (per design spec): `BookmarkSimple`, `Record`, `GridFour`, `Question`
 - Tooltips on hover showing keyboard shortcuts
 - Icons update state (recording icon turns red when active)
 - Integrate with existing functionality
 
 ### Icon/Action Mapping
+
 ```typescript
 const actions = [
-  { icon: 'BookmarkSimple', tooltip: 'Bookmark (B)', action: addBookmark },
-  { icon: 'Record', tooltip: 'Record (R)', action: toggleRecording },
-  { icon: 'GridFour', tooltip: 'Grid (G)', action: toggleGrid },
-  { icon: 'Question', tooltip: 'Help (?)', action: showHelp },
+  { icon: "BookmarkSimple", tooltip: "Bookmark (B)", action: addBookmark },
+  { icon: "Record", tooltip: "Record (R)", action: toggleRecording },
+  { icon: "GridFour", tooltip: "Grid (G)", action: toggleGrid },
+  { icon: "Question", tooltip: "Help (?)", action: showHelp },
 ];
 ```
 
 ### Acceptance Criteria
+
 - [ ] QuickActions component created
 - [ ] Displays on Monitor page (top-right or bottom toolbar)
 - [ ] Bookmark button adds current frequency to bookmarks
@@ -316,6 +356,7 @@ const actions = [
 - [ ] Tests added
 
 ### References
+
 - UI-DESIGN-SPEC.md Section 4
 - docs/GAP_ANALYSIS_REPORT.md
 - Icon system: Phosphor Icons documentation
@@ -333,29 +374,33 @@ const actions = [
 Implement IndexedDB-based persistent storage for IQ recordings to enable recording library functionality.
 
 ### Current State
+
 - IQRecorder class exists but only stores in memory (`src/utils/iqRecorder.ts`)
 - No persistent storage for recordings
 - ROADMAP incorrectly claimed this was implemented
 
 ### Expected Behavior
+
 - Recordings saved to IndexedDB
 - Metadata stored separately for quick queries
 - Support for large recordings (>100MB)
 - Quota management and error handling
 
 ### Files to Create
-- `src/lib/recording/recording-manager.ts`
-- `src/lib/recording/recording-storage.ts`
-- `src/lib/recording/types.ts`
+
+- TODO: Create `src/lib/recording/recording-manager.ts`
+- TODO: Create `src/lib/recording/recording-storage.ts`
+- TODO: Create `src/lib/recording/types.ts`
 
 ### Database Schema
+
 ```typescript
 // Database name: 'rad-io-recordings'
 // Version: 1
 
 // Object store: 'recordings'
 interface RecordingEntry {
-  id: string;           // UUID
+  id: string; // UUID
   metadata: {
     frequency: number;
     sampleRate: number;
@@ -365,7 +410,7 @@ interface RecordingEntry {
     tags: string[];
     label?: string;
   };
-  chunks: Blob[];       // Chunked IQ data (10MB per chunk)
+  chunks: Blob[]; // Chunked IQ data (10MB per chunk)
 }
 
 // Object store: 'recordings-meta' (for quick queries)
@@ -374,18 +419,20 @@ interface RecordingMeta {
   frequency: number;
   timestamp: Date;
   duration: number;
-  size: number;         // Total bytes
+  size: number; // Total bytes
   label?: string;
 }
 ```
 
 ### Technical Details
+
 - Use chunked writes for large files (10MB chunks)
 - Implement quota checking before saving
 - Support for SigMF metadata format (future)
 - Transaction-based operations for data integrity
 
 ### API Design
+
 ```typescript
 class RecordingManager {
   async saveRecording(recording: IQRecording): Promise<string>;
@@ -397,6 +444,7 @@ class RecordingManager {
 ```
 
 ### Acceptance Criteria
+
 - [ ] RecordingManager class created and exported
 - [ ] IndexedDB database initialized on app start
 - [ ] Can save recording with metadata
@@ -409,6 +457,7 @@ class RecordingManager {
 - [ ] Documentation updated (ARCHITECTURE.md)
 
 ### References
+
 - ROADMAP.md Iteration 8
 - ARCHITECTURE.md State & Persistence section
 - ADR-0005 Storage Strategy
@@ -427,24 +476,29 @@ class RecordingManager {
 Create a recording list/grid view component to display saved recordings with metadata and actions.
 
 ### Current State
+
 - Recordings page is placeholder (`src/pages/Recordings.tsx`)
 - No UI for viewing recordings
 
 ### Expected Behavior
+
 - List or grid view of recordings
 - Shows metadata (frequency, date, duration, size)
 - Search and filter capabilities
 - Actions: play, delete, export
 
 ### Files to Modify
+
 - `src/pages/Recordings.tsx`
 - Create: `src/components/Recordings/RecordingList.tsx`
 - Create: `src/components/Recordings/RecordingCard.tsx`
 
 ### Dependencies
+
 - **MUST COMPLETE FIRST**: Issue #7 (IndexedDB Storage Layer)
 
 ### Technical Details
+
 - Virtual scrolling for large lists (use react-window or react-virtuoso)
 - Each card shows: frequency, timestamp, duration, file size, tags
 - Actions per card: Play (▶️), Delete (🗑️), Export (⬇️), Edit tags (✏️)
@@ -453,6 +507,7 @@ Create a recording list/grid view component to display saved recordings with met
 - Search by: label, frequency
 
 ### Component Structure
+
 ```typescript
 interface RecordingCardProps {
   recording: RecordingMeta;
@@ -468,6 +523,7 @@ interface RecordingListProps {
 ```
 
 ### Acceptance Criteria
+
 - [ ] RecordingList component created
 - [ ] RecordingCard component for each item
 - [ ] Displays all recordings from RecordingManager
@@ -484,6 +540,7 @@ interface RecordingListProps {
 - [ ] Tests added (component and integration)
 
 ### References
+
 - PRD.md Feature #6 (Recording System)
 - docs/ACTIONABLE_RECOMMENDATIONS.md
 - UI-DESIGN-SPEC.md Section 4.8
@@ -501,11 +558,13 @@ interface RecordingListProps {
 Implement CSV import functionality to complement the export feature.
 
 ### Current State
+
 - Bookmark management works
 - CSV export available (Issue #3)
 - No import capability
 
 ### Expected Behavior
+
 - Import button in bookmarks panel
 - File picker for CSV files
 - Validation of CSV format
@@ -513,13 +572,16 @@ Implement CSV import functionality to complement the export feature.
 - Duplicate detection and handling
 
 ### Files to Modify
+
 - `src/utils/bookmark-import-export.ts`
 - `src/panels/Bookmarks.tsx`
 
 ### Dependencies
+
 - **RECOMMENDED**: Issue #3 (CSV Export) completed first for consistency
 
 ### Technical Details
+
 - Parse CSV with validation (use csv-parse or papaparse)
 - Detect duplicate frequencies (within 1kHz tolerance)
 - Preview dialog showing:
@@ -530,14 +592,14 @@ Implement CSV import functionality to complement the export feature.
 - Handle malformed CSV gracefully
 
 ### CSV Validation Rules
-```typescript
-- Frequency: must be valid number, within device range (24 MHz - 1.7 GHz for RTL-SDR)
-- Mode: must be one of: AM, FM, SSB, USB, LSB, CW, DIGITAL
-- Bandwidth: optional, must be positive number
-- Tags: optional, comma-separated in quotes
-```
+
+- **Frequency**: must be valid number, within device range (24 MHz - 1.7 GHz for RTL-SDR)
+- **Mode**: must be one of: AM, FM, SSB, USB, LSB, CW, DIGITAL
+- **Bandwidth**: optional, must be positive number
+- **Tags**: optional, comma-separated in quotes
 
 ### Acceptance Criteria
+
 - [ ] Import button added to Bookmarks panel
 - [ ] File picker opens on click (accepts .csv files only)
 - [ ] CSV parsed and validated
@@ -550,6 +612,7 @@ Implement CSV import functionality to complement the export feature.
 - [ ] Tests added for CSV parsing, validation, and duplicate detection
 
 ### References
+
 - ROADMAP.md Iteration 7
 - docs/GAP_ANALYSIS_REPORT.md
 - Related: Issue #3 (CSV Export)
@@ -567,11 +630,13 @@ Implement CSV import functionality to complement the export feature.
 Implement interactive frequency marker placement on the spectrum display for measurement purposes.
 
 ### Current State
+
 - Spectrum displays signal
 - No way to place markers
 - MarkerTable exists but disconnected (Issue #4)
 
 ### Expected Behavior
+
 - Click on spectrum to place marker
 - Drag marker to adjust position
 - Shows frequency and power at marker position
@@ -579,14 +644,17 @@ Implement interactive frequency marker placement on the spectrum display for mea
 - Markers sync with MarkerTable
 
 ### Files to Modify
+
 - `src/visualization/components/Spectrum.tsx`
 - `src/visualization/renderers/SpectrumAnnotations.ts`
 - `src/store/slices/markerSlice.ts` (created in Issue #4)
 
 ### Dependencies
+
 - **RECOMMENDED**: Issue #4 (Marker Table) completed first
 
 ### Technical Details
+
 - Canvas click handler to detect marker placement
 - Convert pixel X position to frequency (based on spectrum range)
 - Read power value from FFT data at that frequency
@@ -595,21 +663,28 @@ Implement interactive frequency marker placement on the spectrum display for mea
 - Keyboard shortcut: 'M' to add marker at center frequency
 
 ### Coordinate Conversion
+
 ```typescript
-function pixelToFrequency(pixelX: number, canvasWidth: number, 
-                          startFreq: number, endFreq: number): number {
+function pixelToFrequency(
+  pixelX: number,
+  canvasWidth: number,
+  startFreq: number,
+  endFreq: number,
+): number {
   const ratio = pixelX / canvasWidth;
   return startFreq + ratio * (endFreq - startFreq);
 }
 ```
 
 ### Marker Rendering
+
 - Vertical line: 2px wide, cyan color (`--rad-accent`)
 - Label box: Shows "M1: 100.5 MHz, -45.2 dBFS"
 - Drag handle: Small circle at top of line
 - Highlight on hover
 
 ### Acceptance Criteria
+
 - [ ] Click on spectrum places marker at clicked frequency
 - [ ] Marker shows frequency and power value
 - [ ] Can place multiple markers (up to 10)
@@ -622,6 +697,7 @@ function pixelToFrequency(pixelX: number, canvasWidth: number,
 - [ ] Tests added for marker placement, drag, and coordinate conversion
 
 ### References
+
 - PRD.md Feature #5 (Advanced Measurement Suite)
 - UI-DESIGN-SPEC.md Section 4.2
 - docs/ACTIONABLE_RECOMMENDATIONS.md
@@ -634,6 +710,7 @@ function pixelToFrequency(pixelX: number, canvasWidth: number,
 These 10 issues represent the highest-priority gaps identified in the codebase analysis:
 
 **Good First Issues** (suitable for junior engineers):
+
 - Issue #1: VFO Visual Marker (2-3 days)
 - Issue #2: Storage Quota Display (1 day)
 - Issue #3: CSV Export (2-3 days)
@@ -641,10 +718,12 @@ These 10 issues represent the highest-priority gaps identified in the codebase a
 - Issue #6: Quick Actions Bar (1-2 days)
 
 **Intermediate Issues**:
+
 - Issue #4: Marker Table Integration (2 days)
 - Issue #9: CSV Import (2 days)
 
 **Advanced Issues** (may need senior guidance):
+
 - Issue #7: IndexedDB Storage Layer (3-5 days)
 - Issue #8: Recording List View (3 days)
 - Issue #10: Spectrum Marker Placement (3-4 days)
@@ -652,11 +731,13 @@ These 10 issues represent the highest-priority gaps identified in the codebase a
 **Total Estimated Effort**: ~20-30 developer days
 
 **Dependencies**:
+
 - Issue #8 depends on Issue #7
 - Issue #9 should follow Issue #3
 - Issue #10 should follow Issue #4
 
 **Labels to Create** (if not existing):
+
 - `good first issue` - For junior-friendly issues
 - `enhancement` - New feature or improvement
 - `ui` - User interface work
@@ -669,6 +750,7 @@ These 10 issues represent the highest-priority gaps identified in the codebase a
 ---
 
 **Next Steps**:
+
 1. Create these issues in GitHub
 2. Assign appropriate labels
 3. Link related issues in descriptions

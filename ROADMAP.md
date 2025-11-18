@@ -22,6 +22,7 @@ This golden path represents our commitment to providing a seamless user experien
 This roadmap outlines the strategic development plan for WebSDR Pro, transitioning from a functional prototype to a complete, production-ready professional signal analysis platform. The roadmap is organized by user personas and capability tiers, ensuring features are prioritized based on real-world use cases and user value.
 
 **Iteration Status Legend**:
+
 - ✅ **Completed**: Feature is fully implemented with UI and backend
 - ⚠️ **Partial**: Core features exist but some components incomplete (details noted)
 - 🔄 **In Progress**: Feature is under active development
@@ -485,7 +486,7 @@ Understanding our users is critical to building the right features in the right 
 - **TODO**: Implement IndexedDB-based recording manager
 - **TODO**: Build recording library UI with list/grid view
 - **TODO**: Add storage quota management interface
-- UI Component: `/src/components/RecordingPanel.tsx`
+- **TODO**: Create UI Component: `/src/components/RecordingPanel.tsx`
 - Storage: IndexedDB with chunked writes
 - Export: WAV format with proper headers, raw float32 for IQ
 

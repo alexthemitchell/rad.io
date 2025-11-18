@@ -19,17 +19,20 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ### Summary Statistics
 
 **PRD Features (11 total)**:
+
 - ✅ Complete: 1 (9%) - Interactive Signal Decoder
 - ⚠️ Partial: 7 (64%) - Multi-Device, Spectrum, Waterfall, Demodulator, Bookmarks, Analysis, Calibration
 - ❌ Not Started: 3 (27%) - Measurements, Scanner, Recording UI
 
 **ROADMAP Iterations (20 planned)**:
+
 - ✅ Accurately Complete: 4 (20%)
 - ⚠️ Partially Complete (marked as complete): 3 (15%)
 - 🔄 In Progress: 3 (15%)
 - ❌ Not Started: 10 (50%)
 
 **ADR Compliance (7 checked)**:
+
 - ✅ Fully Compliant: 5 (71%)
 - ⚠️ Partially Compliant: 2 (29%)
 - ❌ Non-Compliant: 0 (0%)
@@ -39,10 +42,12 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ## Part 1: PRD Features Analysis
 
 ### Feature #1: Multi-Device SDR Management
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ⚠️ **PARTIAL** (50% complete)
 
 **What Exists**:
+
 - ✅ HackRF device driver (`src/drivers/hackrf/`)
 - ✅ RTL-SDR device model (`src/models/RTLSDRDevice.ts`)
 - ✅ Airspy device model (`src/models/AirspyDevice.ts`)
@@ -51,6 +56,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 - ✅ Device panel UI (`src/panels/Devices.tsx`)
 
 **What's Missing**:
+
 - ❌ 4+ simultaneous device support (no multi-device coordination)
 - ❌ Synchronized start capability
 - ❌ <5ms synchronization skew (not implemented)
@@ -64,10 +70,12 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #2: Adaptive Spectrum Analyzer
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ⚠️ **PARTIAL** (60% complete)
 
 **What Exists**:
+
 - ✅ WebGL spectrum renderer (`src/visualization/renderers/WebGLSpectrum.ts`)
 - ✅ Canvas fallback (`src/visualization/renderers/CanvasSpectrum.ts`)
 - ✅ FFT processor (`src/visualization/processors/FFTProcessor.ts`)
@@ -75,6 +83,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 - ✅ Spectrum component (`src/visualization/components/Spectrum.tsx`)
 
 **What's Missing**:
+
 - ❌ GPU FFT compute shader (PRD specifies WebGPU/WebGL2 compute)
 - ❌ Configurable FFT sizes (256-262144) - limited range
 - ❌ Peak markers with frequency/power readout
@@ -87,10 +96,12 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #3: Multi-Layer Waterfall Display
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ⚠️ **PARTIAL** (55% complete)
 
 **What Exists**:
+
 - ✅ WebGL waterfall (`src/visualization/renderers/WebGLWaterfall.ts`)
 - ✅ Canvas fallback (`src/visualization/renderers/CanvasWaterfall.ts`)
 - ✅ Waterfall component (`src/visualization/components/Waterfall.tsx`)
@@ -98,6 +109,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 - ✅ Multiple palettes (Plasma, Inferno, Turbo)
 
 **What's Missing**:
+
 - ❌ Configurable history (1 min to 24 hours with compression)
 - ❌ Click-to-tune from historical data
 - ❌ Bandwidth cursors showing occupied spectrum
@@ -111,10 +123,12 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #4: Multi-Channel Demodulator
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ❌ **INCOMPLETE** (20% complete)
 
 **What Exists**:
+
 - ✅ FM demodulator class (`src/utils/audioStream.ts`)
 - ✅ AM demodulator class (`src/utils/audioStream.ts`)
 - ✅ Plugin architecture for demodulators (`src/plugins/demodulators/`)
@@ -122,6 +136,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 - ✅ ATSC 8-VSB demodulator
 
 **What's Missing**:
+
 - ❌ 8+ simultaneous VFOs within bandwidth
 - ❌ Independent filter shapes (brick-wall, Gaussian, raised-cosine)
 - ❌ Per-VFO recording capability
@@ -137,15 +152,18 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #5: Advanced Measurement Suite
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ❌ **NOT STARTED** (5% complete)
 
 **What Exists**:
+
 - ✅ MarkerTable component (`src/components/MarkerTable.tsx`) - UI shell only
 - ✅ Measurement logger (`src/lib/measurement/measurement-logger.ts`)
 - ✅ Spectrum mask (`src/lib/measurement/spectrum-mask.ts`)
 
 **What's Missing**:
+
 - ❌ Frequency markers with delta measurements
 - ❌ Channel power integration (CCDF)
 - ❌ Occupied bandwidth (99%)
@@ -160,16 +178,19 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #6: Intelligent Recording System
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ⚠️ **BACKEND ONLY** (40% complete)
 
 **What Exists**:
+
 - ✅ IQRecorder class (`src/utils/iqRecorder.ts`)
 - ✅ Recording metadata types
 - ✅ Save/load IQ recordings (binary and JSON)
 - ✅ Recordings page stub (`src/pages/Recordings.tsx`)
 
 **What's Missing**:
+
 - ❌ **Recording UI** - Recordings page is placeholder with TODOs
 - ❌ Threshold-based auto-trigger
 - ❌ Scheduled recordings
@@ -182,10 +203,12 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #7: Frequency Database & Bookmarks
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ⚠️ **PARTIAL** (70% complete)
 
 **What Exists**:
+
 - ✅ Bookmarks panel (`src/panels/Bookmarks.tsx`)
 - ✅ Bookmark data model with metadata
 - ✅ Search and filter functionality
@@ -193,6 +216,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 - ✅ Persistence via Zustand + localStorage
 
 **What's Missing**:
+
 - ❌ CSV/RadioReference import/export
 - ❌ Visual markers on spectrum/waterfall
 - ❌ Schedule awareness (active times)
@@ -203,15 +227,18 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #8: Adaptive Scanner
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ❌ **NOT STARTED** (10% complete)
 
 **What Exists**:
+
 - ✅ Scanner page stub (`src/pages/Scanner.tsx`)
 - ✅ FrequencyScanner component (`src/components/FrequencyScanner.tsx`)
 - ✅ Band scanner utility (`src/lib/dsp/band-scanner.ts`)
 
 **What's Missing**:
+
 - ❌ Multiple scan modes (sequential, memory, band scope)
 - ❌ Configurable dwell times
 - ❌ Auto-store of active signals
@@ -224,10 +251,12 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #9: Interactive Signal Decoder
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ✅ **COMPLETE** (95% complete)
 
 **What Exists**:
+
 - ✅ RTTY decoder (45.45 and 50 baud)
 - ✅ PSK31/63/125 decoder with AFC
 - ✅ SSTV decoder (Martin, Scottie, Robot modes)
@@ -239,15 +268,18 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #10: Signal Analysis Tools
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ⚠️ **PARTIAL** (40% complete)
 
 **What Exists**:
+
 - ✅ IQConstellation component (`src/visualization/components/IQConstellation.tsx`)
 - ✅ EyeDiagram component (`src/visualization/components/EyeDiagram.tsx`)
 - ✅ Analysis page (`src/pages/Analysis.tsx`)
 
 **What's Missing**:
+
 - ❌ Freeze/persistence modes
 - ❌ Automatic symbol rate estimation
 - ❌ EVM calculation for QAM/PSK
@@ -259,14 +291,17 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Feature #11: Calibration & Correction
+
 **PRD Status**: Essential Feature  
 **Actual Status**: ⚠️ **PARTIAL** (30% complete)
 
 **What Exists**:
+
 - ✅ DC offset correction (`src/lib/dsp/primitives.ts`)
 - ✅ Calibration page stub (`src/pages/Calibration.tsx`)
 
 **What's Missing**:
+
 - ❌ Frequency offset calibration wizard
 - ❌ PPM drift tracking
 - ❌ Gain flatness calibration
@@ -280,12 +315,14 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ## Part 2: ROADMAP Accuracy Issues
 
 ### Iteration 7: Bookmark System
+
 **ROADMAP Claim**: ✅ COMPLETED  
 **Reality**: ⚠️ PARTIAL - CSV import/export and visual markers deferred
 
 ---
 
 ### Iteration 8: Recording System
+
 **ROADMAP Claim**: ✅ COMPLETED  
 **Reality**: ❌ **BACKEND ONLY** - UI completely missing
 
@@ -294,6 +331,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Iteration 10: Settings and Calibration
+
 **ROADMAP Claim**: ✅ Partially Completed  
 **Reality**: ✅ ACCURATE - Settings exist, calibration wizard deferred
 
@@ -302,6 +340,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ## Part 3: UI-DESIGN-SPEC Issues
 
 ### Section 4.2: Spectrum Analyzer
+
 **Spec Claims**: "Markers: M1… Mn; delta display; peak hold trace; RBW indicator"  
 **Reality**: ❌ NOT IMPLEMENTED
 
@@ -310,6 +349,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Section 4.6: Scanner
+
 **Spec Claims**: "Config panel; activity log with thumbnails"  
 **Reality**: ❌ MINIMAL IMPLEMENTATION
 
@@ -318,6 +358,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ---
 
 ### Section 4.8: Recordings
+
 **Spec Claims**: "IQ + audio; trigger modes; storage management"  
 **Reality**: ❌ UI MISSING (backend exists)
 
@@ -328,12 +369,14 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 ## Part 4: ADR Compliance
 
 ### ✅ Fully Compliant
+
 - ADR-0009: State Management Pattern (Zustand)
 - ADR-0026: Unified DSP Primitives Architecture
 - ADR-0028: DSP Environment Detection
 - ADR-0017 & ADR-0023: Accessibility
 
 ### ⚠️ Partially Compliant
+
 - ADR-0005: Storage Strategy (IndexedDB backend exists but no UI)
 - ADR-0003: WebGL2/WebGPU (WebGL works, WebGPU compute shaders missing)
 
@@ -395,6 +438,7 @@ This comprehensive analysis reveals **significant gaps** between documented goal
 The rad.io codebase demonstrates **strong architectural foundations** and **excellent accessibility implementation**, but suffers from **documentation inflation** and **feature incompleteness**. The gap between stated goals (PRD, ROADMAP) and actual implementation is significant.
 
 ### Strengths
+
 1. ✅ Solid DSP primitives architecture (ADR-0026 compliant)
 2. ✅ Excellent accessibility (36+ tests, WCAG AA compliant)
 3. ✅ Clean device abstraction (ISDRDevice interface)
@@ -402,12 +446,14 @@ The rad.io codebase demonstrates **strong architectural foundations** and **exce
 5. ✅ Comprehensive testing infrastructure
 
 ### Weaknesses
+
 1. ❌ ROADMAP status inflation (features marked "complete" are partial)
 2. ❌ Missing UIs for backend features (Recordings, Scanner)
 3. ❌ PRD promises not yet implemented (multi-VFO, measurements)
 4. ❌ UI spec describes features that don't exist
 
 ### Recommended Path Forward
+
 1. **Accuracy First**: Update ROADMAP and UI-DESIGN-SPEC to reflect actual status
 2. **UI Completion**: Implement Recordings and Scanner UIs
 3. **Feature Scoping**: Defer or implement PRD features (measurements, multi-VFO)

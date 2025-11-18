@@ -7,6 +7,7 @@ Owner: Design Systems (rad.io)
 This document defines the end‑to‑end user interface for WebSDR Pro. It is grounded in the PRD (precision, power, professional), Roadmap personas, and ADRs for visualization, GPU acceleration, worker pools, and accessibility.
 
 **Implementation Status Legend**:
+
 - ✅ **Implemented**: Feature is complete and working
 - ⚠️ **Planned**: Feature is documented but not yet implemented
 - 🔄 **In Progress**: Feature is partially implemented or under active development
