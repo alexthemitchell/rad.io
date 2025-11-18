@@ -389,17 +389,44 @@ export class SpectrumAnnotations {
       return false;
     }
 
+    // Validate inputs for NaN/invalid values
+    if (
+      !Number.isFinite(vfoFrequency) ||
+      !Number.isFinite(sampleRate) ||
+      !Number.isFinite(centerFrequency)
+    ) {
+      return true; // Not an error, just invalid
+    }
+
     const ctx = this.ctx;
     const rect = this.canvas.getBoundingClientRect();
     // Use canvas dimensions if getBoundingClientRect returns 0 (e.g., in tests)
     const width = rect.width > 0 ? rect.width : this.canvas.width;
     const height = rect.height > 0 ? rect.height : this.canvas.height;
 
+    // Update canvas size with DPR scaling if dimensions changed
+    if (width !== this.lastWidth || height !== this.lastHeight) {
+      this.canvas.width = width * this.dpr;
+      this.canvas.height = height * this.dpr;
+      this.canvas.style.width = `${width}px`;
+      this.canvas.style.height = `${height}px`;
+      this.lastWidth = width;
+      this.lastHeight = height;
+    }
+
+    // Save context state and scale for device pixel ratio
+    ctx.save();
+    ctx.scale(this.dpr, this.dpr);
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
     // Match CanvasSpectrum's internal chart margins for perfect overlay alignment
     const margin = DEFAULT_MARGIN;
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
     if (chartWidth <= 0 || chartHeight <= 0) {
+      ctx.restore();
       return false;
     }
 
@@ -409,6 +436,7 @@ export class SpectrumAnnotations {
 
     // Check if VFO frequency is within visible range
     if (vfoFrequency < freqMin || vfoFrequency > freqMax) {
+      ctx.restore();
       return true; // Not an error, just not visible
     }
 
@@ -417,10 +445,8 @@ export class SpectrumAnnotations {
     const xNorm = (vfoFrequency - freqMin) / freqRange;
     const x = margin.left + xNorm * chartWidth;
 
-    // Draw VFO cursor line using --rad-accent color (cyan)
-    ctx.save();
-
     // Clip to chart area
+    ctx.save();
     ctx.beginPath();
     ctx.rect(margin.left, margin.top, chartWidth, chartHeight);
     if (typeof ctx.clip === "function") {
@@ -432,13 +458,15 @@ export class SpectrumAnnotations {
       getComputedStyle(this.canvas).getPropertyValue("--rad-accent") ||
       "oklch(78% 0.14 195deg)"; // Fallback to cyan from tokens.css
 
-    // Convert oklch to rgba for canvas (approximation for cyan)
-    // oklch(78% 0.14 195deg) is approximately rgb(100, 200, 255)
-    const cursorColor = accentColor.includes("oklch")
+    // Convert oklch to rgba for canvas
+    // Note: This is an approximation. oklch(78% 0.14 195deg) ≈ rgb(100, 200, 255)
+    const cursorColor = accentColor.trim().startsWith("oklch(")
       ? "rgba(100, 200, 255, 0.9)"
       : accentColor;
 
-    // Draw solid line for VFO cursor
+    // Draw VFO cursor line with glow effect
+    ctx.shadowColor = cursorColor;
+    ctx.shadowBlur = 4;
     ctx.strokeStyle = cursorColor;
     ctx.lineWidth = 2.5;
     if (typeof ctx.setLineDash === "function") {
@@ -449,17 +477,8 @@ export class SpectrumAnnotations {
     ctx.lineTo(x, margin.top + chartHeight);
     ctx.stroke();
 
-    // Add subtle glow effect for better visibility
-    ctx.shadowColor = cursorColor;
-    ctx.shadowBlur = 4;
-    ctx.strokeStyle = cursorColor;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(x, margin.top);
-    ctx.lineTo(x, margin.top + chartHeight);
-    ctx.stroke();
-
-    ctx.restore();
+    ctx.restore(); // clip
+    ctx.restore(); // dpr scale
 
     return true;
   }

@@ -154,20 +154,9 @@ export default function Spectrum({
       return;
     }
 
-    const overlayCanvas = overlayCanvasRef.current;
-    if (!overlayCanvas) {
-      return;
-    }
-
-    // Clear the overlay canvas before rendering
-    const ctx = overlayCanvas.getContext("2d");
-    if (ctx) {
-      ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-    }
-
-    // Render VFO cursor
+    // Render VFO cursor (handles its own clearing and DPR scaling)
     annotations.renderVFOCursor(vfoFrequency, sampleRate, centerFrequency);
-  }, [vfoFrequency, sampleRate, centerFrequency]);
+  }, [vfoFrequency, sampleRate, centerFrequency, width, height]);
 
   return (
     <div style={{ position: "relative", display: "inline-block" }}>

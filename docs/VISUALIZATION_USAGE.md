@@ -85,15 +85,15 @@ await setup.cleanup();
 
 ### Available Components
 
-| Component              | Purpose                              | Key Props                                  |
-| ---------------------- | ------------------------------------ | ------------------------------------------ |
-| **Spectrum**           | Real-time frequency spectrum display | `magnitudes`, `sampleRate`, `centerFrequency` |
-| **Waterfall**          | Time-frequency heatmap               | `frames`, `freqMin`, `freqMax`             |
-| **IQConstellation**    | Scatter plot of I/Q samples          | `samples`                                  |
-| **Spectrogram**        | STFT time-frequency visualization    | `samples`, `sampleRate`                    |
-| **WaveformVisualizer** | Time-domain amplitude display        | `samples`                                  |
-| **FFTChart**           | Frequency chart with annotations     | `magnitudes`, `frequencies`                |
-| **SpectrumExplorer**   | Interactive spectrum analyzer        | `samples`, `sampleRate`, `centerFrequency` |
+| Component              | Purpose                              | Key Props                                                             |
+| ---------------------- | ------------------------------------ | --------------------------------------------------------------------- |
+| **Spectrum**           | Real-time frequency spectrum display | `magnitudes`, `freqMin`, `freqMax`, `sampleRate?`, `centerFrequency?` |
+| **Waterfall**          | Time-frequency heatmap               | `frames`, `freqMin`, `freqMax`                                        |
+| **IQConstellation**    | Scatter plot of I/Q samples          | `samples`                                                             |
+| **Spectrogram**        | STFT time-frequency visualization    | `samples`, `sampleRate`                                               |
+| **WaveformVisualizer** | Time-domain amplitude display        | `samples`                                                             |
+| **FFTChart**           | Frequency chart with annotations     | `magnitudes`, `frequencies`                                           |
+| **SpectrumExplorer**   | Interactive spectrum analyzer        | `samples`, `sampleRate`, `centerFrequency`                            |
 
 ### VFO Cursor Feature (Spectrum Component)
 
@@ -110,6 +110,7 @@ The Spectrum component now supports displaying a VFO (Variable Frequency Oscilla
 ```
 
 **VFO Cursor Features:**
+
 - **Automatic Updates**: Subscribes to Zustand frequency store for real-time updates
 - **Visual Style**: Cyan vertical line with subtle glow (uses `--rad-accent` CSS variable)
 - **Smart Rendering**: Only displays when VFO is within visible spectrum range
