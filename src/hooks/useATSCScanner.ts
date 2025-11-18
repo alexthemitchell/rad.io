@@ -258,13 +258,37 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           await demodulatorRef.current.activate();
         }
 
-        // Tune to channel center frequency
+        // Tune to channel center frequency (pilot detection logic assumes center)
         await device.setFrequency(channel.frequency);
         setCurrentChannel(channel);
 
-        // Set sample rate to match ATSC symbol rate
-        const sampleRate = ATSC_CONSTANTS.SYMBOL_RATE;
+        // Use higher sample rate (oversampling) for more reliable pilot + sync detection
+        // Player path uses 20 MSPS (~1.86 samples per symbol); mirror that here.
+        const sampleRate = 20_000_000;
         await device.setSampleRate(sampleRate);
+
+        // Configure RF front-end for OTA detection (match player initialization sequence)
+        if ((device as unknown as { setBandwidth?: (bw: number) => Promise<void> }).setBandwidth) {
+          try {
+            await (device as unknown as { setBandwidth: (bw: number) => Promise<void> }).setBandwidth(6_000_000);
+          } catch (e) {
+            console.warn("ATSC Scanner: Failed to set 6 MHz bandwidth", e);
+          }
+        }
+        if ((device as unknown as { setLNAGain?: (g: number) => Promise<void> }).setLNAGain) {
+          try {
+            await (device as unknown as { setLNAGain: (g: number) => Promise<void> }).setLNAGain(24);
+          } catch (e) {
+            console.warn("ATSC Scanner: Failed to set LNA gain", e);
+          }
+        }
+        if ((device as unknown as { setAmpEnable?: (en: boolean) => Promise<void> }).setAmpEnable) {
+          try {
+            await (device as unknown as { setAmpEnable: (en: boolean) => Promise<void> }).setAmpEnable(true);
+          } catch (e) {
+            console.warn("ATSC Scanner: Failed to enable RF amp", e);
+          }
+        }
 
         // Collect IQ samples
         const iqSamples: IQSample[] = [];
@@ -282,10 +306,9 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
             iqSamples.push(...samples.slice(i, i + CHUNK_SIZE));
           }
 
-          if (iqSamples.length >= config.fftSize && dwellResolveRef.current) {
-            samplesCollected = true;
-            dwellResolveRef.current();
-          }
+          // Allow full dwell time to accumulate more data for better SNR; do not early finalize
+          // (Earlier logic stopped as soon as fftSize samples collected, often << dwellTime.)
+          // We still cap maximum accumulation implicitly by dwell time.
         });
 
         // Wait for dwell time to collect samples
@@ -302,9 +325,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           dwellResolveRef.current = finalize;
           scanTimeoutRef.current = setTimeout(finalize, config.dwellTime);
 
-          if (iqSamples.length >= config.fftSize) {
-            finalize();
-          }
+          // Removed early finalize; always wait full dwell time for improved detection reliability
         });
 
         clearPendingTimers();
