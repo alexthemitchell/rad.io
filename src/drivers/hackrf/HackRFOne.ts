@@ -594,8 +594,8 @@ export class HackRFOne {
    * This is a public method that can be called from the UI.
    */
   async resetAndReopen(): Promise<void> {
-    console.log("HackRFOne.resetAndReopen: Performing full device reset");
-    
+    console.info("HackRFOne.resetAndReopen: Performing full device reset");
+
     // Close device cleanly if possible
     try {
       await this.close();
@@ -610,24 +610,34 @@ export class HackRFOne {
     // On Windows/Chrome, usbDevice.reset() often fails when interfaces are claimed.
     // Use forget() to force a clean re-pair instead.
     try {
-      console.log("HackRFOne.resetAndReopen: Forgetting device to force re-pair");
+      console.info(
+        "HackRFOne.resetAndReopen: Forgetting device to force re-pair",
+      );
       await this.usbDevice.forget();
-      
+
       // Request device again (will prompt user to select it)
       const devices = await navigator.usb.getDevices();
       const sameDevice = devices.find(
-        (d) => d.vendorId === this.usbDevice.vendorId && d.productId === this.usbDevice.productId && d.serialNumber === this.usbDevice.serialNumber
+        (d) =>
+          d.vendorId === this.usbDevice.vendorId &&
+          d.productId === this.usbDevice.productId &&
+          d.serialNumber === this.usbDevice.serialNumber,
       );
-      
+
       if (!sameDevice) {
-        throw new Error("Device was forgotten but not available for re-pairing. Please reconnect the device manually.");
+        throw new Error(
+          "Device was forgotten but not available for re-pairing. Please reconnect the device manually.",
+        );
       }
-      
+
       // Update our reference (TypeScript workaround for private field)
       (this as unknown as { usbDevice: USBDevice }).usbDevice = sameDevice;
     } catch (err) {
-      console.warn("resetAndReopen: forget/re-pair failed, trying direct reset", err);
-      
+      console.warn(
+        "resetAndReopen: forget/re-pair failed, trying direct reset",
+        err,
+      );
+
       // Fallback: try USB reset (may fail on Windows/Chrome but worth trying)
       try {
         if (!this.usbDevice.opened) {
@@ -644,8 +654,8 @@ export class HackRFOne {
 
     // Reopen will trigger USB reset via the needsRecovery path
     await this.open();
-    
-    console.log("HackRFOne.resetAndReopen: Device reset complete");
+
+    console.info("HackRFOne.resetAndReopen: Device reset complete");
   }
 
   // Note: controlTransferIn removed due to no current call sites.
@@ -666,6 +676,7 @@ export class HackRFOne {
   // New helper function to introduce a delay
   private async delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+    /* eslint-disable @typescript-eslint/no-unnecessary-condition */
   }
 
   private async controlTransferOut({
@@ -705,10 +716,9 @@ export class HackRFOne {
         try {
           await this.open();
         } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
           throw new Error(
-            `Device is closing or closed. Aborting controlTransferOut. ${
-              e instanceof Error ? e.message : String(e)
-            }`,
+            `Device is closing or closed. Aborting controlTransferOut. ${message}`,
           );
         }
       }
@@ -833,6 +843,7 @@ export class HackRFOne {
         // ignore restore failures; higher-level logic may re-enter receive()
       }
       release();
+      /* eslint-enable @typescript-eslint/no-unnecessary-condition */
     }
   }
 
@@ -945,8 +956,10 @@ export class HackRFOne {
     }
 
     try {
-      console.warn("HackRFOne.performUSBResetRecovery: attempting USB device reset");
-      
+      console.warn(
+        "HackRFOne.performUSBResetRecovery: attempting USB device reset",
+      );
+
       // Perform actual USB device reset to clear stale firmware state
       if (this.usbDevice.opened) {
         try {
@@ -962,6 +975,7 @@ export class HackRFOne {
           // Fallback: try lightweight state clear
           await this.reset();
           // Ensure the device handle is open so subsequent transfers can succeed
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           if (!this.usbDevice.opened) {
             try {
               await this.usbDevice.open();

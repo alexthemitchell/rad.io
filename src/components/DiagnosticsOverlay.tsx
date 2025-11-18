@@ -404,22 +404,27 @@ export function DiagnosticsOverlay({
     if (!device || resetting) {
       return;
     }
-    
+
     try {
       setResetting(true);
-      console.log("DiagnosticsOverlay: Triggering device reset");
-      
+      console.info("DiagnosticsOverlay: Triggering device reset");
+
       // Use the new resetAndReopen method if available
-      if (typeof (device as unknown as { resetAndReopen?: () => Promise<void> }).resetAndReopen === "function") {
-        await (device as unknown as { resetAndReopen: () => Promise<void> }).resetAndReopen();
+      if (
+        typeof (device as unknown as { resetAndReopen?: () => Promise<void> })
+          .resetAndReopen === "function"
+      ) {
+        await (
+          device as unknown as { resetAndReopen: () => Promise<void> }
+        ).resetAndReopen();
       } else {
         // Fallback: close and reopen
         await device.close();
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         await device.open();
       }
-      
-      console.log("DiagnosticsOverlay: Device reset complete");
+
+      console.info("DiagnosticsOverlay: Device reset complete");
     } catch (err) {
       console.error("DiagnosticsOverlay: Device reset failed", err);
     } finally {
@@ -583,9 +588,16 @@ export function DiagnosticsOverlay({
       {!minimized && (
         <div className="overlay-content">
           {device && (
-            <div className="diagnostics-actions" style={{ marginBottom: "1rem", paddingBottom: "0.5rem", borderBottom: "1px solid var(--border-color, #333)" }}>
+            <div
+              className="diagnostics-actions"
+              style={{
+                marginBottom: "1rem",
+                paddingBottom: "0.5rem",
+                borderBottom: "1px solid var(--border-color, #333)",
+              }}
+            >
               <button
-                onClick={handleResetDevice}
+                onClick={() => void handleResetDevice()}
                 disabled={resetting}
                 title="Perform USB device reset to recover from persistent errors"
                 style={{

@@ -112,7 +112,7 @@ const Monitor: React.FC = () => {
   // firmware in a good state before transitioning to other pages such as
   // the ATSC player.
   useEffect(() => {
-    return () => {
+    return (): void => {
       // Visualization components are responsible for stopping their own
       // streaming pipelines when unmounted, but we also explicitly reset
       // the underlying SDR where supported.
@@ -170,7 +170,7 @@ const Monitor: React.FC = () => {
     });
   });
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     if (scanner.state === "idle" && foundSignals.length > 0) {
       setScanStatusMsg(`Scan complete, found ${foundSignals.length} signals.`);
     }

@@ -79,8 +79,8 @@ function ATSCPlayer(): React.JSX.Element {
   }, []);
 
   // Ensure HackRF (or other SDR) is cleanly stopped and reset when leaving the ATSC player.
-  useEffect(() => {
-    return () => {
+  useEffect((): (() => void) => {
+    return (): void => {
       // Stop ATSC playback pipeline first
       void player.stop();
 
