@@ -19,6 +19,8 @@ const LABEL_PADDING_PX = 4; // Padding around label text background
 const MIN_HIT_AREA_HZ = 50e3; // Minimum hit area for signal detection (50 kHz)
 // Keep recently-seen signals visible for a short period even if they are marked inactive
 const RECENTLY_VISIBLE_MS = 5_000; // 5 seconds
+// VFO cursor fallback color (approximation of oklch(78% 0.14 195deg) in RGBA)
+const VFO_CURSOR_FALLBACK_COLOR = "rgba(100, 200, 255, 0.9)";
 
 const DEFAULT_SIGNAL_BANDWIDTHS = new Map<string, number>([
   ["wideband-fm", 200_000],
@@ -461,7 +463,7 @@ export class SpectrumAnnotations {
     // Convert oklch to rgba for canvas
     // Note: This is an approximation. oklch(78% 0.14 195deg) ≈ rgb(100, 200, 255)
     const cursorColor = accentColor.trim().startsWith("oklch(")
-      ? "rgba(100, 200, 255, 0.9)"
+      ? VFO_CURSOR_FALLBACK_COLOR
       : accentColor;
 
     // Draw VFO cursor line with glow effect
