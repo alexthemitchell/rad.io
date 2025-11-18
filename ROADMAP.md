@@ -21,6 +21,13 @@ This golden path represents our commitment to providing a seamless user experien
 
 This roadmap outlines the strategic development plan for WebSDR Pro, transitioning from a functional prototype to a complete, production-ready professional signal analysis platform. The roadmap is organized by user personas and capability tiers, ensuring features are prioritized based on real-world use cases and user value.
 
+**Iteration Status Legend**:
+
+- ✅ **Completed**: Feature is fully implemented with UI and backend
+- ⚠️ **Partial**: Core features exist but some components incomplete (details noted)
+- 🔄 **In Progress**: Feature is under active development
+- ❌ **Not Started**: Feature has not been implemented yet
+
 ---
 
 ## Target User Personas
@@ -416,7 +423,7 @@ Understanding our users is critical to building the right features in the right 
 
 ---
 
-### ✅ Iteration 7: Bookmark System and Frequency Database (COMPLETED)
+### ⚠️ Iteration 7: Bookmark System and Frequency Database (PARTIAL)
 
 **User Personas**: Ham Radio Enthusiast, Emergency Communications Volunteer, Radio Monitoring Professional  
 **Priority**: MEDIUM - Significant quality of life improvement  
@@ -426,12 +433,12 @@ Understanding our users is critical to building the right features in the right 
 
 **Value**: Dramatically improves workflow efficiency. Emergency volunteers can instantly access frequencies. Ham operators can store net frequencies. Professionals can organize monitoring assignments.
 
-**Status**: ✅ Completed
+**Status**: ⚠️ **Partially Completed** - Core bookmark management works, import/export and visual integration deferred
 
 **Implementation Notes**:
 
 - ✅ Comprehensive bookmark data model with all metadata fields
-- ✅ Side panel with search and filter functionality
+- ✅ Side panel with search and filter functionality (`src/panels/Bookmarks.tsx`)
 - ✅ Create/edit bookmark dialog with full parameter support
 - ✅ Full-text search across labels, descriptions, and tags
 - ✅ Category and tag organization
@@ -444,26 +451,27 @@ Understanding our users is critical to building the right features in the right 
 
 ---
 
-### ✅ Iteration 8: Recording System (IQ and Audio) (COMPLETED)
+### ⚠️ Iteration 8: Recording System (IQ and Audio) (PARTIAL)
 
 **User Personas**: Radio Monitoring Professional, Academic Researcher, Ham Radio Enthusiast  
 **Priority**: MEDIUM - Critical for documentation and analysis  
-**Status**: ✅ Completed (Iteration 14)
+**Status**: ⚠️ **Partially Completed** - Backend infrastructure exists, UI incomplete
 
 **Value**: Enables forensic analysis, signal library building, compliance documentation, and sharing interesting captures. Researchers can build datasets. Professionals can document interference.
 
 **Implementation Notes**:
 
-- ✅ RecordingManager with IndexedDB storage
+- ✅ IQRecorder class with backend recording (`src/utils/iqRecorder.ts`)
 - ✅ IQ sample recording (raw complex samples)
 - ✅ Audio recording support (WAV export)
 - ✅ Metadata management (frequency, mode, timestamp, tags)
-- ✅ Real-time recording progress tracking
-- ✅ Storage quota monitoring with warnings
-- ✅ Recording library with list view
-- ✅ Export to WAV and raw formats
-- ✅ One-click recording export and deletion
-- ✅ RecordingPanel UI component
+- ✅ Save/load functionality (binary and JSON formats)
+- ✅ RecordingControls component (`src/components/RecordingControls.tsx`)
+- ❌ **Recording library UI missing** - `src/pages/Recordings.tsx` is placeholder with TODOs
+- ❌ **RecordingManager service not implemented** (referenced in docs but doesn't exist)
+- ❌ **IndexedDB storage layer not implemented** (only in-memory via IQRecorder)
+- ❌ Storage quota monitoring UI missing
+- ❌ Recording list/grid view missing
 - ⚠️ Threshold-based recording triggers deferred
 - ⚠️ Scheduled recording deferred
 - ⚠️ Pre-trigger buffer deferred
@@ -472,8 +480,13 @@ Understanding our users is critical to building the right features in the right 
 
 **Technical Details**:
 
-- Location: `/src/lib/recording/recording-manager.ts`
-- UI Component: `/src/components/RecordingPanel.tsx`
+- Backend: `/src/utils/iqRecorder.ts` (in-memory recording)
+- Controls: `/src/components/RecordingControls.tsx` (button controls)
+- Page: `/src/pages/Recordings.tsx` (placeholder only)
+- **TODO**: Implement IndexedDB-based recording manager
+- **TODO**: Build recording library UI with list/grid view
+- **TODO**: Add storage quota management interface
+- **TODO**: Create UI Component: `/src/components/RecordingPanel.tsx`
 - Storage: IndexedDB with chunked writes
 - Export: WAV format with proper headers, raw float32 for IQ
 
