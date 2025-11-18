@@ -3,7 +3,7 @@
  */
 
 import { HackRFOneAdapter } from "../HackRFOneAdapter";
-import { HackRFOne, RequestCommand } from "../HackRFOne";
+import { HackRFOne } from "../HackRFOne";
 
 function createMockUSBDevice(options?: {
   transferInBehavior?: "success" | "timeout" | "error";

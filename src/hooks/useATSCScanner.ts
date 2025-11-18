@@ -259,12 +259,37 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
         }
 
         // Tune to channel center frequency (pilot detection logic assumes center)
-        await device.setFrequency(channel.frequency);
+        // Retry with fastRecovery fallback if initial tuning fails (firmware corruption scenarios)
+        const tuneFrequency = async (): Promise<boolean> => {
+          try {
+            await device.setFrequency(channel.frequency);
+            return true;
+          } catch (err) {
+            console.warn("ATSC Scanner: frequency tune failed", err);
+            // Attempt fastRecovery if available
+            const fast = (device as unknown as { fastRecovery?: () => Promise<void> }).fastRecovery;
+            if (typeof fast === "function") {
+              try {
+                await fast();
+                await device.setFrequency(channel.frequency);
+                return true;
+              } catch (recoveryErr) {
+                console.error("ATSC Scanner: fastRecovery failed", recoveryErr);
+                return false;
+              }
+            }
+            return false;
+          }
+        };
+        const tuned = await tuneFrequency();
+        if (!tuned) {
+          return null; // Skip channel if we cannot reliably tune
+        }
         setCurrentChannel(channel);
 
-        // Use higher sample rate (oversampling) for more reliable pilot + sync detection
-        // Player path uses 20 MSPS (~1.86 samples per symbol); mirror that here.
-        const sampleRate = 20_000_000;
+        // Use moderate sample rate for initial scanning to reduce USB/control transfer stress.
+        // If prior frequency recovery occurred, still proceed at 8 MSPS; adjust later if needed.
+        const sampleRate = 8_000_000;
         await device.setSampleRate(sampleRate);
 
         // Configure RF front-end for OTA detection (match player initialization sequence)
@@ -309,6 +334,10 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           // Allow full dwell time to accumulate more data for better SNR; do not early finalize
           // (Earlier logic stopped as soon as fftSize samples collected, often << dwellTime.)
           // We still cap maximum accumulation implicitly by dwell time.
+          // Soft-cap accumulation at fftSize to avoid excessive memory / event loop blocking.
+          if (iqSamples.length >= config.fftSize) {
+            samplesCollected = true; // stop further pushes; continue dwell timing for consistent SNR
+          }
         });
 
         // Wait for dwell time to collect samples
