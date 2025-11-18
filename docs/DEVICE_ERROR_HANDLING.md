@@ -94,7 +94,7 @@ try {
   await this.fastRecovery();
 } catch (recoveryError) {
   this.trackError(recoveryError, {
-    context: "fastRecovery",
+    operation: "fastRecovery",
     sampleRate: this.lastSampleRate,
   });
   throw recoveryError;

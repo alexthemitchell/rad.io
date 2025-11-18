@@ -2,7 +2,6 @@
  * Integration tests for device error handling across driver layers
  */
 
-import { HackRFOne } from "../../drivers/hackrf/HackRFOne";
 import { HackRFOneAdapter } from "../../drivers/hackrf/HackRFOneAdapter";
 import {
   DeviceErrorHandler,
