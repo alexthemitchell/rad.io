@@ -151,6 +151,8 @@ export default function Spectrum({
 
     // Only render VFO cursor if sampleRate and centerFrequency are provided
     if (typeof sampleRate !== "number" || typeof centerFrequency !== "number") {
+      // Clear the overlay canvas if VFO cursor should not be shown
+      annotations.clear();
       return;
     }
 
@@ -176,18 +178,20 @@ export default function Spectrum({
             : ""
         }`}
       />
-      <canvas
-        ref={overlayCanvasRef}
-        width={width}
-        height={height}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          pointerEvents: "none",
-        }}
-        aria-hidden="true"
-      />
+      {sampleRate && centerFrequency && (
+        <canvas
+          ref={overlayCanvasRef}
+          width={width}
+          height={height}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            pointerEvents: "none",
+          }}
+          aria-hidden="true"
+        />
+      )}
       {rendererType && (
         <div
           style={{

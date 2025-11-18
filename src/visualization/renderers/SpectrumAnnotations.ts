@@ -86,6 +86,9 @@ export interface AnnotationConfig {
 /**
  * Annotation renderer for spectrum visualizations
  * Uses 2D canvas overlay on top of WebGL spectrum
+ *
+ * Note: Each instance should be bound to a single canvas. If you need to render
+ * to multiple canvases, create separate instances to avoid dimension tracking conflicts.
  */
 export class SpectrumAnnotations {
   private canvas: HTMLCanvasElement | null = null;
@@ -962,6 +965,36 @@ export class SpectrumAnnotations {
     }
 
     return closestSignal;
+  }
+
+  /**
+   * Clear the canvas
+   * Useful for removing rendered content when features are disabled
+   */
+  public clear(): void {
+    if (!this.canvas || !this.ctx) {
+      return;
+    }
+
+    const rect = this.canvas.getBoundingClientRect();
+    const width = rect.width > 0 ? rect.width : this.canvas.width;
+    const height = rect.height > 0 ? rect.height : this.canvas.height;
+
+    // Update canvas size with DPR scaling if dimensions changed
+    if (width !== this.lastWidth || height !== this.lastHeight) {
+      this.canvas.width = width * this.dpr;
+      this.canvas.height = height * this.dpr;
+      this.canvas.style.width = `${width}px`;
+      this.canvas.style.height = `${height}px`;
+      this.lastWidth = width;
+      this.lastHeight = height;
+    }
+
+    // Clear with DPR scaling
+    this.ctx.save();
+    this.ctx.scale(this.dpr, this.dpr);
+    this.ctx.clearRect(0, 0, width, height);
+    this.ctx.restore();
   }
 
   /**
