@@ -461,7 +461,7 @@ export class SpectrumAnnotations {
       "oklch(78% 0.14 195deg)"; // Fallback to cyan from tokens.css
 
     // Convert oklch to rgba for canvas
-    // Note: This is an approximation. oklch(78% 0.14 195deg) ≈ rgb(100, 200, 255)
+    // Note: This is an approximation. oklch(78% 0.14 195deg) ≈ rgba(100, 200, 255, 0.9)
     const cursorColor = accentColor.trim().startsWith("oklch(")
       ? VFO_CURSOR_FALLBACK_COLOR
       : accentColor;
