@@ -112,6 +112,27 @@ export class SpectrumAnnotations {
   }
 
   /**
+   * Update canvas dimensions with DPR scaling
+   * @param width Logical width in pixels
+   * @param height Logical height in pixels
+   * @private
+   */
+  private updateCanvasDimensions(width: number, height: number): void {
+    if (!this.canvas) {
+      return;
+    }
+
+    if (width !== this.lastWidth || height !== this.lastHeight) {
+      this.canvas.width = width * this.dpr;
+      this.canvas.height = height * this.dpr;
+      this.canvas.style.width = `${width}px`;
+      this.canvas.style.height = `${height}px`;
+      this.lastWidth = width;
+      this.lastHeight = height;
+    }
+  }
+
+  /**
    * Set the currently hovered signal
    * @param signal Signal being hovered, or null if none
    */
@@ -144,14 +165,7 @@ export class SpectrumAnnotations {
     const width = rect.width;
     const height = rect.height;
 
-    if (width !== this.lastWidth || height !== this.lastHeight) {
-      this.canvas.width = width * this.dpr;
-      this.canvas.height = height * this.dpr;
-      this.canvas.style.width = `${width}px`;
-      this.canvas.style.height = `${height}px`;
-      this.lastWidth = width;
-      this.lastHeight = height;
-    }
+    this.updateCanvasDimensions(width, height);
 
     // Save context state and scale for device pixel ratio
     ctx.save();
@@ -270,14 +284,7 @@ export class SpectrumAnnotations {
     const width = rect.width;
     const height = rect.height;
 
-    if (width !== this.lastWidth || height !== this.lastHeight) {
-      this.canvas.width = width * this.dpr;
-      this.canvas.height = height * this.dpr;
-      this.canvas.style.width = `${width}px`;
-      this.canvas.style.height = `${height}px`;
-      this.lastWidth = width;
-      this.lastHeight = height;
-    }
+    this.updateCanvasDimensions(width, height);
 
     ctx.save();
     ctx.scale(this.dpr, this.dpr);
@@ -410,14 +417,7 @@ export class SpectrumAnnotations {
     const height = rect.height > 0 ? rect.height : this.canvas.height;
 
     // Update canvas size with DPR scaling if dimensions changed
-    if (width !== this.lastWidth || height !== this.lastHeight) {
-      this.canvas.width = width * this.dpr;
-      this.canvas.height = height * this.dpr;
-      this.canvas.style.width = `${width}px`;
-      this.canvas.style.height = `${height}px`;
-      this.lastWidth = width;
-      this.lastHeight = height;
-    }
+    this.updateCanvasDimensions(width, height);
 
     // Save context state and scale for device pixel ratio
     ctx.save();
@@ -981,14 +981,7 @@ export class SpectrumAnnotations {
     const height = rect.height > 0 ? rect.height : this.canvas.height;
 
     // Update canvas size with DPR scaling if dimensions changed
-    if (width !== this.lastWidth || height !== this.lastHeight) {
-      this.canvas.width = width * this.dpr;
-      this.canvas.height = height * this.dpr;
-      this.canvas.style.width = `${width}px`;
-      this.canvas.style.height = `${height}px`;
-      this.lastWidth = width;
-      this.lastHeight = height;
-    }
+    this.updateCanvasDimensions(width, height);
 
     // Clear with DPR scaling
     this.ctx.save();

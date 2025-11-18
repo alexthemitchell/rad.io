@@ -103,6 +103,12 @@ export default function Spectrum({
   useEffect(() => {
     const overlayCanvas = overlayCanvasRef.current;
     if (!overlayCanvas) {
+      // Canvas not in DOM (sampleRate or centerFrequency not provided)
+      return;
+    }
+
+    // Check if already initialized
+    if (annotationsRef.current?.isReady()) {
       return;
     }
 
@@ -121,7 +127,7 @@ export default function Spectrum({
         annotationsRef.current = null;
       }
     };
-  }, []);
+  }, [sampleRate, centerFrequency]);
 
   // Render when data changes
   useEffect(() => {
