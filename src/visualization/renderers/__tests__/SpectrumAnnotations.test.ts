@@ -79,3 +79,74 @@ describe("SpectrumAnnotations gridlines", () => {
     ).toBeTruthy();
   });
 });
+
+describe("SpectrumAnnotations VFO cursor", () => {
+  let canvas: HTMLCanvasElement;
+  let renderer: SpectrumAnnotations;
+
+  beforeEach(() => {
+    canvas = document.createElement("canvas");
+    canvas.width = 900;
+    canvas.height = 320;
+    renderer = new SpectrumAnnotations();
+    renderer.initialize(canvas);
+  });
+
+  afterEach(() => {
+    renderer.cleanup();
+  });
+
+  it("renders VFO cursor at center frequency", () => {
+    const vfoFrequency = 100e6;
+    const sampleRate = 2e6;
+    const centerFrequency = 100e6;
+
+    const result = renderer.renderVFOCursor(
+      vfoFrequency,
+      sampleRate,
+      centerFrequency,
+    );
+
+    expect(result).toBe(true);
+  });
+
+  it("renders VFO cursor at edge of spectrum", () => {
+    const sampleRate = 2e6;
+    const centerFrequency = 100e6;
+    const vfoFrequency = centerFrequency - sampleRate / 2 + 100e3; // Near left edge
+
+    const result = renderer.renderVFOCursor(
+      vfoFrequency,
+      sampleRate,
+      centerFrequency,
+    );
+
+    expect(result).toBe(true);
+  });
+
+  it("handles VFO cursor outside visible range", () => {
+    const sampleRate = 2e6;
+    const centerFrequency = 100e6;
+    const vfoFrequency = 150e6; // Far outside range
+
+    const result = renderer.renderVFOCursor(
+      vfoFrequency,
+      sampleRate,
+      centerFrequency,
+    );
+
+    // Should return true (not an error), just not visible
+    expect(result).toBe(true);
+  });
+
+  it("handles invalid frequencies gracefully", () => {
+    const result = renderer.renderVFOCursor(NaN, 2e6, 100e6);
+    expect(result).toBe(true); // Should not crash
+  });
+
+  it("returns false when not initialized", () => {
+    const uninitializedRenderer = new SpectrumAnnotations();
+    const result = uninitializedRenderer.renderVFOCursor(100e6, 2e6, 100e6);
+    expect(result).toBe(false);
+  });
+});

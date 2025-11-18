@@ -372,6 +372,98 @@ export class SpectrumAnnotations {
     return true;
   }
 
+  /**
+   * Render VFO (Variable Frequency Oscillator) cursor on spectrum
+   * Draws a vertical line at the current tuned frequency
+   * @param vfoFrequency VFO frequency in Hz
+   * @param sampleRate Sample rate in Hz
+   * @param centerFrequency Center frequency in Hz
+   * @returns True if rendering succeeded
+   */
+  public renderVFOCursor(
+    vfoFrequency: number,
+    sampleRate: number,
+    centerFrequency: number,
+  ): boolean {
+    if (!this.canvas || !this.ctx) {
+      return false;
+    }
+
+    const ctx = this.ctx;
+    const rect = this.canvas.getBoundingClientRect();
+    // Use canvas dimensions if getBoundingClientRect returns 0 (e.g., in tests)
+    const width = rect.width > 0 ? rect.width : this.canvas.width;
+    const height = rect.height > 0 ? rect.height : this.canvas.height;
+
+    // Match CanvasSpectrum's internal chart margins for perfect overlay alignment
+    const margin = DEFAULT_MARGIN;
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+    if (chartWidth <= 0 || chartHeight <= 0) {
+      return false;
+    }
+
+    // Calculate frequency range
+    const freqMin = centerFrequency - sampleRate / 2;
+    const freqMax = centerFrequency + sampleRate / 2;
+
+    // Check if VFO frequency is within visible range
+    if (vfoFrequency < freqMin || vfoFrequency > freqMax) {
+      return true; // Not an error, just not visible
+    }
+
+    // Calculate x position of VFO cursor
+    const freqRange = Math.max(1, freqMax - freqMin);
+    const xNorm = (vfoFrequency - freqMin) / freqRange;
+    const x = margin.left + xNorm * chartWidth;
+
+    // Draw VFO cursor line using --rad-accent color (cyan)
+    ctx.save();
+
+    // Clip to chart area
+    ctx.beginPath();
+    ctx.rect(margin.left, margin.top, chartWidth, chartHeight);
+    if (typeof ctx.clip === "function") {
+      ctx.clip();
+    }
+
+    // Use CSS variable for accent color with fallback
+    const accentColor =
+      getComputedStyle(this.canvas).getPropertyValue("--rad-accent") ||
+      "oklch(78% 0.14 195deg)"; // Fallback to cyan from tokens.css
+
+    // Convert oklch to rgba for canvas (approximation for cyan)
+    // oklch(78% 0.14 195deg) is approximately rgb(100, 200, 255)
+    const cursorColor = accentColor.includes("oklch")
+      ? "rgba(100, 200, 255, 0.9)"
+      : accentColor;
+
+    // Draw solid line for VFO cursor
+    ctx.strokeStyle = cursorColor;
+    ctx.lineWidth = 2.5;
+    if (typeof ctx.setLineDash === "function") {
+      ctx.setLineDash([]);
+    }
+    ctx.beginPath();
+    ctx.moveTo(x, margin.top);
+    ctx.lineTo(x, margin.top + chartHeight);
+    ctx.stroke();
+
+    // Add subtle glow effect for better visibility
+    ctx.shadowColor = cursorColor;
+    ctx.shadowBlur = 4;
+    ctx.strokeStyle = cursorColor;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x, margin.top);
+    ctx.lineTo(x, margin.top + chartHeight);
+    ctx.stroke();
+
+    ctx.restore();
+
+    return true;
+  }
+
   // Build a semi-transparent fill for waterfall overlays that shows underlying data
   // while still indicating signal presence. Uses low alpha for transparency.
   private getWaterfallFillColor(baseRgb: string): string {

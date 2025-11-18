@@ -3,12 +3,14 @@
  */
 
 import { useEffect, useRef, useState, type ReactElement } from "react";
+import { useStore } from "../../store";
 import {
   CanvasSpectrum,
   WebGLSpectrum,
   type SpectrumData,
   type Renderer,
 } from "../renderers";
+import { SpectrumAnnotations } from "../renderers/SpectrumAnnotations";
 
 export interface SpectrumProps {
   /** FFT magnitude data in dB */
@@ -21,6 +23,10 @@ export interface SpectrumProps {
   width?: number;
   /** Canvas height in pixels */
   height?: number;
+  /** Sample rate in Hz (for VFO cursor calculation) */
+  sampleRate?: number;
+  /** Center frequency in Hz (for VFO cursor calculation) */
+  centerFrequency?: number;
 }
 
 export default function Spectrum({
@@ -29,12 +35,19 @@ export default function Spectrum({
   freqMax = 1024,
   width = 750,
   height = 400,
+  sampleRate,
+  centerFrequency,
 }: SpectrumProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<Renderer | null>(null);
+  const annotationsRef = useRef<SpectrumAnnotations | null>(null);
   const [rendererType, setRendererType] = useState<"webgl" | "canvas" | null>(
     null,
   );
+
+  // Subscribe to VFO frequency from Zustand store
+  const vfoFrequency = useStore((state) => state.frequencyHz);
 
   // Initialize renderer on mount
   useEffect(() => {
@@ -86,6 +99,30 @@ export default function Spectrum({
     };
   }, []);
 
+  // Initialize overlay canvas for VFO cursor
+  useEffect(() => {
+    const overlayCanvas = overlayCanvasRef.current;
+    if (!overlayCanvas) {
+      return;
+    }
+
+    const annotations = new SpectrumAnnotations();
+    const success = annotations.initialize(overlayCanvas);
+
+    if (success) {
+      annotationsRef.current = annotations;
+    } else {
+      console.warn("[Spectrum] Failed to initialize VFO cursor overlay");
+    }
+
+    return (): void => {
+      if (annotationsRef.current) {
+        annotationsRef.current.cleanup();
+        annotationsRef.current = null;
+      }
+    };
+  }, []);
+
   // Render when data changes
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -105,6 +142,33 @@ export default function Spectrum({
     }
   }, [magnitudes, freqMin, freqMax]);
 
+  // Render VFO cursor when frequency or display params change
+  useEffect(() => {
+    const annotations = annotationsRef.current;
+    if (!annotations?.isReady()) {
+      return;
+    }
+
+    // Only render VFO cursor if sampleRate and centerFrequency are provided
+    if (typeof sampleRate !== "number" || typeof centerFrequency !== "number") {
+      return;
+    }
+
+    const overlayCanvas = overlayCanvasRef.current;
+    if (!overlayCanvas) {
+      return;
+    }
+
+    // Clear the overlay canvas before rendering
+    const ctx = overlayCanvas.getContext("2d");
+    if (ctx) {
+      ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    }
+
+    // Render VFO cursor
+    annotations.renderVFOCursor(vfoFrequency, sampleRate, centerFrequency);
+  }, [vfoFrequency, sampleRate, centerFrequency]);
+
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
       <canvas
@@ -117,7 +181,23 @@ export default function Spectrum({
           border: "1px solid rgba(255, 255, 255, 0.1)",
           borderRadius: "4px",
         }}
-        aria-label={`Spectrum display showing frequency bins ${freqMin} to ${freqMax}`}
+        aria-label={`Spectrum display showing frequency bins ${freqMin} to ${freqMax}${
+          sampleRate && centerFrequency
+            ? `, VFO at ${(vfoFrequency / 1e6).toFixed(3)} MHz`
+            : ""
+        }`}
+      />
+      <canvas
+        ref={overlayCanvasRef}
+        width={width}
+        height={height}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          pointerEvents: "none",
+        }}
+        aria-hidden="true"
       />
       {rendererType && (
         <div
