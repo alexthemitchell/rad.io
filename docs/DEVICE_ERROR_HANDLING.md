@@ -255,12 +255,60 @@ The device will be automatically reset. If the problem persists, unplug and repl
 Close other applications that may be using the device (SDR#, GQRX, etc.) and try again."
 ```
 
+## Platform-Specific Limitations
+
+### HackRF One on Windows
+
+**Firmware Corruption Recovery:**
+
+When HackRF firmware becomes corrupted (all USB control OUT transfers fail with `NetworkError`), there are two recovery methods:
+
+**1. Software Recovery (Recommended First):**
+
+Use the "Reset Device" button in the Diagnostics overlay, which performs:
+
+1. Close device cleanly
+2. Call `usbDevice.forget()` to unpair the device
+3. Wait for OS to detect the device has disconnected
+4. Request device permission again (may prompt user)
+5. Reopen with fresh firmware state
+
+This triggers a USB disconnect/reconnect cycle that resets the firmware without physical intervention.
+
+**2. Physical Power Cycle (If software recovery fails):**
+
+1. Unplug the USB cable
+2. Wait 10 seconds
+3. Plug the cable back in
+
+**Why other software methods fail on Windows:**
+
+- Direct `usbDevice.reset()` returns `NetworkError: Unable to reset the device` when interfaces are claimed
+- Chrome security policy blocks forceful USB resets on Windows
+- HackRF vendor RESET command (30) is itself a control OUT transfer, so it also fails when firmware is corrupted
+- `forget()` DOES work because it causes the OS to re-enumerate the device, which resets firmware state
+
+**Symptoms of firmware corruption:**
+
+- Device shows as "Connected" but all operations fail
+- Control IN (read) transfers work, but control OUT (write) transfers fail
+- Scanner fails on all channels
+- Frequency/sample rate changes fail
+- Diagnostics shows repeated "USB communication error" messages
+
+**Prevention:**
+
+- Avoid excessive HMR (Hot Module Replacement) reloads during development
+- Use full page refresh instead when needed
+- Ensure proper device cleanup before page navigation
+
 ## Future Enhancements
 
 - [ ] Add device health metrics (error rate, recovery success rate)
 - [ ] Implement error rate limiting to avoid notification spam
-- [ ] Add diagnostic panel UI to view error history
+- [ ] Add diagnostic panel UI to view error history (partially implemented)
 - [ ] Collect anonymous error telemetry for debugging
 - [ ] Add device-specific error handlers for RTL-SDR, Airspy, etc.
 - [ ] Implement smart retry strategies based on error type
 - [ ] Add error trend analysis (e.g., "USB errors increasing")
+- [ ] Add persistent error banner in diagnostics overlay for critical errors

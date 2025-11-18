@@ -282,6 +282,44 @@ await hackrf.receive(callback); // Works!
 4. Try different USB port (avoid hubs)
 5. Update device firmware
 
+### Problem: Firmware Corruption (Windows Only)
+
+**Symptom:**
+
+- Device shows "Connected" but all operations fail
+- Console shows repeated "NetworkError: A transfer error has occurred"
+- All USB control OUT transfers fail
+- Scanner fails on all channels
+- "USB communication error" notifications
+
+**Cause:**
+HackRF firmware enters corrupted state after repeated HMR (Hot Module Replacement) reloads or extended operation. This is a hardware-level issue specific to Windows/Chrome WebUSB implementation.
+
+**Why software recovery fails:**
+- `usbDevice.reset()` returns "Unable to reset the device" on Windows
+- Vendor RESET command (30) is itself a control OUT transfer, so it also fails
+- `forget()` causes USB disconnect but firmware corruption persists
+- Control IN (read) transfers work, but control OUT (write) transfers all fail
+
+**Solution (Physical Power Cycle Required):**
+
+```
+1. Unplug the HackRF USB cable from the computer
+2. Wait 10 seconds
+3. Plug the cable back in
+4. Device will reconnect automatically with clean firmware
+```
+
+**Prevention:**
+- Avoid excessive HMR reloads during development
+- Use full page refresh instead when needed
+- Ensure proper device cleanup before page navigation
+- The app includes automatic cleanup on page unload to minimize risk
+
+**Note:** The diagnostics overlay includes a "Reset Device" button that attempts software recovery, but on Windows this will typically fail when firmware is severely corrupted. Always try the button first, but if it doesn't work, physical power cycle is required.
+
+See `docs/DEVICE_ERROR_HANDLING.md` and `.serena/memories/HACKRF_FIRMWARE_CORRUPTION_WINDOWS_2025-11-18.md` for complete details.
+
 ### Problem: Invalid Configuration Values
 
 **Symptom:**
