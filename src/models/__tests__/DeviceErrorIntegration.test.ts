@@ -87,8 +87,8 @@ describe("Device Error Handling Integration", () => {
 
       const { deviceErrors } = useStore.getState();
       expect(deviceErrors.length).toBe(1);
-      expect(deviceErrors[0].code).toBe(DeviceErrorCode.DEVICE_DISCONNECTED);
-      expect(deviceErrors[0].recoveryAction).toBe(RecoveryAction.REPLUG_USB);
+      expect(deviceErrors[0]?.code).toBe(DeviceErrorCode.DEVICE_DISCONNECTED);
+      expect(deviceErrors[0]?.recoveryAction).toBe(RecoveryAction.REPLUG_USB);
     });
 
     it("should track configuration errors", async () => {
@@ -146,7 +146,7 @@ describe("Device Error Handling Integration", () => {
 
       const { deviceErrors } = useStore.getState();
       expect(deviceErrors.length).toBe(1);
-      expect(deviceErrors[0].context).toMatchObject({
+      expect(deviceErrors[0]?.context).toMatchObject({
         operation: "open",
         deviceId: expect.stringContaining("7504:24713"),
       });
@@ -289,7 +289,8 @@ describe("Device Error Handling Integration", () => {
       const { deviceErrors } = useStore.getState();
       const latestError = deviceErrors[deviceErrors.length - 1];
 
-      expect(latestError.context).toMatchObject({
+      expect(latestError).toBeDefined();
+      expect(latestError?.context).toMatchObject({
         operation: "open",
         deviceType: "HackRF One",
       });
@@ -343,8 +344,8 @@ describe("Device Error Handling Integration", () => {
       const after = Date.now();
 
       const { deviceErrors } = useStore.getState();
-      expect(deviceErrors[0].timestamp).toBeGreaterThanOrEqual(before);
-      expect(deviceErrors[0].timestamp).toBeLessThanOrEqual(after);
+      expect(deviceErrors[0]?.timestamp).toBeGreaterThanOrEqual(before);
+      expect(deviceErrors[0]?.timestamp).toBeLessThanOrEqual(after);
     });
   });
 });
