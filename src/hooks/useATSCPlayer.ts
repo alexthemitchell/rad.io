@@ -16,6 +16,7 @@ import {
   CEA708Decoder,
   CaptionRenderer,
 } from "../decoders";
+import { notify } from "../lib/notifications";
 import { type ISDRDevice } from "../models/SDRDevice";
 import {
   TransportStreamParser,
@@ -28,7 +29,6 @@ import { ATSC8VSBDemodulator } from "../plugins/demodulators/ATSC8VSBDemodulator
 import { ATSC_CONSTANTS } from "../utils/atscChannels";
 import type { DecodedCaption } from "../decoders";
 import type { StoredATSCChannel } from "../utils/atscChannelStorage";
-import { notify } from "../lib/notifications";
 
 /**
  * Audio track information
@@ -684,12 +684,17 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       } catch (error) {
         console.error("Error tuning to channel:", error);
         setPlayerState("error");
-        
-        // Check if this is a firmware corruption error requiring physical reset
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        if (errorMessage.includes("firmware corruption") || errorMessage.includes("Physical reset required")) {
+
+        // Check if this is a firmware corruption error requiring driver reset
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        if (
+          errorMessage.includes("firmware corruption") ||
+          errorMessage.includes("driver reset")
+        ) {
           notify({
-            message: "HackRF requires physical reset. Press the RESET button, then reload this page.",
+            message:
+              "HackRF firmware may be corrupted. Use the HackRF driver reset (not the WebUSB reset) from rad.io, then retry tuning.",
             tone: "error",
             duration: 10000, // 10 seconds
             sr: "assertive", // Important alert

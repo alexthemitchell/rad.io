@@ -152,8 +152,6 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
       const primaryDevice =
         newDevices.size === 1 ? entry.device : state.primaryDevice;
 
-      console.info("🔌 DEVICE: Device added to store", { deviceId });
-
       // Persist last-used device for future preference
       try {
         window.localStorage.setItem("rad.io:lastDeviceId", deviceId);
@@ -197,8 +195,6 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
         primaryDevice = undefined;
       }
 
-      console.info("🔌 DEVICE: Device removed from store", { deviceId });
-
       return {
         devices: newDevices,
         primaryDevice,
@@ -220,7 +216,6 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
     try {
       await entry.device.close();
       state.removeDevice(deviceId);
-      console.info("🔌 DEVICE: Device closed", { deviceId });
     } catch (err) {
       console.error("🔌 DEVICE: Failed to close device", err, { deviceId });
       throw err;
@@ -255,7 +250,6 @@ export const deviceSlice: StateCreator<DeviceSlice> = (
     );
 
     await Promise.allSettled(closePromises);
-    console.info("🔌 DEVICE: All devices closed");
   },
 
   setIsCheckingPaired: (checking: boolean): void => {

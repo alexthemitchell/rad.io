@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useDiagnostics } from "../store";
+import { useDiagnostics, useDevice } from "../store";
 import type {
   DiagnosticEvent,
   DemodulatorMetrics,
@@ -369,11 +369,18 @@ function RecentEventsDisplay({
 
 /**
  * DiagnosticsOverlay component
+ *
+ * Note: This component subscribes to all diagnostics state via useDiagnostics().
+ * While this causes re-renders on every metrics update, the component is typically
+ * only mounted when actively needed, and the metrics themselves are displayed values
+ * that should update frequently to show real-time signal quality.
  */
 export function DiagnosticsOverlay({
   className = "",
   detailed = false,
 }: DiagnosticsOverlayProps): React.JSX.Element | null {
+  const diagnostics = useDiagnostics();
+  const { primaryDevice: device } = useDevice();
   const {
     events,
     demodulatorMetrics,
@@ -383,14 +390,42 @@ export function DiagnosticsOverlay({
     captionDecoderMetrics,
     overlayVisible,
     setOverlayVisible,
-  } = useDiagnostics();
+  } = diagnostics;
 
   const [minimized, setMinimized] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [position, setPosition] = useState({ x: 20, y: 20 });
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  const handleResetDevice = useCallback(async () => {
+    if (!device || resetting) {
+      return;
+    }
+    
+    try {
+      setResetting(true);
+      console.log("DiagnosticsOverlay: Triggering device reset");
+      
+      // Use the new resetAndReopen method if available
+      if (typeof (device as unknown as { resetAndReopen?: () => Promise<void> }).resetAndReopen === "function") {
+        await (device as unknown as { resetAndReopen: () => Promise<void> }).resetAndReopen();
+      } else {
+        // Fallback: close and reopen
+        await device.close();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await device.open();
+      }
+      
+      console.log("DiagnosticsOverlay: Device reset complete");
+    } catch (err) {
+      console.error("DiagnosticsOverlay: Device reset failed", err);
+    } finally {
+      setResetting(false);
+    }
+  }, [device, resetting]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>): void => {
@@ -466,6 +501,7 @@ export function DiagnosticsOverlay({
         setPosition(newPosition);
       }
     },
+    // setOverlayVisible is stable from Zustand, position changes are intentional
     [position, setOverlayVisible],
   );
 
@@ -546,6 +582,23 @@ export function DiagnosticsOverlay({
       </div>
       {!minimized && (
         <div className="overlay-content">
+          {device && (
+            <div className="diagnostics-actions" style={{ marginBottom: "1rem", paddingBottom: "0.5rem", borderBottom: "1px solid var(--border-color, #333)" }}>
+              <button
+                onClick={handleResetDevice}
+                disabled={resetting}
+                title="Perform USB device reset to recover from persistent errors"
+                style={{
+                  padding: "0.5rem 1rem",
+                  fontSize: "0.875rem",
+                  cursor: resetting ? "not-allowed" : "pointer",
+                  opacity: resetting ? 0.6 : 1,
+                }}
+              >
+                {resetting ? "Resetting Device..." : "🔄 Reset Device"}
+              </button>
+            </div>
+          )}
           <DemodulatorMetricsDisplay
             metrics={demodulatorMetrics}
             detailed={detailed}

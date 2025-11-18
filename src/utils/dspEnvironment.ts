@@ -285,29 +285,13 @@ export function detectDSPCapabilities(): DSPCapabilities {
  *
  * Should be called once at startup to inform developers and users
  * about the current DSP execution mode and any limitations.
+ *
+ * Note: DSP capabilities are now displayed in the diagnostics overlay.
+ * This function is kept for backward compatibility but logs are removed.
  */
 export function logDSPCapabilities(capabilities: DSPCapabilities): void {
-  const modeIcon =
-    capabilities.mode === DSPMode.SHARED_ARRAY_BUFFER
-      ? "🚀"
-      : capabilities.mode === DSPMode.MESSAGE_CHANNEL
-        ? "⚡"
-        : "🐢";
-
-  console.info(`${modeIcon} DSP Environment Capabilities`, {
-    mode: capabilities.mode,
-    environment: capabilities.deploymentEnvironment,
-    performance: capabilities.performanceImpact,
-    features: {
-      sharedArrayBuffer: capabilities.sharedArrayBufferSupported,
-      crossOriginIsolated: capabilities.crossOriginIsolated,
-      webWorkers: capabilities.webWorkersSupported,
-      wasm: capabilities.wasmAvailable,
-      wasmSIMD: capabilities.wasmSIMDSupported,
-      webGPU: capabilities.webGPUAvailable,
-    },
-    warnings: capabilities.warnings,
-  });
+  // Capabilities are now displayed in diagnostics overlay
+  void capabilities;
 }
 
 /**

@@ -22,32 +22,14 @@ This means **software-based recovery has fundamental limitations**:
 
 ## Solution Implemented
 
-### Automatic USB Reset with Fallback
-1. **Detects firmware corruption**: Tracks consecutive control transfer failures
-2. **Attempts software reset**: Tries `usbDevice.reset()` after 3 consecutive failures
-3. **Falls back gracefully**: If USB reset fails, provides clear error message to user
+### Automatic Driver Reset with Fallback
+1. **Detects firmware corruption**: Tracks consecutive control transfer failures.
+2. **Attempts firmware-level reset via HackRF driver**: Uses the vendor RESET command (30) directly through the driver, not WebUSB `reset()`.
+3. **Falls back gracefully**: If driver reset fails repeatedly, instruct the user to unplug/replug the device and try again instead of pressing the physical reset button.
 
 ### Code Changes
-File: `src/drivers/hackrf/HackRFOne.ts`
-
-#### Added Failure Tracking
-```typescript
-private consecutiveControlTransferFailures = 0;
-private static readonly MAX_CONSECUTIVE_FAILURES_BEFORE_RESET = 3;
-```
-
-#### Enhanced controlTransferOut
-- Counts consecutive NetworkError/InvalidStateError failures
-- Triggers USB reset recovery after threshold
-- Provides clear error message if reset fails
-
-#### Improved performUSBResetRecovery
-- Returns boolean instead of throwing on failure
-- Logs detailed instructions for physical reset when software reset fails
-- Error message includes specific steps:
-  1. Press RESET button on HackRF
-  2. OR unplug and reconnect
-  3. Then reload the page
+- `src/drivers/hackrf/HackRFOne.ts`: implements automatic detection and internal driver-level reset using the vendor RESET command.
+- `src/hooks/useATSCPlayer.ts`: shows a toast instructing the user to use the HackRF driver reset (not WebUSB, not physical button) when firmware corruption is detected.
 
 ## User Experience
 - **When software reset works**: Transparent automatic recovery, user sees no error

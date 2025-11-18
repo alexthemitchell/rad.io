@@ -7,7 +7,7 @@
  * This file has been refactored with components extracted to the ATSCPlayer/ directory.
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import { ATSCProgramGuide } from "../components/EPG";
 import { InfoBanner } from "../components/InfoBanner";
@@ -77,6 +77,21 @@ function ATSCPlayer(): React.JSX.Element {
     // TODO: Implement proper recording notification UI
     console.info("Schedule recording for:", program.title);
   }, []);
+
+  // Ensure HackRF (or other SDR) is cleanly stopped and reset when leaving the ATSC player.
+  useEffect(() => {
+    return () => {
+      // Stop ATSC playback pipeline first
+      void player.stop();
+
+      // Then ask the device for a logical reset if supported. This uses the
+      // SDR abstraction's reset(), which for HackRF is backed by the
+      // vendor RESET command, not WebUSB's reset().
+      if (device && "reset" in device && typeof device.reset === "function") {
+        void device.reset();
+      }
+    };
+  }, [player, device]);
 
   return (
     <div className="atsc-player-page">

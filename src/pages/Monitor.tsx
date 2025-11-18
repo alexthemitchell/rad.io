@@ -107,6 +107,21 @@ const Monitor: React.FC = () => {
     ? `Coverage ${spanLabel}`
     : "Coverage --";
 
+  // Ensure any active monitor streaming is stopped and the SDR device is
+  // logically reset when leaving the Monitor page. This helps keep HackRF
+  // firmware in a good state before transitioning to other pages such as
+  // the ATSC player.
+  useEffect(() => {
+    return () => {
+      // Visualization components are responsible for stopping their own
+      // streaming pipelines when unmounted, but we also explicitly reset
+      // the underlying SDR where supported.
+      if (device && "reset" in device && typeof device.reset === "function") {
+        void device.reset();
+      }
+    };
+  }, [device]);
+
   // Deprecated: spectrogram frames are streamed directly to the renderer now.
   // Keeping a React state history is unnecessary and adds GC pressure.
   // const [_spectroFrames, setSpectroFrames] = useState<Float32Array[]>([]);

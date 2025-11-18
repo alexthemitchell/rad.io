@@ -64,25 +64,31 @@ private async performUSBResetRecovery(): Promise<boolean> {
   } catch (error) {
     console.error('HackRFOne: Firmware reset recovery failed', error);
     console.error(
-      'HackRFOne: Firmware corruption is severe. Physical reset required:\n' +
-      '  1. Press the RESET button on the HackRF One board\n' +
-      '  2. Wait 2-3 seconds for the device to reinitialize\n' +
-      '  3. Reload this page'
+      'HackRFOne: Firmware corruption may be severe. Driver-level reset might be required.
+' +
+      '  1. Prefer using the HackRF driver reset method (vendor RESET command 30 via driver) rather than a physical button press.
+' +
+      '  2. If driver reset fails repeatedly, unplug and replug the USB cable and try again.
+' +
+      '  3. Reload this page after recovery attempts.'
     );
     return false;
   }
 }
 ```
 
-### 3. User Notification (useATSCPlayer.ts lines 683-696)
+### 3. User Notification (useATSCPlayer.ts)
 ```typescript
 import { notify } from "../lib/notifications";
 
 // In error handler:
-notify(
-  "HackRF firmware corruption detected. Please physically reset the device by pressing the RESET button.",
-  { type: "error", duration: 10000 }
-);
+notify({
+  message:
+    "HackRF firmware may be corrupted. Use the HackRF driver reset (not the WebUSB reset) from rad.io, then retry tuning.",
+  tone: "error",
+  duration: 10000,
+  sr: "assertive",
+});
 ```
 
 ## Key Technical Details

@@ -5,7 +5,6 @@ import {
   isWasmAvailable,
   isWasmRuntimeEnabled,
   isWasmValidationEnabled,
-  isWasmSIMDSupported,
   getWasmVariant,
 } from "./dspWasm";
 import { performanceMonitor } from "./performanceMonitor";
@@ -51,19 +50,10 @@ export function logOptimizationStatus(): void {
   const status = getOptimizationStatus();
   const sharedBufferCaps = getSharedBufferCapabilities();
 
-  console.info("📡 DSP Optimization Status", {
-    wasm: status.wasmAvailable
-      ? `enabled (${status.wasmVariant}${status.wasmVariant === "simd" ? " - 2-4x faster" : ""})`
-      : "disabled",
-    simdSupported: isWasmSIMDSupported(),
-    sharedArrayBuffer: status.sharedArrayBuffer
-      ? "enabled (zero-copy transfers)"
-      : (sharedBufferCaps.error ?? "disabled"),
-    webGPU: status.webGPU
-      ? "available (8-15x faster for large FFTs)"
-      : "not available",
-    crossOriginIsolated: status.crossOriginIsolated,
-  });
+  // DSP capabilities are now displayed in the diagnostics overlay
+  // This function is kept for backward compatibility but logs are removed
+  void status;
+  void sharedBufferCaps;
 }
 
 // Module-level flag to avoid spamming warnings when WASM spectrogram output
