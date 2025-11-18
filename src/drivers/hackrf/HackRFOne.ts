@@ -1,3 +1,5 @@
+import { DeviceErrorHandler } from "../../models/DeviceError";
+import { useStore } from "../../store";
 import { TransceiverMode } from "./constants";
 
 const UINT32_MAX = 0xffffffff;
@@ -214,6 +216,24 @@ export class HackRFOne {
       return false;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Track device error in diagnostics store
+   */
+  private trackError(
+    // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+    error: Error | unknown,
+    context?: Record<string, unknown>,
+  ): void {
+    try {
+      const errorState = DeviceErrorHandler.mapError(error, context);
+      const store = useStore.getState();
+      store.addDeviceError(errorState);
+    } catch (err) {
+      // Ignore errors during error tracking to prevent infinite loops
+      console.warn("Failed to track device error", err);
     }
   }
 
@@ -1498,8 +1518,15 @@ export class HackRFOne {
               consecutiveTimeouts = 0;
               continue;
             } catch (recoveryError) {
+              // Track recovery failure in diagnostics
+              this.trackError(recoveryError, {
+                operation: "fastRecovery",
+                iteration: iterationCount,
+                sampleRate: this.lastSampleRate,
+                frequency: this.lastFrequency,
+              });
+
               // If fast recovery fails, throw error with manual instructions
-              // Use debug level if closing to reduce noise
               console.error(
                 "HackRFOne.receive: Automatic recovery failed",
                 recoveryError,
@@ -1524,6 +1551,14 @@ export class HackRFOne {
           }
           // Continue loop to retry (for timeouts < MAX_CONSECUTIVE_TIMEOUTS)
         } else {
+          // Track unexpected error in diagnostics
+          this.trackError(err, {
+            operation: "receive_loop",
+            iteration: iterationCount,
+            streaming: this.streaming,
+            opened: this.usbDevice.opened,
+          });
+
           console.error(
             "HackRFOne.receive: Unexpected error during USB transfer",
             err,

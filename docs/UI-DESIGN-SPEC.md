@@ -1,9 +1,16 @@
 # WebSDR Pro – World‑Class UI Design Spec
 
-Date: 2025‑10‑25
-Owner: Design Systems (rad.io)
+Date: 2025‑10‑25  
+Owner: Design Systems (rad.io)  
+**Last Updated**: 2025-11-18
 
 This document defines the end‑to‑end user interface for WebSDR Pro. It is grounded in the PRD (precision, power, professional), Roadmap personas, and ADRs for visualization, GPU acceleration, worker pools, and accessibility.
+
+**Implementation Status Legend**:
+
+- ✅ **Implemented**: Feature is complete and working
+- ⚠️ **Planned**: Feature is documented but not yet implemented
+- 🔄 **In Progress**: Feature is partially implemented or under active development
 
 References
 
@@ -103,7 +110,7 @@ Theming and system integration
 4.1 Tuning and VFO control
 
 - Large FrequencyDisplay (JetBrains Mono, bold, tabular figures). Digit‑precise editing: arrow keys to increment digit under caret; scroll to change digit under cursor; Shift for coarse steps.
-- VFO markers in Spectrum/Waterfall; click‑to‑tune; drag to fine‑tune; right‑click context menu (set bandwidth, bookmark, record here).
+- VFO markers in Spectrum/Waterfall; click‑to‑tune; drag to fine‑tune; right‑click context menu (set bandwidth, bookmark, record here). **(⚠️ Planned - Click-to-tune exists, VFO markers and drag tuning not yet implemented)**
 - Keyboard: ↑/↓ fine, PgUp/PgDn coarse, `[ / ]` step size, M to cycle modes.
 
 - Step size selector includes an "Auto (context)" option that adapts to the current band for beginner‑friendly defaults: <1 MHz → 100 Hz; 1–30 MHz → 1 kHz; 30–300 MHz → 10 kHz; 300 MHz–3 GHz → 100 kHz; >3 GHz → 1 MHz. Implemented in `FrequencyDisplay`.
@@ -112,13 +119,13 @@ Theming and system integration
 
 - 60 FPS target with 8192 bins (ADR‑0015). WebGPU/WebGL primary; worker/2D fallback.
 - Pan/zoom on X; Zoom region via drag. Grid overlays with auto‑scaled units (Hz/kHz/MHz).
-- Markers: M1… Mn; delta display; peak hold trace; RBW indicator; calibrated power units per PRD.
-- Resizable split between Spectrum and Waterfall; drag the separator or use Arrow Up/Down when focused; layout persists across sessions.
+- Markers: M1… Mn; delta display; peak hold trace; RBW indicator; calibrated power units per PRD. **(⚠️ Planned - MarkerTable component exists but markers not implemented)**
+- Resizable split between Spectrum and Waterfall; drag the separator or use Arrow Up/Down when focused; layout persists across sessions. **(⚠️ Planned - Not yet implemented)**
 
   4.3 Waterfall
 
-- GPU texture scroll; Viridis colormap; line rate selectable; history 1m‑24h with compression.
-- Click‑to‑tune in history; hover tooltip (time, freq, power); export PNG with timestamp and scale.
+- GPU texture scroll; Viridis colormap; line rate selectable; history 1m‑24h with compression. **(✅ GPU rendering and colormaps implemented; ⚠️ Configurable line rate and long-term history storage planned)**
+- Click‑to‑tune in history; hover tooltip (time, freq, power); export PNG with timestamp and scale. **(⚠️ Planned - Not yet implemented)**
 
   4.4 Demodulation & audio
 
@@ -140,9 +147,11 @@ Theming and system integration
 
 - Hierarchical folders; tags; search; import/export (CSV, RadioReference). Visual markers on panes.
 
-  4.8 Recordings
+  4.8 Recordings (⚠️ IN PROGRESS - Backend partial, UI not implemented)
 
-- IQ + audio; trigger modes; storage management; SigMF metadata; export flows.
+- **Planned**: IQ + audio; trigger modes; storage management; SigMF metadata; export flows.
+- **Current Status**: IQRecorder backend exists (`src/utils/iqRecorder.ts`), RecordingControls component exists, but Recordings page is placeholder only. No library UI, no IndexedDB storage layer, no trigger modes.
+- **TODO**: Implement recording library UI, IndexedDB persistence, storage quota management
 
   4.9 Settings
 

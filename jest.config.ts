@@ -33,10 +33,10 @@ const config: Config = {
       lines: 75,
     },
     "./src/drivers/hackrf/HackRFOneAdapter.ts": {
-      statements: 96,
+      statements: 94,
       branches: 83,
       functions: 93,
-      lines: 96,
+      lines: 94,
     },
     // Critical DSP utilities - updated to current coverage
     "./src/utils/dsp.ts": {

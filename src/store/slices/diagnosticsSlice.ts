@@ -15,6 +15,7 @@
 
 import { type StateCreator } from "zustand";
 import { type DSPCapabilities } from "../../utils/dspEnvironment";
+import type { DeviceErrorState } from "../../models/DeviceError";
 
 /**
  * Diagnostic event severity levels
@@ -30,6 +31,7 @@ export type DiagnosticSource =
   | "video-decoder"
   | "audio-decoder"
   | "caption-decoder"
+  | "device"
   | "system";
 
 /**
@@ -119,6 +121,8 @@ export interface DiagnosticEvent {
 export interface DiagnosticsState {
   /** Recent diagnostic events (max 100) */
   events: DiagnosticEvent[];
+  /** Device error history (max 50) */
+  deviceErrors: DeviceErrorState[];
   /** Current demodulator metrics */
   demodulatorMetrics: DemodulatorMetrics | null;
   /** Current TS parser metrics */
@@ -143,6 +147,10 @@ export interface DiagnosticsSlice extends DiagnosticsState {
   addDiagnosticEvent: (
     event: Omit<DiagnosticEvent, "id" | "timestamp">,
   ) => void;
+  /** Add a device error to history */
+  addDeviceError: (error: DeviceErrorState) => void;
+  /** Clear device error history */
+  clearDeviceErrors: () => void;
   /** Update demodulator metrics */
   updateDemodulatorMetrics: (metrics: Partial<DemodulatorMetrics>) => void;
   /** Update TS parser metrics */
@@ -195,6 +203,7 @@ export const diagnosticsSlice: StateCreator<DiagnosticsSlice> = (
 ) => ({
   // Initial state
   events: [],
+  deviceErrors: [],
   demodulatorMetrics: null,
   tsParserMetrics: null,
   videoDecoderMetrics: null,
@@ -221,6 +230,21 @@ export const diagnosticsSlice: StateCreator<DiagnosticsSlice> = (
       }
       return { events: newEvents };
     });
+  },
+
+  addDeviceError: (error: DeviceErrorState): void => {
+    set((state: DiagnosticsSlice) => {
+      const newErrors = [...state.deviceErrors, error];
+      // Keep only last 50 errors
+      if (newErrors.length > 50) {
+        newErrors.shift();
+      }
+      return { deviceErrors: newErrors };
+    });
+  },
+
+  clearDeviceErrors: (): void => {
+    set({ deviceErrors: [] });
   },
 
   updateDemodulatorMetrics: (metrics: Partial<DemodulatorMetrics>): void => {
@@ -306,6 +330,7 @@ export const diagnosticsSlice: StateCreator<DiagnosticsSlice> = (
   resetDiagnostics: (): void => {
     set({
       events: [],
+      deviceErrors: [],
       demodulatorMetrics: null,
       tsParserMetrics: null,
       videoDecoderMetrics: null,

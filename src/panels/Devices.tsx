@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { WebUSBDeviceSelector, SDRDriverRegistry } from "../drivers";
 import { notify } from "../lib/notifications";
+import { DeviceErrorHandler } from "../models/DeviceError";
 import { useDevice } from "../store";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
 import { extractUSBDevice, formatUsbId } from "../utils/usb";
@@ -80,15 +81,9 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
             productId: usbDevice.productId,
           });
         }
-
-        notify({
-          message: "Device connected successfully",
-          sr: "polite",
-          visual: true,
-          tone: "success",
-        });
       } catch (error) {
         console.error("Failed to load device info:", error);
+        // Don't notify user - this is a non-critical UI update
       }
     };
 
@@ -124,8 +119,11 @@ function Devices({ isPanel = false }: DevicesProps): React.JSX.Element {
       notify({ message: "Device picker opened", sr: "polite", visual: false });
     } catch (error) {
       console.error("Failed to request device:", error);
+      const errorState = DeviceErrorHandler.mapError(error, {
+        operation: "requestDevice",
+      });
       notify({
-        message: "Failed to open device picker",
+        message: DeviceErrorHandler.formatUserMessage(errorState),
         sr: "assertive",
         visual: true,
         tone: "error",
