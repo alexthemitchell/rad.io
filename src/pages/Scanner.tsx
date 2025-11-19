@@ -4,6 +4,7 @@ import ATSCScanner from "../components/ATSCScanner";
 import Card from "../components/Card";
 import FrequencyScanner from "../components/FrequencyScanner";
 import { InfoBanner } from "../components/InfoBanner";
+import { ActivityLog } from "../components/Scanner";
 import SignalTypeSelector, {
   type SignalType,
 } from "../components/SignalTypeSelector";
@@ -180,23 +181,32 @@ function Scanner(): React.JSX.Element {
             onTuneToChannel={handleTuneToSignal}
           />
         ) : signalType !== "P25" ? (
-          <FrequencyScanner
-            state={scanner.state}
-            config={scanner.config}
-            currentFrequency={scanner.currentFrequency}
-            activeSignals={scanner.activeSignals}
-            progress={scanner.progress}
-            onStartScan={() => {
-              void scanner.startScan();
-            }}
-            onPauseScan={scanner.pauseScan}
-            onResumeScan={scanner.resumeScan}
-            onStopScan={scanner.stopScan}
-            onConfigChange={scanner.updateConfig}
-            onClearSignals={scanner.clearSignals}
-            deviceAvailable={device?.isOpen() ?? false}
-            onTuneToSignal={handleTuneToSignal}
-          />
+          <>
+            <FrequencyScanner
+              state={scanner.state}
+              config={scanner.config}
+              currentFrequency={scanner.currentFrequency}
+              activeSignals={scanner.activeSignals}
+              progress={scanner.progress}
+              onStartScan={() => {
+                void scanner.startScan();
+              }}
+              onPauseScan={scanner.pauseScan}
+              onResumeScan={scanner.resumeScan}
+              onStopScan={scanner.stopScan}
+              onConfigChange={scanner.updateConfig}
+              onClearSignals={scanner.clearSignals}
+              deviceAvailable={device?.isOpen() ?? false}
+              onTuneToSignal={handleTuneToSignal}
+            />
+
+            <Card
+              title="Scan Activity Log"
+              subtitle="Detected signals and scan history"
+            >
+              <ActivityLog />
+            </Card>
+          </>
         ) : (
           <>
             <Card

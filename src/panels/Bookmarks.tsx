@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { notify } from "../lib/notifications";
+import { downloadBookmarksCSV } from "../utils/bookmark-import-export";
 import { formatFrequency } from "../utils/frequency";
 import { generateBookmarkId } from "../utils/id";
+import type { Bookmark } from "../types/bookmark";
 
 /**
  * Bookmarks panel/page for frequency management
@@ -23,16 +25,6 @@ import { generateBookmarkId } from "../utils/id";
  * TODO: Add import/export functionality (future)
  * TODO: Migrate to IndexedDB for better performance with 10k+ entries
  */
-
-interface Bookmark {
-  id: string;
-  frequency: number; // Hz
-  name: string;
-  tags: string[];
-  notes: string;
-  createdAt: number; // timestamp
-  lastUsed: number; // timestamp
-}
 
 interface BookmarksProps {
   isPanel?: boolean; // True when rendered as a side panel, false for full-page route
@@ -261,6 +253,16 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     });
   };
 
+  const handleExport = (): void => {
+    downloadBookmarksCSV(bookmarks);
+    notify({
+      message: `Exported ${bookmarks.length} bookmark${bookmarks.length !== 1 ? "s" : ""} to CSV`,
+      sr: "polite",
+      visual: true,
+      tone: "success",
+    });
+  };
+
   const containerClass = isPanel ? "panel-container" : "page-container";
   const showForm = isAdding || editingId !== null;
   const bookmarkToDelete = pendingDeleteId
@@ -371,8 +373,16 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
             )}
           </section>
 
-          <section aria-label="Add Bookmark">
+          <section aria-label="Bookmark Actions">
             <button onClick={handleAdd}>Add Bookmark</button>
+            {bookmarks.length > 0 && (
+              <button
+                onClick={handleExport}
+                aria-label="Export bookmarks to CSV"
+              >
+                Export CSV
+              </button>
+            )}
           </section>
         </>
       )}

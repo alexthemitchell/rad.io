@@ -31,6 +31,11 @@ import {
 } from "./slices/diagnosticsSlice";
 import { frequencySlice, type FrequencySlice } from "./slices/frequencySlice";
 import {
+  markerSlice,
+  type Marker,
+  type MarkerSlice,
+} from "./slices/markerSlice";
+import {
   notificationSlice,
   type Notification,
   type NotificationSlice,
@@ -49,7 +54,8 @@ export type RootState = SettingsSlice &
   FrequencySlice &
   NotificationSlice &
   DeviceSlice &
-  DiagnosticsSlice;
+  DiagnosticsSlice &
+  MarkerSlice;
 
 /**
  * Create the root store with all slices
@@ -65,6 +71,7 @@ export const useStore = create<RootState>()(
       ...notificationSlice(...args),
       ...deviceSlice(...args),
       ...diagnosticsSlice(...args),
+      ...markerSlice(...args),
     }),
     { name: "rad.io-store" },
   ),
@@ -262,8 +269,23 @@ export const useDiagnostics = (): Pick<
   );
 };
 
+// Marker slice selectors
+export const useMarkers = (): {
+  markers: Marker[];
+  addMarker: (freqHz: number, powerDb?: number) => void;
+  removeMarker: (id: string) => void;
+  clearMarkers: () => void;
+} => {
+  const markers = useStore((state: RootState) => state.markers);
+  const addMarker = useStore((state: RootState) => state.addMarker);
+  const removeMarker = useStore((state: RootState) => state.removeMarker);
+  const clearMarkers = useStore((state: RootState) => state.clearMarkers);
+  return { markers, addMarker, removeMarker, clearMarkers };
+};
+
 // Export types
 export type { SettingsState, VizMode } from "./slices/settingsSlice";
+export type { Marker } from "./slices/markerSlice";
 export type { Notification } from "./slices/notificationSlice";
 export type { DeviceId, DeviceEntry } from "./slices/deviceSlice";
 export type {

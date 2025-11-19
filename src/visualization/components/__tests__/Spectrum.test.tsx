@@ -126,4 +126,74 @@ describe("Spectrum", () => {
     const canvas = container.querySelector("canvas");
     expect(canvas).toBeInTheDocument();
   });
+
+  it("should render overlay canvas for VFO cursor", () => {
+    const magnitudes = createMagnitudes(1024);
+    const { container } = render(
+      <Spectrum
+        magnitudes={magnitudes}
+        sampleRate={2e6}
+        centerFrequency={100e6}
+      />,
+    );
+
+    const canvases = container.querySelectorAll("canvas");
+    expect(canvases).toHaveLength(2); // Main canvas + overlay canvas
+  });
+
+  it("should include VFO frequency in aria-label when sampleRate and centerFrequency provided", () => {
+    const magnitudes = createMagnitudes(1024);
+    const { container } = render(
+      <Spectrum
+        magnitudes={magnitudes}
+        sampleRate={2e6}
+        centerFrequency={100e6}
+      />,
+    );
+
+    const canvas = container.querySelector('canvas[role="img"]');
+    expect(canvas).toHaveAttribute("aria-label");
+    const ariaLabel = canvas?.getAttribute("aria-label");
+    expect(ariaLabel).toContain("VFO at");
+    expect(ariaLabel).toContain("MHz");
+  });
+
+  it("should not include VFO frequency in aria-label when sampleRate not provided", () => {
+    const magnitudes = createMagnitudes(1024);
+    render(<Spectrum magnitudes={magnitudes} />);
+
+    const canvas = screen.getByLabelText(/frequency bins 0 to 1024/);
+    const ariaLabel = canvas.getAttribute("aria-label");
+    expect(ariaLabel).not.toContain("VFO");
+  });
+
+  it("should set pointer-events: none on overlay canvas", () => {
+    const magnitudes = createMagnitudes(1024);
+    const { container } = render(
+      <Spectrum
+        magnitudes={magnitudes}
+        sampleRate={2e6}
+        centerFrequency={100e6}
+      />,
+    );
+
+    const canvases = container.querySelectorAll("canvas");
+    const overlayCanvas = canvases[1]; // Second canvas is the overlay
+    expect(overlayCanvas).toHaveStyle({ pointerEvents: "none" });
+  });
+
+  it("should set aria-hidden on overlay canvas", () => {
+    const magnitudes = createMagnitudes(1024);
+    const { container } = render(
+      <Spectrum
+        magnitudes={magnitudes}
+        sampleRate={2e6}
+        centerFrequency={100e6}
+      />,
+    );
+
+    const canvases = container.querySelectorAll("canvas");
+    const overlayCanvas = canvases[1]; // Second canvas is the overlay
+    expect(overlayCanvas).toHaveAttribute("aria-hidden", "true");
+  });
 });
