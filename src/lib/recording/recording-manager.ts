@@ -51,8 +51,8 @@ function chunkSamples(samples: IQSample[]): Blob[] {
     const view = new DataView(buffer);
 
     for (let j = 0; j < chunkSamples.length; j++) {
-      const sample = chunkSamples[j];
-      if (!sample) continue;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const sample = chunkSamples[j]!;
       const offset = j * bytesPerSample;
       view.setFloat32(offset, sample.I, true);
       view.setFloat32(offset + 4, sample.Q, true);
