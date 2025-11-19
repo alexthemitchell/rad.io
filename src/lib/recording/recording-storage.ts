@@ -192,16 +192,12 @@ export class RecordingStorage {
 
       request.onsuccess = (): void => {
         const results = request.result as RecordingMeta[];
-        // Convert timestamps back to Date objects and sort by timestamp (newest first)
-        const converted = results.map((r) => ({
-          ...r,
-          timestamp: r.timestamp,
-        }));
-        converted.sort(
+        // Sort by timestamp (newest first)
+        results.sort(
           (a, b) =>
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
         );
-        resolve(converted);
+        resolve(results);
       };
     });
   }
