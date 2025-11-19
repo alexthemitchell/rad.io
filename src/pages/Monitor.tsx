@@ -293,8 +293,24 @@ const Monitor: React.FC = () => {
     });
   }, []);
 
+  const handleShowHelp = useCallback((): void => {
+    toggleShortcuts();
+  }, []);
+
+  // Use refs to track mutable values for keyboard shortcuts to avoid listener churn
+  const frequencyRef = useRef(frequency);
+  const showGridRef = useRef(settings.showGridlines);
+
+  useEffect(() => {
+    frequencyRef.current = frequency;
+  }, [frequency]);
+
+  useEffect(() => {
+    showGridRef.current = settings.showGridlines;
+  }, [settings.showGridlines]);
+
   const handleToggleGrid = useCallback((): void => {
-    const newState = !settings.showGridlines;
+    const newState = !showGridRef.current;
     setSettings({ showGridlines: newState });
     notify({
       message: newState ? "Gridlines shown" : "Gridlines hidden",
@@ -302,17 +318,7 @@ const Monitor: React.FC = () => {
       visual: true,
       tone: "info",
     });
-  }, [settings.showGridlines, setSettings]);
-
-  const handleShowHelp = useCallback((): void => {
-    toggleShortcuts();
-  }, []);
-
-  // Use ref to track frequency for keyboard shortcuts to avoid listener churn
-  const frequencyRef = useRef(frequency);
-  useEffect(() => {
-    frequencyRef.current = frequency;
-  }, [frequency]);
+  }, [setSettings]);
 
   // Keyboard shortcuts for quick actions
   useEffect(() => {
