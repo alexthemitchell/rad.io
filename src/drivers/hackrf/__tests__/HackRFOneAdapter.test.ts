@@ -4,7 +4,7 @@
 
 import { HackRFOneAdapter } from "../HackRFOneAdapter";
 import type { HackRFCalibrationPort } from "../calibration";
-import { createMockUSBDevice } from "./helpers/mockUSBDevice";
+import { createMockUSBDevice } from "../test-helpers/mockUSBDevice";
 
 describe("HackRFOneAdapter initialization and configuration", () => {
   describe("initialization validation", () => {

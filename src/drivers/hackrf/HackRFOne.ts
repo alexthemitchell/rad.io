@@ -76,9 +76,7 @@ export class HackRFOne implements DeviceStateProvider {
       this.recovery.wasCleanClosed = false;
       await this.config.performInitializationSequence();
     } finally {
-      if (this.state === DeviceState.CONFIGURING) {
-        this.state = DeviceState.IDLE;
-      }
+      this.state = DeviceState.IDLE;
     }
   }
 
@@ -145,9 +143,7 @@ export class HackRFOne implements DeviceStateProvider {
     try {
       await this.recovery.fastRecovery();
     } finally {
-      if (this.state === DeviceState.RECOVERING) {
-        this.state = DeviceState.IDLE;
-      }
+      this.state = DeviceState.IDLE;
     }
   }
 

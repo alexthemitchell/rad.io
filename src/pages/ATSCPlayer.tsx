@@ -78,6 +78,40 @@ function ATSCPlayer(): React.JSX.Element {
     console.info("Schedule recording for:", program.title);
   }, []);
 
+  const handleDriverReset = useCallback((): void => {
+    void (async (): Promise<void> => {
+      if (
+        device &&
+        (device as unknown as { fastRecovery?: () => Promise<void> })
+          .fastRecovery
+      ) {
+        try {
+          await (
+            device as unknown as {
+              fastRecovery: () => Promise<void>;
+            }
+          ).fastRecovery();
+          console.info("Driver fastRecovery completed");
+        } catch (e) {
+          console.error("Driver fastRecovery failed", e);
+        }
+      } else if (
+        device &&
+        (device as unknown as { reset?: () => Promise<void> }).reset
+      ) {
+        // Fallback to generic reset if fastRecovery not available
+        try {
+          await (device as unknown as { reset: () => Promise<void> }).reset();
+          console.info("Driver reset completed");
+        } catch (e) {
+          console.error("Driver reset failed", e);
+        }
+      } else {
+        console.warn("No recovery method available on current device instance");
+      }
+    })();
+  }, [device]);
+
   // Ensure HackRF (or other SDR) is cleanly stopped and reset when leaving the ATSC player.
   useEffect(
     function effect(): () => void {
@@ -115,44 +149,7 @@ function ATSCPlayer(): React.JSX.Element {
               Program Guide
             </button>
           </div>
-          <button
-            onClick={async () => {
-              if (
-                device &&
-                (device as unknown as { fastRecovery?: () => Promise<void> })
-                  .fastRecovery
-              ) {
-                try {
-                  await (
-                    device as unknown as {
-                      fastRecovery: () => Promise<void>;
-                    }
-                  ).fastRecovery();
-                  console.info("Driver fastRecovery completed");
-                } catch (e) {
-                  console.error("Driver fastRecovery failed", e);
-                }
-              } else if (
-                device &&
-                (device as unknown as { reset?: () => Promise<void> }).reset
-              ) {
-                // Fallback to generic reset if fastRecovery not available
-                try {
-                  await (
-                    device as unknown as { reset: () => Promise<void> }
-                  ).reset();
-                  console.info("Driver reset completed");
-                } catch (e) {
-                  console.error("Driver reset failed", e);
-                }
-              } else {
-                console.warn(
-                  "No recovery method available on current device instance",
-                );
-              }
-            }}
-            aria-label="Driver Reset"
-          >
+          <button onClick={handleDriverReset} aria-label="Driver Reset">
             Driver Reset
           </button>
           <button

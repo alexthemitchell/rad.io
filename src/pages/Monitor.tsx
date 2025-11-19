@@ -174,7 +174,6 @@ const Monitor: React.FC = () => {
     if (scanner.state === "idle" && foundSignals.length > 0) {
       setScanStatusMsg(`Scan complete, found ${foundSignals.length} signals.`);
     }
-    return () => {};
   }, [scanner.state, foundSignals.length]);
 
   // Fetch device capabilities when device is connected

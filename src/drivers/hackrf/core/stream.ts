@@ -136,6 +136,7 @@ export class Stream {
 
     await this.transport.delay(50);
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (signal.aborted || !this.streaming) {
       this.streamController.stop();
       this.streaming = false;
@@ -145,6 +146,7 @@ export class Stream {
     let iterationCount = 0;
     const TIMEOUT_MS = 1000;
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     while (!signal.aborted && this.streaming) {
       try {
         iterationCount++;
@@ -177,6 +179,7 @@ export class Stream {
           abortPromise,
         ]);
 
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (signal.aborted || !this.streaming) {
           break;
         }
@@ -190,6 +193,7 @@ export class Stream {
           }
         }
       } catch (err: unknown) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (signal.aborted || !this.streaming) {
           break;
         }
@@ -206,6 +210,7 @@ export class Stream {
           });
 
           if (maxReached) {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (signal.aborted || !this.streaming) {
               break;
             }

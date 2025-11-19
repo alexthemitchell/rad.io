@@ -16,7 +16,7 @@
 import { HackRFOne } from "../HackRFOne";
 import { HackRFOneAdapter } from "../HackRFOneAdapter";
 import { VendorRequest } from "../constants";
-import { createMockUSBDevice } from "./helpers/mockUSBDevice";
+import { createMockUSBDevice } from "../test-helpers/mockUSBDevice";
 
 describe("HackRF Mocked Logic Tests", () => {
   describe("Configuration edge cases", () => {

@@ -5,7 +5,7 @@
 import { HackRFOneAdapter } from "../HackRFOneAdapter";
 import { HackRFOne } from "../HackRFOne";
 import { Recovery } from "../core/recovery";
-import { createMockUSBDevice } from "./helpers/mockUSBDevice";
+import { createMockUSBDevice } from "../test-helpers/mockUSBDevice";
 
 describe("HackRF Error Handling and Recovery", () => {
   describe("Device Configuration Status", () => {
@@ -153,7 +153,7 @@ describe("HackRF Error Handling and Recovery", () => {
         () =>
           new Promise<void>((resolve) => {
             resolveClose = () => {
-              device.opened = false;
+              (device as { opened: boolean }).opened = false;
               resolve();
             };
           }),
@@ -166,7 +166,9 @@ describe("HackRF Error Handling and Recovery", () => {
       expect(validation.ready).toBe(false);
       expect(validation.issues).toContain("Device is closing");
 
-      resolveClose?.();
+      if (resolveClose) {
+        (resolveClose as () => void)();
+      }
       await closePromise;
     });
 
@@ -383,7 +385,7 @@ describe("HackRF Error Handling and Recovery", () => {
     });
 
     it("rebinds to a re-enumerated device when available", async () => {
-      const originalDevice = createMockUSBDevice();
+      const { device: originalDevice } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(originalDevice);
       await adapter.setSampleRate(20_000_000);
 

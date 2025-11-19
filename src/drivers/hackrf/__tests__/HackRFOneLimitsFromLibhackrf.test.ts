@@ -6,7 +6,7 @@
  */
 
 import { HackRFOne } from "../HackRFOne";
-import { createMockUSBDevice } from "./helpers/mockUSBDevice";
+import { createMockUSBDevice } from "../test-helpers/mockUSBDevice";
 
 describe("HackRFOne frequency and sample-rate guards (libhackrf parity)", () => {
   it("rejects 0 Hz center frequency like libhackrf_set_freq", async () => {

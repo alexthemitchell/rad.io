@@ -2,7 +2,6 @@ import { type HackRFMemoryInfo } from "./types";
 
 export class MemoryManager {
   private totalBytesReceived = 0;
-  private lastChunkSize = 0;
   private readonly maxBufferSize: number = 16 * 1024 * 1024; // 16 MB max
 
   /**
@@ -11,7 +10,6 @@ export class MemoryManager {
    */
   trackBuffer(data: DataView): void {
     this.totalBytesReceived += data.byteLength;
-    this.lastChunkSize = data.byteLength;
   }
 
   /**
@@ -32,6 +30,5 @@ export class MemoryManager {
    */
   clearBuffers(): void {
     this.totalBytesReceived = 0;
-    this.lastChunkSize = 0;
   }
 }

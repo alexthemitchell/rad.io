@@ -268,6 +268,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           try {
             return JSON.stringify(anyErr ?? {});
           } catch {
+            // eslint-disable-next-line @typescript-eslint/no-base-to-string
             return String(anyErr);
           }
         };

@@ -4,7 +4,7 @@
 
 import { HackRFOne } from "../HackRFOne";
 import { VendorRequest } from "../constants";
-import { createMockUSBDevice } from "./helpers/mockUSBDevice";
+import { createMockUSBDevice } from "../test-helpers/mockUSBDevice";
 
 describe("HackRFOne control formatting", () => {
   it("formats frequency command per HackRF protocol", async () => {
