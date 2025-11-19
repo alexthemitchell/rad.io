@@ -9,11 +9,11 @@ import Card from "../components/Card";
 import DeviceControlBar from "../components/DeviceControlBar";
 import { InfoBanner } from "../components/InfoBanner";
 import InteractiveDSPPipeline from "../components/InteractiveDSPPipeline";
+import MarkerTable from "../components/MarkerTable";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import { notify } from "../lib/notifications";
 import { type ISDRDevice } from "../models/SDRDevice";
-import Measurements from "../panels/Measurements";
-import { useDevice } from "../store";
+import { useDevice, useMarkers } from "../store";
 import { type Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import {
@@ -21,31 +21,6 @@ import {
   WaveformVisualizer,
   EyeDiagram,
 } from "../visualization";
-import type { MarkerRow } from "../components/MarkerTable";
-
-/**
- * Type guard to check if an unknown value is a valid MarkerRow
- */
-function isMarkerRow(value: unknown): value is MarkerRow {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "frequency" in value &&
-    typeof (value as { frequency: unknown }).frequency === "number"
-  );
-}
-
-/**
- * Asserts that an array contains only MarkerRow objects
- */
-function assertMarkerRowArray(value: unknown): asserts value is MarkerRow[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError("Expected an array");
-  }
-  if (!value.every(isMarkerRow)) {
-    throw new TypeError("Array contains invalid MarkerRow objects");
-  }
-}
 
 const DEFAULT_MAX_BUFFER_SAMPLES = 32768;
 const DEFAULT_UPDATE_INTERVAL_MS = 33; // ~30 FPS
@@ -56,6 +31,7 @@ function Analysis(): React.JSX.Element {
     requestDevice,
     isCheckingPaired,
   } = useDevice();
+  const { markers, removeMarker } = useMarkers();
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [frequency] = useState(100.3e6);
@@ -462,33 +438,6 @@ function Analysis(): React.JSX.Element {
     return (): void => ro.disconnect();
   }, []);
 
-  // Shared markers persisted by SpectrumExplorer
-  const [sharedMarkers, setSharedMarkers] = useState<MarkerRow[]>([]);
-  useEffect((): (() => void) => {
-    let cancelled = false;
-    const MARKERS_KEY = "viz.markers";
-    const load = (): void => {
-      try {
-        const raw = window.localStorage.getItem(MARKERS_KEY);
-        if (!raw || cancelled) {
-          return;
-        }
-        const parsed: unknown = JSON.parse(raw);
-        // Validate using type guard and assertion
-        assertMarkerRowArray(parsed);
-        setSharedMarkers(parsed);
-      } catch {
-        // ignore - invalid data or parsing error
-      }
-    };
-    load();
-    const id = window.setInterval(load, 5000);
-    return (): void => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, []);
-
   return (
     <div className="container">
       <a href="#main-content" className="skip-link">
@@ -697,15 +646,7 @@ function Analysis(): React.JSX.Element {
         </Card>
 
         <Card title="Measurements" subtitle="Markers, deltas, and export">
-          {/* Render as a panel to avoid nested page containers; use shared markers in read-only mode */}
-          <Measurements
-            isPanel={true}
-            markers={sharedMarkers.map((m) => ({
-              id: m.id,
-              frequency: m.freqHz,
-            }))}
-            readOnly={true}
-          />
+          <MarkerTable markers={markers} onRemove={removeMarker} />
         </Card>
 
         <Card
