@@ -42,6 +42,11 @@ playwright-report/
 *.temp
 .cache/
 
+# Screenshots from tests
+screenshot-*.png
+screenshot-*.jpg
+screenshot-*.jpeg
+
 # Logs
 logs/
 *.log
