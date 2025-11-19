@@ -322,15 +322,12 @@ const Monitor: React.FC = () => {
           event.preventDefault();
           handleBookmark(frequency);
           break;
-        case "r":
-          event.preventDefault();
-          handleToggleRecording();
-          break;
         case "g":
           event.preventDefault();
           handleToggleGrid();
           break;
         // Note: '?' is already handled by ShortcutsOverlay
+        // Note: Recording uses global Ctrl/Cmd+S shortcut (see ShortcutsOverlay)
         default:
           break;
       }
@@ -340,7 +337,7 @@ const Monitor: React.FC = () => {
     return (): void => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [frequency, handleBookmark, handleToggleRecording, handleToggleGrid]);
+  }, [frequency, handleBookmark, handleToggleGrid]);
 
   // Auto FM PPM calibration (runs once per session when stable)
   const autoPpmDoneRef = useRef(false);

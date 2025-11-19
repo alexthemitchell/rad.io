@@ -93,9 +93,9 @@ function QuickActions({
         onMouseLeave={() => setTooltipVisible(null)}
         onFocus={() => setTooltipVisible("record")}
         onBlur={() => setTooltipVisible(null)}
-        aria-label={isRecording ? "Stop recording (R)" : "Start recording (R)"}
+        aria-label={isRecording ? "Stop recording" : "Start recording"}
         aria-pressed={isRecording}
-        title="Record (R)"
+        title="Record (Ctrl/Cmd+S)"
       >
         <RecordIcon
           size={20}
@@ -104,7 +104,7 @@ function QuickActions({
         />
         {tooltipVisible === "record" && (
           <span className="quick-action-tooltip" role="tooltip">
-            Record (R)
+            Record (Ctrl/Cmd+S)
           </span>
         )}
       </button>

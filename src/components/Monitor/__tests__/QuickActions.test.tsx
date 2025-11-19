@@ -40,9 +40,7 @@ describe("QuickActions", () => {
     expect(
       screen.getByRole("button", { name: /bookmark.*\(b\)/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /record.*\(r\)/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /record/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /grid.*\(g\)/i }),
     ).toBeInTheDocument();
@@ -67,7 +65,7 @@ describe("QuickActions", () => {
     render(<QuickActions {...defaultProps} />);
 
     const recordButton = screen.getByRole("button", {
-      name: /record.*\(r\)/i,
+      name: /record/i,
     });
     fireEvent.click(recordButton);
 
@@ -97,14 +95,14 @@ describe("QuickActions", () => {
   it("displays recording state correctly", () => {
     const { rerender } = render(<QuickActions {...defaultProps} />);
 
-    let recordButton = screen.getByRole("button", { name: /record.*\(r\)/i });
+    let recordButton = screen.getByRole("button", { name: /start recording/i });
     expect(recordButton).toHaveAttribute("aria-pressed", "false");
     expect(recordButton).not.toHaveClass("recording");
 
     // Rerender with recording active
     rerender(<QuickActions {...defaultProps} isRecording={true} />);
 
-    recordButton = screen.getByRole("button", { name: /record.*\(r\)/i });
+    recordButton = screen.getByRole("button", { name: /stop recording/i });
     expect(recordButton).toHaveAttribute("aria-pressed", "true");
     expect(recordButton).toHaveClass("recording");
   });
@@ -147,7 +145,7 @@ describe("QuickActions", () => {
     render(<QuickActions {...defaultProps} />);
 
     const recordButton = screen.getByRole("button", {
-      name: /record.*\(r\)/i,
+      name: /start recording/i,
     });
 
     // Focus button
@@ -155,7 +153,7 @@ describe("QuickActions", () => {
 
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toBeInTheDocument();
-    expect(tooltip).toHaveTextContent("Record (R)");
+    expect(tooltip).toHaveTextContent("Record (Ctrl/Cmd+S)");
 
     // Blur should hide tooltip
     fireEvent.blur(recordButton);
@@ -171,7 +169,7 @@ describe("QuickActions", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /start recording.*\(r\)/i }),
+      screen.getByRole("button", { name: /start recording/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /show grid.*\(g\)/i }),
@@ -185,7 +183,7 @@ describe("QuickActions", () => {
     const { rerender } = render(<QuickActions {...defaultProps} />);
 
     let recordButton = screen.getByRole("button", {
-      name: /start recording.*\(r\)/i,
+      name: /start recording/i,
     });
     expect(recordButton).toBeInTheDocument();
 
@@ -193,7 +191,7 @@ describe("QuickActions", () => {
     rerender(<QuickActions {...defaultProps} isRecording={true} />);
 
     recordButton = screen.getByRole("button", {
-      name: /stop recording.*\(r\)/i,
+      name: /stop recording/i,
     });
     expect(recordButton).toBeInTheDocument();
   });
