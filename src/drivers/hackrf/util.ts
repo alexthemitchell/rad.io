@@ -380,3 +380,29 @@ export function calcSampleRate(freqHz: number): [number, number] {
   const divider = chooseDivider(freqHz);
   return [Math.round(freqHz * divider), divider];
 }
+
+/**
+ * Derive sample rate parameters with validation
+ *
+ * Wrapper around calcSampleRate that provides validation and returns
+ * the object structure expected by the configuration logic.
+ *
+ * @param sampleRate - Target sample rate in Hz
+ * @returns Object containing frequency and divider
+ * @throws {Error} If sample rate is invalid
+ */
+export function deriveSampleRateParams(sampleRate: number): {
+  freqHz: number;
+  divider: number;
+} {
+  if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
+    throw new Error("Sample rate must be a positive finite number");
+  }
+
+  if (sampleRate > 4294967295) {
+    throw new Error("Sample rate exceeds uint32 range");
+  }
+
+  const [freqHz, divider] = calcSampleRate(sampleRate);
+  return { freqHz, divider };
+}

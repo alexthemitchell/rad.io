@@ -6,7 +6,6 @@
  * compatibility with the visualization and control components.
  */
 
-import { CalibrationManager } from "../../lib/measurement/calibration";
 import { DeviceErrorHandler } from "../../models/DeviceError";
 import {
   type ISDRDevice,
@@ -20,25 +19,30 @@ import {
   convertInt8ToIQ,
 } from "../../models/SDRDevice";
 import { useStore } from "../../store";
+import {
+  hackRfCalibrationService,
+  type HackRFCalibrationPort,
+} from "./calibration";
 import { HackRFOne } from "./HackRFOne";
 
 export class HackRFOneAdapter implements ISDRDevice {
   private device: HackRFOne;
   private usbDevice: USBDevice;
-  private calibration = new CalibrationManager();
+  private calibration: HackRFCalibrationPort;
   private deviceId: string; // Per-device identifier derived from USB properties
 
-  constructor(usbDevice: USBDevice) {
+  constructor(
+    usbDevice: USBDevice,
+    calibrationService: HackRFCalibrationPort = hackRfCalibrationService,
+  ) {
     this.usbDevice = usbDevice;
     this.device = new HackRFOne(usbDevice);
+    this.calibration = calibrationService;
     // Build a stable per-device identifier (vendorId:productId:serial)
     // If serialNumber is missing, leave it empty to avoid undefined in the key
     this.deviceId = `${usbDevice.vendorId}:${usbDevice.productId}:${usbDevice.serialNumber ?? ""}`;
   }
 
-  /**
-   * Track device error in diagnostics store
-   */
   private trackError(
     // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
     error: Error | unknown,
@@ -115,12 +119,13 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   async setFrequency(frequencyHz: number): Promise<void> {
-    // Apply stored PPM calibration before programming hardware so that the RF lands at requested logical frequency
-    const corrected = this.calibration.applyFrequencyCalibration(
-      this.deviceId,
-      frequencyHz,
-    );
-    await this.device.setFrequency(corrected);
+    const plan = this.calibration.buildPlan(this.deviceId, {
+      centerFrequencyHz: frequencyHz,
+    });
+
+    // Program hardware using the corrected RF frequency while keeping the logical
+    // frequency (requestedHz) available for higher-level state machines.
+    await this.device.setFrequency(plan.frequency.correctedHz);
   }
 
   async getFrequency(): Promise<number> {
@@ -215,7 +220,6 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   /**
-   * Validates that device is properly initialized before streaming.
    * HackRF REQUIRES sample rate to be set before streaming can begin.
    */
   private validateInitialization(): void {
@@ -309,7 +313,6 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   /**
-   * Software reset the device via USB control transfer
    * Note: After reset, device must be reconfigured (setSampleRate, etc.) before streaming
    */
   async reset(): Promise<void> {
@@ -322,7 +325,6 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   /**
-   * Fast recovery with automatic reconfiguration
    * Performs device reset and restores all configuration automatically.
    * Unlike reset(), this maintains the initialized state since configuration is restored.
    */

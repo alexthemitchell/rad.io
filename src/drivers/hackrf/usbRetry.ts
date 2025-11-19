@@ -28,10 +28,13 @@ export interface RetryOptions {
 export function isTransientError(error: unknown): boolean {
   const e = error as Error & { name?: string; message?: string };
   const msg = typeof e.message === "string" ? e.message : "";
+  const normalized = msg.toLowerCase();
+
   return (
     e.name === "InvalidStateError" ||
     e.name === "NetworkError" ||
-    /transfer error/i.test(msg)
+    /transfer (error|failed|failure)/i.test(msg) ||
+    (normalized.includes("transfer") && normalized.includes("fail"))
   );
 }
 

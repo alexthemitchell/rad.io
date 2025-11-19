@@ -4,46 +4,7 @@
 
 import { HackRFOne } from "../HackRFOne";
 import { VendorRequest } from "../constants";
-
-function createMockUSBDevice(): {
-  device: USBDevice;
-  controlTransferOut: jest.Mock<
-    Promise<USBOutTransferResult>,
-    [USBControlTransferParameters, BufferSource?]
-  >;
-} {
-  const controlTransferOut = jest
-    .fn<
-      Promise<USBOutTransferResult>,
-      [USBControlTransferParameters, BufferSource?]
-    >()
-    .mockResolvedValue({} as USBOutTransferResult);
-
-  const mockDevice = {
-    opened: true,
-    vendorId: 0x1d50,
-    productId: 0x6089,
-    productName: "Mock HackRF",
-    manufacturerName: "Mock",
-    serialNumber: "TEST",
-    controlTransferOut,
-    controlTransferIn: jest.fn(),
-    transferIn: jest.fn(),
-    configurations: [],
-    configuration: undefined,
-    open: jest.fn(),
-    close: jest.fn(),
-    reset: jest.fn(),
-    clearHalt: jest.fn(),
-    selectConfiguration: jest.fn(),
-    selectAlternateInterface: jest.fn(),
-    claimInterface: jest.fn(),
-    releaseInterface: jest.fn(),
-    forget: jest.fn(),
-  } as unknown as USBDevice;
-
-  return { device: mockDevice, controlTransferOut };
-}
+import { createMockUSBDevice } from "./helpers/mockUSBDevice";
 
 describe("HackRFOne control formatting", () => {
   it("formats frequency command per HackRF protocol", async () => {
@@ -133,28 +94,13 @@ describe("HackRFOne control formatting", () => {
   });
 
   it("allows receive() after sample rate is configured", async () => {
-    const { device, controlTransferOut } = createMockUSBDevice();
+    const { device, controlTransferOut } = createMockUSBDevice({
+      transferInScript: ["success", "stall"],
+    });
     const hackRF = new HackRFOne(device);
 
     // Set sample rate first (required)
     await hackRF.setSampleRate(20_000_000);
-
-    // Mock transferIn to return data once then fail to stop the loop
-    let callCount = 0;
-    (device.transferIn as jest.Mock).mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        // First call returns data
-        return Promise.resolve({
-          data: new DataView(new ArrayBuffer(4096)),
-          status: "ok",
-        } as USBInTransferResult);
-      }
-      // Stop the loop by making subsequent calls hang
-      return new Promise(() => {
-        /* never resolves */
-      });
-    });
 
     // Start receive in background
     const receivePromise = hackRF.receive();

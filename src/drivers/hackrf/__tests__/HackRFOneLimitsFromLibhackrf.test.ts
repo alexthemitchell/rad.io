@@ -6,54 +6,25 @@
  */
 
 import { HackRFOne } from "../HackRFOne";
-
-function createMockUSBDevice(): USBDevice {
-  return {
-    opened: true,
-    vendorId: 0x1d50,
-    productId: 0x6089,
-    productName: "Mock HackRF",
-    manufacturerName: "Mock",
-    serialNumber: "TEST",
-    controlTransferOut: jest
-      .fn<
-        Promise<USBOutTransferResult>,
-        [USBControlTransferParameters, BufferSource?]
-      >()
-      .mockResolvedValue({} as USBOutTransferResult),
-    controlTransferIn: jest.fn(),
-    transferIn: jest.fn(),
-    configurations: [],
-    configuration: undefined,
-    open: jest.fn(),
-    close: jest.fn(),
-    reset: jest.fn(),
-    clearHalt: jest.fn(),
-    selectConfiguration: jest.fn(),
-    selectAlternateInterface: jest.fn(),
-    claimInterface: jest.fn(),
-    releaseInterface: jest.fn(),
-    forget: jest.fn(),
-  } as unknown as USBDevice;
-}
+import { createMockUSBDevice } from "./helpers/mockUSBDevice";
 
 describe("HackRFOne frequency and sample-rate guards (libhackrf parity)", () => {
   it("rejects 0 Hz center frequency like libhackrf_set_freq", async () => {
-    const device = createMockUSBDevice();
+    const { device } = createMockUSBDevice();
     const hackrf = new HackRFOne(device);
 
     await expect(hackrf.setFrequency(0)).rejects.toThrow(/out of range/i);
   });
 
   it("rejects negative center frequency", async () => {
-    const device = createMockUSBDevice();
+    const { device } = createMockUSBDevice();
     const hackrf = new HackRFOne(device);
 
     await expect(hackrf.setFrequency(-100)).rejects.toThrow(/out of range/i);
   });
 
   it("rejects non-finite frequency values", async () => {
-    const device = createMockUSBDevice();
+    const { device } = createMockUSBDevice();
     const hackrf = new HackRFOne(device);
 
     await expect(hackrf.setFrequency(Number.NaN)).rejects.toThrow(
@@ -65,7 +36,7 @@ describe("HackRFOne frequency and sample-rate guards (libhackrf parity)", () => 
   });
 
   it("rejects non-finite sample rates", async () => {
-    const device = createMockUSBDevice();
+    const { device } = createMockUSBDevice();
     const hackrf = new HackRFOne(device);
 
     await expect(hackrf.setSampleRate(Number.NaN)).rejects.toThrow(
@@ -77,7 +48,7 @@ describe("HackRFOne frequency and sample-rate guards (libhackrf parity)", () => 
   });
 
   it("rejects sample rates outside libhackrf nominal range (2-20 MSPS)", async () => {
-    const device = createMockUSBDevice();
+    const { device } = createMockUSBDevice();
     const hackrf = new HackRFOne(device);
 
     await expect(hackrf.setSampleRate(1_000_000)).rejects.toThrow(/out of range/);
@@ -85,7 +56,7 @@ describe("HackRFOne frequency and sample-rate guards (libhackrf parity)", () => 
   });
 
   it("accepts in-range sample rates and quantizes to uint32+divider like hackrf_set_sample_rate", async () => {
-    const device = createMockUSBDevice();
+    const { device } = createMockUSBDevice();
     const hackrf = new HackRFOne(device);
 
     // We deliberately use a fractional rate that requires divider > 1,

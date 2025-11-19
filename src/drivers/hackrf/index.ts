@@ -14,7 +14,6 @@ export * from "./constants";
 export * from "./DeviceInfo";
 export * from "./StreamOptions";
 export * from "./util";
-export * from "./poll";
 
 // React hooks
 export { useHackRFDevice } from "./hooks/useHackRFDevice";
