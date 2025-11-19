@@ -1,0 +1,80 @@
+/**
+ * Utilities for importing and exporting bookmarks in CSV format
+ * Note: Currently only export is implemented; import is planned for future
+ */
+
+import type { Bookmark } from "../types/bookmark";
+
+/**
+ * Escapes a CSV field value by:
+ * - Prepending a single quote if field starts with =, +, -, or @ (formula injection protection)
+ * - Wrapping in quotes if it contains comma, quote, newline, or carriage return
+ * - Doubling any internal quotes
+ */
+function escapeCSVField(value: string | number): string {
+  const str = String(value);
+  // Prevent formula injection
+  let escapedStr = str;
+  if (/^[=+\-@]/.test(str)) {
+    escapedStr = `'${str}`;
+  }
+  // Escape special characters per RFC 4180
+  if (/[,"\r\n]/.test(escapedStr)) {
+    return `"${escapedStr.replace(/"/g, '""')}"`;
+  }
+  return escapedStr;
+}
+
+/**
+ * Converts a bookmark to a CSV row
+ */
+function bookmarkToCSVRow(bookmark: Bookmark): string {
+  const fields = [
+    bookmark.frequency,
+    escapeCSVField(bookmark.name),
+    escapeCSVField(bookmark.tags.join(",")),
+    escapeCSVField(bookmark.notes),
+    bookmark.createdAt,
+    bookmark.lastUsed,
+  ];
+  return fields.join(",");
+}
+
+/**
+ * Converts an array of bookmarks to a CSV string
+ */
+export function bookmarksToCSV(bookmarks: Bookmark[]): string {
+  const headers = [
+    "Frequency (Hz)",
+    "Name",
+    "Tags",
+    "Notes",
+    "Created At",
+    "Last Used",
+  ];
+  const headerRow = headers.join(",");
+  const dataRows = bookmarks.map(bookmarkToCSVRow);
+  return [headerRow, ...dataRows].join("\n");
+}
+
+/**
+ * Downloads bookmarks as a CSV file
+ */
+export function downloadBookmarksCSV(bookmarks: Bookmark[]): void {
+  const csvContent = bookmarksToCSV(bookmarks);
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  // Generate filename with timestamp
+  const date = new Date();
+  const timestamp = date.toISOString().split("T")[0]; // YYYY-MM-DD format
+  const filename = `bookmarks-${timestamp}.csv`;
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
