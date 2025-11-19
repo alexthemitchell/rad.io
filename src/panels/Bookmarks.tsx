@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { notify } from "../lib/notifications";
+import { downloadBookmarksCSV } from "../utils/bookmark-import-export";
 import { formatFrequency } from "../utils/frequency";
 import { generateBookmarkId } from "../utils/id";
 
@@ -261,6 +262,16 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     });
   };
 
+  const handleExport = (): void => {
+    downloadBookmarksCSV(bookmarks);
+    notify({
+      message: `Exported ${bookmarks.length} bookmark${bookmarks.length !== 1 ? "s" : ""} to CSV`,
+      sr: "polite",
+      visual: true,
+      tone: "success",
+    });
+  };
+
   const containerClass = isPanel ? "panel-container" : "page-container";
   const showForm = isAdding || editingId !== null;
   const bookmarkToDelete = pendingDeleteId
@@ -373,6 +384,14 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
 
           <section aria-label="Add Bookmark">
             <button onClick={handleAdd}>Add Bookmark</button>
+            {bookmarks.length > 0 && (
+              <button
+                onClick={handleExport}
+                aria-label="Export bookmarks to CSV"
+              >
+                Export CSV
+              </button>
+            )}
           </section>
         </>
       )}

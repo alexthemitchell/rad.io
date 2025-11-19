@@ -304,4 +304,55 @@ describe("Bookmarks", () => {
       expect(arg).toMatch(/\/monitor\?frequency=162550000/);
     });
   });
+
+  describe("CSV Export", () => {
+    let mockDownloadBookmarksCSV: jest.Mock;
+
+    beforeEach(() => {
+      // Mock the CSV export function
+      mockDownloadBookmarksCSV = jest.fn();
+      jest.mock("../../utils/bookmark-import-export", () => ({
+        downloadBookmarksCSV: mockDownloadBookmarksCSV,
+      }));
+    });
+
+    it("does not show export button when no bookmarks exist", () => {
+      render(
+        <BrowserRouter>
+          <Bookmarks />
+        </BrowserRouter>,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /export/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows export button when bookmarks exist", async () => {
+      const bookmarks = [
+        {
+          id: "bm-1",
+          frequency: 100000000,
+          name: "FM Radio",
+          tags: ["fm"],
+          notes: "",
+          createdAt: Date.now(),
+          lastUsed: Date.now(),
+        },
+      ];
+      localStorageMock.setItem("rad.io:bookmarks", JSON.stringify(bookmarks));
+
+      render(
+        <BrowserRouter>
+          <Bookmarks />
+        </BrowserRouter>,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /export bookmarks to csv/i }),
+        ).toBeInTheDocument();
+      });
+    });
+  });
 });
