@@ -373,7 +373,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
             )}
           </section>
 
-          <section aria-label="Add Bookmark">
+          <section aria-label="Bookmark Actions">
             <button onClick={handleAdd}>Add Bookmark</button>
             {bookmarks.length > 0 && (
               <button

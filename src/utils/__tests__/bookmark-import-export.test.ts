@@ -20,7 +20,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\n");
+      const lines = csv.split("\r\n");
 
       expect(lines[0]).toBe(
         "Frequency (Hz),Name,Tags,Notes,Created At,Last Used",
@@ -44,7 +44,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\n");
+      const lines = csv.split("\r\n");
 
       expect(lines[1]).toContain('"2m Simplex, Calling"');
     });
@@ -125,7 +125,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\n");
+      const lines = csv.split("\r\n");
 
       expect(lines[1]).toBe(
         "100000000,Station,,No tags,1700000000000,1700000001000",
@@ -146,7 +146,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\n");
+      const lines = csv.split("\r\n");
 
       expect(lines[1]).toBe(
         "100000000,Station,test,,1700000000000,1700000001000",
@@ -176,7 +176,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\n");
+      const lines = csv.split("\r\n");
 
       expect(lines).toHaveLength(3);
       expect(lines[0]).toBe(
@@ -268,14 +268,15 @@ describe("bookmark-import-export", () => {
 
     it("should generate filename with current date", () => {
       const bookmarks: Bookmark[] = [];
-      const mockDate = new Date("2025-11-18T12:00:00Z");
-      jest.spyOn(global, "Date").mockImplementation(() => mockDate);
+
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date("2025-11-18T12:00:00Z"));
 
       downloadBookmarksCSV(bookmarks);
 
       expect(mockAnchor.download).toBe("bookmarks-2025-11-18.csv");
 
-      jest.restoreAllMocks();
+      jest.useRealTimers();
     });
 
     it("should handle empty bookmarks array", () => {

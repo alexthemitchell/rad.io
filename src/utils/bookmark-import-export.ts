@@ -1,5 +1,6 @@
 /**
  * Utilities for importing and exporting bookmarks in CSV format
+ * Note: Currently only export is implemented; import is planned for future
  */
 
 import type { Bookmark } from "../types/bookmark";
@@ -46,7 +47,7 @@ export function bookmarksToCSV(bookmarks: Bookmark[]): string {
   ];
   const headerRow = headers.join(",");
   const dataRows = bookmarks.map(bookmarkToCSVRow);
-  return [headerRow, ...dataRows].join("\n");
+  return [headerRow, ...dataRows].join("\r\n");
 }
 
 /**
