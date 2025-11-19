@@ -23,7 +23,7 @@ import {
   QuestionIcon,
   RecordIcon,
 } from "@phosphor-icons/react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 export interface QuickActionsProps {
   /** Current frequency in Hz */
@@ -56,10 +56,6 @@ function QuickActions({
 }: QuickActionsProps): React.JSX.Element {
   const [tooltipVisible, setTooltipVisible] = useState<string | null>(null);
 
-  const handleBookmark = useCallback(() => {
-    onBookmark(currentFrequencyHz);
-  }, [currentFrequencyHz, onBookmark]);
-
   return (
     <div
       className="quick-actions"
@@ -69,7 +65,7 @@ function QuickActions({
       {/* Bookmark Button */}
       <button
         className="quick-action-btn"
-        onClick={handleBookmark}
+        onClick={() => onBookmark(currentFrequencyHz)}
         onMouseEnter={() => setTooltipVisible("bookmark")}
         onMouseLeave={() => setTooltipVisible(null)}
         onFocus={() => setTooltipVisible("bookmark")}

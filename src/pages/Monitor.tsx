@@ -308,6 +308,12 @@ const Monitor: React.FC = () => {
     toggleShortcuts();
   }, []);
 
+  // Use ref to track frequency for keyboard shortcuts to avoid listener churn
+  const frequencyRef = useRef(frequency);
+  useEffect(() => {
+    frequencyRef.current = frequency;
+  }, [frequency]);
+
   // Keyboard shortcuts for quick actions
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent): void => {
@@ -323,7 +329,7 @@ const Monitor: React.FC = () => {
       switch (event.key.toLowerCase()) {
         case "b":
           event.preventDefault();
-          handleBookmark(frequency);
+          handleBookmark(frequencyRef.current);
           break;
         case "g":
           event.preventDefault();
@@ -340,7 +346,7 @@ const Monitor: React.FC = () => {
     return (): void => {
       window.removeEventListener("keydown", handleKeyPress);
     };
-  }, [frequency, handleBookmark, handleToggleGrid]);
+  }, [handleBookmark, handleToggleGrid]);
 
   // Auto FM PPM calibration (runs once per session when stable)
   const autoPpmDoneRef = useRef(false);

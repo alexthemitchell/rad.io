@@ -76,11 +76,10 @@ test.describe("QuickActions on Monitor Page", () => {
     // Click to start recording
     await recordButton.click();
 
-    // Wait for state to update
-    await page.waitForTimeout(500);
-
-    // Check that aria-pressed changed to true
-    await expect(recordButton).toHaveAttribute("aria-pressed", "true");
+    // Wait for aria-pressed to become true
+    await expect(recordButton).toHaveAttribute("aria-pressed", "true", {
+      timeout: 1000,
+    });
 
     // Check that the button has the recording class
     await expect(recordButton).toHaveClass(/recording/);
@@ -101,15 +100,17 @@ test.describe("QuickActions on Monitor Page", () => {
       'button[aria-label*="grid"][aria-label*="(G)"]',
     );
 
+    // Get initial aria-pressed value
+    const initialPressed = await gridButton.getAttribute("aria-pressed");
+
     // Click to toggle grid
     await gridButton.click();
 
-    // Wait for state to update
-    await page.waitForTimeout(500);
-
-    // Check that aria-pressed changed
-    const isPressed = await gridButton.getAttribute("aria-pressed");
-    expect(["true", "false"]).toContain(isPressed);
+    // Wait for aria-pressed to toggle
+    const toggledPressed = initialPressed === "true" ? "false" : "true";
+    await expect(gridButton).toHaveAttribute("aria-pressed", toggledPressed, {
+      timeout: 1000,
+    });
 
     // Take screenshot
     await page.screenshot({
