@@ -139,11 +139,53 @@ describe("markerSlice", () => {
 
     removeMarker(marker1Id);
 
-    addMarker(300e6, -30); // Should be M2 (based on current length + 1)
+    addMarker(300e6, -30); // Should be M3 (continues sequential numbering)
 
     const newState = useStore.getState();
     expect(newState.markers).toHaveLength(2);
     expect(newState.markers[0]?.label).toBe("M2");
-    expect(newState.markers[1]?.label).toBe("M2");
+    expect(newState.markers[1]?.label).toBe("M3");
+  });
+
+  it("should maintain unique labels after multiple add/remove operations", () => {
+    const { addMarker, removeMarker } = useStore.getState();
+
+    addMarker(100e6, -50); // M1
+    addMarker(200e6, -40); // M2
+    addMarker(300e6, -30); // M3
+
+    const state = useStore.getState();
+    const marker2Id = state.markers[1]?.id ?? "";
+
+    removeMarker(marker2Id); // Remove M2
+
+    addMarker(400e6, -20); // Should be M4
+
+    const newState = useStore.getState();
+    expect(newState.markers).toHaveLength(3);
+    expect(newState.markers[0]?.label).toBe("M1");
+    expect(newState.markers[1]?.label).toBe("M3");
+    expect(newState.markers[2]?.label).toBe("M4");
+
+    // Verify all labels are unique
+    const labels = newState.markers.map((m) => m.label);
+    const uniqueLabels = new Set(labels);
+    expect(uniqueLabels.size).toBe(3);
+  });
+
+  it("should reset counter when clearing markers", () => {
+    const { addMarker, clearMarkers } = useStore.getState();
+
+    addMarker(100e6, -50); // M1
+    addMarker(200e6, -40); // M2
+    addMarker(300e6, -30); // M3
+
+    clearMarkers();
+
+    addMarker(400e6, -20); // Should be M1 again
+
+    const state = useStore.getState();
+    expect(state.markers).toHaveLength(1);
+    expect(state.markers[0]?.label).toBe("M1");
   });
 });

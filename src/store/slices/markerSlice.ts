@@ -33,6 +33,11 @@ export interface MarkerSlice {
   markers: Marker[];
 
   /**
+   * Counter for next marker number to ensure unique sequential labels
+   */
+  nextMarkerNumber: number;
+
+  /**
    * Add a new marker with auto-generated label
    */
   addMarker: (freqHz: number, powerDb?: number) => void;
@@ -58,8 +63,8 @@ function generateMarkerId(): string {
 /**
  * Generate marker label (M1, M2, M3, etc.)
  */
-function generateMarkerLabel(existingMarkers: Marker[]): string {
-  return `M${existingMarkers.length + 1}`;
+function generateMarkerLabel(markerNumber: number): string {
+  return `M${markerNumber}`;
 }
 
 /**
@@ -67,13 +72,17 @@ function generateMarkerLabel(existingMarkers: Marker[]): string {
  */
 export const markerSlice: StateCreator<MarkerSlice> = (set) => ({
   markers: [],
+  nextMarkerNumber: 1,
 
   addMarker: (freqHz: number, powerDb?: number): void => {
     set((state) => {
       const id = generateMarkerId();
-      const label = generateMarkerLabel(state.markers);
+      const label = generateMarkerLabel(state.nextMarkerNumber);
       const newMarker: Marker = { id, label, freqHz, powerDb };
-      return { markers: [...state.markers, newMarker] };
+      return {
+        markers: [...state.markers, newMarker],
+        nextMarkerNumber: state.nextMarkerNumber + 1,
+      };
     });
   },
 
@@ -84,6 +93,6 @@ export const markerSlice: StateCreator<MarkerSlice> = (set) => ({
   },
 
   clearMarkers: (): void => {
-    set({ markers: [] });
+    set({ markers: [], nextMarkerNumber: 1 });
   },
 });
