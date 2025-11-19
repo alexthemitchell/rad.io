@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import AudioControls from "../components/AudioControls";
 import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
+import QuickActions from "../components/Monitor/QuickActions";
 import VisualizationControls from "../components/Monitor/VisualizationControls";
 import RDSDisplay from "../components/RDSDisplay";
 import { WATERFALL_COLORMAPS } from "../constants";
@@ -17,13 +18,16 @@ import {
 } from "../hooks/useSignalDetection";
 import { CalibrationManager } from "../lib/measurement/calibration";
 import { estimateFMBroadcastPPM } from "../lib/measurement/fm-ppm-calibrator";
+import { notify } from "../lib/notifications";
 import { type SDRCapabilities, type IQSample } from "../models/SDRDevice";
 import { useDevice, useFrequency, useSettings, useDiagnostics } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
+import { generateBookmarkId } from "../utils/id";
 import { createMultiStationFMProcessor } from "../utils/multiStationFM";
 import type { RDSStationData } from "../models/RDSData";
+import type { Bookmark } from "../types/bookmark";
 
 declare global {
   interface Window {
@@ -38,7 +42,7 @@ const Monitor: React.FC = () => {
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
     useFrequency();
-  const { settings } = useSettings();
+  const { settings, setSettings } = useSettings();
 
   // State for device capabilities and bandwidth
   const [deviceBandwidth, setDeviceBandwidth] = useState<number>(0);
@@ -218,6 +222,96 @@ const Monitor: React.FC = () => {
   const handleToggleAudio = (): void => setIsAudioPlaying(!isAudioPlaying);
   const handleVolumeChange = (vol: number): void => setVolume(vol * 100);
   const handleToggleMute = (): void => setIsMuted(!isMuted);
+
+  // Quick Actions handlers
+  const [isRecordingActive, setIsRecordingActive] = useState(false);
+
+  const handleBookmark = (frequencyHz: number): void => {
+    const STORAGE_KEY = "rad.io:bookmarks";
+
+    // Load existing bookmarks
+    const stored = localStorage.getItem(STORAGE_KEY);
+    let bookmarks: Bookmark[] = [];
+    if (stored) {
+      try {
+        bookmarks = JSON.parse(stored) as Bookmark[];
+      } catch {
+        // Invalid data, start fresh
+        bookmarks = [];
+      }
+    }
+
+    // Check if frequency already bookmarked
+    const existing = bookmarks.find((b) => b.frequency === frequencyHz);
+    if (existing) {
+      notify({
+        message: `Frequency ${formatFrequency(frequencyHz)} is already bookmarked as "${existing.name}"`,
+        sr: "polite",
+        visual: true,
+        tone: "info",
+      });
+      return;
+    }
+
+    // Create new bookmark
+    const newBookmark: Bookmark = {
+      id: generateBookmarkId(),
+      frequency: frequencyHz,
+      name: formatFrequency(frequencyHz),
+      tags: [],
+      notes: "",
+      createdAt: Date.now(),
+      lastUsed: Date.now(),
+    };
+
+    // Save to localStorage
+    bookmarks.push(newBookmark);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookmarks));
+
+    notify({
+      message: `Bookmarked ${formatFrequency(frequencyHz)}`,
+      sr: "polite",
+      visual: true,
+      tone: "success",
+    });
+  };
+
+  const handleToggleRecording = (): void => {
+    // TODO: Integrate with actual recording system (RecordingControls logic)
+    // For now, just toggle state and show notification
+    setIsRecordingActive((prev) => {
+      const newState = !prev;
+      notify({
+        message: newState ? "Recording started" : "Recording stopped",
+        sr: "polite",
+        visual: true,
+        tone: newState ? "success" : "info",
+      });
+      return newState;
+    });
+  };
+
+  const handleToggleGrid = (): void => {
+    setSettings({ showGridlines: !settings.showGridlines });
+    notify({
+      message: settings.showGridlines ? "Grid hidden" : "Grid shown",
+      sr: "polite",
+      visual: true,
+      tone: "info",
+    });
+  };
+
+  const handleShowHelp = (): void => {
+    // The ShortcutsOverlay is already rendered globally and listens to '?' key
+    // We can trigger it by dispatching a keyboard event or setting state
+    // For now, we'll dispatch a keyboard event to trigger the existing overlay
+    const event = new KeyboardEvent("keydown", {
+      key: "?",
+      shiftKey: true,
+      bubbles: true,
+    });
+    window.dispatchEvent(event);
+  };
 
   // Auto FM PPM calibration (runs once per session when stable)
   const autoPpmDoneRef = useRef(false);
@@ -434,6 +528,7 @@ const Monitor: React.FC = () => {
             alignItems: "center",
             marginBottom: "16px",
             flexWrap: "wrap",
+            justifyContent: "space-between",
           }}
         >
           <div
@@ -472,6 +567,17 @@ const Monitor: React.FC = () => {
           >
             Diagnostics
           </button>
+
+          {/* Quick Actions Toolbar */}
+          <QuickActions
+            currentFrequencyHz={frequency}
+            isRecording={isRecordingActive}
+            showGrid={settings.showGridlines}
+            onBookmark={handleBookmark}
+            onToggleRecording={handleToggleRecording}
+            onToggleGrid={handleToggleGrid}
+            onShowHelp={handleShowHelp}
+          />
         </div>
         <div style={{ marginTop: 8, position: "relative" }}>
           <VisualizationControls
