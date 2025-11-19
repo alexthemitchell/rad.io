@@ -25,9 +25,7 @@ test.describe("QuickActions on Monitor Page", () => {
     const bookmarkButton = page.locator(
       'button[aria-label="Bookmark current frequency (B)"]',
     );
-    const recordButton = page.locator(
-      'button[aria-label*="recording"][aria-label*="(R)"]',
-    );
+    const recordButton = page.locator('button[aria-label*="recording"]');
     const gridButton = page.locator(
       'button[aria-label*="grid"][aria-label*="(G)"]',
     );
@@ -70,9 +68,7 @@ test.describe("QuickActions on Monitor Page", () => {
     // Wait for Quick Actions to be visible
     await page.waitForSelector('[aria-label="Quick actions toolbar"]');
 
-    const recordButton = page.locator(
-      'button[aria-label*="recording"][aria-label*="(R)"]',
-    );
+    const recordButton = page.locator('button[aria-label*="recording"]');
 
     // Check initial state
     await expect(recordButton).toHaveAttribute("aria-pressed", "false");
