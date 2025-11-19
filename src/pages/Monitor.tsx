@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import AudioControls from "../components/AudioControls";
 import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
@@ -27,6 +33,7 @@ import { updateBulkCachedRDSData } from "../store/rdsCache";
 import {
   addBookmark as addBookmarkToStorage,
   bookmarkExists,
+  updateBookmark,
 } from "../utils/bookmarkStorage";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
 import { generateBookmarkId } from "../utils/id";
@@ -231,15 +238,17 @@ const Monitor: React.FC = () => {
   // Quick Actions handlers
   const [isRecordingActive, setIsRecordingActive] = useState(false);
 
-  const handleBookmark = (frequencyHz: number): void => {
+  const handleBookmark = useCallback((frequencyHz: number): void => {
     // Check if frequency already bookmarked
     const existing = bookmarkExists(frequencyHz);
     if (existing) {
+      // Update lastUsed timestamp
+      updateBookmark(existing.id, { lastUsed: Date.now() });
       notify({
-        message: `Frequency ${formatFrequency(frequencyHz)} is already bookmarked as "${existing.name}"`,
+        message: `Updated bookmark for ${formatFrequency(frequencyHz)}`,
         sr: "polite",
         visual: true,
-        tone: "info",
+        tone: "success",
       });
       return;
     }
@@ -264,9 +273,9 @@ const Monitor: React.FC = () => {
       visual: true,
       tone: "success",
     });
-  };
+  }, []);
 
-  const handleToggleRecording = (): void => {
+  const handleToggleRecording = useCallback((): void => {
     // TODO: Integrate with actual recording system (RecordingControls logic)
     // For now, just toggle state and show notification
     setIsRecordingActive((prev) => {
@@ -279,22 +288,59 @@ const Monitor: React.FC = () => {
       });
       return newState;
     });
-  };
+  }, []);
 
-  const handleToggleGrid = (): void => {
+  const handleToggleGrid = useCallback((): void => {
     const newState = !settings.showGridlines;
     setSettings({ showGridlines: newState });
     notify({
-      message: newState ? "Grid shown" : "Grid hidden",
+      message: newState ? "Gridlines shown" : "Gridlines hidden",
       sr: "polite",
       visual: true,
       tone: "info",
     });
-  };
+  }, [settings.showGridlines, setSettings]);
 
-  const handleShowHelp = (): void => {
+  const handleShowHelp = useCallback((): void => {
     toggleShortcuts();
-  };
+  }, []);
+
+  // Keyboard shortcuts for quick actions
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent): void => {
+      // Only handle keyboard shortcuts if not in an input field
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        (event.target as HTMLElement | null)?.isContentEditable
+      ) {
+        return;
+      }
+
+      switch (event.key.toLowerCase()) {
+        case "b":
+          event.preventDefault();
+          handleBookmark(frequency);
+          break;
+        case "r":
+          event.preventDefault();
+          handleToggleRecording();
+          break;
+        case "g":
+          event.preventDefault();
+          handleToggleGrid();
+          break;
+        // Note: '?' is already handled by ShortcutsOverlay
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return (): void => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [frequency, handleBookmark, handleToggleRecording, handleToggleGrid]);
 
   // Auto FM PPM calibration (runs once per session when stable)
   const autoPpmDoneRef = useRef(false);

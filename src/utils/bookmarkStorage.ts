@@ -11,7 +11,7 @@
 
 import type { Bookmark } from "../types/bookmark";
 
-const STORAGE_KEY = "rad.io:bookmarks";
+export const STORAGE_KEY = "rad.io:bookmarks";
 
 /**
  * Load all bookmarks from localStorage
