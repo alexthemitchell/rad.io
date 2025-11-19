@@ -18,13 +18,15 @@ This guide demonstrates how to use rad.io's modular SDR visualization components
 ```typescript
 import { Spectrum, Waterfall, IQConstellation } from "@/visualization";
 
-// Display a spectrum analyzer
+// Display a spectrum analyzer with VFO cursor
 <Spectrum
   magnitudes={fftData}
   freqMin={0}
   freqMax={1024}
   width={900}
   height={400}
+  sampleRate={2e6}              // Optional: enables VFO cursor
+  centerFrequency={100e6}       // Optional: enables VFO cursor
 />
 
 // Display a waterfall plot
@@ -83,15 +85,37 @@ await setup.cleanup();
 
 ### Available Components
 
-| Component              | Purpose                              | Key Props                                  |
-| ---------------------- | ------------------------------------ | ------------------------------------------ |
-| **Spectrum**           | Real-time frequency spectrum display | `magnitudes`, `freqMin`, `freqMax`         |
-| **Waterfall**          | Time-frequency heatmap               | `frames`, `freqMin`, `freqMax`             |
-| **IQConstellation**    | Scatter plot of I/Q samples          | `samples`                                  |
-| **Spectrogram**        | STFT time-frequency visualization    | `samples`, `sampleRate`                    |
-| **WaveformVisualizer** | Time-domain amplitude display        | `samples`                                  |
-| **FFTChart**           | Frequency chart with annotations     | `magnitudes`, `frequencies`                |
-| **SpectrumExplorer**   | Interactive spectrum analyzer        | `samples`, `sampleRate`, `centerFrequency` |
+| Component              | Purpose                              | Key Props                                                             |
+| ---------------------- | ------------------------------------ | --------------------------------------------------------------------- |
+| **Spectrum**           | Real-time frequency spectrum display | `magnitudes`, `freqMin`, `freqMax`, `sampleRate?`, `centerFrequency?` |
+| **Waterfall**          | Time-frequency heatmap               | `frames`, `freqMin`, `freqMax`                                        |
+| **IQConstellation**    | Scatter plot of I/Q samples          | `samples`                                                             |
+| **Spectrogram**        | STFT time-frequency visualization    | `samples`, `sampleRate`                                               |
+| **WaveformVisualizer** | Time-domain amplitude display        | `samples`                                                             |
+| **FFTChart**           | Frequency chart with annotations     | `magnitudes`, `frequencies`                                           |
+| **SpectrumExplorer**   | Interactive spectrum analyzer        | `samples`, `sampleRate`, `centerFrequency`                            |
+
+### VFO Cursor Feature (Spectrum Component)
+
+The Spectrum component now supports displaying a VFO (Variable Frequency Oscillator) cursor that shows the current tuned frequency:
+
+```typescript
+<Spectrum
+  magnitudes={fftData}
+  sampleRate={2e6}              // Required for VFO cursor
+  centerFrequency={100e6}       // Required for VFO cursor
+  width={900}
+  height={400}
+/>
+```
+
+**VFO Cursor Features:**
+
+- **Automatic Updates**: Subscribes to Zustand frequency store for real-time updates
+- **Visual Style**: Cyan vertical line with subtle glow (uses `--rad-accent` CSS variable)
+- **Smart Rendering**: Only displays when VFO is within visible spectrum range
+- **Accessible**: Includes VFO frequency in ARIA labels
+- **Backward Compatible**: Works without `sampleRate`/`centerFrequency` (no cursor shown)
 
 ### Component Features
 
