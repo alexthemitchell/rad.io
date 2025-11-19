@@ -111,17 +111,22 @@ function Recordings(): React.JSX.Element {
             </div>
 
             <div className="storage-progress-container">
-              <div className="storage-progress-bar">
+              <div
+                className="storage-progress-bar"
+                role="progressbar"
+                aria-valuenow={Math.min(
+                  100,
+                  Math.round(storageQuota.percentUsed),
+                )}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Storage usage percentage"
+              >
                 <div
                   className={`storage-progress-fill ${getStorageClass(storageQuota.percentUsed)}`}
                   style={{
                     width: `${Math.min(storageQuota.percentUsed, 100)}%`,
                   }}
-                  role="progressbar"
-                  aria-valuenow={Math.round(storageQuota.percentUsed)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label="Storage usage percentage"
                 />
               </div>
               <div className="storage-progress-text">

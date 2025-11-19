@@ -241,8 +241,13 @@ describe("Recordings", () => {
       );
 
       const progressBar = screen.getByRole("progressbar");
-      // The style width should be capped at 100%
-      expect(progressBar).toHaveStyle({ width: "100%" });
+      // aria-valuenow should be capped at 100
+      expect(progressBar).toHaveAttribute("aria-valuenow", "100");
+      expect(progressBar).toHaveAttribute("aria-valuemax", "100");
+
+      // The fill element's width should also be capped at 100%
+      const fillElement = progressBar.querySelector(".storage-progress-fill");
+      expect(fillElement).toHaveStyle({ width: "100%" });
     });
 
     it("formats bytes correctly for small values", () => {
