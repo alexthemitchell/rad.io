@@ -1,7 +1,7 @@
+import type { Bookmark } from "../../types/bookmark";
 import {
   bookmarksToCSV,
   downloadBookmarksCSV,
-  Bookmark,
 } from "../bookmark-import-export";
 
 describe("bookmark-import-export", () => {
@@ -18,10 +18,10 @@ describe("bookmark-import-export", () => {
           lastUsed: 1700000001000,
         },
       ];
-      
+
       const csv = bookmarksToCSV(bookmarks);
       const lines = csv.split("\n");
-      
+
       expect(lines[0]).toBe(
         "Frequency (Hz),Name,Tags,Notes,Created At,Last Used",
       );
@@ -42,10 +42,10 @@ describe("bookmark-import-export", () => {
           lastUsed: 1700000001000,
         },
       ];
-      
+
       const csv = bookmarksToCSV(bookmarks);
       const lines = csv.split("\n");
-      
+
       expect(lines[1]).toContain('"2m Simplex, Calling"');
     });
 
@@ -61,9 +61,9 @@ describe("bookmark-import-export", () => {
           lastUsed: 1700000001000,
         },
       ];
-      
+
       const csv = bookmarksToCSV(bookmarks);
-      
+
       expect(csv).toContain('"Station ""Alpha"""');
       expect(csv).toContain('"Also known as ""WX1"""');
     });
@@ -80,15 +80,34 @@ describe("bookmark-import-export", () => {
           lastUsed: 1700000001000,
         },
       ];
-      
+
       const csv = bookmarksToCSV(bookmarks);
-      
+
       expect(csv).toContain('"Line 1\nLine 2"');
+    });
+
+    it("should escape fields containing carriage returns", () => {
+      const bookmarks: Bookmark[] = [
+        {
+          id: "bm-1",
+          frequency: 100000000,
+          name: "Station\rName",
+          tags: ["test"],
+          notes: "Note with\r\nCRLF",
+          createdAt: 1700000000000,
+          lastUsed: 1700000001000,
+        },
+      ];
+
+      const csv = bookmarksToCSV(bookmarks);
+
+      expect(csv).toContain('"Station\rName"');
+      expect(csv).toContain('"Note with\r\nCRLF"');
     });
 
     it("should handle empty bookmarks array", () => {
       const csv = bookmarksToCSV([]);
-      
+
       expect(csv).toBe("Frequency (Hz),Name,Tags,Notes,Created At,Last Used");
     });
 
@@ -104,11 +123,13 @@ describe("bookmark-import-export", () => {
           lastUsed: 1700000001000,
         },
       ];
-      
+
       const csv = bookmarksToCSV(bookmarks);
       const lines = csv.split("\n");
-      
-      expect(lines[1]).toBe("100000000,Station,,No tags,1700000000000,1700000001000");
+
+      expect(lines[1]).toBe(
+        "100000000,Station,,No tags,1700000000000,1700000001000",
+      );
     });
 
     it("should handle bookmarks with empty notes", () => {
@@ -123,11 +144,13 @@ describe("bookmark-import-export", () => {
           lastUsed: 1700000001000,
         },
       ];
-      
+
       const csv = bookmarksToCSV(bookmarks);
       const lines = csv.split("\n");
-      
-      expect(lines[1]).toBe("100000000,Station,test,,1700000000000,1700000001000");
+
+      expect(lines[1]).toBe(
+        "100000000,Station,test,,1700000000000,1700000001000",
+      );
     });
 
     it("should handle multiple bookmarks", () => {
@@ -151,10 +174,10 @@ describe("bookmark-import-export", () => {
           lastUsed: 1700000003000,
         },
       ];
-      
+
       const csv = bookmarksToCSV(bookmarks);
       const lines = csv.split("\n");
-      
+
       expect(lines).toHaveLength(3);
       expect(lines[0]).toBe(
         "Frequency (Hz),Name,Tags,Notes,Created At,Last Used",
@@ -179,9 +202,9 @@ describe("bookmark-import-export", () => {
           lastUsed: 1700000001000,
         },
       ];
-      
+
       const csv = bookmarksToCSV(bookmarks);
-      
+
       expect(csv).toContain('"amateur,vhf,simplex"');
     });
   });
@@ -195,7 +218,7 @@ describe("bookmark-import-export", () => {
       // Mock URL.createObjectURL and revokeObjectURL
       createObjectURLMock = jest.fn().mockReturnValue("blob:mock-url");
       revokeObjectURLMock = jest.fn();
-      
+
       global.URL.createObjectURL = createObjectURLMock;
       global.URL.revokeObjectURL = revokeObjectURLMock;
 

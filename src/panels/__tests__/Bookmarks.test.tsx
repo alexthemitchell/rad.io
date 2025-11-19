@@ -306,16 +306,6 @@ describe("Bookmarks", () => {
   });
 
   describe("CSV Export", () => {
-    let mockDownloadBookmarksCSV: jest.Mock;
-
-    beforeEach(() => {
-      // Mock the CSV export function
-      mockDownloadBookmarksCSV = jest.fn();
-      jest.mock("../../utils/bookmark-import-export", () => ({
-        downloadBookmarksCSV: mockDownloadBookmarksCSV,
-      }));
-    });
-
     it("does not show export button when no bookmarks exist", () => {
       render(
         <BrowserRouter>

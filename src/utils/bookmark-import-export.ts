@@ -2,24 +2,16 @@
  * Utilities for importing and exporting bookmarks in CSV format
  */
 
-export interface Bookmark {
-  id: string;
-  frequency: number; // Hz
-  name: string;
-  tags: string[];
-  notes: string;
-  createdAt: number; // timestamp
-  lastUsed: number; // timestamp
-}
+import type { Bookmark } from "../types/bookmark";
 
 /**
  * Escapes a CSV field value by:
- * - Wrapping in quotes if it contains comma, quote, or newline
+ * - Wrapping in quotes if it contains comma, quote, newline, or carriage return
  * - Doubling any internal quotes
  */
 function escapeCSVField(value: string | number): string {
   const str = String(value);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+  if (/[,"\r\n]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;

@@ -4,6 +4,7 @@ import { notify } from "../lib/notifications";
 import { downloadBookmarksCSV } from "../utils/bookmark-import-export";
 import { formatFrequency } from "../utils/frequency";
 import { generateBookmarkId } from "../utils/id";
+import type { Bookmark } from "../types/bookmark";
 
 /**
  * Bookmarks panel/page for frequency management
@@ -24,16 +25,6 @@ import { generateBookmarkId } from "../utils/id";
  * TODO: Add import/export functionality (future)
  * TODO: Migrate to IndexedDB for better performance with 10k+ entries
  */
-
-interface Bookmark {
-  id: string;
-  frequency: number; // Hz
-  name: string;
-  tags: string[];
-  notes: string;
-  createdAt: number; // timestamp
-  lastUsed: number; // timestamp
-}
 
 interface BookmarksProps {
   isPanel?: boolean; // True when rendered as a side panel, false for full-page route
