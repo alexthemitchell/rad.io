@@ -19,6 +19,8 @@ const LABEL_PADDING_PX = 4; // Padding around label text background
 const MIN_HIT_AREA_HZ = 50e3; // Minimum hit area for signal detection (50 kHz)
 // Keep recently-seen signals visible for a short period even if they are marked inactive
 const RECENTLY_VISIBLE_MS = 5_000; // 5 seconds
+// VFO cursor fallback color (approximation of oklch(78% 0.14 195deg) in RGBA)
+const VFO_CURSOR_FALLBACK_COLOR = "rgba(100, 200, 255, 0.9)";
 
 const DEFAULT_SIGNAL_BANDWIDTHS = new Map<string, number>([
   ["wideband-fm", 200_000],
@@ -84,6 +86,9 @@ export interface AnnotationConfig {
 /**
  * Annotation renderer for spectrum visualizations
  * Uses 2D canvas overlay on top of WebGL spectrum
+ *
+ * Note: Each instance should be bound to a single canvas. If you need to render
+ * to multiple canvases, create separate instances to avoid dimension tracking conflicts.
  */
 export class SpectrumAnnotations {
   private canvas: HTMLCanvasElement | null = null;
@@ -104,6 +109,27 @@ export class SpectrumAnnotations {
     this.dpr = window.devicePixelRatio || 1;
 
     return this.ctx !== null;
+  }
+
+  /**
+   * Update canvas dimensions with DPR scaling
+   * @param width Logical width in pixels
+   * @param height Logical height in pixels
+   * @private
+   */
+  private updateCanvasDimensions(width: number, height: number): void {
+    if (!this.canvas) {
+      return;
+    }
+
+    if (width !== this.lastWidth || height !== this.lastHeight) {
+      this.canvas.width = width * this.dpr;
+      this.canvas.height = height * this.dpr;
+      this.canvas.style.width = `${width}px`;
+      this.canvas.style.height = `${height}px`;
+      this.lastWidth = width;
+      this.lastHeight = height;
+    }
   }
 
   /**
@@ -139,14 +165,7 @@ export class SpectrumAnnotations {
     const width = rect.width;
     const height = rect.height;
 
-    if (width !== this.lastWidth || height !== this.lastHeight) {
-      this.canvas.width = width * this.dpr;
-      this.canvas.height = height * this.dpr;
-      this.canvas.style.width = `${width}px`;
-      this.canvas.style.height = `${height}px`;
-      this.lastWidth = width;
-      this.lastHeight = height;
-    }
+    this.updateCanvasDimensions(width, height);
 
     // Save context state and scale for device pixel ratio
     ctx.save();
@@ -265,14 +284,7 @@ export class SpectrumAnnotations {
     const width = rect.width;
     const height = rect.height;
 
-    if (width !== this.lastWidth || height !== this.lastHeight) {
-      this.canvas.width = width * this.dpr;
-      this.canvas.height = height * this.dpr;
-      this.canvas.style.width = `${width}px`;
-      this.canvas.style.height = `${height}px`;
-      this.lastWidth = width;
-      this.lastHeight = height;
-    }
+    this.updateCanvasDimensions(width, height);
 
     ctx.save();
     ctx.scale(this.dpr, this.dpr);
@@ -369,6 +381,110 @@ export class SpectrumAnnotations {
     ctx.restore(); // clip
 
     ctx.restore();
+    return true;
+  }
+
+  /**
+   * Render VFO (Variable Frequency Oscillator) cursor on spectrum
+   * Draws a vertical line at the current tuned frequency
+   * @param vfoFrequency VFO frequency in Hz
+   * @param sampleRate Sample rate in Hz
+   * @param centerFrequency Center frequency in Hz
+   * @returns True if rendering succeeded
+   */
+  public renderVFOCursor(
+    vfoFrequency: number,
+    sampleRate: number,
+    centerFrequency: number,
+  ): boolean {
+    if (!this.canvas || !this.ctx) {
+      return false;
+    }
+
+    // Validate inputs for NaN/invalid values
+    if (
+      !Number.isFinite(vfoFrequency) ||
+      !Number.isFinite(sampleRate) ||
+      !Number.isFinite(centerFrequency)
+    ) {
+      return true; // Not an error, just invalid
+    }
+
+    const ctx = this.ctx;
+    const rect = this.canvas.getBoundingClientRect();
+    // Use canvas dimensions if getBoundingClientRect returns 0 (e.g., in tests)
+    const width = rect.width > 0 ? rect.width : this.canvas.width;
+    const height = rect.height > 0 ? rect.height : this.canvas.height;
+
+    // Update canvas size with DPR scaling if dimensions changed
+    this.updateCanvasDimensions(width, height);
+
+    // Save context state and scale for device pixel ratio
+    ctx.save();
+    ctx.scale(this.dpr, this.dpr);
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Match CanvasSpectrum's internal chart margins for perfect overlay alignment
+    const margin = DEFAULT_MARGIN;
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+    if (chartWidth <= 0 || chartHeight <= 0) {
+      ctx.restore();
+      return false;
+    }
+
+    // Calculate frequency range
+    const freqMin = centerFrequency - sampleRate / 2;
+    const freqMax = centerFrequency + sampleRate / 2;
+
+    // Check if VFO frequency is within visible range
+    if (vfoFrequency < freqMin || vfoFrequency > freqMax) {
+      ctx.restore();
+      return true; // Not an error, just not visible
+    }
+
+    // Calculate x position of VFO cursor
+    const freqRange = Math.max(1, freqMax - freqMin);
+    const xNorm = (vfoFrequency - freqMin) / freqRange;
+    const x = margin.left + xNorm * chartWidth;
+
+    // Clip to chart area
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(margin.left, margin.top, chartWidth, chartHeight);
+    if (typeof ctx.clip === "function") {
+      ctx.clip();
+    }
+
+    // Use CSS variable for accent color with fallback
+    const accentColor =
+      getComputedStyle(this.canvas).getPropertyValue("--rad-accent") ||
+      "oklch(78% 0.14 195deg)"; // Fallback to cyan from tokens.css
+
+    // Convert oklch to rgba for canvas
+    // Note: This is an approximation. oklch(78% 0.14 195deg) ≈ rgba(100, 200, 255, 0.9)
+    const cursorColor = accentColor.trim().startsWith("oklch(")
+      ? VFO_CURSOR_FALLBACK_COLOR
+      : accentColor;
+
+    // Draw VFO cursor line with glow effect
+    ctx.shadowColor = cursorColor;
+    ctx.shadowBlur = 4;
+    ctx.strokeStyle = cursorColor;
+    ctx.lineWidth = 2.5;
+    if (typeof ctx.setLineDash === "function") {
+      ctx.setLineDash([]);
+    }
+    ctx.beginPath();
+    ctx.moveTo(x, margin.top);
+    ctx.lineTo(x, margin.top + chartHeight);
+    ctx.stroke();
+
+    ctx.restore(); // clip
+    ctx.restore(); // dpr scale
+
     return true;
   }
 
@@ -849,6 +965,29 @@ export class SpectrumAnnotations {
     }
 
     return closestSignal;
+  }
+
+  /**
+   * Clear the canvas
+   * Useful for removing rendered content when features are disabled
+   */
+  public clear(): void {
+    if (!this.canvas || !this.ctx) {
+      return;
+    }
+
+    const rect = this.canvas.getBoundingClientRect();
+    const width = rect.width > 0 ? rect.width : this.canvas.width;
+    const height = rect.height > 0 ? rect.height : this.canvas.height;
+
+    // Update canvas size with DPR scaling if dimensions changed
+    this.updateCanvasDimensions(width, height);
+
+    // Clear with DPR scaling
+    this.ctx.save();
+    this.ctx.scale(this.dpr, this.dpr);
+    this.ctx.clearRect(0, 0, width, height);
+    this.ctx.restore();
   }
 
   /**
