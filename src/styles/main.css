@@ -19,6 +19,7 @@
 @import url("./components/digital-mode.css") layer(digital-mode);
 @import url("./components/info-banner.css") layer(info-banner);
 @import url("./components/activity-log.css") layer(activity-log);
+@import url("./components/quick-actions.css") layer(quick-actions);
 
 /* Global base, accessibility, and focus styles moved to base.css and a11y.css */
 

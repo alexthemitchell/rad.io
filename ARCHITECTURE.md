@@ -321,17 +321,18 @@ rad.io employs a **multi-tier state management architecture** that balances perf
 
 ### State Taxonomy with Examples
 
-| State Type    | Storage Mechanism      | Location                                | Example Data                              | Survives Reload?  |
-| ------------- | ---------------------- | --------------------------------------- | ----------------------------------------- | ----------------- |
-| **Long-term** | IndexedDB              | `src/utils/atscChannelStorage.ts`       | Scanned ATSC channels with signal quality | ✅ Yes            |
-| **Long-term** | localStorage           | `src/utils/epgStorage.ts`               | Electronic Program Guide (EPG) data       | ✅ Yes (24hr max) |
-| **Long-term** | Zustand + localStorage | `src/store/slices/settingsSlice.ts`     | User preferences (FFT size, color scheme) | ✅ Yes            |
-| **Ephemeral** | Zustand (no persist)   | `src/store/slices/frequencySlice.ts`    | Current VFO frequency                     | ❌ No             |
-| **Ephemeral** | Zustand (no persist)   | `src/store/slices/deviceSlice.ts`       | Connected SDR devices                     | ❌ No             |
-| **Ephemeral** | Zustand (no persist)   | `src/store/slices/notificationSlice.ts` | Toast notifications                       | ❌ No             |
-| **Ephemeral** | Zustand (no persist)   | `src/store/slices/diagnosticsSlice.ts`  | Performance metrics, DSP capabilities     | ❌ No             |
-| **Ephemeral** | React hooks            | `src/hooks/useATSCScanner.ts`           | Active scan state, progress               | ❌ No             |
-| **Ephemeral** | React hooks            | `src/hooks/useEPG.ts`                   | Search query, filter selections           | ❌ No             |
+| State Type    | Storage Mechanism      | Location                                 | Example Data                              | Survives Reload?  |
+| ------------- | ---------------------- | ---------------------------------------- | ----------------------------------------- | ----------------- |
+| **Long-term** | IndexedDB              | `src/utils/atscChannelStorage.ts`        | Scanned ATSC channels with signal quality | ✅ Yes            |
+| **Long-term** | IndexedDB              | `src/lib/recording/recording-storage.ts` | IQ recording data (binary, chunked)       | ✅ Yes            |
+| **Long-term** | localStorage           | `src/utils/epgStorage.ts`                | Electronic Program Guide (EPG) data       | ✅ Yes (24hr max) |
+| **Long-term** | Zustand + localStorage | `src/store/slices/settingsSlice.ts`      | User preferences (FFT size, color scheme) | ✅ Yes            |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/frequencySlice.ts`     | Current VFO frequency                     | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/deviceSlice.ts`        | Connected SDR devices                     | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/notificationSlice.ts`  | Toast notifications                       | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/diagnosticsSlice.ts`   | Performance metrics, DSP capabilities     | ❌ No             |
+| **Ephemeral** | React hooks            | `src/hooks/useATSCScanner.ts`            | Active scan state, progress               | ❌ No             |
+| **Ephemeral** | React hooks            | `src/hooks/useEPG.ts`                    | Search query, filter selections           | ❌ No             |
 
 ### Storage Mechanisms in Detail
 
@@ -363,6 +364,34 @@ export interface StoredATSCChannel {
 
 await saveATSCChannel(channelData); // Persists to IndexedDB
 const channels = await getAllATSCChannels(); // Query with indexes
+```
+
+**Example**: IQ Recording Storage
+
+```typescript
+// src/lib/recording/recording-manager.ts
+// Persistence: IndexedDB (long-term, survives browser restart)
+// Handles large binary IQ recordings with chunking
+// Note: init() is called automatically by each method
+
+import { recordingManager } from "@/lib/recording";
+
+// Save a recording from IQRecorder (init called automatically)
+const recording = iqRecorder.getRecording();
+const id = await recordingManager.saveRecording(recording);
+// Automatically chunks data into ~10 MiB blobs
+
+// List all recordings (metadata only for performance)
+const recordings = await recordingManager.listRecordings();
+// Returns: [{ id, frequency, timestamp, duration, size }]
+
+// Load a specific recording with samples
+const loaded = await recordingManager.loadRecording(id);
+// Returns: { id, metadata, samples: IQSample[] }
+
+// Check storage usage before saving
+const usage = await recordingManager.getStorageUsage();
+// Returns: { used: number, quota: number, percent: number }
 ```
 
 #### 2. localStorage (Long-term, Key-Value)
@@ -507,10 +536,12 @@ When adding new stateful features, follow this decision tree:
 
 #### Storage Key Naming Conventions
 
-- IndexedDB database: `rad-io-{feature}` (e.g., `rad-io-atsc-channels`)
+- IndexedDB database: `rad-io-{feature}` (e.g., `rad-io-atsc-channels`, `rad-io-recordings`)
 - localStorage key: `rad.{feature}.v{version}` (e.g., `rad.settings.v1`)
   - **Note:** Some legacy features may use different key formats (e.g., `rad_io_epg_data` in `epgStorage.ts` uses underscores and no version). New features should follow the documented convention. When migrating legacy keys, ensure backward compatibility.
 - Zustand store: Export from `src/store/index.ts` with typed hooks
+
+**Example**: The IQ recording storage uses IndexedDB database `rad-io-recordings` with two object stores: `recordings` (full data) and `recordings-meta` (quick queries).
 
 #### Common Pitfalls to Avoid
 

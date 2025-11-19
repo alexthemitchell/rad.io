@@ -1,7 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import AudioControls from "../components/AudioControls";
 import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
+import QuickActions from "../components/Monitor/QuickActions";
 import VisualizationControls from "../components/Monitor/VisualizationControls";
 import RDSDisplay from "../components/RDSDisplay";
 import { WATERFALL_COLORMAPS } from "../constants";
@@ -17,13 +24,22 @@ import {
 } from "../hooks/useSignalDetection";
 import { CalibrationManager } from "../lib/measurement/calibration";
 import { estimateFMBroadcastPPM } from "../lib/measurement/fm-ppm-calibrator";
+import { notify } from "../lib/notifications";
+import { toggleShortcuts } from "../lib/shortcuts";
 import { type SDRCapabilities, type IQSample } from "../models/SDRDevice";
 import { useDevice, useFrequency, useSettings, useDiagnostics } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
+import {
+  addBookmark as addBookmarkToStorage,
+  bookmarkExists,
+  updateBookmark,
+} from "../utils/bookmarkStorage";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
+import { generateBookmarkId } from "../utils/id";
 import { createMultiStationFMProcessor } from "../utils/multiStationFM";
 import type { RDSStationData } from "../models/RDSData";
+import type { Bookmark } from "../types/bookmark";
 
 declare global {
   interface Window {
@@ -38,7 +54,7 @@ const Monitor: React.FC = () => {
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
     useFrequency();
-  const { settings } = useSettings();
+  const { settings, setSettings } = useSettings();
 
   // State for device capabilities and bandwidth
   const [deviceBandwidth, setDeviceBandwidth] = useState<number>(0);
@@ -233,6 +249,125 @@ const Monitor: React.FC = () => {
   const handleToggleAudio = (): void => setIsAudioPlaying(!isAudioPlaying);
   const handleVolumeChange = (vol: number): void => setVolume(vol * 100);
   const handleToggleMute = (): void => setIsMuted(!isMuted);
+
+  // Quick Actions handlers
+  // TODO: Integrate with actual recording system (RecordingControls logic)
+  // This is currently a placeholder state for UI demonstration.
+  // Replace with actual recording state when backend integration is available.
+  const [isRecordingActive, setIsRecordingActive] = useState(false);
+
+  const handleBookmark = useCallback((frequencyHz: number): void => {
+    // Check if frequency already bookmarked
+    const existing = bookmarkExists(frequencyHz);
+    if (existing) {
+      // Update lastUsed timestamp
+      updateBookmark(existing.id, { lastUsed: Date.now() });
+      notify({
+        message: `Updated bookmark for ${formatFrequency(frequencyHz)}`,
+        sr: "polite",
+        visual: true,
+        tone: "success",
+      });
+      return;
+    }
+
+    // Create new bookmark
+    const newBookmark: Bookmark = {
+      id: generateBookmarkId(),
+      frequency: frequencyHz,
+      name: formatFrequency(frequencyHz),
+      tags: [],
+      notes: "",
+      createdAt: Date.now(),
+      lastUsed: Date.now(),
+    };
+
+    // Save to localStorage
+    addBookmarkToStorage(newBookmark);
+
+    notify({
+      message: `Bookmarked ${formatFrequency(frequencyHz)}`,
+      sr: "polite",
+      visual: true,
+      tone: "success",
+    });
+  }, []);
+
+  const handleToggleRecording = useCallback((): void => {
+    // TODO: Integrate with actual recording system (RecordingControls logic)
+    // For now, just toggle state and show notification
+    setIsRecordingActive((prev) => {
+      const newState = !prev;
+      notify({
+        message: newState ? "Recording started" : "Recording stopped",
+        sr: "polite",
+        visual: true,
+        tone: newState ? "success" : "info",
+      });
+      return newState;
+    });
+  }, []);
+
+  const handleShowHelp = useCallback((): void => {
+    toggleShortcuts();
+  }, []);
+
+  // Use refs to track mutable values for keyboard shortcuts to avoid listener churn
+  const frequencyRef = useRef(frequency);
+  const showGridRef = useRef(settings.showGridlines);
+
+  useEffect(() => {
+    frequencyRef.current = frequency;
+  }, [frequency]);
+
+  useEffect(() => {
+    showGridRef.current = settings.showGridlines;
+  }, [settings.showGridlines]);
+
+  const handleToggleGrid = useCallback((): void => {
+    const newState = !showGridRef.current;
+    setSettings({ showGridlines: newState });
+    notify({
+      message: newState ? "Gridlines shown" : "Gridlines hidden",
+      sr: "polite",
+      visual: true,
+      tone: "info",
+    });
+  }, [setSettings]);
+
+  // Keyboard shortcuts for quick actions
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent): void => {
+      // Only handle keyboard shortcuts if not in an input field
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        (event.target as HTMLElement | null)?.isContentEditable
+      ) {
+        return;
+      }
+
+      switch (event.key.toLowerCase()) {
+        case "b":
+          event.preventDefault();
+          handleBookmark(frequencyRef.current);
+          break;
+        case "g":
+          event.preventDefault();
+          handleToggleGrid();
+          break;
+        // Note: '?' is already handled by ShortcutsOverlay
+        // Note: Recording uses global Ctrl/Cmd+S shortcut (see ShortcutsOverlay)
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return (): void => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, [handleBookmark, handleToggleGrid]);
 
   // Auto FM PPM calibration (runs once per session when stable)
   const autoPpmDoneRef = useRef(false);
@@ -449,6 +584,7 @@ const Monitor: React.FC = () => {
             alignItems: "center",
             marginBottom: "16px",
             flexWrap: "wrap",
+            justifyContent: "space-between",
           }}
         >
           <div
@@ -487,6 +623,17 @@ const Monitor: React.FC = () => {
           >
             Diagnostics
           </button>
+
+          {/* Quick Actions Toolbar */}
+          <QuickActions
+            currentFrequencyHz={frequency}
+            isRecording={isRecordingActive}
+            showGrid={settings.showGridlines}
+            onBookmark={handleBookmark}
+            onToggleRecording={handleToggleRecording}
+            onToggleGrid={handleToggleGrid}
+            onShowHelp={handleShowHelp}
+          />
         </div>
         <div style={{ marginTop: 8, position: "relative" }}>
           <VisualizationControls
