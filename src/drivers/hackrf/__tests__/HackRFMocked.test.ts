@@ -13,8 +13,9 @@
  * - Protocol compliance
  */
 
-import { HackRFOne, RequestCommand } from "../HackRFOne";
+import { HackRFOne } from "../HackRFOne";
 import { HackRFOneAdapter } from "../HackRFOneAdapter";
+import { VendorRequest } from "../constants";
 
 function createMockUSBDevice(): {
   device: USBDevice;
@@ -152,10 +153,10 @@ describe("HackRF Mocked Logic Tests", () => {
       // Verify the first occurrence of each command was in order
       const calls = controlTransferOut.mock.calls;
       const firstSampleRateIdx = calls.findIndex(
-        ([opts]) => opts?.request === RequestCommand.SAMPLE_RATE_SET,
+        ([opts]) => opts?.request === VendorRequest.SAMPLE_RATE_SET,
       );
       const firstFreqIdx = calls.findIndex(
-        ([opts]) => opts?.request === RequestCommand.SET_FREQ,
+        ([opts]) => opts?.request === VendorRequest.SET_FREQ,
       );
       expect(firstSampleRateIdx).toBeGreaterThanOrEqual(0);
       expect(firstFreqIdx).toBeGreaterThanOrEqual(0);
@@ -196,7 +197,7 @@ describe("HackRF Mocked Logic Tests", () => {
       expect(status.isConfigured).toBe(true);
 
       // Stop streaming
-      hackRF.stopRx();
+      await hackRF.stopRx();
 
       await expect(receivePromise).resolves.toBeUndefined();
     }, 10000); // Explicit timeout to prevent hanging
@@ -299,11 +300,11 @@ describe("HackRF Mocked Logic Tests", () => {
       await hackRF.setAmpEnable(true);
 
       // Verify correct commands were used
-      expect(commands).toContain(RequestCommand.SAMPLE_RATE_SET);
-      expect(commands).toContain(RequestCommand.SET_FREQ);
-      expect(commands).toContain(RequestCommand.BASEBAND_FILTER_BANDWIDTH_SET);
-      expect(commands).toContain(RequestCommand.SET_LNA_GAIN);
-      expect(commands).toContain(RequestCommand.AMP_ENABLE);
+      expect(commands).toContain(VendorRequest.SAMPLE_RATE_SET);
+      expect(commands).toContain(VendorRequest.SET_FREQ);
+      expect(commands).toContain(VendorRequest.BASEBAND_FILTER_BANDWIDTH_SET);
+      expect(commands).toContain(VendorRequest.SET_LNA_GAIN);
+      expect(commands).toContain(VendorRequest.AMP_ENABLE);
     });
   });
 
@@ -359,7 +360,7 @@ describe("HackRF Mocked Logic Tests", () => {
       // Give time for timeout and retry
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      hackRF.stopRx();
+      await hackRF.stopRx();
 
       // Should complete without throwing after retry
       await expect(receivePromise).resolves.toBeUndefined();

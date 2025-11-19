@@ -7,7 +7,8 @@
 
 // Jest v30: use the global jest namespace for types
 type Mock = jest.Mock;
-import { HackRFOne, RequestCommand } from "../HackRFOne";
+import { HackRFOne } from "../HackRFOne";
+import { VendorRequest } from "../constants";
 
 describe("HackRFOne State Management", () => {
   let mockDevice: USBDevice;
@@ -105,7 +106,9 @@ describe("HackRFOne State Management", () => {
 
   describe("Device Opening", () => {
     it("should open device cleanly on first open", async () => {
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
 
       await hackrf.open();
@@ -115,7 +118,9 @@ describe("HackRFOne State Management", () => {
     });
 
     it("should not reset device on first open", async () => {
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
 
       await hackrf.open();
@@ -127,37 +132,45 @@ describe("HackRFOne State Management", () => {
       // Simulate device already opened (e.g., after page reload)
       (mockDevice as { opened: boolean }).opened = true;
       // Best-effort recovery attempts a close; simulate that it actually closes the handle
-      ;(mockDevice.close as Mock).mockImplementation(async () => {
+      (mockDevice.close as Mock).mockImplementation(async () => {
         (mockDevice as { opened: boolean }).opened = false;
       });
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
 
       await hackrf.open();
 
       // With gentle recovery, we should not issue a device reset
       expect(mockDevice.reset).not.toHaveBeenCalled();
-      // Open should be invoked to re-establish a clean handle
-      expect(mockDevice.open).toHaveBeenCalled();
+      // Device was already open, so open() should not be called again
+      expect(mockDevice.open).not.toHaveBeenCalled();
+      // But we should proceed to configuration (interface claiming)
+      expect(mockDevice.claimInterface).toHaveBeenCalled();
     });
 
     it("should not reset if device was cleanly closed", async () => {
       // First open
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
-      (mockDevice.close as Mock).mockResolvedValue(undefined);
+      (mockDevice.close as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = false;
+      });
       (mockDevice.releaseInterface as Mock).mockResolvedValue(undefined);
 
       await hackrf.open();
       expect(mockDevice.reset).not.toHaveBeenCalled();
 
       // Clean close
-      (mockDevice as { opened: boolean }).opened = true;
+      // (mockDevice as { opened: boolean }).opened = true; // Already true from open
       await hackrf.close();
       expect(mockDevice.close).toHaveBeenCalledTimes(1);
 
       // Second open - should not reset because close was clean
-      (mockDevice as { opened: boolean }).opened = false;
+      // (mockDevice as { opened: boolean }).opened = false; // Already false from close
       await hackrf.open();
       expect(mockDevice.reset).not.toHaveBeenCalled();
     });
@@ -166,7 +179,9 @@ describe("HackRFOne State Management", () => {
   describe("Device Closing", () => {
     beforeEach(async () => {
       // Open device first
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
       (mockDevice as { opened: boolean }).opened = false;
       await hackrf.open();
@@ -249,7 +264,9 @@ describe("HackRFOne State Management", () => {
   describe("Page Reload Simulation", () => {
     it("should recover from simulated page reload", async () => {
       // Initial open
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
       
       await hackrf.open();
@@ -267,7 +284,9 @@ describe("HackRFOne State Management", () => {
 
       // New page loads, tries to reopen same device
       (mockDevice.open as Mock).mockClear();
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
 
       await hackrf.open();
 
@@ -347,7 +366,9 @@ describe("HackRFOne State Management", () => {
     });
 
     it("should track state correctly through multiple open/close cycles", async () => {
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
       (mockDevice.close as Mock).mockResolvedValue(undefined);
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
       (mockDevice.releaseInterface as Mock).mockResolvedValue(undefined);
@@ -375,7 +396,9 @@ describe("HackRFOne State Management", () => {
 
   describe("Configuration Commands", () => {
     it("should configure sample rate, frequency, bandwidth and gains without reset", async () => {
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
       (mockDevice.controlTransferOut as Mock).mockResolvedValue({
         status: "ok",
@@ -396,7 +419,9 @@ describe("HackRFOne State Management", () => {
     });
 
     it("performs lightweight reset without vendor command", async () => {
-      (mockDevice.open as Mock).mockResolvedValue(undefined);
+      (mockDevice.open as Mock).mockImplementation(async () => {
+        (mockDevice as { opened: boolean }).opened = true;
+      });
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
       (mockDevice.controlTransferOut as Mock).mockResolvedValue({
         status: "ok",
@@ -407,7 +432,7 @@ describe("HackRFOne State Management", () => {
       await expect(hackrf.reset()).resolves.not.toThrow();
       // Ensure RESET (30) was not issued
       const resetCall = (mockDevice.controlTransferOut as Mock).mock.calls.find(
-        (c) => c[0].request === RequestCommand.RESET,
+        (c) => c[0].request === VendorRequest.RESET,
       );
       expect(resetCall).toBeUndefined();
     });

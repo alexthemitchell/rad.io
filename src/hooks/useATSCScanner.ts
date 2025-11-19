@@ -258,23 +258,73 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           await demodulatorRef.current.activate();
         }
 
-        // Tune to channel center frequency (pilot detection logic assumes center)
+        // Use moderate sample rate for initial scanning to reduce USB/control transfer stress.
+        // Set sample rate BEFORE tuning to improve HackRF stability on Windows/WebUSB.
+        const sampleRate = 8_000_000;
+        const toMsg = (err: unknown): string => {
+          const anyErr = err as { message?: unknown } | undefined;
+          if (typeof anyErr?.message === "string" && anyErr.message)
+            return anyErr.message;
+          try {
+            return JSON.stringify(anyErr ?? {});
+          } catch {
+            return String(anyErr);
+          }
+        };
+        try {
+          await device.setSampleRate(sampleRate);
+        } catch (e) {
+          console.warn(
+            "ATSC Scanner: Failed to set 8 MSPS; attempting recovery and fallback",
+            e,
+          );
+          // Attempt fast recovery then try a safer default rate (20 MSPS)
+          const fast = (
+            device as unknown as { fastRecovery?: () => Promise<void> }
+          ).fastRecovery;
+          if (typeof fast === "function") {
+            try {
+              await fast();
+            } catch (re) {
+              console.error(
+                "ATSC Scanner: fastRecovery failed before fallback sample rate",
+                toMsg(re),
+              );
+            }
+          }
+          try {
+            await device.setSampleRate(20_000_000);
+          } catch (e2) {
+            console.error(
+              "ATSC Scanner: Fallback to 20 MSPS failed; skipping channel",
+              e2,
+            );
+            return null;
+          }
+        }
+
+        // Now tune to channel center frequency (pilot detection logic assumes center)
         // Retry with fastRecovery fallback if initial tuning fails (firmware corruption scenarios)
         const tuneFrequency = async (): Promise<boolean> => {
           try {
             await device.setFrequency(channel.frequency);
             return true;
           } catch (err) {
-            console.warn("ATSC Scanner: frequency tune failed", err);
+            console.warn("ATSC Scanner: frequency tune failed", toMsg(err));
             // Attempt fastRecovery if available
-            const fast = (device as unknown as { fastRecovery?: () => Promise<void> }).fastRecovery;
+            const fast = (
+              device as unknown as { fastRecovery?: () => Promise<void> }
+            ).fastRecovery;
             if (typeof fast === "function") {
               try {
                 await fast();
                 await device.setFrequency(channel.frequency);
                 return true;
               } catch (recoveryErr) {
-                console.error("ATSC Scanner: fastRecovery failed", recoveryErr);
+                console.error(
+                  "ATSC Scanner: fastRecovery failed",
+                  toMsg(recoveryErr),
+                );
                 return false;
               }
             }
@@ -286,30 +336,51 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           return null; // Skip channel if we cannot reliably tune
         }
         setCurrentChannel(channel);
-
-        // Use moderate sample rate for initial scanning to reduce USB/control transfer stress.
         // If prior frequency recovery occurred, still proceed at 8 MSPS; adjust later if needed.
-        const sampleRate = 8_000_000;
-        await device.setSampleRate(sampleRate);
 
         // Configure RF front-end for OTA detection (match player initialization sequence)
-        if ((device as unknown as { setBandwidth?: (bw: number) => Promise<void> }).setBandwidth) {
+        if (
+          (
+            device as unknown as {
+              setBandwidth?: (bw: number) => Promise<void>;
+            }
+          ).setBandwidth
+        ) {
           try {
-            await (device as unknown as { setBandwidth: (bw: number) => Promise<void> }).setBandwidth(6_000_000);
+            await (
+              device as unknown as {
+                setBandwidth: (bw: number) => Promise<void>;
+              }
+            ).setBandwidth(6_000_000);
           } catch (e) {
             console.warn("ATSC Scanner: Failed to set 6 MHz bandwidth", e);
           }
         }
-        if ((device as unknown as { setLNAGain?: (g: number) => Promise<void> }).setLNAGain) {
+        if (
+          (device as unknown as { setLNAGain?: (g: number) => Promise<void> })
+            .setLNAGain
+        ) {
           try {
-            await (device as unknown as { setLNAGain: (g: number) => Promise<void> }).setLNAGain(24);
+            await (
+              device as unknown as { setLNAGain: (g: number) => Promise<void> }
+            ).setLNAGain(24);
           } catch (e) {
             console.warn("ATSC Scanner: Failed to set LNA gain", e);
           }
         }
-        if ((device as unknown as { setAmpEnable?: (en: boolean) => Promise<void> }).setAmpEnable) {
+        if (
+          (
+            device as unknown as {
+              setAmpEnable?: (en: boolean) => Promise<void>;
+            }
+          ).setAmpEnable
+        ) {
           try {
-            await (device as unknown as { setAmpEnable: (en: boolean) => Promise<void> }).setAmpEnable(true);
+            await (
+              device as unknown as {
+                setAmpEnable: (en: boolean) => Promise<void>;
+              }
+            ).setAmpEnable(true);
           } catch (e) {
             console.warn("ATSC Scanner: Failed to enable RF amp", e);
           }

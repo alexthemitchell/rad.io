@@ -2,7 +2,8 @@
  * Unit tests for HackRFOne control transfer formatting.
  */
 
-import { HackRFOne, RequestCommand } from "../HackRFOne";
+import { HackRFOne } from "../HackRFOne";
+import { VendorRequest } from "../constants";
 
 function createMockUSBDevice(): {
   device: USBDevice;
@@ -57,7 +58,7 @@ describe("HackRFOne control formatting", () => {
     expect(options).toMatchObject({
       requestType: "vendor",
       recipient: "device",
-      request: RequestCommand.SET_FREQ,
+      request: VendorRequest.SET_FREQ,
     });
     expect(data).toBeInstanceOf(ArrayBuffer);
 
@@ -77,7 +78,7 @@ describe("HackRFOne control formatting", () => {
     // asserting exact call count, verify that a SAMPLE_RATE_SET control with
     // the expected payload was issued.
     const matching = controlTransferOut.mock.calls.filter(
-      ([opts]) => (opts?.request as number) === RequestCommand.SAMPLE_RATE_SET,
+      ([opts]) => (opts?.request as number) === VendorRequest.SAMPLE_RATE_SET,
     );
     expect(matching.length).toBeGreaterThanOrEqual(1);
     const [, data] = matching[0] ?? [];
@@ -98,7 +99,7 @@ describe("HackRFOne control formatting", () => {
     expect(controlTransferOut).toHaveBeenCalledTimes(1);
     const [options, data] = controlTransferOut.mock.calls[0] ?? [];
     expect(options).toMatchObject({
-      request: RequestCommand.BASEBAND_FILTER_BANDWIDTH_SET,
+      request: VendorRequest.BASEBAND_FILTER_BANDWIDTH_SET,
       value: bandwidth & 0xffff,
       index: bandwidth >>> 16,
     });
@@ -163,21 +164,21 @@ describe("HackRFOne control formatting", () => {
 
     // Verify that transceiver mode was set to RECEIVE
     const setTransceiverCalls = controlTransferOut.mock.calls.filter(
-      (call) => call[0].request === RequestCommand.SET_TRANSCEIVER_MODE,
+      (call) => call[0].request === VendorRequest.SET_TRANSCEIVER_MODE,
     );
     expect(setTransceiverCalls.length).toBeGreaterThan(0);
     // The driver may set OFF before switching to RECEIVE; assert the last
     // mode command is RECEIVE rather than the first.
     const lastModeCall = [...setTransceiverCalls]
       .reverse()
-      .find(([opts]) => (opts?.request as number) === RequestCommand.SET_TRANSCEIVER_MODE);
+      .find(([opts]) => (opts?.request as number) === VendorRequest.SET_TRANSCEIVER_MODE);
     expect(lastModeCall?.[0]).toMatchObject({
-      request: RequestCommand.SET_TRANSCEIVER_MODE,
+      request: VendorRequest.SET_TRANSCEIVER_MODE,
       value: 1, // RECEIVE mode
     });
 
     // Stop the receive loop
-    hackRF.stopRx();
+    await hackRF.stopRx();
 
     // Wait for the promise to complete
     await expect(receivePromise).resolves.toBeUndefined();
@@ -226,7 +227,7 @@ describe("HackRFOne control formatting", () => {
 
     expect(controlTransferOut).toHaveBeenCalledWith(
       expect.objectContaining({
-        request: RequestCommand.BASEBAND_FILTER_BANDWIDTH_SET,
+        request: VendorRequest.BASEBAND_FILTER_BANDWIDTH_SET,
         value: bandwidth & 0xffff,
         index: bandwidth >>> 16,
       }),
@@ -242,7 +243,7 @@ describe("HackRFOne control formatting", () => {
 
     expect(controlTransferOut).toHaveBeenCalledWith(
       expect.objectContaining({
-        request: RequestCommand.SET_LNA_GAIN,
+        request: VendorRequest.SET_LNA_GAIN,
         value: 24,
       }),
       undefined,
@@ -257,7 +258,7 @@ describe("HackRFOne control formatting", () => {
 
     expect(controlTransferOut).toHaveBeenCalledWith(
       expect.objectContaining({
-        request: RequestCommand.AMP_ENABLE,
+        request: VendorRequest.AMP_ENABLE,
         value: 1,
       }),
       undefined,
@@ -267,18 +268,18 @@ describe("HackRFOne control formatting", () => {
 
     expect(controlTransferOut).toHaveBeenCalledWith(
       expect.objectContaining({
-        request: RequestCommand.AMP_ENABLE,
+        request: VendorRequest.AMP_ENABLE,
         value: 0,
       }),
       undefined,
     );
   });
 
-  it("stops receive correctly", () => {
+  it("stops receive correctly", async () => {
     const { device } = createMockUSBDevice();
     const hackRF = new HackRFOne(device);
 
-    expect(() => hackRF.stopRx()).not.toThrow();
+    await expect(hackRF.stopRx()).resolves.toBeUndefined();
   });
 
   it("returns memory info", () => {
@@ -306,7 +307,7 @@ describe("HackRFOne control formatting", () => {
     await hackRF.reset();
     // Reset no longer issues vendor RESET; ensure no request 30 was sent.
     const resetCall = (controlTransferOut as jest.Mock).mock.calls.find(
-      (call) => call[0].request === RequestCommand.RESET,
+      (call) => call[0].request === VendorRequest.RESET,
     );
     expect(resetCall).toBeUndefined();
   });

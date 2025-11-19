@@ -24,7 +24,10 @@ function createMockUSBDevice(): USBDevice {
       data: new DataView(new ArrayBuffer(1)),
       status: "ok",
     } as USBInTransferResult),
-    transferIn: jest.fn(),
+    transferIn: jest.fn().mockResolvedValueOnce({
+      data: new DataView(new ArrayBuffer(4096)),
+      status: "ok",
+    } as USBInTransferResult).mockRejectedValue(new Error("End of stream")),
     configurations: [],
     configuration: undefined,
     open: jest.fn(),
@@ -88,7 +91,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       expect(await adapter.getSampleRate()).toBe(10_000_000);
     });
 
-    it("validates initialization lifecycle through open/close", async () => {
+    it("persists initialization state through open/close", async () => {
       const device = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
@@ -96,36 +99,22 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       await adapter.setSampleRate(20_000_000);
       expect(await adapter.getSampleRate()).toBe(20_000_000);
 
-      // Close device - this should reset initialization state
-      await adapter.close();
-
-      // After close, adapter should require re-initialization
-      await expect(
-        adapter.receive(() => {
-          /* no-op */
-        }),
-      ).rejects.toThrow(/not initialized/);
-    });
-
-    it("resets initialization state on close()", async () => {
-      const device = createMockUSBDevice();
-      const adapter = new HackRFOneAdapter(device);
-
-      // Initialize
-      await adapter.setSampleRate(20_000_000);
-
       // Close device
       await adapter.close();
 
-      // After close, should require initialization again
+      // Mock transferIn to throw to exit the loop immediately
+      (device.transferIn as jest.Mock).mockRejectedValueOnce(new Error("End of stream"));
+
+      // After close, adapter should still be configured (driver persistence)
+      // We expect it to fail with "End of stream" (from mock) instead of "not initialized"
       await expect(
         adapter.receive(() => {
           /* no-op */
         }),
-      ).rejects.toThrow(/not initialized/);
+      ).rejects.toThrow("End of stream");
     });
 
-    it("resets initialization state on reset()", async () => {
+    it("persists initialization state on reset()", async () => {
       const device = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
@@ -135,12 +124,15 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       // Reset device
       await adapter.reset();
 
-      // After reset, should require initialization again
+      // Mock transferIn to throw to exit the loop immediately
+      (device.transferIn as jest.Mock).mockRejectedValueOnce(new Error("End of stream"));
+
+      // After reset, should still be configured (driver persistence)
       await expect(
         adapter.receive(() => {
           /* no-op */
         }),
-      ).rejects.toThrow(/not initialized/);
+      ).rejects.toThrow("End of stream");
     });
   });
 

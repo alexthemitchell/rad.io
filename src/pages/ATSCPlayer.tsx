@@ -79,19 +79,22 @@ function ATSCPlayer(): React.JSX.Element {
   }, []);
 
   // Ensure HackRF (or other SDR) is cleanly stopped and reset when leaving the ATSC player.
-  useEffect(function effect(): () => void {
-    return function cleanup(): void {
-      // Stop ATSC playback pipeline first
-      void player.stop();
+  useEffect(
+    function effect(): () => void {
+      return function cleanup(): void {
+        // Stop ATSC playback pipeline first
+        void player.stop();
 
-      // Then ask the device for a logical reset if supported. This uses the
-      // SDR abstraction's reset(), which for HackRF is backed by the
-      // vendor RESET command, not WebUSB's reset().
-      if (device && "reset" in device && typeof device.reset === "function") {
-        void device.reset();
-      }
-    };
-  }, [player, device]);
+        // Then ask the device for a logical reset if supported. This uses the
+        // SDR abstraction's reset(), which for HackRF is backed by the
+        // vendor RESET command, not WebUSB's reset().
+        if (device && "reset" in device && typeof device.reset === "function") {
+          void device.reset();
+        }
+      };
+    },
+    [player, device],
+  );
 
   return (
     <div className="atsc-player-page">
@@ -120,9 +123,11 @@ function ATSCPlayer(): React.JSX.Element {
                   .fastRecovery
               ) {
                 try {
-                  await (device as unknown as {
-                    fastRecovery: () => Promise<void>;
-                  }).fastRecovery();
+                  await (
+                    device as unknown as {
+                      fastRecovery: () => Promise<void>;
+                    }
+                  ).fastRecovery();
                   console.info("Driver fastRecovery completed");
                 } catch (e) {
                   console.error("Driver fastRecovery failed", e);
@@ -133,13 +138,17 @@ function ATSCPlayer(): React.JSX.Element {
               ) {
                 // Fallback to generic reset if fastRecovery not available
                 try {
-                  await (device as unknown as { reset: () => Promise<void> }).reset();
+                  await (
+                    device as unknown as { reset: () => Promise<void> }
+                  ).reset();
                   console.info("Driver reset completed");
                 } catch (e) {
                   console.error("Driver reset failed", e);
                 }
               } else {
-                console.warn("No recovery method available on current device instance");
+                console.warn(
+                  "No recovery method available on current device instance",
+                );
               }
             }}
             aria-label="Driver Reset"
