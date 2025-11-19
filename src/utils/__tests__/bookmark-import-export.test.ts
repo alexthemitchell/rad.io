@@ -20,7 +20,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\r\n");
+      const lines = csv.split("\n");
 
       expect(lines[0]).toBe(
         "Frequency (Hz),Name,Tags,Notes,Created At,Last Used",
@@ -44,7 +44,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\r\n");
+      const lines = csv.split("\n");
 
       expect(lines[1]).toContain('"2m Simplex, Calling"');
     });
@@ -105,6 +105,68 @@ describe("bookmark-import-export", () => {
       expect(csv).toContain('"Note with\r\nCRLF"');
     });
 
+    it("should prevent formula injection in name field", () => {
+      const bookmarks: Bookmark[] = [
+        {
+          id: "bm-1",
+          frequency: 100000000,
+          name: "=1+1",
+          tags: ["test"],
+          notes: "Normal note",
+          createdAt: 1700000000000,
+          lastUsed: 1700000001000,
+        },
+      ];
+
+      const csv = bookmarksToCSV(bookmarks);
+
+      expect(csv).toContain("'=1+1");
+    });
+
+    it("should prevent formula injection with multiple trigger characters", () => {
+      const testCases = [
+        { name: "=SUM(A1:A10)", expected: "'=SUM(A1:A10)" },
+        { name: "+1+1", expected: "'+1+1" },
+        { name: "-1", expected: "'-1" },
+        { name: "@formula", expected: "'@formula" },
+      ];
+
+      testCases.forEach(({ name, expected }) => {
+        const bookmarks: Bookmark[] = [
+          {
+            id: "bm-1",
+            frequency: 100000000,
+            name,
+            tags: ["test"],
+            notes: "Test",
+            createdAt: 1700000000000,
+            lastUsed: 1700000001000,
+          },
+        ];
+
+        const csv = bookmarksToCSV(bookmarks);
+        expect(csv).toContain(expected);
+      });
+    });
+
+    it("should prevent formula injection in notes field", () => {
+      const bookmarks: Bookmark[] = [
+        {
+          id: "bm-1",
+          frequency: 100000000,
+          name: "Station",
+          tags: ["test"],
+          notes: "=HYPERLINK('http://evil.com','Click')",
+          createdAt: 1700000000000,
+          lastUsed: 1700000001000,
+        },
+      ];
+
+      const csv = bookmarksToCSV(bookmarks);
+
+      expect(csv).toContain("'=HYPERLINK");
+    });
+
     it("should handle empty bookmarks array", () => {
       const csv = bookmarksToCSV([]);
 
@@ -125,7 +187,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\r\n");
+      const lines = csv.split("\n");
 
       expect(lines[1]).toBe(
         "100000000,Station,,No tags,1700000000000,1700000001000",
@@ -146,7 +208,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\r\n");
+      const lines = csv.split("\n");
 
       expect(lines[1]).toBe(
         "100000000,Station,test,,1700000000000,1700000001000",
@@ -176,7 +238,7 @@ describe("bookmark-import-export", () => {
       ];
 
       const csv = bookmarksToCSV(bookmarks);
-      const lines = csv.split("\r\n");
+      const lines = csv.split("\n");
 
       expect(lines).toHaveLength(3);
       expect(lines[0]).toBe(

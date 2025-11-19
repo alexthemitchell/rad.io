@@ -7,15 +7,22 @@ import type { Bookmark } from "../types/bookmark";
 
 /**
  * Escapes a CSV field value by:
+ * - Prepending a single quote if field starts with =, +, -, or @ (formula injection protection)
  * - Wrapping in quotes if it contains comma, quote, newline, or carriage return
  * - Doubling any internal quotes
  */
 function escapeCSVField(value: string | number): string {
   const str = String(value);
-  if (/[,"\r\n]/.test(str)) {
-    return `"${str.replace(/"/g, '""')}"`;
+  // Prevent formula injection
+  let escapedStr = str;
+  if (/^[=+\-@]/.test(str)) {
+    escapedStr = `'${str}`;
   }
-  return str;
+  // Escape special characters per RFC 4180
+  if (/[,"\r\n]/.test(escapedStr)) {
+    return `"${escapedStr.replace(/"/g, '""')}"`;
+  }
+  return escapedStr;
 }
 
 /**
@@ -47,7 +54,7 @@ export function bookmarksToCSV(bookmarks: Bookmark[]): string {
   ];
   const headerRow = headers.join(",");
   const dataRows = bookmarks.map(bookmarkToCSVRow);
-  return [headerRow, ...dataRows].join("\r\n");
+  return [headerRow, ...dataRows].join("\n");
 }
 
 /**
