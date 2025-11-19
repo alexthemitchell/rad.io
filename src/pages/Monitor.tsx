@@ -236,6 +236,9 @@ const Monitor: React.FC = () => {
   const handleToggleMute = (): void => setIsMuted(!isMuted);
 
   // Quick Actions handlers
+  // TODO: Integrate with actual recording system (RecordingControls logic)
+  // This is currently a placeholder state for UI demonstration.
+  // Replace with actual recording state when backend integration is available.
   const [isRecordingActive, setIsRecordingActive] = useState(false);
 
   const handleBookmark = useCallback((frequencyHz: number): void => {

@@ -47,6 +47,7 @@ export function bookmarkExists(frequencyHz: number): Bookmark | undefined {
 
 /**
  * Add a new bookmark
+ * Note: Does not check for duplicates. Caller is responsible for duplicate checking.
  */
 export function addBookmark(bookmark: Bookmark): void {
   const bookmarks = loadBookmarks();
