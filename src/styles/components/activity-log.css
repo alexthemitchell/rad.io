@@ -89,7 +89,7 @@
 .mode-badge {
   display: inline-block;
   padding: var(--rad-space-2) var(--rad-space-3);
-  background: var(--rad-accent-subtle);
+  background: var(--rad-bg-elev-2);
   color: var(--rad-accent);
   border-radius: var(--rad-radius-2);
   font-weight: 500;
@@ -184,7 +184,7 @@
     display: flex;
     justify-content: space-between;
     padding: var(--rad-space-3) 0;
-    border-bottom: var(--rad-border-width) solid var(--rad-border-subtle);
+    border-bottom: var(--rad-border-width) solid var(--rad-border);
   }
 
   .activity-log-table td:last-child {
