@@ -11,6 +11,7 @@ export type MarkerTableProps = {
   markers: MarkerRow[];
   onRemove?: (id: string) => void;
   onTune?: (freqHz: number) => void;
+  onAdd?: () => void;
 };
 
 function formatMHz(hz: number): string {
@@ -85,6 +86,7 @@ export default function MarkerTable({
   markers,
   onRemove,
   onTune,
+  onAdd,
 }: MarkerTableProps): React.JSX.Element | null {
   if (markers.length === 0) {
     return null;
@@ -140,21 +142,40 @@ export default function MarkerTable({
         }}
       >
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Markers</h3>
-        <button
-          type="button"
-          onClick={exportCsv}
-          aria-label="Export markers as CSV"
-          style={{
-            fontSize: 12,
-            padding: "4px 8px",
-            borderRadius: 4,
-            border: "1px solid rgba(255,255,255,0.15)",
-            background: "rgba(255,255,255,0.06)",
-            color: "#fff",
-          }}
-        >
-          Export CSV
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          {onAdd ? (
+            <button
+              type="button"
+              onClick={onAdd}
+              aria-label="Add marker"
+              style={{
+                fontSize: 12,
+                padding: "4px 8px",
+                borderRadius: 4,
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(76, 175, 80, 0.15)",
+                color: "#fff",
+              }}
+            >
+              + Add
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={exportCsv}
+            aria-label="Export markers as CSV"
+            style={{
+              fontSize: 12,
+              padding: "4px 8px",
+              borderRadius: 4,
+              border: "1px solid rgba(255,255,255,0.15)",
+              background: "rgba(255,255,255,0.06)",
+              color: "#fff",
+            }}
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
       <div style={{ overflowX: "auto" }}>
         <table

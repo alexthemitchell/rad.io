@@ -13,6 +13,16 @@ jest.mock("../../store", () => ({
     closeAllDevices: jest.fn(),
     connectPairedUSBDevice: jest.fn(),
   })),
+  useMarkers: jest.fn(() => ({
+    markers: [],
+    addMarker: jest.fn(),
+    removeMarker: jest.fn(),
+    clearMarkers: jest.fn(),
+  })),
+  useFrequency: jest.fn(() => ({
+    frequencyHz: 100e6,
+    setFrequencyHz: jest.fn(),
+  })),
 }));
 
 // Mock the hooks
