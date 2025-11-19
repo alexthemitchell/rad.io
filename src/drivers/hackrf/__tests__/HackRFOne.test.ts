@@ -324,4 +324,166 @@ describe("HackRFOne control formatting", () => {
       consoleSpy.mockRestore();
     }
   });
+
+  it("returns null for frequency before setting", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    expect(hackRF.getFrequency()).toBeNull();
+  });
+
+  it("returns configured frequency after setting", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    await hackRF.setFrequency(100_000_000);
+    expect(hackRF.getFrequency()).toBe(100_000_000);
+  });
+
+  it("returns null for sample rate before setting", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    expect(hackRF.getSampleRate()).toBeNull();
+  });
+
+  it("returns configured sample rate after setting", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    await hackRF.setSampleRate(10_000_000);
+    expect(hackRF.getSampleRate()).toBe(10_000_000);
+  });
+
+  it("returns null for bandwidth before setting", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    expect(hackRF.getBandwidth()).toBeNull();
+  });
+
+  it("returns configured bandwidth after setting", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    await hackRF.setBandwidth(10_000_000);
+    expect(hackRF.getBandwidth()).toBe(10_000_000);
+  });
+
+  it("returns state correctly", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    // Should start in DISCONNECTED state
+    expect(hackRF.state).toBeDefined();
+  });
+
+  it("returns streaming state correctly", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    // Initially not streaming
+    expect(hackRF.streaming).toBe(false);
+  });
+
+  it("returns closing state correctly", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    // Initially not closing
+    expect(hackRF.closing).toBe(false);
+  });
+
+  it("allows setting state", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+    const { DeviceState } = require("../core/types");
+
+    hackRF.state = DeviceState.CONFIGURING;
+    expect(hackRF.state).toBe(DeviceState.CONFIGURING);
+  });
+
+  it("allows setting streaming state", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    hackRF.streaming = true;
+    expect(hackRF.streaming).toBe(true);
+  });
+
+  it("allows setting closing state", () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    hackRF.closing = true;
+    expect(hackRF.closing).toBe(true);
+  });
+
+  it("returns amp enabled state", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    // Initially should be false or null
+    const initialState = hackRF.getAmpEnabled();
+    expect([null, false]).toContain(initialState);
+
+    // After setting amp
+    await hackRF.setAmpEnable(true);
+    expect(hackRF.getAmpEnabled()).toBe(true);
+  });
+
+  it("returns LNA gain", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    // Initially null
+    expect(hackRF.getLNAGain()).toBeNull();
+
+    // After setting
+    await hackRF.setLNAGain(24);
+    expect(hackRF.getLNAGain()).toBe(24);
+  });
+
+  it("validates ready for streaming", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    // Before configuration, should not be ready
+    let validation = hackRF.validateReadyForStreaming();
+    expect(validation.ready).toBe(false);
+    expect(validation.issues.length).toBeGreaterThan(0);
+
+    // After setting sample rate, should be ready
+    await hackRF.setSampleRate(10_000_000);
+    validation = hackRF.validateReadyForStreaming();
+    expect(validation.ready).toBe(true);
+    expect(validation.issues).toHaveLength(0);
+  });
+
+  it("returns configuration status", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    // Before configuration
+    let status = hackRF.getConfigurationStatus();
+    expect(status).toHaveProperty("isOpen");
+    expect(status).toHaveProperty("isConfigured");
+
+    // After configuration
+    await hackRF.setSampleRate(10_000_000);
+    await hackRF.setFrequency(100_000_000);
+    status = hackRF.getConfigurationStatus();
+    expect(status.isConfigured).toBe(true);
+  });
+
+  it("performs fast recovery", async () => {
+    const { device } = createMockUSBDevice();
+    const hackRF = new HackRFOne(device);
+
+    await hackRF.setSampleRate(10_000_000);
+    await hackRF.setFrequency(100_000_000);
+
+    // Fast recovery should complete without error
+    await expect(hackRF.fastRecovery()).resolves.toBeUndefined();
+  });
 });

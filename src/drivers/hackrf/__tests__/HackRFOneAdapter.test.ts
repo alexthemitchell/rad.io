@@ -599,4 +599,61 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       expect(status.isConfigured).toBe(true);
     });
   });
+
+  describe("error tracking and edge cases", () => {
+    it("tracks errors during operations", async () => {
+      const { device } = createMockUSBDevice();
+      // Force an error during open by making the underlying open fail
+      const mockOpen = jest.fn().mockRejectedValue(new Error("Test error"));
+      device.open = mockOpen;
+
+      const adapter = new HackRFOneAdapter(device);
+
+      // The error should be tracked and re-thrown
+      await expect(adapter.open()).rejects.toThrow();
+    });
+
+    it("returns default frequency when device frequency is null", async () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      // getFrequency should return default 100MHz when device has no frequency set
+      const freq = await adapter.getFrequency();
+      expect(freq).toBe(100e6);
+    });
+
+    it("handles setAmpEnable", async () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      await expect(adapter.setAmpEnable(true)).resolves.toBeUndefined();
+      await expect(adapter.setAmpEnable(false)).resolves.toBeUndefined();
+    });
+
+    it("provides getMemoryInfo", () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      const memInfo = adapter.getMemoryInfo();
+      expect(memInfo).toHaveProperty("totalBufferSize");
+      expect(memInfo).toHaveProperty("usedBufferSize");
+      expect(memInfo).toHaveProperty("activeBuffers");
+      expect(memInfo).toHaveProperty("maxSamples");
+      expect(memInfo).toHaveProperty("currentSamples");
+    });
+
+    it("clearBuffers delegates to device", () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      expect(() => adapter.clearBuffers()).not.toThrow();
+    });
+
+    it("reset delegates to device with error tracking", async () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      await expect(adapter.reset()).resolves.toBeUndefined();
+    });
+  });
 });
