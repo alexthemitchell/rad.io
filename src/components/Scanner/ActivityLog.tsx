@@ -5,6 +5,8 @@
  * Shows an empty state when no scan data is available.
  */
 
+import React from "react";
+
 export type ScanActivity = {
   id: string;
   timestamp: string; // ISO 8601 format
@@ -76,21 +78,28 @@ function ActivityLog({
             ) : (
               activities.map((activity) => (
                 <tr key={activity.id}>
-                  <td>{formatTimestamp(activity.timestamp)}</td>
-                  <td className="frequency-cell">
+                  <td data-label="Timestamp">
+                    {formatTimestamp(activity.timestamp)}
+                  </td>
+                  <td data-label="Frequency (MHz)" className="frequency-cell">
                     {formatFrequency(activity.frequency)}
                   </td>
-                  <td className="signal-strength-cell">
+                  <td
+                    data-label="Signal Strength"
+                    className="signal-strength-cell"
+                  >
                     {activity.signalStrength > 0
                       ? `+${activity.signalStrength}`
                       : activity.signalStrength}{" "}
                     dBm
                   </td>
-                  <td>{formatDuration(activity.duration)}</td>
-                  <td>
+                  <td data-label="Duration">
+                    {formatDuration(activity.duration)}
+                  </td>
+                  <td data-label="Mode">
                     <span className="mode-badge">{activity.mode}</span>
                   </td>
-                  <td className="actions-cell">
+                  <td data-label="Actions" className="actions-cell">
                     <button
                       className="btn btn-icon"
                       onClick={() => onBookmark?.(activity)}

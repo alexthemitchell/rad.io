@@ -171,7 +171,9 @@ describe("ActivityLog", () => {
         <ActivityLog activities={mockActivities} onBookmark={onBookmark} />,
       );
 
-      const bookmarkButton = screen.getByLabelText(/Bookmark signal at 145.525/i);
+      const bookmarkButton = screen.getByLabelText(
+        /Bookmark signal at 145.525/i,
+      );
       fireEvent.click(bookmarkButton);
 
       expect(onBookmark).toHaveBeenCalledTimes(1);
@@ -193,7 +195,9 @@ describe("ActivityLog", () => {
     it("should not crash when handlers are not provided", () => {
       render(<ActivityLog activities={mockActivities} />);
 
-      const bookmarkButton = screen.getByLabelText(/Bookmark signal at 145.525/i);
+      const bookmarkButton = screen.getByLabelText(
+        /Bookmark signal at 145.525/i,
+      );
       const recordButton = screen.getByLabelText(/Record signal at 145.525/i);
 
       // These should not throw errors

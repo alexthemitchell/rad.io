@@ -38,7 +38,8 @@
 
 .activity-log-table tbody tr {
   border-bottom: var(--rad-border-width) solid var(--rad-border);
-  transition: background-color var(--rad-transition-fast) var(--rad-ease-standard);
+  transition: background-color var(--rad-transition-fast)
+    var(--rad-ease-standard);
 }
 
 .activity-log-table tbody tr:hover {
