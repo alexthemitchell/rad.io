@@ -4,6 +4,7 @@ import { renderTierManager } from "../lib/render/RenderTierManager";
 import { useDevice } from "../store";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { useSpeaker, type SpeakerInfo } from "./useSpeaker";
+import { useStorageQuota } from "./useStorageQuota";
 import type { RenderTier } from "../types/rendering";
 
 export type StatusMetrics = {
@@ -36,6 +37,7 @@ export type StatusMetrics = {
 export function useStatusMetrics(): StatusMetrics {
   const { primaryDevice } = useDevice();
   const speaker = useSpeaker();
+  const storageQuota = useStorageQuota();
   const [renderTier, setRenderTier] = useState<RenderTier>(
     renderTierManager.getTier(),
   );
@@ -49,8 +51,6 @@ export function useStatusMetrics(): StatusMetrics {
   const [bufferDetails, setBufferDetails] = useState<
     { currentSamples: number; maxSamples: number } | undefined
   >(undefined);
-  const [storageUsed, setStorageUsed] = useState<number>(0);
-  const [storageQuota, setStorageQuota] = useState<number>(0);
 
   const deviceConnected = useMemo(
     () => Boolean(primaryDevice),
@@ -70,11 +70,11 @@ export function useStatusMetrics(): StatusMetrics {
     bufferCategory:
       bufferHealth >= 80 ? "good" : bufferHealth >= 50 ? "warn" : "crit",
     storageCategory:
-      storageQuota === 0
+      storageQuota.quota === 0
         ? "unknown"
-        : storageUsed / (storageQuota || 1) >= 0.9
+        : storageQuota.usage / (storageQuota.quota || 1) >= 0.9
           ? "crit"
-          : storageUsed / (storageQuota || 1) >= 0.7
+          : storageQuota.usage / (storageQuota.quota || 1) >= 0.7
             ? "warn"
             : "good",
     audioState: speaker.state,
@@ -162,9 +162,12 @@ export function useStatusMetrics(): StatusMetrics {
   }, [bufferHealth]);
 
   useEffect(() => {
-    const pct = storageQuota === 0 ? 0 : storageUsed / (storageQuota || 1);
+    const pct =
+      storageQuota.quota === 0
+        ? 0
+        : storageQuota.usage / (storageQuota.quota || 1);
     const cat =
-      storageQuota === 0
+      storageQuota.quota === 0
         ? "unknown"
         : pct >= 0.9
           ? "crit"
@@ -193,7 +196,7 @@ export function useStatusMetrics(): StatusMetrics {
       }
       prev.current.storageCategory = cat;
     }
-  }, [storageUsed, storageQuota]);
+  }, [storageQuota.usage, storageQuota.quota]);
 
   useEffect(() => {
     if (prev.current.audioState !== speaker.state) {
@@ -283,26 +286,6 @@ export function useStatusMetrics(): StatusMetrics {
     };
   }, [primaryDevice]);
 
-  // Storage estimate (if supported)
-  useEffect(() => {
-    const update = async (): Promise<void> => {
-      try {
-        const est = await navigator.storage.estimate();
-        setStorageUsed(est.usage ?? 0);
-        setStorageQuota(est.quota ?? 0);
-      } catch {
-        // Ignore
-      }
-    };
-    void update();
-    const id = setInterval(() => {
-      void update();
-    }, 10000);
-    return (): void => {
-      clearInterval(id);
-    };
-  }, []);
-
   return {
     deviceConnected,
     renderTier,
@@ -313,8 +296,8 @@ export function useStatusMetrics(): StatusMetrics {
     sampleRate,
     bufferHealth,
     bufferDetails,
-    storageUsed,
-    storageQuota,
+    storageUsed: storageQuota.usage,
+    storageQuota: storageQuota.quota,
     audio: speaker,
     droppedFrames,
   };
