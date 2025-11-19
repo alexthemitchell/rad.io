@@ -11,11 +11,13 @@ Physical power cycle is only needed if software recovery fails.
 ## Root Cause
 
 HackRF One firmware enters a corrupted state where **ALL USB control OUT transfers fail** after:
+
 - Repeated HMR (Hot Module Replacement) page reloads
 - Extended operation periods
 - Certain problematic operations
 
 **Symptoms:**
+
 - Control IN transfers work normally (can read device state)
 - Control OUT transfers fail with `NetworkError: A transfer error has occurred`
 - Device shows as "connected" but cannot be configured
@@ -26,13 +28,13 @@ HackRF One firmware enters a corrupted state where **ALL USB control OUT transfe
 
 ## Recovery Methods Tested (Windows/Chrome WebUSB)
 
-| Method | Result | Details |
-|--------|--------|---------|
-| ❌ Vendor RESET (cmd 30) | **FAILS** | RESET command itself is a control OUT transfer, so it fails too |
-| ❌ Page reload | **FAILS** | `navigator.usb.getDevices()` returns same corrupted device object |
-| ❌ `usbDevice.reset()` | **FAILS** | Returns `NetworkError: Unable to reset the device` on Windows when interfaces are claimed |
-| ✅ **`usbDevice.forget()` + re-pair** | **SUCCESS** | Triggers USB disconnect/reconnect, OS re-enumerates device, resets firmware state |
-| ✅ **Physical power cycle** | **SUCCESS** | Unplug USB cable for 10 seconds, replug (fallback if forget fails) |
+| Method                                | Result      | Details                                                                                   |
+| ------------------------------------- | ----------- | ----------------------------------------------------------------------------------------- |
+| ❌ Vendor RESET (cmd 30)              | **FAILS**   | RESET command itself is a control OUT transfer, so it fails too                           |
+| ❌ Page reload                        | **FAILS**   | `navigator.usb.getDevices()` returns same corrupted device object                         |
+| ❌ `usbDevice.reset()`                | **FAILS**   | Returns `NetworkError: Unable to reset the device` on Windows when interfaces are claimed |
+| ✅ **`usbDevice.forget()` + re-pair** | **SUCCESS** | Triggers USB disconnect/reconnect, OS re-enumerates device, resets firmware state         |
+| ✅ **Physical power cycle**           | **SUCCESS** | Unplug USB cable for 10 seconds, replug (fallback if forget fails)                        |
 
 ### Why Some Software Methods Fail on Windows
 
@@ -55,6 +57,7 @@ HackRF One firmware enters a corrupted state where **ALL USB control OUT transfe
 ## Current Implementation
 
 ### Automatic Detection
+
 ```typescript
 // HackRFOne.ts - Lines 785-800
 private consecutiveControlTransferFailures = 0;
@@ -62,7 +65,7 @@ private consecutiveControlTransferFailures = 0;
 // In controlTransferOut():
 if (error.name === "NetworkError" && attemptsRemaining <= this.MAX_RETRIES - 3) {
   this.consecutiveControlTransferFailures++;
-  
+
   if (this.consecutiveControlTransferFailures >= 3) {
     const resetSucceeded = await this.performUSBResetRecovery();
     if (!resetSucceeded) {
@@ -73,17 +76,18 @@ if (error.name === "NetworkError" && attemptsRemaining <= this.MAX_RETRIES - 3) 
 ```
 
 ### Recovery Attempts
+
 ```typescript
 // HackRFOne.ts - Lines 941-1000
 private async performUSBResetRecovery(): Promise<boolean> {
   try {
     // Attempt 1: USB device reset (fails on Windows)
     await this.usbDevice.reset();
-    
+
     // Attempt 2: Soft recovery - close/reopen
     await this.close();
     await this.open();
-    
+
     return true;
   } catch (error) {
     // Both attempts failed - firmware severely corrupted
@@ -94,16 +98,17 @@ private async performUSBResetRecovery(): Promise<boolean> {
 ```
 
 ### User-Facing Reset Button
+
 ```typescript
 // HackRFOne.ts - Lines 596-650
 async resetAndReopen(): Promise<void> {
   // 1. Close device cleanly
   await this.close();
-  
+
   // 2. Clear failure counters
   this.consecutiveControlTransferFailures = 0;
   this.wasCleanClosed = false;
-  
+
   // 3. Try forget/re-pair (WORKS on Windows - triggers USB disconnect/reconnect)
   try {
     await this.usbDevice.forget();
@@ -114,7 +119,7 @@ async resetAndReopen(): Promise<void> {
     // Fallback: try USB reset (fails on Windows when interfaces claimed)
     await this.usbDevice.reset();
   }
-  
+
   // 4. Reopen (will trigger recovery path if needed)
   await this.open();
 }
@@ -125,6 +130,7 @@ async resetAndReopen(): Promise<void> {
 ### New DeviceError System (Merged 2025-11-18)
 
 **Error Mapping:**
+
 ```typescript
 // DeviceError.ts - Maps NetworkError to user-friendly message
 {
@@ -139,6 +145,7 @@ async resetAndReopen(): Promise<void> {
 ```
 
 **Error Tracking:**
+
 ```typescript
 // HackRFOneAdapter.ts - All operations wrapped with error tracking
 private trackError(error: Error | unknown, context?: Record<string, unknown>): void {
@@ -152,6 +159,7 @@ private trackError(error: Error | unknown, context?: Record<string, unknown>): v
 ```
 
 **User Notifications:**
+
 ```typescript
 // useDeviceIntegration.ts - Shows user-friendly error messages
 notify({
@@ -166,6 +174,7 @@ notify({
 ## Testing Results (2025-11-18)
 
 ### Before Power Cycle (Corrupted State)
+
 ```
 HackRFOne.controlTransferOut: transfer failed {command: 16, error: "A transfer error has occurred"}
 HackRFOne.performUSBResetRecovery: attempting USB device reset
@@ -176,6 +185,7 @@ Error scanning channel 3: NetworkError: Failed to execute 'controlTransferOut' o
 ```
 
 ### After Power Cycle (Healthy State)
+
 ```
 🔌 DEVICE: Device initialized {deviceId: 7504:24713:0000000000000000f77c60dc273dbcc3}
 HackRFOne.setFrequency: Frequency configured {frequency: 63000000, frequencyMHz: 63.000}
@@ -195,6 +205,7 @@ Scan completed successfully
    - Diagnostics shows repeated control transfer failures
 
 2. **Try software recovery first (Recommended):**
+
    ```
    1. Open Diagnostics overlay (click "Diagnostics" button)
    2. Click "🔄 Reset Device" button
@@ -203,6 +214,7 @@ Scan completed successfully
    ```
 
 3. **If software recovery fails, use physical power cycle:**
+
    ```
    1. Unplug the HackRF USB cable
    2. Wait 10 seconds
@@ -217,11 +229,12 @@ Scan completed successfully
 ### Prevention in Development
 
 **Current Implementation (from merged code):**
+
 ```typescript
 // useDeviceIntegration.ts - Global shutdown hook
 useEffect(() => {
   const globalRad = (globalThis.radIo ??= {});
-  
+
   Object.assign(globalRad, {
     shutdown: async (): Promise<void> => {
       try {
@@ -233,7 +246,7 @@ useEffect(() => {
       }
     },
   });
-  
+
   return () => {
     void closeAllDevices();
   };
@@ -243,6 +256,7 @@ useEffect(() => {
 ## Documentation Updates
 
 ### Updated Files
+
 1. ✅ `docs/DEVICE_ERROR_HANDLING.md` - Needs Windows limitation note
 2. ✅ Memory: `HACKRF_FIRMWARE_CORRUPTION_WINDOWS_2025-11-18` (this file)
 3. ⏳ `docs/hackrf-initialization-guide.md` - Needs troubleshooting section
@@ -251,6 +265,7 @@ useEffect(() => {
 ### Recommended User-Facing Changes
 
 **Diagnostics Overlay - Enhanced Error Display:**
+
 ```typescript
 // Show persistent error banner when corruption detected
 if (deviceErrors.some(e => e.code === DeviceErrorCode.USB_NETWORK_ERROR)) {

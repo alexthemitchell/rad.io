@@ -117,7 +117,10 @@ describe("HackRFOne control formatting", () => {
     // mode command is RECEIVE rather than the first.
     const lastModeCall = [...setTransceiverCalls]
       .reverse()
-      .find(([opts]) => (opts?.request as number) === VendorRequest.SET_TRANSCEIVER_MODE);
+      .find(
+        ([opts]) =>
+          (opts?.request as number) === VendorRequest.SET_TRANSCEIVER_MODE,
+      );
     expect(lastModeCall?.[0]).toMatchObject({
       request: VendorRequest.SET_TRANSCEIVER_MODE,
       value: 1, // RECEIVE mode

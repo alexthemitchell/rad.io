@@ -7,27 +7,32 @@ Significantly reduced console logging throughout the codebase since the diagnost
 ## Changes Made
 
 ### 1. HackRF Driver (`src/drivers/hackrf/HackRFOne.ts`)
+
 - **Removed verbose streaming loop logs**: Eliminated console.warn logs for USB transfer requests, completions, data callbacks, and abort events
 - **Removed fastRecovery logs**: Removed verbose logging for automatic recovery start and success
 - **Removed USB reset recovery logs**: Cleaned up intermediate recovery step logs
 - **Kept critical errors**: All error logs remain for debugging serious issues
 
 ### 2. DSP Subsystem
+
 - **`src/utils/dsp.ts`**: Made `logOptimizationStatus()` a no-op (capabilities shown in diagnostics overlay)
 - **`src/utils/dspEnvironment.ts`**: Made `logDSPCapabilities()` a no-op (shown in diagnostics overlay)
 - **`src/utils/dspWasm.ts`**: Removed console.info logs for WASM function selection (FFT, waveform, spectrogram)
 - **Removed unused logging variables**: Cleaned up `loggedFFTChoice`, `loggedWaveformOutSIMD`, etc.
 
 ### 3. Audio Subsystem
+
 - **`src/utils/audioResampler.ts`**: Removed constructor initialization log
 - **`src/utils/audioWorkletManager.ts`**: Removed logs for initialization success, context resume/suspend, and cleanup
 
 ### 4. Device Management
+
 - **`src/store/slices/deviceSlice.ts`**: Removed console.info emoji logs for device added, removed, closed, and all devices closed
 - **`src/hooks/useDeviceIntegration.ts`**: Removed console.info logs for device initialization and mock device setup
 - **Kept all error logs**: Console.error and console.warn for failures remain
 
 ### 5. Scanner Hooks
+
 - **`src/hooks/useFrequencyScanner.ts`**: Removed console.info logs for:
   - RDS extraction progress
   - Sample rate selection and adjustments
@@ -36,6 +41,7 @@ Significantly reduced console logging throughout the codebase since the diagnost
 ## Diagnostics Overlay Coverage
 
 The diagnostics overlay now provides:
+
 - **Demodulator metrics**: SNR, MER, BER, sync lock status, signal strength
 - **TS Parser metrics**: Packet counts, error counts, table updates
 - **Decoder metrics**: Video/audio/caption decoder state, drop counts, error counts
@@ -45,6 +51,7 @@ The diagnostics overlay now provides:
 ## Testing
 
 Verified with real HackRF One device:
+
 - ✅ Diagnostic overlay displays system events correctly
 - ✅ Console is significantly cleaner (no verbose streaming logs)
 - ✅ Only critical errors and warnings remain visible

@@ -17,7 +17,7 @@ describe("USB Retry Utility", () => {
     it("identifies transfer errors by message", () => {
       const error = new Error("USB transfer error occurred");
       expect(isTransientError(error)).toBe(true);
-      
+
       const error2 = new Error("Transfer failed");
       expect(isTransientError(error2)).toBe(true);
     });
@@ -25,7 +25,7 @@ describe("USB Retry Utility", () => {
     it("identifies other errors as non-transient", () => {
       const error = new Error("Something else went wrong");
       expect(isTransientError(error)).toBe(false);
-      
+
       const error2 = new TypeError("Type error");
       expect(isTransientError(error2)).toBe(false);
     });
@@ -43,7 +43,7 @@ describe("USB Retry Utility", () => {
     it("succeeds immediately if operation succeeds", async () => {
       const operation = jest.fn().mockResolvedValue("success");
       const result = await runWithRetry(operation);
-      
+
       expect(result).toBe("success");
       expect(operation).toHaveBeenCalledTimes(1);
     });
@@ -51,20 +51,21 @@ describe("USB Retry Utility", () => {
     it("retries on transient error and eventually succeeds", async () => {
       const error = new Error("NetworkError");
       error.name = "NetworkError";
-      
-      const operation = jest.fn()
+
+      const operation = jest
+        .fn()
         .mockRejectedValueOnce(error)
         .mockRejectedValueOnce(error)
         .mockResolvedValue("success");
 
       const promise = runWithRetry(operation, { baseDelay: 100 });
-      
+
       // Fast-forward time for retries
       await jest.advanceTimersByTimeAsync(100); // First retry delay
       await jest.advanceTimersByTimeAsync(200); // Second retry delay (exponential)
 
       const result = await promise;
-      
+
       expect(result).toBe("success");
       expect(operation).toHaveBeenCalledTimes(3);
     });
@@ -76,7 +77,9 @@ describe("USB Retry Utility", () => {
         .mockRejectedValueOnce(blockingError)
         .mockResolvedValue("success");
 
-      const classify = jest.fn().mockImplementation((err) => err === blockingError);
+      const classify = jest
+        .fn()
+        .mockImplementation((err) => err === blockingError);
 
       const promise = runWithRetry(operation, { classify, baseDelay: 50 });
       await jest.advanceTimersByTimeAsync(50);
@@ -90,12 +93,12 @@ describe("USB Retry Utility", () => {
     it("fails after max attempts with transient error", async () => {
       const error = new Error("NetworkError");
       error.name = "NetworkError";
-      
+
       const operation = jest.fn().mockRejectedValue(error);
 
       const promise = runWithRetry(operation, { attempts: 3, baseDelay: 100 });
       const expectation = expect(promise).rejects.toThrow("NetworkError");
-      
+
       // Fast-forward time
       await jest.advanceTimersByTimeAsync(1000);
 
@@ -114,24 +117,23 @@ describe("USB Retry Utility", () => {
     it("respects maxDelay", async () => {
       const error = new Error("NetworkError");
       error.name = "NetworkError";
-      
-      const operation = jest.fn()
-        .mockRejectedValue(error);
 
-      const promise = runWithRetry(operation, { 
-        attempts: 5, 
-        baseDelay: 100, 
-        maxDelay: 150 
+      const operation = jest.fn().mockRejectedValue(error);
+
+      const promise = runWithRetry(operation, {
+        attempts: 5,
+        baseDelay: 100,
+        maxDelay: 150,
       }).catch(() => {}); // Catch to prevent unhandled rejection
 
       // 1st retry: 100ms
       // 2nd retry: 200ms -> capped at 150ms
       // 3rd retry: 400ms -> capped at 150ms
-      
+
       await jest.advanceTimersByTimeAsync(1000);
       await promise;
-      
-      // We can't easily assert the exact delay without more complex mocking, 
+
+      // We can't easily assert the exact delay without more complex mocking,
       // but we can verify it finished.
       expect(operation).toHaveBeenCalledTimes(5);
     });
@@ -139,11 +141,12 @@ describe("USB Retry Utility", () => {
     it("calls onRetry callback", async () => {
       const error = new Error("NetworkError");
       error.name = "NetworkError";
-      
-      const operation = jest.fn()
+
+      const operation = jest
+        .fn()
         .mockRejectedValueOnce(error)
         .mockResolvedValue("success");
-        
+
       const onRetry = jest.fn();
 
       const promise = runWithRetry(operation, { onRetry, baseDelay: 100 });

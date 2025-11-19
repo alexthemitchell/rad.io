@@ -223,7 +223,7 @@ describe("HackRF Error Handling and Recovery", () => {
       await expect(adapter.reset()).resolves.not.toThrow();
       // Verify no vendor RESET command (30) was sent
       const calls = (device.controlTransferOut as jest.Mock).mock.calls;
-        const resetCall = calls.find((call) => call[0].request === 30);
+      const resetCall = calls.find((call) => call[0].request === 30);
       expect(resetCall).toBeUndefined();
     });
 
@@ -256,12 +256,12 @@ describe("HackRF Error Handling and Recovery", () => {
       await expect(adapter.fastRecovery()).resolves.not.toThrow();
 
       const calls = (device.controlTransferOut as jest.Mock).mock.calls;
-        const resetCall = calls.find((call) => call[0].request === 30);
+      const resetCall = calls.find((call) => call[0].request === 30);
       expect(resetCall).toBeUndefined();
       // Verify configuration commands were sent (sample rate, freq, amp enable)
-        const hasSampleRate = calls.some((c) => c[0].request === 6);
-        const hasFreq = calls.some((c) => c[0].request === 16);
-        const hasAmp = calls.some((c) => c[0].request === 17);
+      const hasSampleRate = calls.some((c) => c[0].request === 6);
+      const hasFreq = calls.some((c) => c[0].request === 16);
+      const hasAmp = calls.some((c) => c[0].request === 17);
       expect(hasSampleRate && hasFreq && hasAmp).toBe(true);
 
       // Should still be initialized after fastRecovery

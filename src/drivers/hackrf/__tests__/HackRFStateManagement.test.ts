@@ -16,7 +16,7 @@ describe("HackRFOne State Management", () => {
 
   const createMockEndpoint = (
     direction: USBDirection,
-    endpointNumber: number
+    endpointNumber: number,
   ): USBEndpoint => ({
     endpointNumber,
     direction,
@@ -30,10 +30,7 @@ describe("HackRFOne State Management", () => {
     interfaceSubclass: 0x00,
     interfaceProtocol: 0x00,
     interfaceName: "",
-    endpoints: [
-      createMockEndpoint("in", 1),
-      createMockEndpoint("out", 2),
-    ],
+    endpoints: [createMockEndpoint("in", 1), createMockEndpoint("out", 2)],
   });
 
   beforeEach(() => {
@@ -201,7 +198,7 @@ describe("HackRFOne State Management", () => {
       (mockDevice as { opened: boolean }).opened = false;
       (mockDevice.open as Mock).mockClear();
       (mockDevice.reset as Mock).mockClear();
-      
+
       await hackrf.open();
       expect(mockDevice.reset).not.toHaveBeenCalled();
     });
@@ -209,7 +206,7 @@ describe("HackRFOne State Management", () => {
     it("should handle close failure gracefully", async () => {
       (mockDevice.releaseInterface as Mock).mockResolvedValue(undefined);
       (mockDevice.close as Mock).mockRejectedValue(
-        new Error("Device disconnected")
+        new Error("Device disconnected"),
       );
 
       // Should not throw
@@ -226,7 +223,7 @@ describe("HackRFOne State Management", () => {
 
     it("should prevent concurrent close operations", async () => {
       (mockDevice.releaseInterface as Mock).mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
       );
       (mockDevice.close as Mock).mockResolvedValue(undefined);
 
@@ -268,14 +265,14 @@ describe("HackRFOne State Management", () => {
         (mockDevice as { opened: boolean }).opened = true;
       });
       (mockDevice.selectConfiguration as Mock).mockResolvedValue(undefined);
-      
+
       await hackrf.open();
       expect(mockDevice.reset).not.toHaveBeenCalled();
 
       // Simulate page reload: browser auto-releases device
       // Device object remains but is in stale state
       (mockDevice as { opened: boolean }).opened = true; // Browser keeps device "opened"
-      
+
       // Close attempt during beforeunload may fail or partially succeed
       (mockDevice.close as Mock).mockRejectedValue(new Error("Page unloading"));
       await hackrf.close().catch(() => {
@@ -298,10 +295,12 @@ describe("HackRFOne State Management", () => {
     it("should continue normal init without reset during recovery", async () => {
       (mockDevice as { opened: boolean }).opened = true;
       (mockDevice.open as Mock).mockResolvedValue(undefined);
-      
+
       // Mock selectConfiguration to restore configuration
       (mockDevice.selectConfiguration as Mock).mockImplementation(() => {
-        (mockDevice as { configuration: USBConfiguration | undefined }).configuration = {
+        (
+          mockDevice as { configuration: USBConfiguration | undefined }
+        ).configuration = {
           configurationValue: 1,
           configurationName: "",
           interfaces: [
@@ -314,12 +313,16 @@ describe("HackRFOne State Management", () => {
           ],
         };
       });
-      
+
       (mockDevice.claimInterface as Mock).mockResolvedValue(undefined);
-      (mockDevice.selectAlternateInterface as Mock).mockResolvedValue(undefined);
-      
+      (mockDevice.selectAlternateInterface as Mock).mockResolvedValue(
+        undefined,
+      );
+
       // Clear configuration to ensure init path is taken
-      (mockDevice as { configuration: USBConfiguration | undefined }).configuration = undefined;
+      (
+        mockDevice as { configuration: USBConfiguration | undefined }
+      ).configuration = undefined;
 
       // Should not throw during open
       await expect(hackrf.open()).resolves.not.toThrow();
@@ -333,10 +336,12 @@ describe("HackRFOne State Management", () => {
     it("should continue reopening without using reset", async () => {
       (mockDevice as { opened: boolean }).opened = true;
       (mockDevice.open as Mock).mockResolvedValue(undefined);
-      
+
       // Mock selectConfiguration to restore configuration
       (mockDevice.selectConfiguration as Mock).mockImplementation(() => {
-        (mockDevice as { configuration: USBConfiguration | undefined }).configuration = {
+        (
+          mockDevice as { configuration: USBConfiguration | undefined }
+        ).configuration = {
           configurationValue: 1,
           configurationName: "",
           interfaces: [
@@ -349,12 +354,16 @@ describe("HackRFOne State Management", () => {
           ],
         };
       });
-      
+
       (mockDevice.claimInterface as Mock).mockResolvedValue(undefined);
-      (mockDevice.selectAlternateInterface as Mock).mockResolvedValue(undefined);
-      
+      (mockDevice.selectAlternateInterface as Mock).mockResolvedValue(
+        undefined,
+      );
+
       // Clear configuration to force init path
-      (mockDevice as { configuration: USBConfiguration | undefined }).configuration = undefined;
+      (
+        mockDevice as { configuration: USBConfiguration | undefined }
+      ).configuration = undefined;
 
       // Should not throw during open
       await expect(hackrf.open()).resolves.not.toThrow();

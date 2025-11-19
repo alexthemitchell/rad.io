@@ -30,9 +30,9 @@ describe("HackRFOne frequency and sample-rate guards (libhackrf parity)", () => 
     await expect(hackrf.setFrequency(Number.NaN)).rejects.toThrow(
       /non-negative finite number/,
     );
-    await expect(
-      hackrf.setFrequency(Number.POSITIVE_INFINITY),
-    ).rejects.toThrow(/out of range/i);
+    await expect(hackrf.setFrequency(Number.POSITIVE_INFINITY)).rejects.toThrow(
+      /out of range/i,
+    );
   });
 
   it("rejects non-finite sample rates", async () => {
@@ -51,8 +51,12 @@ describe("HackRFOne frequency and sample-rate guards (libhackrf parity)", () => 
     const { device } = createMockUSBDevice();
     const hackrf = new HackRFOne(device);
 
-    await expect(hackrf.setSampleRate(1_000_000)).rejects.toThrow(/out of range/);
-    await expect(hackrf.setSampleRate(30_000_000)).rejects.toThrow(/out of range/);
+    await expect(hackrf.setSampleRate(1_000_000)).rejects.toThrow(
+      /out of range/,
+    );
+    await expect(hackrf.setSampleRate(30_000_000)).rejects.toThrow(
+      /out of range/,
+    );
   });
 
   it("accepts in-range sample rates and quantizes to uint32+divider like hackrf_set_sample_rate", async () => {

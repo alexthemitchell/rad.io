@@ -1,8 +1,5 @@
 import { HackRFCalibrationService } from "../calibration";
-import type {
-  CalibrationBackend,
-  CalibrationRequest,
-} from "../calibration";
+import type { CalibrationBackend, CalibrationRequest } from "../calibration";
 import type { CalibrationProfile } from "../../../lib/measurement/types";
 
 const buildService = (backendOverrides: Partial<CalibrationBackend> = {}) => {

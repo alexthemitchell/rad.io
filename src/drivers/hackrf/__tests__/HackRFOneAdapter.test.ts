@@ -116,7 +116,9 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       await adapter.open();
 
       // Mock transferIn to throw to exit the loop immediately
-      (device.transferIn as jest.Mock).mockRejectedValueOnce(new Error("End of stream"));
+      (device.transferIn as jest.Mock).mockRejectedValueOnce(
+        new Error("End of stream"),
+      );
 
       // After close, adapter should still be configured (driver persistence)
       // We expect it to fail with "End of stream" (from mock) instead of "not initialized"
@@ -138,7 +140,9 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       await adapter.reset();
 
       // Mock transferIn to throw to exit the loop immediately
-      (device.transferIn as jest.Mock).mockRejectedValueOnce(new Error("End of stream"));
+      (device.transferIn as jest.Mock).mockRejectedValueOnce(
+        new Error("End of stream"),
+      );
 
       // After reset, should still be configured (driver persistence)
       await expect(

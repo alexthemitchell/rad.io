@@ -7,6 +7,7 @@ USB Control Transfer failures occurred after page reloads. The HackRF device wou
 ## Root Cause
 
 When a web page navigates/reloads:
+
 1. The browser automatically releases USB devices
 2. Our `beforeunload` handler tries to close the device gracefully
 3. These two operations race, leaving the device firmware in a corrupted state
@@ -37,7 +38,9 @@ Modified `open()` to detect and reset stale devices:
 const needsReset = !this.wasCleanClosed && this.usbDevice.opened;
 
 if (needsReset) {
-  console.warn("HackRFOne.open: Device may be in stale state, performing USB reset");
+  console.warn(
+    "HackRFOne.open: Device may be in stale state, performing USB reset",
+  );
   await this.usbDevice.reset();
   await this.delay(500); // Give device time to complete reset
   await this.usbDevice.open(); // Reopen after reset
@@ -49,6 +52,7 @@ This ensures that if a device is reopened after a page reload (where `wasCleanCl
 ### 3. Improved `close()` Error Handling
 
 Enhanced `close()` to:
+
 - Prevent concurrent close operations (early return if already closing)
 - Track whether close succeeded or failed
 - Handle cases where browser already released the device
@@ -58,10 +62,10 @@ async close(): Promise<void> {
   if (this.closing) {
     return; // Prevent concurrent closes
   }
-  
+
   this.streaming = false;
   this.closing = true;
-  
+
   if (this.usbDevice.opened) {
     // ... release interface, close device
     try {
@@ -79,6 +83,7 @@ async close(): Promise<void> {
 ## Files Modified
 
 ### src/drivers/hackrf/HackRFOne.ts
+
 - Added `wasCleanClosed: boolean` field
 - Modified `open()` to detect stale state and perform USB reset
 - Modified `close()` to track clean vs dirty closes and prevent races
@@ -86,6 +91,7 @@ async close(): Promise<void> {
 ## Tests Added
 
 ### e2e/hackrf-page-reload.spec.ts (E2E Tests)
+
 - Single page reload test
 - Multiple rapid reloads test
 - Control transfers after reload test
@@ -93,7 +99,8 @@ async close(): Promise<void> {
 - No console errors test
 - Device reset verification test
 
-### src/drivers/hackrf/__tests__/HackRFStateManagement.test.ts (Unit Tests)
+### src/drivers/hackrf/**tests**/HackRFStateManagement.test.ts (Unit Tests)
+
 - Clean open/close cycles
 - Dirty close detection
 - Reset on stale state
@@ -106,6 +113,7 @@ All 12 unit tests pass.
 ## Testing Results
 
 **Unit Tests**: ✅ 12/12 passing
+
 - Device opening scenarios (4 tests)
 - Device closing scenarios (4 tests)
 - Page reload simulation (2 tests)
@@ -124,6 +132,7 @@ All 12 unit tests pass.
 ## Prevention
 
 The fix ensures:
+
 - Device firmware is reset when reopening after page navigation
 - State tracking prevents unnecessary resets on clean open/close cycles
 - Concurrent close operations are prevented

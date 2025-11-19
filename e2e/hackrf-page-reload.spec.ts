@@ -89,15 +89,16 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto("https://localhost:8080", { waitUntil: "networkidle" });
-    
+
     // Wait for device to be initialized
     await page.waitForFunction(
       () => {
-        const globalRad = (globalThis as { radIo?: { primaryDevice?: unknown } })
-          .radIo;
+        const globalRad = (
+          globalThis as { radIo?: { primaryDevice?: unknown } }
+        ).radIo;
         return !!globalRad?.primaryDevice;
       },
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
 
     // Get initial device info for comparison
@@ -116,11 +117,12 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
     // Wait for device to reconnect
     await page.waitForFunction(
       () => {
-        const globalRad = (globalThis as { radIo?: { primaryDevice?: unknown } })
-          .radIo;
+        const globalRad = (
+          globalThis as { radIo?: { primaryDevice?: unknown } }
+        ).radIo;
         return !!globalRad?.primaryDevice;
       },
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
 
     // Verify device still works after reload
@@ -148,7 +150,7 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
           ).radIo;
           return !!globalRad?.primaryDevice;
         },
-        { timeout: 10000 }
+        { timeout: 10000 },
       );
 
       // Verify device still works
@@ -167,11 +169,12 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
 
     await page.waitForFunction(
       () => {
-        const globalRad = (globalThis as { radIo?: { primaryDevice?: unknown } })
-          .radIo;
+        const globalRad = (
+          globalThis as { radIo?: { primaryDevice?: unknown } }
+        ).radIo;
         return !!globalRad?.primaryDevice;
       },
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
 
     const transfersResult = await page.evaluate(async () => {
@@ -196,7 +199,7 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
         await device.setSampleRate?.(20_000_000);
       } catch (error) {
         errors.push(
-          `setSampleRate: ${error instanceof Error ? error.message : String(error)}`
+          `setSampleRate: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
 
@@ -204,7 +207,7 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
         await device.setFrequency?.(915_000_000);
       } catch (error) {
         errors.push(
-          `setFrequency: ${error instanceof Error ? error.message : String(error)}`
+          `setFrequency: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
 
@@ -212,7 +215,7 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
         await device.setBandwidth?.(2_500_000);
       } catch (error) {
         errors.push(
-          `setBandwidth: ${error instanceof Error ? error.message : String(error)}`
+          `setBandwidth: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
 
@@ -220,7 +223,7 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
         await device.setRxGain?.(20);
       } catch (error) {
         errors.push(
-          `setRxGain: ${error instanceof Error ? error.message : String(error)}`
+          `setRxGain: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
 
@@ -274,11 +277,12 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
     // Wait for device to reconnect
     await page.waitForFunction(
       () => {
-        const globalRad = (globalThis as { radIo?: { primaryDevice?: unknown } })
-          .radIo;
+        const globalRad = (
+          globalThis as { radIo?: { primaryDevice?: unknown } }
+        ).radIo;
         return !!globalRad?.primaryDevice;
       },
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
 
     // Verify device works after reload
@@ -300,11 +304,12 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
 
     await page.waitForFunction(
       () => {
-        const globalRad = (globalThis as { radIo?: { primaryDevice?: unknown } })
-          .radIo;
+        const globalRad = (
+          globalThis as { radIo?: { primaryDevice?: unknown } }
+        ).radIo;
         return !!globalRad?.primaryDevice;
       },
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
 
     // Perform some operations
@@ -315,7 +320,7 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
       (error) =>
         !error.includes("warn") &&
         !error.includes("Failed to fetch") && // Normal during reload
-        !error.includes("net::ERR_") // Network errors during reload are expected
+        !error.includes("net::ERR_"), // Network errors during reload are expected
     );
 
     expect(criticalErrors).toHaveLength(0);
@@ -344,11 +349,12 @@ test.describe("HackRF Page Reload Stability @real @device", () => {
 
     await page.waitForFunction(
       () => {
-        const globalRad = (globalThis as { radIo?: { primaryDevice?: unknown } })
-          .radIo;
+        const globalRad = (
+          globalThis as { radIo?: { primaryDevice?: unknown } }
+        ).radIo;
         return !!globalRad?.primaryDevice;
       },
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
 
     // Verify device can be reconfigured with different settings
