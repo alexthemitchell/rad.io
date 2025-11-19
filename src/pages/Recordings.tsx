@@ -24,35 +24,36 @@ import { useStorageQuota } from "../hooks/useStorageQuota";
  * TODO: Add search, filter, and tagging system
  * TODO: Integrate with IndexedDB storage (ADR-0005)
  */
+
+/**
+ * Format bytes to human-readable string (KB, MB, GB)
+ */
+function formatBytes(bytes: number): string {
+  if (bytes === 0) {
+    return "0 B";
+  }
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.max(0, Math.floor(Math.log(bytes) / Math.log(k)));
+  return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`;
+}
+
+/**
+ * Get CSS class for storage progress bar based on percentage used
+ * Aligned with PRD requirement: warning at >=85%
+ */
+function getStorageClass(percentUsed: number): string {
+  if (percentUsed >= 85) {
+    return "storage-critical";
+  }
+  if (percentUsed >= 70) {
+    return "storage-warning";
+  }
+  return "storage-ok";
+}
+
 function Recordings(): React.JSX.Element {
   const storageQuota = useStorageQuota();
-
-  /**
-   * Format bytes to human-readable string (KB, MB, GB)
-   */
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) {
-      return "0 B";
-    }
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`;
-  };
-
-  /**
-   * Get CSS class for storage progress bar based on percentage used
-   * Aligned with PRD requirement: warning at >85%
-   */
-  const getStorageClass = (percentUsed: number): string => {
-    if (percentUsed >= 85) {
-      return "storage-critical";
-    }
-    if (percentUsed >= 70) {
-      return "storage-warning";
-    }
-    return "storage-ok";
-  };
   return (
     <main
       className="page-container"

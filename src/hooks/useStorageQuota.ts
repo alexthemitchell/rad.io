@@ -65,7 +65,7 @@ export function useStorageQuota(): StorageQuotaInfo {
   }, []);
 
   const percentUsed = quota > 0 ? (usage / quota) * 100 : 0;
-  const available = quota > 0 ? quota - usage : 0;
+  const available = quota > 0 ? Math.max(0, quota - usage) : 0;
 
   return {
     usage,

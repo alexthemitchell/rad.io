@@ -247,4 +247,33 @@ describe("useStorageQuota", () => {
     expect(result.current.percentUsed).toBe(0);
     expect(result.current.available).toBe(0);
   });
+
+  it("should handle usage exceeding quota (never show negative available)", async () => {
+    // Edge case: usage reported as higher than quota
+    mockEstimate.mockResolvedValue({
+      usage: 110 * 1024 * 1024 * 1024, // 110 GB
+      quota: 100 * 1024 * 1024 * 1024, // 100 GB
+    });
+
+    Object.defineProperty(global, "navigator", {
+      value: {
+        storage: {
+          estimate: mockEstimate,
+        } as MockNavigatorStorage,
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const { result } = renderHook(() => useStorageQuota());
+
+    await waitFor(() => {
+      expect(result.current.usage).toBe(110 * 1024 * 1024 * 1024);
+    });
+
+    expect(result.current.quota).toBe(100 * 1024 * 1024 * 1024);
+    expect(result.current.percentUsed).toBeCloseTo(110, 0);
+    // Available should be clamped to 0, not negative
+    expect(result.current.available).toBe(0);
+  });
 });
