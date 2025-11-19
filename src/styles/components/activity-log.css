@@ -1,0 +1,209 @@
+/**
+ * Activity Log Styles
+ * Table component for displaying scanner activity
+ */
+
+.activity-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rad-space-4);
+  width: 100%;
+}
+
+.activity-log-container {
+  overflow-x: auto;
+  border-radius: var(--rad-radius-4);
+  border: var(--rad-border-width) solid var(--rad-border);
+  background: var(--rad-bg-elev-1);
+}
+
+.activity-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--rad-font-size-2);
+}
+
+.activity-log-table thead {
+  background: var(--rad-bg-elev-2);
+  border-bottom: 2px solid var(--rad-border);
+}
+
+.activity-log-table th {
+  padding: var(--rad-space-4) var(--rad-space-5);
+  text-align: left;
+  font-weight: 600;
+  color: var(--rad-fg);
+  font-size: var(--rad-font-size-2);
+}
+
+.activity-log-table tbody tr {
+  border-bottom: var(--rad-border-width) solid var(--rad-border);
+  transition: background-color var(--rad-transition-fast)
+    var(--rad-ease-standard);
+}
+
+.activity-log-table tbody tr:hover {
+  background: var(--rad-bg-elev-2);
+}
+
+.activity-log-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.activity-log-table td {
+  padding: var(--rad-space-4) var(--rad-space-5);
+  color: var(--rad-fg);
+}
+
+/* Empty state */
+.activity-log-empty {
+  padding: var(--rad-space-8) var(--rad-space-5);
+  text-align: center;
+}
+
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--rad-space-4);
+}
+
+.empty-state-message {
+  margin: 0;
+  color: var(--rad-fg-muted);
+  font-size: var(--rad-font-size-3);
+}
+
+/* Specific cells */
+.frequency-cell {
+  font-family: var(--rad-font-mono);
+  font-weight: 500;
+  color: var(--rad-accent);
+}
+
+.signal-strength-cell {
+  font-family: var(--rad-font-mono);
+  font-weight: 500;
+}
+
+.mode-badge {
+  display: inline-block;
+  padding: var(--rad-space-2) var(--rad-space-3);
+  background: var(--rad-bg-elev-2);
+  color: var(--rad-accent);
+  border-radius: var(--rad-radius-2);
+  font-weight: 500;
+  font-size: var(--rad-font-size-1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Actions cell */
+.actions-cell {
+  display: flex;
+  gap: var(--rad-space-3);
+  justify-content: flex-start;
+}
+
+.btn-icon {
+  padding: var(--rad-space-2) var(--rad-space-3);
+  background: transparent;
+  border: var(--rad-border-width) solid var(--rad-border);
+  border-radius: var(--rad-radius-3);
+  cursor: pointer;
+  font-size: var(--rad-font-size-3);
+  line-height: 1;
+  transition: all var(--rad-transition-fast) var(--rad-ease-standard);
+  color: var(--rad-fg);
+}
+
+.btn-icon:hover {
+  background: var(--rad-bg-elev-2);
+  border-color: var(--rad-accent);
+  color: var(--rad-accent);
+}
+
+.btn-icon:focus-visible {
+  outline: var(--rad-focus-ring-width) solid var(--rad-ring);
+  outline-offset: var(--rad-focus-ring-offset);
+}
+
+.btn-icon:active {
+  transform: scale(0.95);
+}
+
+/* Responsive design - stack on mobile */
+@media (width <= 768px) {
+  .activity-log-table {
+    font-size: var(--rad-font-size-1);
+  }
+
+  .activity-log-table th,
+  .activity-log-table td {
+    padding: var(--rad-space-3) var(--rad-space-4);
+  }
+
+  /* Hide less critical columns on small screens */
+  .activity-log-table th:nth-child(4),
+  .activity-log-table td:nth-child(4) {
+    display: none;
+  }
+
+  .empty-state-message {
+    font-size: var(--rad-font-size-2);
+  }
+
+  .actions-cell {
+    flex-direction: column;
+    gap: var(--rad-space-2);
+  }
+}
+
+/* Very small screens - further optimization */
+@media (width <= 480px) {
+  /* Stack table vertically */
+  .activity-log-table thead {
+    display: none;
+  }
+
+  .activity-log-table,
+  .activity-log-table tbody,
+  .activity-log-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .activity-log-table tr {
+    margin-bottom: var(--rad-space-5);
+    padding: var(--rad-space-4);
+    border: var(--rad-border-width) solid var(--rad-border);
+    border-radius: var(--rad-radius-3);
+  }
+
+  .activity-log-table td {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--rad-space-3) 0;
+    border-bottom: var(--rad-border-width) solid var(--rad-border);
+  }
+
+  .activity-log-table td:last-child {
+    border-bottom: none;
+  }
+
+  .activity-log-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--rad-fg-muted);
+    margin-right: var(--rad-space-4);
+  }
+
+  .actions-cell {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .activity-log-empty {
+    display: table-cell;
+  }
+}
