@@ -17,10 +17,12 @@
  * - Visual state indicators (e.g., recording active)
  */
 
-import { BookmarkSimple as BookmarkSimpleIcon } from "@phosphor-icons/react/dist/icons/BookmarkSimple";
-import { GridFour as GridFourIcon } from "@phosphor-icons/react/dist/icons/GridFour";
-import { Question as QuestionIcon } from "@phosphor-icons/react/dist/icons/Question";
-import { Record as RecordIcon } from "@phosphor-icons/react/dist/icons/Record";
+import {
+  BookmarkSimpleIcon,
+  GridFourIcon,
+  QuestionIcon,
+  RecordIcon,
+} from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 
 export interface QuickActionsProps {

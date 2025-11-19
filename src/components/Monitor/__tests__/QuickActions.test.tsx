@@ -166,7 +166,9 @@ describe("QuickActions", () => {
     render(<QuickActions {...defaultProps} />);
 
     expect(
-      screen.getByRole("button", { name: /bookmark current frequency.*\(b\)/i }),
+      screen.getByRole("button", {
+        name: /bookmark current frequency.*\(b\)/i,
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /start recording.*\(r\)/i }),

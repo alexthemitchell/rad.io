@@ -28,7 +28,9 @@ test.describe("QuickActions on Monitor Page", () => {
     const recordButton = page.locator(
       'button[aria-label*="recording"][aria-label*="(R)"]',
     );
-    const gridButton = page.locator('button[aria-label*="grid"][aria-label*="(G)"]');
+    const gridButton = page.locator(
+      'button[aria-label*="grid"][aria-label*="(G)"]',
+    );
     const helpButton = page.locator(
       'button[aria-label="Show keyboard shortcuts (?)"]',
     );
@@ -99,7 +101,9 @@ test.describe("QuickActions on Monitor Page", () => {
     // Wait for Quick Actions to be visible
     await page.waitForSelector('[aria-label="Quick actions toolbar"]');
 
-    const gridButton = page.locator('button[aria-label*="grid"][aria-label*="(G)"]');
+    const gridButton = page.locator(
+      'button[aria-label*="grid"][aria-label*="(G)"]',
+    );
 
     // Click to toggle grid
     await gridButton.click();

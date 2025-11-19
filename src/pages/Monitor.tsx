@@ -19,10 +19,15 @@ import {
 import { CalibrationManager } from "../lib/measurement/calibration";
 import { estimateFMBroadcastPPM } from "../lib/measurement/fm-ppm-calibrator";
 import { notify } from "../lib/notifications";
+import { toggleShortcuts } from "../lib/shortcuts";
 import { type SDRCapabilities, type IQSample } from "../models/SDRDevice";
 import { useDevice, useFrequency, useSettings, useDiagnostics } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
+import {
+  addBookmark as addBookmarkToStorage,
+  bookmarkExists,
+} from "../utils/bookmarkStorage";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
 import { generateBookmarkId } from "../utils/id";
 import { createMultiStationFMProcessor } from "../utils/multiStationFM";
@@ -227,22 +232,8 @@ const Monitor: React.FC = () => {
   const [isRecordingActive, setIsRecordingActive] = useState(false);
 
   const handleBookmark = (frequencyHz: number): void => {
-    const STORAGE_KEY = "rad.io:bookmarks";
-
-    // Load existing bookmarks
-    const stored = localStorage.getItem(STORAGE_KEY);
-    let bookmarks: Bookmark[] = [];
-    if (stored) {
-      try {
-        bookmarks = JSON.parse(stored) as Bookmark[];
-      } catch {
-        // Invalid data, start fresh
-        bookmarks = [];
-      }
-    }
-
     // Check if frequency already bookmarked
-    const existing = bookmarks.find((b) => b.frequency === frequencyHz);
+    const existing = bookmarkExists(frequencyHz);
     if (existing) {
       notify({
         message: `Frequency ${formatFrequency(frequencyHz)} is already bookmarked as "${existing.name}"`,
@@ -265,8 +256,7 @@ const Monitor: React.FC = () => {
     };
 
     // Save to localStorage
-    bookmarks.push(newBookmark);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookmarks));
+    addBookmarkToStorage(newBookmark);
 
     notify({
       message: `Bookmarked ${formatFrequency(frequencyHz)}`,
@@ -292,9 +282,10 @@ const Monitor: React.FC = () => {
   };
 
   const handleToggleGrid = (): void => {
-    setSettings({ showGridlines: !settings.showGridlines });
+    const newState = !settings.showGridlines;
+    setSettings({ showGridlines: newState });
     notify({
-      message: settings.showGridlines ? "Grid hidden" : "Grid shown",
+      message: newState ? "Grid shown" : "Grid hidden",
       sr: "polite",
       visual: true,
       tone: "info",
@@ -302,15 +293,7 @@ const Monitor: React.FC = () => {
   };
 
   const handleShowHelp = (): void => {
-    // The ShortcutsOverlay is already rendered globally and listens to '?' key
-    // We can trigger it by dispatching a keyboard event or setting state
-    // For now, we'll dispatch a keyboard event to trigger the existing overlay
-    const event = new KeyboardEvent("keydown", {
-      key: "?",
-      shiftKey: true,
-      bubbles: true,
-    });
-    window.dispatchEvent(event);
+    toggleShortcuts();
   };
 
   // Auto FM PPM calibration (runs once per session when stable)
