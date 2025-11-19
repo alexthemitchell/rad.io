@@ -5,6 +5,7 @@
  * IQ recordings with automatic chunking and quota management.
  */
 
+import { getCrypto } from "../../utils/id";
 import { recordingStorage } from "./recording-storage";
 import {
   DB_CONFIG,
@@ -18,9 +19,17 @@ import type { IQSample } from "../../models/SDRDevice";
 import type { IQRecording as UtilsIQRecording } from "../../utils/iqRecorder";
 
 /**
- * Generate a UUID v4
+ * Generate a UUID v4 using native crypto or fallback
  */
 function generateUUID(): string {
+  const crypto = getCrypto();
+
+  // Prefer native crypto.randomUUID if available
+  if (crypto?.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  // Fallback implementation
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === "x" ? r : (r & 0x3) | 0x8;
@@ -95,6 +104,9 @@ export class RecordingManager {
    * @returns Recording ID
    */
   async saveRecording(recording: UtilsIQRecording): Promise<string> {
+    // Ensure storage is initialized
+    await recordingStorage.init();
+
     // Generate unique ID
     const id = generateUUID();
 
@@ -113,13 +125,13 @@ export class RecordingManager {
     // Convert to chunked format
     const chunks = chunkSamples(recording.samples);
 
-    // Create entry
+    // Create entry with ISO timestamp
     const entry: RecordingEntry = {
       id,
       metadata: {
         frequency: recording.metadata.frequency,
         sampleRate: recording.metadata.sampleRate,
-        timestamp: new Date(recording.metadata.timestamp),
+        timestamp: recording.metadata.timestamp, // Already ISO string from IQRecorder
         duration: recording.metadata.duration,
         deviceName: recording.metadata.deviceName,
         tags: [],
@@ -140,6 +152,9 @@ export class RecordingManager {
    * @returns Recording with samples
    */
   async loadRecording(id: string): Promise<IQRecording> {
+    // Ensure storage is initialized
+    await recordingStorage.init();
+
     const entry = await recordingStorage.loadRecording(id);
 
     if (!entry) {
@@ -161,6 +176,8 @@ export class RecordingManager {
    * @param id - Recording ID
    */
   async deleteRecording(id: string): Promise<void> {
+    // Ensure storage is initialized
+    await recordingStorage.init();
     await recordingStorage.deleteRecording(id);
   }
 
@@ -169,6 +186,8 @@ export class RecordingManager {
    * @returns Array of recording metadata
    */
   async listRecordings(): Promise<RecordingMeta[]> {
+    // Ensure storage is initialized
+    await recordingStorage.init();
     return recordingStorage.listRecordings();
   }
 
@@ -177,6 +196,8 @@ export class RecordingManager {
    * @returns Storage usage details
    */
   async getStorageUsage(): Promise<StorageUsage> {
+    // Ensure storage is initialized
+    await recordingStorage.init();
     return recordingStorage.getStorageUsage();
   }
 
@@ -189,6 +210,9 @@ export class RecordingManager {
     id: string,
     updates: Partial<RecordingMetadata>,
   ): Promise<void> {
+    // Ensure storage is initialized
+    await recordingStorage.init();
+
     const entry = await recordingStorage.loadRecording(id);
 
     if (!entry) {
@@ -198,10 +222,7 @@ export class RecordingManager {
     // Update metadata
     Object.assign(entry.metadata, updates);
 
-    // Delete old entry
-    await recordingStorage.deleteRecording(id);
-
-    // Save updated entry
+    // Save updated entry atomically using put()
     await recordingStorage.saveRecording(entry);
   }
 

@@ -15,8 +15,8 @@ export interface RecordingMetadata {
   frequency: number;
   /** Sample rate in Hz */
   sampleRate: number;
-  /** Recording timestamp (ISO 8601) */
-  timestamp: Date;
+  /** Recording timestamp (ISO 8601 string) */
+  timestamp: string;
   /** Recording duration in seconds */
   duration: number;
   /** Optional device name */
@@ -35,7 +35,7 @@ export interface RecordingEntry {
   id: string;
   /** Recording metadata */
   metadata: RecordingMetadata;
-  /** Chunked IQ data (10MB per chunk) */
+  /** Chunked IQ data (~10 MiB per chunk) */
   chunks: Blob[];
 }
 
@@ -47,8 +47,8 @@ export interface RecordingMeta {
   id: string;
   /** Center frequency in Hz */
   frequency: number;
-  /** Recording timestamp */
-  timestamp: Date;
+  /** Recording timestamp (ISO 8601 string) */
+  timestamp: string;
   /** Recording duration in seconds */
   duration: number;
   /** Total size in bytes */
@@ -94,6 +94,6 @@ export const DB_CONFIG = {
     recordings: "recordings",
     meta: "recordings-meta",
   },
-  /** Chunk size for large recordings (10MB) */
+  /** Chunk size for large recordings (10 MiB) */
   chunkSize: 10 * 1024 * 1024,
 } as const;

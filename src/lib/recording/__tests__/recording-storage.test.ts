@@ -82,7 +82,7 @@ describe("RecordingStorage", () => {
       // Small request should pass
       const hasSpace = await storage.hasAvailableSpace(10 * 1024 * 1024);
       expect(hasSpace).toBe(true);
-      
+
       // 89 MB request: 1 + 89 = 90 MB = 90% threshold → should fail
       const hasSpaceEdge = await storage.hasAvailableSpace(89 * 1024 * 1024);
       expect(hasSpaceEdge).toBe(false);

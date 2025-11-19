@@ -48,7 +48,7 @@ describe("RecordingManager", () => {
   describe("saveRecording", () => {
     it("should save a recording and return ID", async () => {
       const { recordingStorage } = require("../recording-storage");
-      
+
       const samples: IQSample[] = [
         { I: 0.5, Q: 0.3 },
         { I: -0.2, Q: 0.7 },
@@ -69,7 +69,7 @@ describe("RecordingManager", () => {
       };
 
       const id = await manager.saveRecording(recording);
-      
+
       expect(id).toBeDefined();
       expect(typeof id).toBe("string");
       expect(id.length).toBeGreaterThan(0);
@@ -99,7 +99,7 @@ describe("RecordingManager", () => {
 
     it("should chunk large recordings", async () => {
       const { recordingStorage } = require("../recording-storage");
-      
+
       // Create a large recording (>10MB worth of samples)
       const largeSize = 2 * 1024 * 1024; // 2M samples = 16MB
       const samples: IQSample[] = Array(largeSize)
@@ -118,7 +118,7 @@ describe("RecordingManager", () => {
       };
 
       await manager.saveRecording(recording);
-      
+
       expect(recordingStorage.saveRecording).toHaveBeenCalled();
       const savedEntry = recordingStorage.saveRecording.mock.calls[0][0];
       expect(savedEntry.chunks.length).toBeGreaterThan(1);
@@ -128,7 +128,7 @@ describe("RecordingManager", () => {
   describe("loadRecording", () => {
     it("should load a recording by ID", async () => {
       const { recordingStorage } = require("../recording-storage");
-      
+
       const samples: IQSample[] = [
         { I: 0.5, Q: 0.3 },
         { I: -0.2, Q: 0.7 },
@@ -153,7 +153,7 @@ describe("RecordingManager", () => {
         metadata: {
           frequency: 100e6,
           sampleRate: 2e6,
-          timestamp: new Date(),
+          timestamp: new Date().toISOString(),
           duration: 1,
           tags: [],
         },
@@ -161,7 +161,7 @@ describe("RecordingManager", () => {
       });
 
       const recording = await manager.loadRecording("test-id");
-      
+
       expect(recording.id).toBe("test-id");
       expect(recording.samples).toHaveLength(2);
       expect(recording.samples[0]?.I).toBeCloseTo(0.5, 5);
@@ -181,9 +181,9 @@ describe("RecordingManager", () => {
   describe("deleteRecording", () => {
     it("should delete a recording", async () => {
       const { recordingStorage } = require("../recording-storage");
-      
+
       await manager.deleteRecording("test-id");
-      
+
       expect(recordingStorage.deleteRecording).toHaveBeenCalledWith("test-id");
     });
   });
@@ -191,19 +191,19 @@ describe("RecordingManager", () => {
   describe("listRecordings", () => {
     it("should list all recordings", async () => {
       const { recordingStorage } = require("../recording-storage");
-      
+
       const mockMeta = [
         {
           id: "1",
           frequency: 100e6,
-          timestamp: new Date(),
+          timestamp: new Date().toISOString(),
           duration: 10,
           size: 1024,
         },
         {
           id: "2",
           frequency: 200e6,
-          timestamp: new Date(),
+          timestamp: new Date().toISOString(),
           duration: 20,
           size: 2048,
         },
@@ -212,7 +212,7 @@ describe("RecordingManager", () => {
       recordingStorage.listRecordings.mockResolvedValueOnce(mockMeta);
 
       const recordings = await manager.listRecordings();
-      
+
       expect(recordings).toEqual(mockMeta);
       expect(recordingStorage.listRecordings).toHaveBeenCalled();
     });
@@ -221,7 +221,7 @@ describe("RecordingManager", () => {
   describe("getStorageUsage", () => {
     it("should return storage usage", async () => {
       const usage = await manager.getStorageUsage();
-      
+
       expect(usage.used).toBe(1024 * 1024);
       expect(usage.quota).toBe(100 * 1024 * 1024);
       expect(usage.percent).toBe(1);
@@ -231,13 +231,13 @@ describe("RecordingManager", () => {
   describe("updateMetadata", () => {
     it("should update recording metadata", async () => {
       const { recordingStorage } = require("../recording-storage");
-      
+
       recordingStorage.loadRecording.mockResolvedValueOnce({
         id: "test-id",
         metadata: {
           frequency: 100e6,
           sampleRate: 2e6,
-          timestamp: new Date(),
+          timestamp: new Date().toISOString(),
           duration: 10,
           tags: [],
         },
@@ -245,8 +245,8 @@ describe("RecordingManager", () => {
       });
 
       await manager.updateMetadata("test-id", { label: "New Label" });
-      
-      expect(recordingStorage.deleteRecording).toHaveBeenCalledWith("test-id");
+
+      // Now we use put() so no delete is called
       expect(recordingStorage.saveRecording).toHaveBeenCalled();
     });
 

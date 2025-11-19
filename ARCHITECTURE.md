@@ -321,18 +321,18 @@ rad.io employs a **multi-tier state management architecture** that balances perf
 
 ### State Taxonomy with Examples
 
-| State Type    | Storage Mechanism      | Location                                | Example Data                              | Survives Reload?  |
-| ------------- | ---------------------- | --------------------------------------- | ----------------------------------------- | ----------------- |
-| **Long-term** | IndexedDB              | `src/utils/atscChannelStorage.ts`       | Scanned ATSC channels with signal quality | ✅ Yes            |
-| **Long-term** | IndexedDB              | `src/lib/recording/recording-storage.ts`| IQ recording data (binary, chunked)       | ✅ Yes            |
-| **Long-term** | localStorage           | `src/utils/epgStorage.ts`               | Electronic Program Guide (EPG) data       | ✅ Yes (24hr max) |
-| **Long-term** | Zustand + localStorage | `src/store/slices/settingsSlice.ts`     | User preferences (FFT size, color scheme) | ✅ Yes            |
-| **Ephemeral** | Zustand (no persist)   | `src/store/slices/frequencySlice.ts`    | Current VFO frequency                     | ❌ No             |
-| **Ephemeral** | Zustand (no persist)   | `src/store/slices/deviceSlice.ts`       | Connected SDR devices                     | ❌ No             |
-| **Ephemeral** | Zustand (no persist)   | `src/store/slices/notificationSlice.ts` | Toast notifications                       | ❌ No             |
-| **Ephemeral** | Zustand (no persist)   | `src/store/slices/diagnosticsSlice.ts`  | Performance metrics, DSP capabilities     | ❌ No             |
-| **Ephemeral** | React hooks            | `src/hooks/useATSCScanner.ts`           | Active scan state, progress               | ❌ No             |
-| **Ephemeral** | React hooks            | `src/hooks/useEPG.ts`                   | Search query, filter selections           | ❌ No             |
+| State Type    | Storage Mechanism      | Location                                 | Example Data                              | Survives Reload?  |
+| ------------- | ---------------------- | ---------------------------------------- | ----------------------------------------- | ----------------- |
+| **Long-term** | IndexedDB              | `src/utils/atscChannelStorage.ts`        | Scanned ATSC channels with signal quality | ✅ Yes            |
+| **Long-term** | IndexedDB              | `src/lib/recording/recording-storage.ts` | IQ recording data (binary, chunked)       | ✅ Yes            |
+| **Long-term** | localStorage           | `src/utils/epgStorage.ts`                | Electronic Program Guide (EPG) data       | ✅ Yes (24hr max) |
+| **Long-term** | Zustand + localStorage | `src/store/slices/settingsSlice.ts`      | User preferences (FFT size, color scheme) | ✅ Yes            |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/frequencySlice.ts`     | Current VFO frequency                     | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/deviceSlice.ts`        | Connected SDR devices                     | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/notificationSlice.ts`  | Toast notifications                       | ❌ No             |
+| **Ephemeral** | Zustand (no persist)   | `src/store/slices/diagnosticsSlice.ts`   | Performance metrics, DSP capabilities     | ❌ No             |
+| **Ephemeral** | React hooks            | `src/hooks/useATSCScanner.ts`            | Active scan state, progress               | ❌ No             |
+| **Ephemeral** | React hooks            | `src/hooks/useEPG.ts`                    | Search query, filter selections           | ❌ No             |
 
 ### Storage Mechanisms in Detail
 
@@ -372,13 +372,14 @@ const channels = await getAllATSCChannels(); // Query with indexes
 // src/lib/recording/recording-manager.ts
 // Persistence: IndexedDB (long-term, survives browser restart)
 // Handles large binary IQ recordings with chunking
+// Note: init() is called automatically by each method
 
 import { recordingManager } from "@/lib/recording";
 
-// Save a recording from IQRecorder
+// Save a recording from IQRecorder (init called automatically)
 const recording = iqRecorder.getRecording();
 const id = await recordingManager.saveRecording(recording);
-// Automatically chunks data into 10MB blobs
+// Automatically chunks data into ~10 MiB blobs
 
 // List all recordings (metadata only for performance)
 const recordings = await recordingManager.listRecordings();
