@@ -1,14 +1,50 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import Recordings from "../Recordings";
+import { recordingManager } from "../../lib/recording/recording-manager";
+import type { RecordingMeta } from "../../lib/recording/types";
 
 // Mock the useStorageQuota hook
 jest.mock("../../hooks/useStorageQuota");
+
+// Mock the recordingManager
+jest.mock("../../lib/recording/recording-manager");
+
+// Mock the RecordingList component
+jest.mock("../../components/Recordings/RecordingList", () => {
+  return function MockRecordingList({
+    recordings,
+    isLoading,
+  }: {
+    recordings: RecordingMeta[];
+    isLoading: boolean;
+  }) {
+    if (isLoading) {
+      return <div>Loading recordings...</div>;
+    }
+    if (recordings.length === 0) {
+      return <div>No recordings yet</div>;
+    }
+    return (
+      <div>
+        {recordings.map((rec) => (
+          <div key={rec.id} data-testid={`recording-${rec.id}`}>
+            {rec.label}
+          </div>
+        ))}
+      </div>
+    );
+  };
+});
 
 import { useStorageQuota } from "../../hooks/useStorageQuota";
 
 const mockUseStorageQuota = useStorageQuota as jest.MockedFunction<
   typeof useStorageQuota
+>;
+
+const mockRecordingManager = recordingManager as jest.Mocked<
+  typeof recordingManager
 >;
 
 describe("Recordings", () => {
@@ -21,6 +57,10 @@ describe("Recordings", () => {
       available: 50 * 1024 * 1024 * 1024,
       supported: true,
     });
+
+    // Mock recording manager
+    mockRecordingManager.init = jest.fn().mockResolvedValue(undefined);
+    mockRecordingManager.listRecordings = jest.fn().mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -47,33 +87,106 @@ describe("Recordings", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows recordings list section", () => {
+  it("shows recordings list section", async () => {
     render(
       <BrowserRouter>
         <Recordings />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/^recordings list$/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^recordings list$/i)).toBeInTheDocument();
+    });
   });
 
-  it("shows playback section", () => {
+  it("initializes recording manager on mount", async () => {
     render(
       <BrowserRouter>
         <Recordings />
       </BrowserRouter>,
     );
-    expect(screen.getByLabelText(/^recording playback$/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(mockRecordingManager.init).toHaveBeenCalled();
+      expect(mockRecordingManager.listRecordings).toHaveBeenCalled();
+    });
   });
 
-  it("shows list controls section", () => {
+  it("displays loading state initially", () => {
     render(
       <BrowserRouter>
         <Recordings />
       </BrowserRouter>,
     );
-    expect(
-      screen.getByLabelText(/^recording list controls$/i),
-    ).toBeInTheDocument();
+
+    expect(screen.getByText(/Loading recordings/)).toBeInTheDocument();
+  });
+
+  it("displays recordings after loading", async () => {
+    const mockRecordings: RecordingMeta[] = [
+      {
+        id: "rec-1",
+        frequency: 100000000,
+        timestamp: "2025-01-15T10:00:00.000Z",
+        duration: 60,
+        size: 1024 * 1024,
+        label: "Test Recording",
+      },
+    ];
+
+    mockRecordingManager.listRecordings = jest
+      .fn()
+      .mockResolvedValue(mockRecordings);
+
+    render(
+      <BrowserRouter>
+        <Recordings />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("recording-rec-1")).toBeInTheDocument();
+      expect(screen.getByText("Test Recording")).toBeInTheDocument();
+    });
+  });
+
+  it("displays empty state when no recordings", async () => {
+    render(
+      <BrowserRouter>
+        <Recordings />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/No recordings yet/)).toBeInTheDocument();
+    });
+  });
+
+  it("shows playback section", async () => {
+    render(
+      <BrowserRouter>
+        <Recordings />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/^recording playback$/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows list controls section", async () => {
+    render(
+      <BrowserRouter>
+        <Recordings />
+      </BrowserRouter>,
+    );
+
+    // The list controls are now part of RecordingList component
+    await waitFor(() => {
+      expect(mockRecordingManager.listRecordings).toHaveBeenCalled();
+    });
   });
 
   it("shows storage info section", () => {

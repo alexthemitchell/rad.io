@@ -1,5 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import RecordingList from "../components/Recordings/RecordingList";
 import { useStorageQuota } from "../hooks/useStorageQuota";
+import { recordingManager } from "../lib/recording/recording-manager";
+import type { RecordingMeta } from "../lib/recording/types";
 
 /**
  * Recordings page for IQ/audio recording library
@@ -54,6 +57,122 @@ function getStorageClass(percentUsed: number): string {
 
 function Recordings(): React.JSX.Element {
   const storageQuota = useStorageQuota();
+  const [recordings, setRecordings] = useState<RecordingMeta[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedRecordingId, setSelectedRecordingId] = useState<string | null>(
+    null,
+  );
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Load recordings on mount
+  useEffect(() => {
+    let mounted = true;
+
+    const loadRecordings = async (): Promise<void> => {
+      try {
+        await recordingManager.init();
+        const recs = await recordingManager.listRecordings();
+        if (mounted) {
+          setRecordings(recs);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Failed to load recordings:", error);
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadRecordings();
+
+    return (): void => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleRecordingSelect = (id: string): void => {
+    setSelectedRecordingId(id);
+  };
+
+  const handlePlay = (id: string): void => {
+    // TODO: Implement playback functionality
+    // eslint-disable-next-line no-console
+    console.log("Play recording:", id);
+    setSelectedRecordingId(id);
+  };
+
+  const handleDelete = (id: string): void => {
+    setDeleteConfirmId(id);
+  };
+
+  const handleDeleteConfirm = async (): Promise<void> => {
+    if (!deleteConfirmId) {
+      return;
+    }
+
+    try {
+      await recordingManager.deleteRecording(deleteConfirmId);
+      setRecordings(recordings.filter((rec) => rec.id !== deleteConfirmId));
+      if (selectedRecordingId === deleteConfirmId) {
+        setSelectedRecordingId(null);
+      }
+      setDeleteConfirmId(null);
+    } catch (error) {
+      console.error("Failed to delete recording:", error);
+    }
+  };
+
+  const handleDeleteCancel = (): void => {
+    setDeleteConfirmId(null);
+  };
+
+  // Handle Escape key for delete dialog
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent): void => {
+      if (e.key === "Escape" && deleteConfirmId) {
+        handleDeleteCancel();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return (): void => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [deleteConfirmId]);
+
+  const handleExport = async (id: string): Promise<void> => {
+    try {
+      const recording = await recordingManager.loadRecording(id);
+
+      // Create IQ file blob
+      const buffer = new ArrayBuffer(recording.samples.length * 8);
+      const view = new DataView(buffer);
+
+      for (let i = 0; i < recording.samples.length; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const sample = recording.samples[i]!;
+        const offset = i * 8;
+        view.setFloat32(offset, sample.I, true);
+        view.setFloat32(offset + 4, sample.Q, true);
+      }
+
+      const blob = new Blob([buffer], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+
+      // Create download link
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `recording_${recording.metadata.frequency}_${recording.metadata.timestamp.replace(/[:.]/g, "-")}.iq`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to export recording:", error);
+    }
+  };
+
   return (
     <main
       className="page-container"
@@ -62,18 +181,54 @@ function Recordings(): React.JSX.Element {
     >
       <h2 id="recordings-heading">Recordings Library</h2>
 
-      <section aria-label="Recording List Controls">
-        <div>
-          {/* TODO: View toggle (list/grid), search, filter controls */}
-          <p>Search and filter controls coming soon</p>
-        </div>
+      <section aria-label="Recordings List">
+        <RecordingList
+          recordings={recordings}
+          onRecordingSelect={handleRecordingSelect}
+          onPlay={handlePlay}
+          onDelete={handleDelete}
+          onExport={(id): void => {
+            void handleExport(id);
+          }}
+          isLoading={isLoading}
+        />
       </section>
 
-      <section aria-label="Recordings List">
-        <h3>Your Recordings</h3>
-        {/* TODO: Recording list/grid with thumbnails, metadata, and actions */}
-        <p>No recordings yet. Start recording from the Monitor page.</p>
-      </section>
+      {/* Delete confirmation dialog */}
+      {deleteConfirmId && (
+        <div
+          className="delete-confirmation-overlay"
+          role="dialog"
+          aria-labelledby="delete-dialog-title"
+          aria-modal="true"
+        >
+          <div className="delete-confirmation-dialog">
+            <h3 id="delete-dialog-title">Delete Recording</h3>
+            <p>
+              Are you sure you want to delete this recording? This action cannot
+              be undone.
+            </p>
+            <div className="delete-confirmation-actions">
+              <button
+                type="button"
+                className="delete-confirmation-button delete-confirmation-cancel"
+                onClick={handleDeleteCancel}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="delete-confirmation-button delete-confirmation-confirm"
+                onClick={(): void => {
+                  void handleDeleteConfirm();
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <aside aria-label="Storage Information">
         <h3>Storage</h3>
@@ -138,11 +293,118 @@ function Recordings(): React.JSX.Element {
       </aside>
 
       <section aria-label="Recording Playback">
-        {/* TODO: Playback controls when a recording is selected */}
-        {/* TODO: Option to open in Analysis or Decode */}
+        {selectedRecordingId && (
+          <div className="playback-placeholder">
+            <p>
+              Playback controls for recording {selectedRecordingId} will appear
+              here
+            </p>
+            <p className="playback-note">
+              (Playback functionality to be implemented in future iteration)
+            </p>
+          </div>
+        )}
       </section>
 
       <style>{`
+        .playback-placeholder {
+          padding: 16px;
+          background: var(--panel-background, #1a1a1a);
+          border: 1px solid var(--border-color, #333);
+          border-radius: 8px;
+          text-align: center;
+          margin-top: 16px;
+        }
+
+        .playback-note {
+          color: var(--text-secondary, #888);
+          font-size: 13px;
+          margin-top: 8px;
+        }
+
+        .delete-confirmation-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgb(0 0 0 / 70%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .delete-confirmation-dialog {
+          background: var(--panel-background, #1a1a1a);
+          border: 2px solid var(--border-color, #333);
+          border-radius: 8px;
+          padding: 24px;
+          max-width: 400px;
+          width: 90%;
+        }
+
+        .delete-confirmation-dialog h3 {
+          margin: 0 0 16px;
+          color: var(--text-primary, #fff);
+          font-size: 18px;
+        }
+
+        .delete-confirmation-dialog p {
+          margin: 0 0 24px;
+          color: var(--text-primary, #fff);
+          line-height: 1.5;
+        }
+
+        .delete-confirmation-actions {
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+        }
+
+        .delete-confirmation-button {
+          min-width: 100px;
+          min-height: 44px;
+          padding: 10px 20px;
+          border: 1px solid var(--border-color, #333);
+          border-radius: 4px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .delete-confirmation-cancel {
+          background: var(--button-background, #252525);
+          color: var(--text-primary, #fff);
+        }
+
+        .delete-confirmation-cancel:hover {
+          background: var(--button-hover-background, #333);
+          border-color: var(--accent-cyan, #00bcd4);
+        }
+
+        .delete-confirmation-confirm {
+          background: var(--accent-red, #f44336);
+          color: #fff;
+          border-color: var(--accent-red, #f44336);
+        }
+
+        .delete-confirmation-confirm:hover {
+          background: var(--accent-red-hover, #e53935);
+        }
+
+        .delete-confirmation-button:focus {
+          outline: 2px solid var(--accent-cyan, #00bcd4);
+          outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .delete-confirmation-button {
+            transition-duration: 0s;
+          }
+        }
+
         .storage-info {
           display: flex;
           flex-direction: column;
