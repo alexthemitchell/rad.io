@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { onToggleShortcuts } from "../lib/shortcuts";
 
 /**
  * Keyboard Shortcuts Overlay
@@ -35,6 +36,14 @@ function ShortcutsOverlay(): React.JSX.Element | null {
     window.addEventListener("keydown", onKeyDown);
     return (): void => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
+
+  // Listen for programmatic toggle requests
+  useEffect(() => {
+    const cleanup = onToggleShortcuts(() => {
+      setOpen((prev) => !prev);
+    });
+    return cleanup;
+  }, []);
 
   // Focus first control on open
   useEffect(() => {

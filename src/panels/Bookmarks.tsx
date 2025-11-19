@@ -2,6 +2,10 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { notify } from "../lib/notifications";
 import { downloadBookmarksCSV } from "../utils/bookmark-import-export";
+import {
+  loadBookmarks,
+  saveBookmarks as saveBookmarksToStorage,
+} from "../utils/bookmarkStorage";
 import { formatFrequency } from "../utils/frequency";
 import { generateBookmarkId } from "../utils/id";
 import type { Bookmark } from "../types/bookmark";
@@ -30,8 +34,6 @@ interface BookmarksProps {
   isPanel?: boolean; // True when rendered as a side panel, false for full-page route
 }
 
-const STORAGE_KEY = "rad.io:bookmarks";
-
 function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -54,21 +56,13 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
 
   // Load bookmarks from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as Bookmark[];
-        setBookmarks(parsed);
-      } catch {
-        // Invalid data, ignore
-      }
-    }
+    setBookmarks(loadBookmarks());
   }, []);
 
   // Save bookmarks to localStorage
   const saveBookmarks = (newBookmarks: Bookmark[]): void => {
     setBookmarks(newBookmarks);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newBookmarks));
+    saveBookmarksToStorage(newBookmarks);
   };
 
   // Precompute searchable text for each bookmark, memoizing per-bookmark to avoid redundant formatting

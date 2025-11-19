@@ -1,0 +1,146 @@
+/* Quick Actions Toolbar Styles */
+
+.quick-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  background: var(--rad-surface, rgb(15 23 42 / 55%));
+  border-radius: var(--rad-radius-4, 6px);
+  box-shadow: var(--rad-shadow-1, 0 1px 3px rgb(0 0 0 / 10%));
+}
+
+.quick-action-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem; /* 44px - WCAG 2.1 AAA */
+  height: 2.75rem; /* 44px - WCAG 2.1 AAA */
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--rad-fg, #e2e8f0);
+  border-radius: var(--rad-radius-2, 4px);
+  cursor: pointer;
+  transition:
+    background-color var(--rad-transition-fast, 150ms)
+      var(--rad-ease-standard, ease),
+    color var(--rad-transition-fast, 150ms) var(--rad-ease-standard, ease),
+    transform var(--rad-transition-fast, 150ms) var(--rad-ease-standard, ease);
+}
+
+.quick-action-btn:hover {
+  background: var(--rad-surface-2, rgb(30 41 59 / 70%));
+}
+
+.quick-action-btn:active {
+  transform: scale(0.95);
+}
+
+.quick-action-btn:focus-visible {
+  outline: 3px solid var(--rad-ring, #06b6d4);
+  outline-offset: 2px;
+}
+
+/* Active state for toggle buttons (grid, recording) */
+.quick-action-btn.active {
+  background: var(--rad-primary, #06b6d4);
+  color: var(--rad-primary-foreground, #fff);
+}
+
+.quick-action-btn.active:hover {
+  background: var(--rad-primary-hover, #0891b2);
+}
+
+/* Recording active state - red color */
+.quick-action-btn.recording {
+  background: var(--rad-danger, #ef4444);
+  color: var(--rad-danger-foreground, #fff);
+  animation: pulse-recording 2s ease-in-out infinite;
+}
+
+.quick-action-btn.recording:hover {
+  background: var(--rad-danger-hover, #dc2626);
+}
+
+@keyframes pulse-recording {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Tooltip styling */
+.quick-action-tooltip {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.375rem 0.75rem;
+  background: var(--rad-bg, #0f172a);
+  color: var(--rad-fg, #e2e8f0);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: var(--rad-radius-2, 4px);
+  box-shadow: var(--rad-shadow-2, 0 4px 6px rgb(0 0 0 / 10%));
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.quick-action-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 0.25rem solid transparent;
+  border-top-color: var(--rad-bg, #0f172a);
+}
+
+/* Ensure icons are properly sized */
+.quick-action-btn svg {
+  display: block;
+}
+
+/* Disabled state */
+.quick-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.quick-action-btn:disabled:hover {
+  background: transparent;
+  transform: none;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .quick-action-btn {
+    transition: none;
+  }
+
+  .quick-action-btn.recording {
+    animation: none;
+  }
+
+  .quick-action-btn:active {
+    transform: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .quick-action-btn {
+    border: 1px solid currentcolor;
+  }
+
+  .quick-action-btn.active {
+    border-width: 2px;
+  }
+}
