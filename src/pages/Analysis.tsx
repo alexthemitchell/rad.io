@@ -13,7 +13,7 @@ import MarkerTable from "../components/MarkerTable";
 import PerformanceMetrics from "../components/PerformanceMetrics";
 import { notify } from "../lib/notifications";
 import { type ISDRDevice } from "../models/SDRDevice";
-import { useDevice, useMarkers } from "../store";
+import { useDevice, useFrequency, useMarkers } from "../store";
 import { type Sample } from "../utils/dsp";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import {
@@ -31,7 +31,18 @@ function Analysis(): React.JSX.Element {
     requestDevice,
     isCheckingPaired,
   } = useDevice();
-  const { markers, removeMarker } = useMarkers();
+  const { markers, addMarker, removeMarker } = useMarkers();
+  const { frequencyHz } = useFrequency();
+
+  // Handler to add a marker at current frequency with simulated power
+  const handleAddMarker = useCallback((): void => {
+    // Use current frequency or default to 100 MHz
+    const freq = frequencyHz || 100e6;
+    // Simulate power measurement - in future this will come from spectrum data
+    const power = -60 + Math.random() * 40; // Random power between -60 and -20 dBm
+    addMarker(freq, power);
+  }, [addMarker, frequencyHz]);
+
   const [listening, setListening] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [frequency] = useState(100.3e6);
@@ -646,7 +657,11 @@ function Analysis(): React.JSX.Element {
         </Card>
 
         <Card title="Measurements" subtitle="Markers, deltas, and export">
-          <MarkerTable markers={markers} onRemove={removeMarker} />
+          <MarkerTable
+            markers={markers}
+            onRemove={removeMarker}
+            onAdd={handleAddMarker}
+          />
         </Card>
 
         <Card

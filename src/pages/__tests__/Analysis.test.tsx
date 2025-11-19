@@ -19,6 +19,10 @@ jest.mock("../../store", () => ({
     removeMarker: jest.fn(),
     clearMarkers: jest.fn(),
   })),
+  useFrequency: jest.fn(() => ({
+    frequencyHz: 100e6,
+    setFrequencyHz: jest.fn(),
+  })),
 }));
 
 // Mock the hooks
