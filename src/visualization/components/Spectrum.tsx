@@ -56,7 +56,6 @@ export default function Spectrum({
   );
   const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null);
   const [draggedMarkerId, setDraggedMarkerId] = useState<string | null>(null);
-  const dragStartXRef = useRef<number>(0);
 
   // Subscribe to VFO frequency and markers from Zustand store
   const vfoFrequency = useStore((state) => state.frequencyHz);
@@ -175,8 +174,7 @@ export default function Spectrum({
       return;
     }
 
-    // Clear and render VFO cursor
-    annotations.clear();
+    // Render VFO cursor (clears internally)
     annotations.renderVFOCursor(vfoFrequency, sampleRate, centerFrequency);
 
     // Render markers if enabled
@@ -269,6 +267,10 @@ export default function Spectrum({
         // Announce to screen readers
         const announcement = `Marker ${markers.length + 1} placed at ${(freqHz / 1e6).toFixed(3)} MHz${powerDb !== undefined ? `, ${powerDb.toFixed(2)} dBFS` : ""}`;
         announceToScreenReader(announcement);
+      } else {
+        announceToScreenReader(
+          "Cannot add marker: maximum of 10 markers reached",
+        );
       }
     },
     [
@@ -341,7 +343,6 @@ export default function Spectrum({
       );
       if (markerHit) {
         setDraggedMarkerId(markerHit.marker.id);
-        dragStartXRef.current = x;
         event.preventDefault();
       }
     },
@@ -367,6 +368,7 @@ export default function Spectrum({
 
       // Handle dragging
       if (draggedMarkerId) {
+        canvas.style.cursor = "grabbing";
         const freqHz = annotations.pixelToFrequency(
           x,
           rect.width,
@@ -443,6 +445,10 @@ export default function Spectrum({
           addMarker(centerFrequency, powerDb);
           announceToScreenReader(
             `Marker ${markers.length + 1} placed at center frequency ${(centerFrequency / 1e6).toFixed(3)} MHz${powerDb !== undefined ? `, ${powerDb.toFixed(2)} dBFS` : ""}`,
+          );
+        } else {
+          announceToScreenReader(
+            "Cannot add marker: maximum of 10 markers reached",
           );
         }
       }

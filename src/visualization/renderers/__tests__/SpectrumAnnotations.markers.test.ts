@@ -32,7 +32,7 @@ describe("SpectrumAnnotations markers", () => {
       const sampleRate = 2e6; // 2 MHz
       const centerFrequency = 100e6; // 100 MHz
       const canvasWidth = 750;
-      const pixelX = 48; // Left margin
+      const pixelX = 48; // Before left margin (will be clamped to minimum frequency)
 
       const freqHz = annotations.pixelToFrequency(
         pixelX,
@@ -49,7 +49,7 @@ describe("SpectrumAnnotations markers", () => {
       const sampleRate = 2e6; // 2 MHz
       const centerFrequency = 100e6; // 100 MHz
       const canvasWidth = 750;
-      const pixelX = canvasWidth - 16; // Right margin
+      const pixelX = canvasWidth - 16; // Beyond right margin (will be clamped to maximum frequency)
 
       const freqHz = annotations.pixelToFrequency(
         pixelX,
@@ -85,7 +85,7 @@ describe("SpectrumAnnotations markers", () => {
       const sampleRate = 10e6; // 10 MHz
       const centerFrequency = 915e6; // 915 MHz (ISM band)
       const canvasWidth = 750;
-      const pixelX = 48; // Left margin
+      const pixelX = 48; // Before left margin (will be clamped to minimum frequency)
 
       const freqHz = annotations.pixelToFrequency(
         pixelX,
@@ -281,11 +281,7 @@ describe("SpectrumAnnotations markers", () => {
       const sampleRate = 2e6;
       const centerFrequency = 100e6;
 
-      const result = annotations.renderMarkers(
-        [],
-        sampleRate,
-        centerFrequency,
-      );
+      const result = annotations.renderMarkers([], sampleRate, centerFrequency);
 
       expect(result).toBe(true);
     });

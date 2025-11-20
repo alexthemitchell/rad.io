@@ -92,6 +92,9 @@ export const markerSlice: StateCreator<MarkerSlice> = (set) => ({
   },
 
   updateMarker: (id: string, freqHz?: number, powerDb?: number): void => {
+    if (freqHz === undefined && powerDb === undefined) {
+      return; // Nothing to update
+    }
     set((state) => ({
       markers: state.markers.map((m) =>
         m.id === id

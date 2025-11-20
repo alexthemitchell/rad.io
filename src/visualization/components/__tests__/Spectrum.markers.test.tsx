@@ -2,7 +2,7 @@
  * Tests for Spectrum component marker functionality
  */
 
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, fireEvent, waitFor } from "@testing-library/react";
 import Spectrum from "../Spectrum";
 import { useStore } from "../../../store";
 
@@ -322,7 +322,11 @@ describe("Spectrum markers", () => {
     it("should not enable markers when centerFrequency missing", () => {
       const magnitudes = createMagnitudes(1024);
       const { container } = render(
-        <Spectrum magnitudes={magnitudes} sampleRate={2e6} enableMarkers={true} />,
+        <Spectrum
+          magnitudes={magnitudes}
+          sampleRate={2e6}
+          enableMarkers={true}
+        />,
       );
 
       const canvases = container.querySelectorAll("canvas");
