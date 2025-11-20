@@ -16,6 +16,7 @@ export { default as PresetStations } from "./PresetStations";
 export { default as RadioControls } from "./RadioControls";
 export { default as SampleChart } from "./SampleChart";
 export { default as SignalStrengthMeter } from "./SignalStrengthMeter";
+export { default as SMeter } from "./SMeter";
 export { default as SignalTypeSelector } from "./SignalTypeSelector";
 export { default as WaveformChart } from "./WaveformChart";
 export { default as TrunkedRadioControls } from "./TrunkedRadioControls";
