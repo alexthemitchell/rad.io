@@ -177,13 +177,10 @@ function Recordings(): React.JSX.Element {
       a.href = url;
 
       // Format timestamp as YYYYMMDD_HHMMSS for cleaner filenames
-      const iso = recording.metadata.timestamp;
-      const parts = iso
-        .replace("Z", "")
-        .replace(/\.\d+$/, "")
-        .split("T");
-      const datePart = (parts[0] ?? "").replace(/-/g, "");
-      const timePart = (parts[1] ?? "").replace(/:/g, "");
+      const dateObj = new Date(recording.metadata.timestamp);
+      const pad = (n: number): string => n.toString().padStart(2, "0");
+      const datePart = `${dateObj.getFullYear()}${pad(dateObj.getMonth() + 1)}${pad(dateObj.getDate())}`;
+      const timePart = `${pad(dateObj.getHours())}${pad(dateObj.getMinutes())}${pad(dateObj.getSeconds())}`;
       a.download = `recording_${recording.metadata.frequency}_${datePart}_${timePart}.iq`;
 
       document.body.appendChild(a);
