@@ -41,6 +41,7 @@ describe("Spectrum markers", () => {
     const { useMarkers } = require("../../../store");
     useMarkers.mockReturnValue({
       markers: [],
+      nextMarkerNumber: 1,
       addMarker: mockAddMarker,
       updateMarker: mockUpdateMarker,
       removeMarker: mockRemoveMarker,
@@ -164,6 +165,7 @@ describe("Spectrum markers", () => {
       const { useMarkers } = require("../../../store");
       useMarkers.mockReturnValue({
         markers: [testMarker],
+        nextMarkerNumber: 2,
         addMarker: mockAddMarker,
         updateMarker: mockUpdateMarker,
         removeMarker: mockRemoveMarker,
@@ -233,6 +235,7 @@ describe("Spectrum markers", () => {
       const { useMarkers } = require("../../../store");
       useMarkers.mockReturnValue({
         markers,
+        nextMarkerNumber: 11,
         addMarker: mockAddMarker,
         updateMarker: mockUpdateMarker,
         removeMarker: mockRemoveMarker,
@@ -287,6 +290,7 @@ describe("Spectrum markers", () => {
       const { useMarkers } = require("../../../store");
       useMarkers.mockReturnValue({
         markers,
+        nextMarkerNumber: 3,
         addMarker: mockAddMarker,
         updateMarker: mockUpdateMarker,
         removeMarker: mockRemoveMarker,

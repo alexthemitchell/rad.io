@@ -65,7 +65,7 @@ function MyComponent() {
 
 - Right-click on any part of a marker (line or handle)
 - The marker will be immediately removed
-- Context menu is prevented when markers are enabled
+- Context menu is prevented when right-clicking on a marker
 
 ## Marker Display
 

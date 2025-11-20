@@ -60,7 +60,8 @@ export default function Spectrum({
 
   // Subscribe to VFO frequency and markers from Zustand store
   const vfoFrequency = useStore((state) => state.frequencyHz);
-  const { markers, addMarker, updateMarker, removeMarker } = useMarkers();
+  const { markers, nextMarkerNumber, addMarker, updateMarker, removeMarker } =
+    useMarkers();
 
   // Initialize renderer on mount
   useEffect(() => {
@@ -234,6 +235,23 @@ export default function Spectrum({
     [magnitudes, sampleRate, centerFrequency],
   );
 
+  // Helper function to announce to screen readers
+  const announceToScreenReader = useCallback((message: string): void => {
+    const announcement = document.createElement("div");
+    announcement.setAttribute("role", "status");
+    announcement.setAttribute("aria-live", "polite");
+    announcement.className = "rad-sr-only";
+    announcement.textContent = message;
+    document.body.appendChild(announcement);
+    const timeoutId = window.setTimeout(() => {
+      if (document.body.contains(announcement)) {
+        document.body.removeChild(announcement);
+      }
+      announcementTimeoutsRef.current.delete(timeoutId);
+    }, 1000);
+    announcementTimeoutsRef.current.add(timeoutId);
+  }, []);
+
   // Click handler: place marker at clicked position
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -278,10 +296,11 @@ export default function Spectrum({
 
       // Add marker (max 10 markers)
       if (markers.length < 10) {
+        const markerNumber = nextMarkerNumber;
         addMarker(freqHz, powerDb);
 
         // Announce to screen readers
-        const announcement = `Marker ${markers.length + 1} placed at ${(freqHz / 1e6).toFixed(3)} MHz${powerDb !== undefined ? `, ${powerDb.toFixed(2)} dBFS` : ""}`;
+        const announcement = `Marker ${markerNumber} placed at ${(freqHz / 1e6).toFixed(3)} MHz${powerDb !== undefined ? `, ${powerDb.toFixed(2)} dBFS` : ""}`;
         announceToScreenReader(announcement);
       } else {
         announceToScreenReader(
@@ -294,8 +313,10 @@ export default function Spectrum({
       sampleRate,
       centerFrequency,
       markers,
+      nextMarkerNumber,
       addMarker,
       getPowerAtFrequency,
+      announceToScreenReader,
     ],
   );
 
@@ -329,7 +350,14 @@ export default function Spectrum({
         announceToScreenReader(`${markerHit.marker.label} deleted`);
       }
     },
-    [enableMarkers, sampleRate, centerFrequency, markers, removeMarker],
+    [
+      enableMarkers,
+      sampleRate,
+      centerFrequency,
+      markers,
+      removeMarker,
+      announceToScreenReader,
+    ],
   );
 
   // Mouse down handler: start drag
@@ -438,7 +466,7 @@ export default function Spectrum({
         canvas.style.cursor = "default";
       }
     }
-  }, [draggedMarkerId, markers]);
+  }, [draggedMarkerId, markers, announceToScreenReader]);
 
   // Mouse leave handler: clear hover state and end drag
   const handleMouseLeave = useCallback(() => {
@@ -463,9 +491,10 @@ export default function Spectrum({
         event.preventDefault();
         const powerDb = getPowerAtFrequency(centerFrequency);
         if (markers.length < 10) {
+          const markerNumber = nextMarkerNumber;
           addMarker(centerFrequency, powerDb);
           announceToScreenReader(
-            `Marker ${markers.length + 1} placed at center frequency ${(centerFrequency / 1e6).toFixed(3)} MHz${powerDb !== undefined ? `, ${powerDb.toFixed(2)} dBFS` : ""}`,
+            `Marker ${markerNumber} placed at center frequency ${(centerFrequency / 1e6).toFixed(3)} MHz${powerDb !== undefined ? `, ${powerDb.toFixed(2)} dBFS` : ""}`,
           );
         } else {
           announceToScreenReader(
@@ -479,27 +508,12 @@ export default function Spectrum({
       sampleRate,
       centerFrequency,
       markers,
+      nextMarkerNumber,
       addMarker,
       getPowerAtFrequency,
+      announceToScreenReader,
     ],
   );
-
-  // Helper function to announce to screen readers
-  const announceToScreenReader = (message: string): void => {
-    const announcement = document.createElement("div");
-    announcement.setAttribute("role", "status");
-    announcement.setAttribute("aria-live", "polite");
-    announcement.className = "rad-sr-only";
-    announcement.textContent = message;
-    document.body.appendChild(announcement);
-    const timeoutId = window.setTimeout(() => {
-      if (document.body.contains(announcement)) {
-        document.body.removeChild(announcement);
-      }
-      announcementTimeoutsRef.current.delete(timeoutId);
-    }, 1000);
-    announcementTimeoutsRef.current.add(timeoutId);
-  };
 
   return (
     <div style={{ position: "relative", display: "inline-block" }}>

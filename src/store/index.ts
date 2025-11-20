@@ -272,17 +272,28 @@ export const useDiagnostics = (): Pick<
 // Marker slice selectors
 export const useMarkers = (): {
   markers: Marker[];
+  nextMarkerNumber: number;
   addMarker: (freqHz: number, powerDb?: number) => void;
   updateMarker: (id: string, freqHz?: number, powerDb?: number) => void;
   removeMarker: (id: string) => void;
   clearMarkers: () => void;
 } => {
   const markers = useStore((state: RootState) => state.markers);
+  const nextMarkerNumber = useStore(
+    (state: RootState) => state.nextMarkerNumber,
+  );
   const addMarker = useStore((state: RootState) => state.addMarker);
   const updateMarker = useStore((state: RootState) => state.updateMarker);
   const removeMarker = useStore((state: RootState) => state.removeMarker);
   const clearMarkers = useStore((state: RootState) => state.clearMarkers);
-  return { markers, addMarker, updateMarker, removeMarker, clearMarkers };
+  return {
+    markers,
+    nextMarkerNumber,
+    addMarker,
+    updateMarker,
+    removeMarker,
+    clearMarkers,
+  };
 };
 
 // Export types
