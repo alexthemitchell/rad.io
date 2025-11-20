@@ -45,24 +45,25 @@ Radio operators use S-units as the common language for signal reports. While dBF
 
 Standard S-meter calibration for HF amateur bands:
 
-| S-Unit | Power Level (dBm) | Absolute Power @ 50Ω | Description        |
-| ------ | ----------------- | --------------------- | ------------------ |
-| S9+60  | -13 dBm           | 50.1 µW               | Extremely Strong   |
-| S9+40  | -33 dBm           | 501 nW                | Very Strong        |
-| S9+20  | -53 dBm           | 5.01 nW               | Strong             |
-| S9+10  | -63 dBm           | 501 pW                | Strong             |
-| **S9** | **-73 dBm**       | **50.1 pW**           | **Reference Point** |
-| S8     | -79 dBm           | 12.6 pW               | Good               |
-| S7     | -85 dBm           | 3.16 pW               | Fair               |
-| S6     | -91 dBm           | 794 fW                | Fair               |
-| S5     | -97 dBm           | 200 fW                | Weak               |
-| S4     | -103 dBm          | 50.1 fW               | Weak               |
-| S3     | -109 dBm          | 12.6 fW               | Very Weak          |
-| S2     | -115 dBm          | 3.16 fW               | Very Weak          |
-| S1     | -121 dBm          | 794 aW                | Barely Perceptible |
-| S0     | < -127 dBm        | < 200 aW              | No Signal          |
+| S-Unit | Power Level (dBm) | Absolute Power @ 50Ω | Description         |
+| ------ | ----------------- | -------------------- | ------------------- |
+| S9+60  | -13 dBm           | 50.1 µW              | Extremely Strong    |
+| S9+40  | -33 dBm           | 501 nW               | Very Strong         |
+| S9+20  | -53 dBm           | 5.01 nW              | Strong              |
+| S9+10  | -63 dBm           | 501 pW               | Strong              |
+| **S9** | **-73 dBm**       | **50.1 pW**          | **Reference Point** |
+| S8     | -79 dBm           | 12.6 pW              | Good                |
+| S7     | -85 dBm           | 3.16 pW              | Fair                |
+| S6     | -91 dBm           | 794 fW               | Fair                |
+| S5     | -97 dBm           | 200 fW               | Weak                |
+| S4     | -103 dBm          | 50.1 fW              | Weak                |
+| S3     | -109 dBm          | 12.6 fW              | Very Weak           |
+| S2     | -115 dBm          | 3.16 fW              | Very Weak           |
+| S1     | -121 dBm          | 794 aW               | Barely Perceptible  |
+| S0     | < -127 dBm        | < 200 aW             | No Signal           |
 
 **Key Points:**
+
 - S9 = -73 dBm (reference point)
 - Each S-unit below S9 = 6 dB difference
 - Above S9, reported as "S9 + X dB" (e.g., S9+20)
@@ -72,24 +73,25 @@ Standard S-meter calibration for HF amateur bands:
 
 Standard S-meter calibration for VHF/UHF amateur bands:
 
-| S-Unit | Power Level (dBm) | Absolute Power @ 50Ω | Description        |
-| ------ | ----------------- | --------------------- | ------------------ |
-| S9+60  | -33 dBm           | 501 nW                | Extremely Strong   |
-| S9+40  | -53 dBm           | 5.01 nW               | Very Strong        |
-| S9+20  | -73 dBm           | 50.1 pW               | Strong             |
-| S9+10  | -83 dBm           | 5.01 pW               | Strong             |
-| **S9** | **-93 dBm**       | **0.501 pW**          | **Reference Point** |
-| S8     | -99 dBm           | 126 fW                | Good               |
-| S7     | -105 dBm          | 31.6 fW               | Fair               |
-| S6     | -111 dBm          | 7.94 fW               | Fair               |
-| S5     | -117 dBm          | 2.00 fW               | Weak               |
-| S4     | -123 dBm          | 501 aW                | Weak               |
-| S3     | -129 dBm          | 126 aW                | Very Weak          |
-| S2     | -135 dBm          | 31.6 aW               | Very Weak          |
-| S1     | -141 dBm          | 7.94 aW               | Barely Perceptible |
-| S0     | < -147 dBm        | < 2.00 aW             | No Signal          |
+| S-Unit | Power Level (dBm) | Absolute Power @ 50Ω | Description         |
+| ------ | ----------------- | -------------------- | ------------------- |
+| S9+60  | -33 dBm           | 501 nW               | Extremely Strong    |
+| S9+40  | -53 dBm           | 5.01 nW              | Very Strong         |
+| S9+20  | -73 dBm           | 50.1 pW              | Strong              |
+| S9+10  | -83 dBm           | 5.01 pW              | Strong              |
+| **S9** | **-93 dBm**       | **0.501 pW**         | **Reference Point** |
+| S8     | -99 dBm           | 126 fW               | Good                |
+| S7     | -105 dBm          | 31.6 fW              | Fair                |
+| S6     | -111 dBm          | 7.94 fW              | Fair                |
+| S5     | -117 dBm          | 2.00 fW              | Weak                |
+| S4     | -123 dBm          | 501 aW               | Weak                |
+| S3     | -129 dBm          | 126 aW               | Very Weak           |
+| S2     | -135 dBm          | 31.6 aW              | Very Weak           |
+| S1     | -141 dBm          | 7.94 aW              | Barely Perceptible  |
+| S0     | < -147 dBm        | < 2.00 aW            | No Signal           |
 
 **Key Points:**
+
 - S9 = -93 dBm (20 dB weaker than HF, due to higher noise floor)
 - Each S-unit below S9 = 6 dB difference
 - Above S9, reported as "S9 + X dB"
@@ -100,17 +102,20 @@ Standard S-meter calibration for VHF/UHF amateur bands:
 ### dBFS to dBm Conversion
 
 The conversion from dBFS to dBm requires a calibration constant that accounts for:
+
 1. ADC reference voltage
 2. RF gain/attenuation in the signal path
 3. Mixer losses
 4. Antenna characteristics
 
 **Formula**:
+
 ```
 dBm = dBFS + K_cal
 ```
 
 Where:
+
 - `dBFS` = measured power level relative to ADC full scale (≤ 0)
 - `K_cal` = calibration constant (device-specific, typically -80 to -40 dBm)
 - `dBm` = absolute power level at antenna input
@@ -140,12 +145,14 @@ The calibration constant can be determined by:
 **Default Approximations**:
 
 For HackRF One (typical values):
+
 ```
 K_cal_HF ≈ -60 dBm    (for HF bands, gain setting dependent)
 K_cal_VHF ≈ -70 dBm   (for VHF/UHF bands, gain setting dependent)
 ```
 
 For RTL-SDR (typical values):
+
 ```
 K_cal_HF ≈ -50 dBm    (for HF with upconverter)
 K_cal_VHF ≈ -65 dBm   (for direct sampling VHF/UHF)
@@ -158,50 +165,54 @@ K_cal_VHF ≈ -65 dBm   (for direct sampling VHF/UHF)
 Once dBm is known, convert to S-units:
 
 **For HF (< 30 MHz)**:
+
 ```typescript
 function dbmToSUnit_HF(dBm: number): { sUnit: number; overS9: number } {
   const S9_LEVEL_HF = -73; // dBm
-  const S_UNIT_WIDTH = 6;  // dB per S-unit
-  
+  const S_UNIT_WIDTH = 6; // dB per S-unit
+
   if (dBm >= S9_LEVEL_HF) {
     // Above S9: report as "S9 + X dB"
     return {
       sUnit: 9,
-      overS9: dBm - S9_LEVEL_HF
+      overS9: dBm - S9_LEVEL_HF,
     };
   } else {
     // Below S9: calculate S-unit (0-9 scale)
-    const sUnit = Math.max(0, Math.min(9, 
-      9 + (dBm - S9_LEVEL_HF) / S_UNIT_WIDTH
-    ));
+    const sUnit = Math.max(
+      0,
+      Math.min(9, 9 + (dBm - S9_LEVEL_HF) / S_UNIT_WIDTH),
+    );
     return {
       sUnit: Math.round(sUnit),
-      overS9: 0
+      overS9: 0,
     };
   }
 }
 ```
 
 **For VHF/UHF (≥ 30 MHz)**:
+
 ```typescript
 function dbmToSUnit_VHF(dBm: number): { sUnit: number; overS9: number } {
   const S9_LEVEL_VHF = -93; // dBm
-  const S_UNIT_WIDTH = 6;   // dB per S-unit
-  
+  const S_UNIT_WIDTH = 6; // dB per S-unit
+
   if (dBm >= S9_LEVEL_VHF) {
     // Above S9: report as "S9 + X dB"
     return {
       sUnit: 9,
-      overS9: dBm - S9_LEVEL_VHF
+      overS9: dBm - S9_LEVEL_VHF,
     };
   } else {
     // Below S9: calculate S-unit (0-9 scale)
-    const sUnit = Math.max(0, Math.min(9, 
-      9 + (dBm - S9_LEVEL_VHF) / S_UNIT_WIDTH
-    ));
+    const sUnit = Math.max(
+      0,
+      Math.min(9, 9 + (dBm - S9_LEVEL_VHF) / S_UNIT_WIDTH),
+    );
     return {
       sUnit: Math.round(sUnit),
-      overS9: 0
+      overS9: 0,
     };
   }
 }
@@ -224,7 +235,7 @@ interface SignalLevel {
    * Directly measured from IQ samples
    */
   dBfs: number;
-  
+
   /**
    * Approximate absolute power level at antenna input
    * Range: typically -150 to +10 dBm
@@ -232,7 +243,7 @@ interface SignalLevel {
    * Formula: dBm = dBfs + K_cal
    */
   dBmApprox: number;
-  
+
   /**
    * S-unit reading (0-9 scale)
    * 0 = no signal / noise floor
@@ -240,7 +251,7 @@ interface SignalLevel {
    * 9 = reference level (S9)
    */
   sUnit: number;
-  
+
   /**
    * Decibels over S9 (for strong signals)
    * 0 = at or below S9
@@ -249,22 +260,22 @@ interface SignalLevel {
    * Displayed as "S9+10", "S9+20", etc.
    */
   overS9: number;
-  
+
   /**
    * Band type used for S-unit calculation
    * 'HF' = below 30 MHz (S9 = -73 dBm)
    * 'VHF' = 30 MHz and above (S9 = -93 dBm)
    */
-  band: 'HF' | 'VHF';
-  
+  band: "HF" | "VHF";
+
   /**
    * Calibration status indicator
    * 'uncalibrated' = using default K_cal approximation
    * 'factory' = using factory calibration
    * 'user' = using user-performed calibration
    */
-  calibrationStatus: 'uncalibrated' | 'factory' | 'user';
-  
+  calibrationStatus: "uncalibrated" | "factory" | "user";
+
   /**
    * Estimated measurement uncertainty in dB
    * Typical values:
@@ -273,7 +284,7 @@ interface SignalLevel {
    * - User calibrated with signal generator: ±1 dB
    */
   uncertaintyDb?: number;
-  
+
   /**
    * Timestamp of measurement (milliseconds since epoch)
    */
@@ -287,7 +298,7 @@ interface SignalLevel {
 /**
  * Band classification for S-meter calculations
  */
-type SMeterBand = 'HF' | 'VHF';
+type SMeterBand = "HF" | "VHF";
 
 /**
  * Calibration parameters for a specific device and gain setting
@@ -297,7 +308,7 @@ interface SMeterCalibration {
    * Calibration constant: dBm = dBfs + kCal
    */
   kCal: number;
-  
+
   /**
    * Frequency range this calibration applies to (Hz)
    */
@@ -305,26 +316,30 @@ interface SMeterCalibration {
     min: number;
     max: number;
   };
-  
+
   /**
    * Gain/attenuation setting this applies to
    */
   gainSetting?: {
-    lna: number;    // LNA gain in dB
-    vga: number;    // VGA gain in dB
+    lna: number; // LNA gain in dB
+    vga: number; // VGA gain in dB
     rxAmp: boolean; // RX amp on/off
   };
-  
+
   /**
    * How calibration was performed
    */
-  method: 'signal-generator' | 'reference-station' | 'thermal-noise' | 'default';
-  
+  method:
+    | "signal-generator"
+    | "reference-station"
+    | "thermal-noise"
+    | "default";
+
   /**
    * Estimated accuracy of this calibration (dB)
    */
   accuracyDb: number;
-  
+
   /**
    * When calibration was performed
    */
@@ -339,7 +354,7 @@ interface SMeterConfig {
    * Calibration data for current device/settings
    */
   calibration: SMeterCalibration;
-  
+
   /**
    * Display preferences
    */
@@ -347,23 +362,23 @@ interface SMeterConfig {
     /**
      * Show numeric S-unit or graphical meter
      */
-    style: 'numeric' | 'bar' | 'needle';
-    
+    style: "numeric" | "bar" | "needle";
+
     /**
      * Show dBm value alongside S-unit
      */
     showDbm: boolean;
-    
+
     /**
      * Show dBFS value (engineering mode)
      */
     showDbfs: boolean;
-    
+
     /**
      * Update rate (milliseconds)
      */
     updateRateMs: number;
-    
+
     /**
      * Averaging/smoothing (exponential moving average alpha)
      * 0 = maximum smoothing, 1 = no smoothing
@@ -466,8 +481,8 @@ const dBm = dBfs + K_cal; // -112.5 dBm
 
 // Convert to S-units (VHF band)
 const frequency = 145.5e6; // 145.5 MHz (VHF)
-const band = frequency >= 30e6 ? 'VHF' : 'HF';
-const S9_LEVEL = band === 'VHF' ? -93 : -73;
+const band = frequency >= 30e6 ? "VHF" : "HF";
+const S9_LEVEL = band === "VHF" ? -93 : -73;
 
 let signalLevel: SignalLevel;
 if (dBm >= S9_LEVEL) {
@@ -477,9 +492,9 @@ if (dBm >= S9_LEVEL) {
     sUnit: 9,
     overS9: Math.round(dBm - S9_LEVEL),
     band,
-    calibrationStatus: 'uncalibrated',
+    calibrationStatus: "uncalibrated",
     uncertaintyDb: 10,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   };
 } else {
   const sUnit = Math.max(0, Math.round(9 + (dBm - S9_LEVEL) / 6));
@@ -489,14 +504,16 @@ if (dBm >= S9_LEVEL) {
     sUnit,
     overS9: 0,
     band,
-    calibrationStatus: 'uncalibrated',
+    calibrationStatus: "uncalibrated",
     uncertaintyDb: 10,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   };
 }
 
 // Display: "S3" (-112.5 dBm is 3.25 S-units below S9)
-console.log(`S${signalLevel.sUnit}${signalLevel.overS9 > 0 ? `+${signalLevel.overS9}` : ''}`);
+console.log(
+  `S${signalLevel.sUnit}${signalLevel.overS9 > 0 ? `+${signalLevel.overS9}` : ""}`,
+);
 // Output: "S3"
 ```
 
@@ -508,9 +525,9 @@ const calibration: SMeterCalibration = {
   kCal: -65.2, // Measured with -50 dBm reference signal
   frequencyRange: { min: 88e6, max: 108e6 },
   gainSetting: { lna: 16, vga: 20, rxAmp: true },
-  method: 'signal-generator',
+  method: "signal-generator",
   accuracyDb: 1.5,
-  calibratedAt: Date.now()
+  calibratedAt: Date.now(),
 };
 
 const dBfs = -35.2; // Measured
@@ -522,10 +539,10 @@ const strongSignal: SignalLevel = {
   dBmApprox: -15 + calibration.kCal, // -80.2 dBm
   sUnit: 9,
   overS9: 12.8, // Round to 13 for display
-  band: 'VHF',
-  calibrationStatus: 'user',
+  band: "VHF",
+  calibrationStatus: "user",
   uncertaintyDb: 1.5,
-  timestamp: Date.now()
+  timestamp: Date.now(),
 };
 
 // Display: "S9+13"
@@ -538,27 +555,27 @@ console.log(`S${strongSignal.sUnit}+${Math.round(strongSignal.overS9)}`);
 class SMeter {
   private config: SMeterConfig;
   private smoothedDbfs: number = -100;
-  
+
   constructor(config: SMeterConfig) {
     this.config = config;
   }
-  
+
   update(currentDbfs: number, frequency: number): SignalLevel {
     // Apply exponential smoothing
     const alpha = this.config.display.smoothing;
     this.smoothedDbfs = alpha * currentDbfs + (1 - alpha) * this.smoothedDbfs;
-    
+
     // Convert to dBm
     const dBmApprox = this.smoothedDbfs + this.config.calibration.kCal;
-    
+
     // Determine band
-    const band: SMeterBand = frequency >= 30e6 ? 'VHF' : 'HF';
-    const S9_LEVEL = band === 'VHF' ? -93 : -73;
-    
+    const band: SMeterBand = frequency >= 30e6 ? "VHF" : "HF";
+    const S9_LEVEL = band === "VHF" ? -93 : -73;
+
     // Calculate S-unit
     let sUnit: number;
     let overS9: number;
-    
+
     if (dBmApprox >= S9_LEVEL) {
       sUnit = 9;
       overS9 = dBmApprox - S9_LEVEL;
@@ -566,20 +583,21 @@ class SMeter {
       sUnit = Math.max(0, Math.round(9 + (dBmApprox - S9_LEVEL) / 6));
       overS9 = 0;
     }
-    
+
     return {
       dBfs: this.smoothedDbfs,
       dBmApprox,
       sUnit,
       overS9,
       band,
-      calibrationStatus: this.config.calibration.method === 'default' 
-        ? 'uncalibrated' 
-        : this.config.calibration.method === 'signal-generator' 
-          ? 'user' 
-          : 'factory',
+      calibrationStatus:
+        this.config.calibration.method === "default"
+          ? "uncalibrated"
+          : this.config.calibration.method === "signal-generator"
+            ? "user"
+            : "factory",
       uncertaintyDb: this.config.calibration.accuracyDb,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 }
@@ -588,12 +606,14 @@ class SMeter {
 ## Future Enhancements
 
 ### Phase 2: Visual Display
+
 - Graphical S-meter with analog needle or LED bar
 - Color coding (green/yellow/red for signal strength)
 - Peak hold indicators
 - Trend display (signal strength over time)
 
 ### Phase 3: Advanced Features
+
 - Multi-band calibration storage
 - Automatic frequency-dependent K_cal interpolation
 - Temperature compensation
@@ -602,6 +622,7 @@ class SMeter {
 - Signal quality indicators (SNR, distortion, fading)
 
 ### Phase 4: Integration
+
 - Integration with signal classification system
 - Automatic mode detection (AM/FM/SSB) affects S-meter ballistics
 - Integration with recording/logging features
@@ -618,9 +639,9 @@ class SMeter {
 
 ## Revision History
 
-| Version | Date       | Author        | Changes                          |
-| ------- | ---------- | ------------- | -------------------------------- |
-| 1.0     | 2025-11-20 | GitHub Copilot | Initial specification document  |
+| Version | Date       | Author         | Changes                        |
+| ------- | ---------- | -------------- | ------------------------------ |
+| 1.0     | 2025-11-20 | GitHub Copilot | Initial specification document |
 
 ## License
 

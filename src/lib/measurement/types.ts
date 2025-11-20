@@ -279,7 +279,7 @@ export interface SignalLevel {
 export interface SMeterCalibration {
   /**
    * Calibration constant: dBm = dBfs + kCal
-   * Typical range: -80 to -40 dBm
+   * Typical range: -80 to -40
    */
   kCal: number;
 

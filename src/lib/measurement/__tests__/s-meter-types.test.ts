@@ -323,8 +323,12 @@ describe("S-Meter Types", () => {
 
       it("should handle boundary at exactly 30 MHz", () => {
         const freq = 30e6;
+        // 30 MHz should be classified as VHF (boundary condition)
         const band: SMeterBand = freq >= 30e6 ? "VHF" : "HF";
         expect(band).toBe("VHF");
+
+        // Verify the logic: 30 MHz is NOT HF
+        expect(freq < 30e6).toBe(false);
       });
     });
   });
