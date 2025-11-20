@@ -117,7 +117,7 @@ dBm = dBFS + K_cal
 Where:
 
 - `dBFS` = measured power level relative to ADC full scale (≤ 0)
-- `K_cal` = calibration constant (device-specific, typically -80 to -40 dBm)
+- `K_cal` = calibration constant (device-specific, typically -80 to -40)
 - `dBm` = absolute power level at antenna input
 
 **Determining K_cal**:
@@ -147,15 +147,15 @@ The calibration constant can be determined by:
 For HackRF One (typical values):
 
 ```
-K_cal_HF ≈ -60 dBm    (for HF bands, gain setting dependent)
-K_cal_VHF ≈ -70 dBm   (for VHF/UHF bands, gain setting dependent)
+K_cal_HF ≈ -60    (for HF bands, gain setting dependent)
+K_cal_VHF ≈ -70   (for VHF/UHF bands, gain setting dependent)
 ```
 
 For RTL-SDR (typical values):
 
 ```
-K_cal_HF ≈ -50 dBm    (for HF with upconverter)
-K_cal_VHF ≈ -65 dBm   (for direct sampling VHF/UHF)
+K_cal_HF ≈ -50    (for HF with upconverter)
+K_cal_VHF ≈ -65   (for direct sampling VHF/UHF)
 ```
 
 **Note**: These are rough approximations. Actual calibration is required for accurate measurements.
@@ -474,7 +474,7 @@ interface SMeterConfig {
 const dBfs = -42.5;
 
 // HackRF One on VHF with default calibration
-const K_cal = -70; // dBm
+const K_cal = -70;
 
 // Convert to dBm
 const dBm = dBfs + K_cal; // -112.5 dBm
