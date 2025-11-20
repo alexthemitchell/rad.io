@@ -38,11 +38,14 @@ export interface SpectralPeak {
 /**
  * Calculate signal strength from IQ samples
  *
- * Returns signal strength in dBm (relative to maximum possible signal).
- * Range is typically -100 dBm (very weak) to 0 dBm (maximum).
+ * Returns signal strength in dBFS (decibels relative to full scale).
+ * Range is typically -100 to 0 dBFS, where 0 represents maximum ADC input.
+ *
+ * Note: This returns dBFS, not dBm. To convert to absolute power (dBm),
+ * use a calibration constant: dBm = dBFS + K_cal
  *
  * @param samples - Input IQ samples
- * @returns Signal strength in dBm
+ * @returns Signal strength in dBFS
  *
  * @example
  * ```typescript
@@ -51,7 +54,7 @@ export interface SpectralPeak {
  *
  * const samples: Sample[] = [...];
  * const strength = calculateSignalStrength(samples);
- * console.log(`Signal: ${strength.toFixed(1)} dBm`);
+ * console.log(`Signal: ${strength.toFixed(1)} dBFS`);
  * ```
  */
 export function calculateSignalStrength(samples: Sample[]): number {
@@ -68,11 +71,11 @@ export function calculateSignalStrength(samples: Sample[]): number {
 
   const rms = Math.sqrt(sumSquares / samples.length);
 
-  // Convert to dBm (assuming normalized range where max amplitude is 1.0)
-  // dBm = 20 * log10(rms)
-  // Clamp to reasonable range: -100 to 0 dBm
-  const dBm = rms > 0 ? 20 * Math.log10(rms) : -100;
-  return Math.max(-100, Math.min(0, dBm));
+  // Convert to dBFS (decibels relative to full scale)
+  // dBFS = 20 * log10(rms) where max amplitude is 1.0
+  // Clamp to reasonable range: -100 to 0 dBFS
+  const dBFS = rms > 0 ? 20 * Math.log10(rms) : -100;
+  return Math.max(-100, Math.min(0, dBFS));
 }
 
 /**
