@@ -316,9 +316,7 @@ const minSpacing = Math.max(
 );
 
 if (spacing < minSpacing) {
-  throw new Error(
-    `VFO spacing ${spacing} Hz below minimum ${minSpacing} Hz`,
-  );
+  throw new Error(`VFO spacing ${spacing} Hz below minimum ${minSpacing} Hz`);
 }
 ```
 
@@ -364,10 +362,7 @@ const MAX_VFOS: Record<string, number> = {
 /**
  * Dynamic VFO limit based on current system load and VFO mix
  */
-function calculateMaxVFOs(
-  platform: string,
-  activeVfos: VfoState[],
-): number {
+function calculateMaxVFOs(platform: string, activeVfos: VfoState[]): number {
   const baseLimit = MAX_VFOS[`platform_${platform}`] ?? 4;
 
   // Calculate complexity budget consumed
