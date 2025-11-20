@@ -2,7 +2,13 @@
  * Spectrum component - frequency domain line chart with WebGL/Canvas2D fallback
  */
 
-import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react";
 import { useStore, useMarkers } from "../../store";
 import {
   CanvasSpectrum,
@@ -175,9 +181,23 @@ export default function Spectrum({
 
     // Render markers if enabled
     if (enableMarkers && markers.length > 0) {
-      annotations.renderMarkers(markers, sampleRate, centerFrequency, hoveredMarkerId);
+      annotations.renderMarkers(
+        markers,
+        sampleRate,
+        centerFrequency,
+        hoveredMarkerId,
+      );
     }
-  }, [vfoFrequency, sampleRate, centerFrequency, width, height, markers, hoveredMarkerId, enableMarkers]);
+  }, [
+    vfoFrequency,
+    sampleRate,
+    centerFrequency,
+    width,
+    height,
+    markers,
+    hoveredMarkerId,
+    enableMarkers,
+  ]);
 
   // Get power value at frequency from FFT data
   const getPowerAtFrequency = useCallback(
@@ -222,13 +242,24 @@ export default function Spectrum({
       }
 
       // Check if clicking on existing marker (to prevent duplicate placement)
-      const markerHit = annotations.findMarkerAt(x, y, markers, sampleRate, centerFrequency);
+      const markerHit = annotations.findMarkerAt(
+        x,
+        y,
+        markers,
+        sampleRate,
+        centerFrequency,
+      );
       if (markerHit) {
         return; // Don't place new marker if clicking on existing one
       }
 
       // Convert pixel to frequency
-      const freqHz = annotations.pixelToFrequency(x, rect.width, sampleRate, centerFrequency);
+      const freqHz = annotations.pixelToFrequency(
+        x,
+        rect.width,
+        sampleRate,
+        centerFrequency,
+      );
       const powerDb = getPowerAtFrequency(freqHz);
 
       // Add marker (max 10 markers)
@@ -240,7 +271,14 @@ export default function Spectrum({
         announceToScreenReader(announcement);
       }
     },
-    [enableMarkers, sampleRate, centerFrequency, markers, addMarker, getPowerAtFrequency],
+    [
+      enableMarkers,
+      sampleRate,
+      centerFrequency,
+      markers,
+      addMarker,
+      getPowerAtFrequency,
+    ],
   );
 
   // Right-click handler: delete marker
@@ -262,7 +300,13 @@ export default function Spectrum({
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      const markerHit = annotations.findMarkerAt(x, y, markers, sampleRate, centerFrequency);
+      const markerHit = annotations.findMarkerAt(
+        x,
+        y,
+        markers,
+        sampleRate,
+        centerFrequency,
+      );
       if (markerHit) {
         removeMarker(markerHit.marker.id);
         announceToScreenReader(`${markerHit.marker.label} deleted`);
@@ -288,7 +332,13 @@ export default function Spectrum({
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      const markerHit = annotations.findMarkerAt(x, y, markers, sampleRate, centerFrequency);
+      const markerHit = annotations.findMarkerAt(
+        x,
+        y,
+        markers,
+        sampleRate,
+        centerFrequency,
+      );
       if (markerHit) {
         setDraggedMarkerId(markerHit.marker.id);
         dragStartXRef.current = x;
@@ -317,22 +367,43 @@ export default function Spectrum({
 
       // Handle dragging
       if (draggedMarkerId) {
-        const freqHz = annotations.pixelToFrequency(x, rect.width, sampleRate, centerFrequency);
+        const freqHz = annotations.pixelToFrequency(
+          x,
+          rect.width,
+          sampleRate,
+          centerFrequency,
+        );
         const powerDb = getPowerAtFrequency(freqHz);
         updateMarker(draggedMarkerId, freqHz, powerDb);
         return;
       }
 
       // Update hover state
-      const markerHit = annotations.findMarkerAt(x, y, markers, sampleRate, centerFrequency);
+      const markerHit = annotations.findMarkerAt(
+        x,
+        y,
+        markers,
+        sampleRate,
+        centerFrequency,
+      );
       setHoveredMarkerId(markerHit ? markerHit.marker.id : null);
 
       // Update cursor style
-      if (canvas) {
-        canvas.style.cursor = markerHit ? (markerHit.isDragHandle ? "grab" : "pointer") : "default";
-      }
+      canvas.style.cursor = markerHit
+        ? markerHit.isDragHandle
+          ? "grab"
+          : "pointer"
+        : "default";
     },
-    [enableMarkers, sampleRate, centerFrequency, markers, draggedMarkerId, updateMarker, getPowerAtFrequency],
+    [
+      enableMarkers,
+      sampleRate,
+      centerFrequency,
+      markers,
+      draggedMarkerId,
+      updateMarker,
+      getPowerAtFrequency,
+    ],
   );
 
   // Mouse up handler: end drag
@@ -376,7 +447,14 @@ export default function Spectrum({
         }
       }
     },
-    [enableMarkers, sampleRate, centerFrequency, markers, addMarker, getPowerAtFrequency],
+    [
+      enableMarkers,
+      sampleRate,
+      centerFrequency,
+      markers,
+      addMarker,
+      getPowerAtFrequency,
+    ],
   );
 
   // Helper function to announce to screen readers

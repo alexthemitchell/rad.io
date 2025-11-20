@@ -497,7 +497,12 @@ export class SpectrumAnnotations {
    * @returns True if rendering succeeded
    */
   public renderMarkers(
-    markers: Array<{ id: string; label: string; freqHz: number; powerDb?: number }>,
+    markers: Array<{
+      id: string;
+      label: string;
+      freqHz: number;
+      powerDb?: number;
+    }>,
     sampleRate: number,
     centerFrequency: number,
     hoveredMarkerId: string | null = null,
@@ -595,7 +600,10 @@ export class SpectrumAnnotations {
       // Draw label box at top
       const labelY = margin.top + 28;
       const freqMHz = (marker.freqHz / 1e6).toFixed(3);
-      const powerStr = marker.powerDb !== undefined ? `, ${marker.powerDb.toFixed(2)} dBFS` : "";
+      const powerStr =
+        marker.powerDb !== undefined
+          ? `, ${marker.powerDb.toFixed(2)} dBFS`
+          : "";
       const labelText = `${marker.label}: ${freqMHz} MHz${powerStr}`;
 
       ctx.font = `${isHovered ? 13 : 12}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif`;
@@ -649,10 +657,18 @@ export class SpectrumAnnotations {
   public findMarkerAt(
     x: number,
     y: number,
-    markers: Array<{ id: string; label: string; freqHz: number; powerDb?: number }>,
+    markers: Array<{
+      id: string;
+      label: string;
+      freqHz: number;
+      powerDb?: number;
+    }>,
     sampleRate: number,
     centerFrequency: number,
-  ): { marker: { id: string; label: string; freqHz: number; powerDb?: number }; isDragHandle: boolean } | null {
+  ): {
+    marker: { id: string; label: string; freqHz: number; powerDb?: number };
+    isDragHandle: boolean;
+  } | null {
     if (!this.canvas) {
       return null;
     }
