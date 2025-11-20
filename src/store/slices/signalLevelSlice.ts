@@ -26,16 +26,7 @@ export interface SignalLevelSlice {
   clearSignalLevel: () => void;
 }
 
-export const signalLevelSlice: StateCreator<SignalLevelSlice> = (
-  set: (
-    partial:
-      | SignalLevelSlice
-      | Partial<SignalLevelSlice>
-      | ((
-          state: SignalLevelSlice,
-        ) => SignalLevelSlice | Partial<SignalLevelSlice>),
-  ) => void,
-) => ({
+export const signalLevelSlice: StateCreator<SignalLevelSlice> = (set) => ({
   signalLevel: null,
 
   setSignalLevel: (level: SignalLevel): void => {

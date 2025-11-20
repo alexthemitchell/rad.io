@@ -231,7 +231,7 @@ export class SignalLevelService {
     }
 
     if (this.intervalId !== null) {
-      clearInterval(this.intervalId as number);
+      clearInterval(this.intervalId);
       this.intervalId = null;
     }
 
