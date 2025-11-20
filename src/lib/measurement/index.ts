@@ -10,6 +10,11 @@ export { CalibrationManager } from "./calibration";
 export { SpectrumMaskTester } from "./spectrum-mask";
 export { MeasurementLogger } from "./measurement-logger";
 export { convertDbfsToDbm, dbmToSUnit } from "./signalMeasurement";
+export {
+  SignalLevelService,
+  type SignalLevelServiceConfig,
+  type SignalLevelCallback,
+} from "./signal-level-service";
 
 export type {
   FrequencyMarker,

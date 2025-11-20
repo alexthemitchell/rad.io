@@ -45,6 +45,11 @@ import {
   type SettingsSlice,
   type SettingsState,
 } from "./slices/settingsSlice";
+import {
+  signalLevelSlice,
+  type SignalLevelSlice,
+} from "./slices/signalLevelSlice";
+import type { SignalLevel } from "../lib/measurement/types";
 import type { ISDRDevice } from "../models/SDRDevice";
 
 /**
@@ -55,7 +60,8 @@ export type RootState = SettingsSlice &
   NotificationSlice &
   DeviceSlice &
   DiagnosticsSlice &
-  MarkerSlice;
+  MarkerSlice &
+  SignalLevelSlice;
 
 /**
  * Create the root store with all slices
@@ -72,6 +78,7 @@ export const useStore = create<RootState>()(
       ...deviceSlice(...args),
       ...diagnosticsSlice(...args),
       ...markerSlice(...args),
+      ...signalLevelSlice(...args),
     }),
     { name: "rad.io-store" },
   ),
@@ -296,11 +303,26 @@ export const useMarkers = (): {
   };
 };
 
+// Signal Level slice selectors
+export const useSignalLevel = (): {
+  signalLevel: SignalLevel | null;
+  setSignalLevel: (level: SignalLevel) => void;
+  clearSignalLevel: () => void;
+} => {
+  const signalLevel = useStore((state: RootState) => state.signalLevel);
+  const setSignalLevel = useStore((state: RootState) => state.setSignalLevel);
+  const clearSignalLevel = useStore(
+    (state: RootState) => state.clearSignalLevel,
+  );
+  return { signalLevel, setSignalLevel, clearSignalLevel };
+};
+
 // Export types
 export type { SettingsState, VizMode } from "./slices/settingsSlice";
 export type { Marker } from "./slices/markerSlice";
 export type { Notification } from "./slices/notificationSlice";
 export type { DeviceId, DeviceEntry } from "./slices/deviceSlice";
+export type { SignalLevel } from "../lib/measurement/types";
 export type {
   DiagnosticEvent,
   DiagnosticSeverity,
