@@ -62,6 +62,8 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   const [duplicateStrategy, setDuplicateStrategy] =
     useState<DuplicateStrategy>("skip");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const importButtonRef = useRef<HTMLButtonElement>(null);
 
   const navigate = useNavigate();
   // Unified notifications
@@ -70,6 +72,40 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   useEffect(() => {
     setBookmarks(loadBookmarks());
   }, []);
+
+  // Focus management and keyboard handling for import preview dialog
+  useEffect((): (() => void) | undefined => {
+    if (importPreview && dialogRef.current) {
+      // Save the currently focused element to restore later
+      const previouslyFocused = document.activeElement as HTMLElement;
+      const currentImportButton = importButtonRef.current;
+
+      // Focus the dialog
+      dialogRef.current.focus();
+
+      // Handle Escape key to close dialog
+      const handleKeyDown = (event: KeyboardEvent): void => {
+        if (event.key === "Escape") {
+          setImportPreview(null);
+        }
+      };
+
+      document.addEventListener("keydown", handleKeyDown);
+
+      // Cleanup function to restore focus and remove listener
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+        // Restore focus to the import button when dialog closes
+        if (currentImportButton) {
+          currentImportButton.focus();
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        } else if (previouslyFocused) {
+          previouslyFocused.focus();
+        }
+      };
+    }
+    return undefined;
+  }, [importPreview]);
 
   // Save bookmarks to localStorage
   const saveBookmarks = (newBookmarks: Bookmark[]): void => {
@@ -281,8 +317,17 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
       return;
     }
 
-    // Validate file type
-    if (!file.name.toLowerCase().endsWith(".csv")) {
+    // Validate file type (extension and MIME type)
+    // Note: Some systems report CSV with different MIME types
+    const validMimeTypes = [
+      "text/csv",
+      "application/vnd.ms-excel",
+      "text/plain",
+    ];
+    if (
+      !file.name.toLowerCase().endsWith(".csv") ||
+      (file.type && !validMimeTypes.includes(file.type))
+    ) {
       notify({
         message: "Please select a CSV file",
         sr: "assertive",
@@ -367,7 +412,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
       message,
       sr: "polite",
       visual: true,
-      tone: "success",
+      tone: importPreview.errors.length > 0 ? "warning" : "success",
     });
 
     setImportPreview(null);
@@ -411,11 +456,13 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
 
       {importPreview && (
         <div
+          ref={dialogRef}
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="import-preview-title"
           aria-describedby="import-preview-desc"
           className="import-preview-dialog"
+          tabIndex={-1}
         >
           <h4 id="import-preview-title">Import Bookmarks Preview</h4>
 
@@ -441,8 +488,9 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
               <p>
                 <strong>How to handle duplicates?</strong>
               </p>
-              <label>
+              <label htmlFor="strategy-skip">
                 <input
+                  id="strategy-skip"
                   type="radio"
                   name="duplicateStrategy"
                   value="skip"
@@ -451,8 +499,9 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
                 />
                 Skip duplicates (keep existing)
               </label>
-              <label>
+              <label htmlFor="strategy-overwrite">
                 <input
+                  id="strategy-overwrite"
                   type="radio"
                   name="duplicateStrategy"
                   value="overwrite"
@@ -461,8 +510,9 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
                 />
                 Overwrite existing with imported
               </label>
-              <label>
+              <label htmlFor="strategy-import-as-new">
                 <input
+                  id="strategy-import-as-new"
                   type="radio"
                   name="duplicateStrategy"
                   value="import_as_new"
@@ -633,6 +683,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
               </button>
             )}
             <button
+              ref={importButtonRef}
               onClick={handleImportClick}
               aria-label="Import bookmarks from CSV"
             >

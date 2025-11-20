@@ -259,6 +259,12 @@ export function parseBookmarksCSV(
     });
   }
 
+  // Create frequency map for efficient duplicate lookup (O(n) instead of O(n*m))
+  const existingFrequencyMap = new Map<number, Bookmark>();
+  for (const bookmark of existingBookmarks) {
+    existingFrequencyMap.set(bookmark.frequency, bookmark);
+  }
+
   // Validate each row
   parseResult.data.forEach((row, index) => {
     const validation = validateBookmarkRow(row, index + 2); // +2 for 1-based + header
@@ -266,12 +272,28 @@ export function parseBookmarksCSV(
     if (validation.valid && validation.bookmark) {
       const bookmark = validation.bookmark;
 
-      // Check for duplicates in existing bookmarks
-      const existingDuplicate = existingBookmarks.find((existing) =>
-        isDuplicate(existing.frequency, bookmark.frequency),
+      // Check for duplicates within already-validated bookmarks from CSV
+      const internalDuplicate = preview.valid.find((valid) =>
+        isDuplicate(valid.frequency, bookmark.frequency),
       );
 
-      if (existingDuplicate) {
+      // Check for duplicates in existing bookmarks using frequency map
+      let existingDuplicate: Bookmark | undefined;
+      for (const [freq, bm] of existingFrequencyMap.entries()) {
+        if (isDuplicate(freq, bookmark.frequency)) {
+          existingDuplicate = bm;
+          break;
+        }
+      }
+
+      if (internalDuplicate) {
+        // Internal duplicate - add as error
+        preview.errors.push({
+          row: index + 2,
+          message: `Duplicate frequency within CSV (matches row with ${internalDuplicate.name})`,
+          data: row,
+        });
+      } else if (existingDuplicate) {
         preview.duplicates.push({
           imported: bookmark,
           existing: existingDuplicate,

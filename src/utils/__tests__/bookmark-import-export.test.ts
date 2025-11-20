@@ -398,7 +398,9 @@ describe("bookmark-import-export", () => {
 
       expect(preview.valid).toHaveLength(0);
       expect(preview.errors.length).toBeGreaterThan(0);
-      expect(preview.errors.some((e) => e.message.includes("Missing frequency"))).toBe(true);
+      expect(
+        preview.errors.some((e) => e.message.includes("Missing frequency")),
+      ).toBe(true);
     });
 
     it("should reject missing name", () => {
@@ -409,7 +411,9 @@ describe("bookmark-import-export", () => {
 
       expect(preview.valid).toHaveLength(0);
       expect(preview.errors.length).toBeGreaterThan(0);
-      expect(preview.errors.some((e) => e.message.includes("Missing name"))).toBe(true);
+      expect(
+        preview.errors.some((e) => e.message.includes("Missing name")),
+      ).toBe(true);
     });
 
     it("should reject invalid frequency (non-numeric)", () => {
@@ -420,7 +424,9 @@ invalid,Test Station,test,note,1700000000000,1700000001000`;
 
       expect(preview.valid).toHaveLength(0);
       expect(preview.errors.length).toBeGreaterThan(0);
-      expect(preview.errors.some((e) => e.message.includes("Invalid frequency"))).toBe(true);
+      expect(
+        preview.errors.some((e) => e.message.includes("Invalid frequency")),
+      ).toBe(true);
     });
 
     it("should reject frequency below minimum (24 MHz)", () => {
@@ -431,7 +437,9 @@ invalid,Test Station,test,note,1700000000000,1700000001000`;
 
       expect(preview.valid).toHaveLength(0);
       expect(preview.errors.length).toBeGreaterThan(0);
-      expect(preview.errors.some((e) => e.message.includes("out of range"))).toBe(true);
+      expect(
+        preview.errors.some((e) => e.message.includes("out of range")),
+      ).toBe(true);
     });
 
     it("should reject frequency above maximum (1.7 GHz)", () => {
@@ -442,7 +450,9 @@ invalid,Test Station,test,note,1700000000000,1700000001000`;
 
       expect(preview.valid).toHaveLength(0);
       expect(preview.errors.length).toBeGreaterThan(0);
-      expect(preview.errors.some((e) => e.message.includes("out of range"))).toBe(true);
+      expect(
+        preview.errors.some((e) => e.message.includes("out of range")),
+      ).toBe(true);
     });
 
     it("should accept frequency at minimum boundary (24 MHz)", () => {
@@ -493,9 +503,7 @@ invalid,Test Station,test,note,1700000000000,1700000001000`;
       expect(duplicate?.existing.frequency).toBe(100000000);
       if (duplicate) {
         expect(
-          Math.abs(
-            duplicate.imported.frequency - duplicate.existing.frequency,
-          ),
+          Math.abs(duplicate.imported.frequency - duplicate.existing.frequency),
         ).toBeLessThanOrEqual(1000);
       }
     });
@@ -534,6 +542,23 @@ invalid,Test Station,test,note,1700000000000,1700000001000`;
       expect(preview.valid).toHaveLength(3);
       expect(preview.duplicates).toHaveLength(0);
       expect(preview.errors).toHaveLength(0);
+    });
+
+    it("should detect internal duplicates within CSV file", () => {
+      const csv = `Frequency (Hz),Name,Tags,Notes,Created At,Last Used
+100000000,First Station,fm,Note 1,1700000000000,1700000001000
+100000500,Duplicate Station,fm,Note 2,1700000002000,1700000003000
+162550000,Valid Station,weather,Note 3,1700000004000,1700000005000`;
+
+      const preview = parseBookmarksCSV(csv, []);
+
+      expect(preview.valid).toHaveLength(2); // First and third stations
+      expect(preview.duplicates).toHaveLength(0); // No duplicates with existing
+      expect(preview.errors).toHaveLength(1); // Second station is internal duplicate
+      expect(preview.errors[0]?.message).toContain(
+        "Duplicate frequency within CSV",
+      );
+      expect(preview.errors[0]?.message).toContain("First Station");
     });
 
     it("should handle mix of valid, invalid, and duplicate bookmarks", () => {
