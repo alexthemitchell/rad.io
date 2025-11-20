@@ -56,6 +56,7 @@ export default function Spectrum({
   );
   const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null);
   const [draggedMarkerId, setDraggedMarkerId] = useState<string | null>(null);
+  const announcementTimeoutsRef = useRef<Set<number>>(new Set());
 
   // Subscribe to VFO frequency and markers from Zustand store
   const vfoFrequency = useStore((state) => state.frequencyHz);
@@ -160,6 +161,15 @@ export default function Spectrum({
     }
   }, [magnitudes, freqMin, freqMax]);
 
+  // Cleanup announcement timeouts on unmount
+  useEffect((): (() => void) => {
+    const timeouts = announcementTimeoutsRef.current;
+    return () => {
+      // Cleanup all pending timeouts on unmount
+      timeouts.forEach(clearTimeout);
+    };
+  }, []);
+
   // Render VFO cursor and markers when frequency or display params change
   useEffect(() => {
     const annotations = annotationsRef.current;
@@ -200,7 +210,7 @@ export default function Spectrum({
   // Get power value at frequency from FFT data
   const getPowerAtFrequency = useCallback(
     (freqHz: number): number | undefined => {
-      if (!sampleRate || !centerFrequency) {
+      if (!sampleRate || !centerFrequency || magnitudes.length === 0) {
         return undefined;
       }
 
@@ -213,6 +223,12 @@ export default function Spectrum({
       // Convert frequency to bin index
       const freqNorm = (freqHz - freqMin) / (freqMax - freqMin);
       const binIndex = Math.round(freqNorm * (magnitudes.length - 1));
+
+      // Validate binIndex is within bounds
+      if (binIndex < 0 || binIndex >= magnitudes.length) {
+        return undefined;
+      }
+
       return magnitudes[binIndex];
     },
     [magnitudes, sampleRate, centerFrequency],
@@ -290,8 +306,6 @@ export default function Spectrum({
         return;
       }
 
-      event.preventDefault();
-
       const canvas = overlayCanvasRef.current;
       const annotations = annotationsRef.current;
       if (!canvas || !annotations) {
@@ -310,6 +324,7 @@ export default function Spectrum({
         centerFrequency,
       );
       if (markerHit) {
+        event.preventDefault(); // Only prevent when deleting a marker
         removeMarker(markerHit.marker.id);
         announceToScreenReader(`${markerHit.marker.label} deleted`);
       }
@@ -411,13 +426,19 @@ export default function Spectrum({
   // Mouse up handler: end drag
   const handleMouseUp = useCallback(() => {
     if (draggedMarkerId) {
+      const marker = markers.find((m) => m.id === draggedMarkerId);
+      if (marker) {
+        announceToScreenReader(
+          `${marker.label} repositioned to ${(marker.freqHz / 1e6).toFixed(3)} MHz${marker.powerDb !== undefined ? `, ${marker.powerDb.toFixed(2)} dBFS` : ""}`,
+        );
+      }
       setDraggedMarkerId(null);
       const canvas = overlayCanvasRef.current;
       if (canvas) {
         canvas.style.cursor = "default";
       }
     }
-  }, [draggedMarkerId]);
+  }, [draggedMarkerId, markers]);
 
   // Mouse leave handler: clear hover state and end drag
   const handleMouseLeave = useCallback(() => {
@@ -468,12 +489,16 @@ export default function Spectrum({
     const announcement = document.createElement("div");
     announcement.setAttribute("role", "status");
     announcement.setAttribute("aria-live", "polite");
-    announcement.className = "sr-only";
+    announcement.className = "rad-sr-only";
     announcement.textContent = message;
     document.body.appendChild(announcement);
-    setTimeout(() => {
-      document.body.removeChild(announcement);
+    const timeoutId = window.setTimeout(() => {
+      if (document.body.contains(announcement)) {
+        document.body.removeChild(announcement);
+      }
+      announcementTimeoutsRef.current.delete(timeoutId);
     }, 1000);
+    announcementTimeoutsRef.current.add(timeoutId);
   };
 
   return (

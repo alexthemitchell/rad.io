@@ -95,17 +95,29 @@ export const markerSlice: StateCreator<MarkerSlice> = (set) => ({
     if (freqHz === undefined && powerDb === undefined) {
       return; // Nothing to update
     }
-    set((state) => ({
-      markers: state.markers.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              ...(freqHz !== undefined && { freqHz }),
-              ...(powerDb !== undefined && { powerDb }),
-            }
-          : m,
-      ),
-    }));
+    set((state) => {
+      const marker = state.markers.find((m) => m.id === id);
+      if (!marker) return state; // Marker not found
+
+      // Check if values have meaningfully changed
+      const hasChange =
+        (freqHz !== undefined && marker.freqHz !== freqHz) ||
+        (powerDb !== undefined && marker.powerDb !== powerDb);
+
+      if (!hasChange) return state; // No meaningful change
+
+      return {
+        markers: state.markers.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                ...(freqHz !== undefined && { freqHz }),
+                ...(powerDb !== undefined && { powerDb }),
+              }
+            : m,
+        ),
+      };
+    });
   },
 
   removeMarker: (id: string): void => {
