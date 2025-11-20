@@ -53,9 +53,6 @@ export class AudioResampler {
     outputRate: number,
     quality: ResamplerQuality = ResamplerQuality.MEDIUM,
   ) {
-    console.info(
-      `AudioResampler: ${inputRate} Hz → ${outputRate} Hz, quality: ${quality}`,
-    );
     this.inputRate = inputRate;
     this.outputRate = outputRate;
     this.ratio = inputRate / outputRate;

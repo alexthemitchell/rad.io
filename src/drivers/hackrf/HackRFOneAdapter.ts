@@ -6,7 +6,6 @@
  * compatibility with the visualization and control components.
  */
 
-import { CalibrationManager } from "../../lib/measurement/calibration";
 import { DeviceErrorHandler } from "../../models/DeviceError";
 import {
   type ISDRDevice,
@@ -20,30 +19,30 @@ import {
   convertInt8ToIQ,
 } from "../../models/SDRDevice";
 import { useStore } from "../../store";
+import {
+  hackRfCalibrationService,
+  type HackRFCalibrationPort,
+} from "./calibration";
 import { HackRFOne } from "./HackRFOne";
 
 export class HackRFOneAdapter implements ISDRDevice {
   private device: HackRFOne;
   private usbDevice: USBDevice;
-  private currentFrequency = 100e6; // 100 MHz default
-  private currentSampleRate = 20e6; // 20 MS/s default
-  private currentBandwidth = 20e6; // 20 MHz default
-  private isReceivingFlag = false;
-  private isInitialized = false; // Track if device has been properly configured
-  private calibration = new CalibrationManager();
+  private calibration: HackRFCalibrationPort;
   private deviceId: string; // Per-device identifier derived from USB properties
 
-  constructor(usbDevice: USBDevice) {
+  constructor(
+    usbDevice: USBDevice,
+    calibrationService: HackRFCalibrationPort = hackRfCalibrationService,
+  ) {
     this.usbDevice = usbDevice;
     this.device = new HackRFOne(usbDevice);
+    this.calibration = calibrationService;
     // Build a stable per-device identifier (vendorId:productId:serial)
     // If serialNumber is missing, leave it empty to avoid undefined in the key
     this.deviceId = `${usbDevice.vendorId}:${usbDevice.productId}:${usbDevice.serialNumber ?? ""}`;
   }
 
-  /**
-   * Track device error in diagnostics store
-   */
   private trackError(
     // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
     error: Error | unknown,
@@ -102,13 +101,11 @@ export class HackRFOneAdapter implements ISDRDevice {
 
   async close(): Promise<void> {
     // Ensure we abort any pending transfer immediately before closing
-    this.isReceivingFlag = false;
     try {
-      this.device.stopRx();
+      await this.device.stopRx();
     } catch {
       // ignore
     }
-    this.isInitialized = false; // Reset initialization state on close
     try {
       await this.device.close();
     } catch (error) {
@@ -118,43 +115,37 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   isOpen(): boolean {
-    // Access the private usbDevice through type assertion
-    // This is safe because we control the HackRFOne implementation
-    const opened = (this.device as unknown as { usbDevice?: USBDevice })
-      .usbDevice?.opened;
-    return opened ?? false;
+    return this.device.getConfigurationStatus().isOpen;
   }
 
   async setFrequency(frequencyHz: number): Promise<void> {
-    // Apply stored PPM calibration before programming hardware so that the RF lands at requested logical frequency
-    const corrected = this.calibration.applyFrequencyCalibration(
-      this.deviceId,
-      frequencyHz,
-    );
-    this.currentFrequency = corrected;
-    await this.device.setFrequency(corrected);
+    const plan = this.calibration.buildPlan(this.deviceId, {
+      centerFrequencyHz: frequencyHz,
+    });
+
+    // Program hardware using the corrected RF frequency while keeping the logical
+    // frequency (requestedHz) available for higher-level state machines.
+    await this.device.setFrequency(plan.frequency.correctedHz);
   }
 
   async getFrequency(): Promise<number> {
-    return Promise.resolve(this.currentFrequency);
+    return Promise.resolve(this.device.getFrequency() ?? 100e6);
   }
 
   async setSampleRate(sampleRateHz: number): Promise<void> {
-    this.currentSampleRate = sampleRateHz;
     await this.device.setSampleRate(sampleRateHz);
-    // Mark as initialized once sample rate is set (critical for HackRF)
-    this.isInitialized = true;
   }
 
   async getSampleRate(): Promise<number> {
-    return Promise.resolve(this.currentSampleRate);
+    return Promise.resolve(this.device.getSampleRate() ?? 20e6);
   }
 
   async getUsableBandwidth(): Promise<number> {
     // HackRF has ~80% usable bandwidth due to anti-aliasing filter rolloff
     // For conservative estimate, return 80% of sample rate
     // This ensures we don't try to detect signals at the very edges
-    return Promise.resolve(this.currentSampleRate * 0.8);
+    const sampleRate = this.device.getSampleRate() ?? 20e6;
+    return Promise.resolve(sampleRate * 0.8);
   }
 
   async setLNAGain(gainDb: number): Promise<void> {
@@ -173,7 +164,19 @@ export class HackRFOneAdapter implements ISDRDevice {
       });
       adjustedGain = nearest;
     }
-    await this.device.setLNAGain(adjustedGain);
+    try {
+      await this.device.setLNAGain(adjustedGain);
+    } catch (err) {
+      console.warn(
+        "HackRFOneAdapter: Failed to set LNA gain; continuing without setting gain",
+        {
+          requestedGain: gainDb,
+          adjustedGain,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
+      // Do not rethrow; allow pipeline to continue so streaming can start
+    }
   }
 
   async setAmpEnable(enabled: boolean): Promise<void> {
@@ -209,20 +212,18 @@ export class HackRFOneAdapter implements ISDRDevice {
       adjustedBandwidth = nearest;
     }
 
-    this.currentBandwidth = adjustedBandwidth;
     await this.device.setBandwidth(adjustedBandwidth);
   }
 
   async getBandwidth(): Promise<number> {
-    return Promise.resolve(this.currentBandwidth);
+    return Promise.resolve(this.device.getBandwidth() ?? 20e6);
   }
 
   /**
-   * Validates that device is properly initialized before streaming.
    * HackRF REQUIRES sample rate to be set before streaming can begin.
    */
   private validateInitialization(): void {
-    if (!this.isInitialized) {
+    if (!this.device.getConfigurationStatus().isConfigured) {
       throw new Error(
         "HackRF device not initialized. Must call setSampleRate() before receive(). " +
           "Sample rate is mandatory for HackRF to stream data.",
@@ -265,33 +266,26 @@ export class HackRFOneAdapter implements ISDRDevice {
       // Validate that device has been initialized with mandatory settings
       this.validateInitialization();
 
-      this.isReceivingFlag = true;
-
       // Wrap the callback to convert DataView to IQ samples
       await this.device.receive((data: DataView) => {
         callback(data);
       });
-
-      this.isReceivingFlag = false;
     } catch (error) {
-      this.isReceivingFlag = false;
       this.trackError(error, {
         operation: "receive",
-        sampleRate: this.currentSampleRate,
-        frequency: this.currentFrequency,
+        sampleRate: this.device.getSampleRate(),
+        frequency: this.device.getFrequency(),
       });
       throw error;
     }
   }
 
   async stopRx(): Promise<void> {
-    this.isReceivingFlag = false;
-    this.device.stopRx();
-    return Promise.resolve();
+    await this.device.stopRx();
   }
 
   isReceiving(): boolean {
-    return this.isReceivingFlag;
+    return this.device.getConfigurationStatus().isStreaming;
   }
 
   parseSamples(data: DataView): IQSample[] {
@@ -319,12 +313,10 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   /**
-   * Software reset the device via USB control transfer
    * Note: After reset, device must be reconfigured (setSampleRate, etc.) before streaming
    */
   async reset(): Promise<void> {
     try {
-      this.isInitialized = false; // Reset will clear device configuration
       await this.device.reset();
     } catch (error) {
       this.trackError(error, { operation: "reset" });
@@ -333,28 +325,21 @@ export class HackRFOneAdapter implements ISDRDevice {
   }
 
   /**
-   * Fast recovery with automatic reconfiguration
    * Performs device reset and restores all configuration automatically.
    * Unlike reset(), this maintains the initialized state since configuration is restored.
    */
   async fastRecovery(): Promise<void> {
     try {
       await this.device.fastRecovery();
-
-      // Ensure underlying device reflects initialized configuration state.
-      // Some mock environments may not persist state through reset; reapply
-      // the adapter's known sample rate to keep getConfigurationStatus() accurate.
-      if (this.currentSampleRate > 0) {
-        try {
-          await this.device.setSampleRate(this.currentSampleRate);
-        } catch {
-          // Best-effort; underlying device fastRecovery already attempted restore
-        }
-      }
-
-      this.isInitialized = true; // Ensure initialized state after fastRecovery
     } catch (error) {
-      this.trackError(error, { operation: "fastRecovery" });
+      // In some call paths (e.g., direct ATSC scanner usage), the error tracker
+      // may not be wired up. Guard the tracking call so that recovery failures
+      // do not cascade into additional TypeErrors.
+      try {
+        this.trackError(error, { operation: "fastRecovery" });
+      } catch {
+        // Best-effort tracking only; propagate the original error.
+      }
       throw error;
     }
   }

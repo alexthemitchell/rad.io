@@ -25,6 +25,7 @@ import {
   checkIFreq,
   checkInLength,
   calcSampleRate,
+  deriveSampleRateParams,
 } from "../util";
 import {
   ErrorCode,
@@ -446,5 +447,44 @@ describe("calcSampleRate", () => {
       expect(div).toBeGreaterThan(0);
       expect(div).toBeLessThanOrEqual(31);
     });
+  });
+});
+
+describe("deriveSampleRateParams", () => {
+  it("should return correct structure", () => {
+    const result = deriveSampleRateParams(20000000);
+    expect(result).toHaveProperty("freqHz");
+    expect(result).toHaveProperty("divider");
+    expect(result.freqHz).toBeGreaterThan(0);
+    expect(result.divider).toBeGreaterThan(0);
+  });
+
+  it("should match calcSampleRate results", () => {
+    const rate = 10000000;
+    const [freq, div] = calcSampleRate(rate);
+    const result = deriveSampleRateParams(rate);
+    expect(result.freqHz).toBe(freq);
+    expect(result.divider).toBe(div);
+  });
+
+  it("should throw for invalid sample rates", () => {
+    expect(() => deriveSampleRateParams(-1)).toThrow(
+      "Sample rate must be a positive finite number",
+    );
+    expect(() => deriveSampleRateParams(0)).toThrow(
+      "Sample rate must be a positive finite number",
+    );
+    expect(() => deriveSampleRateParams(Infinity)).toThrow(
+      "Sample rate must be a positive finite number",
+    );
+    expect(() => deriveSampleRateParams(NaN)).toThrow(
+      "Sample rate must be a positive finite number",
+    );
+  });
+
+  it("should throw for sample rates exceeding uint32", () => {
+    expect(() => deriveSampleRateParams(2 ** 32)).toThrow(
+      "Sample rate exceeds uint32 range",
+    );
   });
 });

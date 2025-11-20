@@ -124,12 +124,6 @@ export class AudioWorkletManager {
       this.updateConfiguration(this.config);
 
       this.isInitialized = true;
-
-      console.info("AudioWorklet initialized successfully", {
-        sampleRate: this.audioContext.sampleRate,
-        latency: this.audioContext.baseLatency,
-        outputLatency: this.audioContext.outputLatency,
-      });
     } catch (error) {
       console.error("Failed to initialize AudioWorklet:", error);
       throw error;
@@ -252,7 +246,6 @@ export class AudioWorkletManager {
 
     if (this.audioContext.state === "suspended") {
       await this.audioContext.resume();
-      console.info("Audio context resumed");
     }
   }
 
@@ -268,7 +261,6 @@ export class AudioWorkletManager {
 
     if (this.audioContext.state === "running") {
       await this.audioContext.suspend();
-      console.info("Audio context suspended");
     }
   }
 
@@ -315,7 +307,6 @@ export class AudioWorkletManager {
     }
 
     this.isInitialized = false;
-    console.info("AudioWorklet cleaned up");
   }
 
   /**

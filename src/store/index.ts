@@ -14,6 +14,7 @@
 
 import { create, type StateCreator } from "zustand";
 import { devtools } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
 import {
   deviceSlice,
   type DeviceEntry,
@@ -244,26 +245,28 @@ export const useDiagnostics = (): Pick<
   | "resetDiagnostics"
   | "setOverlayVisible"
 > => {
-  return useStore((state: RootState) => ({
-    events: state.events,
-    demodulatorMetrics: state.demodulatorMetrics,
-    tsParserMetrics: state.tsParserMetrics,
-    videoDecoderMetrics: state.videoDecoderMetrics,
-    audioDecoderMetrics: state.audioDecoderMetrics,
-    captionDecoderMetrics: state.captionDecoderMetrics,
-    dspCapabilities: state.dspCapabilities,
-    overlayVisible: state.overlayVisible,
-    addDiagnosticEvent: state.addDiagnosticEvent,
-    updateDemodulatorMetrics: state.updateDemodulatorMetrics,
-    updateTSParserMetrics: state.updateTSParserMetrics,
-    updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
-    updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
-    updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
-    setDSPCapabilities: state.setDSPCapabilities,
-    clearDiagnosticEvents: state.clearDiagnosticEvents,
-    resetDiagnostics: state.resetDiagnostics,
-    setOverlayVisible: state.setOverlayVisible,
-  }));
+  return useStore(
+    useShallow((state: RootState) => ({
+      events: state.events,
+      demodulatorMetrics: state.demodulatorMetrics,
+      tsParserMetrics: state.tsParserMetrics,
+      videoDecoderMetrics: state.videoDecoderMetrics,
+      audioDecoderMetrics: state.audioDecoderMetrics,
+      captionDecoderMetrics: state.captionDecoderMetrics,
+      dspCapabilities: state.dspCapabilities,
+      overlayVisible: state.overlayVisible,
+      addDiagnosticEvent: state.addDiagnosticEvent,
+      updateDemodulatorMetrics: state.updateDemodulatorMetrics,
+      updateTSParserMetrics: state.updateTSParserMetrics,
+      updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
+      updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
+      updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
+      setDSPCapabilities: state.setDSPCapabilities,
+      clearDiagnosticEvents: state.clearDiagnosticEvents,
+      resetDiagnostics: state.resetDiagnostics,
+      setOverlayVisible: state.setOverlayVisible,
+    })),
+  );
 };
 
 // Marker slice selectors

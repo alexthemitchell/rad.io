@@ -464,9 +464,6 @@ export function useFrequencyScanner(
               );
 
               updateBulkCachedRDSData(rdsUpdates);
-              console.info(
-                `Scanner: Extracted RDS from ${rdsUpdates.length}/${fmStations.length} FM stations`,
-              );
             }
           } catch (error) {
             console.warn("Bulk RDS processing failed:", error);
@@ -532,22 +529,10 @@ export function useFrequencyScanner(
 
       if (shouldForcePreferredRate) {
         sampleRateToUse = preferredSampleRate;
-        console.info(
-          `Scanner: Using preferred sample rate ${(
-            sampleRateToUse / 1e6
-          ).toFixed(3)} MSPS`,
-        );
       }
 
       if (previousSampleRate !== sampleRateToUse) {
-        const previousLabel = previousSampleRate
-          ? `${(previousSampleRate / 1e6).toFixed(3)} MSPS`
-          : "unknown";
-        console.info(
-          `Scanner: Adjusting device sample rate from ${previousLabel} to ${(
-            sampleRateToUse / 1e6
-          ).toFixed(3)} MSPS`,
-        );
+        // Sample rate changed - will be set below
       }
 
       await device.setSampleRate(sampleRateToUse);
@@ -603,7 +588,6 @@ export function useFrequencyScanner(
     if (!device.isOpen()) {
       try {
         await device.open();
-        console.info("Scanner: Opened device before starting scan");
       } catch (error) {
         console.error("Scanner: Failed to open device for scanning", error);
         return;

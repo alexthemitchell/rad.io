@@ -155,13 +155,7 @@ function getWasmModuleExportStatus(mod: Partial<WasmDSPModule>): {
 let wasmModule: WasmDSPModule | null = null;
 let wasmLoading: Promise<WasmDSPModule | null> | null = null;
 let wasmSupported = false;
-// One-time log flags to avoid flooding console on hot paths
-let loggedFFTChoice = false;
-let loggedWaveformOutSIMD = false;
-let loggedWaveformOut = false;
-let loggedWaveformSIMD = false;
-let loggedWaveformStandard = false;
-let loggedSpectrogramChoice = false;
+// One-time log flags to avoid flooding console on hot paths (kept for code structure, logs removed)
 let loggedWindowChoice = false;
 
 // Test-only helpers to control internal module state
@@ -578,20 +572,12 @@ export function calculateFFTWasm(
 
     // Prefer return-by-value API if available (avoids copy-back issue)
     if (typeof wasmModule.calculateFFTOut === "function") {
-      if (!loggedFFTChoice) {
-        console.info("📡 DSP: Using calculateFFTOut (return-by-value)");
-        loggedFFTChoice = true;
-      }
       return wasmModule.calculateFFTOut(iSamples, qSamples, fftSize);
     }
 
     // Fallback to output-parameter API; note that some loader versions
     // do not copy results back to JS when passing an output array.
     // We'll still use it and rely on higher-level sanity checks/fallbacks.
-    if (!loggedFFTChoice) {
-      console.info("📡 DSP: Using calculateFFT with output parameter");
-      loggedFFTChoice = true;
-    }
     const output = wasmModule.allocateFloat32Array(fftSize);
     wasmModule.calculateFFT(iSamples, qSamples, fftSize, output);
     return output;
@@ -635,12 +621,6 @@ export function calculateWaveformWasm(
 
     // Prefer SIMD return-by-value if available (best performance)
     if (typeof wasmModule.calculateWaveformOutSIMD === "function") {
-      if (!loggedWaveformOutSIMD) {
-        console.info(
-          "📡 DSP: Using calculateWaveformOutSIMD (SIMD return-by-value)",
-        );
-        loggedWaveformOutSIMD = true;
-      }
       const flat = wasmModule.calculateWaveformOutSIMD(
         iSamples,
         qSamples,
@@ -653,10 +633,6 @@ export function calculateWaveformWasm(
 
     // Fall back to standard return-by-value if available
     if (typeof wasmModule.calculateWaveformOut === "function") {
-      if (!loggedWaveformOut) {
-        console.info("📡 DSP: Using calculateWaveformOut (return-by-value)");
-        loggedWaveformOut = true;
-      }
       const flat = wasmModule.calculateWaveformOut(iSamples, qSamples, count);
       const amplitude = flat.subarray(0, count);
       const phase = flat.subarray(count, count * 2);
@@ -668,10 +644,6 @@ export function calculateWaveformWasm(
     const phase = wasmModule.allocateFloat32Array(count);
 
     if (typeof wasmModule.calculateWaveformSIMD === "function") {
-      if (!loggedWaveformSIMD) {
-        console.info("📡 DSP: Using calculateWaveformSIMD (SIMD legacy)");
-        loggedWaveformSIMD = true;
-      }
       wasmModule.calculateWaveformSIMD(
         iSamples,
         qSamples,
@@ -680,10 +652,6 @@ export function calculateWaveformWasm(
         count,
       );
     } else {
-      if (!loggedWaveformStandard) {
-        console.info("📡 DSP: Using calculateWaveform (standard legacy)");
-        loggedWaveformStandard = true;
-      }
       wasmModule.calculateWaveform(iSamples, qSamples, amplitude, phase, count);
     }
 
@@ -732,10 +700,6 @@ export function calculateSpectrogramWasm(
 
     // Prefer return-by-value API if available to avoid copy-back issue
     if (typeof wasmModule.calculateSpectrogramOut === "function") {
-      if (!loggedSpectrogramChoice) {
-        console.info("📡 DSP: Using calculateSpectrogramOut (return-by-value)");
-        loggedSpectrogramChoice = true;
-      }
       const flat = wasmModule.calculateSpectrogramOut(
         iSamples,
         qSamples,
@@ -750,10 +714,6 @@ export function calculateSpectrogramWasm(
     }
 
     // Allocate output array in WASM memory and call legacy API
-    if (!loggedSpectrogramChoice) {
-      console.info("📡 DSP: Using calculateSpectrogram with output parameter");
-      loggedSpectrogramChoice = true;
-    }
     const output = wasmModule.allocateFloat32Array(rowCount * fftSize);
     wasmModule.calculateSpectrogram(
       iSamples,

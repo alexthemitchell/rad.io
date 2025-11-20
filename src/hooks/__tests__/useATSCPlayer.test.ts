@@ -134,7 +134,7 @@ describe("useATSCPlayer", () => {
     expect(result.current.playerState).toBe("tuning");
     expect(result.current.currentChannel).toEqual(mockChannel);
     expect(mockDevice.setFrequency).toHaveBeenCalledWith(
-      mockChannel.channel.frequency,
+      mockChannel.channel.pilotFrequency,
     );
   });
 

@@ -183,11 +183,13 @@ export function DeviceDiagnostics({
             {isResetting ? "Resetting Device..." : "🔄 Reset Device"}
           </button>
           <h5 style={{ marginTop: "15px" }}>
-            If software reset doesn&apos;t work:
+            If driver reset doesn&apos;t work:
           </h5>
           <ol>
             <li>Unplug and replug the USB cable</li>
-            <li>Press the reset button on your HackRF device</li>
+            <li>
+              Use the HackRF driver reset (not the WebUSB reset) from rad.io
+            </li>
             <li>Try a different USB port (preferably USB 3.0)</li>
             <li>
               Verify device works with CLI tools:

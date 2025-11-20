@@ -56,7 +56,7 @@ await hackRF.setFrequency(100_000_000);
 // Verify correct USB commands sent
 expect(controlTransferOut).toHaveBeenCalledWith(
   expect.objectContaining({
-    request: RequestCommand.SET_FREQ,
+    request: VendorRequest.SET_FREQ,
   }),
   expect.any(ArrayBuffer),
 );

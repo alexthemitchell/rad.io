@@ -258,13 +258,134 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           await demodulatorRef.current.activate();
         }
 
-        // Tune to channel center frequency
-        await device.setFrequency(channel.frequency);
-        setCurrentChannel(channel);
+        // Use moderate sample rate for initial scanning to reduce USB/control transfer stress.
+        // Set sample rate BEFORE tuning to improve HackRF stability on Windows/WebUSB.
+        const sampleRate = 8_000_000;
+        const toMsg = (err: unknown): string => {
+          const anyErr = err as { message?: unknown } | undefined;
+          if (typeof anyErr?.message === "string" && anyErr.message)
+            return anyErr.message;
+          try {
+            return JSON.stringify(anyErr ?? {});
+          } catch {
+            // eslint-disable-next-line @typescript-eslint/no-base-to-string
+            return String(anyErr);
+          }
+        };
+        try {
+          await device.setSampleRate(sampleRate);
+        } catch (e) {
+          console.warn(
+            "ATSC Scanner: Failed to set 8 MSPS; attempting recovery and fallback",
+            e,
+          );
+          // Attempt fast recovery then try a safer default rate (20 MSPS)
+          const fast = (
+            device as unknown as { fastRecovery?: () => Promise<void> }
+          ).fastRecovery;
+          if (typeof fast === "function") {
+            try {
+              await fast();
+            } catch (re) {
+              console.error(
+                "ATSC Scanner: fastRecovery failed before fallback sample rate",
+                toMsg(re),
+              );
+            }
+          }
+          try {
+            await device.setSampleRate(20_000_000);
+          } catch (e2) {
+            console.error(
+              "ATSC Scanner: Fallback to 20 MSPS failed; skipping channel",
+              e2,
+            );
+            return null;
+          }
+        }
 
-        // Set sample rate to match ATSC symbol rate
-        const sampleRate = ATSC_CONSTANTS.SYMBOL_RATE;
-        await device.setSampleRate(sampleRate);
+        // Now tune to channel center frequency (pilot detection logic assumes center)
+        // Retry with fastRecovery fallback if initial tuning fails (firmware corruption scenarios)
+        const tuneFrequency = async (): Promise<boolean> => {
+          try {
+            await device.setFrequency(channel.frequency);
+            return true;
+          } catch (err) {
+            console.warn("ATSC Scanner: frequency tune failed", toMsg(err));
+            // Attempt fastRecovery if available
+            const fast = (
+              device as unknown as { fastRecovery?: () => Promise<void> }
+            ).fastRecovery;
+            if (typeof fast === "function") {
+              try {
+                await fast();
+                await device.setFrequency(channel.frequency);
+                return true;
+              } catch (recoveryErr) {
+                console.error(
+                  "ATSC Scanner: fastRecovery failed",
+                  toMsg(recoveryErr),
+                );
+                return false;
+              }
+            }
+            return false;
+          }
+        };
+        const tuned = await tuneFrequency();
+        if (!tuned) {
+          return null; // Skip channel if we cannot reliably tune
+        }
+        setCurrentChannel(channel);
+        // If prior frequency recovery occurred, still proceed at 8 MSPS; adjust later if needed.
+
+        // Configure RF front-end for OTA detection (match player initialization sequence)
+        if (
+          (
+            device as unknown as {
+              setBandwidth?: (bw: number) => Promise<void>;
+            }
+          ).setBandwidth
+        ) {
+          try {
+            await (
+              device as unknown as {
+                setBandwidth: (bw: number) => Promise<void>;
+              }
+            ).setBandwidth(6_000_000);
+          } catch (e) {
+            console.warn("ATSC Scanner: Failed to set 6 MHz bandwidth", e);
+          }
+        }
+        if (
+          (device as unknown as { setLNAGain?: (g: number) => Promise<void> })
+            .setLNAGain
+        ) {
+          try {
+            await (
+              device as unknown as { setLNAGain: (g: number) => Promise<void> }
+            ).setLNAGain(24);
+          } catch (e) {
+            console.warn("ATSC Scanner: Failed to set LNA gain", e);
+          }
+        }
+        if (
+          (
+            device as unknown as {
+              setAmpEnable?: (en: boolean) => Promise<void>;
+            }
+          ).setAmpEnable
+        ) {
+          try {
+            await (
+              device as unknown as {
+                setAmpEnable: (en: boolean) => Promise<void>;
+              }
+            ).setAmpEnable(true);
+          } catch (e) {
+            console.warn("ATSC Scanner: Failed to enable RF amp", e);
+          }
+        }
 
         // Collect IQ samples
         const iqSamples: IQSample[] = [];
@@ -282,9 +403,12 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
             iqSamples.push(...samples.slice(i, i + CHUNK_SIZE));
           }
 
-          if (iqSamples.length >= config.fftSize && dwellResolveRef.current) {
-            samplesCollected = true;
-            dwellResolveRef.current();
+          // Allow full dwell time to accumulate more data for better SNR; do not early finalize
+          // (Earlier logic stopped as soon as fftSize samples collected, often << dwellTime.)
+          // We still cap maximum accumulation implicitly by dwell time.
+          // Soft-cap accumulation at fftSize to avoid excessive memory / event loop blocking.
+          if (iqSamples.length >= config.fftSize) {
+            samplesCollected = true; // stop further pushes; continue dwell timing for consistent SNR
           }
         });
 
@@ -302,9 +426,7 @@ export function useATSCScanner(device: ISDRDevice | undefined): {
           dwellResolveRef.current = finalize;
           scanTimeoutRef.current = setTimeout(finalize, config.dwellTime);
 
-          if (iqSamples.length >= config.fftSize) {
-            finalize();
-          }
+          // Removed early finalize; always wait full dwell time for improved detection reliability
         });
 
         clearPendingTimers();

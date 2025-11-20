@@ -4,6 +4,12 @@
 
 This document describes the consolidated error handling system for SDR device drivers in rad.io. The system provides consistent user feedback, improved resilience, and centralized error tracking.
 
+## References
+
+- [WebUSB API Specification](https://wicg.github.io/webusb/) - Browser API for USB device communication
+- [USBDevice Interface (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/USBDevice) - Device control and transfer methods
+- [HackRF USB API](https://github.com/greatscottgadgets/hackrf/blob/master/firmware/common/usb_request.h) - Vendor-specific commands
+
 ## Architecture
 
 ### Components
@@ -255,12 +261,65 @@ The device will be automatically reset. If the problem persists, unplug and repl
 Close other applications that may be using the device (SDR#, GQRX, etc.) and try again."
 ```
 
+## Platform-Specific Limitations
+
+### HackRF One on Windows
+
+**Firmware Corruption Recovery:**
+
+When HackRF firmware becomes corrupted (all USB control OUT transfers fail with `NetworkError`), there are two recovery methods:
+
+**1. Software Recovery (Automatic):**
+
+The driver automatically detects firmware corruption and performs a reset via [`USBDevice.reset()`](https://developer.mozilla.org/en-US/docs/Web/API/USBDevice/reset):
+
+1. On device `open()`, detect stale state: `!wasCleanClosed`
+2. Call `await usbDevice.reset()` to trigger USB bus reset
+3. Wait 500ms for firmware to recover
+4. Reopen device with fresh state
+
+See implementation in `src/drivers/hackrf/core/transport.ts` and `src/drivers/hackrf/core/recovery.ts`.
+
+**2. Physical Power Cycle (If software recovery fails):**
+
+1. Unplug the USB cable
+2. Wait 10 seconds
+3. Plug the cable back in
+
+**Why other software methods fail on Windows:**
+
+- Direct [`usbDevice.reset()`](https://developer.mozilla.org/en-US/docs/Web/API/USBDevice/reset) can fail with `NetworkError: Unable to reset the device` when interfaces are claimed, but the driver releases interfaces before resetting
+- Chrome security policy limits when USB resets can be performed
+- HackRF vendor RESET command (VendorRequest 30) is itself a control OUT transfer, so it also fails when firmware is corrupted
+- Physical power cycling is the most reliable recovery method for severe firmware corruption
+
+**Technical References:**
+
+- [WebUSB API - USBDevice.reset()](https://developer.mozilla.org/en-US/docs/Web/API/USBDevice/reset)
+- [WebUSB Specification](https://wicg.github.io/webusb/)
+- [HackRF USB Vendor Requests](https://github.com/greatscottgadgets/hackrf/blob/master/firmware/common/usb_request.h)
+
+**Symptoms of firmware corruption:**
+
+- Device shows as "Connected" but all operations fail
+- Control IN (read) transfers work, but control OUT (write) transfers fail
+- Scanner fails on all channels
+- Frequency/sample rate changes fail
+- Diagnostics shows repeated "USB communication error" messages
+
+**Prevention:**
+
+- Avoid excessive HMR (Hot Module Replacement) reloads during development
+- Use full page refresh instead when needed
+- Ensure proper device cleanup before page navigation
+
 ## Future Enhancements
 
 - [ ] Add device health metrics (error rate, recovery success rate)
 - [ ] Implement error rate limiting to avoid notification spam
-- [ ] Add diagnostic panel UI to view error history
+- [ ] Add diagnostic panel UI to view error history (partially implemented)
 - [ ] Collect anonymous error telemetry for debugging
 - [ ] Add device-specific error handlers for RTL-SDR, Airspy, etc.
 - [ ] Implement smart retry strategies based on error type
 - [ ] Add error trend analysis (e.g., "USB errors increasing")
+- [ ] Add persistent error banner in diagnostics overlay for critical errors

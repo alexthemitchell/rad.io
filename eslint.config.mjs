@@ -369,6 +369,26 @@ export default defineConfig([
     language: "json/jsonc",
   })),
 
+  // ATSC baseband algorithm overrides (performance/legacy-friendly)
+  {
+    name: "rad.io/atsc-baseband-overrides",
+    files: ["src/atsc/baseband/**/*.ts"],
+    rules: {
+      // Allow low-level mutations and legacy math tables
+      "no-param-reassign": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/explicit-function-return-type": "off",
+      "@typescript-eslint/explicit-module-boundary-types": "off",
+      "@typescript-eslint/naming-convention": "off",
+      "@typescript-eslint/prefer-for-of": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+    },
+  },
+
   // Prettier integration - must be last to override other configs
   {
     name: "rad.io/prettier",
