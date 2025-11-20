@@ -488,6 +488,245 @@ export class SpectrumAnnotations {
     return true;
   }
 
+  /**
+   * Render frequency markers on spectrum
+   * @param markers Array of markers to render
+   * @param sampleRate Sample rate in Hz
+   * @param centerFrequency Center frequency in Hz
+   * @param hoveredMarkerId ID of currently hovered marker (for highlighting)
+   * @returns True if rendering succeeded
+   */
+  public renderMarkers(
+    markers: Array<{ id: string; label: string; freqHz: number; powerDb?: number }>,
+    sampleRate: number,
+    centerFrequency: number,
+    hoveredMarkerId: string | null = null,
+  ): boolean {
+    if (!this.canvas || !this.ctx) {
+      return false;
+    }
+
+    // Validate inputs
+    if (
+      !Number.isFinite(sampleRate) ||
+      !Number.isFinite(centerFrequency) ||
+      markers.length === 0
+    ) {
+      return true; // Not an error
+    }
+
+    const ctx = this.ctx;
+    const rect = this.canvas.getBoundingClientRect();
+    const width = rect.width > 0 ? rect.width : this.canvas.width;
+    const height = rect.height > 0 ? rect.height : this.canvas.height;
+
+    // Match CanvasSpectrum's internal chart margins
+    const margin = DEFAULT_MARGIN;
+    const chartWidth = width - margin.left - margin.right;
+    const chartHeight = height - margin.top - margin.bottom;
+    if (chartWidth <= 0 || chartHeight <= 0) {
+      return false;
+    }
+
+    // Calculate frequency range
+    const freqMin = centerFrequency - sampleRate / 2;
+    const freqMax = centerFrequency + sampleRate / 2;
+    const freqRange = Math.max(1, freqMax - freqMin);
+
+    // Filter visible markers
+    const visibleMarkers = markers.filter(
+      (m) => m.freqHz >= freqMin && m.freqHz <= freqMax,
+    );
+
+    if (visibleMarkers.length === 0) {
+      return true;
+    }
+
+    // Save context state and scale for device pixel ratio
+    ctx.save();
+    ctx.scale(this.dpr, this.dpr);
+
+    // Clip to chart area
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(margin.left, margin.top, chartWidth, chartHeight);
+    if (typeof ctx.clip === "function") {
+      ctx.clip();
+    }
+
+    // Use CSS variable for accent color with fallback
+    const accentColor =
+      getComputedStyle(this.canvas).getPropertyValue("--rad-accent") ||
+      "oklch(78% 0.14 195deg)";
+    const markerColor = accentColor.trim().startsWith("oklch(")
+      ? "rgba(0, 255, 255, 0.9)" // Cyan fallback
+      : accentColor;
+
+    // Draw each marker
+    for (const marker of visibleMarkers) {
+      const isHovered = marker.id === hoveredMarkerId;
+
+      // Calculate x position
+      const xNorm = (marker.freqHz - freqMin) / freqRange;
+      const x = margin.left + xNorm * chartWidth;
+
+      // Draw vertical line
+      ctx.strokeStyle = markerColor;
+      ctx.lineWidth = isHovered ? 3 : 2;
+      if (typeof ctx.setLineDash === "function") {
+        ctx.setLineDash([]);
+      }
+      ctx.shadowColor = markerColor;
+      ctx.shadowBlur = isHovered ? 6 : 3;
+      ctx.beginPath();
+      ctx.moveTo(x, margin.top);
+      ctx.lineTo(x, margin.top + chartHeight);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Draw drag handle (circle at top)
+      const handleRadius = isHovered ? 6 : 4;
+      const handleY = margin.top + 10;
+      ctx.fillStyle = markerColor;
+      ctx.beginPath();
+      ctx.arc(x, handleY, handleRadius, 0, 2 * Math.PI);
+      ctx.fill();
+
+      // Draw label box at top
+      const labelY = margin.top + 28;
+      const freqMHz = (marker.freqHz / 1e6).toFixed(3);
+      const powerStr = marker.powerDb !== undefined ? `, ${marker.powerDb.toFixed(2)} dBFS` : "";
+      const labelText = `${marker.label}: ${freqMHz} MHz${powerStr}`;
+
+      ctx.font = `${isHovered ? 13 : 12}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      const textMetrics = ctx.measureText(labelText);
+      const textWidth = textMetrics.width;
+      const textHeight = (isHovered ? 13 : 12) * 1.5;
+      const bgPadding = LABEL_PADDING_PX + 2;
+
+      // Background with padding
+      ctx.fillStyle = isHovered ? "rgba(0, 0, 0, 0.90)" : "rgba(0, 0, 0, 0.85)";
+      ctx.fillRect(
+        x - textWidth / 2 - bgPadding,
+        labelY - textHeight / 2 - bgPadding,
+        textWidth + bgPadding * 2,
+        textHeight + bgPadding * 2,
+      );
+
+      // Border
+      ctx.strokeStyle = markerColor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        x - textWidth / 2 - bgPadding,
+        labelY - textHeight / 2 - bgPadding,
+        textWidth + bgPadding * 2,
+        textHeight + bgPadding * 2,
+      );
+
+      // Text
+      ctx.fillStyle = isHovered ? "#ffffff" : "#f0f0f0";
+      ctx.fillText(labelText, x, labelY);
+    }
+
+    ctx.restore(); // clip
+    ctx.restore(); // dpr scale
+
+    return true;
+  }
+
+  /**
+   * Find marker at given canvas coordinates
+   * @param x Canvas x coordinate
+   * @param y Canvas y coordinate
+   * @param markers Array of markers
+   * @param sampleRate Sample rate in Hz
+   * @param centerFrequency Center frequency in Hz
+   * @returns Marker at coordinates and interaction type, or null if none
+   */
+  public findMarkerAt(
+    x: number,
+    y: number,
+    markers: Array<{ id: string; label: string; freqHz: number; powerDb?: number }>,
+    sampleRate: number,
+    centerFrequency: number,
+  ): { marker: { id: string; label: string; freqHz: number; powerDb?: number }; isDragHandle: boolean } | null {
+    if (!this.canvas) {
+      return null;
+    }
+
+    const rect = this.canvas.getBoundingClientRect();
+    const width = rect.width;
+
+    const margin = DEFAULT_MARGIN;
+    const chartWidth = width - margin.left - margin.right;
+    if (chartWidth <= 0) {
+      return null;
+    }
+
+    const freqMin = centerFrequency - sampleRate / 2;
+    const freqMax = centerFrequency + sampleRate / 2;
+    const freqRange = Math.max(1, freqMax - freqMin);
+
+    // Check markers in reverse order (top-most first)
+    for (let i = markers.length - 1; i >= 0; i--) {
+      const marker = markers[i];
+      if (!marker || marker.freqHz < freqMin || marker.freqHz > freqMax) {
+        continue;
+      }
+
+      const xNorm = (marker.freqHz - freqMin) / freqRange;
+      const markerX = margin.left + xNorm * chartWidth;
+
+      // Check drag handle (circle at top)
+      const handleY = margin.top + 10;
+      const handleRadius = 6; // Use larger radius for hit detection
+      const distToHandle = Math.sqrt(
+        Math.pow(x - markerX, 2) + Math.pow(y - handleY, 2),
+      );
+      if (distToHandle <= handleRadius + 3) {
+        // Add 3px tolerance
+        return { marker, isDragHandle: true };
+      }
+
+      // Check vertical line (wider hit area for easier clicking)
+      if (Math.abs(x - markerX) <= 5) {
+        return { marker, isDragHandle: false };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Convert pixel X coordinate to frequency
+   * @param pixelX Canvas x coordinate
+   * @param canvasWidth Canvas width
+   * @param sampleRate Sample rate in Hz
+   * @param centerFrequency Center frequency in Hz
+   * @returns Frequency in Hz
+   */
+  public pixelToFrequency(
+    pixelX: number,
+    canvasWidth: number,
+    sampleRate: number,
+    centerFrequency: number,
+  ): number {
+    const margin = DEFAULT_MARGIN;
+    const chartWidth = canvasWidth - margin.left - margin.right;
+    const freqMin = centerFrequency - sampleRate / 2;
+    const freqMax = centerFrequency + sampleRate / 2;
+
+    const clampedX = Math.max(
+      margin.left,
+      Math.min(pixelX, margin.left + chartWidth),
+    );
+    const xNorm = (clampedX - margin.left) / chartWidth;
+    return freqMin + xNorm * (freqMax - freqMin);
+  }
+
   // Build a semi-transparent fill for waterfall overlays that shows underlying data
   // while still indicating signal presence. Uses low alpha for transparency.
   private getWaterfallFillColor(baseRgb: string): string {

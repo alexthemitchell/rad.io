@@ -43,6 +43,11 @@ export interface MarkerSlice {
   addMarker: (freqHz: number, powerDb?: number) => void;
 
   /**
+   * Update marker frequency and/or power by ID
+   */
+  updateMarker: (id: string, freqHz?: number, powerDb?: number) => void;
+
+  /**
    * Remove a marker by ID
    */
   removeMarker: (id: string) => void;
@@ -84,6 +89,20 @@ export const markerSlice: StateCreator<MarkerSlice> = (set) => ({
         nextMarkerNumber: state.nextMarkerNumber + 1,
       };
     });
+  },
+
+  updateMarker: (id: string, freqHz?: number, powerDb?: number): void => {
+    set((state) => ({
+      markers: state.markers.map((m) =>
+        m.id === id
+          ? {
+              ...m,
+              ...(freqHz !== undefined && { freqHz }),
+              ...(powerDb !== undefined && { powerDb }),
+            }
+          : m,
+      ),
+    }));
   },
 
   removeMarker: (id: string): void => {
