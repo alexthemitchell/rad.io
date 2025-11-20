@@ -76,8 +76,6 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
   // Focus management and keyboard handling for import preview dialog
   useEffect((): (() => void) | undefined => {
     if (importPreview && dialogRef.current) {
-      // Save the currently focused element to restore later
-      const previouslyFocused = document.activeElement as HTMLElement;
       const currentImportButton = importButtonRef.current;
 
       // Focus the dialog
@@ -98,9 +96,6 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
         // Restore focus to the import button when dialog closes
         if (currentImportButton) {
           currentImportButton.focus();
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        } else if (previouslyFocused) {
-          previouslyFocused.focus();
         }
       };
     }
@@ -460,7 +455,11 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="import-preview-title"
-          aria-describedby="import-preview-desc"
+          aria-describedby={
+            importPreview.duplicates.length > 0
+              ? "import-preview-desc duplicate-options-desc"
+              : "import-preview-desc"
+          }
           className="import-preview-dialog"
           tabIndex={-1}
         >
@@ -484,7 +483,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
           </div>
 
           {importPreview.duplicates.length > 0 && (
-            <div className="duplicate-options">
+            <div className="duplicate-options" id="duplicate-options-desc">
               <p>
                 <strong>How to handle duplicates?</strong>
               </p>
@@ -528,8 +527,8 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
             <details className="duplicate-list">
               <summary>View duplicate bookmarks</summary>
               <ul>
-                {importPreview.duplicates.map((dup, idx) => (
-                  <li key={idx}>
+                {importPreview.duplicates.map((dup) => (
+                  <li key={`${dup.imported.id}-${dup.existing.id}`}>
                     <strong>Imported:</strong> {dup.imported.name} at{" "}
                     {formatFrequency(dup.imported.frequency)}
                     <br />
@@ -545,8 +544,11 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
             <details className="error-list">
               <summary>View errors ({importPreview.errors.length})</summary>
               <ul>
-                {importPreview.errors.map((error, idx) => (
-                  <li key={idx} className="error-item">
+                {importPreview.errors.map((error) => (
+                  <li
+                    key={`${error.row}-${error.message}`}
+                    className="error-item"
+                  >
                     Row {error.row}: {error.message}
                   </li>
                 ))}

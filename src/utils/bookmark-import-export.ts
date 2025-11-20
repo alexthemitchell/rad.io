@@ -259,10 +259,18 @@ export function parseBookmarksCSV(
     });
   }
 
-  // Create frequency map for efficient duplicate lookup (O(n) instead of O(n*m))
-  const existingFrequencyMap = new Map<number, Bookmark>();
+  // Create frequency buckets for efficient O(1) duplicate lookup
+  // Bucket frequencies by tolerance range to avoid iterating all bookmarks
+  const bucketSize = DUPLICATE_TOLERANCE;
+  const frequencyBuckets = new Map<number, Bookmark[]>();
   for (const bookmark of existingBookmarks) {
-    existingFrequencyMap.set(bookmark.frequency, bookmark);
+    const bucket = Math.floor(bookmark.frequency / bucketSize);
+    const bucketArray = frequencyBuckets.get(bucket);
+    if (bucketArray) {
+      bucketArray.push(bookmark);
+    } else {
+      frequencyBuckets.set(bucket, [bookmark]);
+    }
   }
 
   // Validate each row
@@ -277,14 +285,17 @@ export function parseBookmarksCSV(
         isDuplicate(valid.frequency, bookmark.frequency),
       );
 
-      // Check for duplicates in existing bookmarks using frequency map
-      let existingDuplicate: Bookmark | undefined;
-      for (const [freq, bm] of existingFrequencyMap.entries()) {
-        if (isDuplicate(freq, bookmark.frequency)) {
-          existingDuplicate = bm;
-          break;
-        }
-      }
+      // Check for duplicates in existing bookmarks using frequency buckets
+      // Only check nearby buckets (current and adjacent) for O(1) average case
+      const checkBucket = Math.floor(bookmark.frequency / bucketSize);
+      const nearbyBookmarks = [
+        ...(frequencyBuckets.get(checkBucket - 1) ?? []),
+        ...(frequencyBuckets.get(checkBucket) ?? []),
+        ...(frequencyBuckets.get(checkBucket + 1) ?? []),
+      ];
+      const existingDuplicate = nearbyBookmarks.find((bm) =>
+        isDuplicate(bm.frequency, bookmark.frequency),
+      );
 
       if (internalDuplicate) {
         // Internal duplicate - add as error
