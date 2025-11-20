@@ -4,7 +4,6 @@ import {
   downloadBookmarksCSV,
   parseBookmarksCSV,
   mergeBookmarks,
-  type DuplicateStrategy,
 } from "../bookmark-import-export";
 
 describe("bookmark-import-export", () => {
@@ -364,13 +363,14 @@ describe("bookmark-import-export", () => {
       expect(preview.errors).toHaveLength(0);
 
       const bookmark = preview.valid[0];
-      expect(bookmark.frequency).toBe(100000000);
-      expect(bookmark.name).toBe("Local FM");
-      expect(bookmark.tags).toEqual(["broadcast", "fm"]);
-      expect(bookmark.notes).toBe("Test note");
-      expect(bookmark.createdAt).toBe(1700000000000);
-      expect(bookmark.lastUsed).toBe(1700000001000);
-      expect(bookmark.id).toBeTruthy();
+      expect(bookmark).toBeDefined();
+      expect(bookmark?.frequency).toBe(100000000);
+      expect(bookmark?.name).toBe("Local FM");
+      expect(bookmark?.tags).toEqual(["broadcast", "fm"]);
+      expect(bookmark?.notes).toBe("Test note");
+      expect(bookmark?.createdAt).toBe(1700000000000);
+      expect(bookmark?.lastUsed).toBe(1700000001000);
+      expect(bookmark?.id).toBeTruthy();
     });
 
     it("should handle optional fields", () => {
@@ -381,12 +381,13 @@ describe("bookmark-import-export", () => {
 
       expect(preview.valid).toHaveLength(1);
       const bookmark = preview.valid[0];
-      expect(bookmark.frequency).toBe(100000000);
-      expect(bookmark.name).toBe("Simple Station");
-      expect(bookmark.tags).toEqual([]);
-      expect(bookmark.notes).toBe("");
-      expect(bookmark.createdAt).toBeGreaterThan(0);
-      expect(bookmark.lastUsed).toBeGreaterThan(0);
+      expect(bookmark).toBeDefined();
+      expect(bookmark?.frequency).toBe(100000000);
+      expect(bookmark?.name).toBe("Simple Station");
+      expect(bookmark?.tags).toEqual([]);
+      expect(bookmark?.notes).toBe("");
+      expect(bookmark?.createdAt).toBeGreaterThan(0);
+      expect(bookmark?.lastUsed).toBeGreaterThan(0);
     });
 
     it("should reject missing frequency", () => {
@@ -487,13 +488,16 @@ invalid,Test Station,test,note,1700000000000,1700000001000`;
       expect(preview.errors).toHaveLength(0);
 
       const duplicate = preview.duplicates[0];
-      expect(duplicate.imported.frequency).toBe(100000500);
-      expect(duplicate.existing.frequency).toBe(100000000);
-      expect(
-        Math.abs(
-          duplicate.imported.frequency - duplicate.existing.frequency,
-        ),
-      ).toBeLessThanOrEqual(1000);
+      expect(duplicate).toBeDefined();
+      expect(duplicate?.imported.frequency).toBe(100000500);
+      expect(duplicate?.existing.frequency).toBe(100000000);
+      if (duplicate) {
+        expect(
+          Math.abs(
+            duplicate.imported.frequency - duplicate.existing.frequency,
+          ),
+        ).toBeLessThanOrEqual(1000);
+      }
     });
 
     it("should not detect duplicate when difference is greater than 1kHz", () => {
@@ -565,7 +569,7 @@ invalid,Invalid Name,test,note,1700000000000,1700000001000
       const preview = parseBookmarksCSV(csv, []);
 
       expect(preview.valid).toHaveLength(1);
-      expect(preview.valid[0].tags).toEqual(["weather", "fm", "broadcast"]);
+      expect(preview.valid[0]?.tags).toEqual(["weather", "fm", "broadcast"]);
     });
 
     it("should handle empty CSV", () => {
@@ -596,8 +600,8 @@ invalid,Invalid Name,test,note,1700000000000,1700000001000
       const preview = parseBookmarksCSV(csv, []);
 
       expect(preview.valid).toHaveLength(1);
-      expect(preview.valid[0].name).toBe("Station, with comma");
-      expect(preview.valid[0].notes).toBe("Note, with commas");
+      expect(preview.valid[0]?.name).toBe("Station, with comma");
+      expect(preview.valid[0]?.notes).toBe("Note, with commas");
     });
 
     it("should handle quoted fields with newlines", () => {
@@ -608,7 +612,7 @@ Line 2",1700000000000,1700000001000`;
       const preview = parseBookmarksCSV(csv, []);
 
       expect(preview.valid).toHaveLength(1);
-      expect(preview.valid[0].notes).toContain("\n");
+      expect(preview.valid[0]?.notes).toContain("\n");
     });
 
     it("should round frequency to integer", () => {
@@ -618,7 +622,7 @@ Line 2",1700000000000,1700000001000`;
       const preview = parseBookmarksCSV(csv, []);
 
       expect(preview.valid).toHaveLength(1);
-      expect(preview.valid[0].frequency).toBe(100000001);
+      expect(preview.valid[0]?.frequency).toBe(100000001);
     });
 
     it("should use current time for invalid timestamps", () => {
@@ -630,10 +634,10 @@ Line 2",1700000000000,1700000001000`;
       const after = Date.now();
 
       expect(preview.valid).toHaveLength(1);
-      expect(preview.valid[0].createdAt).toBeGreaterThanOrEqual(before);
-      expect(preview.valid[0].createdAt).toBeLessThanOrEqual(after);
-      expect(preview.valid[0].lastUsed).toBeGreaterThanOrEqual(before);
-      expect(preview.valid[0].lastUsed).toBeLessThanOrEqual(after);
+      expect(preview.valid[0]?.createdAt).toBeGreaterThanOrEqual(before);
+      expect(preview.valid[0]?.createdAt).toBeLessThanOrEqual(after);
+      expect(preview.valid[0]?.lastUsed).toBeGreaterThanOrEqual(before);
+      expect(preview.valid[0]?.lastUsed).toBeLessThanOrEqual(after);
     });
   });
 
@@ -685,7 +689,7 @@ Line 2",1700000000000,1700000001000`;
         duplicates: [
           {
             imported: duplicateBookmark,
-            existing: existingBookmarks[0],
+            existing: existingBookmarks[0]!,
           },
         ],
         errors: [],
@@ -706,7 +710,7 @@ Line 2",1700000000000,1700000001000`;
         duplicates: [
           {
             imported: duplicateBookmark,
-            existing: existingBookmarks[0],
+            existing: existingBookmarks[0]!,
           },
         ],
         errors: [],
@@ -727,7 +731,7 @@ Line 2",1700000000000,1700000001000`;
         duplicates: [
           {
             imported: duplicateBookmark,
-            existing: existingBookmarks[0],
+            existing: existingBookmarks[0]!,
           },
         ],
         errors: [],
@@ -771,11 +775,11 @@ Line 2",1700000000000,1700000001000`;
         duplicates: [
           {
             imported: duplicateBookmark,
-            existing: existingBookmarks[0],
+            existing: existingBookmarks[0]!,
           },
           {
             imported: { ...validBookmark, frequency: 162550500 },
-            existing: existingBookmarks[1],
+            existing: existingBookmarks[1]!,
           },
         ],
         errors: [],

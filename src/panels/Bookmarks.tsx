@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { notify } from "../lib/notifications";
-import { downloadBookmarksCSV } from "../utils/bookmark-import-export";
+import {
+  downloadBookmarksCSV,
+  parseBookmarksCSV,
+  mergeBookmarks,
+  type ImportPreview,
+  type DuplicateStrategy,
+} from "../utils/bookmark-import-export";
 import {
   loadBookmarks,
   saveBookmarks as saveBookmarksToStorage,
@@ -50,6 +56,12 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     tags: "",
     notes: "",
   });
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(
+    null,
+  );
+  const [duplicateStrategy, setDuplicateStrategy] =
+    useState<DuplicateStrategy>("skip");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const navigate = useNavigate();
   // Unified notifications
@@ -257,6 +269,114 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     });
   };
 
+  const handleImportClick = (): void => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      notify({
+        message: "Please select a CSV file",
+        sr: "assertive",
+        visual: true,
+        tone: "error",
+      });
+      return;
+    }
+
+    // Read file
+    const reader = new FileReader();
+    reader.onload = (e): void => {
+      const content = e.target?.result as string;
+      if (!content) {
+        notify({
+          message: "Failed to read file",
+          sr: "assertive",
+          visual: true,
+          tone: "error",
+        });
+        return;
+      }
+
+      try {
+        const preview = parseBookmarksCSV(content, bookmarks);
+        setImportPreview(preview);
+        setDuplicateStrategy("skip"); // Reset to default
+      } catch (error) {
+        notify({
+          message: `Failed to parse CSV: ${error instanceof Error ? error.message : "Unknown error"}`,
+          sr: "assertive",
+          visual: true,
+          tone: "error",
+        });
+      }
+    };
+
+    reader.onerror = (): void => {
+      notify({
+        message: "Failed to read file",
+        sr: "assertive",
+        visual: true,
+        tone: "error",
+      });
+    };
+
+    reader.readAsText(file);
+
+    // Reset file input so same file can be selected again
+    // eslint-disable-next-line no-param-reassign
+    event.target.value = "";
+  };
+
+  const handleImportConfirm = (): void => {
+    if (!importPreview) {
+      return;
+    }
+
+    const merged = mergeBookmarks(bookmarks, importPreview, duplicateStrategy);
+    saveBookmarks(merged);
+
+    const totalImported =
+      importPreview.valid.length +
+      (duplicateStrategy === "skip" ? 0 : importPreview.duplicates.length);
+
+    let message = `Imported ${totalImported} bookmark${totalImported !== 1 ? "s" : ""}`;
+
+    if (duplicateStrategy === "skip" && importPreview.duplicates.length > 0) {
+      message += `, ${importPreview.duplicates.length} duplicate${importPreview.duplicates.length !== 1 ? "s" : ""} skipped`;
+    } else if (
+      duplicateStrategy === "overwrite" &&
+      importPreview.duplicates.length > 0
+    ) {
+      message += `, ${importPreview.duplicates.length} duplicate${importPreview.duplicates.length !== 1 ? "s" : ""} overwritten`;
+    }
+
+    if (importPreview.errors.length > 0) {
+      message += `, ${importPreview.errors.length} error${importPreview.errors.length !== 1 ? "s" : ""}`;
+    }
+
+    notify({
+      message,
+      sr: "polite",
+      visual: true,
+      tone: "success",
+    });
+
+    setImportPreview(null);
+  };
+
+  const handleImportCancel = (): void => {
+    setImportPreview(null);
+  };
+
   const containerClass = isPanel ? "panel-container" : "page-container";
   const showForm = isAdding || editingId !== null;
   const bookmarkToDelete = pendingDeleteId
@@ -288,6 +408,141 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
           </div>
         </div>
       )}
+
+      {importPreview && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="import-preview-title"
+          aria-describedby="import-preview-desc"
+          className="import-preview-dialog"
+        >
+          <h4 id="import-preview-title">Import Bookmarks Preview</h4>
+
+          <div id="import-preview-desc" className="import-summary">
+            <p>
+              <strong>Valid bookmarks:</strong> {importPreview.valid.length}
+            </p>
+            {importPreview.duplicates.length > 0 && (
+              <p>
+                <strong>Duplicates detected:</strong>{" "}
+                {importPreview.duplicates.length}
+              </p>
+            )}
+            {importPreview.errors.length > 0 && (
+              <p className="error-summary">
+                <strong>Errors:</strong> {importPreview.errors.length}
+              </p>
+            )}
+          </div>
+
+          {importPreview.duplicates.length > 0 && (
+            <div className="duplicate-options">
+              <p>
+                <strong>How to handle duplicates?</strong>
+              </p>
+              <label>
+                <input
+                  type="radio"
+                  name="duplicateStrategy"
+                  value="skip"
+                  checked={duplicateStrategy === "skip"}
+                  onChange={(): void => setDuplicateStrategy("skip")}
+                />
+                Skip duplicates (keep existing)
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="duplicateStrategy"
+                  value="overwrite"
+                  checked={duplicateStrategy === "overwrite"}
+                  onChange={(): void => setDuplicateStrategy("overwrite")}
+                />
+                Overwrite existing with imported
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="duplicateStrategy"
+                  value="import_as_new"
+                  checked={duplicateStrategy === "import_as_new"}
+                  onChange={(): void => setDuplicateStrategy("import_as_new")}
+                />
+                Import duplicates as new bookmarks
+              </label>
+            </div>
+          )}
+
+          {importPreview.duplicates.length > 0 && (
+            <details className="duplicate-list">
+              <summary>View duplicate bookmarks</summary>
+              <ul>
+                {importPreview.duplicates.map((dup, idx) => (
+                  <li key={idx}>
+                    <strong>Imported:</strong> {dup.imported.name} at{" "}
+                    {formatFrequency(dup.imported.frequency)}
+                    <br />
+                    <strong>Existing:</strong> {dup.existing.name} at{" "}
+                    {formatFrequency(dup.existing.frequency)}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          {importPreview.errors.length > 0 && (
+            <details className="error-list">
+              <summary>View errors ({importPreview.errors.length})</summary>
+              <ul>
+                {importPreview.errors.map((error, idx) => (
+                  <li key={idx} className="error-item">
+                    Row {error.row}: {error.message}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          {importPreview.valid.length > 0 && (
+            <details className="valid-list">
+              <summary>
+                View valid bookmarks ({importPreview.valid.length})
+              </summary>
+              <ul>
+                {importPreview.valid.slice(0, 10).map((bookmark) => (
+                  <li key={bookmark.id}>
+                    {bookmark.name} - {formatFrequency(bookmark.frequency)}
+                    {bookmark.tags.length > 0 && (
+                      <span className="preview-tags">
+                        {" "}
+                        ({bookmark.tags.join(", ")})
+                      </span>
+                    )}
+                  </li>
+                ))}
+                {importPreview.valid.length > 10 && (
+                  <li>...and {importPreview.valid.length - 10} more</li>
+                )}
+              </ul>
+            </details>
+          )}
+
+          <div className="import-actions">
+            <button
+              onClick={handleImportConfirm}
+              disabled={
+                importPreview.valid.length === 0 &&
+                importPreview.duplicates.length === 0
+              }
+            >
+              Import
+            </button>
+            <button onClick={handleImportCancel}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       <h2 id="bookmarks-heading">Bookmarks</h2>
 
       {!showForm && (
@@ -377,6 +632,20 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
                 Export CSV
               </button>
             )}
+            <button
+              onClick={handleImportClick}
+              aria-label="Import bookmarks from CSV"
+            >
+              Import CSV
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleFileSelect}
+              style={{ display: "none" }}
+              aria-hidden="true"
+            />
           </section>
         </>
       )}

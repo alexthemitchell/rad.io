@@ -106,19 +106,6 @@ interface ValidationResult {
 }
 
 /**
- * Valid demodulation modes for bookmarks
- */
-const VALID_MODES = [
-  "AM",
-  "FM",
-  "SSB",
-  "USB",
-  "LSB",
-  "CW",
-  "DIGITAL",
-] as const;
-
-/**
  * Device frequency ranges (Hz)
  * RTL-SDR: 24 MHz - 1.7 GHz (extendable down to ~500 kHz with direct sampling)
  * HackRF: 1 MHz - 6 GHz
@@ -139,18 +126,33 @@ function validateBookmarkRow(
   data: Record<string, unknown>,
   rowIndex: number,
 ): ValidationResult {
-  // Check for required fields
-  const freqValue = data["Frequency (Hz)"];
-  const nameValue = data["Name"];
+  // Helper to safely convert unknown to string
+  const toSafeString = (value: unknown): string => {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    // For objects/arrays, treat as empty
+    return "";
+  };
 
-  if (!freqValue || String(freqValue).trim() === "") {
+  // Check for required fields
+  const freqStr = toSafeString(data["Frequency (Hz)"]);
+  const nameStr = toSafeString(data["Name"]);
+
+  if (freqStr.trim() === "") {
     return {
       valid: false,
       error: `Row ${rowIndex}: Missing frequency`,
     };
   }
 
-  if (!nameValue || String(nameValue).trim() === "") {
+  if (nameStr.trim() === "") {
     return {
       valid: false,
       error: `Row ${rowIndex}: Missing name`,
@@ -158,11 +160,11 @@ function validateBookmarkRow(
   }
 
   // Parse and validate frequency
-  const frequency = Number(freqValue);
+  const frequency = Number(freqStr);
   if (isNaN(frequency)) {
     return {
       valid: false,
-      error: `Row ${rowIndex}: Invalid frequency "${freqValue}"`,
+      error: `Row ${rowIndex}: Invalid frequency "${freqStr}"`,
     };
   }
 
@@ -174,17 +176,17 @@ function validateBookmarkRow(
   }
 
   // Parse tags (optional, comma-separated)
-  const tagsValue = data["Tags"];
+  const tagsStr = toSafeString(data["Tags"]);
   let tags: string[] = [];
-  if (tagsValue && String(tagsValue).trim() !== "") {
-    tags = String(tagsValue)
+  if (tagsStr.trim() !== "") {
+    tags = tagsStr
       .split(",")
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
   }
 
   // Parse notes (optional)
-  const notes = data["Notes"] ? String(data["Notes"]).trim() : "";
+  const notes = toSafeString(data["Notes"]).trim();
 
   // Parse timestamps (use current time if not provided or invalid)
   const now = Date.now();
@@ -210,7 +212,7 @@ function validateBookmarkRow(
   const bookmark: Bookmark = {
     id: generateBookmarkId(),
     frequency: Math.round(frequency),
-    name: String(nameValue).trim(),
+    name: nameStr.trim(),
     tags,
     notes,
     createdAt,
@@ -310,15 +312,14 @@ export function mergeBookmarks(
     result = [...result, ...preview.valid];
   } else if (duplicateStrategy === "overwrite") {
     // Remove existing duplicates and add all imported bookmarks
-    const duplicateIds = new Set(
-      preview.duplicates.map((d) => d.existing.id),
-    );
+    const duplicateIds = new Set(preview.duplicates.map((d) => d.existing.id));
     result = result.filter((b) => !duplicateIds.has(b.id));
     result = [
       ...result,
       ...preview.valid,
       ...preview.duplicates.map((d) => d.imported),
     ];
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   } else if (duplicateStrategy === "import_as_new") {
     // Import everything including duplicates with new IDs
     result = [
