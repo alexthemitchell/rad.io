@@ -29,6 +29,9 @@ export function formatBytes(bytes: number): string {
  * @returns Formatted duration string (e.g., "2:05" or "1:30:45")
  */
 export function formatDuration(seconds: number): string {
+  if (seconds < 0) {
+    return "0:00";
+  }
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
@@ -46,6 +49,9 @@ export function formatDuration(seconds: number): string {
  */
 export function formatTimestamp(isoString: string): string {
   const date = new Date(isoString);
+  if (isNaN(date.getTime())) {
+    return "Invalid date";
+  }
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));

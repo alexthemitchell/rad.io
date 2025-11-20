@@ -147,7 +147,11 @@ function Recordings(): React.JSX.Element {
       previousFocusRef.current = document.activeElement as HTMLElement;
       // Focus the cancel button when dialog opens
       cancelButtonRef.current?.focus();
-    } else if (previousFocusRef.current) {
+    } else if (
+      previousFocusRef.current &&
+      typeof previousFocusRef.current.focus === "function" &&
+      document.contains(previousFocusRef.current)
+    ) {
       // Restore focus when dialog closes
       previousFocusRef.current.focus();
       previousFocusRef.current = null;
