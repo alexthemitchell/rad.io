@@ -50,6 +50,7 @@
     "@types/jest": "^29.5.14",
     "@types/jest-axe": "^3.5.9",
     "@types/node": "^24.9.1",
+    "@types/papaparse": "^5.5.0",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "@types/react-router-dom": "^5.3.3",
@@ -91,6 +92,7 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
+    "papaparse": "^5.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.9.4",

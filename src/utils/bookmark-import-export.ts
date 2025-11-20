@@ -1,8 +1,9 @@
 /**
  * Utilities for importing and exporting bookmarks in CSV format
- * Note: Currently only export is implemented; import is planned for future
  */
 
+import Papa from "papaparse";
+import { generateBookmarkId } from "./id";
 import type { Bookmark } from "../types/bookmark";
 
 /**
@@ -77,4 +78,258 @@ export function downloadBookmarksCSV(bookmarks: Bookmark[]): void {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Import preview result with validation and duplicate detection
+ */
+export interface ImportPreview {
+  valid: Bookmark[];
+  duplicates: Array<{
+    imported: Bookmark;
+    existing: Bookmark;
+  }>;
+  errors: Array<{
+    row: number;
+    message: string;
+    data?: Record<string, unknown>;
+  }>;
+}
+
+/**
+ * Validation result for a single bookmark row
+ */
+interface ValidationResult {
+  valid: boolean;
+  bookmark?: Bookmark;
+  error?: string;
+}
+
+/**
+ * Valid demodulation modes for bookmarks
+ */
+const VALID_MODES = [
+  "AM",
+  "FM",
+  "SSB",
+  "USB",
+  "LSB",
+  "CW",
+  "DIGITAL",
+] as const;
+
+/**
+ * Device frequency ranges (Hz)
+ * RTL-SDR: 24 MHz - 1.7 GHz (extendable down to ~500 kHz with direct sampling)
+ * HackRF: 1 MHz - 6 GHz
+ * Using RTL-SDR range as baseline for validation
+ */
+const MIN_FREQUENCY = 24_000_000; // 24 MHz
+const MAX_FREQUENCY = 1_700_000_000; // 1.7 GHz
+
+/**
+ * Duplicate detection tolerance (Hz)
+ */
+const DUPLICATE_TOLERANCE = 1000; // 1 kHz
+
+/**
+ * Validates a single bookmark row from CSV
+ */
+function validateBookmarkRow(
+  data: Record<string, unknown>,
+  rowIndex: number,
+): ValidationResult {
+  // Check for required fields
+  const freqValue = data["Frequency (Hz)"];
+  const nameValue = data["Name"];
+
+  if (!freqValue || String(freqValue).trim() === "") {
+    return {
+      valid: false,
+      error: `Row ${rowIndex}: Missing frequency`,
+    };
+  }
+
+  if (!nameValue || String(nameValue).trim() === "") {
+    return {
+      valid: false,
+      error: `Row ${rowIndex}: Missing name`,
+    };
+  }
+
+  // Parse and validate frequency
+  const frequency = Number(freqValue);
+  if (isNaN(frequency)) {
+    return {
+      valid: false,
+      error: `Row ${rowIndex}: Invalid frequency "${freqValue}"`,
+    };
+  }
+
+  if (frequency < MIN_FREQUENCY || frequency > MAX_FREQUENCY) {
+    return {
+      valid: false,
+      error: `Row ${rowIndex}: Frequency ${frequency} Hz out of range (${MIN_FREQUENCY}-${MAX_FREQUENCY} Hz)`,
+    };
+  }
+
+  // Parse tags (optional, comma-separated)
+  const tagsValue = data["Tags"];
+  let tags: string[] = [];
+  if (tagsValue && String(tagsValue).trim() !== "") {
+    tags = String(tagsValue)
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+  }
+
+  // Parse notes (optional)
+  const notes = data["Notes"] ? String(data["Notes"]).trim() : "";
+
+  // Parse timestamps (use current time if not provided or invalid)
+  const now = Date.now();
+  let createdAt = now;
+  let lastUsed = now;
+
+  const createdAtValue = data["Created At"];
+  if (createdAtValue) {
+    const parsed = Number(createdAtValue);
+    if (!isNaN(parsed) && parsed > 0) {
+      createdAt = parsed;
+    }
+  }
+
+  const lastUsedValue = data["Last Used"];
+  if (lastUsedValue) {
+    const parsed = Number(lastUsedValue);
+    if (!isNaN(parsed) && parsed > 0) {
+      lastUsed = parsed;
+    }
+  }
+
+  const bookmark: Bookmark = {
+    id: generateBookmarkId(),
+    frequency: Math.round(frequency),
+    name: String(nameValue).trim(),
+    tags,
+    notes,
+    createdAt,
+    lastUsed,
+  };
+
+  return { valid: true, bookmark };
+}
+
+/**
+ * Checks if two frequencies are duplicates within tolerance
+ */
+function isDuplicate(freq1: number, freq2: number): boolean {
+  return Math.abs(freq1 - freq2) <= DUPLICATE_TOLERANCE;
+}
+
+/**
+ * Parses CSV content and returns import preview with validation
+ */
+export function parseBookmarksCSV(
+  csvContent: string,
+  existingBookmarks: Bookmark[],
+): ImportPreview {
+  const preview: ImportPreview = {
+    valid: [],
+    duplicates: [],
+    errors: [],
+  };
+
+  // Parse CSV using papaparse
+  const parseResult = Papa.parse<Record<string, unknown>>(csvContent, {
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: false, // Keep as strings for custom validation
+  });
+
+  // Check for parsing errors
+  if (parseResult.errors.length > 0) {
+    parseResult.errors.forEach((error) => {
+      preview.errors.push({
+        row: error.row ?? -1,
+        message: error.message,
+      });
+    });
+  }
+
+  // Validate each row
+  parseResult.data.forEach((row, index) => {
+    const validation = validateBookmarkRow(row, index + 2); // +2 for 1-based + header
+
+    if (validation.valid && validation.bookmark) {
+      const bookmark = validation.bookmark;
+
+      // Check for duplicates in existing bookmarks
+      const existingDuplicate = existingBookmarks.find((existing) =>
+        isDuplicate(existing.frequency, bookmark.frequency),
+      );
+
+      if (existingDuplicate) {
+        preview.duplicates.push({
+          imported: bookmark,
+          existing: existingDuplicate,
+        });
+      } else {
+        preview.valid.push(bookmark);
+      }
+    } else if (validation.error) {
+      preview.errors.push({
+        row: index + 2,
+        message: validation.error,
+        data: row,
+      });
+    }
+  });
+
+  return preview;
+}
+
+/**
+ * Duplicate handling strategy
+ */
+export type DuplicateStrategy = "skip" | "overwrite" | "import_as_new";
+
+/**
+ * Merges imported bookmarks with existing ones based on duplicate strategy
+ */
+export function mergeBookmarks(
+  existingBookmarks: Bookmark[],
+  preview: ImportPreview,
+  duplicateStrategy: DuplicateStrategy,
+): Bookmark[] {
+  let result = [...existingBookmarks];
+
+  // Handle duplicates based on strategy
+  if (duplicateStrategy === "skip") {
+    // Just add valid bookmarks (duplicates already excluded in preview.valid)
+    result = [...result, ...preview.valid];
+  } else if (duplicateStrategy === "overwrite") {
+    // Remove existing duplicates and add all imported bookmarks
+    const duplicateIds = new Set(
+      preview.duplicates.map((d) => d.existing.id),
+    );
+    result = result.filter((b) => !duplicateIds.has(b.id));
+    result = [
+      ...result,
+      ...preview.valid,
+      ...preview.duplicates.map((d) => d.imported),
+    ];
+  } else if (duplicateStrategy === "import_as_new") {
+    // Import everything including duplicates with new IDs
+    result = [
+      ...result,
+      ...preview.valid,
+      ...preview.duplicates.map((d) => ({
+        ...d.imported,
+        id: generateBookmarkId(), // Generate new ID
+      })),
+    ];
+  }
+
+  return result;
 }
