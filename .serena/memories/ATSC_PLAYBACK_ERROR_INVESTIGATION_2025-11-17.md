@@ -21,7 +21,7 @@ Check `src/drivers/hackrf/core/recovery.ts`:
 
 **Automatic (Primary):**
 
-1. `usbDevice.reset()` on open if `!wasCleanClosed && usbDevice.opened` (see `src/drivers/hackrf/core/transport.ts`)
+1. `usbDevice.reset()` on open if `!wasCleanClosed` (see `src/drivers/hackrf/core/transport.ts`)
 2. 500ms wait for firmware recovery
 3. Reopen device
 

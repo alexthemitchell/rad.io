@@ -423,9 +423,9 @@ describe("HackRFOne control formatting", () => {
     const { device } = createMockUSBDevice();
     const hackRF = new HackRFOne(device);
 
-    // Initially should be false or null
+    // Initially should be false
     const initialState = hackRF.getAmpEnabled();
-    expect([null, false]).toContain(initialState);
+    expect(initialState).toBe(false);
 
     // After setting amp
     await hackRF.setAmpEnable(true);

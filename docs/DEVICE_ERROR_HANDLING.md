@@ -273,7 +273,7 @@ When HackRF firmware becomes corrupted (all USB control OUT transfers fail with 
 
 The driver automatically detects firmware corruption and performs a reset via [`USBDevice.reset()`](https://developer.mozilla.org/en-US/docs/Web/API/USBDevice/reset):
 
-1. On device `open()`, detect stale state: `!wasCleanClosed && usbDevice.opened`
+1. On device `open()`, detect stale state: `!wasCleanClosed`
 2. Call `await usbDevice.reset()` to trigger USB bus reset
 3. Wait 500ms for firmware to recover
 4. Reopen device with fresh state
