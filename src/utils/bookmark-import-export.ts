@@ -353,9 +353,8 @@ export function mergeBookmarks(
       ...preview.valid,
       ...preview.duplicates.map((d) => d.imported),
     ];
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  } else if (duplicateStrategy === "import_as_new") {
-    // Import everything including duplicates with new IDs
+  } else {
+    // import_as_new: Import everything including duplicates with new IDs
     result = [
       ...result,
       ...preview.valid,

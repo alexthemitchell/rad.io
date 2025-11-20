@@ -312,16 +312,13 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
       return;
     }
 
-    // Validate file type (extension and MIME type)
-    // Note: Some systems report CSV with different MIME types
-    const validMimeTypes = [
-      "text/csv",
-      "application/vnd.ms-excel",
-      "text/plain",
-    ];
+    // Validate file type
+    // Primarily check file extension; reject obvious non-CSV MIME types (images, videos)
+    // Some systems report CSV with various MIME types (application/csv, text/x-csv, etc.)
     if (
       !file.name.toLowerCase().endsWith(".csv") ||
-      (file.type && !validMimeTypes.includes(file.type))
+      (file.type &&
+        (file.type.startsWith("image/") || file.type.startsWith("video/")))
     ) {
       notify({
         message: "Please select a CSV file",
@@ -557,11 +554,8 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
               <details className="error-list">
                 <summary>View errors ({importPreview.errors.length})</summary>
                 <ul>
-                  {importPreview.errors.map((error) => (
-                    <li
-                      key={`${error.row}-${error.message}`}
-                      className="error-item"
-                    >
+                  {importPreview.errors.map((error, idx) => (
+                    <li key={`${error.row}-${idx}`} className="error-item">
                       Row {error.row}: {error.message}
                     </li>
                   ))}
