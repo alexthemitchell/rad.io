@@ -326,6 +326,10 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
         visual: true,
         tone: "error",
       });
+      // Reset file input to allow re-selection of the same file
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       return;
     }
 
@@ -457,14 +461,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
           <div
             className="modal-backdrop"
             onClick={handleImportCancel}
-            onKeyDown={(e): void => {
-              if (e.key === "Escape") {
-                handleImportCancel();
-              }
-            }}
-            role="button"
-            tabIndex={-1}
-            aria-label="Close import preview"
+            aria-hidden="true"
           />
           <div
             ref={dialogRef}
