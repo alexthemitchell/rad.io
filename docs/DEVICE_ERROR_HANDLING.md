@@ -294,6 +294,7 @@ See implementation in `src/drivers/hackrf/core/transport.ts` and `src/drivers/ha
 - Physical power cycling is the most reliable recovery method for severe firmware corruption
 
 **Technical References:**
+
 - [WebUSB API - USBDevice.reset()](https://developer.mozilla.org/en-US/docs/Web/API/USBDevice/reset)
 - [WebUSB Specification](https://wicg.github.io/webusb/)
 - [HackRF USB Vendor Requests](https://github.com/greatscottgadgets/hackrf/blob/master/firmware/common/usb_request.h)
