@@ -471,11 +471,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="import-preview-title"
-            aria-describedby={
-              importPreview.duplicates.length > 0
-                ? "import-preview-desc duplicate-options-desc"
-                : "import-preview-desc"
-            }
+            aria-describedby="import-preview-desc"
             className="import-preview-dialog"
             tabIndex={-1}
           >
@@ -499,10 +495,8 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
             </div>
 
             {importPreview.duplicates.length > 0 && (
-              <div className="duplicate-options" id="duplicate-options-desc">
-                <p>
-                  <strong>How to handle duplicates?</strong>
-                </p>
+              <fieldset className="duplicate-options">
+                <legend>How to handle duplicates?</legend>
                 <label htmlFor="strategy-skip">
                   <input
                     id="strategy-skip"
@@ -536,7 +530,7 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
                   />
                   Import duplicates as new bookmarks
                 </label>
-              </div>
+              </fieldset>
             )}
 
             {importPreview.duplicates.length > 0 && (
