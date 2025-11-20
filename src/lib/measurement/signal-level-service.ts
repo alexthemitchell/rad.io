@@ -139,8 +139,6 @@ export class SignalLevelService {
    */
   private calculateSignalLevel(samples: Sample[]): SignalLevel {
     // Step 1: Calculate dBFS from IQ samples
-    // Note: calculateSignalStrength returns values in dBFS range (-100 to 0)
-    // even though it's documented as "dBm" - it's actually relative to full scale
     const dBfs = calculateSignalStrength(samples);
 
     // Step 2: Convert dBFS to dBm using calibration constant
