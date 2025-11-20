@@ -11,6 +11,7 @@ import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
 import QuickActions from "../components/Monitor/QuickActions";
 import VisualizationControls from "../components/Monitor/VisualizationControls";
 import RDSDisplay from "../components/RDSDisplay";
+import SMeter from "../components/SMeter";
 import { WATERFALL_COLORMAPS } from "../constants";
 import { useDsp } from "../hooks/useDsp";
 import {
@@ -27,7 +28,7 @@ import { estimateFMBroadcastPPM } from "../lib/measurement/fm-ppm-calibrator";
 import { notify } from "../lib/notifications";
 import { toggleShortcuts } from "../lib/shortcuts";
 import { type SDRCapabilities, type IQSample } from "../models/SDRDevice";
-import { useDevice, useFrequency, useSettings, useDiagnostics } from "../store";
+import { useDevice, useFrequency, useSettings, useDiagnostics, useSignalLevel } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
 import {
@@ -50,6 +51,7 @@ declare global {
 const Monitor: React.FC = () => {
   const { primaryDevice: device } = useDevice();
   const { setOverlayVisible } = useDiagnostics();
+  const { signalLevel } = useSignalLevel();
 
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
@@ -750,6 +752,12 @@ const Monitor: React.FC = () => {
         }}
       >
         <h3 style={{ marginTop: 0 }}>Signal Information</h3>
+        
+        {/* S-Meter - Professional signal strength measurement */}
+        <div style={{ marginBottom: "16px" }}>
+          <SMeter signalLevel={signalLevel} showDbm />
+        </div>
+
         {foundSignals.length > 0 && foundSignals[0]?.rdsData && (
           <div style={{ marginBottom: "16px" }}>
             <RDSDisplay rdsData={foundSignals[0].rdsData} stats={null} />
