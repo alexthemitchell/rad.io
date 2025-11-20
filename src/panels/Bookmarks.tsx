@@ -369,8 +369,9 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
     reader.readAsText(file);
 
     // Reset file input so same file can be selected again
-    // eslint-disable-next-line no-param-reassign
-    event.target.value = "";
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleImportConfirm = (): void => {
@@ -394,6 +395,11 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
       importPreview.duplicates.length > 0
     ) {
       message += `, ${importPreview.duplicates.length} duplicate${importPreview.duplicates.length !== 1 ? "s" : ""} overwritten`;
+    } else if (
+      duplicateStrategy === "import_as_new" &&
+      importPreview.duplicates.length > 0
+    ) {
+      message += `, ${importPreview.duplicates.length} duplicate${importPreview.duplicates.length !== 1 ? "s" : ""} imported as new`;
     }
 
     if (importPreview.errors.length > 0) {
