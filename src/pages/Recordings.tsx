@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import RecordingList from "../components/Recordings/RecordingList";
 import { useStorageQuota } from "../hooks/useStorageQuota";
 import { recordingManager } from "../lib/recording/recording-manager";
+import { formatBytes } from "../utils/format";
 import type { RecordingMeta } from "../lib/recording/types";
 
 /**
@@ -29,19 +30,6 @@ import type { RecordingMeta } from "../lib/recording/types";
  */
 
 /**
- * Format bytes to human-readable string (KB, MB, GB)
- */
-function formatBytes(bytes: number): string {
-  if (bytes === 0) {
-    return "0 B";
-  }
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.max(0, Math.floor(Math.log(bytes) / Math.log(k)));
-  return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`;
-}
-
-/**
  * Get CSS class for storage progress bar based on percentage used
  * Aligned with PRD requirement: warning at >=85%
  */
@@ -63,6 +51,9 @@ function Recordings(): React.JSX.Element {
     null,
   );
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Load recordings on mount
   useEffect(() => {
@@ -75,11 +66,15 @@ function Recordings(): React.JSX.Element {
         if (mounted) {
           setRecordings(recs);
           setIsLoading(false);
+          setError(null);
         }
       } catch (error) {
         console.error("Failed to load recordings:", error);
         if (mounted) {
           setIsLoading(false);
+          setError(
+            "Failed to load recordings. Please try refreshing the page.",
+          );
         }
       }
     };
@@ -118,8 +113,11 @@ function Recordings(): React.JSX.Element {
         setSelectedRecordingId(null);
       }
       setDeleteConfirmId(null);
+      setError(null);
     } catch (error) {
       console.error("Failed to delete recording:", error);
+      setError("Failed to delete recording. Please try again.");
+      setDeleteConfirmId(null);
     }
   };
 
@@ -131,7 +129,7 @@ function Recordings(): React.JSX.Element {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent): void => {
       if (e.key === "Escape" && deleteConfirmId) {
-        handleDeleteCancel();
+        setDeleteConfirmId(null);
       }
     };
 
@@ -139,6 +137,20 @@ function Recordings(): React.JSX.Element {
     return (): void => {
       document.removeEventListener("keydown", handleEscape);
     };
+  }, [deleteConfirmId]);
+
+  // Focus management for delete dialog
+  useEffect(() => {
+    if (deleteConfirmId) {
+      // Save the currently focused element
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      // Focus the cancel button when dialog opens
+      cancelButtonRef.current?.focus();
+    } else if (previousFocusRef.current) {
+      // Restore focus when dialog closes
+      previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    }
   }, [deleteConfirmId]);
 
   const handleExport = async (id: string): Promise<void> => {
@@ -150,8 +162,10 @@ function Recordings(): React.JSX.Element {
       const view = new DataView(buffer);
 
       for (let i = 0; i < recording.samples.length; i++) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const sample = recording.samples[i]!;
+        const sample = recording.samples[i];
+        if (!sample) {
+          continue;
+        }
         const offset = i * 8;
         view.setFloat32(offset, sample.I, true);
         view.setFloat32(offset + 4, sample.Q, true);
@@ -163,13 +177,15 @@ function Recordings(): React.JSX.Element {
       // Create download link
       const a = document.createElement("a");
       a.href = url;
-      a.download = `recording_${recording.metadata.frequency}_${recording.metadata.timestamp.replace(/[:.]/g, "-")}.iq`;
+      a.download = `recording_${recording.metadata.frequency}_${recording.metadata.timestamp.replace(/[^0-9-]/g, "-")}.iq`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      setError(null);
     } catch (error) {
       console.error("Failed to export recording:", error);
+      setError("Failed to export recording. Please try again.");
     }
   };
 
@@ -180,6 +196,23 @@ function Recordings(): React.JSX.Element {
       aria-labelledby="recordings-heading"
     >
       <h2 id="recordings-heading">Recordings Library</h2>
+
+      {/* Error message */}
+      {error && (
+        <div className="error-banner" role="alert">
+          <strong>Error:</strong> {error}
+          <button
+            type="button"
+            className="error-dismiss"
+            onClick={() => {
+              setError(null);
+            }}
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <section aria-label="Recordings List">
         <RecordingList
@@ -211,6 +244,7 @@ function Recordings(): React.JSX.Element {
             <div className="delete-confirmation-actions">
               <button
                 type="button"
+                ref={cancelButtonRef}
                 className="delete-confirmation-button delete-confirmation-cancel"
                 onClick={handleDeleteCancel}
               >
@@ -307,6 +341,49 @@ function Recordings(): React.JSX.Element {
       </section>
 
       <style>{`
+        .error-banner {
+          padding: 12px 16px;
+          margin-bottom: 16px;
+          background: rgb(244 67 54 / 10%);
+          border: 1px solid var(--accent-red, #f44336);
+          border-radius: 4px;
+          color: var(--accent-red, #f44336);
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .error-banner strong {
+          font-weight: 600;
+        }
+
+        .error-dismiss {
+          background: transparent;
+          border: none;
+          color: var(--accent-red, #f44336);
+          font-size: 18px;
+          cursor: pointer;
+          padding: 4px 8px;
+          min-width: 32px;
+          min-height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 4px;
+          transition: background 0.2s ease;
+        }
+
+        .error-dismiss:hover {
+          background: rgb(244 67 54 / 20%);
+        }
+
+        .error-dismiss:focus {
+          outline: 2px solid var(--accent-red, #f44336);
+          outline-offset: 2px;
+        }
+
         .playback-placeholder {
           padding: 16px;
           background: var(--panel-background, #1a1a1a);

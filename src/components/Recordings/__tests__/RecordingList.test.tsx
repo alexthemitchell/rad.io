@@ -88,11 +88,7 @@ describe("RecordingList", () => {
 
   it("renders loading state", () => {
     render(
-      <RecordingList
-        recordings={[]}
-        isLoading={true}
-        {...mockCallbacks}
-      />,
+      <RecordingList recordings={[]} isLoading={true} {...mockCallbacks} />,
     );
 
     expect(screen.getByText(/Loading recordings/)).toBeInTheDocument();
@@ -100,11 +96,7 @@ describe("RecordingList", () => {
 
   it("renders empty state when no recordings", () => {
     render(
-      <RecordingList
-        recordings={[]}
-        isLoading={false}
-        {...mockCallbacks}
-      />,
+      <RecordingList recordings={[]} isLoading={false} {...mockCallbacks} />,
     );
 
     expect(screen.getByText(/No recordings yet/)).toBeInTheDocument();
@@ -187,9 +179,7 @@ describe("RecordingList", () => {
     fireEvent.change(searchInput, { target: { value: "nonexistent" } });
 
     expect(screen.getByText(/No recordings found/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Try a different search term/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Try a different search term/)).toBeInTheDocument();
   });
 
   it("sorts by date (default descending)", () => {
@@ -315,9 +305,8 @@ describe("RecordingList", () => {
       />,
     );
 
-    const searchInput = screen.getByLabelText(
-      /Search recordings by label or frequency/,
-    );
+    // Search for the input by its label (we removed aria-label for better accessibility)
+    const searchInput = screen.getByLabelText(/Search recordings/);
     expect(searchInput).toBeInTheDocument();
   });
 

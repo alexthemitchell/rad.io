@@ -110,7 +110,6 @@ function RecordingList({
             onChange={(e) => {
               setSearchQuery(e.target.value);
             }}
-            aria-label="Search recordings by label or frequency"
           />
         </div>
 

@@ -28,7 +28,8 @@ describe("RecordingCard", () => {
     render(<RecordingCard recording={mockRecording} {...mockCallbacks} />);
 
     expect(screen.getByText("Test Recording")).toBeInTheDocument();
-    expect(screen.getByText("100.000 MHz")).toBeInTheDocument();
+    // formatFrequency trims trailing zeros for MHz
+    expect(screen.getByText("100 MHz")).toBeInTheDocument();
     expect(screen.getByText(/2:05/)).toBeInTheDocument();
     expect(screen.getByText(/5\.00 MB/)).toBeInTheDocument();
   });
@@ -43,7 +44,8 @@ describe("RecordingCard", () => {
       <RecordingCard recording={recordingWithoutLabel} {...mockCallbacks} />,
     );
 
-    const titles = screen.getAllByText("100.000 MHz");
+    // The formatFrequency utility trims trailing zeros for MHz
+    const titles = screen.getAllByText("100 MHz");
     expect(titles.length).toBeGreaterThan(0);
   });
 
@@ -54,7 +56,8 @@ describe("RecordingCard", () => {
         {...mockCallbacks}
       />,
     );
-    expect(screen.getByText(/1\.000 kHz/)).toBeInTheDocument();
+    // kHz uses .toFixed(1)
+    expect(screen.getByText(/1\.0 kHz/)).toBeInTheDocument();
 
     rerender(
       <RecordingCard
@@ -62,7 +65,8 @@ describe("RecordingCard", () => {
         {...mockCallbacks}
       />,
     );
-    expect(screen.getByText(/2\.400 GHz/)).toBeInTheDocument();
+    // GHz uses .toFixed(6)
+    expect(screen.getByText(/2\.400000 GHz/)).toBeInTheDocument();
 
     rerender(
       <RecordingCard
@@ -197,7 +201,6 @@ describe("RecordingCard", () => {
     render(<RecordingCard recording={mockRecording} {...mockCallbacks} />);
 
     const playButton = screen.getByTitle("Play");
-    const styles = window.getComputedStyle(playButton);
 
     // Check that min-width and min-height are set (we can't easily test actual rendered size)
     expect(playButton).toHaveStyle("min-width: 44px");
