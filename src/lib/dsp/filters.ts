@@ -10,6 +10,27 @@
 import type { Sample } from "./types";
 
 /**
+ * Filter type enumeration
+ */
+export type FilterType = "lowpass" | "highpass" | "bandpass" | "bandstop";
+
+/**
+ * Filter parameters
+ */
+export interface FilterParameters {
+  /** Filter type */
+  type: FilterType;
+  /** Cutoff frequency (or lower cutoff for bandpass/bandstop) in Hz */
+  cutoff: number;
+  /** Upper cutoff frequency for bandpass/bandstop in Hz */
+  cutoff2?: number;
+  /** Sample rate in Hz */
+  sampleRate: number;
+  /** Filter order (number of taps for FIR, poles for IIR) */
+  order?: number;
+}
+
+/**
  * FIR filter state
  */
 export interface FIRFilterState {

@@ -7,7 +7,7 @@
  * This file has been refactored with components extracted to the ATSCPlayer/ directory.
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import { ATSCProgramGuide } from "../components/EPG";
 import { InfoBanner } from "../components/InfoBanner";
@@ -78,6 +78,58 @@ function ATSCPlayer(): React.JSX.Element {
     console.info("Schedule recording for:", program.title);
   }, []);
 
+  const handleDriverReset = useCallback((): void => {
+    void (async (): Promise<void> => {
+      if (
+        device &&
+        (device as unknown as { fastRecovery?: () => Promise<void> })
+          .fastRecovery
+      ) {
+        try {
+          await (
+            device as unknown as {
+              fastRecovery: () => Promise<void>;
+            }
+          ).fastRecovery();
+          console.info("Driver fastRecovery completed");
+        } catch (e) {
+          console.error("Driver fastRecovery failed", e);
+        }
+      } else if (
+        device &&
+        (device as unknown as { reset?: () => Promise<void> }).reset
+      ) {
+        // Fallback to generic reset if fastRecovery not available
+        try {
+          await (device as unknown as { reset: () => Promise<void> }).reset();
+          console.info("Driver reset completed");
+        } catch (e) {
+          console.error("Driver reset failed", e);
+        }
+      } else {
+        console.warn("No recovery method available on current device instance");
+      }
+    })();
+  }, [device]);
+
+  // Ensure HackRF (or other SDR) is cleanly stopped and reset when leaving the ATSC player.
+  useEffect(
+    function effect(): () => void {
+      return function cleanup(): void {
+        // Stop ATSC playback pipeline first
+        void player.stop();
+
+        // Then ask the device for a logical reset if supported. This uses the
+        // SDR abstraction's reset(), which for HackRF is backed by the
+        // vendor RESET command, not WebUSB's reset().
+        if (device && "reset" in device && typeof device.reset === "function") {
+          void device.reset();
+        }
+      };
+    },
+    [player, device],
+  );
+
   return (
     <div className="atsc-player-page">
       <div className="page-header">
@@ -97,6 +149,9 @@ function ATSCPlayer(): React.JSX.Element {
               Program Guide
             </button>
           </div>
+          <button onClick={handleDriverReset} aria-label="Driver Reset">
+            Driver Reset
+          </button>
           <button
             className="btn btn-secondary"
             onClick={() => setShowScanner(!showScanner)}

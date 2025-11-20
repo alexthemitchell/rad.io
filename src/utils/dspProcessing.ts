@@ -117,6 +117,7 @@ export function applyScaling(
   return samples.map((s) => ({ I: s.I * linearScale, Q: s.Q * linearScale }));
 }
 
+// DC offset removal utilities are imported from ../lib/dsp
 export function processRFInput(
   _device: ISDRDevice | undefined,
   samples: Sample[],
@@ -218,7 +219,6 @@ export function processIQSampling(
   // DC Correction - supports multiple modes
   if (params.dcCorrection) {
     const mode = params.dcCorrectionMode ?? "static";
-
     if (mode === "static") {
       processed = removeDCOffsetStatic(processed);
     } else if (mode === "iir") {
@@ -442,7 +442,6 @@ export function createVisualizationPipeline(config: {
       }
       return { output: samples, metrics: { dcCorrected: false } };
     },
-
     // Stage 2: FFT
     (samples: Sample[]) =>
       processFFT(samples, {

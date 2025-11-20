@@ -564,3 +564,31 @@ When adding new stateful features, follow this decision tree:
 All SDR devices **must** implement the \`ISDRDevice\` interface defined in \`src/models/SDRDevice.ts\`. This ensures consistent behavior and enables plug-and-play device support.
 
 See \`docs/DEVICE_INTEGRATION.md\` for a step-by-step guide to adding new devices.
+
+### Device Configuration Strategy
+
+#### Deferred Non-Critical Configuration
+
+For maximum reliability when starting device reception, rad.io employs a **deferred configuration strategy** where only critical parameters are configured synchronously before streaming begins:
+
+**Critical (Synchronous)**:
+
+- Sample rate (\`setSampleRate()\`)
+- Center frequency (\`setFrequency()\`)
+
+**Non-Critical (Deferred/Best-Effort)**:
+
+- LNA/VGA gains
+- Baseband filter bandwidth
+- Antenna port selection
+
+**Rationale**: USB control transfers can fail due to firmware state, bus contention, or timing issues. By deferring non-critical configuration, the application maximizes the likelihood that streaming will start successfully, trading complete configuration for reliability. If gain or bandwidth configuration fails, the device will use its current/default settings rather than blocking the entire receive pipeline.
+
+**Implementation**: See \`src/hooks/useReception.ts\` lines 114-116 and \`src/drivers/hackrf/HackRFOneAdapter.ts\` lines 167-179 for error handling that allows streaming to continue despite configuration failures.
+
+**Trade-offs**:
+
+- ✅ **Improved reliability**: Streaming starts more consistently across different device states
+- ✅ **Faster startup**: Fewer synchronous USB operations
+- ❌ **Incomplete configuration**: Device may not be in optimal state initially
+- ❌ **Harder debugging**: Configuration failures are logged but not fatal

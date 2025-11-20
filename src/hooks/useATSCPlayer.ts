@@ -7,11 +7,16 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
+  AtscFECPipeline,
+  type AtscBasebandPipeline,
+} from "../atsc/baseband/pipeline";
+import {
   ATSCVideoDecoder,
   VideoRenderer,
   CEA708Decoder,
   CaptionRenderer,
 } from "../decoders";
+import { notify } from "../lib/notifications";
 import { type ISDRDevice } from "../models/SDRDevice";
 import {
   TransportStreamParser,
@@ -60,7 +65,13 @@ export interface ProgramInfo {
 /**
  * Player state
  */
-export type PlayerState = "idle" | "tuning" | "playing" | "buffering" | "error";
+export type PlayerState =
+  | "idle"
+  | "tuning"
+  | "demod-only" // Demodulator producing symbols, FEC/TS pipeline not implemented
+  | "playing"
+  | "buffering"
+  | "error";
 
 /**
  * Hook for ATSC player functionality
@@ -105,6 +116,7 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
   // Refs
   const demodulatorRef = useRef<ATSC8VSBDemodulator | null>(null);
   const parserRef = useRef<TransportStreamParser | null>(null);
+  const basebandPipelineRef = useRef<AtscBasebandPipeline | null>(null);
   const videoDecoderRef = useRef<ATSCVideoDecoder | null>(null);
   const videoRendererRef = useRef<VideoRenderer | null>(null);
   const audioDecoderRef = useRef<AudioDecoder | null>(null);
@@ -480,14 +492,41 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
         }
 
         // Ensure parser is initialized
-        parserRef.current = parserRef.current ?? new TransportStreamParser();
+        parserRef.current ??= new TransportStreamParser();
 
         // Reset parser
         parserRef.current.reset();
 
-        // Tune to channel
-        await device.setFrequency(channel.channel.frequency);
-        await device.setSampleRate(ATSC_CONSTANTS.SYMBOL_RATE);
+        // Configure device in the correct order for HackRF:
+        // 1) Sample rate (>= 2 sps recommended for Gardner timing)
+        // 2) Frequency (tune LO to pilot to simplify carrier recovery)
+        // 3) Bandwidth and gains
+        const sampleRateHz = 20_000_000; // ~1.86 sps at 10.76 Msps symbol rate
+        await device.setSampleRate(sampleRateHz);
+
+        // Tune to pilot frequency (lower edge + 309.44 kHz) to place pilot near DC
+        await device.setFrequency(channel.channel.pilotFrequency);
+
+        // Configure approximate 6 MHz channel bandwidth (ATSC nominal)
+        if (device.setBandwidth) {
+          try {
+            await device.setBandwidth(6_000_000);
+          } catch (e) {
+            console.warn("ATSC Player: Failed to set 6 MHz bandwidth", e);
+          }
+        }
+
+        // Enable LNA and RF amp for improved SNR on OTA signals
+        try {
+          await device.setLNAGain(24);
+        } catch (e) {
+          console.warn("ATSC Player: Failed to set LNA gain", e);
+        }
+        try {
+          await device.setAmpEnable(true);
+        } catch (e) {
+          console.warn("ATSC Player: Failed to enable RF amp", e);
+        }
 
         // Initialize audio context
         if (!audioContextRef.current) {
@@ -506,15 +545,30 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
             // Parse IQ samples
             const samples = device.parseSamples(data);
 
-            // Demodulate to get transport stream packets
+            // Demodulate to get 8-VSB symbol decisions
             if (demodulatorRef.current) {
-              const tsData = demodulatorRef.current.demodulate(samples);
+              // Inform demodulator of actual sample rate and bandwidth
+              demodulatorRef.current.setParameters({
+                audioSampleRate: sampleRateHz,
+                bandwidth: ATSC_CONSTANTS.CHANNEL_BANDWIDTH,
+              });
+              const symbolData = demodulatorRef.current.demodulate(samples);
 
-              // Parse transport stream
-              if (parserRef.current && tsData.length > 0) {
-                const packets = parserRef.current.parseStream(
-                  new Uint8Array(tsData.buffer),
-                );
+              // Initialize baseband pipeline if needed
+              basebandPipelineRef.current ??= new AtscFECPipeline();
+
+              // Process symbols via baseband pipeline (FEC + TS framer)
+              const tsBytes =
+                basebandPipelineRef.current.processSymbols(symbolData);
+
+              // If we have no TS bytes yet, skip processing
+              if (tsBytes.length === 0) {
+                return;
+              }
+
+              // Parse transport stream when bytes become available
+              if (parserRef.current && tsBytes.length > 0) {
+                const packets = parserRef.current.parseStream(tsBytes);
 
                 // Once we have PAT/PMT/VCT, extract program info
                 if (!tablesReceived) {
@@ -630,6 +684,22 @@ export function useATSCPlayer(device: ISDRDevice | undefined): {
       } catch (error) {
         console.error("Error tuning to channel:", error);
         setPlayerState("error");
+
+        // Check if this is a firmware corruption error requiring driver reset
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        if (
+          errorMessage.includes("firmware corruption") ||
+          errorMessage.includes("driver reset")
+        ) {
+          notify({
+            message:
+              "HackRF firmware may be corrupted. Use the HackRF driver reset (not the WebUSB reset) from rad.io, then retry tuning.",
+            tone: "error",
+            duration: 10000, // 10 seconds
+            sr: "assertive", // Important alert
+          });
+        }
       }
     },
     [

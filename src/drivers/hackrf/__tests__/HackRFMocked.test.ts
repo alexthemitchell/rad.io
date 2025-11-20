@@ -13,66 +13,10 @@
  * - Protocol compliance
  */
 
-import { HackRFOne, RequestCommand } from "../HackRFOne";
+import { HackRFOne } from "../HackRFOne";
 import { HackRFOneAdapter } from "../HackRFOneAdapter";
-
-function createMockUSBDevice(): {
-  device: USBDevice;
-  controlTransferOut: jest.Mock;
-  controlTransferIn: jest.Mock;
-  transferIn: jest.Mock;
-} {
-  const controlTransferOut = jest
-    .fn<
-      Promise<USBOutTransferResult>,
-      [USBControlTransferParameters, BufferSource?]
-    >()
-    .mockResolvedValue({} as USBOutTransferResult);
-
-  const controlTransferIn = jest
-    .fn<Promise<USBInTransferResult>, [USBControlTransferParameters, number]>()
-    .mockResolvedValue({
-      data: new DataView(new Uint8Array([1]).buffer),
-      status: "ok",
-    } as USBInTransferResult);
-
-  const transferIn = jest
-    .fn<Promise<USBInTransferResult>, [number, number]>()
-    .mockResolvedValue({
-      data: new DataView(new ArrayBuffer(4096)),
-      status: "ok",
-    } as USBInTransferResult);
-
-  const mockDevice = {
-    opened: true,
-    vendorId: 0x1d50,
-    productId: 0x6089,
-    productName: "Mock HackRF One",
-    manufacturerName: "Great Scott Gadgets",
-    serialNumber: "0000000000000000088869dc2b7c125f",
-    controlTransferOut,
-    controlTransferIn,
-    transferIn,
-    configurations: [],
-    configuration: undefined,
-    open: jest.fn().mockResolvedValue(undefined),
-    close: jest.fn().mockResolvedValue(undefined),
-    reset: jest.fn().mockResolvedValue(undefined),
-    clearHalt: jest.fn().mockResolvedValue(undefined),
-    selectConfiguration: jest.fn().mockResolvedValue(undefined),
-    selectAlternateInterface: jest.fn().mockResolvedValue(undefined),
-    claimInterface: jest.fn().mockResolvedValue(undefined),
-    releaseInterface: jest.fn().mockResolvedValue(undefined),
-    forget: jest.fn().mockResolvedValue(undefined),
-  } as unknown as USBDevice;
-
-  return {
-    device: mockDevice,
-    controlTransferOut,
-    controlTransferIn,
-    transferIn,
-  };
-}
+import { VendorRequest } from "../constants";
+import { createMockUSBDevice } from "../test-helpers/mockUSBDevice";
 
 describe("HackRF Mocked Logic Tests", () => {
   describe("Configuration edge cases", () => {
@@ -138,7 +82,7 @@ describe("HackRF Mocked Logic Tests", () => {
   });
 
   describe("Streaming state management", () => {
-    it("should use mutex for USB control transfers", async () => {
+    it("should execute control transfers sequentially", async () => {
       const { device, controlTransferOut } = createMockUSBDevice();
       const hackRF = new HackRFOne(device);
 
@@ -146,13 +90,20 @@ describe("HackRF Mocked Logic Tests", () => {
       await hackRF.setSampleRate(10_000_000);
       await hackRF.setFrequency(100_000_000);
 
-      // Check that both calls completed
-      expect(controlTransferOut).toHaveBeenCalledTimes(2);
+      // Check that both calls completed (there may be an extra OFF mode call)
+      expect(controlTransferOut.mock.calls.length).toBeGreaterThanOrEqual(2);
 
-      // Verify calls were made in order
+      // Verify the first occurrence of each command was in order
       const calls = controlTransferOut.mock.calls;
-      expect(calls[0]?.[0].request).toBe(RequestCommand.SAMPLE_RATE_SET);
-      expect(calls[1]?.[0].request).toBe(RequestCommand.SET_FREQ);
+      const firstSampleRateIdx = calls.findIndex(
+        ([opts]) => opts?.request === VendorRequest.SAMPLE_RATE_SET,
+      );
+      const firstFreqIdx = calls.findIndex(
+        ([opts]) => opts?.request === VendorRequest.SET_FREQ,
+      );
+      expect(firstSampleRateIdx).toBeGreaterThanOrEqual(0);
+      expect(firstFreqIdx).toBeGreaterThanOrEqual(0);
+      expect(firstSampleRateIdx).toBeLessThan(firstFreqIdx);
     });
 
     it("should track streaming state correctly", async () => {
@@ -189,7 +140,7 @@ describe("HackRF Mocked Logic Tests", () => {
       expect(status.isConfigured).toBe(true);
 
       // Stop streaming
-      hackRF.stopRx();
+      await hackRF.stopRx();
 
       await expect(receivePromise).resolves.toBeUndefined();
     }, 10000); // Explicit timeout to prevent hanging
@@ -292,24 +243,20 @@ describe("HackRF Mocked Logic Tests", () => {
       await hackRF.setAmpEnable(true);
 
       // Verify correct commands were used
-      expect(commands).toContain(RequestCommand.SAMPLE_RATE_SET);
-      expect(commands).toContain(RequestCommand.SET_FREQ);
-      expect(commands).toContain(RequestCommand.BASEBAND_FILTER_BANDWIDTH_SET);
-      expect(commands).toContain(RequestCommand.SET_LNA_GAIN);
-      expect(commands).toContain(RequestCommand.AMP_ENABLE);
+      expect(commands).toContain(VendorRequest.SAMPLE_RATE_SET);
+      expect(commands).toContain(VendorRequest.SET_FREQ);
+      expect(commands).toContain(VendorRequest.BASEBAND_FILTER_BANDWIDTH_SET);
+      expect(commands).toContain(VendorRequest.SET_LNA_GAIN);
+      expect(commands).toContain(VendorRequest.AMP_ENABLE);
     });
   });
 
   describe("Error recovery", () => {
     it("should handle USB transfer errors gracefully", async () => {
-      const { device, transferIn } = createMockUSBDevice();
+      const { device } = createMockUSBDevice({ transferInBehavior: "error" });
       const hackRF = new HackRFOne(device);
 
       await hackRF.setSampleRate(10_000_000);
-
-      // Mock transferIn to fail with an unexpected error
-      // Per HackRFOne implementation, non-timeout/non-abort errors are thrown
-      transferIn.mockRejectedValue(new Error("USB transfer failed"));
 
       const receivePromise = hackRF.receive();
 
@@ -318,46 +265,41 @@ describe("HackRF Mocked Logic Tests", () => {
     });
 
     it("should handle timeout errors in streaming with retry", async () => {
-      const { device, transferIn } = createMockUSBDevice();
+      const { device, transferIn } = createMockUSBDevice({
+        transferInScript: ["timeout", "success", "abort"],
+      });
       const hackRF = new HackRFOne(device);
 
       await hackRF.setSampleRate(10_000_000);
-
-      // Mock transferIn to timeout once then succeed
-      let timeoutCount = 0;
-      transferIn.mockImplementation(() => {
-        timeoutCount++;
-        if (timeoutCount === 1) {
-          return Promise.reject(
-            new Error(
-              "transferIn timeout after 5000ms - device may need reset",
-            ),
-          );
-        }
-        // After first timeout, return data once then hang
-        if (timeoutCount === 2) {
-          return Promise.resolve({
-            data: new DataView(new ArrayBuffer(4096)),
-            status: "ok",
-          } as USBInTransferResult);
-        }
-        // Hang to allow stop
-        return new Promise(() => {
-          /* never resolves */
-        });
-      });
 
       const receivePromise = hackRF.receive();
 
       // Give time for timeout and retry
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      hackRF.stopRx();
+      await hackRF.stopRx();
 
       // Should complete without throwing after retry
       await expect(receivePromise).resolves.toBeUndefined();
-      expect(timeoutCount).toBeGreaterThan(1); // Should have retried after timeout
+      expect(transferIn).toHaveBeenCalledTimes(3);
     }, 10000); // Explicit timeout to prevent hanging
+
+    it("recovers after consecutive transfer timeouts", async () => {
+      const { device, transferIn } = createMockUSBDevice({
+        transferInScript: ["timeout", "timeout", "success", "abort"],
+      });
+      const hackRF = new HackRFOne(device);
+
+      await hackRF.setSampleRate(10_000_000);
+
+      const receivePromise = hackRF.receive();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+
+      await hackRF.stopRx();
+
+      await expect(receivePromise).resolves.toBeUndefined();
+      expect(transferIn.mock.calls.length).toBeGreaterThanOrEqual(4);
+    }, 10000);
 
     it("should implement fast recovery", async () => {
       const { device, controlTransferOut } = createMockUSBDevice();
@@ -517,7 +459,7 @@ describe("HackRF Mocked Logic Tests", () => {
     });
 
     it("should round to nearest valid LNA gain", async () => {
-      const { device, controlTransferIn } = createMockUSBDevice();
+      const { device, controlTransferOut } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Test rounding behavior
@@ -526,7 +468,7 @@ describe("HackRF Mocked Logic Tests", () => {
       await expect(adapter.setLNAGain(37)).resolves.toBeUndefined(); // Rounds to 40
 
       // Verify calls were made
-      expect(controlTransferIn).toHaveBeenCalled();
+      expect(controlTransferOut).toHaveBeenCalled();
     });
   });
 });

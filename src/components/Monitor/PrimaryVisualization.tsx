@@ -99,6 +99,12 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   const lastWaterfallAnnotationRenderTime = useRef<number>(0);
   const WATERFALL_ANNOTATION_RENDER_INTERVAL_MS = 200; // Waterfall overlays update a bit less frequently
 
+  // Performance optimization: track last rendered data to skip unnecessary renders
+  const lastRenderedDataHash = useRef<number>(0);
+  const lastRenderTime = useRef<number>(0);
+  const MIN_FRAME_INTERVAL_MS = 16; // ~60 FPS cap
+  const needsRenderRef = useRef<boolean>(false);
+
   // Memoize signals to only update when signal frequencies or active states change significantly
   const memoizedSignals = useMemo(() => {
     // Create a stable representation based only on frequency, active state, and power (rounded)
@@ -114,21 +120,66 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     signals.map((s) => `${s.frequency}_${s.isActive}`).join(","),
   ]);
 
-  // Keep refs in sync
+  /**
+   * Computes a simple hash of FFT data for change detection.
+   *
+   * This function uses a sampling strategy: it sums the first 10, middle 10, and last 10 values
+   * of the input Float32Array. This avoids scanning the entire array, which can be very large,
+   * and provides a fast, approximate hash suitable for detecting significant changes in the data.
+   * This approach is preferred over a full hash for performance reasons, as it reduces CPU usage
+   * and latency in the rendering pipeline, especially when processing high-throughput SDR data.
+   *
+   * @param data - The FFT data array to hash.
+   * @returns A numeric hash representing the sampled sum of the data.
+   */
+  const computeDataHash = (data: Float32Array): number => {
+    const len = data.length;
+    if (len === 0) return 0;
+
+    let sum = 0;
+    // Sample first 10
+    const end1 = Math.min(10, len);
+    for (let i = 0; i < end1; i++) {
+      sum += data[i] ?? 0;
+    }
+    // Sample middle 10
+    const mid = Math.floor(len / 2);
+    const start2 = Math.max(0, mid - 5);
+    const end2 = Math.min(len, mid + 5);
+    for (let i = start2; i < end2; i++) {
+      sum += data[i] ?? 0;
+    }
+    // Sample last 10
+    const start3 = Math.max(0, len - 10);
+    for (let i = start3; i < len; i++) {
+      sum += data[i] ?? 0;
+    }
+    return sum;
+  };
+
+  // Keep refs in sync and flag for render when data changes
   useEffect((): void => {
     fftDataRef.current = fftData;
+    const newHash = computeDataHash(fftData);
+    if (newHash !== lastRenderedDataHash.current) {
+      needsRenderRef.current = true;
+    }
   }, [fftData]);
   useEffect((): void => {
     modeRef.current = mode;
+    needsRenderRef.current = true;
   }, [mode]);
   useEffect((): void => {
     dbMinRef.current = dbMin;
+    needsRenderRef.current = true;
   }, [dbMin]);
   useEffect((): void => {
     dbMaxRef.current = dbMax;
+    needsRenderRef.current = true;
   }, [dbMax]);
   useEffect((): void => {
     colorMapRef.current = colorMap;
+    needsRenderRef.current = true;
   }, [colorMap]);
   useEffect((): void => {
     fftSizeRef.current = fftSize;
@@ -321,6 +372,21 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   // Main render loop
   useEffect((): (() => void) => {
     const render = (): void => {
+      // Check if we need to render (data changed or settings changed)
+      const now = performance.now();
+      const timeSinceLastRender = now - lastRenderTime.current;
+
+      // Skip render if:
+      // 1. No data/settings changes have occurred
+      // 2. Not enough time has passed since last render (frame skip for performance)
+      if (
+        !needsRenderRef.current &&
+        timeSinceLastRender < MIN_FRAME_INTERVAL_MS
+      ) {
+        rafIdRef.current = requestAnimationFrame(render);
+        return;
+      }
+
       // Spectrum: render on main thread when available
       const spectrumReady = Boolean(spectrumRendererRef.current);
       const waterfallReady =
@@ -333,6 +399,10 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         rafIdRef.current = requestAnimationFrame(render);
         return;
       }
+
+      // Clear the render flag since we're about to render
+      needsRenderRef.current = false;
+      lastRenderTime.current = now;
 
       const m = modeRef.current;
       const data = fftDataRef.current;
@@ -496,6 +566,9 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
           );
         }
       }
+
+      // Update hash to reflect what we just rendered
+      lastRenderedDataHash.current = computeDataHash(data);
 
       performanceMonitor.measure("rendering", "render-start");
       rafIdRef.current = requestAnimationFrame(render);

@@ -202,9 +202,6 @@ export function useDeviceIntegration(): void {
         await mock.open();
         addDevice("mock:device", { device: mock });
         mockInitializedRef.current = true;
-        console.info("🔌 DEVICE: Mock SDR device initialized for E2E", {
-          reason: "shouldUseMockSDR()",
-        });
       } catch (err) {
         console.error("🔌 DEVICE: Failed to initialize mock SDR device", err);
       }

@@ -3,48 +3,13 @@
  */
 
 import { HackRFOneAdapter } from "../HackRFOneAdapter";
-
-function createMockUSBDevice(): USBDevice {
-  const controlTransferOut = jest
-    .fn<
-      Promise<USBOutTransferResult>,
-      [USBControlTransferParameters, BufferSource?]
-    >()
-    .mockResolvedValue({} as USBOutTransferResult);
-
-  const mockDevice = {
-    opened: true,
-    vendorId: 0x1d50,
-    productId: 0x6089,
-    productName: "Mock HackRF",
-    manufacturerName: "Mock",
-    serialNumber: "TEST",
-    controlTransferOut,
-    controlTransferIn: jest.fn().mockResolvedValue({
-      data: new DataView(new ArrayBuffer(1)),
-      status: "ok",
-    } as USBInTransferResult),
-    transferIn: jest.fn(),
-    configurations: [],
-    configuration: undefined,
-    open: jest.fn(),
-    close: jest.fn(),
-    reset: jest.fn(),
-    clearHalt: jest.fn(),
-    selectConfiguration: jest.fn(),
-    selectAlternateInterface: jest.fn(),
-    claimInterface: jest.fn(),
-    releaseInterface: jest.fn(),
-    forget: jest.fn(),
-  } as unknown as USBDevice;
-
-  return mockDevice;
-}
+import type { HackRFCalibrationPort } from "../calibration";
+import { createMockUSBDevice } from "../test-helpers/mockUSBDevice";
 
 describe("HackRFOneAdapter initialization and configuration", () => {
   describe("initialization validation", () => {
     it("throws error when receive() called without setSampleRate()", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Try to receive without initialization - should fail immediately at validation
@@ -70,7 +35,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("initialization flag is set after setSampleRate", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Before setSampleRate, adapter should throw on receive
@@ -88,45 +53,84 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       expect(await adapter.getSampleRate()).toBe(10_000_000);
     });
 
-    it("validates initialization lifecycle through open/close", async () => {
-      const device = createMockUSBDevice();
+    it("persists initialization state through open/close", async () => {
+      const { device } = createMockUSBDevice();
+
+      // Setup mock configuration for open() to work
+      const mockConfig = {
+        configurationValue: 1,
+        configurationName: "Test Config",
+        interfaces: [
+          {
+            interfaceNumber: 0,
+            claimed: false,
+            alternates: [
+              {
+                alternateSetting: 0,
+                interfaceClass: 255,
+                interfaceSubclass: 0,
+                interfaceProtocol: 0,
+                interfaceName: "Test Interface",
+                endpoints: [
+                  {
+                    endpointNumber: 1,
+                    direction: "in",
+                    type: "bulk",
+                    packetSize: 512,
+                  } as USBEndpoint,
+                ],
+              },
+            ],
+            alternate: {
+              alternateSetting: 0,
+              interfaceClass: 255,
+              interfaceSubclass: 0,
+              interfaceProtocol: 0,
+              interfaceName: "Test Interface",
+              endpoints: [],
+            },
+          },
+        ],
+      };
+
+      Object.defineProperty(device, "configuration", {
+        value: mockConfig,
+        writable: true,
+      });
+
+      Object.defineProperty(device, "configurations", {
+        value: [mockConfig],
+        writable: true,
+      });
+
       const adapter = new HackRFOneAdapter(device);
 
       // Initialize with sample rate
       await adapter.setSampleRate(20_000_000);
       expect(await adapter.getSampleRate()).toBe(20_000_000);
 
-      // Close device - this should reset initialization state
-      await adapter.close();
-
-      // After close, adapter should require re-initialization
-      await expect(
-        adapter.receive(() => {
-          /* no-op */
-        }),
-      ).rejects.toThrow(/not initialized/);
-    });
-
-    it("resets initialization state on close()", async () => {
-      const device = createMockUSBDevice();
-      const adapter = new HackRFOneAdapter(device);
-
-      // Initialize
-      await adapter.setSampleRate(20_000_000);
-
       // Close device
       await adapter.close();
 
-      // After close, should require initialization again
+      // Re-open device to verify persistence
+      await adapter.open();
+
+      // Mock transferIn to throw to exit the loop immediately
+      (device.transferIn as jest.Mock).mockRejectedValueOnce(
+        new Error("End of stream"),
+      );
+
+      // After close, adapter should still be configured (driver persistence)
+      // We expect it to fail with "End of stream" (from mock) instead of "not initialized"
       await expect(
         adapter.receive(() => {
           /* no-op */
         }),
-      ).rejects.toThrow(/not initialized/);
+      ).rejects.toThrow("End of stream");
     });
 
-    it("resets initialization state on reset()", async () => {
-      const device = createMockUSBDevice();
+    it("persists initialization state on reset()", async () => {
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Initialize
@@ -135,18 +139,23 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       // Reset device
       await adapter.reset();
 
-      // After reset, should require initialization again
+      // Mock transferIn to throw to exit the loop immediately
+      (device.transferIn as jest.Mock).mockRejectedValueOnce(
+        new Error("End of stream"),
+      );
+
+      // After reset, should still be configured (driver persistence)
       await expect(
         adapter.receive(() => {
           /* no-op */
         }),
-      ).rejects.toThrow(/not initialized/);
+      ).rejects.toThrow("End of stream");
     });
   });
 
   describe("configuration sequence", () => {
     it("sets sample rate before frequency when config provided", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
       const callOrder: string[] = [];
 
@@ -185,7 +194,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("applies all configuration options in receive()", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
       const appliedSettings: string[] = [];
 
@@ -203,18 +212,8 @@ describe("HackRFOneAdapter initialization and configuration", () => {
           if (options.request === 16) appliedSettings.push("FREQ");
           if (options.request === 7) appliedSettings.push("BANDWIDTH");
           if (options.request === 17) appliedSettings.push("AMP");
-          return {} as USBOutTransferResult;
-        },
-      );
-
-      const controlTransferIn = device.controlTransferIn as jest.Mock;
-      controlTransferIn.mockImplementation(
-        async (options: USBControlTransferParameters) => {
           if (options.request === 19) appliedSettings.push("LNA_GAIN");
-          return {
-            data: new DataView(new Uint8Array([1]).buffer),
-            status: "ok",
-          } as USBInTransferResult;
+          return {} as USBOutTransferResult;
         },
       );
 
@@ -248,9 +247,44 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
   });
 
+  describe("calibration integration", () => {
+    it("uses calibration plan when programming frequency", async () => {
+      const { device } = createMockUSBDevice();
+      const calibrationPlan = {
+        frequency: {
+          requestedHz: 123_000_000,
+          correctedHz: 123_000_500,
+          ppmOffset: 10,
+        },
+      };
+      const calibrationService: HackRFCalibrationPort = {
+        buildPlan: jest.fn().mockReturnValue(calibrationPlan),
+      };
+      const adapter = new HackRFOneAdapter(device, calibrationService);
+      const underlying = adapter.getUnderlyingDevice();
+      const setFrequencySpy = jest
+        .spyOn(underlying, "setFrequency")
+        .mockResolvedValue();
+
+      await adapter.setFrequency(calibrationPlan.frequency.requestedHz);
+
+      expect(calibrationService.buildPlan).toHaveBeenCalledWith(
+        `${device.vendorId}:${device.productId}:${device.serialNumber ?? ""}`,
+        {
+          centerFrequencyHz: calibrationPlan.frequency.requestedHz,
+        },
+      );
+      expect(setFrequencySpy).toHaveBeenCalledWith(
+        calibrationPlan.frequency.correctedHz,
+      );
+
+      setFrequencySpy.mockRestore();
+    });
+  });
+
   describe("device capabilities", () => {
     it("returns correct frequency range", () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
       const capabilities = adapter.getCapabilities();
 
@@ -259,7 +293,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("returns supported sample rates", () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
       const capabilities = adapter.getCapabilities();
 
@@ -269,7 +303,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("supports amp control", () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
       const capabilities = adapter.getCapabilities();
 
@@ -279,7 +313,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
   describe("state tracking", () => {
     it("returns open state correctly", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Mock device is opened by default
@@ -296,7 +330,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
   describe("getters and setters", () => {
     it("getDeviceInfo returns correct device information", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       const info = await adapter.getDeviceInfo();
@@ -308,7 +342,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("getSampleRate returns current sample rate", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Default rate
@@ -320,7 +354,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("getFrequency returns current frequency", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Default frequency
@@ -332,7 +366,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("getUsableBandwidth returns 80% of sample rate", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Default sample rate (20 MS/s)
@@ -344,7 +378,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("getBandwidth returns current bandwidth", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Default bandwidth
@@ -358,7 +392,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
   describe("gain and amplifier control", () => {
     it("setLNAGain adjusts to valid 8 dB steps", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Mock controlTransferIn for LNA gain - must return 1 byte with non-zero value
@@ -376,7 +410,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("setAmpEnable enables/disables amplifier", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       await expect(adapter.setAmpEnable(true)).resolves.toBeUndefined();
@@ -386,7 +420,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
   describe("bandwidth control", () => {
     it("setBandwidth adjusts to nearest supported value", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Exact supported value
@@ -401,7 +435,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
   describe("sample parsing", () => {
     it("parseSamples converts Int8 data to IQ samples", () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Create sample data (I/Q pairs as Int8)
@@ -423,7 +457,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
   describe("memory management", () => {
     it("getMemoryInfo returns buffer statistics", () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       const memInfo = adapter.getMemoryInfo();
@@ -436,7 +470,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("clearBuffers clears device buffers", () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       expect(() => adapter.clearBuffers()).not.toThrow();
@@ -445,7 +479,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
   describe("receiving control", () => {
     it("stopRx stops receiving", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       await expect(adapter.stopRx()).resolves.toBeUndefined();
@@ -453,7 +487,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("isReceiving returns false initially", () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       expect(adapter.isReceiving()).toBe(false);
@@ -462,7 +496,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
   describe("device operations", () => {
     it("open opens the device", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Mock the device configuration for open
@@ -509,7 +543,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("reset resets the device", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       await expect(adapter.reset()).resolves.toBeUndefined();
@@ -518,7 +552,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
 
   describe("configuration status and validation", () => {
     it("exposes getConfigurationStatus through adapter", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Configure device
@@ -534,7 +568,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("exposes validateReadyForStreaming through adapter", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       // Before configuration
@@ -551,7 +585,7 @@ describe("HackRFOneAdapter initialization and configuration", () => {
     });
 
     it("fastRecovery maintains adapter initialization state", async () => {
-      const device = createMockUSBDevice();
+      const { device } = createMockUSBDevice();
       const adapter = new HackRFOneAdapter(device);
 
       await adapter.setSampleRate(20_000_000);
@@ -563,6 +597,63 @@ describe("HackRFOneAdapter initialization and configuration", () => {
       const underlying = adapter.getUnderlyingDevice();
       const status = underlying.getConfigurationStatus();
       expect(status.isConfigured).toBe(true);
+    });
+  });
+
+  describe("error tracking and edge cases", () => {
+    it("tracks errors during operations", async () => {
+      const { device } = createMockUSBDevice();
+      // Force an error during open by making the underlying open fail
+      const mockOpen = jest.fn().mockRejectedValue(new Error("Test error"));
+      device.open = mockOpen;
+
+      const adapter = new HackRFOneAdapter(device);
+
+      // The error should be tracked and re-thrown
+      await expect(adapter.open()).rejects.toThrow();
+    });
+
+    it("returns default frequency when device frequency is null", async () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      // getFrequency should return default 100MHz when device has no frequency set
+      const freq = await adapter.getFrequency();
+      expect(freq).toBe(100e6);
+    });
+
+    it("handles setAmpEnable", async () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      await expect(adapter.setAmpEnable(true)).resolves.toBeUndefined();
+      await expect(adapter.setAmpEnable(false)).resolves.toBeUndefined();
+    });
+
+    it("provides getMemoryInfo", () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      const memInfo = adapter.getMemoryInfo();
+      expect(memInfo).toHaveProperty("totalBufferSize");
+      expect(memInfo).toHaveProperty("usedBufferSize");
+      expect(memInfo).toHaveProperty("activeBuffers");
+      expect(memInfo).toHaveProperty("maxSamples");
+      expect(memInfo).toHaveProperty("currentSamples");
+    });
+
+    it("clearBuffers delegates to device", () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      expect(() => adapter.clearBuffers()).not.toThrow();
+    });
+
+    it("reset delegates to device with error tracking", async () => {
+      const { device } = createMockUSBDevice();
+      const adapter = new HackRFOneAdapter(device);
+
+      await expect(adapter.reset()).resolves.toBeUndefined();
     });
   });
 });
