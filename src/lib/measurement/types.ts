@@ -195,3 +195,171 @@ export interface MeasurementConfig {
   applyPowerCalibration?: boolean; // Default: true
   applyIQCalibration?: boolean; // Default: true
 }
+
+/**
+ * Band classification for S-meter calculations
+ * HF: < 30 MHz (S9 = -73 dBm)
+ * VHF: >= 30 MHz (S9 = -93 dBm)
+ */
+export type SMeterBand = "HF" | "VHF";
+
+/**
+ * Represents a complete signal strength measurement
+ * with multiple representations for different use cases.
+ * See docs/reference/s-meter-spec.md for full specification.
+ */
+export interface SignalLevel {
+  /**
+   * Power level relative to ADC full scale
+   * Range: typically -∞ to 0 dBFS
+   * 0 dBFS = maximum ADC input (clipping)
+   * Directly measured from IQ samples
+   */
+  dBfs: number;
+
+  /**
+   * Approximate absolute power level at antenna input
+   * Range: typically -150 to +10 dBm
+   * Requires calibration constant K_cal
+   * Formula: dBm = dBfs + K_cal
+   */
+  dBmApprox: number;
+
+  /**
+   * S-unit reading (0-9 scale)
+   * 0 = no signal / noise floor
+   * 1-8 = weak to good signals
+   * 9 = reference level (S9)
+   */
+  sUnit: number;
+
+  /**
+   * Decibels over S9 (for strong signals)
+   * 0 = at or below S9
+   * >0 = signal is X dB above S9
+   * Common values: 0, 10, 20, 40, 60
+   * Displayed as "S9+10", "S9+20", etc.
+   */
+  overS9: number;
+
+  /**
+   * Band type used for S-unit calculation
+   * 'HF' = below 30 MHz (S9 = -73 dBm)
+   * 'VHF' = 30 MHz and above (S9 = -93 dBm)
+   */
+  band: SMeterBand;
+
+  /**
+   * Calibration status indicator
+   * 'uncalibrated' = using default K_cal approximation
+   * 'factory' = using factory calibration
+   * 'user' = using user-performed calibration
+   */
+  calibrationStatus: "uncalibrated" | "factory" | "user";
+
+  /**
+   * Estimated measurement uncertainty in dB
+   * Typical values:
+   * - Uncalibrated: ±10 dB
+   * - Factory calibrated: ±3 dB
+   * - User calibrated with signal generator: ±1 dB
+   */
+  uncertaintyDb?: number;
+
+  /**
+   * Timestamp of measurement (milliseconds since epoch)
+   */
+  timestamp: number;
+}
+
+/**
+ * Calibration parameters for S-meter
+ * Maps dBFS to dBm for a specific device and configuration
+ */
+export interface SMeterCalibration {
+  /**
+   * Calibration constant: dBm = dBfs + kCal
+   * Typical range: -80 to -40 dBm
+   */
+  kCal: number;
+
+  /**
+   * Frequency range this calibration applies to (Hz)
+   */
+  frequencyRange: {
+    min: number;
+    max: number;
+  };
+
+  /**
+   * Gain/attenuation setting this applies to
+   * Specific to HackRF, RTL-SDR, etc.
+   */
+  gainSetting?: {
+    lna: number; // LNA gain in dB
+    vga: number; // VGA gain in dB
+    rxAmp: boolean; // RX amp on/off (HackRF)
+  };
+
+  /**
+   * How calibration was performed
+   */
+  method:
+    | "signal-generator"
+    | "reference-station"
+    | "thermal-noise"
+    | "default";
+
+  /**
+   * Estimated accuracy of this calibration (dB)
+   * Typical values: 1-10 dB depending on method
+   */
+  accuracyDb: number;
+
+  /**
+   * When calibration was performed (Unix timestamp ms)
+   */
+  calibratedAt?: number;
+}
+
+/**
+ * S-meter display and behavior configuration
+ */
+export interface SMeterConfig {
+  /**
+   * Calibration data for current device/settings
+   */
+  calibration: SMeterCalibration;
+
+  /**
+   * Display preferences
+   */
+  display: {
+    /**
+     * Show numeric S-unit or graphical meter
+     */
+    style: "numeric" | "bar" | "needle";
+
+    /**
+     * Show dBm value alongside S-unit
+     */
+    showDbm: boolean;
+
+    /**
+     * Show dBFS value (engineering mode)
+     */
+    showDbfs: boolean;
+
+    /**
+     * Update rate (milliseconds)
+     */
+    updateRateMs: number;
+
+    /**
+     * Averaging/smoothing (exponential moving average alpha)
+     * 0 = maximum smoothing, 1 = no smoothing
+     * Typical: 0.1-0.3 for responsive yet stable reading
+     */
+    smoothing: number;
+  };
+}
