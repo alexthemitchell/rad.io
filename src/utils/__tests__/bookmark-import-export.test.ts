@@ -561,6 +561,39 @@ invalid,Test Station,test,note,1700000000000,1700000001000`;
       expect(preview.errors[0]?.message).toContain("First Station");
     });
 
+    it("should detect duplicates at bucket boundaries", () => {
+      // Test edge case where frequencies near bucket boundaries are correctly detected
+      // With bucketSize = 2000 (DUPLICATE_TOLERANCE * 2), frequencies should be
+      // detected as duplicates even when they fall into different buckets
+      const existingBookmarks: Bookmark[] = [
+        {
+          id: "existing-1",
+          frequency: 99999000, // bucket 49999 (with bucketSize=2000)
+          name: "Near Boundary Low",
+          tags: [],
+          notes: "",
+          createdAt: 1600000000000,
+          lastUsed: 1600000001000,
+        },
+      ];
+
+      const csv = `Frequency (Hz),Name,Tags,Notes,Created At,Last Used
+99999500,Near Boundary High,test,note,1700000000000,1700000001000`;
+
+      const preview = parseBookmarksCSV(csv, existingBookmarks);
+
+      expect(preview.valid).toHaveLength(0);
+      expect(preview.duplicates).toHaveLength(1);
+      expect(preview.errors).toHaveLength(0);
+      const duplicate = preview.duplicates[0];
+      expect(duplicate).toBeDefined();
+      if (duplicate) {
+        expect(
+          Math.abs(duplicate.imported.frequency - duplicate.existing.frequency),
+        ).toBeLessThanOrEqual(1000);
+      }
+    });
+
     it("should handle mix of valid, invalid, and duplicate bookmarks", () => {
       const existingBookmarks: Bookmark[] = [
         {

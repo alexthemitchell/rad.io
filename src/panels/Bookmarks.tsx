@@ -450,149 +450,163 @@ function Bookmarks({ isPanel = false }: BookmarksProps): React.JSX.Element {
       )}
 
       {importPreview && (
-        <div
-          ref={dialogRef}
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="import-preview-title"
-          aria-describedby={
-            importPreview.duplicates.length > 0
-              ? "import-preview-desc duplicate-options-desc"
-              : "import-preview-desc"
-          }
-          className="import-preview-dialog"
-          tabIndex={-1}
-        >
-          <h4 id="import-preview-title">Import Bookmarks Preview</h4>
-
-          <div id="import-preview-desc" className="import-summary">
-            <p>
-              <strong>Valid bookmarks:</strong> {importPreview.valid.length}
-            </p>
-            {importPreview.duplicates.length > 0 && (
-              <p>
-                <strong>Duplicates detected:</strong>{" "}
-                {importPreview.duplicates.length}
-              </p>
-            )}
-            {importPreview.errors.length > 0 && (
-              <p className="error-summary">
-                <strong>Errors:</strong> {importPreview.errors.length}
-              </p>
-            )}
-          </div>
-
-          {importPreview.duplicates.length > 0 && (
-            <div className="duplicate-options" id="duplicate-options-desc">
-              <p>
-                <strong>How to handle duplicates?</strong>
-              </p>
-              <label htmlFor="strategy-skip">
-                <input
-                  id="strategy-skip"
-                  type="radio"
-                  name="duplicateStrategy"
-                  value="skip"
-                  checked={duplicateStrategy === "skip"}
-                  onChange={(): void => setDuplicateStrategy("skip")}
-                />
-                Skip duplicates (keep existing)
-              </label>
-              <label htmlFor="strategy-overwrite">
-                <input
-                  id="strategy-overwrite"
-                  type="radio"
-                  name="duplicateStrategy"
-                  value="overwrite"
-                  checked={duplicateStrategy === "overwrite"}
-                  onChange={(): void => setDuplicateStrategy("overwrite")}
-                />
-                Overwrite existing with imported
-              </label>
-              <label htmlFor="strategy-import-as-new">
-                <input
-                  id="strategy-import-as-new"
-                  type="radio"
-                  name="duplicateStrategy"
-                  value="import_as_new"
-                  checked={duplicateStrategy === "import_as_new"}
-                  onChange={(): void => setDuplicateStrategy("import_as_new")}
-                />
-                Import duplicates as new bookmarks
-              </label>
-            </div>
-          )}
-
-          {importPreview.duplicates.length > 0 && (
-            <details className="duplicate-list">
-              <summary>View duplicate bookmarks</summary>
-              <ul>
-                {importPreview.duplicates.map((dup) => (
-                  <li key={`${dup.imported.id}-${dup.existing.id}`}>
-                    <strong>Imported:</strong> {dup.imported.name} at{" "}
-                    {formatFrequency(dup.imported.frequency)}
-                    <br />
-                    <strong>Existing:</strong> {dup.existing.name} at{" "}
-                    {formatFrequency(dup.existing.frequency)}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-
-          {importPreview.errors.length > 0 && (
-            <details className="error-list">
-              <summary>View errors ({importPreview.errors.length})</summary>
-              <ul>
-                {importPreview.errors.map((error) => (
-                  <li
-                    key={`${error.row}-${error.message}`}
-                    className="error-item"
-                  >
-                    Row {error.row}: {error.message}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-
-          {importPreview.valid.length > 0 && (
-            <details className="valid-list">
-              <summary>
-                View valid bookmarks ({importPreview.valid.length})
-              </summary>
-              <ul>
-                {importPreview.valid.slice(0, 10).map((bookmark) => (
-                  <li key={bookmark.id}>
-                    {bookmark.name} - {formatFrequency(bookmark.frequency)}
-                    {bookmark.tags.length > 0 && (
-                      <span className="preview-tags">
-                        {" "}
-                        ({bookmark.tags.join(", ")})
-                      </span>
-                    )}
-                  </li>
-                ))}
-                {importPreview.valid.length > 10 && (
-                  <li>...and {importPreview.valid.length - 10} more</li>
-                )}
-              </ul>
-            </details>
-          )}
-
-          <div className="import-actions">
-            <button
-              onClick={handleImportConfirm}
-              disabled={
-                importPreview.valid.length === 0 &&
-                importPreview.duplicates.length === 0
+        <>
+          <div
+            className="modal-backdrop"
+            onClick={handleImportCancel}
+            onKeyDown={(e): void => {
+              if (e.key === "Escape") {
+                handleImportCancel();
               }
-            >
-              Import
-            </button>
-            <button onClick={handleImportCancel}>Cancel</button>
+            }}
+            role="button"
+            tabIndex={-1}
+            aria-label="Close import preview"
+          />
+          <div
+            ref={dialogRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="import-preview-title"
+            aria-describedby={
+              importPreview.duplicates.length > 0
+                ? "import-preview-desc duplicate-options-desc"
+                : "import-preview-desc"
+            }
+            className="import-preview-dialog"
+            tabIndex={-1}
+          >
+            <h4 id="import-preview-title">Import Bookmarks Preview</h4>
+
+            <div id="import-preview-desc" className="import-summary">
+              <p>
+                <strong>Valid bookmarks:</strong> {importPreview.valid.length}
+              </p>
+              {importPreview.duplicates.length > 0 && (
+                <p>
+                  <strong>Duplicates detected:</strong>{" "}
+                  {importPreview.duplicates.length}
+                </p>
+              )}
+              {importPreview.errors.length > 0 && (
+                <p className="error-summary">
+                  <strong>Errors:</strong> {importPreview.errors.length}
+                </p>
+              )}
+            </div>
+
+            {importPreview.duplicates.length > 0 && (
+              <div className="duplicate-options" id="duplicate-options-desc">
+                <p>
+                  <strong>How to handle duplicates?</strong>
+                </p>
+                <label htmlFor="strategy-skip">
+                  <input
+                    id="strategy-skip"
+                    type="radio"
+                    name="duplicateStrategy"
+                    value="skip"
+                    checked={duplicateStrategy === "skip"}
+                    onChange={(): void => setDuplicateStrategy("skip")}
+                  />
+                  Skip duplicates (keep existing)
+                </label>
+                <label htmlFor="strategy-overwrite">
+                  <input
+                    id="strategy-overwrite"
+                    type="radio"
+                    name="duplicateStrategy"
+                    value="overwrite"
+                    checked={duplicateStrategy === "overwrite"}
+                    onChange={(): void => setDuplicateStrategy("overwrite")}
+                  />
+                  Overwrite existing with imported
+                </label>
+                <label htmlFor="strategy-import-as-new">
+                  <input
+                    id="strategy-import-as-new"
+                    type="radio"
+                    name="duplicateStrategy"
+                    value="import_as_new"
+                    checked={duplicateStrategy === "import_as_new"}
+                    onChange={(): void => setDuplicateStrategy("import_as_new")}
+                  />
+                  Import duplicates as new bookmarks
+                </label>
+              </div>
+            )}
+
+            {importPreview.duplicates.length > 0 && (
+              <details className="duplicate-list">
+                <summary>View duplicate bookmarks</summary>
+                <ul>
+                  {importPreview.duplicates.map((dup) => (
+                    <li key={`${dup.imported.id}-${dup.existing.id}`}>
+                      <strong>Imported:</strong> {dup.imported.name} at{" "}
+                      {formatFrequency(dup.imported.frequency)}
+                      <br />
+                      <strong>Existing:</strong> {dup.existing.name} at{" "}
+                      {formatFrequency(dup.existing.frequency)}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
+            {importPreview.errors.length > 0 && (
+              <details className="error-list">
+                <summary>View errors ({importPreview.errors.length})</summary>
+                <ul>
+                  {importPreview.errors.map((error) => (
+                    <li
+                      key={`${error.row}-${error.message}`}
+                      className="error-item"
+                    >
+                      Row {error.row}: {error.message}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
+            {importPreview.valid.length > 0 && (
+              <details className="valid-list">
+                <summary>
+                  View valid bookmarks ({importPreview.valid.length})
+                </summary>
+                <ul>
+                  {importPreview.valid.slice(0, 10).map((bookmark) => (
+                    <li key={bookmark.id}>
+                      {bookmark.name} - {formatFrequency(bookmark.frequency)}
+                      {bookmark.tags.length > 0 && (
+                        <span className="preview-tags">
+                          {" "}
+                          ({bookmark.tags.join(", ")})
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                  {importPreview.valid.length > 10 && (
+                    <li>...and {importPreview.valid.length - 10} more</li>
+                  )}
+                </ul>
+              </details>
+            )}
+
+            <div className="import-actions">
+              <button
+                onClick={handleImportConfirm}
+                disabled={
+                  importPreview.valid.length === 0 &&
+                  importPreview.duplicates.length === 0
+                }
+              >
+                Import
+              </button>
+              <button onClick={handleImportCancel}>Cancel</button>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <h2 id="bookmarks-heading">Bookmarks</h2>

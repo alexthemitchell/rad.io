@@ -260,8 +260,9 @@ export function parseBookmarksCSV(
   }
 
   // Create frequency buckets for efficient O(1) duplicate lookup
-  // Bucket frequencies by tolerance range to avoid iterating all bookmarks
-  const bucketSize = DUPLICATE_TOLERANCE;
+  // Use bucket size of DUPLICATE_TOLERANCE * 2 to ensure that any two frequencies
+  // within the tolerance will always fall into the same or adjacent buckets
+  const bucketSize = DUPLICATE_TOLERANCE * 2;
   const frequencyBuckets = new Map<number, Bookmark[]>();
   for (const bookmark of existingBookmarks) {
     const bucket = Math.floor(bookmark.frequency / bucketSize);
