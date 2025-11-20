@@ -6,7 +6,7 @@
 - Look for existing implementations before writing new ones; there may be similar code used elsewhere and we want to minimize duplication.
 - Streamline duplicate implementations into a single, reusable implementation when possible.
 
-Check output of `npm start` to get deployed server URL (usually https://localhost:8080)
+Check output of `npm start` to get deployed server URL (https://localhost:8080)
 
 - Always use a language server when possible
 - Prefer to use tools over raw bash commands
