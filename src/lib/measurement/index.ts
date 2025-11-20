@@ -9,6 +9,7 @@ export { SignalQualityAnalyzer } from "./signal-quality";
 export { CalibrationManager } from "./calibration";
 export { SpectrumMaskTester } from "./spectrum-mask";
 export { MeasurementLogger } from "./measurement-logger";
+export { convertDbfsToDbm, dbmToSUnit } from "./signalMeasurement";
 
 export type {
   FrequencyMarker,
