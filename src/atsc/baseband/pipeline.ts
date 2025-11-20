@@ -91,7 +91,6 @@ export class MockAtscBasebandPipeline implements AtscBasebandPipeline {
   private packetCounter = 0;
   private patCounter = 0;
   private pmtCounter = 0;
-  // removed unused counters
 
   // TS packet constants
   private static readonly PACKET_SIZE = 188;

@@ -124,8 +124,8 @@ export function generateViterbiMuxTables(): ViterbiMuxTables {
 class SingleViterbi {
   private pathMetrics: Float32Array;
   private nextPathMetrics: Float32Array;
-  private survivorDibit: Uint8Array; // last-step survivor dibit per next-state
-  // Reserved for future traceback use (not used in current implementation)
+  // Stores the survivor dibit for each state at the current step, used in the Viterbi decoding process.
+  private survivorDibit: Uint8Array;
 
   // Next-state mapping for a simple 2-bit input driving a 2-bit state shift-register
   // ns = ((s << 1) | (dibit & 1)) & 0x3

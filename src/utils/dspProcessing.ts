@@ -21,7 +21,6 @@ import { calculateSignalStrength, calculateFFTSync } from "./dsp";
 import type { ISDRDevice } from "../models/SDRDevice";
 
 // Threshold constants for IQ sampling processor
-// Threshold constants for IQ sampling processor
 const MIN_RMS_THRESHOLD = 1e-10; // Avoid divide-by-zero/instability
 const GAIN_ERROR_THRESHOLD = 1e-2; // Minimum gain error to warrant correction
 const PHASE_ERROR_THRESHOLD = 1e-2; // Minimum phase error (radians) to warrant correction

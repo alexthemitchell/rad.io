@@ -120,8 +120,18 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
     signals.map((s) => `${s.frequency}_${s.isActive}`).join(","),
   ]);
 
-  // Compute a simple hash of FFT data for change detection
-  // Uses sum of first, middle, and last 10 values to avoid full array scan
+  /**
+   * Computes a simple hash of FFT data for change detection.
+   *
+   * This function uses a sampling strategy: it sums the first 10, middle 10, and last 10 values
+   * of the input Float32Array. This avoids scanning the entire array, which can be very large,
+   * and provides a fast, approximate hash suitable for detecting significant changes in the data.
+   * This approach is preferred over a full hash for performance reasons, as it reduces CPU usage
+   * and latency in the rendering pipeline, especially when processing high-throughput SDR data.
+   *
+   * @param data - The FFT data array to hash.
+   * @returns A numeric hash representing the sampled sum of the data.
+   */
   const computeDataHash = (data: Float32Array): number => {
     const len = data.length;
     if (len === 0) return 0;

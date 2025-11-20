@@ -506,7 +506,7 @@ export function DiagnosticsOverlay({
         setPosition(newPosition);
       }
     },
-    // setOverlayVisible is stable from Zustand, position changes are intentional
+    // setOverlayVisible is included (it is stable from Zustand), position changes are intentional
     [position, setOverlayVisible],
   );
 

@@ -168,7 +168,7 @@ export class HackRFOneAdapter implements ISDRDevice {
       await this.device.setLNAGain(adjustedGain);
     } catch (err) {
       console.warn(
-        "HackRFOneAdapter: Failed to set LNA gain; continuing with default",
+        "HackRFOneAdapter: Failed to set LNA gain; continuing without setting gain",
         {
           requestedGain: gainDb,
           adjustedGain,
