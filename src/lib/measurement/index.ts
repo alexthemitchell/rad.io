@@ -25,4 +25,8 @@ export type {
   MeasurementLogEntry,
   MeasurementStatistics,
   MeasurementConfig,
+  SMeterBand,
+  SignalLevel,
+  SMeterCalibration,
+  SMeterConfig,
 } from "./types";
