@@ -16,7 +16,10 @@ export function formatBytes(bytes: number): string {
   }
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.max(0, Math.floor(Math.log(bytes) / Math.log(k)));
+  const i = Math.min(
+    sizes.length - 1,
+    Math.max(0, Math.floor(Math.log(bytes) / Math.log(k))),
+  );
   return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`;
 }
 
@@ -46,6 +49,17 @@ export function formatTimestamp(isoString: string): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  // Handle future timestamps (clock skew or invalid data)
+  if (diffMs < 0) {
+    return date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
 
   // If within last 24 hours, show relative time
   if (diffDays === 0) {

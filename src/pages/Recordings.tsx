@@ -53,6 +53,7 @@ function Recordings(): React.JSX.Element {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Load recordings on mount
@@ -151,6 +152,56 @@ function Recordings(): React.JSX.Element {
       previousFocusRef.current.focus();
       previousFocusRef.current = null;
     }
+  }, [deleteConfirmId]);
+
+  // Focus trap for delete dialog
+  useEffect(() => {
+    if (!deleteConfirmId) {
+      return;
+    }
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key !== "Tab") {
+        return;
+      }
+
+      const focusableElements = [
+        cancelButtonRef.current,
+        deleteButtonRef.current,
+      ].filter((el): el is HTMLButtonElement => el !== null);
+
+      if (focusableElements.length === 0) {
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (!firstElement || !lastElement) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+
+      if (e.shiftKey) {
+        // Shift+Tab: moving backwards
+        if (activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        }
+      } else {
+        // Tab: moving forwards
+        if (activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return (): void => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [deleteConfirmId]);
 
   const handleExport = async (id: string): Promise<void> => {
@@ -257,6 +308,7 @@ function Recordings(): React.JSX.Element {
               </button>
               <button
                 type="button"
+                ref={deleteButtonRef}
                 className="delete-confirmation-button delete-confirmation-confirm"
                 onClick={(): void => {
                   void handleDeleteConfirm();
