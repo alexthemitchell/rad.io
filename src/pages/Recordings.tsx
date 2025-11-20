@@ -178,7 +178,10 @@ function Recordings(): React.JSX.Element {
 
       // Format timestamp as YYYYMMDD_HHMMSS for cleaner filenames
       const iso = recording.metadata.timestamp;
-      const parts = iso.replace("Z", "").replace(/\.\d+$/, "").split("T");
+      const parts = iso
+        .replace("Z", "")
+        .replace(/\.\d+$/, "")
+        .split("T");
       const datePart = (parts[0] ?? "").replace(/-/g, "");
       const timePart = (parts[1] ?? "").replace(/:/g, "");
       a.download = `recording_${recording.metadata.frequency}_${datePart}_${timePart}.iq`;
