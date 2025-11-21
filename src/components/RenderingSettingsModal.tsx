@@ -198,7 +198,13 @@ export default function RenderingSettingsModal({
                 aria-label="Calibration offset in dB"
                 value={settings.calibrationOffsetDb}
                 onChange={(e) => {
-                  const value = parseFloat(e.target.value);
+                  const inputValue = e.target.value;
+                  // Reset to 0 when field is cleared
+                  if (inputValue === "") {
+                    setSettings({ calibrationOffsetDb: 0 });
+                    return;
+                  }
+                  const value = parseFloat(inputValue);
                   if (!Number.isNaN(value)) {
                     // Clamp to valid range [-50, 50]
                     const clamped = Math.max(-50, Math.min(50, value));
