@@ -309,7 +309,7 @@ describe("Signal Measurement Conversions", () => {
         { dbfs: 0, kCal: -20, expectedDbm: -20 }, // Very strong
         { dbfs: 0, kCal: -10, expectedDbm: -10 }, // Extremely strong
         { dbfs: 0, kCal: 0, expectedDbm: 0 }, // Maximum test case
-        { dbfs: 0, kCal: 10, expectedDbm: 10 }, // Beyond reasonable (1W at antenna!)
+        { dbfs: 0, kCal: 10, expectedDbm: 10 }, // Beyond reasonable (10mW at antenna!)
       ];
 
       extremeSignals.forEach(({ dbfs, kCal, expectedDbm }) => {
@@ -363,7 +363,7 @@ describe("Signal Measurement Conversions", () => {
       const dbm = convertDbfsToDbm(dbfs, kCal, maxCalibrationOffset);
       expect(dbm).toBe(20); // 0 + (-30) + 50 = 20 dBm
 
-      // This is an extremely strong signal (10 milliwatts at antenna!)
+      // This is an extremely strong signal (100 milliwatts at antenna!)
       const hfResult = dbmToSUnit(dbm, "HF");
       expect(hfResult.sUnit).toBe(9);
       expect(hfResult.overS9).toBe(93); // 20 - (-73) = 93 dB over S9
