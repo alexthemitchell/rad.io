@@ -48,19 +48,10 @@ export function AddVfoModal({
       }
     };
 
-    // Handle click outside modal
-    const handleClickOutside = (e: MouseEvent): void => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        onCancel();
-      }
-    };
-
     document.addEventListener("keydown", handleEscape);
-    document.addEventListener("mousedown", handleClickOutside);
 
     return (): void => {
       document.removeEventListener("keydown", handleEscape);
-      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen, onCancel]);
 
@@ -75,11 +66,20 @@ export function AddVfoModal({
   return (
     <div
       className="dialog-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="add-vfo-modal-title"
+      role="presentation"
+      onClick={(e): void => {
+        if (e.target === e.currentTarget) {
+          onCancel();
+        }
+      }}
     >
-      <div className="dialog" ref={modalRef}>
+      <div
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-vfo-modal-title"
+        ref={modalRef}
+      >
         <h4 id="add-vfo-modal-title">Add VFO</h4>
 
         <div className="dialog-field-group">

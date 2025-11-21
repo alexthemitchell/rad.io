@@ -56,12 +56,8 @@ export function VfoBadgeOverlay({
     <div
       className="vfo-badge-overlay"
       style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
         width: `${width}px`,
         height: `${height}px`,
-        pointerEvents: "none",
       }}
     >
       {vfos.map((vfo) => {
@@ -84,11 +80,8 @@ export function VfoBadgeOverlay({
             role={onSelect ? "button" : undefined}
             tabIndex={onSelect ? 0 : undefined}
             style={{
-              position: "absolute",
               left: `${x}px`,
               top: "10px",
-              transform: "translateX(-50%)",
-              pointerEvents: "auto",
             }}
             onClick={onSelect ? (): void => onSelect(vfo.id) : undefined}
             onKeyDown={

@@ -1,13 +1,18 @@
 /* VFO Badge Overlay Styles */
 
 .vfo-badge-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
   pointer-events: none;
 }
 
 .vfo-badge {
+  position: absolute;
   cursor: pointer;
   z-index: 10;
   pointer-events: auto;
+  transform: translateX(-50%);
 }
 
 .vfo-badge-content {
