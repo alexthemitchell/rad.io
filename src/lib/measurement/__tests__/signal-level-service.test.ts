@@ -376,7 +376,7 @@ describe("SignalLevelService", () => {
       // The dBm value should include the calibration offset
       // dBm = dBFS + kCal + calibrationOffset
       // With +10 dB offset, the dBm should be 10 dB higher
-      expect(level.dBmApprox).toBeGreaterThan(level.dBfs + (-60));
+      expect(level.dBmApprox).toBeGreaterThan(level.dBfs + -60);
 
       service.stop();
     });

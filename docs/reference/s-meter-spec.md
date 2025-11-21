@@ -479,11 +479,13 @@ While the system uses factory calibration constants (K_cal), users can apply a *
 ### Calibration Offset
 
 **Formula**:
+
 ```
 dBm = dBFS + K_cal + calibrationOffset
 ```
 
 Where:
+
 - `dBFS` = measured power from IQ samples
 - `K_cal` = factory calibration constant (device-specific)
 - `calibrationOffset` = user-adjustable offset in dB (default: 0)
@@ -505,6 +507,7 @@ Where:
 6. Verify the reading now matches the known signal level
 
 **Example**:
+
 ```typescript
 // Signal generator: -60 dBm at 100 MHz
 // Display shows: -68 dBm
@@ -534,12 +537,14 @@ const calibrationOffset = 8; // Apply +8 dB correction
 The S-meter automatically selects the appropriate S9 baseline based on frequency:
 
 **HF Band (< 30 MHz)**
+
 - S9 = -73 dBm
 - Each S-unit = 6 dB
 - Typical signals: S5 to S9+20
 - Calibration offset applies equally across all frequencies in HF range
 
 **VHF/UHF Band (≥ 30 MHz)**
+
 - S9 = -93 dBm (20 dB lower than HF)
 - Each S-unit = 6 dB
 - Typical signals: S3 to S9+40
@@ -608,11 +613,13 @@ function CalibrationExample() {
 ### Accuracy Notes
 
 **With Calibration Offset**:
+
 - User-calibrated systems: ±1-3 dB accuracy (with proper procedure)
 - Factory calibration + offset: ±2-5 dB accuracy
 - Uncalibrated (offset = 0): ±10 dB accuracy
 
 **Calibration Uncertainty Sources**:
+
 1. Reference signal accuracy (signal generator spec)
 2. Cable losses (if not accounted for)
 3. Impedance mismatch
@@ -620,6 +627,7 @@ function CalibrationExample() {
 5. Frequency-dependent gain variations
 
 **Best Practices**:
+
 - Calibrate at the frequency and gain settings you use most
 - Recalibrate periodically (monthly for critical work)
 - Document your calibration setup and reference levels
@@ -802,9 +810,9 @@ class SMeter {
 
 ## Revision History
 
-| Version | Date       | Author         | Changes                                                        |
-| ------- | ---------- | -------------- | -------------------------------------------------------------- |
-| 1.0     | 2025-11-20 | GitHub Copilot | Initial specification document                                 |
+| Version | Date       | Author         | Changes                                                       |
+| ------- | ---------- | -------------- | ------------------------------------------------------------- |
+| 1.0     | 2025-11-20 | GitHub Copilot | Initial specification document                                |
 | 1.1     | 2025-11-21 | GitHub Copilot | Added User Calibration Workflow section with offset procedure |
 
 ## License

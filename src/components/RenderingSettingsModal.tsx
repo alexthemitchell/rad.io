@@ -200,7 +200,9 @@ export default function RenderingSettingsModal({
                 onChange={(e) => {
                   const value = parseFloat(e.target.value);
                   if (!Number.isNaN(value)) {
-                    setSettings({ calibrationOffsetDb: value });
+                    // Clamp to valid range [-50, 50]
+                    const clamped = Math.max(-50, Math.min(50, value));
+                    setSettings({ calibrationOffsetDb: clamped });
                   }
                 }}
                 style={{
