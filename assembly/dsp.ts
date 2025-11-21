@@ -763,3 +763,242 @@ export function removeDCOffsetIIR(
   state[3] = lastOutputQ;
   return state;
 }
+
+/**
+ * Frequency shift IQ samples by a given offset
+ * Multiplies samples by e^(-j*2π*f*t) to shift spectrum by -f Hz
+ *
+ * @param iSamples - Input I component samples
+ * @param qSamples - Input Q component samples
+ * @param outputI - Output I component samples
+ * @param outputQ - Output Q component samples
+ * @param size - Number of samples
+ * @param frequencyHz - Frequency shift in Hz (positive shifts up)
+ * @param sampleRate - Sample rate in Hz
+ * @param initialPhase - Starting phase offset (radians)
+ * @returns Final phase for continued processing
+ */
+export function frequencyShift(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  outputI: Float32Array,
+  outputQ: Float32Array,
+  size: i32,
+  frequencyHz: f64,
+  sampleRate: f64,
+  initialPhase: f64,
+): f64 {
+  const phaseIncrement = (-2.0 * Math.PI * frequencyHz) / sampleRate;
+  let phase = initialPhase;
+
+  for (let i: i32 = 0; i < size; i++) {
+    const cosPhase = f32(Math.cos(phase));
+    const sinPhase = f32(Math.sin(phase));
+
+    const inI = iSamples[i];
+    const inQ = qSamples[i];
+
+    // Complex multiplication: (I + jQ) * (cos(phase) + j*sin(phase))
+    outputI[i] = inI * cosPhase - inQ * sinPhase;
+    outputQ[i] = inI * sinPhase + inQ * cosPhase;
+
+    phase += phaseIncrement;
+
+    // Keep phase bounded to prevent numerical drift
+    if (phase > 2.0 * Math.PI) {
+      phase -= 2.0 * Math.PI;
+    } else if (phase < -2.0 * Math.PI) {
+      phase += 2.0 * Math.PI;
+    }
+  }
+
+  return phase;
+}
+
+/**
+ * Simple low-pass FIR filter using moving average
+ * Provides basic anti-aliasing for decimation
+ *
+ * @param iSamples - Input I component samples
+ * @param qSamples - Input Q component samples
+ * @param outputI - Output I component samples
+ * @param outputQ - Output Q component samples
+ * @param size - Number of samples
+ * @param taps - Number of filter taps (window size)
+ */
+export function movingAverageLowPass(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  outputI: Float32Array,
+  outputQ: Float32Array,
+  size: i32,
+  taps: i32,
+): void {
+  const gain = 1.0 / f64(taps);
+
+  for (let i: i32 = 0; i < size; i++) {
+    let sumI: f64 = 0.0;
+    let sumQ: f64 = 0.0;
+
+    const start = i - taps + 1;
+    for (let j: i32 = 0; j < taps; j++) {
+      const idx = start + j;
+      if (idx >= 0 && idx < size) {
+        sumI += f64(iSamples[idx]);
+        sumQ += f64(qSamples[idx]);
+      }
+    }
+
+    outputI[i] = f32(sumI * gain);
+    outputQ[i] = f32(sumQ * gain);
+  }
+}
+
+/**
+ * Decimate IQ samples by an integer factor
+ * Simply keeps every Nth sample
+ *
+ * @param iSamples - Input I component samples
+ * @param qSamples - Input Q component samples
+ * @param outputI - Output I component samples (must be sized: ceil(inputSize / factor))
+ * @param outputQ - Output Q component samples (must be sized: ceil(inputSize / factor))
+ * @param inputSize - Number of input samples
+ * @param factor - Decimation factor
+ * @returns Number of output samples written
+ */
+export function decimate(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  outputI: Float32Array,
+  outputQ: Float32Array,
+  inputSize: i32,
+  factor: i32,
+): i32 {
+  if (factor <= 1) {
+    // No decimation needed
+    for (let i: i32 = 0; i < inputSize; i++) {
+      outputI[i] = iSamples[i];
+      outputQ[i] = qSamples[i];
+    }
+    return inputSize;
+  }
+
+  let outIdx: i32 = 0;
+  for (let i: i32 = 0; i < inputSize; i += factor) {
+    outputI[outIdx] = iSamples[i];
+    outputQ[outIdx] = qSamples[i];
+    outIdx++;
+  }
+
+  return outIdx;
+}
+
+/**
+ * Multi-VFO mixer: Extract multiple channels from wideband IQ in parallel
+ *
+ * For each VFO:
+ * 1. Frequency shift to move VFO center to baseband (0 Hz)
+ * 2. Low-pass filter to isolate channel bandwidth
+ * 3. Decimate to reduce sample rate
+ *
+ * This is optimized for 1-2 VFOs. For 3+ VFOs, prefer using PFB channelizer
+ * in TypeScript layer which amortizes FFT cost across all channels.
+ *
+ * @param iSamples - Wideband I component samples
+ * @param qSamples - Wideband Q component samples
+ * @param inputSize - Number of wideband samples
+ * @param vfoFreqOffsets - Frequency offsets from wideband center for each VFO (Hz)
+ * @param numVfos - Number of VFOs to extract
+ * @param sampleRate - Wideband sample rate (Hz)
+ * @param decimationFactor - Integer decimation factor for output
+ * @param filterTaps - Number of low-pass filter taps
+ * @param vfoPhases - Array of initial phases for each VFO (length >= numVfos)
+ * @param outputBuffer - Flat output buffer: [vfo0_I[], vfo0_Q[], vfo1_I[], vfo1_Q[], ...]
+ *                       Size must be: numVfos * 2 * ceil(inputSize / decimationFactor)
+ * @returns Updated phases for each VFO (for continuous processing across buffers)
+ */
+export function multiVfoMixer(
+  iSamples: Float32Array,
+  qSamples: Float32Array,
+  inputSize: i32,
+  vfoFreqOffsets: Float64Array,
+  numVfos: i32,
+  sampleRate: f64,
+  decimationFactor: i32,
+  filterTaps: i32,
+  vfoPhases: Float64Array,
+  outputBuffer: Float32Array,
+): Float64Array {
+  const outputSize = i32(Math.ceil(f64(inputSize) / f64(decimationFactor)));
+
+  // Allocate temporary buffers for per-VFO processing
+  const tempShiftedI = new Float32Array(inputSize);
+  const tempShiftedQ = new Float32Array(inputSize);
+  const tempFilteredI = new Float32Array(inputSize);
+  const tempFilteredQ = new Float32Array(inputSize);
+
+  const updatedPhases = new Float64Array(numVfos);
+
+  for (let vfoIdx: i32 = 0; vfoIdx < numVfos; vfoIdx++) {
+    const freqOffset = vfoFreqOffsets[vfoIdx];
+    const initialPhase = vfoPhases[vfoIdx];
+
+    // Step 1: Frequency shift to move VFO center to baseband
+    const finalPhase = frequencyShift(
+      iSamples,
+      qSamples,
+      tempShiftedI,
+      tempShiftedQ,
+      inputSize,
+      freqOffset,
+      sampleRate,
+      initialPhase,
+    );
+    updatedPhases[vfoIdx] = finalPhase;
+
+    // Step 2: Low-pass filter to isolate channel
+    movingAverageLowPass(
+      tempShiftedI,
+      tempShiftedQ,
+      tempFilteredI,
+      tempFilteredQ,
+      inputSize,
+      filterTaps,
+    );
+
+    // Step 3: Decimate to channel sample rate
+    const vfoIOffset = vfoIdx * 2 * outputSize;
+    const vfoQOffset = vfoIOffset + outputSize;
+
+    // Create views into output buffer for this VFO
+    const outputIView = outputBuffer.subarray(
+      vfoIOffset,
+      vfoIOffset + outputSize,
+    );
+    const outputQView = outputBuffer.subarray(
+      vfoQOffset,
+      vfoQOffset + outputSize,
+    );
+
+    const actualOutputSize = decimate(
+      tempFilteredI,
+      tempFilteredQ,
+      outputIView,
+      outputQView,
+      inputSize,
+      decimationFactor,
+    );
+
+    // Ensure we wrote the expected amount (actualOutputSize should equal outputSize)
+    if (actualOutputSize !== outputSize) {
+      // This is a safety check; in normal operation they should match
+      // Fill remaining with zeros if needed
+      for (let i: i32 = actualOutputSize; i < outputSize; i++) {
+        outputIView[i] = 0.0;
+        outputQView[i] = 0.0;
+      }
+    }
+  }
+
+  return updatedPhases;
+}

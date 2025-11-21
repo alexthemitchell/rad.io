@@ -91,3 +91,15 @@ export {
   movingAverage,
 } from "./filters";
 export type { FIRFilterState, IIRFilterState } from "./filters";
+
+// Re-export multi-VFO processor
+export { MultiVfoProcessor } from "./MultiVfoProcessor";
+export type {
+  MultiVfoProcessorConfig,
+  VfoAudioBuffer,
+} from "./MultiVfoProcessor";
+
+// Re-export channelizers
+export { pfbChannelize } from "./pfbChannelizer";
+export type { PFBChannelizerOptions } from "./pfbChannelizer";
+export { windowedDFTChannelize } from "./wdfdftChannelizer";
