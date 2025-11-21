@@ -56,7 +56,7 @@ Alongside S-units, the meter displays **dBm** (decibels relative to 1 milliwatt)
 
 **VHF/UHF Bands (≥ 30 MHz)**:
 
-- S9 = -93 dBm (20 dB lower due to higher noise floor)
+- S9 = -93 dBm (20 dB lower reference due to typically higher noise floor at VHF/UHF frequencies)
 - Each S-unit below S9 = 6 dB difference
 - Above S9: reported as S9 + X dB
 
