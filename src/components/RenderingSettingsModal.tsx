@@ -170,6 +170,80 @@ export default function RenderingSettingsModal({
               background: "var(--rad-bg-elev, #111726)",
             }}
           >
+            <strong>Signal Meter Calibration</strong>
+            <p style={{ marginTop: 6, marginBottom: 12, opacity: 0.85 }}>
+              Fine-tune signal strength measurements with a calibration offset.
+              Adjust ±50 dB to compensate for antenna characteristics or cable
+              losses.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <label
+                htmlFor="calibration-offset"
+                style={{ minWidth: 120, opacity: 0.9 }}
+              >
+                Offset (dB):
+              </label>
+              <input
+                id="calibration-offset"
+                type="number"
+                min="-50"
+                max="50"
+                step="0.5"
+                aria-label="Calibration offset in dB"
+                value={settings.calibrationOffsetDb}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (!Number.isNaN(value)) {
+                    setSettings({ calibrationOffsetDb: value });
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  padding: "6px 10px",
+                  border: "1px solid var(--rad-border)",
+                  borderRadius: 4,
+                  background: "var(--rad-bg, #0a0e1a)",
+                  color: "var(--rad-fg, #e6e8ef)",
+                  fontSize: 14,
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setSettings({ calibrationOffsetDb: 0 })}
+                className="btn btn-ghost"
+                style={{ padding: "4px 12px", fontSize: 13 }}
+                title="Reset calibration offset to 0 dB"
+              >
+                Reset
+              </button>
+            </div>
+            <p
+              style={{
+                marginTop: 8,
+                marginBottom: 0,
+                fontSize: 12,
+                opacity: 0.7,
+              }}
+            >
+              Current: {settings.calibrationOffsetDb > 0 ? "+" : ""}
+              {settings.calibrationOffsetDb.toFixed(1)} dB
+              {settings.calibrationOffsetDb === 0 && " (no offset)"}
+            </p>
+          </div>
+          <div
+            style={{
+              padding: 12,
+              border: "1px solid var(--rad-border)",
+              borderRadius: 6,
+              background: "var(--rad-bg-elev, #111726)",
+            }}
+          >
             <strong>Rendering Backend</strong>
             <p style={{ marginTop: 6, opacity: 0.85 }}>
               WebGPU/WebGL2 selection coming soon.
