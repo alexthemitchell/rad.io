@@ -23,15 +23,15 @@ An S-Meter provides a standardized way to measure and report signal strength in 
 
 The S-Meter displays signal strength using the following scale:
 
-| Reading | Meaning | Typical Use |
-|---------|---------|-------------|
-| S0 | No signal / Noise floor | Background noise only |
-| S1-S3 | Very weak signal | Barely detectable, hard to copy |
-| S4-S6 | Weak to fair signal | Readable with some effort |
-| S7-S8 | Good signal | Clear, readable signal |
-| S9 | Reference level | Strong, clear signal |
-| S9+10 to S9+20 | Very strong signal | Excellent reception |
-| S9+40+ | Extremely strong signal | Very close or very powerful transmitter |
+| Reading        | Meaning                 | Typical Use                             |
+| -------------- | ----------------------- | --------------------------------------- |
+| S0             | No signal / Noise floor | Background noise only                   |
+| S1-S3          | Very weak signal        | Barely detectable, hard to copy         |
+| S4-S6          | Weak to fair signal     | Readable with some effort               |
+| S7-S8          | Good signal             | Clear, readable signal                  |
+| S9             | Reference level         | Strong, clear signal                    |
+| S9+10 to S9+20 | Very strong signal      | Excellent reception                     |
+| S9+40+         | Extremely strong signal | Very close or very powerful transmitter |
 
 ### Color Zones
 
@@ -49,11 +49,13 @@ The visual meter uses color coding to indicate signal quality:
 Alongside S-units, the meter displays **dBm** (decibels relative to 1 milliwatt) - an absolute power measurement at your antenna input.
 
 **HF Bands (< 30 MHz)**:
+
 - S9 = -73 dBm
 - Each S-unit below S9 = 6 dB difference
 - Above S9: reported as S9 + X dB
 
 **VHF/UHF Bands (≥ 30 MHz)**:
+
 - S9 = -93 dBm (20 dB lower due to higher noise floor)
 - Each S-unit below S9 = 6 dB difference
 - Above S9: reported as S9 + X dB
@@ -61,14 +63,17 @@ Alongside S-units, the meter displays **dBm** (decibels relative to 1 milliwatt)
 ### Band Indicator
 
 The display shows **HF** or **VHF** to indicate which calibration standard is active:
+
 - **HF**: Frequencies below 30 MHz (amateur HF bands, shortwave, AM broadcast)
 - **VHF**: Frequencies at or above 30 MHz (FM broadcast, amateur VHF/UHF, public safety)
 
 ### Calibration Status
 
 A small icon in the corner indicates calibration status:
-- **Wrench icon**: User-calibrated (most accurate)
-- **No icon**: Factory calibration or default values
+
+- **Ruler icon (📏)**: User-calibrated (most accurate)
+- **Factory icon (🏭)**: Factory calibration
+- **No icon**: Uncalibrated (using default values)
 
 ## Using the S-Meter
 
@@ -84,11 +89,13 @@ A small icon in the corner indicates calibration status:
 You can choose between two visual styles:
 
 **Bar Mode** (Default):
+
 - Smooth gradient bar that fills horizontally
 - Shows precise signal level with smooth transitions
 - Best for general monitoring
 
 **Segment Mode**:
+
 - 15-segment LED-style display
 - Discrete steps for classic analog meter appearance
 - Each illuminated segment represents signal strength
@@ -98,6 +105,7 @@ To switch modes, use the settings menu (implementation depends on UI preferences
 ### Engineering Mode
 
 For advanced users, you can enable **dBFS display** to show the raw digital signal level relative to the ADC full scale. This is useful for:
+
 - Preventing ADC clipping (keep below -3 dBFS)
 - Understanding your RF gain settings
 - Debugging signal path issues
@@ -107,6 +115,7 @@ For advanced users, you can enable **dBFS display** to show the raw digital sign
 ### Why Calibrate?
 
 Out of the box, the S-Meter uses factory calibration constants that provide approximate measurements (±10 dB accuracy). User calibration can improve this to ±1-3 dB, which is important for:
+
 - Accurate signal strength reporting
 - Comparing signals across different frequencies
 - Field strength measurements
@@ -115,6 +124,7 @@ Out of the box, the S-Meter uses factory calibration constants that provide appr
 ### When to Calibrate
 
 Consider calibration if:
+
 - You need precise dBm measurements
 - You're using an external antenna with known gain/loss
 - You want to compare readings with other calibrated receivers
@@ -125,6 +135,7 @@ Consider calibration if:
 #### Method 1: Using a Signal Generator (Most Accurate)
 
 **What You Need**:
+
 - Calibrated RF signal generator
 - Coaxial cable
 - Attenuator (optional, to prevent overload)
@@ -147,6 +158,7 @@ Consider calibration if:
    - Example: Generator at -60 dBm, display shows -68 dBm
 
 4. **Calculate Offset**:
+
    ```
    Calibration Offset = (Known Signal) - (Displayed Value)
    Example: -60 dBm - (-68 dBm) = +8 dB
@@ -164,6 +176,7 @@ Consider calibration if:
 #### Method 2: Using a Reference Station
 
 **What You Need**:
+
 - Knowledge of a local broadcast station's power and location
 - Path loss calculation tools or charts
 
@@ -189,6 +202,7 @@ Consider calibration if:
 #### Method 3: Comparing with Another Calibrated Receiver
 
 **What You Need**:
+
 - Access to a calibrated receiver (amateur radio transceiver, spectrum analyzer, etc.)
 
 **Procedure**:
@@ -215,6 +229,7 @@ The same calibration offset applies to **both** HF and VHF bands. However, if yo
 ### Calibration Limits and Safety
 
 The system enforces safe calibration ranges:
+
 - **Minimum offset**: -50 dB
 - **Maximum offset**: +50 dB
 - Values outside this range are automatically clamped
@@ -222,6 +237,7 @@ The system enforces safe calibration ranges:
 ### Resetting Calibration
 
 To return to factory defaults:
+
 1. Open Settings → Rendering Settings → Signal Meter Calibration
 2. Click "Reset" or set offset to 0 dB
 3. The meter will use default calibration constants
@@ -231,12 +247,14 @@ To return to factory defaults:
 ### S-Meter Shows S0 or Very Low Reading
 
 **Possible Causes**:
+
 - No antenna connected
 - SDR device not receiving properly
 - Frequency has no active signals
 - Incorrect gain settings (too low)
 
 **Solutions**:
+
 - Check antenna connection
 - Verify SDR is connected and working
 - Tune to a known active frequency (e.g., FM broadcast band)
@@ -246,12 +264,14 @@ To return to factory defaults:
 ### S-Meter Always Shows S9+60
 
 **Possible Causes**:
+
 - ADC clipping (signal too strong)
 - Gain settings too high
 - Very close to a powerful transmitter
 - Incorrect calibration offset
 
 **Solutions**:
+
 - Reduce RF gain (LNA/VGA settings)
 - Add external attenuator
 - Check dBFS reading - should be below -3 dBFS
@@ -261,12 +281,14 @@ To return to factory defaults:
 ### S-Meter Fluctuates Rapidly
 
 **Possible Causes**:
+
 - Fading signal (mobile, aircraft, or HF ionospheric propagation)
 - Interference or QRM
 - Normal behavior for weak AM signals
 - Low smoothing setting
 
 **Solutions**:
+
 - This may be normal for certain signal types
 - Increase smoothing factor in settings (if available)
 - For stable CW or FM signals, rapid fluctuation may indicate interference
@@ -274,12 +296,14 @@ To return to factory defaults:
 ### Reading Doesn't Match My Other Receiver
 
 **Possible Causes**:
+
 - Different calibration
 - Different bandwidth settings
 - One receiver has antenna preamp, other doesn't
 - Cable losses not accounted for
 
 **Solutions**:
+
 - Perform relative calibration (Method 3 above)
 - Ensure both receivers use same bandwidth
 - Account for external preamps or attenuators
@@ -288,6 +312,7 @@ To return to factory defaults:
 ### Band Shows "HF" but I'm on VHF
 
 This occurs exactly at the 30 MHz transition. The system uses:
+
 - **HF**: Frequencies **below** 30 MHz
 - **VHF**: Frequencies **at or above** 30 MHz
 
@@ -299,14 +324,15 @@ If you're at 29.999 MHz, it shows HF. At 30.000 MHz, it shows VHF. This is corre
 
 S-Meter accuracy depends on calibration:
 
-| Calibration Method | Typical Accuracy |
-|-------------------|------------------|
-| Uncalibrated (default) | ±10 dB |
-| Factory calibration | ±5 dB |
-| User calibration (reference station) | ±3-5 dB |
-| User calibration (signal generator) | ±1-3 dB |
+| Calibration Method                   | Typical Accuracy |
+| ------------------------------------ | ---------------- |
+| Uncalibrated (default)               | ±10 dB           |
+| Factory calibration                  | ±5 dB            |
+| User calibration (reference station) | ±3-5 dB          |
+| User calibration (signal generator)  | ±1-3 dB          |
 
 **Sources of Uncertainty**:
+
 - Temperature drift (±2-3 dB over operating range)
 - Frequency-dependent gain variations
 - Cable/connector losses
@@ -316,6 +342,7 @@ S-Meter accuracy depends on calibration:
 ### Frequency-Dependent Gain
 
 SDR devices don't have perfectly flat frequency response. Gain may vary by ±5 dB across their full range. For most accurate results:
+
 - Calibrate near the frequencies you use most
 - Re-calibrate if you change frequency bands significantly
 - Consider using multiple calibration profiles for different bands (future enhancement)
@@ -323,6 +350,7 @@ SDR devices don't have perfectly flat frequency response. Gain may vary by ±5 d
 ### Temperature Effects
 
 Electronic components drift with temperature:
+
 - Oscillators shift frequency slightly
 - Amplifiers change gain
 - Impact: ±2-5 dB over 0°C to 40°C range
@@ -332,6 +360,7 @@ For critical work, allow the SDR to warm up (10-15 minutes) and recalibrate peri
 ### Noise Floor vs Signal Floor
 
 The S-Meter measures **total power** in the receiver's passband, including:
+
 - Desired signal
 - Noise (thermal, atmospheric, man-made)
 - Interference
@@ -355,13 +384,15 @@ The S-Meter is useful for optimizing antenna performance:
 When communicating with other radio operators, report signal strength using S-units:
 
 **Standard RST Code** (Readability-Strength-Tone):
+
 - **Readability**: 1 (unreadable) to 5 (perfectly readable)
 - **Strength**: 1 (barely perceptible) to 9 (extremely strong)
 - **Tone**: 1 (very rough) to 9 (perfect) - only for CW/digital modes
 
 **Examples**:
+
 - "Your signal is 5-9" = Perfectly readable, S9 strength
-- "You're 5-7" = Perfectly readable, S7 strength  
+- "You're 5-7" = Perfectly readable, S7 strength
 - "RST 5-7-9" = Perfect readability, S7 strength, perfect tone (CW)
 
 ## Performance Characteristics
@@ -369,6 +400,7 @@ When communicating with other radio operators, report signal strength using S-un
 ### Update Rate
 
 The S-Meter updates at:
+
 - **Default**: 10 Hz (100 ms interval, 10 updates per second)
 - **Range**: Configurable from 10-1000 ms per update (1-100 Hz)
 - **Smoothing**: Exponential moving average prevents jitter
@@ -376,6 +408,7 @@ The S-Meter updates at:
 ### Computational Overhead
 
 The S-Meter uses minimal CPU resources:
+
 - **Signal measurement**: < 0.1 ms per update
 - **Visual rendering**: Hardware-accelerated CSS
 - **Total impact**: < 0.1% CPU on modern hardware
@@ -383,11 +416,13 @@ The S-Meter uses minimal CPU resources:
 ### Accuracy Specifications
 
 **Dynamic Range**:
+
 - **Measurement range**: -150 dBFS to 0 dBFS
 - **Display range**: S0 to S9+60 dB
 - **Resolution**: 0.1 dB internally, rounded for display
 
 **Response Time**:
+
 - **10-90% rise time**: ~300 ms (with default smoothing)
 - **Adjustable**: Via smoothing parameter
 - **Peak detection**: Optional (future enhancement)
@@ -402,7 +437,8 @@ The S-Meter is fully accessible to users with disabilities:
 - **Semantic HTML**: Proper landmarks and headings
 - **Descriptive Labels**: All visual elements have text equivalents
 
-**Example Announcement**: 
+**Example Announcement**:
+
 > "Signal strength: S7, minus 100 dBm"
 
 ### Keyboard Navigation
@@ -421,6 +457,7 @@ The S-Meter is fully accessible to users with disabilities:
 ### Reduced Motion
 
 Users who prefer reduced motion see:
+
 - No pulsing animation on very strong signals
 - Instant transitions instead of smooth animations
 - Static display that still updates values

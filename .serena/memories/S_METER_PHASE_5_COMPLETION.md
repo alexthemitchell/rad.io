@@ -9,6 +9,7 @@ Phase 5 completed the S-Meter feature with comprehensive user documentation, per
 ### 1. User Guide (`docs/reference/s-meter-user-guide.md`)
 
 Comprehensive 500+ line user-facing documentation covering:
+
 - **Understanding S-Meter**: Scale explanation, color zones, dBm readings, band indicators
 - **Calibration Guide**: Three calibration methods (signal generator, reference station, comparison)
 - **Troubleshooting**: Common issues and solutions
@@ -22,6 +23,7 @@ Added to `docs/reference/README.md` in "For Users" section.
 ### 2. Performance Review
 
 **Current Configuration (Optimal)**:
+
 - Update rate: 100ms (10 Hz) - balances responsiveness and CPU
 - ARIA announcements: 2000ms throttle - prevents screen reader overload
 - Visual smoothing: 0.3 exponential moving average (configurable)
@@ -36,6 +38,7 @@ No performance changes needed - current throttling is appropriate.
 
 **Unit Tests**: All pass (39 SMeter tests including axe-core)
 **Features Verified**:
+
 - ARIA live region with rate-limiting (1 announcement per 2 seconds)
 - Proper semantic HTML (`role="meter"`, `role="region"`)
 - Screen reader announcements include S-unit and dBm
