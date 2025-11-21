@@ -319,12 +319,12 @@ describe("Signal Measurement Conversions", () => {
         // HF: S9 is -73 dBm, so these are all very strong
         const hfResult = dbmToSUnit(dbm, "HF");
         expect(hfResult.sUnit).toBe(9);
-        expect(hfResult.overS9).toBe(dbm - -73); // Over S9 in dB
+        expect(hfResult.overS9).toBe(dbm + 73); // Over S9 in dB (S9 = -73 dBm)
 
         // VHF: S9 is -93 dBm
         const vhfResult = dbmToSUnit(dbm, "VHF");
         expect(vhfResult.sUnit).toBe(9);
-        expect(vhfResult.overS9).toBe(dbm - -93);
+        expect(vhfResult.overS9).toBe(dbm + 93); // Over S9 in dB (S9 = -93 dBm)
       });
     });
 
