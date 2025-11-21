@@ -28,7 +28,13 @@ import { estimateFMBroadcastPPM } from "../lib/measurement/fm-ppm-calibrator";
 import { notify } from "../lib/notifications";
 import { toggleShortcuts } from "../lib/shortcuts";
 import { type SDRCapabilities, type IQSample } from "../models/SDRDevice";
-import { useDevice, useFrequency, useSettings, useDiagnostics, useSignalLevel } from "../store";
+import {
+  useDevice,
+  useFrequency,
+  useSettings,
+  useDiagnostics,
+  useSignalLevel,
+} from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
 import {
@@ -752,7 +758,7 @@ const Monitor: React.FC = () => {
         }}
       >
         <h3 style={{ marginTop: 0 }}>Signal Information</h3>
-        
+
         {/* S-Meter - Professional signal strength measurement */}
         <div style={{ marginBottom: "16px" }}>
           <SMeter signalLevel={signalLevel} showDbm />

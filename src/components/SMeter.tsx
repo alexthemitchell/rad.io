@@ -68,9 +68,11 @@ export default function SMeter({
 
     // Apply exponential moving average for smooth visual updates
     const targetSUnit = signalLevel.sUnit + signalLevel.overS9 / 6; // Fractional S-units
-    setSmoothedSUnit((prev) => smoothing * targetSUnit + (1 - smoothing) * prev);
-    setSmoothedOverS9((prev) =>
-      smoothing * signalLevel.overS9 + (1 - smoothing) * prev,
+    setSmoothedSUnit(
+      (prev) => smoothing * targetSUnit + (1 - smoothing) * prev,
+    );
+    setSmoothedOverS9(
+      (prev) => smoothing * signalLevel.overS9 + (1 - smoothing) * prev,
     );
 
     // Rate-limited ARIA announcements
@@ -105,7 +107,8 @@ export default function SMeter({
 
   // Calculate percentage for bar width (0-100%)
   // S0 = 0%, S9 = 90%, S9+60 = 100%
-  const totalSUnits = smoothedSUnit + (smoothedOverS9 > 0 ? smoothedOverS9 / 6 : 0);
+  const totalSUnits =
+    smoothedSUnit + (smoothedOverS9 > 0 ? smoothedOverS9 / 6 : 0);
   const percentage = Math.min(100, (totalSUnits / 10) * 100); // 10 S-units for full scale (S9+60dB ≈ S10)
 
   // Determine color based on signal strength

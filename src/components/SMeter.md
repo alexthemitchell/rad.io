@@ -9,7 +9,7 @@ The `SMeter` component provides a visual and textual representation of signal st
 ## Features
 
 - **Standard S-unit Scale**: S0-S9 with extensions (S9+10, S9+20, etc.)
-- **Visual Styles**: 
+- **Visual Styles**:
   - Bar meter (default): smooth gradient bar
   - Segmented meter: 15-segment LED-style display
 - **Color Zones**:
@@ -31,8 +31,8 @@ The `SMeter` component provides a visual and textual representation of signal st
 ### Basic Usage
 
 ```tsx
-import { SMeter } from '@/components';
-import { useSignalLevel } from '@/store';
+import { SMeter } from "@/components";
+import { useSignalLevel } from "@/store";
 
 function MyComponent() {
   const { signalLevel } = useSignalLevel();
@@ -45,22 +45,22 @@ function MyComponent() {
 ```tsx
 <SMeter
   signalLevel={signalLevel}
-  style="bar"           // or "segments"
-  showDbm={true}        // show dBm value
-  showDbfs={false}      // show dBFS value (engineering mode)
-  smoothing={0.3}       // 0-1, lower = more smoothing
+  style="bar" // or "segments"
+  showDbm={true} // show dBm value
+  showDbfs={false} // show dBFS value (engineering mode)
+  smoothing={0.3} // 0-1, lower = more smoothing
 />
 ```
 
 ## Props
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `signalLevel` | `SignalLevel \| null` | required | Current signal level measurement |
-| `style` | `"bar" \| "segments"` | `"bar"` | Visual display style |
-| `showDbm` | `boolean` | `true` | Show dBm value alongside S-unit |
-| `showDbfs` | `boolean` | `false` | Show dBFS value (engineering mode) |
-| `smoothing` | `number` | `0.3` | Smoothing factor (0-1). Lower = more smoothing |
+| Prop          | Type                  | Default  | Description                                    |
+| ------------- | --------------------- | -------- | ---------------------------------------------- |
+| `signalLevel` | `SignalLevel \| null` | required | Current signal level measurement               |
+| `style`       | `"bar" \| "segments"` | `"bar"`  | Visual display style                           |
+| `showDbm`     | `boolean`             | `true`   | Show dBm value alongside S-unit                |
+| `showDbfs`    | `boolean`             | `false`  | Show dBFS value (engineering mode)             |
+| `smoothing`   | `number`              | `0.3`    | Smoothing factor (0-1). Lower = more smoothing |
 
 ## SignalLevel Interface
 
@@ -68,14 +68,14 @@ The component expects a `SignalLevel` object with the following structure:
 
 ```typescript
 interface SignalLevel {
-  dBfs: number;                                    // Power relative to ADC full scale
-  dBmApprox: number;                              // Absolute power at antenna (approx)
-  sUnit: number;                                  // S-unit (0-9)
-  overS9: number;                                 // dB over S9 (0 if below S9)
-  band: "HF" | "VHF";                            // Frequency band
+  dBfs: number; // Power relative to ADC full scale
+  dBmApprox: number; // Absolute power at antenna (approx)
+  sUnit: number; // S-unit (0-9)
+  overS9: number; // dB over S9 (0 if below S9)
+  band: "HF" | "VHF"; // Frequency band
   calibrationStatus: "uncalibrated" | "factory" | "user";
-  uncertaintyDb?: number;                         // Measurement uncertainty
-  timestamp: number;                              // Unix timestamp (ms)
+  uncertaintyDb?: number; // Measurement uncertainty
+  timestamp: number; // Unix timestamp (ms)
 }
 ```
 
@@ -84,15 +84,15 @@ interface SignalLevel {
 The SMeter component is designed to work with the `SignalLevelService`:
 
 ```typescript
-import { SignalLevelService } from '@/lib/measurement';
-import { useSignalLevel } from '@/store';
+import { SignalLevelService } from "@/lib/measurement";
+import { useSignalLevel } from "@/store";
 
 // Create service
 const service = new SignalLevelService({
   calibration: {
     kCal: -70,
     frequencyRange: { min: 88e6, max: 108e6 },
-    method: 'default',
+    method: "default",
     accuracyDb: 10,
   },
   frequencyHz: 100e6,
@@ -120,7 +120,7 @@ import { useSignalLevel } from "../store";
 
 function Monitor() {
   const { signalLevel } = useSignalLevel();
-  
+
   return (
     <section aria-label="Signal Information">
       <h3>Signal Information</h3>
@@ -167,31 +167,31 @@ The SMeter component is fully accessible:
 
 ### HF Bands (< 30 MHz)
 
-| S-Unit | Power Level | Description |
-|--------|-------------|-------------|
-| S0     | < -127 dBm  | No signal   |
+| S-Unit | Power Level | Description        |
+| ------ | ----------- | ------------------ |
+| S0     | < -127 dBm  | No signal          |
 | S1     | -121 dBm    | Barely perceptible |
-| S3     | -109 dBm    | Very weak   |
-| S5     | -97 dBm     | Weak        |
-| S7     | -85 dBm     | Fair        |
-| S9     | **-73 dBm** | **Reference** |
-| S9+20  | -53 dBm     | Strong      |
-| S9+40  | -33 dBm     | Very strong |
-| S9+60  | -13 dBm     | Extremely strong |
+| S3     | -109 dBm    | Very weak          |
+| S5     | -97 dBm     | Weak               |
+| S7     | -85 dBm     | Fair               |
+| S9     | **-73 dBm** | **Reference**      |
+| S9+20  | -53 dBm     | Strong             |
+| S9+40  | -33 dBm     | Very strong        |
+| S9+60  | -13 dBm     | Extremely strong   |
 
 ### VHF/UHF Bands (≥ 30 MHz)
 
-| S-Unit | Power Level | Description |
-|--------|-------------|-------------|
-| S0     | < -147 dBm  | No signal   |
+| S-Unit | Power Level | Description        |
+| ------ | ----------- | ------------------ |
+| S0     | < -147 dBm  | No signal          |
 | S1     | -141 dBm    | Barely perceptible |
-| S3     | -129 dBm    | Very weak   |
-| S5     | -117 dBm    | Weak        |
-| S7     | -105 dBm    | Fair        |
-| S9     | **-93 dBm** | **Reference** |
-| S9+20  | -73 dBm     | Strong      |
-| S9+40  | -53 dBm     | Very strong |
-| S9+60  | -33 dBm     | Extremely strong |
+| S3     | -129 dBm    | Very weak          |
+| S5     | -117 dBm    | Weak               |
+| S7     | -105 dBm    | Fair               |
+| S9     | **-93 dBm** | **Reference**      |
+| S9+20  | -73 dBm     | Strong             |
+| S9+40  | -53 dBm     | Very strong        |
+| S9+60  | -33 dBm     | Extremely strong   |
 
 Each S-unit below S9 represents 6 dB.
 
@@ -204,6 +204,7 @@ npm test -- SMeter.test.tsx
 ```
 
 39 comprehensive unit tests covering:
+
 - Rendering (bar and segment styles)
 - Signal strength indicators and color zones
 - Calibration status display
@@ -218,6 +219,7 @@ npm run test:e2e -- s-meter.spec.ts
 ```
 
 10 E2E test scenarios with simulated signal injection:
+
 - Rendering with different signal levels
 - Color zone transitions
 - S9+ format display
@@ -249,6 +251,7 @@ npm run test:e2e -- s-meter.spec.ts
 - Opera: Full support
 
 Requires modern browser with:
+
 - CSS custom properties
 - CSS Grid
 - ARIA live regions

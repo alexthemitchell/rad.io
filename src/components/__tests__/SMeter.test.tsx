@@ -98,8 +98,12 @@ describe("SMeter", () => {
       const signalLevel = createSignalLevel(5, 0);
       const { container } = render(<SMeter signalLevel={signalLevel} />);
 
-      expect(container.querySelector(".s-meter-bar-container")).toBeInTheDocument();
-      expect(container.querySelector(".s-meter-segments")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".s-meter-bar-container"),
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector(".s-meter-segments"),
+      ).not.toBeInTheDocument();
     });
 
     it("should render segment style when specified", () => {
@@ -109,7 +113,9 @@ describe("SMeter", () => {
       );
 
       expect(container.querySelector(".s-meter-segments")).toBeInTheDocument();
-      expect(container.querySelector(".s-meter-bar-container")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".s-meter-bar-container"),
+      ).not.toBeInTheDocument();
     });
 
     it("should render 15 segments in segment mode", () => {
@@ -132,7 +138,9 @@ describe("SMeter", () => {
   describe("Signal Strength Indicators", () => {
     it("should show weak signal color for S0-S3", () => {
       const signalLevel = createSignalLevel(2, 0);
-      const { container } = render(<SMeter signalLevel={signalLevel} smoothing={1} />);
+      const { container } = render(
+        <SMeter signalLevel={signalLevel} smoothing={1} />,
+      );
 
       const bar = container.querySelector(".s-meter-bar");
       expect(bar).toHaveClass("s-meter-bar-weak");
@@ -140,7 +148,9 @@ describe("SMeter", () => {
 
     it("should show fair signal color for S4-S6", () => {
       const signalLevel = createSignalLevel(5, 0);
-      const { container } = render(<SMeter signalLevel={signalLevel} smoothing={1} />);
+      const { container } = render(
+        <SMeter signalLevel={signalLevel} smoothing={1} />,
+      );
 
       const bar = container.querySelector(".s-meter-bar");
       expect(bar).toHaveClass("s-meter-bar-fair");
@@ -148,7 +158,9 @@ describe("SMeter", () => {
 
     it("should show good signal color for S7-S8", () => {
       const signalLevel = createSignalLevel(8, 0);
-      const { container } = render(<SMeter signalLevel={signalLevel} smoothing={1} />);
+      const { container } = render(
+        <SMeter signalLevel={signalLevel} smoothing={1} />,
+      );
 
       const bar = container.querySelector(".s-meter-bar");
       expect(bar).toHaveClass("s-meter-bar-good");
@@ -156,7 +168,9 @@ describe("SMeter", () => {
 
     it("should show moderate color for S9+1 to S9+19", () => {
       const signalLevel = createSignalLevel(9, 15);
-      const { container } = render(<SMeter signalLevel={signalLevel} smoothing={1} />);
+      const { container } = render(
+        <SMeter signalLevel={signalLevel} smoothing={1} />,
+      );
 
       const bar = container.querySelector(".s-meter-bar");
       expect(bar).toHaveClass("s-meter-bar-moderate");
@@ -164,7 +178,9 @@ describe("SMeter", () => {
 
     it("should show strong color for S9+20 to S9+39", () => {
       const signalLevel = createSignalLevel(9, 30);
-      const { container } = render(<SMeter signalLevel={signalLevel} smoothing={1} />);
+      const { container } = render(
+        <SMeter signalLevel={signalLevel} smoothing={1} />,
+      );
 
       const bar = container.querySelector(".s-meter-bar");
       expect(bar).toHaveClass("s-meter-bar-strong");
@@ -172,7 +188,9 @@ describe("SMeter", () => {
 
     it("should show very strong color for S9+40 and above", () => {
       const signalLevel = createSignalLevel(9, 50);
-      const { container } = render(<SMeter signalLevel={signalLevel} smoothing={1} />);
+      const { container } = render(
+        <SMeter signalLevel={signalLevel} smoothing={1} />,
+      );
 
       const bar = container.querySelector(".s-meter-bar");
       expect(bar).toHaveClass("s-meter-bar-very-strong");
@@ -185,7 +203,9 @@ describe("SMeter", () => {
       signalLevel.calibrationStatus = "user";
       const { container } = render(<SMeter signalLevel={signalLevel} />);
 
-      expect(container.querySelector(".s-meter-calibration")).toBeInTheDocument();
+      expect(
+        container.querySelector(".s-meter-calibration"),
+      ).toBeInTheDocument();
       expect(screen.getByText("📏")).toBeInTheDocument();
     });
 
@@ -194,7 +214,9 @@ describe("SMeter", () => {
       signalLevel.calibrationStatus = "factory";
       const { container } = render(<SMeter signalLevel={signalLevel} />);
 
-      expect(container.querySelector(".s-meter-calibration")).toBeInTheDocument();
+      expect(
+        container.querySelector(".s-meter-calibration"),
+      ).toBeInTheDocument();
       expect(screen.getByText("🏭")).toBeInTheDocument();
     });
 
@@ -203,7 +225,9 @@ describe("SMeter", () => {
       signalLevel.calibrationStatus = "uncalibrated";
       const { container } = render(<SMeter signalLevel={signalLevel} />);
 
-      expect(container.querySelector(".s-meter-calibration")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".s-meter-calibration"),
+      ).not.toBeInTheDocument();
     });
 
     it("should include uncertainty in calibration tooltip", () => {
@@ -229,7 +253,10 @@ describe("SMeter", () => {
       expect(meter).toHaveAttribute("aria-valuenow");
       expect(meter).toHaveAttribute("aria-valuemin", "0");
       expect(meter).toHaveAttribute("aria-valuemax", "100");
-      expect(meter).toHaveAttribute("aria-label", expect.stringContaining("S5"));
+      expect(meter).toHaveAttribute(
+        "aria-label",
+        expect.stringContaining("S5"),
+      );
     });
 
     it("should have ARIA live region for announcements", () => {
@@ -246,7 +273,9 @@ describe("SMeter", () => {
         <SMeter signalLevel={createSignalLevel(5, 0)} />,
       );
 
-      const liveRegion = container.querySelector('.visually-hidden[aria-live="polite"]');
+      const liveRegion = container.querySelector(
+        '.visually-hidden[aria-live="polite"]',
+      );
       const initialAnnouncement = liveRegion?.textContent;
 
       // Update signal immediately (should not announce due to throttle)
@@ -275,7 +304,9 @@ describe("SMeter", () => {
       );
 
       // Get the hidden live region (not the visible aria-live on value)
-      const liveRegion = container.querySelector('.visually-hidden[aria-live="polite"]');
+      const liveRegion = container.querySelector(
+        '.visually-hidden[aria-live="polite"]',
+      );
       expect(liveRegion?.textContent).toContain("S5");
 
       // Advance time past throttle period (2000ms)
@@ -293,10 +324,14 @@ describe("SMeter", () => {
     it("should include dBm in announcements when showDbm is true", () => {
       const signalLevel = createSignalLevel(5, 0);
       signalLevel.dBmApprox = -105;
-      const { container } = render(<SMeter signalLevel={signalLevel} showDbm />);
+      const { container } = render(
+        <SMeter signalLevel={signalLevel} showDbm />,
+      );
 
       // Get the hidden live region
-      const liveRegion = container.querySelector('.visually-hidden[aria-live="polite"]');
+      const liveRegion = container.querySelector(
+        '.visually-hidden[aria-live="polite"]',
+      );
       expect(liveRegion?.textContent).toContain("-105 dBm");
     });
 
@@ -331,7 +366,9 @@ describe("SMeter", () => {
 
       const updatedWidth = bar.style.width;
       expect(updatedWidth).not.toBe(initialWidth);
-      expect(parseFloat(updatedWidth)).toBeGreaterThan(parseFloat(initialWidth));
+      expect(parseFloat(updatedWidth)).toBeGreaterThan(
+        parseFloat(initialWidth),
+      );
     });
 
     it("should apply smoothing to visual updates", () => {
@@ -343,7 +380,9 @@ describe("SMeter", () => {
       const initialWidth = parseFloat(bar.style.width);
 
       // Sudden signal change
-      rerender(<SMeter signalLevel={createSignalLevel(9, 0)} smoothing={0.1} />);
+      rerender(
+        <SMeter signalLevel={createSignalLevel(9, 0)} smoothing={0.1} />,
+      );
 
       const smoothedWidth = parseFloat(bar.style.width);
 

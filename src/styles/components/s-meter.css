@@ -90,6 +90,7 @@
 
 .s-meter-bar-very-strong {
   background: var(--rad-danger); /* Red */
+  animation: s-meter-pulse 1.5s ease-in-out infinite;
 }
 
 /* Segment Style Meter */
@@ -214,8 +215,4 @@
   50% {
     opacity: 0.85;
   }
-}
-
-.s-meter-bar-very-strong {
-  animation: s-meter-pulse 1.5s ease-in-out infinite;
 }

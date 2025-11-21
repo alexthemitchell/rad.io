@@ -17,9 +17,9 @@ test.describe("S-Meter Component @simulated", () => {
     await monitorLink.click();
 
     // Look for S-Meter region
-    const sMeter = page.locator('[aria-label*="S-Meter"]').or(
-      page.locator(".s-meter"),
-    );
+    const sMeter = page
+      .locator('[aria-label*="S-Meter"]')
+      .or(page.locator(".s-meter"));
 
     // S-Meter might not be visible initially if no signal
     // This is expected behavior
