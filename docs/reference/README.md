@@ -6,6 +6,7 @@ Defined Radio (SDR) technology in WebSDR Pro.
 ## For Users
 
 - **[SDR Basics](./sdr-basics.md)** - Introduction to SDR concepts and terminology
+- **[S-Meter User Guide](./s-meter-user-guide.md)** - Complete guide to using and calibrating the signal strength meter
 - **[Frequency Allocations](./frequency-allocations.md)** - Radio frequency bands and their uses
 - **[Modulation Types](./modulation-types.md)** - Common modulation schemes and when to use them
 - **[Signal Analysis](./signal-analysis.md)** - Techniques for analyzing and identifying signals

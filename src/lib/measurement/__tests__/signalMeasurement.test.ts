@@ -281,4 +281,192 @@ describe("Signal Measurement Conversions", () => {
       });
     });
   });
+
+  describe("Extreme Signal Saturation", () => {
+    it("should handle ADC saturation levels (0 dBFS)", () => {
+      // 0 dBFS = maximum ADC input (clipping)
+      const dbfs = 0;
+      const kCal = -70;
+      const calibrationOffset = 0;
+
+      const dbm = convertDbfsToDbm(dbfs, kCal, calibrationOffset);
+      expect(dbm).toBe(-70);
+
+      // For HF: -70 dBm = S9 + 3 dB
+      const hfResult = dbmToSUnit(dbm, "HF");
+      expect(hfResult.sUnit).toBe(9);
+      expect(hfResult.overS9).toBe(3);
+
+      // For VHF: -70 dBm = S9 + 23 dB
+      const vhfResult = dbmToSUnit(dbm, "VHF");
+      expect(vhfResult.sUnit).toBe(9);
+      expect(vhfResult.overS9).toBe(23);
+    });
+
+    it("should handle extremely strong signals beyond typical range", () => {
+      // Test signals that would clip most SDRs (+10 dBm at antenna)
+      const extremeSignals = [
+        { dbfs: 0, kCal: -20, expectedDbm: -20 }, // Very strong
+        { dbfs: 0, kCal: -10, expectedDbm: -10 }, // Extremely strong
+        { dbfs: 0, kCal: 0, expectedDbm: 0 }, // Maximum test case
+        { dbfs: 0, kCal: 10, expectedDbm: 10 }, // Beyond reasonable (10 mW at antenna!)
+      ];
+
+      extremeSignals.forEach(({ dbfs, kCal, expectedDbm }) => {
+        const dbm = convertDbfsToDbm(dbfs, kCal);
+        expect(dbm).toBe(expectedDbm);
+
+        // HF: S9 is -73 dBm, so these are all very strong
+        const hfResult = dbmToSUnit(dbm, "HF");
+        expect(hfResult.sUnit).toBe(9);
+        expect(hfResult.overS9).toBe(dbm + 73); // Over S9 in dB (S9 = -73 dBm)
+
+        // VHF: S9 is -93 dBm
+        const vhfResult = dbmToSUnit(dbm, "VHF");
+        expect(vhfResult.sUnit).toBe(9);
+        expect(vhfResult.overS9).toBe(dbm + 93); // Over S9 in dB (S9 = -93 dBm)
+      });
+    });
+
+    it("should handle near-clipping scenarios with maximum gain", () => {
+      // Scenario: SDR with maximum gain settings, strong local signal
+      // dBFS near 0 (clipping), high calibration constant
+      const scenarios = [
+        { dbfs: -1, kCal: -30 }, // 1 dB below clipping, high gain
+        { dbfs: -0.5, kCal: -25 }, // 0.5 dB below clipping
+        { dbfs: -0.1, kCal: -20 }, // Just barely avoiding clipping
+      ];
+
+      scenarios.forEach(({ dbfs, kCal }) => {
+        const dbm = convertDbfsToDbm(dbfs, kCal);
+
+        // Should produce valid S-meter readings even at extreme levels
+        const hfResult = dbmToSUnit(dbm, "HF");
+        expect(hfResult.sUnit).toBe(9);
+        expect(hfResult.overS9).toBeGreaterThan(0);
+        expect(Number.isFinite(hfResult.overS9)).toBe(true);
+
+        const vhfResult = dbmToSUnit(dbm, "VHF");
+        expect(vhfResult.sUnit).toBe(9);
+        expect(vhfResult.overS9).toBeGreaterThan(0);
+        expect(Number.isFinite(vhfResult.overS9)).toBe(true);
+      });
+    });
+
+    it("should handle maximum user calibration offset with saturation", () => {
+      // User applies maximum +50 dB calibration offset
+      // Combined with 0 dBFS and high kCal
+      const dbfs = 0;
+      const kCal = -30;
+      const maxCalibrationOffset = 50;
+
+      const dbm = convertDbfsToDbm(dbfs, kCal, maxCalibrationOffset);
+      expect(dbm).toBe(20); // 0 + (-30) + 50 = 20 dBm
+
+      // This is an extremely strong signal (100 mW at antenna!)
+      const hfResult = dbmToSUnit(dbm, "HF");
+      expect(hfResult.sUnit).toBe(9);
+      expect(hfResult.overS9).toBe(93); // 20 - (-73) = 93 dB over S9
+
+      const vhfResult = dbmToSUnit(dbm, "VHF");
+      expect(vhfResult.sUnit).toBe(9);
+      expect(vhfResult.overS9).toBe(113); // 20 - (-93) = 113 dB over S9
+    });
+
+    it("should handle minimum user calibration offset with saturation", () => {
+      // User applies minimum -50 dB calibration offset
+      const dbfs = 0;
+      const kCal = -30;
+      const minCalibrationOffset = -50;
+
+      const dbm = convertDbfsToDbm(dbfs, kCal, minCalibrationOffset);
+      expect(dbm).toBe(-80); // 0 + (-30) + (-50) = -80 dBm
+
+      // For HF: -80 dBm = S8 range
+      const hfResult = dbmToSUnit(dbm, "HF");
+      expect(hfResult.sUnit).toBeLessThanOrEqual(9);
+      expect(hfResult.sUnit).toBeGreaterThanOrEqual(7);
+
+      // For VHF: -80 dBm = S9+13
+      const vhfResult = dbmToSUnit(dbm, "VHF");
+      expect(vhfResult.sUnit).toBe(9);
+      expect(vhfResult.overS9).toBe(13);
+    });
+
+    it("should maintain precision with extreme combined values", () => {
+      // Test that calculations don't lose precision or overflow
+      const extremeCombinations = [
+        { dbfs: 0, kCal: 50, offset: 50 }, // All maximum positive
+        { dbfs: -150, kCal: -100, offset: -50 }, // All maximum negative
+        { dbfs: 0, kCal: -100, offset: 50 }, // Opposing extremes
+        { dbfs: -100, kCal: 50, offset: -50 }, // Opposing extremes reversed
+      ];
+
+      extremeCombinations.forEach(({ dbfs, kCal, offset }) => {
+        const dbm = convertDbfsToDbm(dbfs, kCal, offset);
+        const expected = dbfs + kCal + offset;
+
+        expect(dbm).toBe(expected);
+        expect(Number.isFinite(dbm)).toBe(true);
+        expect(Number.isNaN(dbm)).toBe(false);
+
+        // Should produce valid S-meter readings
+        const hfResult = dbmToSUnit(dbm, "HF");
+        expect(Number.isFinite(hfResult.sUnit)).toBe(true);
+        expect(Number.isFinite(hfResult.overS9)).toBe(true);
+        expect(hfResult.sUnit).toBeGreaterThanOrEqual(0);
+
+        const vhfResult = dbmToSUnit(dbm, "VHF");
+        expect(Number.isFinite(vhfResult.sUnit)).toBe(true);
+        expect(Number.isFinite(vhfResult.overS9)).toBe(true);
+        expect(vhfResult.sUnit).toBeGreaterThanOrEqual(0);
+      });
+    });
+
+    it("should handle realistic saturation with typical SDR values", () => {
+      // HackRF One with max gain, strong local FM station
+      // Typical scenario: 100 MHz FM station, 1 mile away, 50 kW transmitter
+      // Expected field strength: ~-20 dBm at antenna
+      const dbfs = -3; // Slight headroom to avoid clipping
+      const kCal = -17; // High gain setting
+      const calibrationOffset = 0;
+
+      const dbm = convertDbfsToDbm(dbfs, kCal, calibrationOffset);
+      expect(dbm).toBe(-20);
+
+      // VHF band (100 MHz)
+      const vhfResult = dbmToSUnit(dbm, "VHF");
+      expect(vhfResult.sUnit).toBe(9);
+      expect(vhfResult.overS9).toBe(73); // Very strong signal
+
+      // This is S9+73, which is extremely strong but physically realistic
+      // for a nearby powerful transmitter
+    });
+
+    it("should never produce infinite or NaN values for any input", () => {
+      // Stress test with a wide range of values
+      const testValues = {
+        dbfs: [0, -1, -10, -50, -100, -150, -200],
+        kCal: [50, 10, 0, -10, -50, -100],
+        offset: [50, 10, 0, -10, -50],
+      };
+
+      testValues.dbfs.forEach((dbfs) => {
+        testValues.kCal.forEach((kCal) => {
+          testValues.offset.forEach((offset) => {
+            const dbm = convertDbfsToDbm(dbfs, kCal, offset);
+
+            expect(Number.isFinite(dbm)).toBe(true);
+            expect(Number.isNaN(dbm)).toBe(false);
+
+            const hfResult = dbmToSUnit(dbm, "HF");
+            expect(Number.isFinite(hfResult.sUnit)).toBe(true);
+            expect(Number.isFinite(hfResult.overS9)).toBe(true);
+            expect(Number.isNaN(hfResult.sUnit)).toBe(false);
+            expect(Number.isNaN(hfResult.overS9)).toBe(false);
+          });
+        });
+      });
+    });
+  });
 });
