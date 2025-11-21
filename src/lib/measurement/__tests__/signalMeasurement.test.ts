@@ -14,6 +14,13 @@ describe("Signal Measurement Conversions", () => {
       expect(convertDbfsToDbm(-10, -50)).toBe(-60);
     });
 
+    it("should correctly apply calibration offset", () => {
+      // With calibration offset
+      expect(convertDbfsToDbm(-30, -70, 5)).toBe(-95);
+      expect(convertDbfsToDbm(-30, -70, -5)).toBe(-105);
+      expect(convertDbfsToDbm(-20, -60, 2.5)).toBe(-77.5);
+    });
+
     it("should correctly convert with zero dBFS (maximum ADC input)", () => {
       expect(convertDbfsToDbm(0, -60)).toBe(-60);
       expect(convertDbfsToDbm(0, -80)).toBe(-80);
