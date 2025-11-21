@@ -670,6 +670,24 @@ export interface VfoSlice {
   getActiveVfos: () => VfoState[];
 }
 
+/**
+ * Validate VFO configuration against constraints
+ * Implementation placeholder - see "Constraints & Limitations" section
+ */
+function validateVfoConfig(config: VfoConfig, existingVfos: VfoState[]): void {
+  // Example validation logic (to be fully implemented):
+  // 1. Check centerHz is within hardware bandwidth
+  // 2. Check minimum spacing from other VFOs based on mode
+  // 3. Check bandwidth fits within hardware capture
+  // Example:
+  // const MIN_SPACING = MIN_VFO_SPACING_HZ[config.modeId] ?? 10_000;
+  // for (const vfo of existingVfos) {
+  //   if (Math.abs(vfo.centerHz - config.centerHz) < MIN_SPACING) {
+  //     throw new Error(`VFO too close to existing VFO at ${vfo.centerHz} Hz`);
+  //   }
+  // }
+}
+
 export const vfoSlice: StateCreator<VfoSlice> = (set, get) => ({
   vfos: new Map(),
   maxVfos: 8, // Default, updated based on platform detection
@@ -681,6 +699,8 @@ export const vfoSlice: StateCreator<VfoSlice> = (set, get) => ({
       }
 
       // Validate frequency constraints
+      // Implementation: Check hardware bandwidth, minimum spacing, etc.
+      // See "Constraints & Limitations" section for validation rules
       validateVfoConfig(config, Array.from(state.vfos.values()));
 
       const vfoState: VfoState = {
@@ -842,10 +862,36 @@ async startReceiving(): Promise<void> {
 export class MultiVfoProcessor {
   private channelExtractor: ChannelExtractor;
   private vfoStore: VfoSlice;
+  private audioOutput: AudioOutput; // Placeholder - to be implemented
 
-  constructor(vfoStore: VfoSlice) {
+  constructor(vfoStore: VfoSlice, audioOutput: AudioOutput) {
     this.vfoStore = vfoStore;
+    this.audioOutput = audioOutput;
     this.channelExtractor = this.selectChannelExtractor();
+  }
+
+  /**
+   * Select appropriate channel extraction strategy based on VFO count
+   * @private
+   */
+  private selectChannelExtractor(): ChannelExtractor {
+    // Implementation placeholder - selects between PFB and per-VFO mixing
+    // See "Coordination Strategies" section for decision logic
+    return new PFBChannelExtractor(); // or MixerChannelExtractor()
+  }
+
+  /**
+   * Calculate RSSI (Received Signal Strength Indicator) from IQ samples
+   * @private
+   */
+  private calculateRSSI(samples: IQSample[]): number {
+    // Implementation placeholder - calculate power in dBFS
+    let sumSquared = 0;
+    for (const sample of samples) {
+      sumSquared += sample.I * sample.I + sample.Q * sample.Q;
+    }
+    const rms = Math.sqrt(sumSquared / samples.length);
+    return 20 * Math.log10(rms); // Convert to dB
   }
 
   /**
@@ -893,7 +939,7 @@ export class MultiVfoProcessor {
       } catch (error) {
         this.vfoStore.updateVfoState(vfo.id, {
           status: VfoStatus.ERROR,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }
