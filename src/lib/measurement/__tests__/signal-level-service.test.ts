@@ -335,6 +335,52 @@ describe("SignalLevelService", () => {
       expect(config.frequencyHz).toBe(145e6);
     });
 
+    it("should update calibration offset", () => {
+      const service = new SignalLevelService({
+        calibration: {
+          kCal: -60,
+          frequencyRange: { min: 88e6, max: 108e6 },
+          method: "default",
+          accuracyDb: 10,
+        },
+        frequencyHz: 100e6,
+        calibrationOffsetDb: 0,
+      });
+
+      service.updateConfig({ calibrationOffsetDb: 5 });
+
+      const config = service.getConfig();
+      expect(config.calibrationOffsetDb).toBe(5);
+    });
+
+    it("should apply calibration offset to signal measurements", () => {
+      const service = new SignalLevelService({
+        calibration: {
+          kCal: -60,
+          frequencyRange: { min: 88e6, max: 108e6 },
+          method: "default",
+          accuracyDb: 10,
+        },
+        frequencyHz: 100e6,
+        calibrationOffsetDb: 10, // +10 dB offset
+      });
+
+      const callback = jest.fn();
+      service.subscribe(callback);
+
+      service.start(() => createMockSamples(0.5));
+
+      expect(callback).toHaveBeenCalled();
+      const level: SignalLevel = callback.mock.calls[0][0];
+
+      // The dBm value should include the calibration offset
+      // dBm = dBFS + kCal + calibrationOffset
+      // With +10 dB offset, the dBm should be 10 dB higher
+      expect(level.dBmApprox).toBeGreaterThan(level.dBfs + (-60));
+
+      service.stop();
+    });
+
     it("should update interval and restart if running", () => {
       const service = new SignalLevelService({
         calibration: {
@@ -448,6 +494,109 @@ describe("SignalLevelService", () => {
 
       service.stop();
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe("Band Detection", () => {
+    it("should correctly identify HF band for frequencies below 30 MHz", () => {
+      const service = new SignalLevelService({
+        calibration: {
+          kCal: -60,
+          frequencyRange: { min: 1e6, max: 30e6 },
+          method: "default",
+          accuracyDb: 10,
+        },
+        frequencyHz: 14e6, // 14 MHz - HF
+      });
+
+      const callback = jest.fn();
+      service.subscribe(callback);
+      service.start(() => createMockSamples(0.5));
+
+      expect(callback).toHaveBeenCalled();
+      const level: SignalLevel = callback.mock.calls[0][0];
+      expect(level.band).toBe("HF");
+
+      service.stop();
+    });
+
+    it("should correctly identify VHF band for frequencies at or above 30 MHz", () => {
+      const service = new SignalLevelService({
+        calibration: {
+          kCal: -70,
+          frequencyRange: { min: 88e6, max: 108e6 },
+          method: "default",
+          accuracyDb: 10,
+        },
+        frequencyHz: 100e6, // 100 MHz - VHF
+      });
+
+      const callback = jest.fn();
+      service.subscribe(callback);
+      service.start(() => createMockSamples(0.5));
+
+      expect(callback).toHaveBeenCalled();
+      const level: SignalLevel = callback.mock.calls[0][0];
+      expect(level.band).toBe("VHF");
+
+      service.stop();
+    });
+
+    it("should treat 30 MHz exactly as VHF band boundary", () => {
+      const service = new SignalLevelService({
+        calibration: {
+          kCal: -65,
+          frequencyRange: { min: 28e6, max: 32e6 },
+          method: "default",
+          accuracyDb: 10,
+        },
+        frequencyHz: 30e6, // Exactly 30 MHz
+      });
+
+      const callback = jest.fn();
+      service.subscribe(callback);
+      service.start(() => createMockSamples(0.5));
+
+      expect(callback).toHaveBeenCalled();
+      const level: SignalLevel = callback.mock.calls[0][0];
+      expect(level.band).toBe("VHF"); // >= 30 MHz is VHF
+
+      service.stop();
+    });
+
+    it("should update band when frequency changes", () => {
+      const service = new SignalLevelService({
+        calibration: {
+          kCal: -60,
+          frequencyRange: { min: 1e6, max: 200e6 },
+          method: "default",
+          accuracyDb: 10,
+        },
+        frequencyHz: 14e6, // Start with HF
+      });
+
+      const callback = jest.fn();
+      service.subscribe(callback);
+      service.start(() => createMockSamples(0.5));
+
+      // Check initial HF band
+      expect(callback).toHaveBeenCalled();
+      let level: SignalLevel = callback.mock.calls[0][0];
+      expect(level.band).toBe("HF");
+
+      callback.mockClear();
+
+      // Update to VHF frequency
+      service.updateConfig({ frequencyHz: 145e6 });
+
+      // Trigger another measurement
+      jest.advanceTimersByTime(100);
+
+      expect(callback).toHaveBeenCalled();
+      level = callback.mock.calls[0][0];
+      expect(level.band).toBe("VHF");
+
+      service.stop();
     });
   });
 });

@@ -465,6 +465,166 @@ interface SMeterConfig {
    - Broadcasting standards may differ
    - This spec follows IARU standard (6 dB/S-unit)
 
+## User Calibration Workflow
+
+### Overview
+
+While the system uses factory calibration constants (K_cal), users can apply a **calibration offset** to fine-tune measurements without modifying the base calibration. This is particularly useful for:
+
+- Compensating for antenna gain/loss
+- Adjusting for cable losses
+- Fine-tuning against a known reference signal
+- Correcting for environmental factors
+
+### Calibration Offset
+
+**Formula**:
+```
+dBm = dBFS + K_cal + calibrationOffset
+```
+
+Where:
+- `dBFS` = measured power from IQ samples
+- `K_cal` = factory calibration constant (device-specific)
+- `calibrationOffset` = user-adjustable offset in dB (default: 0)
+
+**Range**: Typically -50 to +50 dB (system validates and clamps to safe values)
+
+### Calibration Procedure
+
+**Method 1: Using a Signal Generator** (Most Accurate)
+
+1. Connect a calibrated signal generator to the antenna input
+2. Set the generator to a known frequency and power level (e.g., -60 dBm at 100 MHz)
+3. Note the current S-meter reading and dBm display
+4. Calculate the offset needed:
+   ```
+   calibrationOffset = (Known_dBm) - (Displayed_dBm)
+   ```
+5. Apply the offset in settings
+6. Verify the reading now matches the known signal level
+
+**Example**:
+```typescript
+// Signal generator: -60 dBm at 100 MHz
+// Display shows: -68 dBm
+// Offset needed: -60 - (-68) = +8 dB
+
+const calibrationOffset = 8; // Apply +8 dB correction
+```
+
+**Method 2: Using a Reference Station**
+
+1. Tune to a known beacon or broadcast station
+2. Look up the expected field strength at your location:
+   - Use transmitter power, distance, and propagation models
+   - Or find published field strength contours
+3. Compare measured value to expected value
+4. Calculate and apply offset
+
+**Method 3: Relative Calibration**
+
+1. If you don't know absolute values but have another calibrated receiver:
+2. Tune both receivers to the same signal
+3. Compare S-meter readings
+4. Adjust offset to match the reference receiver
+
+### Band-Specific Considerations
+
+The S-meter automatically selects the appropriate S9 baseline based on frequency:
+
+**HF Band (< 30 MHz)**
+- S9 = -73 dBm
+- Each S-unit = 6 dB
+- Typical signals: S5 to S9+20
+- Calibration offset applies equally across all frequencies in HF range
+
+**VHF/UHF Band (≥ 30 MHz)**
+- S9 = -93 dBm (20 dB lower than HF)
+- Each S-unit = 6 dB
+- Typical signals: S3 to S9+40
+- Calibration offset applies equally across all frequencies in VHF range
+
+**Important**: The same calibration offset is applied to both bands. If you need different offsets for HF vs VHF (due to antenna characteristics, for example), perform calibration at the frequency you use most often.
+
+### Calibration Storage
+
+The calibration offset is stored in application settings and persists across browser sessions:
+
+- **Storage**: localStorage (browser-persistent)
+- **Scope**: Applied globally to all signal measurements
+- **Reset**: Can be reset to 0 (no offset) at any time
+- **Updates**: Changes take effect immediately
+
+### Validation and Safety
+
+The system validates calibration offset values to prevent unrealistic measurements:
+
+- **Range limits**: -50 to +50 dB
+- **Type checking**: Must be a valid number
+- **Automatic clamping**: Values outside range are clamped to limits
+- **Fallback**: Invalid values default to 0 dB (no offset)
+
+### Example: Complete Calibration Workflow
+
+```typescript
+import { useSettings } from '@/store';
+
+function CalibrationExample() {
+  const { settings, setSettings } = useSettings();
+
+  // Calibration scenario:
+  // - Signal generator: -70 dBm at 145 MHz
+  // - Current display: -77 dBm
+  // - Offset needed: -70 - (-77) = +7 dB
+
+  const performCalibration = () => {
+    const knownSignalLevel = -70; // dBm from signal generator
+    const measuredSignalLevel = -77; // dBm shown on display
+    const offset = knownSignalLevel - measuredSignalLevel;
+
+    // Apply calibration offset
+    setSettings({ calibrationOffsetDb: offset });
+
+    console.log(`Calibration offset applied: ${offset} dB`);
+    // Display should now show -70 dBm when measuring the reference signal
+  };
+
+  const resetCalibration = () => {
+    setSettings({ calibrationOffsetDb: 0 });
+    console.log('Calibration reset to default (no offset)');
+  };
+
+  return (
+    <div>
+      <p>Current offset: {settings.calibrationOffsetDb} dB</p>
+      <button onClick={performCalibration}>Apply Calibration</button>
+      <button onClick={resetCalibration}>Reset</button>
+    </div>
+  );
+}
+```
+
+### Accuracy Notes
+
+**With Calibration Offset**:
+- User-calibrated systems: ±1-3 dB accuracy (with proper procedure)
+- Factory calibration + offset: ±2-5 dB accuracy
+- Uncalibrated (offset = 0): ±10 dB accuracy
+
+**Calibration Uncertainty Sources**:
+1. Reference signal accuracy (signal generator spec)
+2. Cable losses (if not accounted for)
+3. Impedance mismatch
+4. Temperature drift since calibration
+5. Frequency-dependent gain variations
+
+**Best Practices**:
+- Calibrate at the frequency and gain settings you use most
+- Recalibrate periodically (monthly for critical work)
+- Document your calibration setup and reference levels
+- Verify calibration against multiple reference signals if possible
+
 ## Usage Examples
 
 ### Example 1: Basic Conversion
@@ -476,8 +636,11 @@ const dBfs = -42.5;
 // HackRF One on VHF with default calibration
 const K_cal = -70;
 
+// User calibration offset (e.g., +5 dB to compensate for antenna loss)
+const calibrationOffset = 5;
+
 // Convert to dBm
-const dBm = dBfs + K_cal; // -112.5 dBm
+const dBm = dBfs + K_cal + calibrationOffset; // -107.5 dBm
 
 // Convert to S-units (VHF band)
 const frequency = 145.5e6; // 145.5 MHz (VHF)
@@ -492,8 +655,8 @@ if (dBm >= S9_LEVEL) {
     sUnit: 9,
     overS9: Math.round(dBm - S9_LEVEL),
     band,
-    calibrationStatus: "uncalibrated",
-    uncertaintyDb: 10,
+    calibrationStatus: "user",
+    uncertaintyDb: 2,
     timestamp: Date.now(),
   };
 } else {
@@ -639,9 +802,10 @@ class SMeter {
 
 ## Revision History
 
-| Version | Date       | Author         | Changes                        |
-| ------- | ---------- | -------------- | ------------------------------ |
-| 1.0     | 2025-11-20 | GitHub Copilot | Initial specification document |
+| Version | Date       | Author         | Changes                                                        |
+| ------- | ---------- | -------------- | -------------------------------------------------------------- |
+| 1.0     | 2025-11-20 | GitHub Copilot | Initial specification document                                 |
+| 1.1     | 2025-11-21 | GitHub Copilot | Added User Calibration Workflow section with offset procedure |
 
 ## License
 

@@ -35,6 +35,8 @@ export interface SettingsState {
   multiStationUsePFBChannelizer: boolean; // use PFB channelizer when available
   showGridlines: boolean; // show frequency gridlines in the visualization
   showGridLabels: boolean; // show frequency grid labels
+  // Signal Metering calibration
+  calibrationOffsetDb: number; // User calibration offset in dB (default: 0)
 }
 
 const DEFAULTS: SettingsState = {
@@ -55,6 +57,8 @@ const DEFAULTS: SettingsState = {
   multiStationUsePFBChannelizer: true,
   showGridlines: true,
   showGridLabels: true,
+  // Signal Metering calibration
+  calibrationOffsetDb: 0,
 };
 
 const STORAGE_KEY = "rad.settings.v1";
@@ -160,6 +164,17 @@ function normalizeSettings(
   }
   if (typeof next.showGridLabels !== "boolean") {
     next.showGridLabels = base?.showGridLabels ?? DEFAULTS.showGridLabels;
+  }
+
+  // Validate calibration offset (reasonable range: -50 to +50 dB)
+  if (
+    typeof next.calibrationOffsetDb !== "number" ||
+    Number.isNaN(next.calibrationOffsetDb) ||
+    next.calibrationOffsetDb < -50 ||
+    next.calibrationOffsetDb > 50
+  ) {
+    next.calibrationOffsetDb =
+      base?.calibrationOffsetDb ?? DEFAULTS.calibrationOffsetDb;
   }
 
   return next;
