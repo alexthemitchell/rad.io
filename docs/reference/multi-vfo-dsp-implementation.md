@@ -60,12 +60,14 @@ The processor automatically selects the optimal channelization strategy based on
 **When to use:** VFO count < `pfbThreshold` (default: 3)
 
 **Process:**
+
 1. For each VFO:
    - Frequency shift: Move VFO center to baseband (0 Hz)
    - Low-pass filter: Isolate channel bandwidth
    - Decimate: Reduce sample rate to channel rate
 
 **Advantages:**
+
 - Lower latency
 - Simpler processing for few VFOs
 - WASM-accelerated when available
@@ -77,11 +79,13 @@ The processor automatically selects the optimal channelization strategy based on
 **When to use:** VFO count >= `pfbThreshold`
 
 **Process:**
+
 1. Single polyphase filter bank channelization
 2. Extract all VFO channels in one pass
 3. Amortize FFT cost across all VFOs
 
 **Advantages:**
+
 - More efficient for many VFOs
 - Better filter quality
 - Shared computational cost
@@ -96,18 +100,19 @@ Translates IQ samples in frequency domain by complex multiplication with e^(-j·
 
 ```typescript
 export function frequencyShift(
-  iSamples: Float32Array,      // Input I component
-  qSamples: Float32Array,      // Input Q component
-  outputI: Float32Array,       // Output I component
-  outputQ: Float32Array,       // Output Q component
-  size: i32,                   // Number of samples
-  frequencyHz: f64,            // Frequency offset in Hz
-  sampleRate: f64,             // Sample rate in Hz
-  initialPhase: f64,           // Starting NCO phase
-): f64                         // Returns final phase
+  iSamples: Float32Array, // Input I component
+  qSamples: Float32Array, // Input Q component
+  outputI: Float32Array, // Output I component
+  outputQ: Float32Array, // Output Q component
+  size: i32, // Number of samples
+  frequencyHz: f64, // Frequency offset in Hz
+  sampleRate: f64, // Sample rate in Hz
+  initialPhase: f64, // Starting NCO phase
+): f64; // Returns final phase
 ```
 
 **Key features:**
+
 - Maintains NCO phase across buffer boundaries
 - Phase wrapping to prevent numerical drift
 - Complex multiplication: `(I + jQ) × e^(-j·θ)`
@@ -123,11 +128,12 @@ export function movingAverageLowPass(
   outputI: Float32Array,
   outputQ: Float32Array,
   size: i32,
-  taps: i32,                   // Filter length
-): void
+  taps: i32, // Filter length
+): void;
 ```
 
 **Characteristics:**
+
 - Linear phase response
 - Simple implementation
 - Adequate for basic anti-aliasing
@@ -143,8 +149,8 @@ export function decimate(
   outputI: Float32Array,
   outputQ: Float32Array,
   inputSize: i32,
-  factor: i32,                 // Decimation factor
-): i32                         // Returns output sample count
+  factor: i32, // Decimation factor
+): i32; // Returns output sample count
 ```
 
 ### `multiVfoMixer()`
@@ -153,26 +159,28 @@ Main multi-VFO extraction routine combining shift, filter, and decimate.
 
 ```typescript
 export function multiVfoMixer(
-  iSamples: Float32Array,       // Wideband I samples
-  qSamples: Float32Array,       // Wideband Q samples
+  iSamples: Float32Array, // Wideband I samples
+  qSamples: Float32Array, // Wideband Q samples
   inputSize: i32,
   vfoFreqOffsets: Float64Array, // Freq offset for each VFO
   numVfos: i32,
   sampleRate: f64,
   decimationFactor: i32,
   filterTaps: i32,
-  vfoPhases: Float64Array,      // Initial phases (state)
-  outputBuffer: Float32Array,   // Flat output array
-): Float64Array                 // Returns updated phases
+  vfoPhases: Float64Array, // Initial phases (state)
+  outputBuffer: Float32Array, // Flat output array
+): Float64Array; // Returns updated phases
 ```
 
 **Output format:**
+
 ```
 outputBuffer layout: [vfo0_I[], vfo0_Q[], vfo1_I[], vfo1_Q[], ...]
 Each VFO occupies: 2 × ceil(inputSize / decimationFactor) samples
 ```
 
 **Example usage:**
+
 ```typescript
 const outputSize = Math.ceil(inputSize / decimationFactor);
 const outputBuffer = new Float32Array(numVfos * 2 * outputSize);
@@ -186,7 +194,7 @@ const updatedPhases = multiVfoMixer(
   decimationFactor,
   filterTaps,
   vfoPhases,
-  outputBuffer
+  outputBuffer,
 );
 // Save updatedPhases for next buffer iteration
 ```
@@ -197,12 +205,12 @@ const updatedPhases = multiVfoMixer(
 
 ```typescript
 interface MultiVfoProcessorConfig {
-  sampleRate: number;              // Wideband sample rate (Hz)
-  centerFrequency: number;         // Wideband center frequency (Hz)
-  pfbThreshold?: number;           // VFO count to switch to PFB (default: 3)
-  maxConcurrentAudio?: number;     // Max simultaneous audio streams (default: 1)
-  audioOutputSampleRate?: number;  // Audio output rate (default: 48000)
-  enableMetrics?: boolean;         // Collect performance metrics (default: true)
+  sampleRate: number; // Wideband sample rate (Hz)
+  centerFrequency: number; // Wideband center frequency (Hz)
+  pfbThreshold?: number; // VFO count to switch to PFB (default: 3)
+  maxConcurrentAudio?: number; // Max simultaneous audio streams (default: 1)
+  audioOutputSampleRate?: number; // Audio output rate (default: 48000)
+  enableMetrics?: boolean; // Collect performance metrics (default: true)
 }
 ```
 
@@ -213,7 +221,7 @@ import { MultiVfoProcessor } from "@/lib/dsp";
 
 // Initialize processor
 const processor = new MultiVfoProcessor({
-  sampleRate: 2_000_000,        // 2 MS/s
+  sampleRate: 2_000_000, // 2 MS/s
   centerFrequency: 100_000_000, // 100 MHz
   pfbThreshold: 3,
   maxConcurrentAudio: 1,
@@ -222,7 +230,7 @@ const processor = new MultiVfoProcessor({
 // Add VFOs
 const vfo1 = {
   id: "vfo-1",
-  centerHz: 99_900_000,  // 99.9 MHz
+  centerHz: 99_900_000, // 99.9 MHz
   modeId: "wbfm",
   bandwidthHz: 200_000,
   audioEnabled: true,
@@ -233,17 +241,18 @@ processor.addVfo(vfo1);
 
 // Process wideband samples
 const widebandSamples: IQSample[] = getWidebandSamples();
-const results = await processor.processSamples(
-  widebandSamples,
-  [vfo1, vfo2, vfo3]
-);
+const results = await processor.processSamples(widebandSamples, [
+  vfo1,
+  vfo2,
+  vfo3,
+]);
 
 // Access per-VFO results
 for (const [vfoId, result] of results) {
   console.log(`VFO ${vfoId}:`);
   console.log(`  RSSI: ${result.metrics.rssi.toFixed(1)} dBFS`);
   console.log(`  Samples: ${result.metrics.samplesProcessed}`);
-  
+
   if (result.audio) {
     // Route to audio output
     playAudio(result.audio.audio, result.audio.sampleRate);
@@ -252,8 +261,8 @@ for (const [vfoId, result] of results) {
 
 // Mix multiple audio streams
 const audioBuffers = Array.from(results.values())
-  .map(r => r.audio)
-  .filter(a => a !== null);
+  .map((r) => r.audio)
+  .filter((a) => a !== null);
 const mixed = processor.mixAudioBuffers(audioBuffers);
 ```
 
@@ -261,10 +270,10 @@ const mixed = processor.mixAudioBuffers(audioBuffers);
 
 ```typescript
 interface VfoAudioBuffer {
-  vfoId: string;           // VFO identifier
-  audio: Float32Array;     // Mono audio samples
-  sampleRate: number;      // Sample rate (Hz)
-  timestamp: number;       // Processing timestamp (ms)
+  vfoId: string; // VFO identifier
+  audio: Float32Array; // Mono audio samples
+  sampleRate: number; // Sample rate (Hz)
+  timestamp: number; // Processing timestamp (ms)
 }
 ```
 
@@ -272,12 +281,12 @@ interface VfoAudioBuffer {
 
 ```typescript
 interface VfoMetrics {
-  rssi: number;                 // Signal strength (dBFS)
-  samplesProcessed: number;     // Sample count in this batch
-  processingTime: number;       // CPU time (ms)
-  timestamp: number;            // Metric timestamp (ms)
-  snr?: number;                 // Signal-to-noise ratio (dB)
-  custom?: Record<string, unknown>;  // Demodulator-specific metrics
+  rssi: number; // Signal strength (dBFS)
+  samplesProcessed: number; // Sample count in this batch
+  processingTime: number; // CPU time (ms)
+  timestamp: number; // Metric timestamp (ms)
+  snr?: number; // Signal-to-noise ratio (dB)
+  custom?: Record<string, unknown>; // Demodulator-specific metrics
 }
 ```
 
@@ -288,7 +297,7 @@ interface VfoMetrics {
 Based on `docs/reference/multi-vfo-architecture.md`:
 
 | VFOs | Strategy | Est. Time (2048 samples @ 2 MS/s) |
-|------|----------|-----------------------------------|
+| ---- | -------- | --------------------------------- |
 | 1    | Per-VFO  | ~0.3-0.8 ms (mode-dependent)      |
 | 2    | Per-VFO  | ~0.6-1.6 ms                       |
 | 3    | PFB      | ~1.4 ms (0.5 ms PFB + 3×0.3 ms)   |
@@ -335,7 +344,7 @@ const results = await processor.processSamples(mixed, [vfo1, vfo2, vfo3]);
 
 // Validate: VFO1 (strongest) should have highest RSSI
 expect(results.get("vfo-1")?.metrics.rssi).toBeGreaterThan(
-  results.get("vfo-2")?.metrics.rssi
+  results.get("vfo-2")?.metrics.rssi,
 );
 ```
 
@@ -393,9 +402,9 @@ const sourceNode = audioContext.createBufferSource();
 
 // Convert VfoAudioBuffer to AudioBuffer
 const audioBuffer = audioContext.createBuffer(
-  1,  // mono
+  1, // mono
   result.audio.audio.length,
-  result.audio.sampleRate
+  result.audio.sampleRate,
 );
 audioBuffer.copyToChannel(result.audio.audio, 0);
 

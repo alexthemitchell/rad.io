@@ -12,13 +12,12 @@
  * 4. Metrics collection → VFO state updates
  *
  * Strategy:
- * - 1-2 VFOs: Per-VFO frequency shift + filter + decimate (via WASM multi-mixer)
+ * - 1-2 VFOs: Per-VFO frequency shift + filter + decimate (JS implementation)
  * - 3+ VFOs: Polyphase Filter Bank channelizer (amortizes FFT cost)
  *
  * Related: docs/reference/multi-vfo-architecture.md
  */
 
-import { loader } from "../../utils/dspWasm";
 import { pfbChannelize } from "./pfbChannelizer";
 import type { IQSample } from "../../models/SDRDevice";
 import type { DemodulatorPlugin } from "../../types/plugin";
@@ -69,11 +68,6 @@ interface VfoProcessingState {
 
   /** Last processing timestamp */
   lastProcessedAt: number;
-
-  /** Accumulated samples for partial buffer processing */
-  bufferI: Float32Array;
-  bufferQ: Float32Array;
-  bufferFill: number;
 }
 
 /**
@@ -84,20 +78,6 @@ interface VfoProcessingState {
 export class MultiVfoProcessor {
   private config: Required<MultiVfoProcessorConfig>;
   private vfoStates = new Map<string, VfoProcessingState>();
-  private wasmMultiMixer:
-    | ((
-        iSamples: Float32Array,
-        qSamples: Float32Array,
-        inputSize: number,
-        vfoFreqOffsets: Float64Array,
-        numVfos: number,
-        sampleRate: number,
-        decimationFactor: number,
-        filterTaps: number,
-        vfoPhases: Float64Array,
-        outputBuffer: Float32Array,
-      ) => Float64Array)
-    | null = null;
 
   constructor(config: MultiVfoProcessorConfig) {
     this.config = {
@@ -107,29 +87,6 @@ export class MultiVfoProcessor {
       enableMetrics: true,
       ...config,
     };
-
-    this.initializeWasm();
-  }
-
-  /**
-   * Initialize WASM DSP functions
-   */
-  private initializeWasm(): void {
-    // Async initialization, fallback to JS on failure
-    if (loader) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      loader
-        .then((instance) => {
-          this.wasmMultiMixer = instance.exports
-            .multiVfoMixer as typeof this.wasmMultiMixer;
-        })
-        .catch((error: unknown) => {
-          console.warn(
-            "⚠️ MultiVfoProcessor: WASM initialization failed, falling back to JS implementation",
-            error,
-          );
-        });
-    }
   }
 
   /**
@@ -155,15 +112,10 @@ export class MultiVfoProcessor {
     );
     const decimatedSampleRate = this.config.sampleRate / decimationFactor;
 
-    // Pre-allocate buffers for this VFO
-    const bufferSize = 8192; // Fixed buffer size for accumulation
     this.vfoStates.set(vfo.id, {
       phase: 0,
       demodulator: vfo.demodulator,
       lastProcessedAt: Date.now(),
-      bufferI: new Float32Array(bufferSize),
-      bufferQ: new Float32Array(bufferSize),
-      bufferFill: 0,
     });
 
     console.debug(
@@ -254,127 +206,19 @@ export class MultiVfoProcessor {
     activeVfos: VfoState[],
     results: Map<string, { audio: VfoAudioBuffer | null; metrics: VfoMetrics }>,
   ): void {
-    // Use WASM multi-mixer if available, otherwise fall back to JS
-    if (this.wasmMultiMixer && activeVfos.length > 0) {
-      this.processSamplesPerVfoWasm(samples, activeVfos, results);
-    } else {
-      this.processSamplesPerVfoJS(samples, activeVfos, results);
-    }
+    // Use JS implementation (WASM acceleration can be added in future)
+    this.processSamplesPerVfoJS(samples, activeVfos, results);
   }
 
   /**
-   * Process samples using WASM multi-mixer
-   */
-  private processSamplesPerVfoWasm(
-    samples: IQSample[],
-    activeVfos: VfoState[],
-    results: Map<string, { audio: VfoAudioBuffer | null; metrics: VfoMetrics }>,
-  ): void {
-    if (!this.wasmMultiMixer) return;
-
-    const inputSize = samples.length;
-    const numVfos = activeVfos.length;
-
-    // Prepare input arrays
-    const iSamples = new Float32Array(inputSize);
-    const qSamples = new Float32Array(inputSize);
-    for (let i = 0; i < inputSize; i++) {
-      const sample = samples[i];
-      if (sample) {
-        iSamples[i] = sample.I;
-        qSamples[i] = sample.Q;
-      }
-    }
-
-    // Prepare VFO parameters
-    const vfoFreqOffsets = new Float64Array(numVfos);
-    const vfoPhases = new Float64Array(numVfos);
-    const decimationFactors: number[] = [];
-
-    for (let i = 0; i < numVfos; i++) {
-      const vfo = activeVfos[i];
-      if (!vfo) continue;
-
-      const state = this.vfoStates.get(vfo.id);
-      if (!state) continue;
-
-      // Frequency offset from wideband center
-      vfoFreqOffsets[i] = vfo.centerHz - this.config.centerFrequency;
-      vfoPhases[i] = state.phase;
-
-      // Calculate decimation factor
-      const decimationFactor = Math.max(
-        1,
-        Math.floor(this.config.sampleRate / (vfo.bandwidthHz * 2)),
-      );
-      decimationFactors.push(decimationFactor);
-    }
-
-    // Use first VFO's decimation factor for all (simplified for now)
-    const decimationFactor = decimationFactors[0] ?? 1;
-    const outputSize = Math.ceil(inputSize / decimationFactor);
-    const filterTaps = Math.min(21, Math.floor(decimationFactor * 2) + 1);
-
-    // Allocate output buffer: [vfo0_I[], vfo0_Q[], vfo1_I[], vfo1_Q[], ...]
-    const outputBuffer = new Float32Array(numVfos * 2 * outputSize);
-
-    // Call WASM multi-mixer
-    const updatedPhases = this.wasmMultiMixer(
-      iSamples,
-      qSamples,
-      inputSize,
-      vfoFreqOffsets,
-      numVfos,
-      this.config.sampleRate,
-      decimationFactor,
-      filterTaps,
-      vfoPhases,
-      outputBuffer,
-    );
-
-    // Process each VFO's output
-    for (let i = 0; i < numVfos; i++) {
-      const vfo = activeVfos[i];
-      if (!vfo) continue;
-
-      const state = this.vfoStates.get(vfo.id);
-      if (!state) continue;
-
-      // Update phase for next iteration
-      state.phase = updatedPhases[i] ?? 0;
-
-      // Extract decimated IQ for this VFO
-      const vfoIOffset = i * 2 * outputSize;
-      const vfoQOffset = vfoIOffset + outputSize;
-      const decimatedI = outputBuffer.subarray(
-        vfoIOffset,
-        vfoIOffset + outputSize,
-      );
-      const decimatedQ = outputBuffer.subarray(
-        vfoQOffset,
-        vfoQOffset + outputSize,
-      );
-
-      // Convert to IQSample array for demodulator
-      const decimatedSamples: IQSample[] = [];
-      for (let j = 0; j < outputSize; j++) {
-        decimatedSamples.push({ I: decimatedI[j] ?? 0, Q: decimatedQ[j] ?? 0 });
-      }
-
-      // Demodulate and collect results
-      this.demodulateAndCollectResults(vfo, state, decimatedSamples, results);
-    }
-  }
-
-  /**
-   * Process samples using JavaScript per-VFO mixing (fallback)
+   * Process samples using JavaScript per-VFO mixing
    */
   private processSamplesPerVfoJS(
     samples: IQSample[],
     activeVfos: VfoState[],
     results: Map<string, { audio: VfoAudioBuffer | null; metrics: VfoMetrics }>,
   ): void {
-    // Simple JS implementation for fallback
+    // JS implementation
     for (const vfo of activeVfos) {
       const state = this.vfoStates.get(vfo.id);
       if (!state) continue;
@@ -421,8 +265,6 @@ export class MultiVfoProcessor {
     const shifted: IQSample[] = [];
 
     for (const sample of samples) {
-      if (!sample) continue;
-
       const cosPhase = Math.cos(phase);
       const sinPhase = Math.sin(phase);
 

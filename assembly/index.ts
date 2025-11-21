@@ -14,4 +14,8 @@ export {
   applyHannWindow,
   applyHammingWindow,
   applyBlackmanWindow,
+  frequencyShift,
+  movingAverageLowPass,
+  decimate,
+  multiVfoMixer,
 } from "./dsp";

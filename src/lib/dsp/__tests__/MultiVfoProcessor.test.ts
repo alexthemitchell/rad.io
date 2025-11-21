@@ -14,7 +14,10 @@ import { MultiVfoProcessor } from "../MultiVfoProcessor";
 import type { IQSample } from "../../../models/SDRDevice";
 import type { VfoState } from "../../../types/vfo";
 import { VfoStatus } from "../../../types/vfo";
-import type { DemodulatorPlugin, DemodulatorParameters } from "../../../types/plugin";
+import type {
+  DemodulatorPlugin,
+  DemodulatorParameters,
+} from "../../../types/plugin";
 import { PluginType, PluginState } from "../../../types/plugin";
 
 /**
@@ -71,7 +74,7 @@ class MockDemodulator implements DemodulatorPlugin {
     author: "Test",
     description: "Mock demodulator for testing",
     type: PluginType.DEMODULATOR,
-  };
+  } as const;
 
   state = PluginState.INITIALIZED;
 

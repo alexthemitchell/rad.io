@@ -971,8 +971,14 @@ export function multiVfoMixer(
     const vfoQOffset = vfoIOffset + outputSize;
 
     // Create views into output buffer for this VFO
-    const outputIView = outputBuffer.subarray(vfoIOffset, vfoIOffset + outputSize);
-    const outputQView = outputBuffer.subarray(vfoQOffset, vfoQOffset + outputSize);
+    const outputIView = outputBuffer.subarray(
+      vfoIOffset,
+      vfoIOffset + outputSize,
+    );
+    const outputQView = outputBuffer.subarray(
+      vfoQOffset,
+      vfoQOffset + outputSize,
+    );
 
     const actualOutputSize = decimate(
       tempFilteredI,
