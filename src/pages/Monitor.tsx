@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { AddVfoModal } from "../components/AddVfoModal";
 import AudioControls from "../components/AudioControls";
 import { DiagnosticsOverlay } from "../components/DiagnosticsOverlay";
 import PrimaryVisualization from "../components/Monitor/PrimaryVisualization";
@@ -12,6 +13,7 @@ import QuickActions from "../components/Monitor/QuickActions";
 import VisualizationControls from "../components/Monitor/VisualizationControls";
 import RDSDisplay from "../components/RDSDisplay";
 import SMeter from "../components/SMeter";
+import { VfoManagerPanel } from "../components/VfoManagerPanel";
 import { WATERFALL_COLORMAPS } from "../constants";
 import { useDsp } from "../hooks/useDsp";
 import {
@@ -34,6 +36,7 @@ import {
   useSettings,
   useDiagnostics,
   useSignalLevel,
+  useVfo,
 } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
@@ -58,6 +61,12 @@ const Monitor: React.FC = () => {
   const { primaryDevice: device } = useDevice();
   const { setOverlayVisible } = useDiagnostics();
   const { signalLevel } = useSignalLevel();
+  const { getAllVfos, addVfo, removeVfo, setVfoAudio } = useVfo();
+
+  // VFO UI state
+  const [showAddVfoModal, setShowAddVfoModal] = useState(false);
+  const [pendingVfoFrequency, setPendingVfoFrequency] = useState<number>(0);
+  const vfos = getAllVfos();
 
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
@@ -319,6 +328,84 @@ const Monitor: React.FC = () => {
   const handleShowHelp = useCallback((): void => {
     toggleShortcuts();
   }, []);
+
+  // VFO Management handlers
+  const handleVfoCreateRequest = useCallback((frequencyHz: number): void => {
+    setPendingVfoFrequency(frequencyHz);
+    setShowAddVfoModal(true);
+  }, []);
+
+  const handleVfoConfirm = useCallback(
+    (modeId: string): void => {
+      try {
+        // Get mode-specific bandwidth
+        const bandwidthMap: Record<string, number> = {
+          am: 10_000,
+          wbfm: 200_000,
+          nbfm: 12_500,
+          usb: 3_000,
+          lsb: 3_000,
+        };
+        const bandwidthHz = bandwidthMap[modeId] ?? 10_000;
+
+        addVfo(
+          {
+            centerHz: pendingVfoFrequency,
+            modeId,
+            bandwidthHz,
+            audioEnabled: true,
+            audioGain: 1.0,
+            priority: 5,
+            label: `${modeId.toUpperCase()} ${(pendingVfoFrequency / 1e6).toFixed(3)}`,
+          },
+          {
+            hardwareCenterHz: frequency,
+            sampleRateHz: sampleRate,
+          },
+        );
+
+        setShowAddVfoModal(false);
+        notify({
+          message: `VFO created at ${formatFrequency(pendingVfoFrequency)}`,
+          sr: "polite",
+          visual: true,
+          tone: "success",
+        });
+      } catch (error) {
+        notify({
+          message: `Failed to create VFO: ${error instanceof Error ? error.message : String(error)}`,
+          sr: "polite",
+          visual: true,
+          tone: "error",
+        });
+      }
+    },
+    [pendingVfoFrequency, frequency, sampleRate, addVfo],
+  );
+
+  const handleVfoCancel = useCallback((): void => {
+    setShowAddVfoModal(false);
+  }, []);
+
+  const handleVfoRemove = useCallback(
+    (vfoId: string): void => {
+      removeVfo(vfoId);
+      notify({
+        message: "VFO removed",
+        sr: "polite",
+        visual: true,
+        tone: "info",
+      });
+    },
+    [removeVfo],
+  );
+
+  const handleVfoToggleAudio = useCallback(
+    (vfoId: string, enabled: boolean): void => {
+      setVfoAudio(vfoId, enabled);
+    },
+    [setVfoAudio],
+  );
 
   // Use refs to track mutable values for keyboard shortcuts to avoid listener churn
   const frequencyRef = useRef(frequency);
@@ -670,6 +757,8 @@ const Monitor: React.FC = () => {
             showAnnotations={isReceiving || mergedSignals.length > 0}
             showGridlines={settings.showGridlines}
             showGridLabels={settings.showGridLabels}
+            enableVfoCreation={isReceiving}
+            onVfoCreateRequest={handleVfoCreateRequest}
             onTune={(fHz) => {
               const snapped = Math.round(fHz / 1_000) * 1_000;
               setFrequency(snapped);
@@ -884,6 +973,33 @@ const Monitor: React.FC = () => {
           </ul>
         </div>
       </details>
+
+      {/* VFO Management Section */}
+      {isReceiving && (
+        <section
+          aria-label="VFO Management"
+          style={{
+            backgroundColor: "var(--rad-bg-secondary, #1a1a1a)",
+            padding: "16px",
+            borderRadius: "8px",
+            marginBottom: "16px",
+          }}
+        >
+          <VfoManagerPanel
+            vfos={vfos}
+            onToggleAudio={handleVfoToggleAudio}
+            onRemove={handleVfoRemove}
+          />
+        </section>
+      )}
+
+      {/* VFO Creation Modal */}
+      <AddVfoModal
+        isOpen={showAddVfoModal}
+        frequencyHz={pendingVfoFrequency}
+        onConfirm={handleVfoConfirm}
+        onCancel={handleVfoCancel}
+      />
 
       {/* StatusBar is rendered globally in the App shell */}
       <DiagnosticsOverlay detailed={true} />

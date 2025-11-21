@@ -26,6 +26,10 @@ interface PrimaryVisualizationProps {
   /** Whether to show frequency gridlines independent from annotations */
   showGridlines?: boolean;
   showGridLabels?: boolean;
+  /** Enable VFO creation on Alt+Click */
+  enableVfoCreation?: boolean;
+  /** Callback when user Alt+Clicks to create VFO */
+  onVfoCreateRequest?: (frequencyHz: number) => void;
 }
 
 const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
@@ -42,6 +46,8 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   showAnnotations = true,
   showGridlines = true,
   showGridLabels = true,
+  enableVfoCreation = false,
+  onVfoCreateRequest,
 }) => {
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
   const waterfallCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -634,6 +640,21 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   const handleCanvasClick = (
     evt: React.MouseEvent<HTMLCanvasElement>,
   ): void => {
+    // If Alt key is held and VFO creation is enabled, create VFO at clicked frequency
+    if (evt.altKey && enableVfoCreation && onVfoCreateRequest) {
+      if (!sampleRate || !centerFrequency) {
+        return;
+      }
+      const canvas = evt.currentTarget;
+      const rect = canvas.getBoundingClientRect();
+      const x = evt.clientX - rect.left;
+      const frac = Math.min(1, Math.max(0, x / rect.width));
+      const span = sampleRate;
+      const clickedFreq = centerFrequency - span / 2 + frac * span;
+      onVfoCreateRequest(clickedFreq);
+      return;
+    }
+
     // If clicking on a signal, tune to it
     if (hoveredSignal) {
       onTune(hoveredSignal.frequency);

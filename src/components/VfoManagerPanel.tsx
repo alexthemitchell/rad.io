@@ -83,10 +83,7 @@ export function VfoManagerPanel({
             </div>
 
             <div className="vfo-item-controls">
-              <label
-                className="vfo-audio-control"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <label className="vfo-audio-control">
                 <input
                   type="checkbox"
                   checked={vfo.audioEnabled}
@@ -94,6 +91,7 @@ export function VfoManagerPanel({
                     e.stopPropagation();
                     onToggleAudio(vfo.id, e.target.checked);
                   }}
+                  onClick={(e) => e.stopPropagation()}
                   aria-label={`Enable audio for VFO at ${(vfo.centerHz / 1e6).toFixed(6)} MHz`}
                 />
                 <span>Audio Output</span>
