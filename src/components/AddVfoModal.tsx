@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
+import { VFO_MODE_CONFIGS } from "../utils/vfoModes";
 
 export interface AddVfoModalProps {
   /** Whether the modal is open */
@@ -16,17 +17,6 @@ export interface AddVfoModalProps {
   /** Callback when user cancels */
   onCancel: () => void;
 }
-
-/**
- * Available demodulation modes for VFO creation
- */
-const AVAILABLE_MODES = [
-  { id: "am", label: "AM", bandwidthHz: 10_000 },
-  { id: "wbfm", label: "WBFM", bandwidthHz: 200_000 },
-  { id: "nbfm", label: "NBFM", bandwidthHz: 12_500 },
-  { id: "usb", label: "USB", bandwidthHz: 3_000 },
-  { id: "lsb", label: "LSB", bandwidthHz: 3_000 },
-] as const;
 
 /**
  * Add VFO Modal Component
@@ -125,7 +115,7 @@ export function AddVfoModal({
               color: "var(--rad-fg)",
             }}
           >
-            {AVAILABLE_MODES.map((mode) => (
+            {VFO_MODE_CONFIGS.map((mode) => (
               <option key={mode.id} value={mode.id}>
                 {mode.label}
               </option>

@@ -23,7 +23,7 @@ test.describe("Multi-VFO Management", () => {
     await expect(waterfall).toBeVisible();
 
     // Click on waterfall to trigger VFO creation modal
-    await waterfall.click({ position: { x: 375, y: 200 } });
+    await waterfall.click({ position: { x: 375, y: 200 }, modifiers: ["Alt"] });
 
     // Verify modal appears
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -52,14 +52,14 @@ test.describe("Multi-VFO Management", () => {
     await expect(waterfall).toBeVisible();
 
     // Create first VFO
-    await waterfall.click({ position: { x: 300, y: 200 } });
+    await waterfall.click({ position: { x: 300, y: 200 }, modifiers: ["Alt"] });
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.selectOption('select[id="vfo-mode"]', "am");
     await page.click('button:has-text("Add VFO")');
     await expect(page.getByRole("dialog")).not.toBeVisible();
 
     // Create second VFO
-    await waterfall.click({ position: { x: 450, y: 200 } });
+    await waterfall.click({ position: { x: 450, y: 200 }, modifiers: ["Alt"] });
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.selectOption('select[id="vfo-mode"]', "wbfm");
     await page.click('button:has-text("Add VFO")');
@@ -70,10 +70,8 @@ test.describe("Multi-VFO Management", () => {
     await expect(page.getByText("AM")).toBeVisible();
     await expect(page.getByText("WBFM")).toBeVisible();
 
-    // Get all audio checkboxes
-    const audioCheckboxes = page.locator('input[type="checkbox"]').filter({
-      has: page.locator('text="Audio Output"'),
-    });
+    // Get all audio checkboxes using more specific ARIA labels
+    const audioCheckboxes = page.locator('input[aria-label*="Enable audio for VFO"]');
 
     // First VFO should have audio enabled by default
     const firstCheckbox = audioCheckboxes.first();
@@ -103,7 +101,7 @@ test.describe("Multi-VFO Management", () => {
     await expect(waterfall).toBeVisible();
 
     // Create VFO
-    await waterfall.click({ position: { x: 375, y: 200 } });
+    await waterfall.click({ position: { x: 375, y: 200 }, modifiers: ["Alt"] });
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.selectOption('select[id="vfo-mode"]', "am");
     await page.click('button:has-text("Add VFO")');
@@ -131,7 +129,7 @@ test.describe("Multi-VFO Management", () => {
     await expect(waterfall).toBeVisible();
 
     // Create VFO
-    await waterfall.click({ position: { x: 375, y: 200 } });
+    await waterfall.click({ position: { x: 375, y: 200 }, modifiers: ["Alt"] });
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.selectOption('select[id="vfo-mode"]', "nbfm");
     await page.click('button:has-text("Add VFO")');
@@ -159,7 +157,7 @@ test.describe("Multi-VFO Management", () => {
     await expect(waterfall).toBeVisible();
 
     // Click on waterfall to trigger VFO creation modal
-    await waterfall.click({ position: { x: 375, y: 200 } });
+    await waterfall.click({ position: { x: 375, y: 200 }, modifiers: ["Alt"] });
     await expect(page.getByRole("dialog")).toBeVisible();
 
     // Click cancel
@@ -179,7 +177,7 @@ test.describe("Multi-VFO Management", () => {
     await expect(waterfall).toBeVisible();
 
     // Click on waterfall to trigger VFO creation modal
-    await waterfall.click({ position: { x: 375, y: 200 } });
+    await waterfall.click({ position: { x: 375, y: 200 }, modifiers: ["Alt"] });
     await expect(page.getByRole("dialog")).toBeVisible();
 
     // Press Escape key

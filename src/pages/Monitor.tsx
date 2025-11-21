@@ -48,6 +48,7 @@ import {
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
 import { generateBookmarkId } from "../utils/id";
 import { createMultiStationFMProcessor } from "../utils/multiStationFM";
+import { getVfoModeBandwidth } from "../utils/vfoModes";
 import type { RDSStationData } from "../models/RDSData";
 import type { Bookmark } from "../types/bookmark";
 
@@ -339,14 +340,7 @@ const Monitor: React.FC = () => {
     (modeId: string): void => {
       try {
         // Get mode-specific bandwidth
-        const bandwidthMap: Record<string, number> = {
-          am: 10_000,
-          wbfm: 200_000,
-          nbfm: 12_500,
-          usb: 3_000,
-          lsb: 3_000,
-        };
-        const bandwidthHz = bandwidthMap[modeId] ?? 10_000;
+        const bandwidthHz = getVfoModeBandwidth(modeId);
 
         addVfo(
           {
