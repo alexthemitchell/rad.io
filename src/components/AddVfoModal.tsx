@@ -82,7 +82,7 @@ export function AddVfoModal({
       <div className="dialog" ref={modalRef}>
         <h4 id="add-vfo-modal-title">Add VFO</h4>
 
-        <div style={{ marginBottom: "1rem" }}>
+        <div className="dialog-field-group">
           <label htmlFor="vfo-frequency">Frequency</label>
           <div
             id="vfo-frequency"

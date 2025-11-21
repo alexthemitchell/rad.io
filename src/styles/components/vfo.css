@@ -86,6 +86,11 @@
   margin: 0.5rem 0;
 }
 
+.vfo-empty-state .instruction-text {
+  font-size: 0.875rem;
+  color: var(--rad-fg-muted);
+}
+
 .vfo-list {
   display: flex;
   flex-direction: column;
@@ -102,6 +107,14 @@
 
 .vfo-item:hover {
   border-color: var(--rad-primary);
+}
+
+.vfo-item-clickable {
+  cursor: pointer;
+}
+
+.vfo-item-static {
+  cursor: default;
 }
 
 .vfo-item-header {

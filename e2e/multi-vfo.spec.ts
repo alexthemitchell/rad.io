@@ -6,6 +6,30 @@
 
 import { test, expect } from "@playwright/test";
 
+/**
+ * Helper function to find the Start Reception button
+ */
+async function findStartButton(page: any) {
+  const selectors = [
+    'button[aria-label*="Start receiving" i]',
+    'button:has-text("Start Reception")',
+    'button:has-text("Start receiving")',
+    'button[aria-label*="Start reception" i]',
+    'button[title*="Start reception" i]',
+  ];
+  for (const s of selectors) {
+    const loc = page.locator(s).first();
+    try {
+      if ((await loc.count()) > 0) {
+        return loc;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 test.describe("Multi-VFO Management", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
@@ -17,6 +41,16 @@ test.describe("Multi-VFO Management", () => {
     // Navigate to monitor page
     await page.click('a[href="/monitor"]');
     await page.waitForLoadState("networkidle");
+
+    // Start reception to enable VFO UI
+    const startBtn = await findStartButton(page);
+    if (startBtn) {
+      await expect(startBtn).toBeVisible({ timeout: 10000 });
+      await expect(startBtn).toBeEnabled();
+      await startBtn.click();
+      // Wait for reception to start
+      await page.waitForTimeout(1000);
+    }
 
     // Wait for waterfall canvas to be visible
     const waterfall = page.locator("canvas").first();
@@ -47,6 +81,16 @@ test.describe("Multi-VFO Management", () => {
     // Navigate to monitor page
     await page.click('a[href="/monitor"]');
     await page.waitForLoadState("networkidle");
+
+    // Start reception to enable VFO UI
+    const startBtn = await findStartButton(page);
+    if (startBtn) {
+      await expect(startBtn).toBeVisible({ timeout: 10000 });
+      await expect(startBtn).toBeEnabled();
+      await startBtn.click();
+      // Wait for reception to start
+      await page.waitForTimeout(1000);
+    }
 
     const waterfall = page.locator("canvas").first();
     await expect(waterfall).toBeVisible();
@@ -99,6 +143,16 @@ test.describe("Multi-VFO Management", () => {
     await page.click('a[href="/monitor"]');
     await page.waitForLoadState("networkidle");
 
+    // Start reception to enable VFO UI
+    const startBtn = await findStartButton(page);
+    if (startBtn) {
+      await expect(startBtn).toBeVisible({ timeout: 10000 });
+      await expect(startBtn).toBeEnabled();
+      await startBtn.click();
+      // Wait for reception to start
+      await page.waitForTimeout(1000);
+    }
+
     const waterfall = page.locator("canvas").first();
     await expect(waterfall).toBeVisible();
 
@@ -126,6 +180,16 @@ test.describe("Multi-VFO Management", () => {
     // Navigate to monitor page
     await page.click('a[href="/monitor"]');
     await page.waitForLoadState("networkidle");
+
+    // Start reception to enable VFO UI
+    const startBtn = await findStartButton(page);
+    if (startBtn) {
+      await expect(startBtn).toBeVisible({ timeout: 10000 });
+      await expect(startBtn).toBeEnabled();
+      await startBtn.click();
+      // Wait for reception to start
+      await page.waitForTimeout(1000);
+    }
 
     const waterfall = page.locator("canvas").first();
     await expect(waterfall).toBeVisible();
@@ -155,6 +219,16 @@ test.describe("Multi-VFO Management", () => {
     await page.click('a[href="/monitor"]');
     await page.waitForLoadState("networkidle");
 
+    // Start reception to enable VFO UI
+    const startBtn = await findStartButton(page);
+    if (startBtn) {
+      await expect(startBtn).toBeVisible({ timeout: 10000 });
+      await expect(startBtn).toBeEnabled();
+      await startBtn.click();
+      // Wait for reception to start
+      await page.waitForTimeout(1000);
+    }
+
     const waterfall = page.locator("canvas").first();
     await expect(waterfall).toBeVisible();
 
@@ -174,6 +248,16 @@ test.describe("Multi-VFO Management", () => {
     // Navigate to monitor page
     await page.click('a[href="/monitor"]');
     await page.waitForLoadState("networkidle");
+
+    // Start reception to enable VFO UI
+    const startBtn = await findStartButton(page);
+    if (startBtn) {
+      await expect(startBtn).toBeVisible({ timeout: 10000 });
+      await expect(startBtn).toBeEnabled();
+      await startBtn.click();
+      // Wait for reception to start
+      await page.waitForTimeout(1000);
+    }
 
     const waterfall = page.locator("canvas").first();
     await expect(waterfall).toBeVisible();
@@ -195,6 +279,16 @@ test.describe("Multi-VFO Management", () => {
     // Navigate to monitor page
     await page.click('a[href="/monitor"]');
     await page.waitForLoadState("networkidle");
+
+    // Start reception to enable VFO UI
+    const startBtn = await findStartButton(page);
+    if (startBtn) {
+      await expect(startBtn).toBeVisible({ timeout: 10000 });
+      await expect(startBtn).toBeEnabled();
+      await startBtn.click();
+      // Wait for reception to start
+      await page.waitForTimeout(1000);
+    }
 
     const waterfall = page.locator("canvas").first();
     await expect(waterfall).toBeVisible();

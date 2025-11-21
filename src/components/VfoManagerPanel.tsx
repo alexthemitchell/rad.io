@@ -34,7 +34,7 @@ export function VfoManagerPanel({
         <h3 className="vfo-panel-title">VFO Manager</h3>
         <div className="vfo-empty-state">
           <p>No VFOs created</p>
-          <p style={{ fontSize: "0.875rem", color: "var(--rad-fg-muted)" }}>
+          <p className="instruction-text">
             Alt+Click on the waterfall to add a VFO
           </p>
         </div>
@@ -49,7 +49,7 @@ export function VfoManagerPanel({
         {vfos.map((vfo) => (
           <div
             key={vfo.id}
-            className="vfo-item"
+            className={`vfo-item ${onSelect ? "vfo-item-clickable" : "vfo-item-static"}`}
             role={onSelect ? "button" : undefined}
             tabIndex={onSelect ? 0 : undefined}
             onClick={onSelect ? (): void => onSelect(vfo.id) : undefined}
@@ -63,7 +63,6 @@ export function VfoManagerPanel({
                   }
                 : undefined
             }
-            style={{ cursor: onSelect ? "pointer" : "default" }}
           >
             <div className="vfo-item-header">
               <div className="vfo-item-info">
