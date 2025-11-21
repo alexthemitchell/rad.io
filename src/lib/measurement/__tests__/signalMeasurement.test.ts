@@ -332,13 +332,9 @@ describe("Signal Measurement Conversions", () => {
       // Scenario: SDR with maximum gain settings, strong local signal
       // dBFS near 0 (clipping), high calibration constant
       const scenarios = [
-        { dbfs: -1, kCal: -30, description: "1dB below clipping, high gain" },
-        { dbfs: -0.5, kCal: -25, description: "0.5dB below clipping" },
-        {
-          dbfs: -0.1,
-          kCal: -20,
-          description: "Just barely avoiding clipping",
-        },
+        { dbfs: -1, kCal: -30 }, // 1dB below clipping, high gain
+        { dbfs: -0.5, kCal: -25 }, // 0.5dB below clipping
+        { dbfs: -0.1, kCal: -20 }, // Just barely avoiding clipping
       ];
 
       scenarios.forEach(({ dbfs, kCal }) => {

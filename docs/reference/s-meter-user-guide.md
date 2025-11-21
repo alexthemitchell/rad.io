@@ -369,8 +369,8 @@ When communicating with other radio operators, report signal strength using S-un
 ### Update Rate
 
 The S-Meter updates at:
-- **Default**: 10 times per second (100 ms interval)
-- **Range**: Configurable from 10-1000 ms per update
+- **Default**: 10 Hz (100 ms interval, 10 updates per second)
+- **Range**: Configurable from 10-1000 ms per update (1-100 Hz)
 - **Smoothing**: Exponential moving average prevents jitter
 
 ### Computational Overhead
