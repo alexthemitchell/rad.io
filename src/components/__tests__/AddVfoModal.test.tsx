@@ -54,7 +54,7 @@ describe("AddVfoModal", () => {
       />,
     );
 
-    expect(screen.getByText("100.500000 MHz")).toBeInTheDocument();
+    expect(screen.getByText("100.5 MHz")).toBeInTheDocument();
   });
 
   it("should have AM mode selected by default", () => {

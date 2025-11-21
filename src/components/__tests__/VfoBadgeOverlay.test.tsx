@@ -58,8 +58,8 @@ describe("VfoBadgeOverlay", () => {
 
     expect(screen.getByText("AM")).toBeInTheDocument();
     expect(screen.getByText("WBFM")).toBeInTheDocument();
-    expect(screen.getByText("100.000")).toBeInTheDocument();
-    expect(screen.getByText("101.000")).toBeInTheDocument();
+    expect(screen.getByText("100 MHz")).toBeInTheDocument();
+    expect(screen.getByText("101 MHz")).toBeInTheDocument();
   });
 
   it("should not render VFOs outside visible range", () => {
@@ -97,7 +97,7 @@ describe("VfoBadgeOverlay", () => {
       />,
     );
 
-    const removeButton = screen.getByLabelText("Remove VFO at 100.000 MHz");
+    const removeButton = screen.getByLabelText("Remove VFO at 100 MHz");
     fireEvent.click(removeButton);
 
     expect(mockOnRemove).toHaveBeenCalledWith("vfo-1");
@@ -141,7 +141,7 @@ describe("VfoBadgeOverlay", () => {
       />,
     );
 
-    const removeButton = screen.getByLabelText("Remove VFO at 100.000 MHz");
+    const removeButton = screen.getByLabelText("Remove VFO at 100 MHz");
     fireEvent.click(removeButton);
 
     expect(mockOnRemove).toHaveBeenCalledTimes(1);

@@ -79,14 +79,14 @@ export default function Waterfall({
       const x = event.clientX - rect.left;
 
       // Calculate frequency from pixel position
-      const normalizedPos = x / width;
+      const normalizedPos = x / rect.width;
       const minFreq = centerFrequency - sampleRate / 2;
       const maxFreq = centerFrequency + sampleRate / 2;
       const clickedFreq = minFreq + normalizedPos * (maxFreq - minFreq);
 
       onVfoCreateRequest(clickedFreq);
     },
-    [enableVfoCreation, onVfoCreateRequest, sampleRate, centerFrequency, width],
+    [enableVfoCreation, onVfoCreateRequest, sampleRate, centerFrequency],
   );
 
   // Initialize renderer on mount

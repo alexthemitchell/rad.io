@@ -5,6 +5,7 @@
  */
 
 import React from "react";
+import { formatFrequency } from "../utils/frequency";
 import type { VfoState } from "../types/vfo";
 
 export interface VfoBadgeOverlayProps {
@@ -80,8 +81,8 @@ export function VfoBadgeOverlay({
           <div
             key={vfo.id}
             className="vfo-badge"
-            role="button"
-            tabIndex={0}
+            role={onSelect ? "button" : undefined}
+            tabIndex={onSelect ? 0 : undefined}
             style={{
               position: "absolute",
               left: `${x}px`,
@@ -89,18 +90,22 @@ export function VfoBadgeOverlay({
               transform: "translateX(-50%)",
               pointerEvents: "auto",
             }}
-            onClick={() => onSelect?.(vfo.id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onSelect?.(vfo.id);
-              }
-            }}
+            onClick={onSelect ? (): void => onSelect(vfo.id) : undefined}
+            onKeyDown={
+              onSelect
+                ? (e): void => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelect(vfo.id);
+                    }
+                  }
+                : undefined
+            }
           >
             <div className="vfo-badge-content">
               <span className="vfo-mode">{vfo.modeId.toUpperCase()}</span>
               <span className="vfo-frequency rad-tabular-nums">
-                {(vfo.centerHz / 1e6).toFixed(3)}
+                {formatFrequency(vfo.centerHz)}
               </span>
               <button
                 className="vfo-remove-btn"
@@ -115,7 +120,7 @@ export function VfoBadgeOverlay({
                     onRemove(vfo.id);
                   }
                 }}
-                aria-label={`Remove VFO at ${(vfo.centerHz / 1e6).toFixed(3)} MHz`}
+                aria-label={`Remove VFO at ${formatFrequency(vfo.centerHz)}`}
                 title="Remove VFO"
               >
                 ✕

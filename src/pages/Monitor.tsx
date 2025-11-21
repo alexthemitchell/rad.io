@@ -351,7 +351,7 @@ const Monitor: React.FC = () => {
             audioEnabled: true,
             audioGain: 1.0,
             priority: 5,
-            label: `${modeId.toUpperCase()} ${(pendingVfoFrequency / 1e6).toFixed(3)}`,
+            label: `${modeId.toUpperCase()} ${formatFrequency(pendingVfoFrequency)}`,
           },
           {
             hardwareCenterHz: frequency,
@@ -760,8 +760,10 @@ const Monitor: React.FC = () => {
                   vfos={vfos}
                   sampleRate={sampleRate}
                   centerFrequency={frequency}
-                  width={900} // Default width, will be constrained by container
-                  height={320} // Default height for waterfall
+                  // Note: Using default dimensions that match PrimaryVisualization defaults (900x320)
+                  // Ideally these would be the actual canvas dimensions from PrimaryVisualization's state
+                  width={900}
+                  height={320}
                   onRemove={handleVfoRemove}
                 />
               ) : undefined

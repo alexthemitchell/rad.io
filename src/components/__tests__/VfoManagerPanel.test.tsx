@@ -85,7 +85,7 @@ describe("VfoManagerPanel", () => {
     );
 
     expect(screen.getByText("AM")).toBeInTheDocument();
-    expect(screen.getByText("100.500000 MHz")).toBeInTheDocument();
+    expect(screen.getByText("100.5 MHz")).toBeInTheDocument();
     expect(screen.getByText("active")).toBeInTheDocument();
     expect(screen.getByText("RSSI: -50.5 dBFS")).toBeInTheDocument();
   });
@@ -130,7 +130,7 @@ describe("VfoManagerPanel", () => {
     );
 
     const checkbox = screen.getByLabelText(
-      "Enable audio for VFO at 100.000000 MHz",
+      "Enable audio for VFO at 100 MHz",
     ) as HTMLInputElement;
     fireEvent.click(checkbox);
 
@@ -149,7 +149,7 @@ describe("VfoManagerPanel", () => {
       />,
     );
 
-    const removeButton = screen.getByLabelText("Remove VFO at 100.000000 MHz");
+    const removeButton = screen.getByLabelText("Remove VFO at 100 MHz");
     fireEvent.click(removeButton);
 
     expect(mockOnRemove).toHaveBeenCalledWith("vfo-1");
@@ -188,7 +188,7 @@ describe("VfoManagerPanel", () => {
     );
 
     const checkbox = screen.getByLabelText(
-      "Enable audio for VFO at 100.000000 MHz",
+      "Enable audio for VFO at 100 MHz",
     ) as HTMLInputElement;
     fireEvent.click(checkbox);
 

@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
+import { formatFrequency } from "../utils/frequency";
 import { VFO_MODE_CONFIGS } from "../utils/vfoModes";
 
 export interface AddVfoModalProps {
@@ -95,7 +96,7 @@ export function AddVfoModal({
               fontSize: "1rem",
             }}
           >
-            {(frequencyHz / 1e6).toFixed(6)} MHz
+            {formatFrequency(frequencyHz)}
           </div>
         </div>
 

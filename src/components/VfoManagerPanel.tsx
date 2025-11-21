@@ -5,6 +5,7 @@
  */
 
 import React from "react";
+import { formatFrequency } from "../utils/frequency";
 import type { VfoState } from "../types/vfo";
 
 export interface VfoManagerPanelProps {
@@ -49,15 +50,19 @@ export function VfoManagerPanel({
           <div
             key={vfo.id}
             className="vfo-item"
-            role="button"
-            tabIndex={0}
-            onClick={() => onSelect?.(vfo.id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onSelect?.(vfo.id);
-              }
-            }}
+            role={onSelect ? "button" : undefined}
+            tabIndex={onSelect ? 0 : undefined}
+            onClick={onSelect ? (): void => onSelect(vfo.id) : undefined}
+            onKeyDown={
+              onSelect
+                ? (e): void => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelect(vfo.id);
+                    }
+                  }
+                : undefined
+            }
             style={{ cursor: onSelect ? "pointer" : "default" }}
           >
             <div className="vfo-item-header">
@@ -66,7 +71,7 @@ export function VfoManagerPanel({
                   {vfo.modeId.toUpperCase()}
                 </span>
                 <span className="vfo-item-frequency rad-tabular-nums">
-                  {(vfo.centerHz / 1e6).toFixed(6)} MHz
+                  {formatFrequency(vfo.centerHz)}
                 </span>
               </div>
               <button
@@ -82,7 +87,7 @@ export function VfoManagerPanel({
                     onRemove(vfo.id);
                   }
                 }}
-                aria-label={`Remove VFO at ${(vfo.centerHz / 1e6).toFixed(6)} MHz`}
+                aria-label={`Remove VFO at ${formatFrequency(vfo.centerHz)}`}
                 title="Remove VFO"
               >
                 ✕
@@ -99,7 +104,7 @@ export function VfoManagerPanel({
                     onToggleAudio(vfo.id, e.target.checked);
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  aria-label={`Enable audio for VFO at ${(vfo.centerHz / 1e6).toFixed(6)} MHz`}
+                  aria-label={`Enable audio for VFO at ${formatFrequency(vfo.centerHz)}`}
                 />
                 <span>Audio Output</span>
               </label>
