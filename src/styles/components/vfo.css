@@ -222,3 +222,14 @@
 .vfo-rssi {
   color: var(--rad-fg-muted);
 }
+
+/* VFO Modal Styles */
+
+.vfo-frequency-display {
+  padding: 0.75rem;
+  border: 2px solid var(--rad-border);
+  border-radius: 8px;
+  background: var(--rad-surface-muted);
+  color: var(--rad-fg);
+  font-size: 1rem;
+}

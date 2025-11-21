@@ -86,15 +86,7 @@ export function AddVfoModal({
           <label htmlFor="vfo-frequency">Frequency</label>
           <div
             id="vfo-frequency"
-            className="rad-tabular-nums"
-            style={{
-              padding: "0.75rem",
-              border: "2px solid var(--rad-border)",
-              borderRadius: "8px",
-              background: "var(--rad-surface-muted)",
-              color: "var(--rad-fg)",
-              fontSize: "1rem",
-            }}
+            className="rad-tabular-nums vfo-frequency-display"
           >
             {formatFrequency(frequencyHz)}
           </div>
@@ -106,15 +98,6 @@ export function AddVfoModal({
             id="vfo-mode"
             value={selectedMode}
             onChange={(e) => setSelectedMode(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "0.75rem",
-              border: "2px solid var(--rad-border)",
-              borderRadius: "8px",
-              fontSize: "1rem",
-              background: "var(--rad-surface)",
-              color: "var(--rad-fg)",
-            }}
           >
             {VFO_MODE_CONFIGS.map((mode) => (
               <option key={mode.id} value={mode.id}>
