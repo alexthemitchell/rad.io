@@ -504,7 +504,7 @@ Enable in browser: Settings → Accessibility → Reduce Motion
 
 ### Q: Why are HF and VHF S9 levels different?
 
-**A**: VHF/UHF has a naturally higher noise floor due to man-made noise and atmospheric factors. The -93 dBm S9 reference (vs -73 dBm for HF) accounts for this, making S-unit reports comparable across bands.
+**A**: VHF/UHF uses a different S9 reference level (-93 dBm vs -73 dBm for HF) to account for different operating conditions at these frequencies, including typically higher man-made noise and different propagation characteristics. This makes S-unit reports more comparable across bands.
 
 ### Q: Can I use the S-Meter for EMC/EMI measurements?
 
