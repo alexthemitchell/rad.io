@@ -14,22 +14,28 @@ import type { SMeterBand } from "./types";
 /**
  * Convert dBFS (decibels relative to full scale) to dBm (absolute power)
  *
- * Formula: dBm = dBFS + K_cal
+ * Formula: dBm = dBFS + K_cal + calibrationOffset
  *
  * @param dbfs - Power level relative to ADC full scale (typically ≤ 0)
  * @param kCal - Calibration constant (device-specific, typically -80 to -40)
  *               This accounts for ADC reference voltage, RF gain, mixer losses, etc.
+ * @param calibrationOffset - User-adjustable offset in dB (default: 0)
+ *                            Allows fine-tuning calibration without changing kCal
  * @returns Absolute power level in dBm at antenna input
  *
  * @example
  * ```typescript
- * // HackRF One on VHF with typical gain settings
- * const dBm = convertDbfsToDbm(-30, -70);
- * // Result: -100 dBm
+ * // HackRF One on VHF with typical gain settings and +2dB user adjustment
+ * const dBm = convertDbfsToDbm(-30, -70, 2);
+ * // Result: -98 dBm
  * ```
  */
-export function convertDbfsToDbm(dbfs: number, kCal: number): number {
-  return dbfs + kCal;
+export function convertDbfsToDbm(
+  dbfs: number,
+  kCal: number,
+  calibrationOffset = 0,
+): number {
+  return dbfs + kCal + calibrationOffset;
 }
 
 /**

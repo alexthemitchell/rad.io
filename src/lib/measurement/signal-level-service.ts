@@ -26,6 +26,9 @@ export interface SignalLevelServiceConfig {
 
   /** Current operating frequency in Hz (to determine HF vs VHF band) */
   frequencyHz: number;
+
+  /** User-adjustable calibration offset in dB (default: 0) */
+  calibrationOffsetDb?: number;
 }
 
 /**
@@ -80,6 +83,7 @@ export class SignalLevelService {
       updateIntervalMs: config.updateIntervalMs ?? 100,
       calibration: config.calibration,
       frequencyHz: config.frequencyHz,
+      calibrationOffsetDb: config.calibrationOffsetDb ?? 0,
     };
   }
 
@@ -124,6 +128,10 @@ export class SignalLevelService {
     if (updates.frequencyHz !== undefined) {
       this.config.frequencyHz = updates.frequencyHz;
     }
+
+    if (updates.calibrationOffsetDb !== undefined) {
+      this.config.calibrationOffsetDb = updates.calibrationOffsetDb;
+    }
   }
 
   /**
@@ -141,8 +149,12 @@ export class SignalLevelService {
     // Step 1: Calculate dBFS from IQ samples
     const dBfs = calculateSignalStrength(samples);
 
-    // Step 2: Convert dBFS to dBm using calibration constant
-    const dBmApprox = convertDbfsToDbm(dBfs, this.config.calibration.kCal);
+    // Step 2: Convert dBFS to dBm using calibration constant and user offset
+    const dBmApprox = convertDbfsToDbm(
+      dBfs,
+      this.config.calibration.kCal,
+      this.config.calibrationOffsetDb,
+    );
 
     // Step 3: Convert dBm to S-units
     const band = this.getBand(this.config.frequencyHz);
