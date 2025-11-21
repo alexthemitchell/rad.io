@@ -34,10 +34,10 @@ interface SMeterProps {
  * @example
  * ```tsx
  * import { SMeter } from '@/components';
- * import { useStore } from '@/store';
+ * import { useSignalLevel } from '@/store';
  *
  * function MyComponent() {
- *   const signalLevel = useStore(state => state.signalLevel);
+ *   const { signalLevel } = useSignalLevel();
  *   return <SMeter signalLevel={signalLevel} showDbm />;
  * }
  * ```
@@ -148,7 +148,7 @@ export default function SMeter({
   // Render segment-style meter (alternative to bar)
   const renderSegments = (): React.JSX.Element => {
     const segments: React.JSX.Element[] = [];
-    const numSegments = 15; // S0-S9 (9 segments) + 6 over-S9 segments (10, 20, 30, 40, 50, 60)
+    const numSegments = 15; // 9 segments for S1-S9 + 6 segments for over-S9 (+10 dB increments to +60)
 
     for (let i = 0; i < numSegments; i++) {
       const isActive = i < Math.round((totalSUnits / 10) * numSegments);
@@ -209,9 +209,7 @@ export default function SMeter({
       <div className="s-meter-header">
         <span className="s-meter-label">Signal</span>
         <div className="s-meter-values">
-          <span className="s-meter-value-primary" aria-live="polite">
-            {formatSMeter()}
-          </span>
+          <span className="s-meter-value-primary">{formatSMeter()}</span>
           {showDbm && signalLevel && (
             <span className="s-meter-value-secondary">
               {signalLevel.dBmApprox.toFixed(0)} dBm

@@ -199,12 +199,6 @@
   }
 }
 
-/* Accessibility: ensure meter is keyboard focusable when interactive */
-.s-meter-bar[role="meter"]:focus {
-  outline: var(--rad-focus-ring-width) solid var(--rad-ring);
-  outline-offset: var(--rad-focus-ring-offset);
-}
-
 /* Animation for bar pulsing when signal is very strong */
 @keyframes s-meter-pulse {
   0%,
