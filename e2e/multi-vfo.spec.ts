@@ -4,12 +4,12 @@
  * Tests for creating, managing, and removing VFOs through the UI.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 
 /**
  * Helper function to find the Start Reception button
  */
-async function findStartButton(page: any) {
+async function findStartButton(page: Page) {
   const selectors = [
     'button[aria-label*="Start receiving" i]',
     'button:has-text("Start Reception")',
@@ -49,7 +49,9 @@ test.describe("Multi-VFO Management", () => {
       await expect(startBtn).toBeEnabled();
       await startBtn.click();
       // Wait for reception to start
-      await page.waitForTimeout(1000);
+      await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+        timeout: 10000,
+      });
     }
 
     // Wait for waterfall canvas to be visible
@@ -89,7 +91,9 @@ test.describe("Multi-VFO Management", () => {
       await expect(startBtn).toBeEnabled();
       await startBtn.click();
       // Wait for reception to start
-      await page.waitForTimeout(1000);
+      await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+        timeout: 10000,
+      });
     }
 
     const waterfall = page.locator("canvas").first();
@@ -150,7 +154,9 @@ test.describe("Multi-VFO Management", () => {
       await expect(startBtn).toBeEnabled();
       await startBtn.click();
       // Wait for reception to start
-      await page.waitForTimeout(1000);
+      await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+        timeout: 10000,
+      });
     }
 
     const waterfall = page.locator("canvas").first();
@@ -188,7 +194,9 @@ test.describe("Multi-VFO Management", () => {
       await expect(startBtn).toBeEnabled();
       await startBtn.click();
       // Wait for reception to start
-      await page.waitForTimeout(1000);
+      await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+        timeout: 10000,
+      });
     }
 
     const waterfall = page.locator("canvas").first();
@@ -226,7 +234,9 @@ test.describe("Multi-VFO Management", () => {
       await expect(startBtn).toBeEnabled();
       await startBtn.click();
       // Wait for reception to start
-      await page.waitForTimeout(1000);
+      await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+        timeout: 10000,
+      });
     }
 
     const waterfall = page.locator("canvas").first();
@@ -256,7 +266,9 @@ test.describe("Multi-VFO Management", () => {
       await expect(startBtn).toBeEnabled();
       await startBtn.click();
       // Wait for reception to start
-      await page.waitForTimeout(1000);
+      await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+        timeout: 10000,
+      });
     }
 
     const waterfall = page.locator("canvas").first();
@@ -287,7 +299,9 @@ test.describe("Multi-VFO Management", () => {
       await expect(startBtn).toBeEnabled();
       await startBtn.click();
       // Wait for reception to start
-      await page.waitForTimeout(1000);
+      await page.waitForFunction(() => (window as any).dbgReceiving === true, {
+        timeout: 10000,
+      });
     }
 
     const waterfall = page.locator("canvas").first();
