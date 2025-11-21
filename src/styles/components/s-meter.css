@@ -1,0 +1,212 @@
+/**
+ * S-Meter Component Styles
+ * Professional signal strength meter with standard S-unit scale
+ */
+
+/* Container */
+.s-meter {
+  padding: var(--rad-space-5);
+  background: var(--rad-surface);
+  border-radius: var(--rad-radius-4);
+  border: 1px solid var(--rad-border);
+  min-width: 280px;
+}
+
+/* Header */
+.s-meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--rad-space-4);
+}
+
+.s-meter-label {
+  font-size: var(--rad-font-size-2);
+  font-weight: 600;
+  color: var(--rad-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.s-meter-values {
+  display: flex;
+  align-items: baseline;
+  gap: var(--rad-space-3);
+}
+
+.s-meter-value-primary {
+  font-size: var(--rad-font-size-4);
+  font-weight: 700;
+  color: var(--rad-fg);
+  font-family: var(--rad-font-mono);
+  letter-spacing: -0.02em;
+}
+
+.s-meter-value-secondary {
+  font-size: var(--rad-font-size-2);
+  font-weight: 500;
+  color: var(--rad-fg-muted);
+  font-family: var(--rad-font-mono);
+}
+
+/* Bar Style Meter */
+.s-meter-bar-container {
+  position: relative;
+  height: 12px;
+  background: var(--rad-border);
+  border-radius: var(--rad-radius-2);
+  overflow: hidden;
+  margin-bottom: var(--rad-space-3);
+}
+
+.s-meter-bar {
+  height: 100%;
+  transition:
+    width var(--rad-transition-medium) var(--rad-ease-standard),
+    background-color var(--rad-transition-medium) var(--rad-ease-standard);
+  border-radius: var(--rad-radius-2);
+}
+
+/* Bar color zones */
+.s-meter-bar-weak {
+  background: oklch(48% 0.08 240deg); /* Dim blue-gray */
+}
+
+.s-meter-bar-fair {
+  background: oklch(55% 0.12 180deg); /* Cyan */
+}
+
+.s-meter-bar-good {
+  background: var(--rad-success); /* Green */
+}
+
+.s-meter-bar-moderate {
+  background: oklch(70% 0.15 85deg); /* Yellow-orange */
+}
+
+.s-meter-bar-strong {
+  background: var(--rad-warning); /* Orange */
+}
+
+.s-meter-bar-very-strong {
+  background: var(--rad-danger); /* Red */
+  animation: s-meter-pulse 1.5s ease-in-out infinite;
+}
+
+/* Segment Style Meter */
+.s-meter-segments {
+  display: flex;
+  gap: var(--rad-space-1);
+  margin-bottom: var(--rad-space-3);
+  height: 16px;
+}
+
+.s-meter-segment {
+  flex: 1;
+  border-radius: var(--rad-radius-1);
+  transition:
+    background-color var(--rad-transition-medium) var(--rad-ease-standard),
+    opacity var(--rad-transition-medium) var(--rad-ease-standard);
+}
+
+.s-meter-segment-inactive {
+  background: var(--rad-border);
+  opacity: 0.4;
+}
+
+.s-meter-segment-weak {
+  background: oklch(48% 0.08 240deg);
+  opacity: 1;
+}
+
+.s-meter-segment-fair {
+  background: oklch(55% 0.12 180deg);
+  opacity: 1;
+}
+
+.s-meter-segment-good {
+  background: var(--rad-success);
+  opacity: 1;
+}
+
+.s-meter-segment-moderate {
+  background: oklch(70% 0.15 85deg);
+  opacity: 1;
+}
+
+.s-meter-segment-strong {
+  background: var(--rad-warning);
+  opacity: 1;
+}
+
+.s-meter-segment-very-strong {
+  background: var(--rad-danger);
+  opacity: 1;
+}
+
+/* Scale markers */
+.s-meter-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--rad-font-size-1);
+  color: var(--rad-fg-muted);
+  font-family: var(--rad-font-mono);
+  margin-bottom: var(--rad-space-3);
+  user-select: none;
+}
+
+/* Footer */
+.s-meter-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--rad-space-3);
+  border-top: 1px solid var(--rad-border);
+  font-size: var(--rad-font-size-1);
+  color: var(--rad-fg-muted);
+}
+
+.s-meter-band {
+  font-weight: 600;
+  font-family: var(--rad-font-mono);
+  padding: var(--rad-space-1) var(--rad-space-3);
+  background: var(--rad-bg-elev-1);
+  border-radius: var(--rad-radius-2);
+}
+
+.s-meter-calibration {
+  cursor: help;
+  opacity: 0.7;
+  transition: opacity var(--rad-transition-fast);
+}
+
+.s-meter-calibration:hover {
+  opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (width <= 480px) {
+  .s-meter {
+    min-width: unset;
+  }
+
+  .s-meter-value-primary {
+    font-size: var(--rad-font-size-3);
+  }
+
+  .s-meter-scale {
+    font-size: 0.625rem; /* 10px */
+  }
+}
+
+/* Animation for bar pulsing when signal is very strong */
+@keyframes s-meter-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.85;
+  }
+}

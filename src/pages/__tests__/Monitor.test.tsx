@@ -57,6 +57,11 @@ jest.mock("../../store", () => ({
     resetDiagnostics: jest.fn(),
     setOverlayVisible: jest.fn(),
   })),
+  useSignalLevel: jest.fn(() => ({
+    signalLevel: null,
+    setSignalLevel: jest.fn(),
+    clearSignalLevel: jest.fn(),
+  })),
 }));
 
 // DeviceContext is removed; Zustand store requires no provider or mocking here
