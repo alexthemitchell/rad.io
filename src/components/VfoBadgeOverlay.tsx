@@ -108,6 +108,13 @@ export function VfoBadgeOverlay({
                   e.stopPropagation();
                   onRemove(vfo.id);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onRemove(vfo.id);
+                  }
+                }}
                 aria-label={`Remove VFO at ${(vfo.centerHz / 1e6).toFixed(3)} MHz`}
                 title="Remove VFO"
               >

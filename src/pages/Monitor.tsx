@@ -13,6 +13,7 @@ import QuickActions from "../components/Monitor/QuickActions";
 import VisualizationControls from "../components/Monitor/VisualizationControls";
 import RDSDisplay from "../components/RDSDisplay";
 import SMeter from "../components/SMeter";
+import { VfoBadgeOverlay } from "../components/VfoBadgeOverlay";
 import { VfoManagerPanel } from "../components/VfoManagerPanel";
 import { WATERFALL_COLORMAPS } from "../constants";
 import { useDsp } from "../hooks/useDsp";
@@ -753,6 +754,18 @@ const Monitor: React.FC = () => {
             showGridLabels={settings.showGridLabels}
             enableVfoCreation={isReceiving}
             onVfoCreateRequest={handleVfoCreateRequest}
+            vfoBadgeOverlay={
+              vfos.length > 0 && isReceiving ? (
+                <VfoBadgeOverlay
+                  vfos={vfos}
+                  sampleRate={sampleRate}
+                  centerFrequency={frequency}
+                  width={900} // Default width, will be constrained by container
+                  height={320} // Default height for waterfall
+                  onRemove={handleVfoRemove}
+                />
+              ) : undefined
+            }
             onTune={(fHz) => {
               const snapped = Math.round(fHz / 1_000) * 1_000;
               setFrequency(snapped);

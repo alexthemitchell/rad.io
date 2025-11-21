@@ -71,7 +71,9 @@ test.describe("Multi-VFO Management", () => {
     await expect(page.getByText("WBFM")).toBeVisible();
 
     // Get all audio checkboxes using more specific ARIA labels
-    const audioCheckboxes = page.locator('input[aria-label*="Enable audio for VFO"]');
+    const audioCheckboxes = page.locator(
+      'input[aria-label*="Enable audio for VFO"]',
+    );
 
     // First VFO should have audio enabled by default
     const firstCheckbox = audioCheckboxes.first();
@@ -205,7 +207,7 @@ test.describe("Multi-VFO Management", () => {
     ];
 
     for (const position of positions) {
-      await waterfall.click({ position });
+      await waterfall.click({ position, modifiers: ["Alt"] });
       await expect(page.getByRole("dialog")).toBeVisible();
       await page.selectOption('select[id="vfo-mode"]', "am");
       await page.click('button:has-text("Add VFO")');

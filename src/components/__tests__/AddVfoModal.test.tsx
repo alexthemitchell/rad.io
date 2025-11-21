@@ -39,7 +39,9 @@ describe("AddVfoModal", () => {
     );
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Add VFO" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Add VFO" }),
+    ).toBeInTheDocument();
   });
 
   it("should display frequency in MHz", () => {
@@ -65,7 +67,9 @@ describe("AddVfoModal", () => {
       />,
     );
 
-    const select = screen.getByLabelText("Demodulation Mode") as HTMLSelectElement;
+    const select = screen.getByLabelText(
+      "Demodulation Mode",
+    ) as HTMLSelectElement;
     expect(select.value).toBe("am");
   });
 

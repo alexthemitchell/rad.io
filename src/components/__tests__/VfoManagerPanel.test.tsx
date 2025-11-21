@@ -51,7 +51,9 @@ describe("VfoManagerPanel", () => {
     );
 
     expect(screen.getByText("No VFOs created")).toBeInTheDocument();
-    expect(screen.getByText("Click on the waterfall to add a VFO")).toBeInTheDocument();
+    expect(
+      screen.getByText("Alt+Click on the waterfall to add a VFO"),
+    ).toBeInTheDocument();
   });
 
   it("should render VFO list with count", () => {

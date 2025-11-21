@@ -61,6 +61,7 @@ export default function Waterfall({
   const handleCanvasClick = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
       if (
+        !event.altKey ||
         !enableVfoCreation ||
         !onVfoCreateRequest ||
         !sampleRate ||

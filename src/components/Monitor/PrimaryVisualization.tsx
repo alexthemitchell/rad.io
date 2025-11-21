@@ -30,6 +30,8 @@ interface PrimaryVisualizationProps {
   enableVfoCreation?: boolean;
   /** Callback when user Alt+Clicks to create VFO */
   onVfoCreateRequest?: (frequencyHz: number) => void;
+  /** VFO badge overlay element to render */
+  vfoBadgeOverlay?: React.ReactElement;
 }
 
 const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
@@ -48,6 +50,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   showGridLabels = true,
   enableVfoCreation = false,
   onVfoCreateRequest,
+  vfoBadgeOverlay,
 }) => {
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
   const waterfallCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -739,6 +742,21 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         role="img"
         aria-label="Waterfall Signal Annotations"
       />
+      {vfoBadgeOverlay && (
+        <div
+          style={{
+            position: "absolute",
+            top:
+              mode === "spectrogram" ? `${canvasDimensions.height + 8}px` : "0",
+            left: 0,
+            width: "100%",
+            height: `${canvasDimensions.height}px`,
+            pointerEvents: "none",
+          }}
+        >
+          {vfoBadgeOverlay}
+        </div>
+      )}
       <SignalTooltip
         signal={hoveredSignal}
         x={tooltipPosition.x}

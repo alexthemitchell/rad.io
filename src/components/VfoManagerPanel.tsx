@@ -34,7 +34,7 @@ export function VfoManagerPanel({
         <div className="vfo-empty-state">
           <p>No VFOs created</p>
           <p style={{ fontSize: "0.875rem", color: "var(--rad-fg-muted)" }}>
-            Click on the waterfall to add a VFO
+            Alt+Click on the waterfall to add a VFO
           </p>
         </div>
       </div>
@@ -74,6 +74,13 @@ export function VfoManagerPanel({
                 onClick={(e) => {
                   e.stopPropagation();
                   onRemove(vfo.id);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onRemove(vfo.id);
+                  }
                 }}
                 aria-label={`Remove VFO at ${(vfo.centerHz / 1e6).toFixed(6)} MHz`}
                 title="Remove VFO"
