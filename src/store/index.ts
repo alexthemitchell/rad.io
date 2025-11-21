@@ -49,6 +49,7 @@ import {
   signalLevelSlice,
   type SignalLevelSlice,
 } from "./slices/signalLevelSlice";
+import { vfoSlice, type VfoSlice } from "./slices/vfoSlice";
 import type { SignalLevel } from "../lib/measurement/types";
 import type { ISDRDevice } from "../models/SDRDevice";
 
@@ -61,7 +62,8 @@ export type RootState = SettingsSlice &
   DeviceSlice &
   DiagnosticsSlice &
   MarkerSlice &
-  SignalLevelSlice;
+  SignalLevelSlice &
+  VfoSlice;
 
 /**
  * Create the root store with all slices
@@ -79,6 +81,7 @@ export const useStore = create<RootState>()(
       ...diagnosticsSlice(...args),
       ...markerSlice(...args),
       ...signalLevelSlice(...args),
+      ...vfoSlice(...args),
     }),
     { name: "rad.io-store" },
   ),
@@ -317,6 +320,40 @@ export const useSignalLevel = (): {
   return { signalLevel, setSignalLevel, clearSignalLevel };
 };
 
+// VFO slice selectors
+export const useVfo = (): Pick<
+  RootState,
+  | "vfos"
+  | "maxVfos"
+  | "addVfo"
+  | "removeVfo"
+  | "updateVfo"
+  | "updateVfoState"
+  | "setVfoAudio"
+  | "clearVfos"
+  | "getVfo"
+  | "getAllVfos"
+  | "getActiveVfos"
+  | "setMaxVfos"
+> => {
+  return useStore(
+    useShallow((state: RootState) => ({
+      vfos: state.vfos,
+      maxVfos: state.maxVfos,
+      addVfo: state.addVfo,
+      removeVfo: state.removeVfo,
+      updateVfo: state.updateVfo,
+      updateVfoState: state.updateVfoState,
+      setVfoAudio: state.setVfoAudio,
+      clearVfos: state.clearVfos,
+      getVfo: state.getVfo,
+      getAllVfos: state.getAllVfos,
+      getActiveVfos: state.getActiveVfos,
+      setMaxVfos: state.setMaxVfos,
+    })),
+  );
+};
+
 // Export types
 export type { SettingsState, VizMode } from "./slices/settingsSlice";
 export type { Marker } from "./slices/markerSlice";
@@ -332,3 +369,6 @@ export type {
   DecoderMetrics,
   SignalQualityMetrics,
 } from "./slices/diagnosticsSlice";
+export type { VfoValidationContext } from "./slices/vfoSlice";
+export type { VfoConfig, VfoState, VfoMetrics } from "../types/vfo";
+export { VfoStatus, MIN_VFO_SPACING_HZ } from "../types/vfo";
