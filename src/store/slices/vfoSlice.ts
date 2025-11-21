@@ -126,7 +126,9 @@ export function detectVfoOverlap(vfo1: VfoConfig, vfo2: VfoConfig): boolean {
   const edge2Low = vfo2.centerHz - vfo2.bandwidthHz / 2;
   const edge2High = vfo2.centerHz + vfo2.bandwidthHz / 2;
 
-  return !(edge1High < edge2Low || edge2High < edge1Low);
+  // True overlap requires one VFO's band to extend into the other
+  // Edge-adjacent (touching but not overlapping) returns false
+  return !(edge1High <= edge2Low || edge2High <= edge1Low);
 }
 
 export interface VfoSlice {

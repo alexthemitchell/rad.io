@@ -853,7 +853,7 @@ describe("vfoSlice", () => {
       expect(detectVfoOverlap(vfo1, vfo2)).toBe(false);
     });
 
-    it("should detect edge-adjacent VFOs as slightly overlapping", () => {
+    it("should detect edge-adjacent VFOs as non-overlapping", () => {
       const vfo1: VfoConfig = {
         id: "vfo-1",
         centerHz: 100_000_000,
@@ -870,8 +870,8 @@ describe("vfoSlice", () => {
         audioEnabled: true,
       };
 
-      // Edges touch, which counts as overlap in the implementation
-      expect(detectVfoOverlap(vfo1, vfo2)).toBe(true);
+      // Edges touch but don't overlap
+      expect(detectVfoOverlap(vfo1, vfo2)).toBe(false);
     });
   });
 });
