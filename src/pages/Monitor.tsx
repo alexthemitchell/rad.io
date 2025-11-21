@@ -47,7 +47,7 @@ import {
   updateBookmark,
 } from "../utils/bookmarkStorage";
 import { formatFrequency, formatSampleRate } from "../utils/frequency";
-import { generateBookmarkId } from "../utils/id";
+import { generateBookmarkId, generateId } from "../utils/id";
 import { createMultiStationFMProcessor } from "../utils/multiStationFM";
 import { getVfoModeBandwidth } from "../utils/vfoModes";
 import type { RDSStationData } from "../models/RDSData";
@@ -345,6 +345,7 @@ const Monitor: React.FC = () => {
 
         addVfo(
           {
+            id: generateId("vfo"),
             centerHz: pendingVfoFrequency,
             modeId,
             bandwidthHz,
