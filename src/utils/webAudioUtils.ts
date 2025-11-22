@@ -96,6 +96,7 @@ export function createAudioBufferFromSamples(
     const leftChannel = new Float32Array(numFrames);
     const rightChannel = new Float32Array(numFrames);
 
+    // Handle odd-length arrays where rightIdx may exceed length
     for (let i = 0; i < numFrames; i++) {
       const leftIdx = i * 2;
       const rightIdx = i * 2 + 1;
@@ -134,27 +135,18 @@ export function mixAudioBuffers(
   const mixed = new Float32Array(maxLength);
 
   // Simple sum with normalization
-  // Iterate only within bounds to avoid undefined access
   for (const buffer of buffers) {
     const len = Math.min(buffer.length, mixed.length);
     for (let i = 0; i < len; i++) {
-      // Both arrays are Float32Array initialized with zeros
-      // Indexing within bounds always returns a number
-      const mixedVal = mixed[i];
-      const bufferVal = buffer[i];
-      if (mixedVal !== undefined && bufferVal !== undefined) {
-        mixed[i] = mixedVal + bufferVal;
-      }
+      // Float32Array elements are initialized to 0 and accessed within bounds
+      mixed[i] = (mixed[i] ?? 0) + (buffer[i] ?? 0);
     }
   }
 
   // Normalize by buffer count to prevent clipping
   const scale = 1 / buffers.length;
   for (let i = 0; i < mixed.length; i++) {
-    const val = mixed[i];
-    if (val !== undefined) {
-      mixed[i] = val * scale;
-    }
+    mixed[i] = (mixed[i] ?? 0) * scale;
   }
 
   return mixed;
