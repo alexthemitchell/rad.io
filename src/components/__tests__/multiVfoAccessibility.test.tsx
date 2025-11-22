@@ -10,7 +10,6 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { axe, toHaveNoViolations } from "jest-axe";
-import React from "react";
 
 import { VfoStatus } from "../../types/vfo";
 import type { VfoState } from "../../types/vfo";
@@ -46,7 +45,11 @@ describe("Multi-VFO Accessibility", () => {
   describe("VfoManagerPanel", () => {
     it("should have no accessibility violations (empty state)", async () => {
       const { container } = render(
-        <VfoManagerPanel vfos={[]} onRemove={jest.fn()} onToggleAudio={jest.fn()} />,
+        <VfoManagerPanel
+          vfos={[]}
+          onRemove={jest.fn()}
+          onToggleAudio={jest.fn()}
+        />,
       );
 
       const results = await axe(container);
@@ -228,10 +231,11 @@ describe("Multi-VFO Accessibility", () => {
       const { container } = render(
         <VfoBadgeOverlay
           vfos={[mockVfo]}
-          centerFrequencyHz={100_000_000}
-          sampleRateHz={20_000_000}
-          waterfallWidthPx={800}
-          onRemove={jest.fn()} // Using onRemove, not onVfoRemove
+          centerFrequency={100_000_000}
+          sampleRate={20_000_000}
+          width={800}
+          height={400}
+          onRemove={jest.fn()}
         />,
       );
 
@@ -245,10 +249,11 @@ describe("Multi-VFO Accessibility", () => {
       render(
         <VfoBadgeOverlay
           vfos={[mockVfo]}
-          centerFrequencyHz={100_000_000}
-          sampleRateHz={20_000_000}
-          waterfallWidthPx={800}
-          onRemove={onVfoRemove} // Using onRemove, not onVfoRemove
+          centerFrequency={100_000_000}
+          sampleRate={20_000_000}
+          width={800}
+          height={400}
+          onRemove={onVfoRemove}
         />,
       );
 
@@ -338,7 +343,11 @@ describe("Multi-VFO Accessibility", () => {
 
     it("should provide empty state feedback", () => {
       render(
-        <VfoManagerPanel vfos={[]} onRemove={jest.fn()} onToggleAudio={jest.fn()} />,
+        <VfoManagerPanel
+          vfos={[]}
+          onRemove={jest.fn()}
+          onToggleAudio={jest.fn()}
+        />,
       );
 
       // Empty state message should be present

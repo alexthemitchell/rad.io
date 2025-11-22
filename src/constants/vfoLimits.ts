@@ -176,11 +176,13 @@ export function calculateDynamicVfoLimit(
  * @returns Recommended max VFOs for the platform
  */
 export function getPlatformVfoLimit(platform?: string): number {
+  const defaultLimit = PLATFORM_MAX_VFOS["default"] ?? DEFAULT_MAX_VFOS;
+
   if (!platform) {
-    return PLATFORM_MAX_VFOS.default;
+    return defaultLimit;
   }
 
-  return PLATFORM_MAX_VFOS[platform] ?? PLATFORM_MAX_VFOS.default;
+  return PLATFORM_MAX_VFOS[platform] ?? defaultLimit;
 }
 
 /**

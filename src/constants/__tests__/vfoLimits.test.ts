@@ -45,17 +45,17 @@ describe("vfoLimits constants", () => {
 
   describe("VFO_COMPLEXITY_FACTORS", () => {
     it("should have complexity factors for all modes", () => {
-      expect(VFO_COMPLEXITY_FACTORS.am).toBe(1.0);
-      expect(VFO_COMPLEXITY_FACTORS.nbfm).toBe(1.5);
-      expect(VFO_COMPLEXITY_FACTORS.wbfm).toBe(2.0);
-      expect(VFO_COMPLEXITY_FACTORS.usb).toBe(1.2);
-      expect(VFO_COMPLEXITY_FACTORS.lsb).toBe(1.2);
-      expect(VFO_COMPLEXITY_FACTORS.cw).toBe(0.8);
+      expect(VFO_COMPLEXITY_FACTORS["am"]).toBe(1.0);
+      expect(VFO_COMPLEXITY_FACTORS["nbfm"]).toBe(1.5);
+      expect(VFO_COMPLEXITY_FACTORS["wbfm"]).toBe(2.0);
+      expect(VFO_COMPLEXITY_FACTORS["usb"]).toBe(1.2);
+      expect(VFO_COMPLEXITY_FACTORS["lsb"]).toBe(1.2);
+      expect(VFO_COMPLEXITY_FACTORS["cw"]).toBe(0.8);
       expect(VFO_COMPLEXITY_FACTORS["atsc-8vsb"]).toBe(5.0);
     });
 
     it("should have AM as baseline (1.0)", () => {
-      expect(VFO_COMPLEXITY_FACTORS.am).toBe(1.0);
+      expect(VFO_COMPLEXITY_FACTORS["am"]).toBe(1.0);
     });
 
     it("should have ATSC as most complex", () => {
@@ -66,16 +66,16 @@ describe("vfoLimits constants", () => {
 
   describe("PLATFORM_MAX_VFOS", () => {
     it("should have limits for all platforms", () => {
-      expect(PLATFORM_MAX_VFOS.desktop_high).toBe(12);
-      expect(PLATFORM_MAX_VFOS.desktop_mid).toBe(8);
-      expect(PLATFORM_MAX_VFOS.laptop).toBe(6);
-      expect(PLATFORM_MAX_VFOS.mobile).toBe(3);
-      expect(PLATFORM_MAX_VFOS.default).toBe(DEFAULT_MAX_VFOS);
+      expect(PLATFORM_MAX_VFOS["desktop_high"]).toBe(12);
+      expect(PLATFORM_MAX_VFOS["desktop_mid"]).toBe(8);
+      expect(PLATFORM_MAX_VFOS["laptop"]).toBe(6);
+      expect(PLATFORM_MAX_VFOS["mobile"]).toBe(3);
+      expect(PLATFORM_MAX_VFOS["default"]).toBe(DEFAULT_MAX_VFOS);
     });
 
     it("should have desktop_high as maximum", () => {
       const maxPlatform = Math.max(...Object.values(PLATFORM_MAX_VFOS));
-      expect(PLATFORM_MAX_VFOS.desktop_high).toBe(maxPlatform);
+      expect(PLATFORM_MAX_VFOS["desktop_high"]).toBe(maxPlatform);
     });
 
     it("should have mobile as minimum", () => {
@@ -84,7 +84,7 @@ describe("vfoLimits constants", () => {
         .filter(([key]) => key !== "default")
         .map(([, value]) => value);
       const minPlatform = Math.min(...platformLimits);
-      expect(PLATFORM_MAX_VFOS.mobile).toBe(minPlatform);
+      expect(PLATFORM_MAX_VFOS["mobile"]).toBe(minPlatform);
     });
   });
 
@@ -110,9 +110,7 @@ describe("vfoLimits constants", () => {
     });
 
     it("should use 1.0 as default complexity for unknown modes", () => {
-      const result = calculateDynamicVfoLimit(4, [
-        { modeId: "unknown-mode" },
-      ]);
+      const result = calculateDynamicVfoLimit(4, [{ modeId: "unknown-mode" }]);
       expect(result).toBe(3); // 4 - 1.0 = 3.0
     });
 

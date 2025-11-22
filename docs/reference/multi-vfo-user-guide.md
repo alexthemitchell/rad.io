@@ -51,13 +51,13 @@ The default maximum is **4 simultaneous VFOs**, which provides a good balance be
 
 **Platform-specific recommendations**:
 
-| Platform | Max VFOs | Rationale |
-|----------|----------|-----------|
-| Desktop (high-end) | 12 | 8+ cores, 16+ GB RAM |
-| Desktop (mid-range) | 8 | 4-6 cores, 8 GB RAM |
-| Laptop | 6 | 4 cores, thermal limits |
-| Mobile | 3 | Battery, CPU constraints |
-| **Default** | **4** | Conservative, universal |
+| Platform            | Max VFOs | Rationale                |
+| ------------------- | -------- | ------------------------ |
+| Desktop (high-end)  | 12       | 8+ cores, 16+ GB RAM     |
+| Desktop (mid-range) | 8        | 4-6 cores, 8 GB RAM      |
+| Laptop              | 6        | 4 cores, thermal limits  |
+| Mobile              | 3        | Battery, CPU constraints |
+| **Default**         | **4**    | Conservative, universal  |
 
 The system enforces an absolute maximum of **16 VFOs** to prevent resource exhaustion.
 
@@ -143,6 +143,7 @@ Consider reducing VFO count or pausing low-priority VFOs.
 ```
 
 **What to do**:
+
 - Disable audio on some VFOs (reduces load)
 - Remove complex demodulators (ATSC > FM > AM)
 - Pause or remove low-priority VFOs
@@ -155,6 +156,7 @@ Performance degradation likely. Reduce VFO count immediately.
 ```
 
 **What to do**:
+
 - Remove VFOs immediately
 - System may auto-pause lowest priority VFOs
 - Consider upgrading hardware or reducing sample rate
@@ -167,6 +169,7 @@ Disable audio on some VFOs.
 ```
 
 **What to do**:
+
 - Disable audio on less important VFOs
 - Use audio toggle to switch between channels
 
@@ -185,14 +188,14 @@ Each VFO consumes approximately **400 KB** of memory on average:
 
 Different modes have different CPU costs (relative to AM = 1.0):
 
-| Mode | Complexity | Typical CPU Time |
-|------|-----------|------------------|
-| CW | 0.8× | 0.2 ms |
-| AM | 1.0× | 0.3 ms |
-| USB/LSB | 1.2× | 0.4 ms |
-| NBFM | 1.5× | 0.5 ms |
-| WBFM | 2.0× | 0.8 ms |
-| ATSC-8VSB | 5.0× | 4.0 ms |
+| Mode      | Complexity | Typical CPU Time |
+| --------- | ---------- | ---------------- |
+| CW        | 0.8×       | 0.2 ms           |
+| AM        | 1.0×       | 0.3 ms           |
+| USB/LSB   | 1.2×       | 0.4 ms           |
+| NBFM      | 1.5×       | 0.5 ms           |
+| WBFM      | 2.0×       | 0.8 ms           |
+| ATSC-8VSB | 5.0×       | 4.0 ms           |
 
 **Tip**: Mix simpler modes (AM, CW) with complex ones (WBFM, ATSC) to stay within budget.
 
@@ -203,6 +206,7 @@ Different modes have different CPU costs (relative to AM = 1.0):
 The system can dynamically adjust recommended VFO limits based on active demodulators:
 
 **Example**: With base limit of 4
+
 - 1× ATSC (5.0) + 0 remaining → 0 more VFOs allowed
 - 2× WBFM (4.0 total) → 0 more VFOs allowed
 - 3× AM (3.0 total) → 1 more VFO allowed
@@ -212,14 +216,14 @@ The system can dynamically adjust recommended VFO limits based on active demodul
 
 VFOs should maintain minimum separation to avoid filter crosstalk:
 
-| Mode | Min Spacing | Reason |
-|------|-------------|--------|
-| AM | 10 kHz | Channel bandwidth |
-| NBFM | 12.5 kHz | Standard FM spacing |
-| WBFM | 200 kHz | Broadcast FM spacing |
-| USB/LSB | 3 kHz | SSB bandwidth |
-| CW | 500 Hz | Narrow filter |
-| ATSC-8VSB | 6 MHz | DTV channel width |
+| Mode      | Min Spacing | Reason               |
+| --------- | ----------- | -------------------- |
+| AM        | 10 kHz      | Channel bandwidth    |
+| NBFM      | 12.5 kHz    | Standard FM spacing  |
+| WBFM      | 200 kHz     | Broadcast FM spacing |
+| USB/LSB   | 3 kHz       | SSB bandwidth        |
+| CW        | 500 Hz      | Narrow filter        |
+| ATSC-8VSB | 6 MHz       | DTV channel width    |
 
 **Warning**: The system allows overlapping VFOs but issues console warnings. Overlapping filters may cause audio interference.
 
@@ -232,6 +236,7 @@ Valid Range = [hardwareCenterHz - (sampleRate/2), hardwareCenterHz + (sampleRate
 ```
 
 **Example**:
+
 - Hardware: 100 MHz center, 20 MS/s sample rate
 - Valid VFO range: 90 MHz to 110 MHz
 - Invalid: 85 MHz (outside range), 115 MHz (outside range)
@@ -270,6 +275,7 @@ Pay attention to CPU and audio warnings. Adjust VFO count before performance deg
 ### 6. Match Modes to Signals
 
 Use the correct demodulation mode:
+
 - Aviation: AM
 - FM broadcast: WBFM
 - Repeaters: NBFM
@@ -287,11 +293,13 @@ Once configured, VFO presets will allow quick restoration of common setups.
 **Symptoms**: Error message when trying to add VFO
 
 **Possible Causes**:
+
 1. **Max VFO count reached**: Remove unused VFOs or increase limit
 2. **Frequency out of range**: Ensure frequency is within hardware bandwidth
 3. **Invalid mode**: Select a supported demodulation mode
 
 **Solutions**:
+
 - Check error message for specific cause
 - Verify hardware is receiving (sample rate, center frequency)
 - Remove idle VFOs before adding new ones
@@ -301,12 +309,14 @@ Once configured, VFO presets will allow quick restoration of common setups.
 **Symptoms**: VFO active but no sound
 
 **Possible Causes**:
+
 1. **Audio disabled**: Check VFO audio toggle
 2. **Squelch too high**: Adjust squelch threshold
 3. **Weak signal**: Check RSSI, adjust antenna
 4. **Wrong demodulation mode**: Verify mode matches signal type
 
 **Solutions**:
+
 - Enable audio in VFO manager
 - Check audio gain setting (should be > 0.1)
 - Verify signal is present in waterfall/spectrum
@@ -317,12 +327,14 @@ Once configured, VFO presets will allow quick restoration of common setups.
 **Symptoms**: Stuttering audio, laggy UI
 
 **Possible Causes**:
+
 1. **Too many VFOs**: Exceeding CPU budget
 2. **Complex demodulators**: Multiple ATSC or WBFM VFOs
 3. **High sample rate**: Hardware configured for maximum bandwidth
 4. **Other applications**: CPU competition
 
 **Solutions**:
+
 - Remove or pause low-priority VFOs
 - Disable audio on some VFOs
 - Reduce hardware sample rate if possible
@@ -334,11 +346,13 @@ Once configured, VFO presets will allow quick restoration of common setups.
 **Symptoms**: Crosstalk between adjacent VFOs
 
 **Possible Causes**:
+
 1. **VFOs too close**: Below minimum spacing
 2. **Filter overlap**: Bandwidth too wide for spacing
 3. **Strong adjacent signals**: Overloading filters
 
 **Solutions**:
+
 - Increase spacing between VFO center frequencies
 - Use narrower bandwidth filters
 - Attenuate strong signals (RF gain, filters)
@@ -349,11 +363,13 @@ Once configured, VFO presets will allow quick restoration of common setups.
 **Symptoms**: Browser tab crashes, system slow
 
 **Possible Causes**:
+
 1. **Too many VFOs**: Each consumes ~400 KB
 2. **Memory leak**: Rare, but possible
 3. **Other tabs**: Browser memory limits
 
 **Solutions**:
+
 - Reduce VFO count
 - Reload page (clears state)
 - Close other browser tabs

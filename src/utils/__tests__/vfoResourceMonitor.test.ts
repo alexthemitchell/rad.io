@@ -52,17 +52,27 @@ describe("vfoResourceMonitor", () => {
 
     it("should sum processing times from all VFOs", () => {
       const vfos = [
-        createMockVfo({ metrics: { ...createMockVfo().metrics, processingTime: 2.0 } }),
-        createMockVfo({ metrics: { ...createMockVfo().metrics, processingTime: 3.5 } }),
-        createMockVfo({ metrics: { ...createMockVfo().metrics, processingTime: 1.5 } }),
+        createMockVfo({
+          metrics: { ...createMockVfo().metrics, processingTime: 2.0 },
+        }),
+        createMockVfo({
+          metrics: { ...createMockVfo().metrics, processingTime: 3.5 },
+        }),
+        createMockVfo({
+          metrics: { ...createMockVfo().metrics, processingTime: 1.5 },
+        }),
       ];
       expect(calculateTotalDspTime(vfos)).toBe(7.0);
     });
 
     it("should handle VFOs with 0 processing time", () => {
       const vfos = [
-        createMockVfo({ metrics: { ...createMockVfo().metrics, processingTime: 0 } }),
-        createMockVfo({ metrics: { ...createMockVfo().metrics, processingTime: 5.0 } }),
+        createMockVfo({
+          metrics: { ...createMockVfo().metrics, processingTime: 0 },
+        }),
+        createMockVfo({
+          metrics: { ...createMockVfo().metrics, processingTime: 5.0 },
+        }),
       ];
       expect(calculateTotalDspTime(vfos)).toBe(5.0);
     });
@@ -140,7 +150,9 @@ describe("vfoResourceMonitor", () => {
 
       const stats = checkVfoResources(vfos);
       expect(stats.warnings).toContain(VfoResourceWarning.DSP_TIME_WARNING);
-      expect(stats.warnings).not.toContain(VfoResourceWarning.DSP_TIME_CRITICAL);
+      expect(stats.warnings).not.toContain(
+        VfoResourceWarning.DSP_TIME_CRITICAL,
+      );
     });
 
     it("should issue critical warning when DSP time exceeds critical threshold", () => {
@@ -178,7 +190,9 @@ describe("vfoResourceMonitor", () => {
           audioEnabled: true,
           metrics: {
             ...createMockVfo().metrics,
-            processingTime: DSP_TIME_WARNING_THRESHOLD_MS / (MAX_CONCURRENT_AUDIO_VFOS + 1) + 0.5,
+            processingTime:
+              DSP_TIME_WARNING_THRESHOLD_MS / (MAX_CONCURRENT_AUDIO_VFOS + 1) +
+              0.5,
           },
         }),
       );
@@ -223,7 +237,10 @@ describe("vfoResourceMonitor", () => {
         warnings: [VfoResourceWarning.DSP_TIME_WARNING],
         timestamp: Date.now(),
       };
-      const message = getWarningMessage(VfoResourceWarning.DSP_TIME_WARNING, stats);
+      const message = getWarningMessage(
+        VfoResourceWarning.DSP_TIME_WARNING,
+        stats,
+      );
       expect(message).toContain("High CPU usage");
       expect(message).toContain(DSP_TIME_WARNING_THRESHOLD_MS.toFixed(1));
     });
@@ -236,7 +253,10 @@ describe("vfoResourceMonitor", () => {
         warnings: [VfoResourceWarning.DSP_TIME_CRITICAL],
         timestamp: Date.now(),
       };
-      const message = getWarningMessage(VfoResourceWarning.DSP_TIME_CRITICAL, stats);
+      const message = getWarningMessage(
+        VfoResourceWarning.DSP_TIME_CRITICAL,
+        stats,
+      );
       expect(message).toContain("Critical CPU usage");
       expect(message).toContain(DSP_TIME_CRITICAL_THRESHOLD_MS.toFixed(1));
     });
@@ -249,7 +269,10 @@ describe("vfoResourceMonitor", () => {
         warnings: [VfoResourceWarning.MEMORY_WARNING],
         timestamp: Date.now(),
       };
-      const message = getWarningMessage(VfoResourceWarning.MEMORY_WARNING, stats);
+      const message = getWarningMessage(
+        VfoResourceWarning.MEMORY_WARNING,
+        stats,
+      );
       expect(message).toContain("High memory usage");
       expect(message).toContain("MB");
     });
@@ -296,7 +319,10 @@ describe("vfoResourceMonitor", () => {
         totalDspTime: DSP_TIME_CRITICAL_THRESHOLD_MS,
         estimatedMemory: 1000,
         audioStreamCount: MAX_CONCURRENT_AUDIO_VFOS + 1,
-        warnings: [VfoResourceWarning.DSP_TIME_CRITICAL, VfoResourceWarning.AUDIO_LIMIT],
+        warnings: [
+          VfoResourceWarning.DSP_TIME_CRITICAL,
+          VfoResourceWarning.AUDIO_LIMIT,
+        ],
         timestamp: Date.now(),
       };
       logResourceWarnings(stats);
@@ -343,7 +369,11 @@ describe("vfoResourceMonitor", () => {
     it("should prioritize priority over age", () => {
       const now = Date.now();
       const vfos = [
-        createMockVfo({ id: "vfo-old-high", priority: 10, createdAt: now - 10000 }),
+        createMockVfo({
+          id: "vfo-old-high",
+          priority: 10,
+          createdAt: now - 10000,
+        }),
         createMockVfo({ id: "vfo-new-low", priority: 1, createdAt: now }),
       ];
       expect(suggestVfoToPause(vfos)).toBe("vfo-new-low");
@@ -363,7 +393,11 @@ describe("vfoResourceMonitor", () => {
       const now = Date.now();
       const vfos = [
         createMockVfo({ id: "vfo-explicit", priority: 5, createdAt: now }),
-        createMockVfo({ id: "vfo-undefined", priority: undefined, createdAt: now - 1000 }),
+        createMockVfo({
+          id: "vfo-undefined",
+          priority: undefined,
+          createdAt: now - 1000,
+        }),
       ];
       // Both have effective priority 5, so older one should be suggested
       expect(suggestVfoToPause(vfos)).toBe("vfo-undefined");

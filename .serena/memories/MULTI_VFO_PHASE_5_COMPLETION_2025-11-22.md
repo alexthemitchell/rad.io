@@ -68,6 +68,7 @@ Phase 5 finalizes the multi-VFO feature with performance optimization, resource 
 ### Default of 4 VFOs
 
 **Rationale**:
+
 - Handles common use cases (aviation tower/ground/ATIS/weather)
 - Leaves 30% CPU headroom for UI (target <70%)
 - Conservative for mid-range laptops
