@@ -70,6 +70,12 @@ const Monitor: React.FC = () => {
   const [pendingVfoFrequency, setPendingVfoFrequency] = useState<number>(0);
   const vfos = getAllVfos();
 
+  // Canvas dimensions from PrimaryVisualization (for accurate VFO badge positioning)
+  const [canvasDimensions, setCanvasDimensions] = useState({
+    width: 900,
+    height: 320,
+  });
+
   // UI state
   const { frequencyHz: frequency, setFrequencyHz: setFrequency } =
     useFrequency();
@@ -761,14 +767,13 @@ const Monitor: React.FC = () => {
                   vfos={vfos}
                   sampleRate={sampleRate}
                   centerFrequency={frequency}
-                  // Note: Using default dimensions that match PrimaryVisualization defaults (900x320)
-                  // Ideally these would be the actual canvas dimensions from PrimaryVisualization's state
-                  width={900}
-                  height={320}
+                  width={canvasDimensions.width}
+                  height={canvasDimensions.height}
                   onRemove={handleVfoRemove}
                 />
               ) : undefined
             }
+            onCanvasDimensionsChange={setCanvasDimensions}
             onTune={(fHz) => {
               const snapped = Math.round(fHz / 1_000) * 1_000;
               setFrequency(snapped);

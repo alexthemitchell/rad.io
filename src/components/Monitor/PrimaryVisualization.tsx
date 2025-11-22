@@ -32,6 +32,11 @@ interface PrimaryVisualizationProps {
   onVfoCreateRequest?: (frequencyHz: number) => void;
   /** VFO badge overlay element to render */
   vfoBadgeOverlay?: React.ReactElement;
+  /** Callback when canvas dimensions change */
+  onCanvasDimensionsChange?: (dimensions: {
+    width: number;
+    height: number;
+  }) => void;
 }
 
 const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
@@ -51,6 +56,7 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   enableVfoCreation = false,
   onVfoCreateRequest,
   vfoBadgeOverlay,
+  onCanvasDimensionsChange,
 }) => {
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
   const waterfallCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -376,7 +382,10 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
       waterfallAnnotationsCanvasRef.current.style.width = `${width}px`;
       waterfallAnnotationsCanvasRef.current.style.height = `${height}px`;
     }
-  }, [canvasDimensions]);
+
+    // Notify parent of canvas dimension changes
+    onCanvasDimensionsChange?.(canvasDimensions);
+  }, [canvasDimensions, onCanvasDimensionsChange]);
 
   // Main render loop
   useEffect((): (() => void) => {
