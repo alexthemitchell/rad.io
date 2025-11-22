@@ -5,7 +5,7 @@
  * Connects IQ samples to VFO processing and audio output.
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { MultiVfoProcessor } from "../lib/dsp/MultiVfoProcessor";
 import { FMDemodulatorPlugin } from "../plugins/demodulators/FMDemodulatorPlugin";
 import { useVfo, useStore } from "../store";
@@ -65,20 +65,16 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
   isReady: boolean;
 } {
   const { centerFrequencyHz, sampleRate, enableAudio } = options;
-  const { getAllVfos, updateVfoState } = useVfo();
+  const { vfos, getAllVfos, updateVfoState } = useVfo();
 
   const processorRef = useRef<MultiVfoProcessor | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const vfoDemodulators = useRef<Map<string, DemodulatorPlugin>>(new Map());
   const addedVfoIds = useRef<Set<string>>(new Set());
-  const isInitialized = useRef(false);
+  const [isReady, setIsReady] = useState(false);
 
   // Initialize processor
   useEffect(() => {
-    if (isInitialized.current) {
-      return;
-    }
-
     const processor = new MultiVfoProcessor({
       sampleRate,
       centerFrequency: centerFrequencyHz,
@@ -89,7 +85,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     });
 
     processorRef.current = processor;
-    isInitialized.current = true;
+    setIsReady(true);
 
     // Initialize audio context for playback
     if (enableAudio) {
@@ -101,9 +97,12 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     const audioCtx = audioContextRef.current;
 
     return (): void => {
-      // Cleanup
+      // Clean up processor
+      if (processorRef.current) {
+        processorRef.current.clear();
+      }
       processorRef.current = null;
-      isInitialized.current = false;
+      setIsReady(false);
 
       // Cleanup demodulators
       for (const demod of demodulators.values()) {
@@ -119,18 +118,6 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     };
   }, [centerFrequencyHz, sampleRate, enableAudio]);
 
-  // Update processor when center frequency or sample rate changes
-  useEffect(() => {
-    if (!processorRef.current) {
-      return;
-    }
-
-    processorRef.current.updateConfig({
-      sampleRate,
-      centerFrequency: centerFrequencyHz,
-    });
-  }, [centerFrequencyHz, sampleRate]);
-
   // Sync VFOs from store to processor
   useEffect(() => {
     const processor = processorRef.current;
@@ -138,11 +125,11 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
       return;
     }
 
-    const vfos = getAllVfos();
+    const vfoList = getAllVfos();
 
     // Add or update VFOs in processor
     const initializeVfos = async (): Promise<void> => {
-      for (const vfo of vfos) {
+      for (const vfo of vfoList) {
         // Create demodulator if needed
         if (!vfoDemodulators.current.has(vfo.id)) {
           const demod = createDemodulatorForMode(vfo.modeId);
@@ -183,7 +170,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
       }
 
       // Remove VFOs that are no longer in store
-      const vfoIds = new Set(vfos.map((v) => v.id));
+      const vfoIds = new Set(vfoList.map((v) => v.id));
       for (const [id, demod] of vfoDemodulators.current.entries()) {
         if (!vfoIds.has(id)) {
           processor.removeVfo(id);
@@ -195,7 +182,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     };
 
     void initializeVfos();
-  }, [getAllVfos]); // Re-run when VFO list changes
+  }, [vfos, getAllVfos]); // Re-run when VFO map changes
 
   /**
    * Process IQ samples through all active VFOs
@@ -245,8 +232,8 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
         if (result.audio && enableAudio && audioContextRef.current) {
           const { audio, sampleRate: audioRate } = result.audio;
 
-          // Play audio buffer
-          void playAudioBuffer(audioContextRef.current, audio, audioRate);
+          // Play audio buffer (fire-and-forget)
+          playAudioBuffer(audioContextRef.current, audio, audioRate);
         }
       }
     },
@@ -255,6 +242,6 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
 
   return {
     processSamples,
-    isReady: isInitialized.current,
+    isReady,
   };
 }

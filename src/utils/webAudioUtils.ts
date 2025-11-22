@@ -28,41 +28,40 @@ export function getAudioContext(): AudioContext | null {
 }
 
 /**
- * Play audio buffer through Web Audio API
+ * Play audio buffer through Web Audio API.
+ *
+ * WARNING: This function plays the buffer immediately and may result in overlapping audio
+ * if called rapidly or concurrently (e.g., in multi-VFO contexts). This is intentional for
+ * mixing, but may cause audio artifacts if buffers are small or not synchronized.
+ *
+ * The function is fire-and-forget - it does not wait for playback to complete.
  */
-export async function playAudioBuffer(
+export function playAudioBuffer(
   context: AudioContext | null,
   samples: Float32Array,
   sampleRate: number,
-): Promise<void> {
+): void {
   if (!context) {
     // Audio context not available, skip playback
     return;
   }
 
-  return new Promise((resolve, reject) => {
-    try {
-      // Resume context if suspended
-      if (context.state === "suspended") {
-        void context.resume();
-      }
+  // Resume context if suspended
+  if (context.state === "suspended") {
+    void context.resume();
+  }
 
-      // Create buffer
-      const buffer = context.createBuffer(1, samples.length, sampleRate);
-      buffer.copyToChannel(samples, 0);
+  // Create buffer
+  const buffer = context.createBuffer(1, samples.length, sampleRate);
+  buffer.copyToChannel(samples, 0);
 
-      // Create source
-      const source = context.createBufferSource();
-      source.buffer = buffer;
-      source.connect(context.destination);
+  // Create source
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.connect(context.destination);
 
-      // Play
-      source.onended = (): void => resolve();
-      source.start();
-    } catch (error) {
-      reject(error instanceof Error ? error : new Error(String(error)));
-    }
-  });
+  // Play (fire-and-forget)
+  source.start();
 }
 
 /**
@@ -118,10 +117,7 @@ export function createAudioBufferFromSamples(
 /**
  * Mix multiple audio buffers
  */
-export function mixAudioBuffers(
-  context: AudioContext,
-  buffers: Float32Array[],
-): Float32Array {
+export function mixAudioBuffers(buffers: Float32Array[]): Float32Array {
   if (buffers.length === 0) {
     return new Float32Array(0);
   }

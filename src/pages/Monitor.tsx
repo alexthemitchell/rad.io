@@ -205,7 +205,9 @@ const Monitor: React.FC = () => {
       // Get fresh VFO list from store to avoid stale closure
       const currentVfos = useStore.getState().getAllVfos();
       if (currentVfos.length > 0 && vfoProcessor.isReady) {
-        void vfoProcessor.processSamples(samples);
+        vfoProcessor.processSamples(samples).catch((error: unknown) => {
+          console.error("VFO processing error:", error);
+        });
       }
     },
   });
