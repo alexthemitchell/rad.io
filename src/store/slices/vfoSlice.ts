@@ -20,7 +20,8 @@
  */
 
 import { type StateCreator } from "zustand";
-import { VfoStatus, MIN_VFO_SPACING_HZ } from "../../types/vfo";
+import { DEFAULT_MAX_VFOS, validateMaxVfos } from "../../constants/vfoLimits";
+import { MIN_VFO_SPACING_HZ, VfoStatus } from "../../types/vfo";
 import type { VfoConfig, VfoState } from "../../types/vfo";
 
 /**
@@ -186,7 +187,7 @@ export const vfoSlice: StateCreator<VfoSlice> = (
   get: () => VfoSlice,
 ) => ({
   vfos: new Map(),
-  maxVfos: 8, // Default, can be updated based on platform detection
+  maxVfos: DEFAULT_MAX_VFOS, // Default of 4, can be updated based on platform detection
 
   addVfo: (
     config: VfoConfig,
@@ -356,10 +357,7 @@ export const vfoSlice: StateCreator<VfoSlice> = (
   },
 
   setMaxVfos: (max: number): void => {
-    if (max < 1) {
-      console.warn(`⚠️ VFO: Invalid max VFO count ${max}, must be >= 1`);
-      return;
-    }
-    set({ maxVfos: max });
+    const validatedMax = validateMaxVfos(max);
+    set({ maxVfos: validatedMax });
   },
 });
