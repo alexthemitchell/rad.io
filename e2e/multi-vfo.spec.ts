@@ -4,31 +4,8 @@
  * Tests for creating, managing, and removing VFOs through the UI.
  */
 
-import { test, expect, Page } from "@playwright/test";
-
-/**
- * Helper function to find the Start Reception button
- */
-async function findStartButton(page: Page) {
-  const selectors = [
-    'button[aria-label*="Start receiving" i]',
-    'button:has-text("Start Reception")',
-    'button:has-text("Start receiving")',
-    'button[aria-label*="Start reception" i]',
-    'button[title*="Start reception" i]',
-  ];
-  for (const s of selectors) {
-    const loc = page.locator(s).first();
-    try {
-      if ((await loc.count()) > 0) {
-        return loc;
-      }
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
+import { test, expect } from "@playwright/test";
+import { findStartButton } from "./helpers/findStartButton";
 
 test.describe("Multi-VFO Management", () => {
   test.beforeEach(async ({ page }) => {

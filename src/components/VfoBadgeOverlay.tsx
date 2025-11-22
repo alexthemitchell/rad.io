@@ -76,7 +76,7 @@ export function VfoBadgeOverlay({
         return (
           <div
             key={vfo.id}
-            className="vfo-badge"
+            className={`vfo-badge ${onSelect ? "vfo-badge-clickable" : "vfo-badge-static"}`}
             role={onSelect ? "button" : undefined}
             tabIndex={onSelect ? 0 : undefined}
             style={{

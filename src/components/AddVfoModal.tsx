@@ -32,6 +32,13 @@ export function AddVfoModal({
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const [selectedMode, setSelectedMode] = useState<string>("am");
 
+  // Reset selectedMode to "am" whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedMode("am");
+    }
+  }, [isOpen]);
+
   // Focus trap and escape key handler
   useEffect(() => {
     if (!isOpen) {
@@ -92,7 +99,7 @@ export function AddVfoModal({
           </div>
         </div>
 
-        <div>
+        <div className="dialog-field-group">
           <label htmlFor="vfo-mode">Demodulation Mode</label>
           <select
             id="vfo-mode"
