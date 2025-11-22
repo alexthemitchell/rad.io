@@ -11,6 +11,7 @@ Phase 6 (Integration) connects all previously completed Multi-VFO components int
 **Purpose**: Manages MultiVfoProcessor lifecycle and integration with VFO store.
 
 **Functionality**:
+
 - Initializes MultiVfoProcessor with hardware configuration (sample rate, center frequency)
 - Creates and manages demodulator plugins (FM, AM, SSB) based on VFO mode
 - Syncs VFOs from Zustand store to processor
@@ -19,6 +20,7 @@ Phase 6 (Integration) connects all previously completed Multi-VFO components int
 - Plays audio through Web Audio API
 
 **Key Design Decisions**:
+
 - Async plugin initialization handled properly in useEffect
 - Web Audio API gracefully degrades in test/Node environments
 - Demodulator cleanup on unmount prevents memory leaks
@@ -27,11 +29,13 @@ Phase 6 (Integration) connects all previously completed Multi-VFO components int
 ### 2. Monitor Page Integration (`src/pages/Monitor.tsx`)
 
 **Changes**:
+
 - Added `useMultiVfoProcessor` hook invocation
 - Connected `onIQSamples` callback to route samples to processor
 - VFOs automatically processed when they exist and processor is ready
 
 **Data Flow**:
+
 ```
 SDR Device → useDsp → onIQSamples → iqSamplesRef (buffer)
                                    └→ vfoProcessor.processSamples()
@@ -44,12 +48,14 @@ SDR Device → useDsp → onIQSamples → iqSamplesRef (buffer)
 ### 3. Web Audio Utilities (`src/utils/webAudioUtils.ts`)
 
 **Functions**:
+
 - `createAudioContext()` - Creates/reuses global AudioContext
 - `playAudioBuffer()` - Plays Float32Array audio through Web Audio API
 - `createGainNode()` - Creates volume control nodes
 - `mixAudioBuffers()` - Mixes multiple audio streams with normalization
 
 **Safety**:
+
 - Handles missing AudioContext in test environments
 - Error wrapping for Promise rejections
 - State management (suspended → running)
@@ -57,11 +63,13 @@ SDR Device → useDsp → onIQSamples → iqSamplesRef (buffer)
 ### 4. Demodulator Plugin Integration
 
 **Current Support**:
+
 - **WBFM/NBFM**: FMDemodulatorPlugin (fully implemented)
 - **AM**: Falls back to FM (TODO: implement AMDemodulatorPlugin)
 - **USB/LSB**: Falls back to FM (TODO: implement SSB demodulator)
 
 **Plugin Lifecycle**:
+
 1. Created when VFO added to store
 2. Initialized asynchronously (`plugin.initialize()`)
 3. Activated for processing (`plugin.activate()`)
@@ -70,6 +78,7 @@ SDR Device → useDsp → onIQSamples → iqSamplesRef (buffer)
 ### 5. Integration Tests (`src/hooks/__tests__/useMultiVfoProcessor.test.ts`)
 
 **Test Coverage**:
+
 - Processor initialization (with/without audio)
 - Single VFO processing
 - Multiple VFO processing
@@ -115,11 +124,13 @@ SDR Device → useDsp → onIQSamples → iqSamplesRef (buffer)
 ## Files Created/Modified
 
 **Created**:
+
 - `src/hooks/useMultiVfoProcessor.ts` (251 lines)
 - `src/utils/webAudioUtils.ts` (136 lines)
 - `src/hooks/__tests__/useMultiVfoProcessor.test.ts` (324 lines)
 
 **Modified**:
+
 - `src/pages/Monitor.tsx` (added hook, routed samples)
 
 ## Known Limitations

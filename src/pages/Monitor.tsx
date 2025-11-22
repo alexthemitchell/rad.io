@@ -39,6 +39,7 @@ import {
   useDiagnostics,
   useSignalLevel,
   useVfo,
+  useStore,
 } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
@@ -201,7 +202,9 @@ const Monitor: React.FC = () => {
       }
 
       // Route samples to multi-VFO processor
-      if (vfos.length > 0 && vfoProcessor.isReady) {
+      // Get fresh VFO list from store to avoid stale closure
+      const currentVfos = useStore.getState().getAllVfos();
+      if (currentVfos.length > 0 && vfoProcessor.isReady) {
         void vfoProcessor.processSamples(samples);
       }
     },

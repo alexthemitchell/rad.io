@@ -8,7 +8,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { MultiVfoProcessor } from "../lib/dsp/MultiVfoProcessor";
 import { FMDemodulatorPlugin } from "../plugins/demodulators/FMDemodulatorPlugin";
-import { useVfo } from "../store";
+import { useVfo, useStore } from "../store";
 import { createAudioContext, playAudioBuffer } from "../utils/webAudioUtils";
 import type { IQSample } from "../models/SDRDevice";
 import type { DemodulatorPlugin } from "../types/plugin";
@@ -70,6 +70,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
   const processorRef = useRef<MultiVfoProcessor | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const vfoDemodulators = useRef<Map<string, DemodulatorPlugin>>(new Map());
+  const addedVfoIds = useRef<Set<string>>(new Set());
   const isInitialized = useRef(false);
 
   // Initialize processor
@@ -95,21 +96,22 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
       audioContextRef.current = createAudioContext();
     }
 
+    // Capture refs for cleanup
+    const demodulators = vfoDemodulators.current;
+    const audioCtx = audioContextRef.current;
+
     return (): void => {
       // Cleanup
       processorRef.current = null;
       isInitialized.current = false;
 
-      // Cleanup demodulators - intentionally using ref for cleanup
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      const demodulatorMap = vfoDemodulators.current;
-      for (const demod of demodulatorMap.values()) {
+      // Cleanup demodulators
+      for (const demod of demodulators.values()) {
         void demod.dispose();
       }
-      demodulatorMap.clear();
+      demodulators.clear();
 
       // Close audio context
-      const audioCtx = audioContextRef.current;
       if (audioCtx) {
         void audioCtx.close();
         audioContextRef.current = null;
@@ -173,7 +175,11 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
           status: "ACTIVE",
         };
 
-        processor.addVfo(vfoState);
+        // Only add VFO if we haven't added it yet
+        if (!addedVfoIds.current.has(vfoState.id)) {
+          processor.addVfo(vfoState);
+          addedVfoIds.current.add(vfoState.id);
+        }
       }
 
       // Remove VFOs that are no longer in store
@@ -181,6 +187,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
       for (const [id, demod] of vfoDemodulators.current.entries()) {
         if (!vfoIds.has(id)) {
           processor.removeVfo(id);
+          addedVfoIds.current.delete(id);
           void demod.dispose();
           vfoDemodulators.current.delete(id);
         }
@@ -188,8 +195,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     };
 
     void initializeVfos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getAllVfos()]); // Re-run when VFO list changes
+  }, [getAllVfos]); // Re-run when VFO list changes
 
   /**
    * Process IQ samples through all active VFOs
@@ -201,7 +207,8 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
         return;
       }
 
-      const vfos = getAllVfos();
+      // Get fresh VFO list from store on each call
+      const vfos = useStore.getState().getAllVfos();
       const activeVfos = vfos.filter((v) => v.audioEnabled);
 
       if (activeVfos.length === 0) {
@@ -243,7 +250,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
         }
       }
     },
-    [getAllVfos, updateVfoState, enableAudio],
+    [updateVfoState, enableAudio],
   );
 
   return {
