@@ -26,6 +26,17 @@ interface PrimaryVisualizationProps {
   /** Whether to show frequency gridlines independent from annotations */
   showGridlines?: boolean;
   showGridLabels?: boolean;
+  /** Enable VFO creation on Alt+Click */
+  enableVfoCreation?: boolean;
+  /** Callback when user Alt+Clicks to create VFO */
+  onVfoCreateRequest?: (frequencyHz: number) => void;
+  /** VFO badge overlay element to render */
+  vfoBadgeOverlay?: React.ReactElement;
+  /** Callback when canvas dimensions change */
+  onCanvasDimensionsChange?: (dimensions: {
+    width: number;
+    height: number;
+  }) => void;
 }
 
 const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
@@ -42,6 +53,10 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   showAnnotations = true,
   showGridlines = true,
   showGridLabels = true,
+  enableVfoCreation = false,
+  onVfoCreateRequest,
+  vfoBadgeOverlay,
+  onCanvasDimensionsChange,
 }) => {
   const spectrumCanvasRef = useRef<HTMLCanvasElement>(null);
   const waterfallCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -367,7 +382,10 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
       waterfallAnnotationsCanvasRef.current.style.width = `${width}px`;
       waterfallAnnotationsCanvasRef.current.style.height = `${height}px`;
     }
-  }, [canvasDimensions]);
+
+    // Notify parent of canvas dimension changes
+    onCanvasDimensionsChange?.(canvasDimensions);
+  }, [canvasDimensions, onCanvasDimensionsChange]);
 
   // Main render loop
   useEffect((): (() => void) => {
@@ -634,6 +652,21 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
   const handleCanvasClick = (
     evt: React.MouseEvent<HTMLCanvasElement>,
   ): void => {
+    // If Alt key is held and VFO creation is enabled, create VFO at clicked frequency
+    if (evt.altKey && enableVfoCreation && onVfoCreateRequest) {
+      if (!sampleRate || !centerFrequency) {
+        return;
+      }
+      const canvas = evt.currentTarget;
+      const rect = canvas.getBoundingClientRect();
+      const x = evt.clientX - rect.left;
+      const frac = Math.min(1, Math.max(0, x / rect.width));
+      const span = sampleRate;
+      const clickedFreq = centerFrequency - span / 2 + frac * span;
+      onVfoCreateRequest(clickedFreq);
+      return;
+    }
+
     // If clicking on a signal, tune to it
     if (hoveredSignal) {
       onTune(hoveredSignal.frequency);
@@ -718,6 +751,21 @@ const PrimaryVisualization: React.FC<PrimaryVisualizationProps> = ({
         role="img"
         aria-label="Waterfall Signal Annotations"
       />
+      {vfoBadgeOverlay && (
+        <div
+          style={{
+            position: "absolute",
+            top:
+              mode === "spectrogram" ? `${canvasDimensions.height + 8}px` : "0",
+            left: 0,
+            width: "100%",
+            height: `${canvasDimensions.height}px`,
+            pointerEvents: "none",
+          }}
+        >
+          {vfoBadgeOverlay}
+        </div>
+      )}
       <SignalTooltip
         signal={hoveredSignal}
         x={tooltipPosition.x}

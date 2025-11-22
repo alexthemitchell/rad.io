@@ -1,0 +1,260 @@
+/* VFO Badge Overlay Styles */
+
+.vfo-badge-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.vfo-badge {
+  position: absolute;
+  z-index: 10;
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+.vfo-badge-clickable {
+  cursor: pointer;
+}
+
+.vfo-badge-static {
+  cursor: default;
+}
+
+.vfo-badge-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--rad-surface);
+  border: 2px solid var(--rad-primary);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  box-shadow: var(--rad-shadow-2);
+  white-space: nowrap;
+}
+
+.vfo-mode {
+  font-weight: 700;
+  color: var(--rad-primary);
+}
+
+.vfo-frequency {
+  color: var(--rad-fg);
+}
+
+.vfo-remove-btn {
+  background: transparent;
+  border: none;
+  color: var(--rad-danger);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.vfo-remove-btn:hover {
+  background: var(--rad-danger-bg);
+}
+
+.vfo-remove-btn:focus {
+  outline: 2px solid var(--rad-ring);
+  outline-offset: 2px;
+}
+
+/* VFO Manager Panel Styles */
+
+.vfo-manager-panel {
+  background: var(--rad-surface);
+  border: 1px solid var(--rad-border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.vfo-panel-title {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  color: var(--rad-fg);
+  font-weight: 600;
+}
+
+.vfo-empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--rad-fg-muted);
+}
+
+.vfo-empty-state p {
+  margin: 0.5rem 0;
+}
+
+.vfo-empty-state .instruction-text {
+  font-size: 0.875rem;
+  color: var(--rad-fg-muted);
+}
+
+.vfo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.vfo-item {
+  background: var(--rad-surface-muted);
+  border: 1px solid var(--rad-border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  transition: border-color 0.2s;
+}
+
+.vfo-item:hover {
+  border-color: var(--rad-primary);
+}
+
+.vfo-item-clickable {
+  cursor: pointer;
+}
+
+.vfo-item-static {
+  cursor: default;
+}
+
+.vfo-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.vfo-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.vfo-item-mode {
+  font-weight: 700;
+  color: var(--rad-primary);
+  font-size: 0.875rem;
+}
+
+.vfo-item-frequency {
+  font-size: 1rem;
+  color: var(--rad-fg);
+}
+
+.vfo-item-remove {
+  background: transparent;
+  border: none;
+  color: var(--rad-danger);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.25rem;
+  cursor: pointer;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.vfo-item-remove:hover {
+  background: var(--rad-danger-bg);
+}
+
+.vfo-item-remove:focus {
+  outline: 2px solid var(--rad-ring);
+  outline-offset: 2px;
+}
+
+.vfo-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.vfo-audio-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--rad-fg);
+}
+
+.vfo-audio-control input[type="checkbox"] {
+  cursor: pointer;
+  width: 1rem;
+  height: 1rem;
+}
+
+.vfo-audio-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.audio-active-badge {
+  font-size: 1rem;
+}
+
+.vfo-item-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.75rem;
+}
+
+.vfo-status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.vfo-status-idle {
+  background: var(--rad-muted-bg);
+  color: var(--rad-fg-muted);
+}
+
+.vfo-status-active {
+  background: var(--rad-success-bg);
+  color: var(--rad-success);
+}
+
+.vfo-status-paused {
+  background: var(--rad-warning-bg);
+  color: var(--rad-warning);
+}
+
+.vfo-status-error {
+  background: var(--rad-danger-bg);
+  color: var(--rad-danger);
+}
+
+.vfo-rssi {
+  color: var(--rad-fg-muted);
+}
+
+/* VFO Modal Styles */
+
+.vfo-frequency-display {
+  padding: 0.75rem;
+  border: 2px solid var(--rad-border);
+  border-radius: 8px;
+  background: var(--rad-surface-muted);
+  color: var(--rad-fg);
+  font-size: 1rem;
+}

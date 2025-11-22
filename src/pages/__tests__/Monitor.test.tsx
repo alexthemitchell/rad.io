@@ -62,6 +62,20 @@ jest.mock("../../store", () => ({
     setSignalLevel: jest.fn(),
     clearSignalLevel: jest.fn(),
   })),
+  useVfo: jest.fn(() => ({
+    vfos: new Map(),
+    maxVfos: 8,
+    addVfo: jest.fn(),
+    removeVfo: jest.fn(),
+    updateVfo: jest.fn(),
+    updateVfoState: jest.fn(),
+    setVfoAudio: jest.fn(),
+    clearVfos: jest.fn(),
+    getVfo: jest.fn(),
+    getAllVfos: jest.fn(() => []),
+    getActiveVfos: jest.fn(() => []),
+    setMaxVfos: jest.fn(),
+  })),
 }));
 
 // DeviceContext is removed; Zustand store requires no provider or mocking here

@@ -2,7 +2,13 @@
  * Waterfall component - time-frequency heatmap with WebGL/Canvas2D fallback
  */
 
-import { useEffect, useRef, useState, type ReactElement } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react";
 import {
   CanvasWaterfall,
   WebGLWaterfall,
@@ -21,6 +27,16 @@ export interface WaterfallProps {
   width?: number;
   /** Canvas height in pixels */
   height?: number;
+  /** Sample rate in Hz (for VFO creation) */
+  sampleRate?: number;
+  /** Center frequency in Hz (for VFO creation) */
+  centerFrequency?: number;
+  /** Enable VFO creation on click */
+  enableVfoCreation?: boolean;
+  /** Callback when user clicks to create VFO */
+  onVfoCreateRequest?: (frequencyHz: number) => void;
+  /** Overlay content (e.g., VFO badges) */
+  overlay?: ReactElement;
 }
 
 export default function Waterfall({
@@ -29,11 +45,48 @@ export default function Waterfall({
   freqMax = 1024,
   width = 750,
   height = 800,
+  sampleRate,
+  centerFrequency,
+  enableVfoCreation = false,
+  onVfoCreateRequest,
+  overlay,
 }: WaterfallProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<Renderer | null>(null);
   const [rendererType, setRendererType] = useState<"webgl" | "canvas" | null>(
     null,
+  );
+
+  // Handle canvas click for VFO creation
+  const handleCanvasClick = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (
+        !event.altKey ||
+        !enableVfoCreation ||
+        !onVfoCreateRequest ||
+        !sampleRate ||
+        !centerFrequency
+      ) {
+        return;
+      }
+
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        return;
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+
+      // Calculate frequency from pixel position
+      const normalizedPos = x / rect.width;
+      const minFreq = centerFrequency - sampleRate / 2;
+      const maxFreq = centerFrequency + sampleRate / 2;
+      const clickedFreq = minFreq + normalizedPos * (maxFreq - minFreq);
+
+      onVfoCreateRequest(clickedFreq);
+    },
+    [enableVfoCreation, onVfoCreateRequest, sampleRate, centerFrequency],
   );
 
   // Initialize renderer on mount
@@ -116,9 +169,12 @@ export default function Waterfall({
         style={{
           border: "1px solid rgba(255, 255, 255, 0.1)",
           borderRadius: "4px",
+          cursor: enableVfoCreation ? "crosshair" : "default",
         }}
+        onClick={handleCanvasClick}
         aria-label={`Waterfall display showing ${frames.length} frames across frequency bins ${freqMin} to ${freqMax}`}
       />
+      {overlay}
       {rendererType && (
         <div
           style={{
