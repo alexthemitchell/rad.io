@@ -21,6 +21,7 @@ import {
   useFrequencyScanner,
   type ActiveSignal,
 } from "../hooks/useFrequencyScanner";
+import { useMultiVfoProcessor } from "../hooks/useMultiVfoProcessor";
 import { useReception } from "../hooks/useReception";
 import {
   useSignalDetection,
@@ -172,6 +173,14 @@ const Monitor: React.FC = () => {
     typeof createMultiStationFMProcessor
   > | null>(null);
   const msIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Multi-VFO processor integration
+  const vfoProcessor = useMultiVfoProcessor({
+    centerFrequencyHz: frequency,
+    sampleRate,
+    enableAudio: true,
+  });
+
   const {
     magnitudes: fftData,
     start: startDsp,
@@ -189,6 +198,11 @@ const Monitor: React.FC = () => {
       const maxSamples = 300_000;
       if (buf.length > maxSamples) {
         buf.splice(0, buf.length - maxSamples);
+      }
+
+      // Route samples to multi-VFO processor
+      if (vfos.length > 0 && vfoProcessor.isReady) {
+        void vfoProcessor.processSamples(samples);
       }
     },
   });
