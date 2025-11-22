@@ -85,13 +85,14 @@ export function createAudioBufferFromSamples(
   sampleRate: number,
   channels = 1,
 ): AudioBuffer {
-  const buffer = context.createBuffer(channels, samples.length, sampleRate);
+  const numFrames =
+    channels === 2 ? Math.floor(samples.length / 2) : samples.length;
+  const buffer = context.createBuffer(channels, numFrames, sampleRate);
 
   if (channels === 1) {
     buffer.copyToChannel(samples, 0);
   } else if (channels === 2) {
     // For stereo, split samples into left and right
-    const numFrames = Math.floor(samples.length / 2);
     const leftChannel = new Float32Array(numFrames);
     const rightChannel = new Float32Array(numFrames);
 
