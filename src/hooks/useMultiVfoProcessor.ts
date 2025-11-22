@@ -139,43 +139,55 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     const vfos = getAllVfos();
 
     // Add or update VFOs in processor
-    for (const vfo of vfos) {
-      // Create demodulator if needed
-      if (!vfoDemodulators.current.has(vfo.id)) {
-        const demod = createDemodulatorForMode(vfo.modeId);
-        if (demod) {
-          void demod.initialize();
-          void demod.activate();
-          vfoDemodulators.current.set(vfo.id, demod);
+    const initializeVfos = async (): Promise<void> => {
+      for (const vfo of vfos) {
+        // Create demodulator if needed
+        if (!vfoDemodulators.current.has(vfo.id)) {
+          const demod = createDemodulatorForMode(vfo.modeId);
+          if (demod) {
+            try {
+              await demod.initialize();
+              await demod.activate();
+              vfoDemodulators.current.set(vfo.id, demod);
+            } catch (error) {
+              console.error(
+                `Failed to initialize demodulator for VFO ${vfo.id}:`,
+                error,
+              );
+              continue;
+            }
+          }
+        }
+
+        // Get demodulator for this VFO
+        const demodulator = vfoDemodulators.current.get(vfo.id);
+        if (!demodulator) {
+          continue;
+        }
+
+        // Create VfoState with demodulator
+        const vfoState: VfoState = {
+          ...vfo,
+          demodulator,
+          audioNode: null, // Web Audio API node will be created when playing
+          status: "ACTIVE",
+        };
+
+        processor.addVfo(vfoState);
+      }
+
+      // Remove VFOs that are no longer in store
+      const vfoIds = new Set(vfos.map((v) => v.id));
+      for (const [id, demod] of vfoDemodulators.current.entries()) {
+        if (!vfoIds.has(id)) {
+          processor.removeVfo(id);
+          void demod.dispose();
+          vfoDemodulators.current.delete(id);
         }
       }
+    };
 
-      // Get demodulator for this VFO
-      const demodulator = vfoDemodulators.current.get(vfo.id);
-      if (!demodulator) {
-        continue;
-      }
-
-      // Create VfoState with demodulator
-      const vfoState: VfoState = {
-        ...vfo,
-        demodulator,
-        audioNode: null, // Web Audio API node will be created when playing
-        status: "ACTIVE",
-      };
-
-      processor.addVfo(vfoState);
-    }
-
-    // Remove VFOs that are no longer in store
-    const vfoIds = new Set(vfos.map((v) => v.id));
-    for (const [id, demod] of vfoDemodulators.current.entries()) {
-      if (!vfoIds.has(id)) {
-        processor.removeVfo(id);
-        void demod.dispose();
-        vfoDemodulators.current.delete(id);
-      }
-    }
+    void initializeVfos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getAllVfos()]); // Re-run when VFO list changes
 
