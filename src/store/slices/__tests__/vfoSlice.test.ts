@@ -12,6 +12,7 @@ import {
   type VfoValidationContext,
 } from "../vfoSlice";
 import { VfoStatus, type VfoConfig } from "../../../types/vfo";
+import { DEFAULT_MAX_VFOS } from "../../../constants/vfoLimits";
 
 describe("vfoSlice", () => {
   let useStore: UseBoundStore<StoreApi<VfoSlice>>;
@@ -34,9 +35,9 @@ describe("vfoSlice", () => {
       expect(state.getAllVfos()).toEqual([]);
     });
 
-    it("should initialize with default maxVfos of 8", () => {
+    it("should initialize with default maxVfos of 4", () => {
       const state = useStore.getState();
-      expect(state.maxVfos).toBe(8);
+      expect(state.maxVfos).toBe(DEFAULT_MAX_VFOS);
     });
   });
 
@@ -744,19 +745,19 @@ describe("vfoSlice", () => {
       expect(useStore.getState().maxVfos).toBe(16);
     });
 
-    it("should reject invalid max VFO count", () => {
+    it("should clamp invalid max VFO count", () => {
       const { setMaxVfos } = useStore.getState();
-      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
 
+      // Should clamp to MIN_VFOS (1)
       setMaxVfos(0);
-      expect(useStore.getState().maxVfos).toBe(8); // unchanged
+      expect(useStore.getState().maxVfos).toBe(1);
 
       setMaxVfos(-1);
-      expect(useStore.getState().maxVfos).toBe(8); // unchanged
+      expect(useStore.getState().maxVfos).toBe(1);
 
-      expect(warnSpy).toHaveBeenCalledTimes(2);
-
-      warnSpy.mockRestore();
+      // Should clamp to ABSOLUTE_MAX_VFOS (16)
+      setMaxVfos(100);
+      expect(useStore.getState().maxVfos).toBe(16);
     });
   });
 

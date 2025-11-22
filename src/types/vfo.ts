@@ -170,6 +170,26 @@ export interface VfoMetrics {
 }
 
 /**
+ * Resource usage warning types
+ */
+export enum VfoResourceWarning {
+  /** No resource warnings */
+  NONE = "none",
+
+  /** DSP processing time approaching limit */
+  DSP_TIME_WARNING = "dsp_time_warning",
+
+  /** DSP processing time critical - automatic action required */
+  DSP_TIME_CRITICAL = "dsp_time_critical",
+
+  /** Memory usage high */
+  MEMORY_WARNING = "memory_warning",
+
+  /** Too many concurrent audio streams */
+  AUDIO_LIMIT = "audio_limit",
+}
+
+/**
  * Minimum VFO spacing requirements per modulation mode (Hz)
  * VFOs should maintain this separation to avoid filter overlap
  */
