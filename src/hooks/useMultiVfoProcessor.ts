@@ -13,6 +13,7 @@ import { createAudioContext, playAudioBuffer } from "../utils/webAudioUtils";
 import type { IQSample } from "../models/SDRDevice";
 import type { DemodulatorPlugin } from "../types/plugin";
 import type { VfoState } from "../types/vfo";
+import { VfoStatus } from "../types/vfo";
 
 interface UseMultiVfoProcessorOptions {
   /** Hardware center frequency in Hz */
@@ -65,7 +66,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
   isReady: boolean;
 } {
   const { centerFrequencyHz, sampleRate, enableAudio } = options;
-  const { getAllVfos, updateVfoState } = useVfo();
+  const { vfos, getAllVfos, updateVfoState } = useVfo();
 
   const processorRef = useRef<MultiVfoProcessor | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -120,6 +121,9 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     };
   }, [centerFrequencyHz, sampleRate, enableAudio]);
 
+  // Track VFO modes to detect changes
+  const vfoModes = useRef<Map<string, string>>(new Map());
+
   // Sync VFOs from store to processor
   useEffect(() => {
     const processor = processorRef.current;
@@ -132,6 +136,20 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     // Add or update VFOs in processor
     const initializeVfos = async (): Promise<void> => {
       for (const vfo of vfoList) {
+        // Check if mode has changed for existing VFO
+        const existingMode = vfoModes.current.get(vfo.id);
+        if (existingMode && existingMode !== vfo.modeId) {
+          // Mode changed - dispose old demodulator and create new one
+          const oldDemod = vfoDemodulators.current.get(vfo.id);
+          if (oldDemod) {
+            void oldDemod.dispose();
+            vfoDemodulators.current.delete(vfo.id);
+          }
+          // Remove from processor so it can be re-added with new demodulator
+          processor.removeVfo(vfo.id);
+          addedVfoIds.current.delete(vfo.id);
+        }
+
         // Create demodulator if needed
         if (!vfoDemodulators.current.has(vfo.id)) {
           const demod = createDemodulatorForMode(vfo.modeId);
@@ -140,6 +158,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
               await demod.initialize();
               await demod.activate();
               vfoDemodulators.current.set(vfo.id, demod);
+              vfoModes.current.set(vfo.id, vfo.modeId);
             } catch (error) {
               console.error(
                 `Failed to initialize demodulator for VFO ${vfo.id}:`,
@@ -161,7 +180,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
           ...vfo,
           demodulator,
           audioNode: null, // Web Audio API node will be created when playing
-          status: "ACTIVE",
+          status: VfoStatus.ACTIVE,
         };
 
         // Only add VFO if we haven't added it yet
@@ -177,6 +196,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
         if (!vfoIds.has(id)) {
           processor.removeVfo(id);
           addedVfoIds.current.delete(id);
+          vfoModes.current.delete(id);
           void demod.dispose();
           vfoDemodulators.current.delete(id);
         }
@@ -184,7 +204,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     };
 
     void initializeVfos();
-  }, [getAllVfos]); // Re-run when VFO map changes
+  }, [vfos, getAllVfos]); // Re-run when VFO map changes
 
   /**
    * Process IQ samples through all active VFOs
@@ -216,7 +236,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
             ...vfo,
             demodulator,
             audioNode: null,
-            status: "ACTIVE" as const,
+            status: VfoStatus.ACTIVE,
           };
         })
         .filter((v): v is VfoState => v !== null);
