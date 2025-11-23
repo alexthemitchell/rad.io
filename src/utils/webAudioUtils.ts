@@ -96,16 +96,12 @@ export function createAudioBufferFromSamples(
     const leftChannel = new Float32Array(numFrames);
     const rightChannel = new Float32Array(numFrames);
 
-    // Handle odd-length arrays where rightIdx may exceed length
+    // Deinterleave stereo samples (numFrames guaranteed <= samples.length / 2)
     for (let i = 0; i < numFrames; i++) {
       const leftIdx = i * 2;
       const rightIdx = i * 2 + 1;
-      if (leftIdx < samples.length) {
-        leftChannel[i] = samples[leftIdx];
-      }
-      if (rightIdx < samples.length) {
-        rightChannel[i] = samples[rightIdx];
-      }
+      leftChannel[i] = samples[leftIdx];
+      rightChannel[i] = samples[rightIdx];
     }
 
     buffer.copyToChannel(leftChannel, 0);
@@ -143,7 +139,7 @@ export function mixAudioBuffers(buffers: Float32Array[]): Float32Array {
   // Normalize by buffer count to prevent clipping
   const scale = 1 / buffers.length;
   for (let i = 0; i < mixed.length; i++) {
-    mixed[i] = (mixed[i] ?? 0) * scale;
+    mixed[i] = mixed[i] * scale;
   }
 
   return mixed;

@@ -65,7 +65,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
   isReady: boolean;
 } {
   const { centerFrequencyHz, sampleRate, enableAudio } = options;
-  const { vfos, getAllVfos, updateVfoState } = useVfo();
+  const { getAllVfos, updateVfoState } = useVfo();
 
   const processorRef = useRef<MultiVfoProcessor | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -182,7 +182,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     };
 
     void initializeVfos();
-  }, [vfos, getAllVfos]); // Re-run when VFO map changes
+  }, [getAllVfos]); // Re-run when VFO map changes
 
   /**
    * Process IQ samples through all active VFOs

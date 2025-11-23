@@ -202,7 +202,10 @@ const Monitor: React.FC = () => {
       }
 
       // Route samples to multi-VFO processor
-      // Get fresh VFO list from store to avoid stale closure
+      // Get fresh VFO list from store to avoid stale closure.
+      // NOTE: We intentionally access the store directly here rather than relying on React state.
+      // This ensures we always have the latest VFO list for sample processing, even if React state is lagging.
+      // The alternative would be to use a ref or subscribe to store changes, but direct access is simpler and more reliable.
       const currentVfos = useStore.getState().getAllVfos();
       if (currentVfos.length > 0 && vfoProcessor.isReady) {
         vfoProcessor.processSamples(samples).catch((error: unknown) => {
