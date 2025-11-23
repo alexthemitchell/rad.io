@@ -97,11 +97,12 @@ export function createAudioBufferFromSamples(
     const rightChannel = new Float32Array(numFrames);
 
     // Deinterleave stereo samples (numFrames guaranteed <= samples.length / 2)
+    // TypeScript requires ?? 0 due to noUncheckedIndexedAccess: true in tsconfig.json
     for (let i = 0; i < numFrames; i++) {
       const leftIdx = i * 2;
       const rightIdx = i * 2 + 1;
-      leftChannel[i] = samples[leftIdx];
-      rightChannel[i] = samples[rightIdx];
+      leftChannel[i] = samples[leftIdx] ?? 0;
+      rightChannel[i] = samples[rightIdx] ?? 0;
     }
 
     buffer.copyToChannel(leftChannel, 0);
