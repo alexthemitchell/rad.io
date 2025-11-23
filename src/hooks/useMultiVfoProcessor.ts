@@ -9,11 +9,11 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { MultiVfoProcessor } from "../lib/dsp/MultiVfoProcessor";
 import { FMDemodulatorPlugin } from "../plugins/demodulators/FMDemodulatorPlugin";
 import { useVfo, useStore } from "../store";
+import { VfoStatus } from "../types/vfo";
 import { createAudioContext, playAudioBuffer } from "../utils/webAudioUtils";
 import type { IQSample } from "../models/SDRDevice";
 import type { DemodulatorPlugin } from "../types/plugin";
 import type { VfoState } from "../types/vfo";
-import { VfoStatus } from "../types/vfo";
 
 interface UseMultiVfoProcessorOptions {
   /** Hardware center frequency in Hz */
@@ -226,7 +226,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
 
       // Build VfoState array with demodulators
       const vfoStates: VfoState[] = activeVfos
-        .map((vfo) => {
+        .map((vfo): VfoState | null => {
           const demodulator = vfoDemodulators.current.get(vfo.id);
           if (!demodulator) {
             return null;

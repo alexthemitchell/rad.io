@@ -13,7 +13,7 @@ global.AudioContext = jest.fn().mockImplementation(() => ({
   state: "running",
   resume: jest.fn().mockResolvedValue(undefined),
   close: jest.fn().mockResolvedValue(undefined),
-  createBuffer: jest.fn((channels, length, rate) => ({
+  createBuffer: jest.fn((_channels, _length, _rate) => ({
     copyToChannel: jest.fn(),
   })),
   createBufferSource: jest.fn(() => ({
