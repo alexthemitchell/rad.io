@@ -132,7 +132,7 @@ export function mixAudioBuffers(buffers: Float32Array[]): Float32Array {
     const len = Math.min(buffer.length, mixed.length);
     for (let i = 0; i < len; i++) {
       // Float32Array elements are initialized to 0 and accessed within bounds
-      // TypeScript requires ?? 0 for array indexing even though values are always defined
+      // ?? 0 required due to noUncheckedIndexedAccess: true in tsconfig.json
       mixed[i] = (mixed[i] ?? 0) + (buffer[i] ?? 0);
     }
   }
@@ -140,7 +140,8 @@ export function mixAudioBuffers(buffers: Float32Array[]): Float32Array {
   // Normalize by buffer count to prevent clipping
   const scale = 1 / buffers.length;
   for (let i = 0; i < mixed.length; i++) {
-    mixed[i] = mixed[i] * scale;
+    // ?? 0 required due to noUncheckedIndexedAccess: true in tsconfig.json
+    mixed[i] = (mixed[i] ?? 0) * scale;
   }
 
   return mixed;
