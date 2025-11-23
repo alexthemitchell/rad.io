@@ -95,6 +95,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     // Capture refs for cleanup
     const demodulators = vfoDemodulators.current;
     const audioCtx = audioContextRef.current;
+    const vfoIds = addedVfoIds.current;
 
     return (): void => {
       // Clean up processor
@@ -109,6 +110,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
         void demod.dispose();
       }
       demodulators.clear();
+      vfoIds.clear(); // Clear tracked VFO IDs when processor is recreated
 
       // Close audio context
       if (audioCtx) {
