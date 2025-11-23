@@ -150,7 +150,7 @@ All built-in drivers are located in subdirectories under `src/drivers/`:
 
 ### RTL-SDR
 
-- **Location**: `src/models/` (planned to be moved to `src/drivers/rtlsdr/`)
+- **Location**: `src/drivers/rtlsdr/`
 - **ID**: `rtl-sdr`
 - **Frequency Range**: 24 MHz - 1.7 GHz
 - **Sample Rates**: 225 kHz - 3.2 MHz

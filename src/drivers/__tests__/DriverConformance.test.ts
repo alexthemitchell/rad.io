@@ -10,7 +10,7 @@
 
 import type { ISDRDevice } from "../../models/SDRDevice";
 import { HackRFOneAdapter } from "../hackrf/HackRFOneAdapter";
-import { RTLSDRDeviceAdapter } from "../../models/RTLSDRDeviceAdapter";
+import { RTLSDRDeviceAdapter } from "../rtlsdr/RTLSDRDeviceAdapter";
 
 /**
  * Create a mock USB device for testing

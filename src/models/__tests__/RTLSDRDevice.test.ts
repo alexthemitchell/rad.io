@@ -4,7 +4,7 @@
  * Tests for RTLSDRDevice and RTLSDRDeviceAdapter implementations
  */
 
-import { RTLSDRDeviceAdapter } from "../RTLSDRDeviceAdapter";
+import { RTLSDRDeviceAdapter } from "../../drivers/rtlsdr/RTLSDRDeviceAdapter";
 import { SDRDeviceType } from "../SDRDevice";
 
 // Mock USB device for testing

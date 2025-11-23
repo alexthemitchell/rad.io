@@ -14,6 +14,7 @@
 
 import { create, type StateCreator } from "zustand";
 import { devtools } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
 import {
   deviceSlice,
   type DeviceEntry,
@@ -83,22 +84,26 @@ export const useSettings = (): {
   settings: SettingsState;
   setSettings: (partial: Partial<SettingsState>) => void;
   resetSettings: () => void;
-} => {
-  const settings = useStore((state: RootState) => state.settings);
-  const setSettings = useStore((state: RootState) => state.setSettings);
-  const resetSettings = useStore((state: RootState) => state.resetSettings);
-  return { settings, setSettings, resetSettings };
-};
+} =>
+  useStore(
+    useShallow((state: RootState) => ({
+      settings: state.settings,
+      setSettings: state.setSettings,
+      resetSettings: state.resetSettings,
+    }))
+  );
 
 // Frequency slice selectors
 export const useFrequency = (): {
   frequencyHz: number;
   setFrequencyHz: (hz: number) => void;
-} => {
-  const frequencyHz = useStore((state: RootState) => state.frequencyHz);
-  const setFrequencyHz = useStore((state: RootState) => state.setFrequencyHz);
-  return { frequencyHz, setFrequencyHz };
-};
+} =>
+  useStore(
+    useShallow((state: RootState) => ({
+      frequencyHz: state.frequencyHz,
+      setFrequencyHz: state.setFrequencyHz,
+    }))
+  );
 
 // Notification slice selectors
 export const useNotifications = (): {
@@ -106,11 +111,13 @@ export const useNotifications = (): {
   notify: (
     notification: Omit<Notification, "id"> & { duration?: number },
   ) => void;
-} => {
-  const notifications = useStore((state: RootState) => state.notifications);
-  const notify = useStore((state: RootState) => state.notify);
-  return { notifications, notify };
-};
+} =>
+  useStore(
+    useShallow((state: RootState) => ({
+      notifications: state.notifications,
+      notify: state.notify,
+    }))
+  );
 
 // Device slice selectors
 export const useDevice = (): {
@@ -121,28 +128,18 @@ export const useDevice = (): {
   closeDevice: (deviceId: DeviceId) => Promise<void>;
   closeAllDevices: () => Promise<void>;
   connectPairedUSBDevice: (usbDevice: USBDevice) => Promise<void>;
-} => {
-  const devices = useStore((state: RootState) => state.devices);
-  const primaryDevice = useStore((state: RootState) => state.primaryDevice);
-  const isCheckingPaired = useStore(
-    (state: RootState) => state.isCheckingPaired,
+} =>
+  useStore(
+    useShallow((state: RootState) => ({
+      devices: state.devices,
+      primaryDevice: state.primaryDevice,
+      isCheckingPaired: state.isCheckingPaired,
+      requestDevice: state.requestDevice,
+      closeDevice: state.closeDevice,
+      closeAllDevices: state.closeAllDevices,
+      connectPairedUSBDevice: state.connectPairedUSBDevice,
+    }))
   );
-  const requestDevice = useStore((state: RootState) => state.requestDevice);
-  const closeDevice = useStore((state: RootState) => state.closeDevice);
-  const closeAllDevices = useStore((state: RootState) => state.closeAllDevices);
-  const connectPairedUSBDevice = useStore(
-    (state: RootState) => state.connectPairedUSBDevice,
-  );
-  return {
-    devices,
-    primaryDevice,
-    isCheckingPaired,
-    requestDevice,
-    closeDevice,
-    closeAllDevices,
-    connectPairedUSBDevice,
-  };
-};
 
 // Diagnostics slice selectors
 /**
@@ -159,10 +156,12 @@ export const useDiagnosticsOverlay = (): {
   overlayVisible: boolean;
   setOverlayVisible: (visible: boolean) => void;
 } =>
-  useStore((state: RootState) => ({
-    overlayVisible: state.overlayVisible,
-    setOverlayVisible: state.setOverlayVisible,
-  }));
+  useStore(
+    useShallow((state: RootState) => ({
+      overlayVisible: state.overlayVisible,
+      setOverlayVisible: state.setOverlayVisible,
+    }))
+  );
 
 /**
  * Hook for all metrics and their update actions.
@@ -180,18 +179,20 @@ export const useDiagnosticsMetrics = (): {
   updateAudioDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
   updateCaptionDecoderMetrics: (metrics: Partial<DecoderMetrics>) => void;
 } =>
-  useStore((state: RootState) => ({
-    demodulatorMetrics: state.demodulatorMetrics,
-    tsParserMetrics: state.tsParserMetrics,
-    videoDecoderMetrics: state.videoDecoderMetrics,
-    audioDecoderMetrics: state.audioDecoderMetrics,
-    captionDecoderMetrics: state.captionDecoderMetrics,
-    updateDemodulatorMetrics: state.updateDemodulatorMetrics,
-    updateTSParserMetrics: state.updateTSParserMetrics,
-    updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
-    updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
-    updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
-  }));
+  useStore(
+    useShallow((state: RootState) => ({
+      demodulatorMetrics: state.demodulatorMetrics,
+      tsParserMetrics: state.tsParserMetrics,
+      videoDecoderMetrics: state.videoDecoderMetrics,
+      audioDecoderMetrics: state.audioDecoderMetrics,
+      captionDecoderMetrics: state.captionDecoderMetrics,
+      updateDemodulatorMetrics: state.updateDemodulatorMetrics,
+      updateTSParserMetrics: state.updateTSParserMetrics,
+      updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
+      updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
+      updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
+    }))
+  );
 
 /**
  * Hook for diagnostic events.
@@ -204,11 +205,13 @@ export const useDiagnosticsEvents = (): {
   ) => void;
   clearDiagnosticEvents: () => void;
 } =>
-  useStore((state: RootState) => ({
-    events: state.events,
-    addDiagnosticEvent: state.addDiagnosticEvent,
-    clearDiagnosticEvents: state.clearDiagnosticEvents,
-  }));
+  useStore(
+    useShallow((state: RootState) => ({
+      events: state.events,
+      addDiagnosticEvent: state.addDiagnosticEvent,
+      clearDiagnosticEvents: state.clearDiagnosticEvents,
+    }))
+  );
 
 /**
  * Legacy hook that returns all diagnostics state and actions.
@@ -237,26 +240,28 @@ export const useDiagnostics = (): Pick<
   | "resetDiagnostics"
   | "setOverlayVisible"
 > => {
-  return useStore((state: RootState) => ({
-    events: state.events,
-    demodulatorMetrics: state.demodulatorMetrics,
-    tsParserMetrics: state.tsParserMetrics,
-    videoDecoderMetrics: state.videoDecoderMetrics,
-    audioDecoderMetrics: state.audioDecoderMetrics,
-    captionDecoderMetrics: state.captionDecoderMetrics,
-    dspCapabilities: state.dspCapabilities,
-    overlayVisible: state.overlayVisible,
-    addDiagnosticEvent: state.addDiagnosticEvent,
-    updateDemodulatorMetrics: state.updateDemodulatorMetrics,
-    updateTSParserMetrics: state.updateTSParserMetrics,
-    updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
-    updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
-    updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
-    setDSPCapabilities: state.setDSPCapabilities,
-    clearDiagnosticEvents: state.clearDiagnosticEvents,
-    resetDiagnostics: state.resetDiagnostics,
-    setOverlayVisible: state.setOverlayVisible,
-  }));
+  return useStore(
+    useShallow((state: RootState) => ({
+      events: state.events,
+      demodulatorMetrics: state.demodulatorMetrics,
+      tsParserMetrics: state.tsParserMetrics,
+      videoDecoderMetrics: state.videoDecoderMetrics,
+      audioDecoderMetrics: state.audioDecoderMetrics,
+      captionDecoderMetrics: state.captionDecoderMetrics,
+      dspCapabilities: state.dspCapabilities,
+      overlayVisible: state.overlayVisible,
+      addDiagnosticEvent: state.addDiagnosticEvent,
+      updateDemodulatorMetrics: state.updateDemodulatorMetrics,
+      updateTSParserMetrics: state.updateTSParserMetrics,
+      updateVideoDecoderMetrics: state.updateVideoDecoderMetrics,
+      updateAudioDecoderMetrics: state.updateAudioDecoderMetrics,
+      updateCaptionDecoderMetrics: state.updateCaptionDecoderMetrics,
+      setDSPCapabilities: state.setDSPCapabilities,
+      clearDiagnosticEvents: state.clearDiagnosticEvents,
+      resetDiagnostics: state.resetDiagnostics,
+      setOverlayVisible: state.setOverlayVisible,
+    }))
+  );
 };
 
 // Export types

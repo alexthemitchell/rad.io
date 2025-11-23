@@ -7,5 +7,5 @@ export { HackRFOne, HackRFOneAdapter } from "../drivers/hackrf";
 export { AirspyDevice } from "./AirspyDevice";
 export { AirspyDeviceAdapter } from "./AirspyDeviceAdapter";
 export { RTLSDRDevice } from "./RTLSDRDevice";
-export { RTLSDRDeviceAdapter } from "./RTLSDRDeviceAdapter";
+export { RTLSDRDeviceAdapter } from "../drivers/rtlsdr";
 export * from "./SDRDevice";

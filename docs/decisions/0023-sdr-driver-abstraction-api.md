@@ -230,7 +230,7 @@ src/drivers/
 - **Interface**: `src/models/SDRDevice.ts` (ISDRDevice)
 - **Adapters**:
   - `src/hackrf/HackRFOneAdapter.ts`
-  - `src/models/RTLSDRDeviceAdapter.ts`
+  - `src/drivers/rtlsdr/RTLSDRDeviceAdapter.ts`
 - **WebUSB Spec**: https://wicg.github.io/webusb/
 - **Related ADRs**:
   - ADR-0020: E2E Testing Strategy (Mock device pattern)

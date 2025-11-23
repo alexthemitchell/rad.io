@@ -65,3 +65,6 @@ export { registerBuiltinDrivers } from "./registerBuiltinDrivers";
 export { HackRFOne, HackRFOneAdapter, createHackRFAdapter } from "./hackrf";
 export type { DeviceInfo, StreamOptions } from "./hackrf";
 export { useHackRFDevice } from "./hackrf/hooks/useHackRFDevice";
+
+// Export RTL-SDR driver for direct use
+export { RTLSDRDeviceAdapter, RTLSDRDevice, RTLSDRTunerType } from "./rtlsdr";
