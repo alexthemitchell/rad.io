@@ -39,6 +39,7 @@ import {
   useDiagnostics,
   useSignalLevel,
   useVfo,
+  useStore,
 } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
@@ -201,8 +202,12 @@ const Monitor: React.FC = () => {
       }
 
       // Route samples to multi-VFO processor
-      // The processSamples function handles empty VFO checks internally
-      if (vfoProcessor.isReady) {
+      // Check for active VFOs directly from store to avoid stale closures
+      const vfos = useStore.getState().getAllVfos();
+      const hasActiveVfos = vfos.some((v) => v.audioEnabled);
+
+      if (hasActiveVfos) {
+        // processSamples handles initialization checks internally via refs
         vfoProcessor.processSamples(samples).catch((error: unknown) => {
           console.error("VFO processing error:", error);
         });

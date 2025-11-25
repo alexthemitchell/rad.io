@@ -115,6 +115,11 @@ describe("useMultiVfoProcessor", () => {
         });
       }
 
+      // Wait for async VFO initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
       // Process samples
       await act(async () => {
         await result.current.processSamples(samples);
@@ -179,6 +184,11 @@ describe("useMultiVfoProcessor", () => {
           Q: Math.cos((2 * Math.PI * i) / 100),
         });
       }
+
+      // Wait for async VFO initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
 
       // Process samples
       await act(async () => {
@@ -267,6 +277,11 @@ describe("useMultiVfoProcessor", () => {
         samples.push({ I: Math.random(), Q: Math.random() });
       }
 
+      // Wait for async VFO initialization
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+
       // Process samples
       await act(async () => {
         await result.current.processSamples(samples);
@@ -279,8 +294,8 @@ describe("useMultiVfoProcessor", () => {
         const disabledVfo = vfos.find((v) => !v.audioEnabled);
 
         expect(enabledVfo?.metrics?.samplesProcessed).toBeGreaterThan(0);
-        // Disabled VFO should not have metrics updated
-        expect(disabledVfo?.metrics).toBeUndefined();
+        // Disabled VFO should not have metrics updated (or remain at initial 0)
+        expect(disabledVfo?.metrics?.samplesProcessed).toBe(0);
       });
     });
   });

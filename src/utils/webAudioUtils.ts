@@ -97,12 +97,12 @@ export function createAudioBufferFromSamples(
     const rightChannel = new Float32Array(numFrames);
 
     // Deinterleave stereo samples (numFrames guaranteed <= samples.length / 2)
-    // TypeScript requires ?? 0 due to noUncheckedIndexedAccess: true in tsconfig.json
+    // Use non-null assertion (!) as bounds are guaranteed by numFrames calculation
     for (let i = 0; i < numFrames; i++) {
       const leftIdx = i * 2;
       const rightIdx = i * 2 + 1;
-      leftChannel[i] = samples[leftIdx] ?? 0;
-      rightChannel[i] = samples[rightIdx] ?? 0;
+      leftChannel[i] = samples[leftIdx]!;
+      rightChannel[i] = samples[rightIdx]!;
     }
 
     buffer.copyToChannel(leftChannel, 0);
@@ -133,16 +133,16 @@ export function mixAudioBuffers(buffers: Float32Array[]): Float32Array {
     const len = Math.min(buffer.length, mixed.length);
     for (let i = 0; i < len; i++) {
       // Float32Array elements are initialized to 0 and accessed within bounds
-      // ?? 0 required due to noUncheckedIndexedAccess: true in tsconfig.json
-      mixed[i] = (mixed[i] ?? 0) + (buffer[i] ?? 0);
+      // Use non-null assertion (!) as bounds are guaranteed by len calculation
+      mixed[i] = mixed[i]! + buffer[i]!;
     }
   }
 
   // Normalize by buffer count to prevent clipping
   const scale = 1 / buffers.length;
   for (let i = 0; i < mixed.length; i++) {
-    // ?? 0 required due to noUncheckedIndexedAccess: true in tsconfig.json
-    mixed[i] = (mixed[i] ?? 0) * scale;
+    // Use non-null assertion (!) as bounds are guaranteed by loop condition
+    mixed[i] = mixed[i]! * scale;
   }
 
   return mixed;

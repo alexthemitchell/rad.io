@@ -204,7 +204,7 @@ export function useMultiVfoProcessor(options: UseMultiVfoProcessorOptions): {
     };
 
     void initializeVfos();
-  }, [vfos, getAllVfos]); // Re-run when VFO map changes
+  }, [vfos]); // Re-run when VFO map changes
 
   /**
    * Process IQ samples through all active VFOs
