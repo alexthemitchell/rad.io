@@ -21,6 +21,13 @@ export function createAudioContext(): AudioContext | null {
 }
 
 /**
+ * Reset the global AudioContext for testing purposes
+ */
+export function resetAudioContextForTesting(): void {
+  globalAudioContext = null;
+}
+
+/**
  * Get the global AudioContext
  */
 export function getAudioContext(): AudioContext | null {
