@@ -108,8 +108,8 @@ export function createAudioBufferFromSamples(
     for (let i = 0; i < numFrames; i++) {
       const leftIdx = i * 2;
       const rightIdx = i * 2 + 1;
-      leftChannel[i] = samples[leftIdx]!;
-      rightChannel[i] = samples[rightIdx]!;
+      leftChannel[i] = samples[leftIdx] ?? 0;
+      rightChannel[i] = samples[rightIdx] ?? 0;
     }
 
     buffer.copyToChannel(leftChannel, 0);
@@ -140,16 +140,16 @@ export function mixAudioBuffers(buffers: Float32Array[]): Float32Array {
     const len = Math.min(buffer.length, mixed.length);
     for (let i = 0; i < len; i++) {
       // Float32Array elements are initialized to 0 and accessed within bounds
-      // Use non-null assertion (!) as bounds are guaranteed by len calculation
-      mixed[i] = mixed[i]! + buffer[i]!;
+      // Use nullish coalescing (?? 0) as bounds are guaranteed by len calculation
+      mixed[i] = (mixed[i] ?? 0) + (buffer[i] ?? 0);
     }
   }
 
   // Normalize by buffer count to prevent clipping
   const scale = 1 / buffers.length;
   for (let i = 0; i < mixed.length; i++) {
-    // Use non-null assertion (!) as bounds are guaranteed by loop condition
-    mixed[i] = mixed[i]! * scale;
+    // Use nullish coalescing (?? 0) as bounds are guaranteed by loop condition
+    mixed[i] = (mixed[i] ?? 0) * scale;
   }
 
   return mixed;

@@ -325,7 +325,7 @@ describe("useMultiVfoProcessor", () => {
     });
 
     it("should handle fallback for unsupported modes", async () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useMultiVfoProcessor({
           centerFrequencyHz: 100_000_000,
           sampleRate: 2_000_000,
@@ -377,7 +377,7 @@ describe("useMultiVfoProcessor", () => {
     });
 
     it("should handle VFO removal", async () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useMultiVfoProcessor({
           centerFrequencyHz: 100_000_000,
           sampleRate: 2_000_000,
@@ -422,7 +422,7 @@ describe("useMultiVfoProcessor", () => {
     });
 
     it("should handle VFO mode change", async () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useMultiVfoProcessor({
           centerFrequencyHz: 100_000_000,
           sampleRate: 2_000_000,
@@ -454,7 +454,14 @@ describe("useMultiVfoProcessor", () => {
 
       act(() => {
         const { updateVfo } = useStore.getState();
-        updateVfo("test-vfo-mode-change", { modeId: "nbfm" });
+        updateVfo(
+          "test-vfo-mode-change",
+          { modeId: "nbfm" },
+          {
+            hardwareCenterHz: 100_000_000,
+            sampleRateHz: 2_000_000,
+          },
+        );
       });
 
       await act(async () => {
@@ -466,7 +473,7 @@ describe("useMultiVfoProcessor", () => {
     });
 
     it("should handle VFO update without mode change", async () => {
-      const { result } = renderHook(() =>
+      renderHook(() =>
         useMultiVfoProcessor({
           centerFrequencyHz: 100_000_000,
           sampleRate: 2_000_000,
@@ -495,7 +502,14 @@ describe("useMultiVfoProcessor", () => {
 
       act(() => {
         const { updateVfo } = useStore.getState();
-        updateVfo("test-vfo-update", { centerHz: 100_100_000 });
+        updateVfo(
+          "test-vfo-update",
+          { centerHz: 100_100_000 },
+          {
+            hardwareCenterHz: 100_000_000,
+            sampleRateHz: 2_000_000,
+          },
+        );
       });
 
       await act(async () => {
@@ -518,7 +532,7 @@ describe("useMultiVfoProcessor", () => {
       await act(async () => {
         await result.current.processSamples([]);
       });
-      
+
       // Should not throw
       expect(true).toBe(true);
     });
@@ -571,10 +585,10 @@ describe("useMultiVfoProcessor", () => {
           enableAudio: false,
         }),
       );
-      
+
       const processSamples = result.current.processSamples;
       unmount();
-      
+
       // Should return early and not throw
       await act(async () => {
         await processSamples([{ I: 0, Q: 0 }]);

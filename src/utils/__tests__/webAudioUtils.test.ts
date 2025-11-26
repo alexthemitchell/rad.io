@@ -46,7 +46,9 @@ describe("webAudioUtils", () => {
     };
 
     // Mock global AudioContext
-    global.AudioContext = jest.fn().mockImplementation(() => mockAudioContext) as any;
+    global.AudioContext = jest
+      .fn()
+      .mockImplementation(() => mockAudioContext) as any;
   });
 
   describe("createAudioContext", () => {
@@ -66,10 +68,10 @@ describe("webAudioUtils", () => {
     it("should return null if AudioContext is not defined", () => {
       const originalAudioContext = global.AudioContext;
       (global as any).AudioContext = undefined;
-      
+
       const context = createAudioContext();
       expect(context).toBeNull();
-      
+
       global.AudioContext = originalAudioContext;
     });
   });
@@ -94,7 +96,9 @@ describe("webAudioUtils", () => {
       expect(mockBuffer.copyToChannel).toHaveBeenCalledWith(samples, 0);
       expect(mockAudioContext.createBufferSource).toHaveBeenCalled();
       expect(mockSource.buffer).toBe(mockBuffer);
-      expect(mockSource.connect).toHaveBeenCalledWith(mockAudioContext.destination);
+      expect(mockSource.connect).toHaveBeenCalledWith(
+        mockAudioContext.destination,
+      );
       expect(mockSource.start).toHaveBeenCalled();
     });
 
@@ -123,7 +127,7 @@ describe("webAudioUtils", () => {
     it("should create mono buffer", () => {
       const samples = new Float32Array([0.1, 0.2]);
       createAudioBufferFromSamples(mockAudioContext, samples, 48000, 1);
-      
+
       expect(mockAudioContext.createBuffer).toHaveBeenCalledWith(1, 2, 48000);
       expect(mockBuffer.copyToChannel).toHaveBeenCalledWith(samples, 0);
     });
@@ -131,7 +135,7 @@ describe("webAudioUtils", () => {
     it("should create stereo buffer", () => {
       const samples = new Float32Array([0.1, 0.2, 0.3, 0.4]); // L, R, L, R
       createAudioBufferFromSamples(mockAudioContext, samples, 48000, 2);
-      
+
       expect(mockAudioContext.createBuffer).toHaveBeenCalledWith(2, 2, 48000);
       expect(mockBuffer.copyToChannel).toHaveBeenCalledTimes(2);
       // Verify splitting happens (mock implementation doesn't verify content, but we verify calls)
@@ -153,9 +157,9 @@ describe("webAudioUtils", () => {
     it("should mix and normalize multiple buffers", () => {
       const b1 = new Float32Array([0.2, 0.4]);
       const b2 = new Float32Array([0.4, 0.6]);
-      
+
       const result = mixAudioBuffers([b1, b2]);
-      
+
       // Sum: [0.6, 1.0]
       // Scale: 1/2 = 0.5
       // Result: [0.3, 0.5]
@@ -166,16 +170,16 @@ describe("webAudioUtils", () => {
     it("should handle buffers of different lengths", () => {
       const b1 = new Float32Array([0.2, 0.4, 0.6]);
       const b2 = new Float32Array([0.4, 0.6]);
-      
+
       const result = mixAudioBuffers([b1, b2]);
-      
+
       // Max length is 3
       // b1: 0.2, 0.4, 0.6
       // b2: 0.4, 0.6, 0.0 (implicitly)
       // Sum: 0.6, 1.0, 0.6
       // Scale: 0.5
       // Result: 0.3, 0.5, 0.3
-      
+
       expect(result.length).toBe(3);
       expect(result[0]).toBeCloseTo(0.3);
       expect(result[1]).toBeCloseTo(0.5);
