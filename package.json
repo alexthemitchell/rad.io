@@ -22,7 +22,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit",
-    "validate": "npm run lint && npm run format:check && npm run type-check && npm run build",
+    "validate": "npm run type-check && npm run lint && npm run format:check && npm run build",
     "clean": "rimraf dist node_modules build",
     "asbuild:debug": "asc assembly/index.ts --target debug",
     "asbuild:release": "asc assembly/index.ts --target release",

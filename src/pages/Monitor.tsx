@@ -21,6 +21,7 @@ import {
   useFrequencyScanner,
   type ActiveSignal,
 } from "../hooks/useFrequencyScanner";
+import { useMultiVfoProcessor } from "../hooks/useMultiVfoProcessor";
 import { useReception } from "../hooks/useReception";
 import {
   useSignalDetection,
@@ -38,6 +39,7 @@ import {
   useDiagnostics,
   useSignalLevel,
   useVfo,
+  useStore,
 } from "../store";
 // import { shouldUseMockSDR } from "../utils/e2e";
 import { updateBulkCachedRDSData } from "../store/rdsCache";
@@ -172,6 +174,14 @@ const Monitor: React.FC = () => {
     typeof createMultiStationFMProcessor
   > | null>(null);
   const msIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Multi-VFO processor integration
+  const vfoProcessor = useMultiVfoProcessor({
+    centerFrequencyHz: frequency,
+    sampleRate,
+    enableAudio: true,
+  });
+
   const {
     magnitudes: fftData,
     start: startDsp,
@@ -189,6 +199,18 @@ const Monitor: React.FC = () => {
       const maxSamples = 300_000;
       if (buf.length > maxSamples) {
         buf.splice(0, buf.length - maxSamples);
+      }
+
+      // Route samples to multi-VFO processor
+      // Check for active VFOs directly from store to avoid stale closures
+      const vfos = useStore.getState().getAllVfos();
+      const hasActiveVfos = vfos.some((v) => v.audioEnabled);
+
+      if (hasActiveVfos) {
+        // processSamples handles initialization checks internally via refs
+        vfoProcessor.processSamples(samples).catch((error: unknown) => {
+          console.error("VFO processing error:", error);
+        });
       }
     },
   });
