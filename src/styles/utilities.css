@@ -1,7 +1,0 @@
-/* Utilities */
-
-/* Frequency Display: prefer mono and tabular numerals for stable readouts */
-.frequency-value {
-  font-family: var(--rad-font-mono);
-  font-variant-numeric: tabular-nums slashed-zero;
-}

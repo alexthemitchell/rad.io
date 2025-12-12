@@ -1,9 +1,0 @@
-node_modules
-dist
-build
-coverage
-*.min.js
-*.map
-.cache
-.DS_Store
-package-lock.json
