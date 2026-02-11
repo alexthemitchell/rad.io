@@ -313,8 +313,8 @@ These are gates, not features: they define what good means and prevent late-stag
 ### 4.2 Rendering
 
 - [ ] **Canvas/WebGL Context**: robust setup and resizing.
-- [ ] **Spectrum View**: FFT rendering.
-- [ ] **Waterfall View**: scrolling waterfall with colormaps.
+- [x] **Spectrum View**: FFT rendering.
+- [x] **Waterfall View**: scrolling waterfall with colormaps.
 - [ ] **Verification**: sustain 60 FPS on synthetic input.
 
 ### 4.3 Analyzer Controls (MVP)
