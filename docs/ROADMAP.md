@@ -250,7 +250,7 @@ These are gates, not features: they define what good means and prevent late-stag
 ### 3.2 Processing Pipeline
 
 - [x] **Pipeline Architecture**: define the chain: `Source → DDC/Filter → Demod → Sink`.
-- [ ] **NCO / Mixer (DDC)**: frequency shift for tuning and channel extraction.
+- [x] **NCO / Mixer (DDC)**: frequency shift for tuning and channel extraction.
 - [ ] **Multi-VFO Channel Extraction Layer**: phase-coherent per-VFO extraction (1–2 VFOs) and PFB channelizer mode (3+ VFOs).
 - [ ] **Channelizer/Decimator Correctness Contract**: define and test phase coherence + group delay guarantees (esp. PFB/multi-VFO) with regression fixtures.
 - [ ] **Frequency / Clock Error Correction (PPM)**: apply PPM correction in the DSP path (not just UI), with stable behavior across retunes.
