@@ -4,9 +4,10 @@ interface WaterfallCanvasProps {
   data: Float32Array;
   minDb?: number;
   maxDb?: number;
+  zoom?: number;
 }
 
-export function WaterfallCanvas({ data, minDb = -100, maxDb = 0 }: WaterfallCanvasProps) {
+export function WaterfallCanvas({ data, minDb = -100, maxDb = 0, zoom = 1 }: WaterfallCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tempCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -76,11 +77,17 @@ export function WaterfallCanvas({ data, minDb = -100, maxDb = 0 }: WaterfallCanv
     const buf32 = new Uint32Array(imgData.data.buffer);
     const cmap = colormap.current!;
 
+    // Zoom Logic
+    const viewLen = Math.floor(data.length / zoom);
+    const startIdx = Math.floor((data.length - viewLen) / 2);
+
     // Resample FFT (Length -> Width)
     // Nearest neighbor for speed for now
     for (let x = 0; x < width; x++) {
-        // Map x (0..width) to fft index (0..data.length)
-        const fftIdx = Math.floor(x * data.length / width);
+        // Map x (0..width) to fft index (start..end)
+        const relIdx = Math.floor(x * viewLen / width);
+        const fftIdx = startIdx + relIdx;
+        
         let valDb = data[fftIdx];
         
         // Clamp and Scale to 0..255
@@ -95,7 +102,7 @@ export function WaterfallCanvas({ data, minDb = -100, maxDb = 0 }: WaterfallCanv
 
     ctx.putImageData(imgData, 0, 0);
 
-  }, [data]); // Still dependent on data prop for update loop (Slice A style)
+  }, [data, zoom]); // Still dependent on data prop for update loop (Slice A style)
 
   return (
     <canvas 

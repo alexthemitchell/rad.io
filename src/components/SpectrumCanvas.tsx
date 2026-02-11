@@ -2,9 +2,10 @@ import { useEffect, useRef } from 'react';
 
 interface SpectrumCanvasProps {
   data: Float32Array;
+  zoom?: number;
 }
 
-export function SpectrumCanvas({ data }: SpectrumCanvasProps) {
+export function SpectrumCanvas({ data, zoom = 1 }: SpectrumCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   useEffect(() => {
@@ -23,23 +24,31 @@ export function SpectrumCanvas({ data }: SpectrumCanvasProps) {
     ctx.strokeStyle = '#0f0';
     ctx.lineWidth = 1;
 
-    const sliceWidth = canvas.width * 1.0 / data.length;
+    // Zoom Logic: Show center portion
+    // Length to show = Total / Zoom
+    // Start Index = (Total - Length) / 2
+    
+    const viewLen = Math.floor(data.length / zoom);
+    const startIdx = Math.floor((data.length - viewLen) / 2);
+    const endIdx = startIdx + viewLen;
+
+    const sliceWidth = canvas.width * 1.0 / viewLen;
     let x = 0;
 
-    for (let i = 0; i < data.length; i++) {
+    for (let i = startIdx; i < endIdx; i++) {
       // Data is usually -100 to 0 dBFS (roughly). 
       // Map -100 -> height, 0 -> 0
       const v = (data[i] + 100) / 100; // 0..1
       const y = canvas.height - (v * canvas.height);
 
-      if (i === 0) ctx.moveTo(x, y);
+      if (i === startIdx) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
 
       x += sliceWidth;
     }
 
     ctx.stroke();
-  }, [data]); // In real app, we'd use a ref for data to avoid re-renders, but this is Slice A.
+  }, [data, zoom]); // In real app, we'd use a ref for data to avoid re-renders, but this is Slice A.
 
   return (
     <canvas 

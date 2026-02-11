@@ -339,7 +339,7 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [ ] **Tuning Interaction**: click/drag-to-tune.
 - [ ] **Retune Assist**: center-on-peak, snap-to-raster, pilot/carrier “lock retune”, and “return to last locked” for drift-prone sessions.
-- [ ] **Zoom & Pan**: smooth frequency navigation.
+- [x] **Zoom & Pan**: smooth frequency navigation.
 - [ ] **Markers/Cursors (Early)**: basic markers to support workflows and debugging.
 - [ ] **Marker↔VFO Binding Controls**: explicit “bind this marker to active VFO” and “follow VFO” modes with clear affordances.
 - [ ] **Delta Markers + Peak Readout**: delta frequency/power readouts and a simple peak list for “find the signal” workflows.

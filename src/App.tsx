@@ -16,6 +16,7 @@ export default function App() {
   const [vgaGain, setVgaGain] = useState<number>(20);
   const [demodMode, setDemodMode] = useState<'WFM' | 'AM'>('WFM');
   const [fineFreq, setFineFreq] = useState<number>(0);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
   
   const workerRef = useRef<Worker | null>(null);
   const deviceRef = useRef<ISDRDevice | null>(null);
@@ -118,9 +119,13 @@ export default function App() {
       <h1 className="text-2xl font-bold">rad.io (Vertical Slice B)</h1>
       
       <div className="w-full max-w-4xl grid grid-cols-2 gap-4">
+        <div className="bg-black p-2 rounded col-span-2">
+            <h2 className="text-xs text-gray-400 mb-1">RF WATERFALL</h2>
+            <WaterfallCanvas data={fftData} minDb={-100} maxDb={-30} zoom={zoomLevel} />
+        </div>
         <div className="bg-black p-2 rounded">
             <h2 className="text-xs text-gray-400 mb-1">RF SPECTRUM (FFT)</h2>
-            <SpectrumCanvas data={fftData} />
+            <SpectrumCanvas data={fftData} zoom={zoomLevel} />
         </div>
         <div className="bg-black p-2 rounded">
             <h2 className="text-xs text-gray-400 mb-1">DEMOD AUDIO (SCOPE)</h2>
@@ -151,6 +156,16 @@ export default function App() {
         >
             {isRunning ? 'Stop' : 'Start'}
         </button>
+
+        <div className="flex flex-col gap-1 items-center">
+            <label className="text-xs text-gray-400 font-mono">ZOOM ({zoomLevel}x)</label>
+            <input 
+                type="range" min="1" max="8" step="1"
+                value={zoomLevel}
+                onChange={(e) => setZoomLevel(parseInt(e.target.value))}
+                className="w-32"
+            />
+        </div>
 
         {/* Frequency Control */}
         <div className="flex flex-col gap-1 items-center">
