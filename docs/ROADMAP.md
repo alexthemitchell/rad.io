@@ -337,7 +337,7 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 4.4 Interaction
 
-- [ ] **Tuning Interaction**: click/drag-to-tune.
+- [x] **Tuning Interaction**: click/drag-to-tune (Click-to-tune implemented).
 - [ ] **Retune Assist**: center-on-peak, snap-to-raster, pilot/carrier “lock retune”, and “return to last locked” for drift-prone sessions.
 - [x] **Zoom & Pan**: smooth frequency navigation.
 - [ ] **Markers/Cursors (Early)**: basic markers to support workflows and debugging.

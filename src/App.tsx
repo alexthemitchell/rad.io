@@ -114,6 +114,28 @@ export default function App() {
     }
   };
 
+  const handleSpectrumClick = (binIndex: number) => {
+    // FFT Size 2048
+    // Bin 0 = -Fs/2 (-1MHz)
+    // Bin 1024 = 0 (DC)
+    // Bin 2047 = +Fs/2 (+1MHz)
+    // Fs = 2_000_000
+    
+    // Offset from DC in bins
+    const offsetBins = binIndex - 1024;
+    // Offset in Hz
+    // Bin Width = 2000000 / 2048 = 976.5625 Hz
+    const offsetHz = offsetBins * (2_000_000 / 2048);
+    
+    // Update Fine Tune
+    // Note: NCO Mix uses Positive frequency to shift DOWN.
+    // If signal is at +200kHz, we want to shift it DOWN by 200kHz to reach DC.
+    // So NCO Frequency should be +200kHz.
+    // So logic is direct: fineFreq = offsetHz.
+    
+    setFineFreq(Math.round(offsetHz));
+  };
+
   return (
     <div className="p-4 bg-gray-900 text-white h-screen flex flex-col items-center gap-4">
       <h1 className="text-2xl font-bold">rad.io (Vertical Slice B)</h1>
@@ -125,7 +147,7 @@ export default function App() {
         </div>
         <div className="bg-black p-2 rounded">
             <h2 className="text-xs text-gray-400 mb-1">RF SPECTRUM (FFT)</h2>
-            <SpectrumCanvas data={fftData} zoom={zoomLevel} />
+            <SpectrumCanvas data={fftData} zoom={zoomLevel} onPointClick={handleSpectrumClick} />
         </div>
         <div className="bg-black p-2 rounded">
             <h2 className="text-xs text-gray-400 mb-1">DEMOD AUDIO (SCOPE)</h2>

@@ -3,9 +3,10 @@ import { useEffect, useRef } from 'react';
 interface SpectrumCanvasProps {
   data: Float32Array;
   zoom?: number;
+  onPointClick?: (binIndex: number) => void;
 }
 
-export function SpectrumCanvas({ data, zoom = 1 }: SpectrumCanvasProps) {
+export function SpectrumCanvas({ data, zoom = 1, onPointClick }: SpectrumCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   useEffect(() => {
@@ -25,9 +26,6 @@ export function SpectrumCanvas({ data, zoom = 1 }: SpectrumCanvasProps) {
     ctx.lineWidth = 1;
 
     // Zoom Logic: Show center portion
-    // Length to show = Total / Zoom
-    // Start Index = (Total - Length) / 2
-    
     const viewLen = Math.floor(data.length / zoom);
     const startIdx = Math.floor((data.length - viewLen) / 2);
     const endIdx = startIdx + viewLen;
@@ -48,14 +46,37 @@ export function SpectrumCanvas({ data, zoom = 1 }: SpectrumCanvasProps) {
     }
 
     ctx.stroke();
-  }, [data, zoom]); // In real app, we'd use a ref for data to avoid re-renders, but this is Slice A.
+  }, [data, zoom]); 
+
+  const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!onPointClick) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      
+      // Reverse Map X to FFT Bin
+      const viewLen = Math.floor(data.length / zoom);
+      const startIdx = Math.floor((data.length - viewLen) / 2);
+      
+      // fraction of width
+      const frac = x / canvas.width; 
+      // relative index
+      const relIdx = Math.floor(frac * viewLen);
+      // absolute index
+      const absIdx = startIdx + relIdx;
+
+      onPointClick(absIdx);
+  };
 
   return (
     <canvas 
       ref={canvasRef} 
       width={800} 
       height={200} 
-      className="border border-gray-700 bg-black w-full"
+      className="border border-gray-700 bg-black w-full cursor-crosshair"
+      onClick={handleClick}
     />
   );
 }

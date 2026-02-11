@@ -2,9 +2,15 @@ import { WfmDemodulator } from './WfmDemodulator';
 import { AmDemodulator } from './AmDemodulator';
 import { Downsampler } from './Downsampler';
 import { ComplexOscillator } from './ComplexOscillator';
+import { SimpleFFT } from './fft';
 
-let fftSize = 2048;
-let fftWindow = new Float32Array(fftSize);
+const fftSize = 2048;
+const fft = new SimpleFFT(fftSize);
+
+// Buffers for FFT
+const fftInput = new Float32Array(fftSize * 2); // Interleaved IQ
+const fftOutput = new Float32Array(fftSize * 2); // Interleaved Complex
+const fftMagnitude = new Float32Array(fftSize);  // dB Magnitude
 let fftIndex = 0;
 
 // DSP Components
@@ -34,41 +40,24 @@ function processUSBData(buffer: ArrayBuffer) {
     const iqData = new Int8Array(buffer);
     
     // 1. DDC / NCO (Frequency Shift)
-    // We need float buffers for NCO output? 
-    // Or we can modify NCO to take Int8 and output Float32? 
-    // Current NCO takes Int8 and outputs Float32.
     const shiftedIQ = new Float32Array(iqData.length);
     nco.mix(iqData, shiftedIQ);
 
-    // 2. FFT Processing (Visualize Input)
-    // We visualize the shifted signal so the user sees what they are tuned to centered?
-    // Or do we visualize the raw wideband? 
-    // Usually Waterfall = Wideband (Raw).
-    // Scope/Demod = Narrowband (Shifted).
-    processFFT(iqData); // Visualize Raw Wideband
+    // 2. FFT Processing
+    // We want to visualize the WIDEBAND signal (Unshifted) usually to see what's around.
+    // But if we want to zoom into the DDC'd signal, we'd visualize shiftedIQ.
+    // Standard SDR UX:
+    // - Wideband Spectrum (Overview) -> Uses Raw Input
+    // - Narrowband Scope (Demod) -> Uses Shifted/Decimated Input
+    //
+    // For now, let's visualize the RAW input (iqData) so "Fine Tune" moves the "Filter" logic, not the whole world.
+    // The "Fine Tune" slider in UI implies moving the reception window.
+    processFFT(iqData); 
 
-    // 3. Demodulate
-    // Demodulators currently expect Int8. We need to update them to accept Float32 
-    // or convert Float32 back to Int8 (bad).
-    // Let's update Demodulators to take Float32.
-    // Wait, Demodulators take Int8 currently.
-    // I need to update WfmDemodulator and AmDemodulator to accept Float32 input.
-    
-    // TEMPORARY HACK: Cast back to Int8 for now to avoid refactoring everything in one step.
-    // Actually, NCO output is Float32 (-128 to 127 scale).
-    // WFM/AM expect Int8 and divide by 128.
-    // So if we pass Float32 and divide by 128, it works.
-    // But Typescript will complain.
-    
-    // Let's refactor Demodulators to be generic or take Float32.
-    // This is safer.
-    
+    // 3. Demodulate (Shifted Signal)
     const rawAudio = new Float32Array(iqData.length / 2);
     
     if (mode === 'WFM') {
-        // WfmDemodulator needs update
-        // Passing shiftedIQ (Float32) instead of Int8
-        // We'll need to cast or update the signature.
         wfm.process(shiftedIQ, rawAudio);
     } else {
         am.process(shiftedIQ, rawAudio);
@@ -85,7 +74,7 @@ function processUSBData(buffer: ArrayBuffer) {
         }, [audioOut.buffer]);
     }
 
-    // Scope
+    // Scope (Audio Time Domain)
     if (Math.random() < 0.1) {
         self.postMessage({ 
             type: 'SCOPE_DATA', 
@@ -95,26 +84,58 @@ function processUSBData(buffer: ArrayBuffer) {
 }
 
 function processFFT(iqData: Int8Array) {
-    // Basic block-based FFT accumulation (Naive)
-    // Just take the first chunk that fits
+    // Fill FFT Buffer
+    // IQ Data is Int8 Interleaved
     for (let i = 0; i < iqData.length; i += 2) {
         if (fftIndex < fftSize) {
-            // Complex to Magnitude
-            const I = iqData[i];
-            const Q = iqData[i+1];
-            // Simple magnitude approximation or just I for now? 
-            // Real FFT expects real input. We want complex FFT really.
-            // For now, let's just feed Magnitude into the visualizer to keep it simple.
-            // Or better: Feed Complex samples if we had a complex FFT lib.
-            // Reverting to simple "Magnitude" array for the naive canvas
-            
-            fftWindow[fftIndex++] = Math.sqrt(I*I + Q*Q);
+            // Normalize Int8 to Float (-1..1)
+            // Window function (Blackman-Harris or Hamming) would be good here, 
+            // but Rectangular is fine for MVP.
+            fftInput[fftIndex * 2] = iqData[i] / 128.0;     // I
+            fftInput[fftIndex * 2 + 1] = iqData[i+1] / 128.0; // Q
+            fftIndex++;
         } else {
-            // Send buffer
-            self.postMessage({ type: 'FFT_DATA', data: fftWindow });
+            // Buffer Full -> Compute FFT
+            fft.transform(fftOutput, fftInput);
+            
+            // Compute Magnitude (dB) and FFT Shift
+            // Standard FFT output is 0..Fs (or 0..Fs/2, -Fs/2..0)
+            // We want DC in the middle.
+            // fftOutput is [Re0, Im0, Re1, Im1 ...]
+            
+            // FFT Shift: Swap halves
+            // 0..N/2 -> N/2..N
+            // N/2..N -> 0..N/2
+            
+            for (let k = 0; k < fftSize; k++) {
+                // Logical Index after shift
+                // k=0 (DC) -> Center (N/2)
+                // k=N/2 (Nyquist) -> Left (0)?? 
+                // Wait.
+                // Standard FFT: 0 (DC), 1, ..., N/2-1, N/2 (Nyquist), ..., N-1 (-1)
+                // Shifted: N/2 (-Nyquist), ..., N-1 (-1), 0 (DC), 1, ..., N/2-1
+                
+                // Source Index
+                // If we want Dest[0] to be -Fs/2
+                // Dest[0] comes from Source[N/2]
+                
+                const srcIdx = (k + fftSize / 2) % fftSize;
+                
+                const re = fftOutput[srcIdx * 2];
+                const im = fftOutput[srcIdx * 2 + 1];
+                
+                // Mag = sqrt(re^2 + im^2)
+                // dB = 10 * log10(re^2 + im^2)
+                // 20 * log10(sqrt(...))
+                
+                const magSq = re*re + im*im;
+                let db = 10 * Math.log10(magSq + 1e-20); // Clamp -200dB
+                
+                fftMagnitude[k] = db;
+            }
+
+            self.postMessage({ type: 'FFT_DATA', data: fftMagnitude });
             fftIndex = 0;
-            // Clear or Overwrite?
-            // window.fill(0); // Optional
         }
     }
 }
