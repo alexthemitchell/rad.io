@@ -285,7 +285,7 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **WFM Demodulator**: mono + de-emphasis (50/75 µs).
 - [ ] **WFM Stereo + RDS (Early)**: pilot/stereo decode + baseline RDS/RBDS decode and UI.
-- [ ] **AM Demodulator**: broadcast/airband baseline.
+- [x] **AM Demodulator**: broadcast/airband baseline.
 - [ ] **AM Sync (SAM)**: synchronous AM demod for selective fading and improved intelligibility (Core Pro Feature).
 - [ ] **NFM Demodulator**: voice channels baseline.
 - [ ] **NFM De-Emphasis + Audio Shaping Presets (Deterministic)**: optional time-constant presets + intelligibility EQ defaults (no “magic NR”), with clear band/mode guidance.
