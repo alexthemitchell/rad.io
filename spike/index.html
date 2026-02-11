@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h1>Architecture Spike</h1>
+    <button id="start">Start</button>
+    <button id="stop">Stop</button>
+    <pre id="logs"></pre>
+    <script>
+        const btnStart = document.getElementById('start');
+        const btnStop = document.getElementById('stop');
+        const logs = document.getElementById('logs');
+        let audioCtx, worker;
+
+        function log(msg) { logs.textContent += msg + '\n'; console.log(msg); }
+
+        btnStart.onclick = async () => {
+            log('Starting...');
+            audioCtx = new AudioContext({ sampleRate: 48000, latencyHint: 'interactive' });
+            
+            await audioCtx.audioWorklet.addModule('processor.js');
+            const node = new AudioWorkletNode(audioCtx, 'ring-buffer-processor');
+            node.connect(audioCtx.destination);
+
+            // 1 second buffer
+            const sab = new SharedArrayBuffer(48000 * 4); 
+            worker = new Worker('worker.js');
+            worker.postMessage({ type: 'init', sab });
+
+            node.port.onmessage = (e) => {
+                if(e.data.type === 'underrun') log('UNDERRUN!');
+                if(e.data.type === 'latency') log(`Latency: ${e.data.val.toFixed(2)}ms`);
+            };
+
+            worker.postMessage({ type: 'start' });
+            node.port.postMessage({ type: 'start', sab });
+        };
+
+        btnStop.onclick = () => {
+            log('Stopping...');
+            if(worker) worker.terminate();
+            if(audioCtx) audioCtx.close();
+        };
+    </script>
+</body>
+</html>
