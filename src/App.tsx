@@ -14,6 +14,8 @@ export default function App() {
   const [frequency, setFrequency] = useState<number>(90_000_000);
   const [lnaGain, setLnaGain] = useState<number>(32);
   const [vgaGain, setVgaGain] = useState<number>(20);
+  const [demodMode, setDemodMode] = useState<'WFM' | 'AM'>('WFM');
+  const [fineFreq, setFineFreq] = useState<number>(0);
   
   const workerRef = useRef<Worker | null>(null);
   const deviceRef = useRef<ISDRDevice | null>(null);
@@ -45,6 +47,16 @@ export default function App() {
         deviceRef.current.setFrequency(frequency);
     }
   }, [frequency, isRunning]);
+
+  // Update Mode
+  useEffect(() => {
+    workerRef.current?.postMessage({ command: 'SET_MODE', value: demodMode });
+  }, [demodMode]);
+
+  // Update Fine Freq
+  useEffect(() => {
+    workerRef.current?.postMessage({ command: 'SET_FINE_FREQ', value: fineFreq });
+  }, [fineFreq]);
 
   useEffect(() => {
     if (deviceRef.current && isRunning) {
@@ -81,6 +93,8 @@ export default function App() {
     
             // Start Worker
             workerRef.current?.postMessage({ command: 'START_USB_MODE' });
+            workerRef.current?.postMessage({ command: 'SET_MODE', value: demodMode });
+            workerRef.current?.postMessage({ command: 'SET_FINE_FREQ', value: fineFreq });
     
             // Start Stream
             dev.start((dataView) => {
@@ -139,6 +153,28 @@ export default function App() {
         </button>
 
         {/* Frequency Control */}
+        <div className="flex flex-col gap-1 items-center">
+            <label className="text-xs text-gray-400 font-mono">FINE TUNE ({fineFreq} Hz)</label>
+            <input 
+                type="range" min="-100000" max="100000" step="1000"
+                value={fineFreq}
+                onChange={(e) => setFineFreq(parseInt(e.target.value))}
+                className="w-32"
+            />
+        </div>
+
+        <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-400 font-mono">MODE</label>
+            <select 
+                value={demodMode}
+                onChange={(e) => setDemodMode(e.target.value as 'WFM' | 'AM')}
+                className="bg-gray-700 text-white px-2 py-1 rounded font-mono w-24 text-center"
+            >
+                <option value="WFM">WFM</option>
+                <option value="AM">AM</option>
+            </select>
+        </div>
+
         <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-400 font-mono">FREQUENCY (MHz)</label>
             <input 

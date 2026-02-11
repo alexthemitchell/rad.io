@@ -10,7 +10,7 @@ export class AmDemodulator {
     private dcBlockerState = 0;
     private readonly alpha = 0.999; // DC Blocker constant
 
-    process(input: Int8Array, output: Float32Array) {
+    process(input: Int8Array | Float32Array, output: Float32Array) {
         // Input: I, Q, I, Q...
         // Output: Audio (Mono)
 

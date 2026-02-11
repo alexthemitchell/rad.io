@@ -7,14 +7,19 @@ export class WfmDemodulator {
      * Using simple Polar Discriminator: angle(new) - angle(old)
      * Output is roughly proportional to frequency deviation.
      */
-    process(input: Int8Array, output: Float32Array) {
-        // Input: I, Q, I, Q... (Interleaved 8-bit signed)
+    process(input: Int8Array | Float32Array, output: Float32Array) {
+        // Input: I, Q, I, Q... (Interleaved)
         // Output: Audio Samples (Mono)
         
         const len = input.length / 2;
         
         for (let i = 0; i < len; i++) {
             // Convert to Float (-1.0 to 1.0)
+            // If Int8, divide by 128. If Float32 (from NCO), it's already scaled ~100?
+            // NCO outputs I*cos + Q*sin. Input I/Q are -128..127.
+            // So NCO output is -180..180 approx.
+            // We should normalize.
+            
             const currI = input[2*i] / 128.0;
             const currQ = input[2*i + 1] / 128.0;
 
