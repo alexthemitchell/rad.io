@@ -196,8 +196,8 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 2.1 Mock Source
 
-- [ ] **`MockDevice` Implementation**: synthetic IQ (noise + tones + modulated test signals).
-- [ ] **Stream Control**: start/stop streaming with configurable sample rates.
+- [x] **`MockDevice` Implementation**: synthetic IQ (noise + tones + modulated test signals).
+- [x] **Stream Control**: start/stop streaming with configurable sample rates.
 - [ ] **Verification**: unit tests that validate known signals are produced.
 - [ ] **IQ Integrity Self-Test**: automated checks for IQ ordering/sign/scaling (and swapped/inverted quadrature detection) using known synthetic tones and fixtures.
 
@@ -243,13 +243,13 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 3.1 Worker Infrastructure
 
-- [ ] **Worker Setup**: main DSP worker + message passing.
-- [ ] **SharedArrayBuffer**: zero-copy path where available.
+- [x] **Worker Setup**: main DSP worker + message passing.
+- [x] **SharedArrayBuffer**: zero-copy path where available.
 - [ ] **Fallback Mode**: `MessageChannel` fallback.
 
 ### 3.2 Processing Pipeline
 
-- [ ] **Pipeline Architecture**: define the chain: `Source → DDC/Filter → Demod → Sink`.
+- [x] **Pipeline Architecture**: define the chain: `Source → DDC/Filter → Demod → Sink`.
 - [ ] **NCO / Mixer (DDC)**: frequency shift for tuning and channel extraction.
 - [ ] **Multi-VFO Channel Extraction Layer**: phase-coherent per-VFO extraction (1–2 VFOs) and PFB channelizer mode (3+ VFOs).
 - [ ] **Channelizer/Decimator Correctness Contract**: define and test phase coherence + group delay guarantees (esp. PFB/multi-VFO) with regression fixtures.
@@ -260,7 +260,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **IQ Correction**: DC removal + IQ imbalance correction.
 - [ ] **RF Impurity Mitigation UX Hooks**: expose measurable controls (LO offset/IF shift, DC notch width/strength, IQ calibration) with before/after metrics and safe defaults.
 - [ ] **Minimal Interference Mitigation Presets (Early)**: deterministic “DC spike reduction”, “heterodyne notch”, and “hum notch” presets with measurable before/after indicators.
-- [ ] **Decimation**: efficient downsampling filters.
+- [x] **Decimation**: efficient downsampling filters.
 - [ ] **Resampling**: polyphase resampler (IQ + audio rate).
 - [ ] **Asynchronous SRC / Audio PLL**: lock audio output to device/sample time with explicit stability/latency tradeoffs and telemetry hooks.
 - [ ] **Anti-Alias Guarantees**: validate decimation/resampling constraints (bandwidth, guard bands, transitions) so UI bandwidth controls cannot create aliasing.
@@ -283,7 +283,7 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 3.3 “Must-Have” Demodulators (Product Loop)
 
-- [ ] **WFM Demodulator**: mono + de-emphasis (50/75 µs).
+- [x] **WFM Demodulator**: mono + de-emphasis (50/75 µs).
 - [ ] **WFM Stereo + RDS (Early)**: pilot/stereo decode + baseline RDS/RBDS decode and UI.
 - [ ] **AM Demodulator**: broadcast/airband baseline.
 - [ ] **AM Sync (SAM)**: synchronous AM demod for selective fading and improved intelligibility (Core Pro Feature).
