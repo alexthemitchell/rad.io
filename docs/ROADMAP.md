@@ -198,7 +198,7 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **`MockDevice` Implementation**: synthetic IQ (noise + tones + modulated test signals).
 - [x] **Stream Control**: start/stop streaming with configurable sample rates.
-- [ ] **Verification**: unit tests that validate known signals are produced.
+- [x] **Verification**: unit tests that validate known signals are produced.
 - [ ] **IQ Integrity Self-Test**: automated checks for IQ ordering/sign/scaling (and swapped/inverted quadrature detection) using known synthetic tones and fixtures.
 
 ### 2.2 File Source + Golden Fixtures
