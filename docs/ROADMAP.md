@@ -4,32 +4,32 @@
 
 **Goal:** Ensure each engineering milestone maps to a user-visible win and measurable acceptance criteria.
 
-### 0.A Success Gates (Must-Not-Churn)
+### 0.A Success Gates (Must Not Churn)
 
-These are “gates”, not features: they define what “good” means and prevent late-stage rewrites.
+These are gates, not features: they define what good means and prevent late-stage rewrites.
 
-- [ ] **Define MVP User Journeys**: connect source → see spectrum/waterfall → tune → listen → record → replay.
-- [ ] **Define Performance Budgets**: target 60 FPS visuals, predictable latency, CPU headroom for multi-VFO.
-- [ ] **Define Reliability Budgets**: tolerated drop rate, overrun behavior, recovery expectations.
-- [ ] **Define Test Strategy**: what is covered by unit tests vs simulated e2e vs real-device e2e.
-- [ ] **Define Support Matrix**: browsers/OS targets (e.g., Chrome/Edge on Windows first) + WebUSB/WebAudio constraints.
-- [ ] **Define Performance Regression Gates**: repeatable benchmarks for FPS, end-to-end latency, dropped-sample rate, and USB throughput/jitter.
-- [ ] **Define Time/Frequency Accuracy Budgets**: target PPM/drift bounds, “RF-accurate vs audio-stable” modes, and what is guaranteed for recordings/replay.
-- [ ] **Architecture Validation Spike**: prove the "WebUSB → Worker → WebAudio" critical path meets latency budgets on target hardware.
-- [ ] **CI/CD Pipeline & Quality Gates**: automate linting, testing, and performance regression checks on every commit.
-- [ ] **Data Privacy & Security Policy**: define handling of local recordings, settings, and device permissions.
-- [ ] **Operator Safety & Compliance Defaults**: define safe audio defaults, recording/monitoring UX guardrails, and provenance metadata expectations.
-- [ ] **Documentation Strategy**: establish processes for keeping architecture and requirements documentation in sync with code.
+- [x] **Define MVP User Journeys**: connect source → see spectrum/waterfall → tune → listen → record → replay.
+- [x] **Define Performance Budgets**: target 60 FPS visuals, predictable latency, CPU headroom for multi-VFO.
+- [x] **Define Reliability Budgets**: tolerated drop rate, overrun behavior, recovery expectations.
+- [x] **Define Test Strategy**: what is covered by unit tests vs simulated E2E vs real-device E2E.
+- [x] **Define Support Matrix**: browsers/OS targets (e.g., Chrome/Edge on Windows first) + WebUSB/WebAudio constraints.
+- [x] **Define Performance Regression Gates**: repeatable benchmarks for FPS, end-to-end latency, dropped-sample rate, and USB throughput/jitter.
+- [x] **Define Time/Frequency Accuracy Budgets**: target PPM/drift bounds, “RF-accurate vs audio-stable” modes, and what is guaranteed for recordings/replay.
+- [x] **Architecture Validation Spike**: prove the `WebUSB → Worker → WebAudio` critical path meets latency budgets on target hardware.
+- [x] **CI/CD Pipeline & Quality Gates**: automate linting, testing, and performance regression checks on every commit.
+- [x] **Data Privacy & Security Policy**: define handling of local recordings, settings, and device permissions.
+- [x] **Operator Safety & Compliance Defaults**: define safe audio defaults, recording/monitoring UX guardrails, and provenance metadata expectations.
+- [x] **Documentation Strategy**: establish processes for keeping architecture and requirements documentation in sync with code.
 
-### 0.0 Product Discovery (De-Risk Churn)
+### 0.0 Product Discovery (De-risk Churn)
 
-- [ ] **Define Primary Personas + Jobs-To-Be-Done**: “listener”, “RF explorer”, “diagnostics/support”, “measurement-lite”.
-- [ ] **Competitive/Reference App Review**: identify 5–10 reference receivers/analyzers and extract UX patterns worth copying/avoiding.
-- [ ] **Problem Statement + Success Metrics**: crisp 1-page statement + measurable success metrics (activation, retention proxy, crash-free sessions).
-- [ ] **MVP Demo Script (10 minutes)**: a repeatable, end-to-end demo that becomes the definition of “working”.
-- [ ] **Definition of Ready (Roadmap Items)**: minimum info required before implementing an item (acceptance, UX, telemetry, risks).
+- [x] **Define Primary Personas + Jobs To Be Done**: “listener”, “RF explorer”, “diagnostics/support”, “measurement-lite”.
+- [x] **Competitive/Reference App Review**: identify 5–10 reference receivers/analyzers and extract UX patterns worth copying/avoiding.
+- [x] **Problem Statement + Success Metrics**: a crisp one-page statement + measurable success metrics (activation, retention proxy, crash-free sessions).
+- [x] **MVP Demo Script (10 minutes)**: a repeatable, end-to-end demo that becomes the definition of “working”.
+- [x] **Definition of Ready (Roadmap Items)**: minimum info required before implementing an item (acceptance, UX, telemetry, risks).
 
-### 0.1 Scope & Success Definition (Must-Not-Churn)
+### 0.1 Scope & Success Definition (Must Not Churn)
 
 - [ ] **Define MVP Scope + Explicit Non-Goals**: lock MVP feature set, polish level, and what is deliberately excluded.
 - [ ] **Define “MVP Exit Checklist”**: a short acceptance checklist tied to user journeys + budgets (perf/reliability).
@@ -54,12 +54,12 @@ These are “gates”, not features: they define what “good” means and preve
 ### 0.4 Architecture “Irreversible Decisions” (ADRs)
 
 - [ ] **ADR: Worker Topology + Message Schema**: single vs multiple workers, schema versioning, and compatibility strategy.
-- [ ] **ADR: SharedArrayBuffer Strategy**: COOP/COEP requirements, fallback behavior, and feature degradations.
+- [ ] **ADR: `SharedArrayBuffer` Strategy**: COOP/COEP requirements, fallback behavior, and feature degradations.
 - [ ] **ADR: State & Persistence Boundaries**: what lives in Zustand vs URL vs localStorage vs IndexedDB (including migrations).
 - [ ] **ADR: Error Taxonomy + User-Facing Error UX**: typed errors, retryability, and diagnostics bundle linkage.
 - [ ] **ADR: UI Architecture + Component Strategy**: state boundaries (UI vs DSP), component library approach (custom vs headless), and theming/token strategy.
 - [ ] **ADR: Plugin/Extension Boundary (Future-Proofing)**: define extension points and constraints even if plugins ship later.
-- [ ] **ADR: Source/DSP/Audiosink Contracts**: explicit interfaces + versioning strategy (so Mock/File/WebUSB can share pipeline).
+- [ ] **ADR: Source/DSP/Audio Sink Contracts**: explicit interfaces + versioning strategy (so Mock/File/WebUSB can share the pipeline).
 - [ ] **ADR: Runtime Schema Validation**: where/how to validate messages/state (e.g., Zod at boundaries) without perf cliffs.
 
 ### 0.5 Data/Telemetry Contracts (Before Implementation)
@@ -103,20 +103,20 @@ These are “gates”, not features: they define what “good” means and preve
 
 ### 1.1 Project Configuration
 
-- [ ] **App Skeleton (Vertical Slice Host)**: choose UI framework + bundler and ship a minimal running app shell.
-- [ ] **NPM Scripts as Contract**: standardize `start`, `build`, `test`, `lint`, `type-check`, `validate`.
-- [ ] **Repo Bootstrap Parity Check**: ensure VS Code tasks, package scripts, and README instructions are aligned (no “task exists but script missing”).
-- [ ] **Strict TypeScript Config**: keep `tsconfig.json` strict and avoid `any`.
-- [ ] **Test Infrastructure**: Jest unit tests with coverage for DSP and critical UI state.
+- [x] **App Skeleton (Vertical Slice Host)**: choose UI framework + bundler and ship a minimal running app shell.
+- [x] **NPM Scripts as Contract**: standardize `start`, `build`, `test`, `lint`, `type-check`, `validate`.
+- [x] **Repo Bootstrap Parity Check**: ensure VS Code tasks, package scripts, and README instructions are aligned (no “task exists but script missing”).
+- [x] **Strict TypeScript Config**: keep `tsconfig.json` strict and avoid `any`.
+- [x] **Test Infrastructure**: Jest unit tests with coverage for DSP and critical UI state.
 - [ ] **Cross-Browser Regression Gates (WebUSB/WebAudio)**: define a minimal browser matrix (Chrome/Edge stable + one canary) and block merges on known WebUSB/WebAudio regressions.
-- [ ] **Linting & Formatting**: ESLint + Prettier as hard gates.
-- [ ] **Build System**: Webpack + AssemblyScript/WASM build pipeline.
-- [ ] **Doc & ADR Folder Structure**: create `docs/decisions/` and define ADR template + numbering.
+- [x] **Linting & Formatting**: ESLint + Prettier as hard gates.
+- [x] **Build System**: Webpack + AssemblyScript/WASM build pipeline.
+- [x] **Doc & ADR Folder Structure**: create `docs/decisions/` and define ADR template + numbering.
 
-### 1.1.1 Vertical Slice Milestones (De-Risk Integration)
+### 1.1.1 Vertical Slice Milestones (De-risk Integration)
 
-- [ ] **Vertical Slice A (No Hardware)**: MockSource → Worker → FFT/Waterfall → WFM mono audio out, measured latency and stability.
-- [ ] **Vertical Slice B (WebUSB Bring-Up)**: WebUSB device connect → sustained streaming → FFT/Waterfall, with drop counters and basic recovery.
+- [x] **Vertical Slice A (No Hardware)**: MockSource → Worker → FFT/Waterfall → WFM mono audio out, measured latency and stability.
+- [x] **Vertical Slice B (WebUSB Bring-Up)**: WebUSB device connect → sustained streaming → FFT/Waterfall, with drop counters and basic recovery.
 
 ### 1.2 Diagnostics & Supportability (Early)
 
@@ -131,17 +131,17 @@ These are “gates”, not features: they define what “good” means and preve
 - [ ] **Signal ID & Tuning Advisor (“What am I seeing?”)**: heuristic hints for likely signal class (AM/FM/narrowband/digital-ish/bursty), recommended demod + bandwidth, and warnings for common false signals (images, aliasing, DC spur, LO leakage).
 - [ ] **Diagnostics Bundle Export**: anonymized export for bug reports.
 - [ ] **Logging Discipline**: structured logs + throttling to avoid perf cliffs.
-- [ ] **WebUSB Runtime UX**: permissions, secure-context requirements, “device already in use/claimed”, and reconnect flows after reload.
+- [ ] **WebUSB Runtime UX**: permissions, secure context requirements, “device already in use/claimed”, and reconnect flows after reload.
 - [ ] **WebUSB Permission Lifecycle UX**: explicit “forget device / re-pair” flows, handle permission revocation, and recover from “device disappeared” without full refresh.
 - [ ] **WebUSB Error Normalization (Actionable)**: map browser/WebUSB exceptions (stall, disconnect, NotFoundError/NetworkError, transfer errors) into typed, retryable user-facing errors with clear remediation.
 - [ ] **Multi-Tab/Process Contention Handling**: detect when the device is claimed by another tab/app, coordinate across tabs, and surface actionable recovery steps.
-- [ ] **One-Click Support Bundle (Beyond Logs)**: export app/version, browser/OS, secure-context + COOP/COEP/SAB status, permissions state, device identity/caps, current pipeline graph/config, and a short rolling telemetry window.
+- [ ] **One-Click Support Bundle (Beyond Logs)**: export app/version, browser/OS, secure context + COOP/COEP/SAB status, permissions state, device identity/caps, current pipeline graph/config, and a short rolling telemetry window.
 
 ### 1.2.1 Browser Runtime Prerequisites (Early)
 
 - [ ] **Cross-Origin Isolation Readiness (SAB)**: make COOP/COEP requirements explicit, detect when missing, and provide a tested fallback path (no-SAB) with clearly documented perf/latency tradeoffs.
-- [ ] **Secure-Context & Permission Diagnostics**: surface “why WebUSB/SAB isn’t available” with actionable remediation (HTTPS, localhost exceptions, enterprise policies).
-- [ ] **Background Audio Reliability Strategy**: Implement PWA keep-alive strategies and persistent workers to prevent audio stuttering/throttling when the tab is backgrounded or screen is off.
+- [ ] **Secure Context & Permission Diagnostics**: surface “why WebUSB/SAB isn’t available” with actionable remediation (HTTPS, localhost exceptions, enterprise policies).
+- [ ] **Background Audio Reliability Strategy**: implement PWA keep-alive strategies and persistent workers to prevent audio stuttering/throttling when the tab is backgrounded or the screen is off.
 - [ ] **COOP/COEP Validation Test**: automated check that dev/prod responses include required headers when isolation is enabled.
 
 ### 1.2.2 WebAudio Runtime Hardening (Early)
@@ -249,7 +249,7 @@ These are “gates”, not features: they define what “good” means and preve
 
 ### 3.2 Processing Pipeline
 
-- [ ] **Pipeline Architecture**: define the chain: `Source -> DDC/Filter -> Demod -> Sink`.
+- [ ] **Pipeline Architecture**: define the chain: `Source → DDC/Filter → Demod → Sink`.
 - [ ] **NCO / Mixer (DDC)**: frequency shift for tuning and channel extraction.
 - [ ] **Multi-VFO Channel Extraction Layer**: phase-coherent per-VFO extraction (1–2 VFOs) and PFB channelizer mode (3+ VFOs).
 - [ ] **Channelizer/Decimator Correctness Contract**: define and test phase coherence + group delay guarantees (esp. PFB/multi-VFO) with regression fixtures.
@@ -521,7 +521,7 @@ These are “gates”, not features: they define what “good” means and preve
 ### 7.2 Advanced Visualization Engine
 
 - [ ] **3D Waterfall**: Time-frequency-amplitude visualization with WebGPU.
-- [ ] **Persistence / Phosphor Display**: Decaying "heat" map for transient detection.
+- [ ] **Persistence / Phosphor Display**: decaying heat map for transient detection.
 - [ ] **Eye Diagrams**: Inter-symbol interference analysis for digital modes.
 - [ ] **Constellation Persistence**: Heatmap style constellation for noisy signal analysis.
 
@@ -529,7 +529,7 @@ These are “gates”, not features: they define what “good” means and preve
 
 **Goal:** Add complex standards after the base receiver is robust.
 
-- [ ] **Trunking Controller**: Multi-VFO steering for P25/DMR control channels -> voice channels.
+- [ ] **Trunking Controller**: Multi-VFO steering for P25/DMR control channels → voice channels.
 - [ ] **ATSC 1.0 (8-VSB)**: demod + transport + playback.
 - [ ] **ATSC 3.0 (OFDM)**: demod + PLP selection.
 - [ ] **P25**: demod + framing + logging.
@@ -553,7 +553,7 @@ These are “gates”, not features: they define what “good” means and preve
 
 - [ ] **rtl_tcp**: remote RTL-SDR sources.
 - [ ] **SpyServer**: Airspy server protocol.
-- [ ] **IQ Streaming Server Mode**: Allow the browser to act as a server, streaming IQ to other clients (headless operation).
+- [ ] **IQ Streaming Server Mode**: allow the browser to act as a server, streaming IQ to other clients (headless operation).
 - [ ] **Universal Hardware Bridge**: versioned control + IQ + timestamp protocol.
 - [ ] **First-Class “No WebUSB” Mode**: secure defaults, latency/buffering controls, capabilities discovery.
 - [ ] **Minimal Local Bridge (Early Interop)**: opt-in local-only bridge for piping IQ/audio to external tools (UDP/WebSocket), with explicit pairing and diagnostics capture.
@@ -623,7 +623,7 @@ These are “gates”, not features: they define what “good” means and preve
 
 ### 9.10 Advanced Accessibility
 
-- [ ] **Waterfall Sonification**: "Pixel-to-Sound" conversion (vOICe style) to hear the spectrum layout.
+- [ ] **Waterfall Sonification**: “Pixel-to-Sound” conversion (vOICe-style) to hear the spectrum layout.
 - [ ] **Screen Reader Optimization**: ARIA live regions for metering and status updates without spamming.
 - [ ] **High Contrast / Tactile Themes**: Themes optimized for low vision and tactile displays.
 
