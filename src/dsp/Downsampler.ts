@@ -10,9 +10,12 @@ export class Downsampler {
     private readonly factor = 40; 
 
     process(input: Float32Array): Float32Array {
-        // Output size
-        const outSize = Math.floor(input.length / this.factor);
-        const output = new Float32Array(outSize);
+        // Output size is not just input/factor, it depends on state
+        // We can push to array or calculate exact size.
+        // For simplicity/perf, let's estimate size but be safe.
+        // Max output size = (input.length + current_count) / factor
+        
+        const output = new Float32Array(Math.ceil((input.length + this.count) / this.factor));
         let outIdx = 0;
 
         for (let i = 0; i < input.length; i++) {
@@ -28,6 +31,8 @@ export class Downsampler {
                 this.count = 0;
             }
         }
-        return output;
+        
+        // Return only the filled portion
+        return output.subarray(0, outIdx);
     }
 }
