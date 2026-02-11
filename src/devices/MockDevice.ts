@@ -1,4 +1,4 @@
-import { ISDRDevice } from './ISDRDevice';
+import { ISDRDevice, SDRGainStage } from './ISDRDevice';
 
 export class MockDevice implements ISDRDevice {
     name = "Mock Source (Synthetic)";
@@ -7,6 +7,15 @@ export class MockDevice implements ISDRDevice {
     private sampleRate = 2_000_000;
     private intervalId: any = null;
     private phase = 0;
+    
+    // Internal Gain State
+    private mockGain = 50;
+
+    getGainStages(): SDRGainStage[] {
+        return [
+            { name: 'MAIN', label: 'Signal Strength', min: 0, max: 100, step: 1, value: this.mockGain }
+        ];
+    }
 
     async open(): Promise<void> {
         console.log("Mock Device Opened");
@@ -28,6 +37,7 @@ export class MockDevice implements ISDRDevice {
     }
 
     async setGain(name: string, value: number): Promise<void> {
+        if (name === 'MAIN') this.mockGain = value;
         console.log(`Mock: Gain ${name} = ${value}`);
     }
 
@@ -67,8 +77,8 @@ export class MockDevice implements ISDRDevice {
                 const phi = -beta * Math.cos(2 * Math.PI * modFreq * t);
 
                 // IQ = exp(j * phi)
-                const valI = Math.cos(phi) * 100;
-                const valQ = Math.sin(phi) * 100;
+                const valI = Math.cos(phi) * this.mockGain;
+                const valQ = Math.sin(phi) * this.mockGain;
 
                 // Add slight noise
                 const noiseI = (Math.random() - 0.5) * 5;

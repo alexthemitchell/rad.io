@@ -1,19 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { AudioSink } from './audio/AudioSink';
 import { SpectrumCanvas } from './components/SpectrumCanvas';
+import { WaterfallCanvas } from './components/WaterfallCanvas';
 import { HackRFDevice } from './devices/HackRFDevice';
 import { MockDevice } from './devices/MockDevice';
-import { ISDRDevice } from './devices/ISDRDevice';
+import { RtlSdrDevice } from './devices/RtlSdrDevice';
+import { ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
 
 export default function App() {
   const [isRunning, setIsRunning] = useState(false);
-  const [useMock, setUseMock] = useState(false);
+  const [sourceType, setSourceType] = useState<'MOCK' | 'HACKRF' | 'RTLSDR'>('MOCK');
   const [fftData, setFftData] = useState<Float32Array>(new Float32Array(2048));
   const [scopeData, setScopeData] = useState<Float32Array>(new Float32Array(256));
   
   const [frequency, setFrequency] = useState<number>(90_000_000);
-  const [lnaGain, setLnaGain] = useState<number>(32);
-  const [vgaGain, setVgaGain] = useState<number>(20);
+  // Gains: Map<StageName, Value>
+  const [gains, setGains] = useState<Record<string, number>>({});
+  const [gainStages, setGainStages] = useState<SDRGainStage[]>([]);
+
   const [demodMode, setDemodMode] = useState<'WFM' | 'AM'>('WFM');
   const [fineFreq, setFineFreq] = useState<number>(0);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -42,12 +46,21 @@ export default function App() {
     };
   }, []);
 
-  // Update Device when controls change (if running)
+  // Update Device Frequency when controls change
   useEffect(() => {
     if (deviceRef.current && isRunning) {
         deviceRef.current.setFrequency(frequency);
     }
   }, [frequency, isRunning]);
+
+  // Update Device Gains when state changes
+  useEffect(() => {
+    if (deviceRef.current && isRunning) {
+        for (const [name, val] of Object.entries(gains)) {
+            deviceRef.current.setGain(name, val);
+        }
+    }
+  }, [gains, isRunning]);
 
   // Update Mode
   useEffect(() => {
@@ -59,14 +72,6 @@ export default function App() {
     workerRef.current?.postMessage({ command: 'SET_FINE_FREQ', value: fineFreq });
   }, [fineFreq]);
 
-  useEffect(() => {
-    if (deviceRef.current && isRunning) {
-        deviceRef.current.setGain('LNA', lnaGain);
-        deviceRef.current.setGain('VGA', vgaGain);
-    }
-  }, [lnaGain, vgaGain, isRunning]);
-
-
   const toggleStream = async () => {
     if (isRunning) {
         // STOP
@@ -77,20 +82,37 @@ export default function App() {
         workerRef.current?.postMessage({ command: 'STOP' });
         audioRef.current?.stop();
         setIsRunning(false);
+        setGainStages([]); // Clear UI
     } else {
         // START
         try {
             await audioRef.current?.start(); // Resume AudioContext
 
-            const dev = useMock ? new MockDevice() : new HackRFDevice();
+            let dev: ISDRDevice;
+            switch (sourceType) {
+                case 'HACKRF': dev = new HackRFDevice(); break;
+                case 'RTLSDR': dev = new RtlSdrDevice(); break;
+                case 'MOCK': default: dev = new MockDevice(); break;
+            }
+
             await dev.open();
             deviceRef.current = dev;
+
+            // Initialize Gain UI from Device Capabilities
+            const stages = dev.getGainStages();
+            setGainStages(stages);
+            
+            const initialGains: Record<string, number> = {};
+            for (const stage of stages) {
+                initialGains[stage.name] = stage.value;
+            }
+            setGains(initialGains);
     
-            // Apply initial state
+            // Apply initial state to Device
             await dev.setFrequency(frequency);
-            await dev.setGain('LNA', lnaGain);
-            await dev.setGain('VGA', vgaGain);
-            if (!useMock) await dev.setGain('AMP', 0); 
+            for (const stage of stages) {
+                await dev.setGain(stage.name, stage.value);
+            }
     
             // Start Worker
             workerRef.current?.postMessage({ command: 'START_USB_MODE' });
@@ -112,6 +134,10 @@ export default function App() {
             alert("Failed to open device (Check console)");
         }
     }
+  };
+
+  const handleGainChange = (name: string, val: number) => {
+      setGains(prev => ({ ...prev, [name]: val }));
   };
 
   const handleSpectrumClick = (binIndex: number) => {
@@ -155,20 +181,20 @@ export default function App() {
         </div>
       </div>
 
-      <div className="flex gap-4 items-center bg-gray-800 p-4 rounded-lg">
+      <div className="flex gap-4 items-center bg-gray-800 p-4 rounded-lg flex-wrap justify-center">
         {/* Source Selector */}
         <div className="flex flex-col gap-1 border-r border-gray-600 pr-4">
             <label className="text-xs text-gray-400 font-mono">SOURCE</label>
-            <div className="flex items-center gap-2">
-                <input 
-                    type="checkbox" 
-                    checked={useMock} 
-                    onChange={(e) => setUseMock(e.target.checked)}
-                    disabled={isRunning}
-                    id="mock-check"
-                />
-                <label htmlFor="mock-check" className="text-sm cursor-pointer select-none">Mock Data</label>
-            </div>
+            <select 
+                value={sourceType}
+                onChange={(e) => setSourceType(e.target.value as any)}
+                disabled={isRunning}
+                className="bg-gray-700 text-white px-2 py-1 rounded font-mono text-sm"
+            >
+                <option value="MOCK">Mock Source</option>
+                <option value="HACKRF">HackRF One</option>
+                <option value="RTLSDR">RTL-SDR (Exp)</option>
+            </select>
         </div>
 
         {/* Connection Control */}
@@ -223,28 +249,24 @@ export default function App() {
             />
         </div>
 
-        {/* Gain Controls */}
-        <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-400 font-mono">LNA GAIN: {lnaGain}dB</label>
-            <input 
-                type="range" min="0" max="40" step="8"
-                value={lnaGain}
-                onChange={(e) => setLnaGain(parseInt(e.target.value))}
-                className="w-32"
-                disabled={useMock}
-            />
-        </div>
-
-        <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-400 font-mono">VGA GAIN: {vgaGain}dB</label>
-            <input 
-                type="range" min="0" max="62" step="2"
-                value={vgaGain}
-                onChange={(e) => setVgaGain(parseInt(e.target.value))}
-                className="w-32"
-                disabled={useMock}
-            />
-        </div>
+        {/* Dynamic Gain Controls */}
+        {gainStages.map(stage => (
+            <div key={stage.name} className="flex flex-col gap-1">
+                <label className="text-xs text-gray-400 font-mono">{stage.label}: {gains[stage.name]}dB</label>
+                <input 
+                    type="range" 
+                    min={stage.min} 
+                    max={stage.max} 
+                    step={stage.step}
+                    value={gains[stage.name] || 0}
+                    onChange={(e) => handleGainChange(stage.name, parseInt(e.target.value))}
+                    className="w-32"
+                />
+            </div>
+        ))}
+        {gainStages.length === 0 && isRunning && (
+            <div className="text-xs text-gray-500 italic">No gain controls available</div>
+        )}
       </div>
     </div>
   );

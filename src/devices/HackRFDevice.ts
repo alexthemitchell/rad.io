@@ -1,4 +1,4 @@
-import { ISDRDevice } from './ISDRDevice';
+import { ISDRDevice, SDRGainStage } from './ISDRDevice';
 
 // HackRF One Constants
 const HACKRF_USB_VID = 0x1d50;
@@ -22,6 +22,19 @@ export class HackRFDevice implements ISDRDevice {
 
     private frequency = 90_000_000; 
     private sampleRate = 2_000_000;
+    
+    // Internal state for gains
+    private lnaGain = 32;
+    private vgaGain = 20;
+    private ampEnable = 0;
+
+    getGainStages(): SDRGainStage[] {
+        return [
+            { name: 'LNA', label: 'LNA Gain', min: 0, max: 40, step: 8, value: this.lnaGain },
+            { name: 'VGA', label: 'VGA Gain', min: 0, max: 62, step: 2, value: this.vgaGain },
+            { name: 'AMP', label: 'RF Amp (+14dB)', min: 0, max: 1, step: 1, value: this.ampEnable }
+        ];
+    }
 
     async open(): Promise<void> {
         console.log("Looking for previous devices...");
@@ -133,6 +146,10 @@ export class HackRFDevice implements ISDRDevice {
     }
 
     async setGain(name: string, value: number): Promise<void> {
+        if (name === 'LNA') this.lnaGain = value;
+        if (name === 'VGA') this.vgaGain = value;
+        if (name === 'AMP') this.ampEnable = value;
+
         if (!this.device) return;
         
         // LNA/VGA are IN transfers with value in wIndex
