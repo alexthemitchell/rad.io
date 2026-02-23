@@ -1,4 +1,4 @@
-import { ISDRDevice, SDRGainStage } from './ISDRDevice';
+import { ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
 
 // HackRF One Constants
 const HACKRF_USB_VID = 0x1d50;
@@ -361,7 +361,7 @@ export class HackRFDevice implements ISDRDevice {
         }
     }
 
-    async start(onData: (data: DataView) => void): Promise<void> {
+    async start(onData: SDRDataCallback): Promise<void> {
         if (!this.device) throw new Error("Device not open");
         if (this.isStreaming) return;
         this.isStreaming = true;

@@ -1,4 +1,5 @@
-import { ISDRDevice, SDRGainStage } from './ISDRDevice';
+import { ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
+import { SDRDiscontinuityCause, SDRDiscontinuityEvent, SDRStreamFrame } from './streamFrame';
 
 export class MockDevice implements ISDRDevice {
     name = "Mock Source (Synthetic)";
@@ -7,6 +8,11 @@ export class MockDevice implements ISDRDevice {
     private sampleRate = 2_000_000;
     private intervalId: ReturnType<typeof setInterval> | null = null;
     private phase = 0;
+    private sequence = 0;
+    private sampleIndex = 0;
+    private pendingDiscontinuity: SDRDiscontinuityCause | null = null;
+    private lastTickWallClockMs = 0;
+    private readonly blockIntervalMs = 10;
     
     // Internal Gain State
     private mockGain = 50;
@@ -28,11 +34,17 @@ export class MockDevice implements ISDRDevice {
 
     async setFrequency(hz: number): Promise<void> {
         this.frequency = hz;
+        if (this.isStreaming) {
+            this.pendingDiscontinuity = 'retune';
+        }
         console.log(`Mock: Tuned to ${hz} Hz`);
     }
 
     async setSampleRate(hz: number): Promise<void> {
         this.sampleRate = hz;
+        if (this.isStreaming) {
+            this.pendingDiscontinuity = 'sample_rate_change';
+        }
         console.log(`Mock: Rate set to ${hz} Hz`);
     }
 
@@ -41,11 +53,14 @@ export class MockDevice implements ISDRDevice {
         console.log(`Mock: Gain ${name} = ${value}`);
     }
 
-    async start(onData: (data: DataView) => void): Promise<void> {
+    async start(onData: SDRDataCallback): Promise<void> {
         if (this.isStreaming) return;
         this.isStreaming = true;
+        this.pendingDiscontinuity = 'restart';
+        this.lastTickWallClockMs = Date.now();
 
-        const BLOCK_SIZE = 16384; 
+        const BLOCK_SIZE = 16384;
+        const COMPLEX_SAMPLES_PER_BLOCK = BLOCK_SIZE / 2;
         const buffer = new Int8Array(BLOCK_SIZE);
         
         // FM Synthesis Params
@@ -55,6 +70,16 @@ export class MockDevice implements ISDRDevice {
         
         this.intervalId = setInterval(() => {
             if (!this.isStreaming) return;
+
+            const nowMs = Date.now();
+            const elapsedMs = Math.max(0, nowMs - this.lastTickWallClockMs);
+            this.lastTickWallClockMs = nowMs;
+
+            const elapsedBlocks = Math.max(1, Math.round(elapsedMs / this.blockIntervalMs));
+            const droppedSamples = (elapsedBlocks - 1) * COMPLEX_SAMPLES_PER_BLOCK;
+            if (droppedSamples > 0) {
+                this.sampleIndex += droppedSamples;
+            }
 
             for (let i = 0; i < BLOCK_SIZE; i += 2) {
                 const t = this.phase / this.sampleRate;
@@ -88,9 +113,39 @@ export class MockDevice implements ISDRDevice {
             // Resetting phase will glitch the audio. 
             // Let's just let it run. JS Numbers go up to 2^53. At 2MSPS that's ~142 years.
             
-            onData(new DataView(buffer.buffer));
+            const sequence = this.sequence;
+            const sampleIndex = this.sampleIndex;
+            const timestampNs = Math.floor((sampleIndex * 1_000_000_000) / this.sampleRate);
 
-        }, 10);
+            let discontinuity: SDRDiscontinuityEvent | undefined;
+            const cause = this.pendingDiscontinuity ?? (droppedSamples > 0 ? 'dropped_samples' : null);
+            if (cause) {
+                discontinuity = {
+                    cause,
+                    sequence,
+                    sampleIndex,
+                    wallClockMs: nowMs,
+                    droppedSamples: droppedSamples > 0 ? droppedSamples : undefined
+                };
+                this.pendingDiscontinuity = null;
+            }
+
+            const frame: SDRStreamFrame = {
+                sequence,
+                sampleIndex,
+                sampleCount: COMPLEX_SAMPLES_PER_BLOCK,
+                timestampNs,
+                sampleRate: this.sampleRate,
+                droppedSamples,
+                discontinuity
+            };
+
+            onData(new DataView(buffer.buffer), frame);
+
+            this.sequence += 1;
+            this.sampleIndex += COMPLEX_SAMPLES_PER_BLOCK;
+
+        }, this.blockIntervalMs);
     }
 
     async stop(): Promise<void> {

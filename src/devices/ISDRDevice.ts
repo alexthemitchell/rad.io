@@ -1,3 +1,5 @@
+import type { SDRStreamFrame } from './streamFrame';
+
 export interface SDRGainStage {
     name: string;
     label: string;
@@ -6,6 +8,8 @@ export interface SDRGainStage {
     step: number;
     value: number; // Current or Default
 }
+
+export type SDRDataCallback = (data: DataView, frame?: SDRStreamFrame) => void;
 
 export interface ISDRDevice {
     name: string;
@@ -20,6 +24,6 @@ export interface ISDRDevice {
     // Capabilities
     getGainStages(): SDRGainStage[];
     
-    start(onData: (data: DataView) => void): Promise<void>;
+    start(onData: SDRDataCallback): Promise<void>;
     stop(): Promise<void>;
 }

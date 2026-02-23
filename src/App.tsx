@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AudioSink } from './audio/AudioSink';
 import { AudioScopeCanvas } from './components/AudioScopeCanvas';
 import { SpectrumCanvas } from './components/SpectrumCanvas';
@@ -12,8 +12,10 @@ import {
 import { HackRFDevice } from './devices/HackRFDevice';
 import { MockDevice } from './devices/MockDevice';
 import { RtlSdrDevice } from './devices/RtlSdrDevice';
+import { FileDevice } from './devices/FileDevice';
 import { ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
 import { normalizeDeviceError } from './devices/errors';
+import { goldenToneFixtureBundle } from './fixtures/sigmf/goldenToneFixture';
 
 type ConnectionState = 'idle' | 'starting' | 'streaming' | 'recovering' | 'error';
 type AudioState = 'suspended' | 'awaiting-user-gesture' | 'running' | 'degraded' | 'muted';
@@ -24,6 +26,29 @@ type RuntimeTelemetry = {
   lowFpsEvents: number;
   audioUnderruns: number;
   audioQueueAheadMs: number;
+};
+
+type SourceType = 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+
+type RuntimePrerequisites = {
+  secureContext: boolean;
+  webUsbAvailable: boolean;
+  crossOriginIsolated: boolean;
+};
+
+type PermissionStateValue = 'granted' | 'denied' | 'prompt' | 'unknown';
+
+type RuntimePermissionState = {
+  usb: PermissionStateValue;
+  microphone: PermissionStateValue;
+};
+
+type RuntimeEnvironment = {
+  browserName: 'chrome' | 'edge' | 'other';
+  browserVersion: string;
+  osFamily: 'windows' | 'macos' | 'linux' | 'other';
+  sharedArrayBufferAvailable: boolean;
+  audioWorkletAvailable: boolean;
 };
 
 type RdsTelemetry = {
@@ -45,7 +70,7 @@ type RdsTelemetry = {
 
 type RadioDebugSnapshot = {
   isRunning: boolean;
-  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR';
+  sourceType: SourceType;
   connectionState: ConnectionState;
   audioState: AudioState;
   frequencyHz: number;
@@ -83,6 +108,69 @@ const emptyRdsTelemetry = (): RdsTelemetry => ({
   latestGroup: null
 });
 
+const detectRuntimePrerequisites = (): RuntimePrerequisites => {
+  const secureContext = typeof window !== 'undefined' && window.isSecureContext;
+  const crossOriginIsolated = typeof window !== 'undefined' && window.crossOriginIsolated;
+  const webUsbAvailable = typeof navigator !== 'undefined' && 'usb' in navigator;
+
+  return {
+    secureContext,
+    webUsbAvailable,
+    crossOriginIsolated
+  };
+};
+
+const detectRuntimeEnvironment = (): RuntimeEnvironment => {
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+
+  const browserName: RuntimeEnvironment['browserName'] = userAgent.includes('Edg/')
+    ? 'edge'
+    : userAgent.includes('Chrome/')
+      ? 'chrome'
+      : 'other';
+
+  let browserVersion = 'unknown';
+  if (browserName === 'edge') {
+    browserVersion = userAgent.match(/Edg\/([\d.]+)/)?.[1] ?? 'unknown';
+  } else if (browserName === 'chrome') {
+    browserVersion = userAgent.match(/Chrome\/([\d.]+)/)?.[1] ?? 'unknown';
+  }
+
+  const osFamily: RuntimeEnvironment['osFamily'] = userAgent.includes('Windows')
+    ? 'windows'
+    : userAgent.includes('Mac OS X')
+      ? 'macos'
+      : userAgent.includes('Linux')
+        ? 'linux'
+        : 'other';
+
+  return {
+    browserName,
+    browserVersion,
+    osFamily,
+    sharedArrayBufferAvailable: typeof SharedArrayBuffer === 'function',
+    audioWorkletAvailable: typeof AudioWorkletNode !== 'undefined'
+  };
+};
+
+const unknownPermissionState = (): RuntimePermissionState => ({
+  usb: 'unknown',
+  microphone: 'unknown'
+});
+
+const queryPermissionState = async (name: 'usb' | 'microphone'): Promise<PermissionStateValue> => {
+  if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
+    return 'unknown';
+  }
+
+  try {
+    const result = await navigator.permissions.query({ name: name as PermissionName });
+    return result.state;
+  } catch {
+    return 'unknown';
+  }
+};
+
 declare global {
   interface Window {
     __radIoDebug?: {
@@ -92,8 +180,10 @@ declare global {
 }
 
 export default function App() {
+  const runtimePrerequisites = useMemo(() => detectRuntimePrerequisites(), []);
+  const runtimeEnvironment = useMemo(() => detectRuntimeEnvironment(), []);
   const [isRunning, setIsRunning] = useState(false);
-  const [sourceType, setSourceType] = useState<'MOCK' | 'HACKRF' | 'RTLSDR'>('MOCK');
+  const [sourceType, setSourceType] = useState<SourceType>('MOCK');
   const [fftData, setFftData] = useState<Float32Array>(new Float32Array(2048));
   const [scopeData, setScopeData] = useState<Float32Array>(new Float32Array(256));
   
@@ -130,6 +220,7 @@ export default function App() {
     const [scanProgress, setScanProgress] = useState(0);
     const [scanStepLabel, setScanStepLabel] = useState('Idle');
     const [scanResults, setScanResults] = useState<FmScanResult[]>([]);
+    const [permissionState, setPermissionState] = useState<RuntimePermissionState>(unknownPermissionState());
   
   const workerRef = useRef<Worker | null>(null);
   const deviceRef = useRef<ISDRDevice | null>(null);
@@ -142,10 +233,45 @@ export default function App() {
   const rdsTelemetryRef = useRef<RdsTelemetry>(emptyRdsTelemetry());
   const scanAbortRef = useRef(false);
 
-    const pushDiagnosticEvent = (message: string) => {
+    const pushDiagnosticEvent = useCallback((message: string) => {
         const timestamp = new Date().toISOString();
         setDiagnosticEvents((prev) => [`${timestamp} ${message}`, ...prev].slice(0, 100));
-    };
+    }, []);
+
+    const refreshPermissionState = useCallback(async () => {
+      const [usb, microphone] = await Promise.all([
+        queryPermissionState('usb'),
+        queryPermissionState('microphone')
+      ]);
+      setPermissionState({ usb, microphone });
+    }, []);
+
+    const tryResumeAudio = useCallback(async (reason: 'startup' | 'user-action' | 'visibility') => {
+      try {
+        await audioRef.current?.start();
+        const state = audioRef.current?.getState();
+
+        if (state === 'running') {
+          const resolvedAudioState: AudioState = isMuted ? 'muted' : 'running';
+          setAudioState(resolvedAudioState);
+          if (reason !== 'startup') {
+            setStatusMessage(resolvedAudioState === 'muted' ? 'Audio resumed (muted).' : 'Audio resumed.');
+          }
+          pushDiagnosticEvent(`Audio resume succeeded (${reason}).`);
+          return true;
+        }
+
+        setAudioState('awaiting-user-gesture');
+        setStatusMessage('Audio requires user gesture. Use Enable Audio.');
+        pushDiagnosticEvent(`Audio resume blocked (${reason}); user gesture required.`);
+        return false;
+      } catch {
+        setAudioState('awaiting-user-gesture');
+        setStatusMessage('Audio start blocked by browser policy. Use Enable Audio.');
+        pushDiagnosticEvent(`Audio resume threw (${reason}); user gesture required.`);
+        return false;
+      }
+    }, [isMuted, pushDiagnosticEvent]);
 
   useEffect(() => {
     workerRef.current = new Worker(new URL('./dsp/worker.ts', import.meta.url), { type: 'module' });
@@ -171,7 +297,11 @@ export default function App() {
         workerRef.current?.terminate();
         audioRef.current?.stop();
     };
-  }, []);
+  }, [pushDiagnosticEvent]);
+
+    useEffect(() => {
+      void refreshPermissionState();
+    }, [refreshPermissionState]);
 
     useEffect(() => {
         const onVisibilityChange = () => {
@@ -182,15 +312,18 @@ export default function App() {
                 setStatusMessage('Tab is in the background. Audio timing may degrade.');
                 pushDiagnosticEvent('Page hidden while streaming; degraded audio state flagged.');
             } else {
-                setAudioState(isMuted ? 'muted' : 'running');
-                setStatusMessage('Streaming restored in foreground.');
+              void (async () => {
+                await tryResumeAudio('visibility');
+              })();
+              void refreshPermissionState();
+              setStatusMessage('Streaming restored in foreground.');
                 pushDiagnosticEvent('Page returned to foreground.');
             }
         };
 
         document.addEventListener('visibilitychange', onVisibilityChange);
         return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-    }, [isRunning, isMuted]);
+    }, [isRunning, refreshPermissionState, pushDiagnosticEvent, tryResumeAudio]);
 
       useEffect(() => {
         if (!isRunning) {
@@ -351,7 +484,7 @@ export default function App() {
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, []);
+    }, [pushDiagnosticEvent]);
 
   // Update Device Frequency when controls change
   useEffect(() => {
@@ -545,19 +678,20 @@ export default function App() {
         setConnectionState('starting');
         setStatusMessage('Starting stream and opening selected source...');
         try {
-            await audioRef.current?.start(); // Resume AudioContext
+            await tryResumeAudio('startup');
           audioRef.current?.resetStats();
             audioRef.current?.setMuted(isMuted);
             const state = audioRef.current?.getState();
             if (state !== 'running') {
                 setAudioState('awaiting-user-gesture');
-                setStatusMessage('Audio requires user gesture. Click Start again if blocked.');
+                setStatusMessage('Audio requires user gesture. Use Enable Audio if blocked.');
             }
 
             let dev: ISDRDevice;
             switch (sourceType) {
                 case 'HACKRF': dev = new HackRFDevice(); break;
                 case 'RTLSDR': dev = new RtlSdrDevice(); break;
+              case 'FILE': dev = new FileDevice(goldenToneFixtureBundle); break;
                 case 'MOCK': default: dev = new MockDevice(); break;
             }
 
@@ -672,9 +806,27 @@ export default function App() {
         });
     };
 
-    const exportDiagnostics = () => {
+    const exportDiagnostics = async () => {
+        const latestPermissionState: RuntimePermissionState = {
+          usb: await queryPermissionState('usb'),
+          microphone: await queryPermissionState('microphone')
+        };
+        setPermissionState(latestPermissionState);
+
         const payload = {
             exportedAt: new Date().toISOString(),
+            environment: {
+              browserUserAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+              browserName: runtimeEnvironment.browserName,
+              browserVersion: runtimeEnvironment.browserVersion,
+              osFamily: runtimeEnvironment.osFamily,
+              secureContext: runtimePrerequisites.secureContext,
+              crossOriginIsolated: runtimePrerequisites.crossOriginIsolated,
+              sharedArrayBufferAvailable: runtimeEnvironment.sharedArrayBufferAvailable,
+              audioWorkletAvailable: runtimeEnvironment.audioWorkletAvailable,
+              webUsbAvailable: runtimePrerequisites.webUsbAvailable,
+              permissionState: latestPermissionState
+            },
             sourceType,
             frequency,
             demodMode,
@@ -690,6 +842,8 @@ export default function App() {
             gainStages,
             gains,
             runtimeTelemetry,
+            runtimePrerequisites,
+            permissionState: latestPermissionState,
             fmScan: {
               state: scanState,
               progress: scanProgress,
@@ -829,8 +983,67 @@ export default function App() {
         });
       }
 
+      if (!runtimePrerequisites.secureContext) {
+        items.push({
+          key: 'runtime-insecure-context',
+          level: 'error',
+          label: 'Secure context required',
+          recommendation: 'Use https://localhost (or another secure origin) before attempting hardware access.'
+        });
+      }
+
+      const requiresWebUsb = sourceType === 'HACKRF' || sourceType === 'RTLSDR';
+
+      if (requiresWebUsb && !runtimePrerequisites.webUsbAvailable) {
+        items.push({
+          key: 'runtime-webusb-unavailable',
+          level: 'error',
+          label: 'WebUSB unavailable',
+          recommendation: 'Use a Chromium browser with WebUSB support and serve the app from a secure context.'
+        });
+      }
+
+      if (!runtimePrerequisites.crossOriginIsolated) {
+        items.push({
+          key: 'runtime-not-isolated',
+          level: 'warn',
+          label: 'Cross-origin isolation disabled',
+          recommendation: 'Enable COOP/COEP headers for best performance and SharedArrayBuffer mode.'
+        });
+      }
+
+      if (requiresWebUsb && permissionState.usb === 'denied') {
+        items.push({
+          key: 'runtime-webusb-permission-denied',
+          level: 'error',
+          label: 'WebUSB permission denied',
+          recommendation: 'Re-pair the device and approve browser permission prompts.'
+        });
+      }
+
+      if (permissionState.microphone === 'denied') {
+        items.push({
+          key: 'runtime-microphone-permission-denied',
+          level: 'warn',
+          label: 'Microphone permission denied',
+          recommendation: 'Not required for SDR receive path, but diagnostics include this for runtime policy context.'
+        });
+      }
+
       return items;
-    }, [audioState, connectionState, fftData, runtimeTelemetry.audioUnderruns, runtimeTelemetry.renderFps]);
+    }, [
+      audioState,
+      connectionState,
+      fftData,
+      runtimePrerequisites.crossOriginIsolated,
+      runtimePrerequisites.secureContext,
+      runtimePrerequisites.webUsbAvailable,
+      permissionState.microphone,
+      permissionState.usb,
+      runtimeTelemetry.audioUnderruns,
+      runtimeTelemetry.renderFps,
+      sourceType
+    ]);
 
   return (
     <div className="app-shell">
@@ -881,11 +1094,12 @@ export default function App() {
             <label className="control-label">Source</label>
             <select 
                 value={sourceType}
-                onChange={(e) => setSourceType(e.target.value as 'MOCK' | 'HACKRF' | 'RTLSDR')}
+                onChange={(e) => setSourceType(e.target.value as SourceType)}
                 disabled={isRunning}
                 className="control-input"
             >
                 <option value="MOCK">Mock Source</option>
+                <option value="FILE">File Fixture (SigMF)</option>
                 <option value="HACKRF">HackRF One</option>
                 <option value="RTLSDR">RTL-SDR (Exp)</option>
             </select>
@@ -906,6 +1120,17 @@ export default function App() {
         <button onClick={exportDiagnostics} className="action-btn btn-secondary">
           Export Diagnostics
         </button>
+
+        {(audioState === 'awaiting-user-gesture' || audioState === 'suspended') && (
+          <button
+            onClick={() => {
+              void tryResumeAudio('user-action');
+            }}
+            className="action-btn btn-secondary"
+          >
+            Enable Audio
+          </button>
+        )}
 
         <button
           onClick={scanState === 'running' ? cancelFmBandScan : runFmBandScan}
@@ -1078,6 +1303,32 @@ export default function App() {
           <li className={`health-item ${runtimeTelemetry.audioQueueAheadMs > 250 ? 'health-warn' : 'health-ok'}`}>
             <strong>Audio Queue Ahead</strong>
             <span>{runtimeTelemetry.audioQueueAheadMs.toFixed(1)} ms</span>
+          </li>
+        </ul>
+      </section>
+
+      <section className="health-panel" aria-live="polite">
+        <h2 className="panel-title">Runtime Prerequisites</h2>
+        <ul>
+          <li className={`health-item ${runtimePrerequisites.secureContext ? 'health-ok' : 'health-error'}`}>
+            <strong>Secure Context</strong>
+            <span>{runtimePrerequisites.secureContext ? 'ready' : 'missing'}</span>
+          </li>
+          <li className={`health-item ${runtimePrerequisites.webUsbAvailable ? 'health-ok' : 'health-error'}`}>
+            <strong>WebUSB API</strong>
+            <span>{runtimePrerequisites.webUsbAvailable ? 'available' : 'unavailable'}</span>
+          </li>
+          <li className={`health-item ${runtimePrerequisites.crossOriginIsolated ? 'health-ok' : 'health-warn'}`}>
+            <strong>Cross-Origin Isolation</strong>
+            <span>{runtimePrerequisites.crossOriginIsolated ? 'enabled' : 'disabled'}</span>
+          </li>
+          <li className={`health-item ${permissionState.usb === 'denied' ? 'health-error' : 'health-ok'}`}>
+            <strong>USB Permission</strong>
+            <span>{permissionState.usb}</span>
+          </li>
+          <li className={`health-item ${permissionState.microphone === 'denied' ? 'health-warn' : 'health-ok'}`}>
+            <strong>Microphone Permission</strong>
+            <span>{permissionState.microphone}</span>
           </li>
         </ul>
       </section>

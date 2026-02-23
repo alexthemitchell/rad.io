@@ -110,7 +110,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Test Infrastructure**: Jest unit tests with coverage for DSP and critical UI state.
 - [ ] **Cross-Browser Regression Gates (WebUSB/WebAudio)**: define a minimal browser matrix (Chrome/Edge stable + one canary) and block merges on known WebUSB/WebAudio regressions.
 - [x] **Linting & Formatting**: ESLint + Prettier as hard gates.
-- [x] **Build System**: Webpack + AssemblyScript/WASM build pipeline.
+- [x] **Build System**: Vite + TypeScript production build pipeline.
 - [x] **Doc & ADR Folder Structure**: create `docs/decisions/` and define ADR template + numbering.
 
 ### 1.1.1 Vertical Slice Milestones (De-risk Integration)
@@ -199,12 +199,12 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **`MockDevice` Implementation**: synthetic IQ (noise + tones + modulated test signals).
 - [x] **Stream Control**: start/stop streaming with configurable sample rates.
 - [x] **Verification**: unit tests that validate known signals are produced.
-- [ ] **IQ Integrity Self-Test**: automated checks for IQ ordering/sign/scaling (and swapped/inverted quadrature detection) using known synthetic tones and fixtures.
+- [x] **IQ Integrity Self-Test**: automated checks for IQ ordering/sign/scaling (and swapped/inverted quadrature detection) using known synthetic tones and fixtures.
 
 ### 2.2 File Source + Golden Fixtures
 
-- [ ] **SigMF Replay**: implement `FileDevice` for deterministic IQ playback.
-- [ ] **SigMF Test Vectors**: maintain canonical recordings for regression tests.
+- [x] **SigMF Replay**: implement `FileDevice` for deterministic IQ playback.
+- [x] **SigMF Test Vectors**: maintain canonical recordings for regression tests.
 - [ ] **Golden Output Tests**: toleranced expectations for filters/demods/AGC.
 - [ ] **Known-Signal Fixture Library**: canonical IQ clips for FM pilot, AM carrier, NFM tone, NOAA WX, time beacons, and “clean tone in noise” baselines.
 - [ ] **End-to-End Accuracy Tests**: fixtures validate frequency error, demod lock behavior, and meter stability across retunes and long runs.

@@ -1,4 +1,4 @@
-import { ISDRDevice, SDRGainStage } from './ISDRDevice';
+import { ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
 
 // Common RTL-SDR VID/PIDs
 // 0x0BDA:0x2838 is the most common generic RTL2832U dongle
@@ -101,7 +101,7 @@ export class RtlSdrDevice implements ISDRDevice {
         }
     }
 
-    async start(onData: (data: DataView) => void): Promise<void> {
+    async start(onData: SDRDataCallback): Promise<void> {
         if (!this.device) throw new Error("Device not open");
         void onData;
         this.isStreaming = true;
