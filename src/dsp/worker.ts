@@ -4,6 +4,7 @@ import { NfmDemodulator } from './NfmDemodulator';
 import { Downsampler } from './Downsampler';
 import { ComplexOscillator } from './ComplexOscillator';
 import { SimpleFFT } from './fft';
+import { magnitudeSquaredToDbfs } from './fftScaling';
 import { RdsDecoder, RdsSnapshot } from './RdsDecoder';
 
 type WorkerScope = {
@@ -161,12 +162,12 @@ function processFFT(iqData: Int8Array) {
                 const re = fftOutput[srcIdx * 2];
                 const im = fftOutput[srcIdx * 2 + 1];
                 
-                // Mag = sqrt(re^2 + im^2)
-                // dB = 10 * log10(re^2 + im^2)
-                // 20 * log10(sqrt(...))
+                // Convert to dBFS by normalizing against FFT size.
+                // Without this normalization, bins can sit above 0 dBFS and the
+                // UI trace clips at the top, appearing static/non-responsive.
                 
                 const magSq = re*re + im*im;
-                const db = 10 * Math.log10(magSq + 1e-20); // Clamp -200dB
+                const db = magnitudeSquaredToDbfs(magSq, fftSize);
                 
                 fftMagnitude[k] = db;
             }

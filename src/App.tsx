@@ -763,7 +763,14 @@ export default function App() {
 
       if (connectionState === 'streaming' && fftData.length > 0) {
         const peakDb = fftData.reduce((max, value) => Math.max(max, value), -Infinity);
-        if (peakDb < -80) {
+        if (peakDb > 1) {
+          items.push({
+            key: 'fft-saturated',
+            level: 'warn',
+            label: 'FFT scaling or clipping suspected',
+            recommendation: 'Lower RF gain and verify DSP scaling if this persists above 0 dBFS.'
+          });
+        } else if (peakDb < -80) {
           items.push({
             key: 'weak-signal',
             level: 'warn',
