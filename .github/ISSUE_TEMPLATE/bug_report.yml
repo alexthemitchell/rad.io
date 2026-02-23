@@ -1,0 +1,125 @@
+name: Bug report
+description: Report a defect with reproducible steps and measurable acceptance criteria
+title: 'P0-XX: '
+labels:
+  - type:bug
+  - status:needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for defects. Include enough detail to reproduce and verify.
+
+  - type: input
+    id: roadmap
+    attributes:
+      label: Roadmap traceability
+      description: Roadmap file path and item ID if applicable
+      placeholder: docs/roadmap/... (P0-xx-yy)
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area label
+      description: Pick the closest area for triage
+      options:
+        - area:devices
+        - area:hackrf
+        - area:rtl-sdr
+        - area:dsp
+        - area:audio
+        - area:components
+        - area:ui
+        - area:viz
+        - area:workers
+        - area:recording
+        - area:docs
+        - area:ci
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - priority:p0
+        - priority:p1
+        - priority:p2
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What is wrong and who is affected?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Numbered steps preferred
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected versus actual
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Browser, OS, app version or commit SHA
+      placeholder: Chromium 123 / Windows 11 / abc1234
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria (3-8)
+      description: Use scenario, result, verify, evidence format
+      placeholder: |
+        - [ ] Scenario: ...
+          Result: ...
+          Verify: unit|e2e|manual
+          Evidence: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan and scripts
+      description: Include expected commands
+      placeholder: |
+        - npm run validate
+        - npm test
+        - npm run test:e2e
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk label (optional)
+      options:
+        - none
+        - risk:perf-risk
+        - risk:privacy-risk
+        - risk:breaking-change-risk
+    validations:
+      required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Process and issue policy
+    url: https://github.com/OWNER/REPO/blob/main/docs/process/roadmap-to-issues-policy.md
+    about: Review issue requirements and acceptance criteria policy before opening an issue
+  - name: Preview distribution and feedback guidance
+    url: https://github.com/OWNER/REPO/blob/main/docs/release/preview-feedback-triage.md
+    about: See required feedback evidence and triage expectations

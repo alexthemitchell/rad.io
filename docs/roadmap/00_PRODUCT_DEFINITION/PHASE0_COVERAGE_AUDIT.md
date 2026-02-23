@@ -1,4 +1,6 @@
-﻿# Phase 0 Coverage Audit
+﻿<!-- markdownlint-disable MD060 -->
+
+# Phase 0 Coverage Audit
 
 Generated: 2025-12-12 20:19:36
 

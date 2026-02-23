@@ -1,0 +1,114 @@
+name: Driver integration
+description: Track SDR driver/device integration work (WebUSB and related paths)
+title: 'P0-XX: Driver integration - '
+labels:
+  - type:feature
+  - area:devices
+  - status:needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for HackRF/RTL-SDR/device transport integration work.
+
+  - type: input
+    id: roadmap
+    attributes:
+      label: Roadmap traceability
+      placeholder: docs/roadmap/... (P0-xx-yy)
+    validations:
+      required: false
+
+  - type: input
+    id: model
+    attributes:
+      label: Device model
+      placeholder: HackRF One, RTL-SDR v3, etc.
+    validations:
+      required: true
+
+  - type: input
+    id: transport
+    attributes:
+      label: Transport and interface
+      placeholder: WebUSB, vendor interface, endpoint details
+    validations:
+      required: true
+
+  - type: textarea
+    id: permissions
+    attributes:
+      label: Permission and environment notes
+      description: Browser requirements, HTTPS/localhost, user prompt expectations
+    validations:
+      required: true
+
+  - type: textarea
+    id: connect_stream
+    attributes:
+      label: Minimal connect-to-stream success criteria
+      placeholder: |
+        - [ ] Connect succeeds on supported browser.
+        - [ ] Stream starts within defined timeout.
+        - [ ] Deterministic sample flow reaches DSP path.
+    validations:
+      required: true
+
+  - type: textarea
+    id: debug_artifacts
+    attributes:
+      label: Debug artifacts
+      description: Include logs, descriptors, and reproduction notes
+      placeholder: |
+        - USB descriptors:
+        - Error logs:
+        - Reproduction steps:
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria (3-8)
+      placeholder: |
+        - [ ] Scenario: ...
+          Result: ...
+          Verify: unit|e2e|manual|real-device e2e
+          Evidence: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan and scripts
+      placeholder: |
+        - npm run validate
+        - npm test
+        - npm run test:e2e
+        - npm run test:e2e:real (if available)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - priority:p0
+        - priority:p1
+        - priority:p2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk label
+      options:
+        - risk:perf-risk
+        - risk:privacy-risk
+        - risk:breaking-change-risk
+        - none
+    validations:
+      required: true

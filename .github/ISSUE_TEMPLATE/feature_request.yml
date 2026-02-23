@@ -1,0 +1,118 @@
+name: Feature request
+description: Propose a user-facing feature with measurable acceptance criteria
+title: 'P0-XX: '
+labels:
+  - type:feature
+  - status:needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the outcome, not just implementation ideas.
+
+  - type: input
+    id: roadmap
+    attributes:
+      label: Roadmap traceability
+      placeholder: docs/roadmap/... (P0-xx-yy)
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area label
+      options:
+        - area:devices
+        - area:hackrf
+        - area:rtl-sdr
+        - area:dsp
+        - area:audio
+        - area:components
+        - area:ui
+        - area:viz
+        - area:workers
+        - area:recording
+        - area:docs
+        - area:ci
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - priority:p0
+        - priority:p1
+        - priority:p2
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User-facing outcome
+      description: What user problem is solved?
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope and non-goals
+      placeholder: |
+        In scope:
+        - ...
+
+        Non-goals:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria (3-8)
+      placeholder: |
+        - [ ] Scenario: ...
+          Result: ...
+          Verify: unit|e2e|manual
+          Evidence: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: test_plan
+    attributes:
+      label: Verification plan and scripts
+      placeholder: |
+        Scripts:
+        - npm run validate
+        - npm test
+
+        Manual:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: perf
+    attributes:
+      label: Performance and reliability impact
+      description: Required for perf-sensitive work
+      placeholder: no impact, or measured impact and method
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk label (optional)
+      options:
+        - none
+        - risk:perf-risk
+        - risk:privacy-risk
+        - risk:breaking-change-risk
+    validations:
+      required: true
