@@ -33,7 +33,13 @@ describe('MockDevice stream frame invariants', () => {
         for (let i = 0; i < frames.length; i++) {
             const current = frames[i];
             expect(current.sequence).toBe(i);
-            expect(current.timestampNs).toBe(Math.floor((current.sampleIndex * 1_000_000_000) / current.sampleRate));
+            expect(current.sampleCount).toBeGreaterThan(0);
+            expect(current.sampleClock?.truthMode).toBe('unknown');
+
+            if (current.discontinuity) {
+                expect(current.discontinuity.sequence).toBe(current.sequence);
+                expect(current.discontinuity.sampleIndex).toBe(current.sampleIndex);
+            }
 
             if (i === 0) {
                 continue;
@@ -43,6 +49,10 @@ describe('MockDevice stream frame invariants', () => {
             expect(current.sequence).toBe(prev.sequence + 1);
             expect(current.sampleIndex).toBe(prev.sampleIndex + prev.sampleCount + current.droppedSamples);
             expect(current.timestampNs).toBeGreaterThan(prev.timestampNs);
+
+            if (current.droppedSamples > 0) {
+                expect(current.discontinuity).toBeDefined();
+            }
         }
     });
 

@@ -1,4 +1,5 @@
 import { ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
+import type { SDRDiscontinuityCause, SDRDiscontinuityEvent } from './streamFrame';
 
 // HackRF One Constants
 const HACKRF_USB_VID = 0x1d50;
@@ -32,6 +33,28 @@ export class HackRFDevice implements ISDRDevice {
     private lnaGain = 32;
     private vgaGain = 20;
     private ampEnable = 0;
+    private sequence = 0;
+    private sampleIndex = 0;
+    private timestampNs = 0;
+    private pendingDiscontinuity: SDRDiscontinuityCause | null = null;
+    private lastTickWallClockMs = 0;
+
+    private markDiscontinuity(cause: SDRDiscontinuityCause): void {
+        if (this.pendingDiscontinuity === 'restart') {
+            return;
+        }
+
+        if (cause === 'restart' || this.pendingDiscontinuity === null) {
+            this.pendingDiscontinuity = cause;
+            return;
+        }
+
+        if (this.pendingDiscontinuity === 'sample_rate_change' && cause === 'retune') {
+            return;
+        }
+
+        this.pendingDiscontinuity = cause;
+    }
 
     private async withTimeout<T>(operation: Promise<T>, label: string, timeoutMs = HackRFDevice.CONTROL_TRANSFER_TIMEOUT_MS): Promise<T> {
         let timeoutHandle: number | undefined;
@@ -314,6 +337,10 @@ export class HackRFDevice implements ISDRDevice {
         view.setUint32(4, hzRemainder, true);
 
         await this.vendorOut(HackRFCommand.SET_FREQ, 0, 0, buf);
+
+        if (this.isStreaming) {
+            this.markDiscontinuity('retune');
+        }
     }
 
     async setBasebandFilter(hz: number): Promise<void> {
@@ -335,6 +362,10 @@ export class HackRFDevice implements ISDRDevice {
         view.setUint32(4, 1, true);
 
         await this.vendorOut(HackRFCommand.SET_SAMPLE_RATE, 0, 0, buf);
+
+        if (this.isStreaming) {
+            this.markDiscontinuity('sample_rate_change');
+        }
     }
 
     async setGain(name: string, value: number): Promise<void> {
@@ -365,6 +396,11 @@ export class HackRFDevice implements ISDRDevice {
         if (!this.device) throw new Error("Device not open");
         if (this.isStreaming) return;
         this.isStreaming = true;
+        this.sequence = 0;
+        this.sampleIndex = 0;
+        this.timestampNs = 0;
+        this.lastTickWallClockMs = Date.now();
+        this.markDiscontinuity('restart');
 
         console.log("Starting RX Mode...");
         try {
@@ -385,13 +421,58 @@ export class HackRFDevice implements ISDRDevice {
                 // console.log("Requesting transfer...");
                 const result = await this.device.transferIn(this.inEndpointNumber, TRANSFER_SIZE);
                 if (result.data) {
-                    // console.log("Got Data:", result.data.byteLength);
-                    onData(result.data);
+                    const nowMs = Date.now();
+                    const transferSampleCount = Math.floor(result.data.byteLength / 2);
+                    const expectedChunkMs = (transferSampleCount / this.sampleRate) * 1000;
+                    const elapsedMs = Math.max(0, nowMs - this.lastTickWallClockMs);
+                    this.lastTickWallClockMs = nowMs;
+
+                    const elapsedChunks = Math.max(1, Math.floor(elapsedMs / Math.max(1, expectedChunkMs)));
+                    const droppedSamples = Math.max(0, (elapsedChunks - 1) * transferSampleCount);
+                    if (droppedSamples > 0) {
+                        this.sampleIndex += droppedSamples;
+                        this.timestampNs += Math.floor((droppedSamples * 1_000_000_000) / this.sampleRate);
+                    }
+
+                    const sequence = this.sequence;
+                    const sampleIndex = this.sampleIndex;
+                    const timestampNs = this.timestampNs;
+
+                    let discontinuity: SDRDiscontinuityEvent | undefined;
+                    const cause = this.pendingDiscontinuity ?? (droppedSamples > 0 ? 'dropped_samples' : null);
+                    if (cause) {
+                        discontinuity = {
+                            cause,
+                            sequence,
+                            sampleIndex,
+                            droppedSamples: droppedSamples > 0 ? droppedSamples : undefined,
+                            wallClockMs: nowMs
+                        };
+                        this.pendingDiscontinuity = null;
+                    }
+
+                    onData(result.data, {
+                        sequence,
+                        sampleIndex,
+                        sampleCount: transferSampleCount,
+                        timestampNs,
+                        sampleRate: this.sampleRate,
+                        droppedSamples,
+                        discontinuity,
+                        sampleClock: {
+                            truthMode: 'unknown'
+                        }
+                    });
+
+                    this.sequence += 1;
+                    this.sampleIndex += transferSampleCount;
+                    this.timestampNs += Math.floor((transferSampleCount * 1_000_000_000) / this.sampleRate);
                 } else {
                     console.warn("Empty Transfer?");
                 }
             } catch (e) {
                 console.error("USB Transfer Error:", e);
+                this.markDiscontinuity('overflow');
                 if (!this.device.opened) break;
             }
         }

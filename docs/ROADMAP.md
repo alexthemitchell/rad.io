@@ -53,31 +53,31 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 0.4 Architecture “Irreversible Decisions” (ADRs)
 
-- [ ] **ADR: Worker Topology + Message Schema**: single vs multiple workers, schema versioning, and compatibility strategy.
-- [ ] **ADR: `SharedArrayBuffer` Strategy**: COOP/COEP requirements, fallback behavior, and feature degradations.
-- [ ] **ADR: State & Persistence Boundaries**: what lives in Zustand vs URL vs localStorage vs IndexedDB (including migrations).
-- [ ] **ADR: Error Taxonomy + User-Facing Error UX**: typed errors, retryability, and diagnostics bundle linkage.
-- [ ] **ADR: UI Architecture + Component Strategy**: state boundaries (UI vs DSP), component library approach (custom vs headless), and theming/token strategy.
-- [ ] **ADR: Plugin/Extension Boundary (Future-Proofing)**: define extension points and constraints even if plugins ship later.
-- [ ] **ADR: Source/DSP/Audio Sink Contracts**: explicit interfaces + versioning strategy (so Mock/File/WebUSB can share the pipeline).
-- [ ] **ADR: Runtime Schema Validation**: where/how to validate messages/state (e.g., Zod at boundaries) without perf cliffs.
+- [x] **ADR: Worker Topology + Message Schema**: single vs multiple workers, schema versioning, and compatibility strategy.
+- [x] **ADR: `SharedArrayBuffer` Strategy**: COOP/COEP requirements, fallback behavior, and feature degradations.
+- [x] **ADR: State & Persistence Boundaries**: what lives in Zustand vs URL vs localStorage vs IndexedDB (including migrations).
+- [x] **ADR: Error Taxonomy + User-Facing Error UX**: typed errors, retryability, and diagnostics bundle linkage.
+- [x] **ADR: UI Architecture + Component Strategy**: state boundaries (UI vs DSP), component library approach (custom vs headless), and theming/token strategy.
+- [x] **ADR: Plugin/Extension Boundary (Future-Proofing)**: define extension points and constraints even if plugins ship later.
+- [x] **ADR: Source/DSP/Audio Sink Contracts**: explicit interfaces + versioning strategy (so Mock/File/WebUSB can share the pipeline).
+- [x] **ADR: Runtime Schema Validation**: where/how to validate messages/state (e.g., Zod at boundaries) without perf cliffs.
 
 ### 0.5 Data/Telemetry Contracts (Before Implementation)
 
-- [ ] **Canonical Session State Shape**: device/tuning/demod/UI/perf settings model with a versioned schema.
-- [ ] **Telemetry Contract + Retention Window**: define counters/events required for budgets (drops, underruns, latency, USB stalls).
-- [ ] **Diagnostics Bundle Format (Versioned)**: structure, redaction/anonymization rules, and replay/debug expectations.
-- [ ] **Frequency Planning / LO Model Contract (Unified)**: define RF frequency vs tuner LO vs display frequency, plus LO/IF offsets and how they propagate into readouts, exports, and retune math.
-- [ ] **Calibration & Disclosure Contract (Measurement Claims)**: define what “uncalibrated/approx/calibrated” means for frequency and level, what evidence is required for “measurement-grade,” and how assumptions/uncertainty must be surfaced in UI and exports.
-- [ ] **RF Chain Model Contract (Structured)**: define the canonical schema for antenna/RF-chain/transverter context (LNA/attenuator/filter/bias-tee/IF offsets), where it is stored, and how it affects frequency/level mappings and diagnostics.
+- [x] **Canonical Session State Shape**: device/tuning/demod/UI/perf settings model with a versioned schema.
+- [x] **Telemetry Contract + Retention Window**: define counters/events required for budgets (drops, underruns, latency, USB stalls).
+- [x] **Diagnostics Bundle Format (Versioned)**: structure, redaction/anonymization rules, and replay/debug expectations.
+- [x] **Frequency Planning / LO Model Contract (Unified)**: define RF frequency vs tuner LO vs display frequency, plus LO/IF offsets and how they propagate into readouts, exports, and retune math.
+- [x] **Calibration & Disclosure Contract (Measurement Claims)**: define what “uncalibrated/approx/calibrated” means for frequency and level, what evidence is required for “measurement-grade,” and how assumptions/uncertainty must be surfaced in UI and exports.
+- [x] **RF Chain Model Contract (Structured)**: define the canonical schema for antenna/RF-chain/transverter context (LNA/attenuator/filter/bias-tee/IF offsets), where it is stored, and how it affects frequency/level mappings and diagnostics.
 
 ### 0.6 Risk Register + Validation Spikes (Timeboxed)
 
-- [ ] **Top Risks Register**: top ~10 risks with owner, mitigation plan, and acceptance validation.
-- [ ] **Spike Plan (2–3 Timeboxed Spikes)**: retire biggest unknowns (WebUSB stability/throughput, worker→audio latency, 60 FPS rendering).
-- [ ] **Definition of “Degraded Mode”**: agree on safe behavior when budgets are missed (mute ramps, lower FFT rate, reduced resolution).
-- [ ] **Secure Context + HTTPS Dev Plan (Windows)**: local cert strategy, localhost exceptions, and “how to run” guidance.
-- [ ] **Cross-Origin Isolation Deployment Plan**: ensure COOP/COEP headers in dev/prod and define the fallback feature set.
+- [x] **Top Risks Register**: top ~10 risks with owner, mitigation plan, and acceptance validation.
+- [x] **Spike Plan (2–3 Timeboxed Spikes)**: retire biggest unknowns (WebUSB stability/throughput, worker→audio latency, 60 FPS rendering).
+- [x] **Definition of “Degraded Mode”**: agree on safe behavior when budgets are missed (mute ramps, lower FFT rate, reduced resolution).
+- [x] **Secure Context + HTTPS Dev Plan (Windows)**: local cert strategy, localhost exceptions, and “how to run” guidance.
+- [x] **Cross-Origin Isolation Deployment Plan**: ensure COOP/COEP headers in dev/prod and define the fallback feature set.
 
 ### 0.7 Project Hygiene & Execution System
 
@@ -89,7 +89,7 @@ These are gates, not features: they define what good means and prevent late-stag
 ### 0.8 Preview/Release Strategy (Feedback Loop)
 
 - [ ] **Preview Distribution Plan**: how pre-release builds are shared and how feedback is collected and triaged.
-- [ ] **Versioning Policy for Fixtures/Recordings**: compatibility expectations for early users and regression assets.
+- [x] **Versioning Policy for Fixtures/Recordings**: compatibility expectations for early users and regression assets.
 
 ### 0.9 Backlog, Release, and Change Management
 
@@ -205,37 +205,37 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **SigMF Replay**: implement `FileDevice` for deterministic IQ playback.
 - [x] **SigMF Test Vectors**: maintain canonical recordings for regression tests.
-- [ ] **Golden Output Tests**: toleranced expectations for filters/demods/AGC.
-- [ ] **Known-Signal Fixture Library**: canonical IQ clips for FM pilot, AM carrier, NFM tone, NOAA WX, time beacons, and “clean tone in noise” baselines.
-- [ ] **End-to-End Accuracy Tests**: fixtures validate frequency error, demod lock behavior, and meter stability across retunes and long runs.
-- [ ] **Calibrated Fixture Metadata**: ship fixtures with known levels/frequency offsets where possible so metering, PPM, and “measurement mode” can be regression-tested (with tolerances).
-- [ ] **Interop Fixture Exports (Golden)**: for each canonical fixture, ship/reference exports in common interchange forms (SigMF + raw IQ sidecar, WAV audio renders) to validate import/export correctness and prevent ecosystem regressions.
+- [x] **Golden Output Tests**: toleranced expectations for filters/demods/AGC.
+- [x] **Known-Signal Fixture Library**: canonical IQ clips for FM pilot, AM carrier, NFM tone, NOAA WX, time beacons, and “clean tone in noise” baselines.
+- [x] **End-to-End Accuracy Tests**: fixtures validate frequency error, demod lock behavior, and meter stability across retunes and long runs.
+- [x] **Calibrated Fixture Metadata**: ship fixtures with known levels/frequency offsets where possible so metering, PPM, and “measurement mode” can be regression-tested (with tolerances).
+- [x] **Interop Fixture Exports (Golden)**: for each canonical fixture, ship/reference exports in common interchange forms (SigMF + raw IQ sidecar, WAV audio renders) to validate import/export correctness and prevent ecosystem regressions.
 
 ### 2.3 Timestamp / Sequence Model (Foundational)
 
-- [ ] **Timestamp Model**: consistent timestamp/sequence for buffers (derived or device-provided).
-- [ ] **Sample Clock Truth Modes (Testable)**: define “unknown / corrected (PPM) / disciplined (ref)” modes and how each mode constrains UI readouts and export claims.
-- [ ] **Dropped Sample Detection**: detect gaps and backpressure and surface it to the UI.
-- [ ] **Discontinuity Event Model**: explicitly represent retunes, device resets, overruns, and stream restarts and propagate them through DSP → UI → recording.
-- [ ] **Monotonic Timebase Invariants (All Sources)**: enforce and regression-test timestamp/sequence/sample-count invariants for Mock/File/WebUSB sources and for replay.
-- [ ] **Wall-Clock Recording Timestamps**: persist real-world time metadata (when available) alongside sample-time for recordings/replay.
-- [ ] **Settings + Measurement Provenance**: persist “where measurements are taken” metadata (ADC vs post-DDC vs post-demod) so metering is repeatable and debug-friendly.
-- [ ] **RF↔Audio Timebase Alignment Model**: define how sample-time maps through DSP and async audio clocks, including drift correction and how it impacts recorded/replayed material.
-- [ ] **Long-Run Drift Regression Tests**: hour-scale simulated runs that validate no slow desync, bounded drift, and stable recovery after suspend/resume.
+- [x] **Timestamp Model**: consistent timestamp/sequence for buffers (derived or device-provided).
+- [x] **Sample Clock Truth Modes (Testable)**: define “unknown / corrected (PPM) / disciplined (ref)” modes and how each mode constrains UI readouts and export claims.
+- [x] **Dropped Sample Detection**: detect gaps and backpressure and surface it to the UI.
+- [x] **Discontinuity Event Model**: explicitly represent retunes, device resets, overruns, and stream restarts and propagate them through DSP → UI → recording/export metadata timeline.
+- [x] **Monotonic Timebase Invariants (All Sources)**: enforce and regression-test timestamp/sequence/sample-count invariants for Mock/File/WebUSB sources and for replay. (Mock/File/replay covered by conformance + long-run regressions; HackRF WebUSB source now emits stream-frame metadata and was runtime-verified via Playwright diagnostics export.)
+- [x] **Wall-Clock Recording Timestamps**: persist real-world time metadata (when available) alongside sample-time for recordings/replay.
+- [x] **Settings + Measurement Provenance**: persist “where measurements are taken” metadata (ADC vs post-DDC vs post-demod) so metering is repeatable and debug-friendly.
+- [x] **RF↔Audio Timebase Alignment Model**: baseline model + export metadata mapping implemented and tested for deterministic sources (`src/measurements/rfAudioTimebaseAlignment.ts`, `docs/reference/rf-audio-timebase-alignment-baseline.md`).
+- [x] **Long-Run Drift Regression Tests**: simulated multi-hour deterministic regressions with suspend/resume gaps validate monotonic invariants and bounded sample-time drift (`src/devices/longRunDriftRegression.test.ts`).
 
 ### 2.4 Measurement & Reproducibility Foundations (Foundational)
 
-- [ ] **Measurement Uncertainty Model**: formalize “dBFS vs approximate dBm,” calibration presence, and uncertainty bounds; propagate into UI readouts and exports.
-- [ ] **Calibration Confidence & Disclosure UX**: visibly indicate calibration presence/quality (e.g., “uncalibrated/approx/calibrated”) on meters and exports, and persist it in artifacts for reproducibility.
-- [ ] **Analyzer Artifact Export (Deterministic)**: export analyzer state (FFT/window/ENBW/averaging/ref level conventions), calibration snapshot, and pipeline graph/config so bugs and measurements are reproducible.
-- [ ] **Time Alignment Extensions (Optional)**: represent wall-clock alignment and (when available) reference discipline beyond 10 MHz (e.g., 1PPS) and propagate into recording/replay metadata.
+- [x] **Measurement Uncertainty Model**: formalize “dBFS vs approximate dBm,” calibration presence, and uncertainty bounds; propagate into UI readouts and exports.
+- [x] **Calibration Confidence & Disclosure UX**: visibly indicate calibration presence/quality (e.g., “uncalibrated/approx/calibrated”) on meters and exports, and persist it in artifacts for reproducibility.
+- [x] **Analyzer Artifact Export (Deterministic)**: export analyzer state (FFT/window/ENBW/averaging/ref level conventions), calibration snapshot, and pipeline graph/config so bugs and measurements are reproducible.
+- [x] **Time Alignment Extensions (Optional)**: baseline optional metadata (`timeAlignment.referenceDiscipline`, including `1pps`) propagates through fixture schema + interop/export metadata.
 
 ### 2.5 Deterministic “RF Scenarios” (Regression)
 
-- [ ] **Scenario Fixtures**: scripted events (retune mid-stream, gain steps, clock steps, burst dropouts, and backpressure) to reproduce real-world behavior deterministically.
-- [ ] **Recovery Regression Tests**: validate dropout concealment + pop suppression behavior and verify counters/telemetry increment as expected.
-- [ ] **Interference Scenarios**: deterministic DC spike, single-tone heterodyne, mains hum, and impulsive noise fixtures to regression-test mitigation presets.
-- [ ] **Discontinuity Fuzz/Property Tests**: randomized start/stop/retune/backpressure sequences that must preserve invariants (no crashes, bounded latency growth, correct discontinuity event emission).
+- [x] **Scenario Fixtures**: scripted deterministic events (retune, gain step, clock step, sample-rate step, backpressure) with regressions for deterministic sources (`src/fixtures/scenarios/scriptedRfScenarios.ts`, `src/devices/scenarioFixtures.test.ts`).
+- [x] **Recovery Regression Tests**: validate dropout concealment + pop suppression behavior and verify counters/telemetry increment as expected.
+- [x] **Interference Scenarios**: deterministic DC spike, single-tone heterodyne, mains hum, and impulsive noise fixtures to regression-test mitigation presets.
+- [x] **Discontinuity Fuzz/Property Tests**: randomized start/stop/retune/backpressure sequences that must preserve invariants (no crashes, bounded latency growth, correct discontinuity event emission).
 
 ## Phase 3: Core DSP Pipeline (Workers → Audio → Demods)
 

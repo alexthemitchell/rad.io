@@ -14,6 +14,22 @@ export interface SDRDiscontinuityEvent {
     wallClockMs?: number;
 }
 
+export type SDRSampleClockTruthMode = 'unknown' | 'corrected_ppm' | 'disciplined_ref';
+
+export type SDRSampleClockInfo =
+    | {
+          truthMode: 'unknown';
+      }
+    | {
+          truthMode: 'corrected_ppm';
+          correctionPpm: number;
+      }
+    | {
+          truthMode: 'disciplined_ref';
+          referenceId: string;
+          correctionPpm?: number;
+      };
+
 export interface SDRStreamFrame {
     sequence: number;
     sampleIndex: number;
@@ -22,4 +38,5 @@ export interface SDRStreamFrame {
     sampleRate: number;
     droppedSamples: number;
     discontinuity?: SDRDiscontinuityEvent;
+    sampleClock?: SDRSampleClockInfo;
 }

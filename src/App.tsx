@@ -15,7 +15,13 @@ import { RtlSdrDevice } from './devices/RtlSdrDevice';
 import { FileDevice } from './devices/FileDevice';
 import { ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
 import { normalizeDeviceError } from './devices/errors';
+import type { SDRSampleClockTruthMode, SDRStreamFrame } from './devices/streamFrame';
 import { goldenToneFixtureBundle } from './fixtures/sigmf/goldenToneFixture';
+import { createAnalyzerArtifactExport } from './dsp/analyzerArtifactExport';
+import { createMeasurementCalibrationDisclosure } from './measurements/disclosure';
+import { appendDiscontinuityTimelineEntry, type DiscontinuityTimelineEntry } from './measurements/discontinuityTimeline';
+import { createRfAudioTimebaseAlignmentSnapshot } from './measurements/rfAudioTimebaseAlignment';
+import { createFixtureInteropExportBundle } from './fixtures/sigmf/interopExport';
 
 type ConnectionState = 'idle' | 'starting' | 'streaming' | 'recovering' | 'error';
 type AudioState = 'suspended' | 'awaiting-user-gesture' | 'running' | 'degraded' | 'muted';
@@ -26,6 +32,18 @@ type RuntimeTelemetry = {
   lowFpsEvents: number;
   audioUnderruns: number;
   audioQueueAheadMs: number;
+  audioConcealmentEvents: number;
+  audioPopSuppressionEvents: number;
+  streamDiscontinuities: number;
+  droppedFrameEvents: number;
+  totalDroppedSamples: number;
+  lastDiscontinuityCause: string | null;
+  lastFrameSequence: number | null;
+  lastFrameSampleIndex: number | null;
+  lastFrameTimestampNs: number | null;
+  lastFrameSampleRate: number | null;
+  lastFrameWallClockMs: number | null;
+  lastClockTruthMode: SDRSampleClockTruthMode | null;
 };
 
 type SourceType = 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
@@ -89,6 +107,17 @@ type RadioDebugSnapshot = {
 
 type FmScanResult = FmStationCandidate & {
   scannedAt: string;
+};
+
+const fnv1a32 = (bytes: Uint8Array): number => {
+  let hash = 0x811c9dc5;
+
+  for (let i = 0; i < bytes.length; i += 1) {
+    hash ^= bytes[i];
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+
+  return hash >>> 0;
 };
 
 const emptyRdsTelemetry = (): RdsTelemetry => ({
@@ -209,7 +238,19 @@ export default function App() {
       renderFps: null,
       lowFpsEvents: 0,
       audioUnderruns: 0,
-      audioQueueAheadMs: 0
+      audioQueueAheadMs: 0,
+      audioConcealmentEvents: 0,
+      audioPopSuppressionEvents: 0,
+      streamDiscontinuities: 0,
+      droppedFrameEvents: 0,
+      totalDroppedSamples: 0,
+      lastDiscontinuityCause: null,
+      lastFrameSequence: null,
+      lastFrameSampleIndex: null,
+      lastFrameTimestampNs: null,
+      lastFrameSampleRate: null,
+      lastFrameWallClockMs: null,
+      lastClockTruthMode: null
     });
     const [usbIqRms, setUsbIqRms] = useState(0);
     const [usbIqMeanAbs, setUsbIqMeanAbs] = useState(0);
@@ -232,6 +273,8 @@ export default function App() {
   const fftDataRef = useRef<Float32Array>(new Float32Array(2048));
   const rdsTelemetryRef = useRef<RdsTelemetry>(emptyRdsTelemetry());
   const scanAbortRef = useRef(false);
+  const streamSessionStartedAtRef = useRef<Date | null>(null);
+  const discontinuityTimelineRef = useRef<DiscontinuityTimelineEntry[]>([]);
 
     const pushDiagnosticEvent = useCallback((message: string) => {
         const timestamp = new Date().toISOString();
@@ -288,6 +331,29 @@ export default function App() {
         audioRef.current?.push(audioData);
       } else if (e.data.type === 'RDS_DATA') {
         setRdsTelemetry(e.data.data as RdsTelemetry);
+      } else if (e.data.type === 'STREAM_FRAME_META') {
+        const frame = e.data.data as SDRStreamFrame;
+        const isDropEvent = frame.discontinuity?.cause === 'dropped_samples' || frame.droppedSamples > 0;
+
+        discontinuityTimelineRef.current = appendDiscontinuityTimelineEntry(
+          discontinuityTimelineRef.current,
+          frame,
+          streamSessionStartedAtRef.current?.valueOf() ?? null
+        );
+
+        setRuntimeTelemetry((prev) => ({
+          ...prev,
+          streamDiscontinuities: frame.discontinuity ? prev.streamDiscontinuities + 1 : prev.streamDiscontinuities,
+          droppedFrameEvents: isDropEvent ? prev.droppedFrameEvents + 1 : prev.droppedFrameEvents,
+          totalDroppedSamples: prev.totalDroppedSamples + Math.max(0, frame.droppedSamples),
+          lastDiscontinuityCause: frame.discontinuity?.cause ?? prev.lastDiscontinuityCause,
+          lastFrameSequence: frame.sequence,
+          lastFrameSampleIndex: frame.sampleIndex,
+          lastFrameTimestampNs: frame.timestampNs,
+          lastFrameSampleRate: frame.sampleRate,
+          lastFrameWallClockMs: frame.discontinuity?.wallClockMs ?? prev.lastFrameWallClockMs,
+          lastClockTruthMode: frame.sampleClock?.truthMode ?? prev.lastClockTruthMode
+        }));
       }
     };
 
@@ -372,7 +438,9 @@ export default function App() {
           setRuntimeTelemetry((prev) => ({
             ...prev,
             audioUnderruns: stats.underruns,
-            audioQueueAheadMs: stats.queueAheadMs
+            audioQueueAheadMs: stats.queueAheadMs,
+            audioConcealmentEvents: stats.concealmentEvents,
+            audioPopSuppressionEvents: stats.popSuppressionEvents
           }));
 
           // Sample high-rate USB metrics at UI cadence to avoid per-transfer rerenders.
@@ -672,7 +740,24 @@ export default function App() {
         setAudioState('suspended');
         setStatusMessage('Stream stopped.');
         pushDiagnosticEvent('Stream stopped by user.');
-        setRuntimeTelemetry((prev) => ({ ...prev, renderFps: null, audioQueueAheadMs: 0 }));
+        setRuntimeTelemetry((prev) => ({
+          ...prev,
+          renderFps: null,
+          audioQueueAheadMs: 0,
+          audioConcealmentEvents: 0,
+          audioPopSuppressionEvents: 0,
+          droppedFrameEvents: 0,
+          totalDroppedSamples: 0,
+          lastDiscontinuityCause: null,
+          lastFrameSequence: null,
+          lastFrameSampleIndex: null,
+          lastFrameTimestampNs: null,
+          lastFrameSampleRate: null,
+          lastFrameWallClockMs: null,
+          lastClockTruthMode: null,
+          streamDiscontinuities: 0
+        }));
+        streamSessionStartedAtRef.current = null;
     } else {
         // START
         setConnectionState('starting');
@@ -724,9 +809,27 @@ export default function App() {
             usbIqMeanAbsRef.current = 0;
             usbTransferBytesRef.current = 0;
             usbTransferCountRef.current = 0;
+            streamSessionStartedAtRef.current = new Date();
+            discontinuityTimelineRef.current = [];
+            setRuntimeTelemetry((prev) => ({
+              ...prev,
+              lowFpsEvents: 0,
+              audioConcealmentEvents: 0,
+              audioPopSuppressionEvents: 0,
+              streamDiscontinuities: 0,
+              droppedFrameEvents: 0,
+              totalDroppedSamples: 0,
+              lastDiscontinuityCause: null,
+              lastFrameSequence: null,
+              lastFrameSampleIndex: null,
+              lastFrameTimestampNs: null,
+              lastFrameSampleRate: null,
+              lastFrameWallClockMs: null,
+              lastClockTruthMode: null
+            }));
     
             // Start Stream
-            void dev.start((dataView) => {
+            void dev.start((dataView, frame) => {
               usbTransferBytesRef.current = dataView.byteLength;
               usbTransferCountRef.current += 1;
 
@@ -745,6 +848,13 @@ export default function App() {
 
                 usbIqRmsRef.current = Math.sqrt(sumSq / metricSampleSize);
                 usbIqMeanAbsRef.current = sumAbs / metricSampleSize;
+              }
+
+              if (frame) {
+                workerRef.current?.postMessage({
+                  type: 'STREAM_FRAME',
+                  frame
+                });
               }
 
                 const buf = dataView.buffer.slice(0); 
@@ -813,6 +923,43 @@ export default function App() {
         };
         setPermissionState(latestPermissionState);
 
+        const activeFixtureMetadata = sourceType === 'FILE'
+          ? (deviceRef.current instanceof FileDevice ? deviceRef.current.getFixtureMetadata() : goldenToneFixtureBundle.metadata)
+          : undefined;
+        const calibrationDisclosure = createMeasurementCalibrationDisclosure(activeFixtureMetadata);
+        const analyzerArtifact = createAnalyzerArtifactExport({
+          sourceType,
+          demodMode,
+          tunedFrequencyHz: frequency,
+          fineTuneHz: fineFreq,
+          fftSize: fftDataRef.current.length,
+          sampleRateHzHint: 2_000_000,
+          zoomLevel,
+          waterfallPalette,
+          waterfallAutoScale,
+          waterfallMinDb,
+          waterfallMaxDb
+        });
+        const interopFixtureExport = sourceType === 'FILE'
+          ? createFixtureInteropExportBundle(goldenToneFixtureBundle)
+          : null;
+
+        const sessionStartedAtIso = streamSessionStartedAtRef.current?.toISOString() ?? null;
+        const sessionStartedUnixMs = streamSessionStartedAtRef.current?.valueOf() ?? null;
+        const timebaseAlignment = createRfAudioTimebaseAlignmentSnapshot({
+          streamSessionStartedUnixMs: sessionStartedUnixMs,
+          exportUnixMs: Date.now(),
+          lastFrameSequence: runtimeTelemetry.lastFrameSequence,
+          lastFrameSampleIndex: runtimeTelemetry.lastFrameSampleIndex,
+          lastFrameTimestampNs: runtimeTelemetry.lastFrameTimestampNs,
+          lastFrameSampleRate: runtimeTelemetry.lastFrameSampleRate,
+          audioQueueAheadMs: runtimeTelemetry.audioQueueAheadMs,
+          audioUnderruns: runtimeTelemetry.audioUnderruns,
+              audioConcealmentEvents: runtimeTelemetry.audioConcealmentEvents,
+              audioPopSuppressionEvents: runtimeTelemetry.audioPopSuppressionEvents,
+          sampleClockTruthMode: runtimeTelemetry.lastClockTruthMode
+        });
+
         const payload = {
             exportedAt: new Date().toISOString(),
             environment: {
@@ -850,6 +997,40 @@ export default function App() {
               stepLabel: scanStepLabel,
               results: scanResults
             },
+            recordingTimeline: {
+              sessionStartedAtIso,
+              sessionStartedUnixMs,
+              lastFrameSequence: runtimeTelemetry.lastFrameSequence,
+              lastFrameSampleIndex: runtimeTelemetry.lastFrameSampleIndex,
+              lastFrameTimestampNs: runtimeTelemetry.lastFrameTimestampNs,
+              lastFrameSampleRate: runtimeTelemetry.lastFrameSampleRate,
+              lastFrameWallClockMs: runtimeTelemetry.lastFrameWallClockMs,
+              discontinuityTimeline: discontinuityTimelineRef.current,
+              discontinuityEventTotal: discontinuityTimelineRef.current.length,
+              rfAudioTimebaseAlignment: timebaseAlignment,
+              exportUnixMs: Date.now()
+            },
+            measurementProvenance: {
+              levelReadoutPoint: 'post-ddc',
+              audioReadoutPoint: 'post-demod',
+              sourceIqFormat: 'ci8-interleaved',
+              exportedFromSourceType: sourceType,
+              sampleClockTruthMode: runtimeTelemetry.lastClockTruthMode ?? 'unknown',
+              timeAlignmentExtensions: activeFixtureMetadata?.timeAlignment ?? null
+            },
+            calibrationDisclosure,
+            analyzerArtifact,
+            interopFixtureExport: interopFixtureExport
+              ? {
+                  fixtureId: interopFixtureExport.fixtureId,
+                  sigmfMetaFilename: interopFixtureExport.sigmfMetaFilename,
+                  sigmfDataFilename: interopFixtureExport.sigmfDataFilename,
+                  wavFilename: interopFixtureExport.wavFilename,
+                  sigmfMetaLength: interopFixtureExport.sigmfMetaJson.length,
+                  rawIqChecksumFnv1a32: `0x${fnv1a32(interopFixtureExport.rawIqSidecar).toString(16)}`,
+                  wavChecksumFnv1a32: `0x${fnv1a32(interopFixtureExport.wavAudioRender).toString(16)}`
+                }
+              : null,
             statusMessage,
             events: diagnosticEvents
         };
@@ -889,6 +1070,14 @@ export default function App() {
     
     setFineFreq(Math.round(offsetHz));
   };
+
+    const measurementDisclosure = useMemo(() => {
+      if (sourceType === 'FILE') {
+        return createMeasurementCalibrationDisclosure(goldenToneFixtureBundle.metadata);
+      }
+
+      return createMeasurementCalibrationDisclosure();
+    }, [sourceType]);
 
     const healthItems = useMemo(() => {
       const items: Array<{ key: string; level: HealthLevel; label: string; recommendation: string }> = [];
@@ -974,6 +1163,15 @@ export default function App() {
         });
       }
 
+      if (runtimeTelemetry.totalDroppedSamples > 0) {
+        items.push({
+          key: 'stream-drops',
+          level: 'warn',
+          label: `Dropped samples detected (${runtimeTelemetry.totalDroppedSamples})`,
+          recommendation: 'Investigate host load and source backpressure; exported diagnostics include drop counters and timeline.'
+        });
+      }
+
       if (runtimeTelemetry.renderFps !== null && runtimeTelemetry.renderFps < 45) {
         items.push({
           key: 'render-fps-low',
@@ -1041,6 +1239,7 @@ export default function App() {
       permissionState.microphone,
       permissionState.usb,
       runtimeTelemetry.audioUnderruns,
+      runtimeTelemetry.totalDroppedSamples,
       runtimeTelemetry.renderFps,
       sourceType
     ]);
@@ -1303,6 +1502,50 @@ export default function App() {
           <li className={`health-item ${runtimeTelemetry.audioQueueAheadMs > 250 ? 'health-warn' : 'health-ok'}`}>
             <strong>Audio Queue Ahead</strong>
             <span>{runtimeTelemetry.audioQueueAheadMs.toFixed(1)} ms</span>
+          </li>
+          <li className={`health-item ${runtimeTelemetry.audioConcealmentEvents > 0 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Concealment Events</strong>
+            <span>{runtimeTelemetry.audioConcealmentEvents}</span>
+          </li>
+          <li className={`health-item ${runtimeTelemetry.audioPopSuppressionEvents > 0 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Pop Suppression Events</strong>
+            <span>{runtimeTelemetry.audioPopSuppressionEvents}</span>
+          </li>
+          <li className={`health-item ${runtimeTelemetry.totalDroppedSamples > 0 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Dropped Samples</strong>
+            <span>{runtimeTelemetry.totalDroppedSamples} ({runtimeTelemetry.droppedFrameEvents} events)</span>
+          </li>
+          <li className="health-item health-ok">
+            <strong>Last Clock Truth Mode</strong>
+            <span>{runtimeTelemetry.lastClockTruthMode ?? 'unknown'}</span>
+          </li>
+        </ul>
+      </section>
+
+      <section className="health-panel" aria-live="polite">
+        <h2 className="panel-title">Measurement Disclosure</h2>
+        <ul>
+          <li className={`health-item ${measurementDisclosure.disclosureText.uiBadgeShort === 'Calibrated' ? 'health-ok' : 'health-warn'}`}>
+            <strong>Calibration Confidence</strong>
+            <span>{measurementDisclosure.disclosureText.uiBadgeShort}</span>
+          </li>
+          <li className="health-item health-ok">
+            <strong>Frequency Confidence</strong>
+            <span>
+              {measurementDisclosure.frequency.state}
+              {measurementDisclosure.frequency.residualUncertaintyPpm === null
+                ? ''
+                : ` (+/-${measurementDisclosure.frequency.residualUncertaintyPpm.toFixed(2)} ppm)`}
+            </span>
+          </li>
+          <li className="health-item health-ok">
+            <strong>Level Confidence</strong>
+            <span>
+              {measurementDisclosure.level.state}
+              {measurementDisclosure.level.residualUncertaintyDb === null
+                ? ' (relative dBFS)'
+                : ` (+/-${measurementDisclosure.level.residualUncertaintyDb.toFixed(2)} dB)`}
+            </span>
           </li>
         </ul>
       </section>

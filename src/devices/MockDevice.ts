@@ -10,9 +10,28 @@ export class MockDevice implements ISDRDevice {
     private phase = 0;
     private sequence = 0;
     private sampleIndex = 0;
+    private timestampNs = 0;
     private pendingDiscontinuity: SDRDiscontinuityCause | null = null;
     private lastTickWallClockMs = 0;
     private readonly blockIntervalMs = 10;
+
+    private markDiscontinuity(cause: SDRDiscontinuityCause): void {
+        if (this.pendingDiscontinuity === 'restart') {
+            return;
+        }
+
+        if (cause === 'restart' || this.pendingDiscontinuity === null) {
+            this.pendingDiscontinuity = cause;
+            return;
+        }
+
+        // Keep sample-rate changes sticky until observed by the next frame.
+        if (this.pendingDiscontinuity === 'sample_rate_change' && cause === 'retune') {
+            return;
+        }
+
+        this.pendingDiscontinuity = cause;
+    }
     
     // Internal Gain State
     private mockGain = 50;
@@ -35,15 +54,17 @@ export class MockDevice implements ISDRDevice {
     async setFrequency(hz: number): Promise<void> {
         this.frequency = hz;
         if (this.isStreaming) {
-            this.pendingDiscontinuity = 'retune';
+            this.markDiscontinuity('retune');
         }
         console.log(`Mock: Tuned to ${hz} Hz`);
     }
 
     async setSampleRate(hz: number): Promise<void> {
-        this.sampleRate = hz;
-        if (this.isStreaming) {
-            this.pendingDiscontinuity = 'sample_rate_change';
+        if (hz > 0 && Number.isFinite(hz)) {
+            this.sampleRate = hz;
+            if (this.isStreaming) {
+                this.markDiscontinuity('sample_rate_change');
+            }
         }
         console.log(`Mock: Rate set to ${hz} Hz`);
     }
@@ -56,7 +77,7 @@ export class MockDevice implements ISDRDevice {
     async start(onData: SDRDataCallback): Promise<void> {
         if (this.isStreaming) return;
         this.isStreaming = true;
-        this.pendingDiscontinuity = 'restart';
+        this.markDiscontinuity('restart');
         this.lastTickWallClockMs = Date.now();
 
         const BLOCK_SIZE = 16384;
@@ -79,6 +100,7 @@ export class MockDevice implements ISDRDevice {
             const droppedSamples = (elapsedBlocks - 1) * COMPLEX_SAMPLES_PER_BLOCK;
             if (droppedSamples > 0) {
                 this.sampleIndex += droppedSamples;
+                this.timestampNs += Math.floor((droppedSamples * 1_000_000_000) / this.sampleRate);
             }
 
             for (let i = 0; i < BLOCK_SIZE; i += 2) {
@@ -115,7 +137,7 @@ export class MockDevice implements ISDRDevice {
             
             const sequence = this.sequence;
             const sampleIndex = this.sampleIndex;
-            const timestampNs = Math.floor((sampleIndex * 1_000_000_000) / this.sampleRate);
+            const timestampNs = this.timestampNs;
 
             let discontinuity: SDRDiscontinuityEvent | undefined;
             const cause = this.pendingDiscontinuity ?? (droppedSamples > 0 ? 'dropped_samples' : null);
@@ -137,13 +159,17 @@ export class MockDevice implements ISDRDevice {
                 timestampNs,
                 sampleRate: this.sampleRate,
                 droppedSamples,
-                discontinuity
+                discontinuity,
+                sampleClock: {
+                    truthMode: 'unknown'
+                }
             };
 
             onData(new DataView(buffer.buffer), frame);
 
             this.sequence += 1;
             this.sampleIndex += COMPLEX_SAMPLES_PER_BLOCK;
+            this.timestampNs += Math.floor((COMPLEX_SAMPLES_PER_BLOCK * 1_000_000_000) / this.sampleRate);
 
         }, this.blockIntervalMs);
     }

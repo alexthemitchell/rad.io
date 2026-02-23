@@ -18,8 +18,27 @@ export class FileDevice implements ISDRDevice {
   private sampleRateHz: number;
   private sequence = 0;
   private sampleIndex = 0;
+  private timestampNs = 0;
   private pendingDiscontinuity: SDRDiscontinuityCause | null = null;
   private lastTickWallClockMs = 0;
+
+  private markDiscontinuity(cause: SDRDiscontinuityCause): void {
+    if (this.pendingDiscontinuity === 'restart') {
+      return;
+    }
+
+    if (cause === 'restart' || this.pendingDiscontinuity === null) {
+      this.pendingDiscontinuity = cause;
+      return;
+    }
+
+    // Keep sample-rate changes sticky until observed by the next frame.
+    if (this.pendingDiscontinuity === 'sample_rate_change' && cause === 'retune') {
+      return;
+    }
+
+    this.pendingDiscontinuity = cause;
+  }
 
   constructor(fixture: SigmfFixtureBundle, options?: FileDeviceOptions) {
     this.fixture = fixture;
@@ -46,6 +65,7 @@ export class FileDevice implements ISDRDevice {
     this.playbackCursor = 0;
     this.sequence = 0;
     this.sampleIndex = 0;
+    this.timestampNs = 0;
   }
 
   async close(): Promise<void> {
@@ -56,7 +76,7 @@ export class FileDevice implements ISDRDevice {
   async setFrequency(hz: number): Promise<void> {
     void hz;
     if (this.isStreaming) {
-      this.pendingDiscontinuity = 'retune';
+      this.markDiscontinuity('retune');
     }
   }
 
@@ -64,7 +84,7 @@ export class FileDevice implements ISDRDevice {
     if (hz > 0 && Number.isFinite(hz)) {
       this.sampleRateHz = hz;
       if (this.isStreaming) {
-        this.pendingDiscontinuity = 'sample_rate_change';
+        this.markDiscontinuity('sample_rate_change');
       }
     }
   }
@@ -96,7 +116,7 @@ export class FileDevice implements ISDRDevice {
     }
 
     this.isStreaming = true;
-    this.pendingDiscontinuity = 'restart';
+    this.markDiscontinuity('restart');
 
     const complexSamplesPerChunk = this.chunkSizeBytes / 2;
     const chunkIntervalMs = Math.max(1, Math.round((complexSamplesPerChunk / this.sampleRateHz) * 1000));
@@ -115,11 +135,12 @@ export class FileDevice implements ISDRDevice {
       const droppedSamples = (elapsedChunks - 1) * complexSamplesPerChunk;
       if (droppedSamples > 0) {
         this.sampleIndex += droppedSamples;
+        this.timestampNs += Math.floor((droppedSamples * 1_000_000_000) / this.sampleRateHz);
       }
 
       const sequence = this.sequence;
       const sampleIndex = this.sampleIndex;
-      const timestampNs = Math.floor((sampleIndex * 1_000_000_000) / this.sampleRateHz);
+      const timestampNs = this.timestampNs;
 
       let discontinuity: SDRDiscontinuityEvent | undefined;
       const cause = this.pendingDiscontinuity ?? (droppedSamples > 0 ? 'dropped_samples' : null);
@@ -141,13 +162,17 @@ export class FileDevice implements ISDRDevice {
         timestampNs,
         sampleRate: this.sampleRateHz,
         droppedSamples,
-        discontinuity
+        discontinuity,
+        sampleClock: {
+          truthMode: 'unknown'
+        }
       };
 
       onData(this.createChunkView(), frame);
 
       this.sequence += 1;
       this.sampleIndex += complexSamplesPerChunk;
+      this.timestampNs += Math.floor((complexSamplesPerChunk * 1_000_000_000) / this.sampleRateHz);
     }, chunkIntervalMs);
   }
 

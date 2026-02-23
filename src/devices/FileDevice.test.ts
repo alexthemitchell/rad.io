@@ -56,12 +56,18 @@ describe('FileDevice', () => {
 
       expect(frameA.sequence).toBe(i);
       expect(frameB.sequence).toBe(i);
+      expect(frameA.sampleClock?.truthMode).toBe('unknown');
+      expect(frameB.sampleClock?.truthMode).toBe('unknown');
+
+      if (frameA.discontinuity) {
+        expect(frameA.discontinuity.sequence).toBe(frameA.sequence);
+        expect(frameA.discontinuity.sampleIndex).toBe(frameA.sampleIndex);
+      }
 
       if (i > 0) {
         expect(frameA.sampleIndex).toBe(firstRunFrames[i - 1].sampleIndex + firstRunFrames[i - 1].sampleCount + frameA.droppedSamples);
+        expect(frameA.timestampNs).toBeGreaterThan(firstRunFrames[i - 1].timestampNs);
       }
-
-      expect(frameA.timestampNs).toBe(Math.floor((frameA.sampleIndex * 1_000_000_000) / frameA.sampleRate));
     }
 
     expect(firstRunFrames[0].discontinuity?.cause).toBe('restart');

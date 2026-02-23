@@ -75,8 +75,11 @@ Implemented baseline assets and code paths:
 - SigMF replay device: `src/devices/FileDevice.ts`
 - Fixture schema validation: `src/fixtures/sigmf/schema.ts`
 - Canonical deterministic fixture generator: `src/fixtures/sigmf/goldenToneFixture.ts`
+- Known-signal deterministic fixture library: `src/fixtures/sigmf/knownSignalFixtureLibrary.ts`
 - Determinism tests:
   - `src/fixtures/sigmf/goldenToneFixture.test.ts`
+  - `src/fixtures/sigmf/knownSignalFixtureLibrary.test.ts`
+  - `src/fixtures/sigmf/schema.test.ts`
   - `src/devices/FileDevice.test.ts`
 
 Minimum fixture metadata for the baseline schema:
@@ -85,11 +88,77 @@ Minimum fixture metadata for the baseline schema:
 - `centerFrequencyHz`
 - `calibrationStatus` (`uncalibrated` | `factory` | `user`)
 
+Optional calibrated fixture metadata extensions (schema-compatible with existing fixtures):
+
+- `calibratedLevelOffsetDb` (known level offset used for metering tolerances)
+- `calibratedFrequencyOffsetHz` (known center-frequency offset used for tuning/PPM tolerances)
+- `referenceClock` (optional discipline metadata, e.g. source + nominal frequency)
+- `wallClock` (optional UTC capture metadata for reproducible timeline correlation)
+
+Phase 2 timeline metadata alignment:
+
+- Stream-frame metadata contract includes:
+  - `sequence`
+  - `sampleIndex`
+  - `sampleCount`
+  - `timestampNs`
+  - `droppedSamples`
+  - `discontinuity` (with cause and optional wall clock)
+  - `sampleClock.truthMode` (`unknown`, `corrected_ppm`, `disciplined_ref`)
+- Source of truth type:
+  - `src/devices/streamFrame.ts`
+- Current deterministic sources emit `sampleClock.truthMode = unknown`:
+  - `src/devices/MockDevice.ts`
+  - `src/devices/FileDevice.ts`
+
+Known-signal deterministic library currently includes:
+
+- WFM pilot fixture
+- AM carrier fixture
+- NFM tone fixture
+- NOAA weather fixture
+- Time beacon fixture
+- Clean tone in deterministic noise fixture
+- Mains hum fixture
+- DC spike fixture
+- Impulsive noise fixture
+- Heterodyne beat fixture
+
+Known gaps (kept explicit to avoid overclaim):
+
+- Recording/export continuity timeline stamping is not yet implemented as a finalized schema contract.
+
 The baseline canonical fixture is intentionally small and deterministic to support:
 
 - hardware-independent DSP development
 - reproducible regression checks
 - stable bug report attachments
+
+## Interop Fixture Export Baseline
+
+Current deterministic export baseline for canonical fixtures includes:
+
+- SigMF metadata sidecar (`*.sigmf-meta`)
+- Raw IQ sidecar (`*.sigmf-data`)
+- WAV audio render (`*.wav`, deterministic mono preview render)
+
+Implementation and tests:
+
+- `src/fixtures/sigmf/interopExport.ts`
+- `src/fixtures/sigmf/interopExport.test.ts`
+
+Interop export payloads must be deterministic for the same fixture bytes and metadata.
+
+## Recovery Regression Scope Note
+
+Current regression coverage includes dropped-sample detection and discontinuity counters.
+
+Not yet implemented in architecture:
+
+- audio dropout concealment policy telemetry
+- pop/click suppression counters
+
+A contract TODO is tracked in `src/devices/recoveryRegression.test.ts`.
 
 ## Release Notes Requirement
 

@@ -6,6 +6,7 @@ import { ComplexOscillator } from './ComplexOscillator';
 import { SimpleFFT } from './fft';
 import { magnitudeSquaredToDbfs } from './fftScaling';
 import { RdsDecoder, RdsSnapshot } from './RdsDecoder';
+import type { SDRStreamFrame } from '../devices/streamFrame';
 
 type WorkerScope = {
     onmessage: ((event: MessageEvent) => void) | null;
@@ -50,6 +51,12 @@ workerScope.onmessage = (e: MessageEvent) => {
         rdsDecoder = new RdsDecoder();
         latestRdsSnapshot = rdsDecoder.getSnapshot();
         workerScope.postMessage({ type: 'RDS_DATA', data: latestRdsSnapshot }, []);
+    } else if (e.data.type === 'STREAM_FRAME') {
+        const frame = e.data.frame as SDRStreamFrame;
+        workerScope.postMessage({
+            type: 'STREAM_FRAME_META',
+            data: frame
+        }, []);
     } else if (e.data.type === 'USB_DATA') {
         processUSBData(e.data.data);
     }

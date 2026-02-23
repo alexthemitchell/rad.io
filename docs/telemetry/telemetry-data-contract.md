@@ -21,11 +21,58 @@ No remote telemetry is assumed by default.
 - `source.lifecycle`
   - Source selection, connect, disconnect, stream start/stop.
 - `pipeline.health`
-  - Buffer underruns, dropped frames, recoveries.
+  - Buffer underruns, dropped frames/samples, discontinuities, recoveries.
 - `ui.interaction`
   - High-level actions needed for reproducibility (not full clickstream).
 - `diagnostic.error`
   - Structured error taxonomy references and redacted context.
+
+## Phase 2 Stream Continuity Extensions
+
+These fields are required for stream continuity and sample-clock truth diagnostics.
+
+### `pipeline.health.discontinuity`
+
+- Purpose:
+  - Represent explicit stream timeline boundaries.
+- Required fields:
+  - `streamId`
+  - `sequence`
+  - `sampleIndex`
+  - `cause` (`restart`, `retune`, `sample_rate_change`, `reset`, `overflow`, `dropped_samples`)
+  - `timestampUtc`
+- Optional fields:
+  - `droppedSamples`
+  - `wallClockMs`
+
+### `pipeline.health.counters`
+
+- Purpose:
+  - Monotonic counters for budget tracking and degraded mode triggers.
+- Required fields:
+  - `streamDiscontinuityTotal`
+  - `droppedSamplesTotal`
+  - `audioUnderrunTotal`
+  - `windowStartUtc`
+  - `windowEndUtc`
+
+### `pipeline.health.clock_truth`
+
+- Purpose:
+  - Capture sample-clock truth mode used for UI/export confidence.
+- Required fields:
+  - `streamId`
+  - `sampleClockTruthMode` (`unknown`, `corrected_ppm`, `disciplined_ref`)
+  - `timestampUtc`
+- Conditional fields:
+  - If `sampleClockTruthMode = corrected_ppm`, include `correctionPpm`.
+  - If `sampleClockTruthMode = disciplined_ref`, include `referenceId` and optional `correctionPpm`.
+
+## Continuity Invariants For Telemetry
+
+- Discontinuity events must reference the same `sequence`/`sampleIndex` pair emitted by the stream frame metadata.
+- `droppedSamplesTotal` and `audioUnderrunTotal` are monotonic within a process lifetime.
+- `sampleClockTruthMode` must not imply stronger claims than source metadata provides.
 
 ## Required Common Fields
 
