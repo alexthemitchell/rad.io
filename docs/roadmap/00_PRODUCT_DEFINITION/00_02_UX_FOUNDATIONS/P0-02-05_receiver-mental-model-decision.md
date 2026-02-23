@@ -17,11 +17,11 @@ This should be captured as an architectural decision record (ADR) plus a short r
 
 ## Acceptance Criteria
 
-- [ ] docs/decisions/0001-receiver-mental-model.md includes: decision, context, alternatives considered, rationale, consequences, and follow-ups.
-- [ ] The decision explicitly defines at least these terms: center frequency, tuned frequency, span, sample rate, bandwidth, VFO.
-- [ ] The decision specifies what UI control changes which quantity and what is derived from what.
-- [ ] docs/reference/receiver-mental-model.md provides a user-facing explanation with at least 2 examples (e.g., “tune within a span” and “shift center to avoid DC”).
-- [ ] The docs are consistent with the planned tuning and artifact awareness contracts (no contradictory definitions).
+- [x] docs/decisions/0001-receiver-mental-model.md includes: decision, context, alternatives considered, rationale, consequences, and follow-ups.
+- [x] The decision explicitly defines at least these terms: center frequency, tuned frequency, span, sample rate, bandwidth, VFO.
+- [x] The decision specifies what UI control changes which quantity and what is derived from what.
+- [x] docs/reference/receiver-mental-model.md provides a user-facing explanation with at least 2 examples (e.g., “tune within a span” and “shift center to avoid DC”).
+- [x] The docs are consistent with the planned tuning and artifact awareness contracts (no contradictory definitions).
 
 ## Agent Prompt
 

@@ -1,8 +1,17 @@
 import { WfmDemodulator } from './WfmDemodulator';
 import { AmDemodulator } from './AmDemodulator';
+import { NfmDemodulator } from './NfmDemodulator';
 import { Downsampler } from './Downsampler';
 import { ComplexOscillator } from './ComplexOscillator';
 import { SimpleFFT } from './fft';
+import { RdsDecoder, RdsSnapshot } from './RdsDecoder';
+
+type WorkerScope = {
+    onmessage: ((event: MessageEvent) => void) | null;
+    postMessage: (message: unknown, transfer?: Transferable[]) => void;
+};
+
+const workerScope = self as unknown as WorkerScope;
 
 const fftSize = 2048;
 const fft = new SimpleFFT(fftSize);
@@ -16,14 +25,19 @@ let fftIndex = 0;
 // DSP Components
 const wfm = new WfmDemodulator();
 const am = new AmDemodulator();
+const nfm = new NfmDemodulator();
 const downsampler = new Downsampler();
 const nco = new ComplexOscillator(2_000_000); // 2MSPS
+let rdsDecoder = new RdsDecoder();
+let latestRdsSnapshot: RdsSnapshot = rdsDecoder.getSnapshot();
 
-let mode: 'WFM' | 'AM' = 'WFM';
+let mode: 'WFM' | 'AM' | 'NFM' = 'WFM';
 
-self.onmessage = (e: MessageEvent) => {
+workerScope.onmessage = (e: MessageEvent) => {
     if (e.data.command === 'START_USB_MODE') {
         fftIndex = 0;
+        rdsDecoder = new RdsDecoder();
+        latestRdsSnapshot = rdsDecoder.getSnapshot();
         console.log("Worker: Started USB Mode");
     } else if (e.data.command === 'SET_MODE') {
         mode = e.data.value;
@@ -31,6 +45,10 @@ self.onmessage = (e: MessageEvent) => {
     } else if (e.data.command === 'SET_FINE_FREQ') {
         // Frequency shift in Hz (e.g. +50000 Hz)
         nco.setFrequency(e.data.value, 2_000_000);
+    } else if (e.data.command === 'RESET_RDS') {
+        rdsDecoder = new RdsDecoder();
+        latestRdsSnapshot = rdsDecoder.getSnapshot();
+        workerScope.postMessage({ type: 'RDS_DATA', data: latestRdsSnapshot }, []);
     } else if (e.data.type === 'USB_DATA') {
         processUSBData(e.data.data);
     }
@@ -59,6 +77,17 @@ function processUSBData(buffer: ArrayBuffer) {
     
     if (mode === 'WFM') {
         wfm.process(shiftedIQ, rawAudio);
+
+        const rdsUpdate = rdsDecoder.process(rawAudio);
+        if (rdsUpdate) {
+            latestRdsSnapshot = rdsUpdate;
+            workerScope.postMessage({
+                type: 'RDS_DATA',
+                data: rdsUpdate
+            }, []);
+        }
+    } else if (mode === 'NFM') {
+        nfm.process(shiftedIQ, rawAudio);
     } else {
         am.process(shiftedIQ, rawAudio);
     }
@@ -68,18 +97,26 @@ function processUSBData(buffer: ArrayBuffer) {
 
     // Audio Output
     if (audioOut.length > 0) {
-        self.postMessage({ 
+        const audioBuffer = audioOut.buffer.slice(0);
+        workerScope.postMessage({ 
             type: 'AUDIO_DATA', 
-            data: audioOut 
-        }, [audioOut.buffer]);
+            data: audioBuffer
+        }, []);
     }
 
     // Scope (Audio Time Domain)
     if (Math.random() < 0.1) {
-        self.postMessage({ 
+        workerScope.postMessage({ 
             type: 'SCOPE_DATA', 
             data: audioOut.slice(0, 256) 
-        });
+        }, []);
+    }
+
+    if (mode === 'WFM' && Math.random() < 0.01) {
+        workerScope.postMessage({
+            type: 'RDS_DATA',
+            data: latestRdsSnapshot
+        }, []);
     }
 }
 
@@ -129,12 +166,12 @@ function processFFT(iqData: Int8Array) {
                 // 20 * log10(sqrt(...))
                 
                 const magSq = re*re + im*im;
-                let db = 10 * Math.log10(magSq + 1e-20); // Clamp -200dB
+                const db = 10 * Math.log10(magSq + 1e-20); // Clamp -200dB
                 
                 fftMagnitude[k] = db;
             }
 
-            self.postMessage({ type: 'FFT_DATA', data: fftMagnitude });
+            workerScope.postMessage({ type: 'FFT_DATA', data: fftMagnitude });
             fftIndex = 0;
         }
     }

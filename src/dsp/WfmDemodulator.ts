@@ -32,7 +32,7 @@ export class WfmDemodulator {
             const dot = currI * this.prevI + currQ * this.prevQ;
             
             // Result is in radians per sample (-pi to pi)
-            let phaseDiff = Math.atan2(cross, dot);
+            const phaseDiff = Math.atan2(cross, dot);
 
             // Output is directly the demodulated signal
             output[i] = phaseDiff; // Scale later if needed (Gain)

@@ -18,11 +18,11 @@ The scope should be phrased as outcomes and capabilities, not implementation det
 
 ## Acceptance Criteria
 
-- [ ] docs/product/mvp-scope.md lists 6–10 in-scope MVP capabilities, each mapped to at least one persona and journey.
-- [ ] docs/product/mvp-non-goals.md lists at least 12 explicit non-goals with rationale.
-- [ ] docs/product/mvp-user-journeys.md defines at least 5 end-to-end journeys, each with clear start/end states and success criteria.
-- [ ] Scope includes a quality bar section covering: crash-free expectation, recoverability, and accessibility baseline.
-- [ ] Non-goals include at least 3 “tempting but out” items in each category: DSP depth, device ecosystem breadth, and advanced workflows.
+- [x] docs/product/mvp-scope.md lists 6–10 in-scope MVP capabilities, each mapped to at least one persona and journey.
+- [x] docs/product/mvp-non-goals.md lists at least 12 explicit non-goals with rationale.
+- [x] docs/product/mvp-user-journeys.md defines at least 5 end-to-end journeys, each with clear start/end states and success criteria.
+- [x] Scope includes a quality bar section covering: crash-free expectation, recoverability, and accessibility baseline.
+- [x] Non-goals include at least 3 “tempting but out” items in each category: DSP depth, device ecosystem breadth, and advanced workflows.
 
 ## Agent Prompt
 

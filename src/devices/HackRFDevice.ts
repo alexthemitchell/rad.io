@@ -7,17 +7,21 @@ const HACKRF_USB_PID = 0x6089;
 enum HackRFCommand {
     SET_TRANSCEIVER_MODE = 1,
     SET_FREQ = 16,
-    SET_AMP_ENABLE = 17,
+    SET_SAMPLE_RATE = 6,
+    BASEBAND_FILTER_BANDWIDTH_SET = 7,
     SET_LNA_GAIN = 19,
     SET_VGA_GAIN = 20,
-    SET_SAMPLE_RATE = 6,
-    BASEBAND_FILTER_BANDWIDTH_SET = 7
+    SET_AMP_ENABLE = 17,
+    BOARD_ID_READ = 14,
+    VERSION_STRING_READ = 15,
 }
 
 export class HackRFDevice implements ISDRDevice {
     name = "HackRF One";
+    private static readonly CONTROL_TRANSFER_TIMEOUT_MS = 1500;
     private device: USBDevice | null = null;
     private interfaceIndex = 0;
+    private inEndpointNumber = 1;
     private isStreaming = false;
 
     private frequency = 90_000_000; 
@@ -28,6 +32,152 @@ export class HackRFDevice implements ISDRDevice {
     private vgaGain = 20;
     private ampEnable = 0;
 
+    private async withTimeout<T>(operation: Promise<T>, label: string, timeoutMs = HackRFDevice.CONTROL_TRANSFER_TIMEOUT_MS): Promise<T> {
+        let timeoutHandle: number | undefined;
+
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutHandle = window.setTimeout(() => {
+                reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+        });
+
+        try {
+            return await Promise.race([operation, timeoutPromise]);
+        } finally {
+            if (timeoutHandle !== undefined) {
+                window.clearTimeout(timeoutHandle);
+            }
+        }
+    }
+
+    private async vendorOut(
+        request: number,
+        value = 0,
+        index = 0,
+        data?: BufferSource
+    ): Promise<void> {
+        if (!this.device) {
+            throw new Error('Device not open');
+        }
+
+        const result = await this.withTimeout(this.device.controlTransferOut({
+            requestType: 'vendor',
+            recipient: 'device',
+            request,
+            value,
+            index
+        }, data), `controlTransferOut(device) req=${request}`);
+
+        if (result.status !== 'ok') {
+            throw new Error(`controlTransferOut(device) status=${result.status} req=${request}`);
+        }
+    }
+
+    private async vendorIn(
+        request: number,
+        length: number,
+        value = 0,
+        index = 0
+    ): Promise<DataView | null> {
+        if (!this.device) {
+            throw new Error('Device not open');
+        }
+
+        const res = await this.withTimeout(this.device.controlTransferIn({
+            requestType: 'vendor',
+            recipient: 'device',
+            request,
+            value,
+            index
+        }, length), `controlTransferIn(device) req=${request}`);
+
+        if (res.status !== 'ok') {
+            throw new Error(`controlTransferIn(device) status=${res.status} req=${request}`);
+        }
+
+        return res.data ?? null;
+    }
+
+    private async recoverHandle(): Promise<void> {
+        if (!this.device) return;
+
+        try {
+            if (this.device.opened) {
+                await this.device.close();
+            }
+        } catch (closeError) {
+            console.debug('Close during recovery failed:', closeError);
+        }
+
+        await this.openAndClaim(this.device);
+    }
+
+    private async probeDevice(): Promise<void> {
+        if (!this.device) return;
+
+        const boardData = await this.vendorIn(HackRFCommand.BOARD_ID_READ, 1, 0, 0);
+        const versionData = await this.vendorIn(HackRFCommand.VERSION_STRING_READ, 64, 0, 0);
+
+        const board = boardData?.getUint8(0);
+        const rawVersion = versionData;
+        const version = rawVersion
+            ? new TextDecoder().decode(rawVersion.buffer).replace(/\0+$/, '')
+            : 'unknown';
+
+        console.log(`HackRF probe: board=${board ?? 'n/a'} version=${version}`);
+    }
+
+    private async openAndClaim(device: USBDevice): Promise<void> {
+        if (!device.opened) {
+            await device.open();
+        }
+
+        if (!device.configuration) {
+            await device.selectConfiguration(1);
+        }
+
+        const config = device.configuration;
+        if (!config) {
+            throw new Error('HackRF configuration unavailable after selectConfiguration.');
+        }
+
+        const candidate = config.interfaces
+            .map((iface) => {
+                const alt = iface.alternates.find((a) =>
+                    a.endpoints.some((e) => e.direction === 'in' && e.type === 'bulk')
+                );
+                return alt ? { iface, alt } : null;
+            })
+            .find((entry): entry is { iface: USBInterface; alt: USBAlternateInterface } => entry !== null);
+
+        if (candidate) {
+            this.interfaceIndex = candidate.iface.interfaceNumber;
+            const inEp = candidate.alt.endpoints.find((e) => e.direction === 'in' && e.type === 'bulk');
+            if (inEp) {
+                this.inEndpointNumber = inEp.endpointNumber;
+            }
+        }
+
+        await device.claimInterface(this.interfaceIndex);
+
+        const currentAlt = config.interfaces.find((i) => i.interfaceNumber === this.interfaceIndex)?.alternate;
+        const targetAlt = config.interfaces
+            .find((i) => i.interfaceNumber === this.interfaceIndex)
+            ?.alternates.find((a) =>
+                a.endpoints.some((e) => e.direction === 'in' && e.type === 'bulk')
+            )?.alternateSetting;
+
+        if (
+            typeof targetAlt === 'number' &&
+            typeof currentAlt === 'number' &&
+            targetAlt !== currentAlt
+        ) {
+            await device.selectAlternateInterface(this.interfaceIndex, targetAlt);
+        }
+
+        console.log(`Claimed interface=${this.interfaceIndex} inEp=${this.inEndpointNumber}`);
+    }
+
     getGainStages(): SDRGainStage[] {
         return [
             { name: 'LNA', label: 'LNA Gain', min: 0, max: 40, step: 8, value: this.lnaGain },
@@ -37,58 +187,81 @@ export class HackRFDevice implements ISDRDevice {
     }
 
     async open(): Promise<void> {
-        console.log("Looking for previous devices...");
-        const devices = await navigator.usb.getDevices();
-        const existing = devices.find(d => d.vendorId === HACKRF_USB_VID && d.productId === HACKRF_USB_PID);
+        const filter = { vendorId: HACKRF_USB_VID, productId: HACKRF_USB_PID };
+        console.log("Checking for previously paired HackRF devices...");
+
+        const pairedDevices = await navigator.usb.getDevices();
+        const existing = pairedDevices.find((d) => d.vendorId === HACKRF_USB_VID && d.productId === HACKRF_USB_PID);
 
         if (existing) {
-            console.log("Found existing paired device:", existing.productName);
+            console.log("Using previously paired HackRF without showing picker.");
             this.device = existing;
         } else {
-            console.log("Requesting new device (User Interaction Required)...");
-            this.device = await navigator.usb.requestDevice({
-                filters: [{ vendorId: HACKRF_USB_VID, productId: HACKRF_USB_PID }]
-            });
+            console.log("No paired HackRF found. Requesting device selection...");
+            this.device = await navigator.usb.requestDevice({ filters: [filter] });
         }
 
-        console.log("Opening device...");
-        await this.device.open();
-        console.log("Selecting Config...");
-        await this.device.selectConfiguration(1);
-        console.log("Claiming Interface...");
-        await this.device.claimInterface(this.interfaceIndex);
+        if (!this.device) {
+            throw new Error('HackRF device not available.');
+        }
 
-        // Step 0: Force OFF (Reset State)
-        console.log("Step 0: Force Transceiver OFF");
         try {
-            await this.device.controlTransferOut({
-                requestType: 'vendor',
-                recipient: 'device',
-                request: HackRFCommand.SET_TRANSCEIVER_MODE,
-                value: 0, 
-                index: 0
-            });
-        } catch (e) {
-            console.warn("Force OFF failed (might be stalled):", e);
-            // Attempt to clear halt?
-            try { await this.device.clearHalt('out', 0); } catch(e2) {} 
+            console.log('Opening and claiming interface...');
+            await this.openAndClaim(this.device);
+        } catch (firstError) {
+            console.warn('Initial open/claim failed; retrying once on current device handle.', firstError);
+            await this.recoverHandle();
+        }
+
+        // Probe is useful for diagnostics but must never block startup.
+        try {
+            await this.probeDevice();
+        } catch (probeError) {
+            console.warn('Probe failed; continuing with initialization.', probeError);
         }
 
         // Sequence
         console.log("Step 1: Set Sample Rate");
-        await this.setSampleRate(this.sampleRate);
-        
+        try {
+            await this.setSampleRate(this.sampleRate);
+        } catch (error) {
+            console.warn("Sample rate init failed; proceeding with device defaults.", error);
+        }
+
         console.log("Step 2: Set Freq (90 MHz)");
-        await this.setFrequency(this.frequency);
-        
+        try {
+            await this.setFrequency(this.frequency);
+        } catch (error) {
+            console.warn("Frequency init failed; proceeding with device defaults.", error);
+        }
+
+        console.log('Step 2b: Set Baseband Filter (1.75 MHz)');
+        try {
+            await this.setBasebandFilter(1_750_000);
+        } catch (error) {
+            console.warn('Baseband filter init failed; proceeding with device defaults.', error);
+        }
+
         console.log("Step 3: LNA Gain");
-        await this.setGain('LNA', 32);
-        
+        try {
+            await this.setGain('LNA', 32);
+        } catch (error) {
+            console.warn("LNA init failed; continuing.", error);
+        }
+
         console.log("Step 4: VGA Gain");
-        await this.setGain('VGA', 20);
-        
+        try {
+            await this.setGain('VGA', 20);
+        } catch (error) {
+            console.warn("VGA init failed; continuing.", error);
+        }
+
         console.log("Step 5: AMP");
-        await this.setGain('AMP', 0);
+        try {
+            await this.setGain('AMP', 0);
+        } catch (error) {
+            console.warn("AMP init failed; continuing.", error);
+        }
         
         console.log("Open Sequence Complete.");
     }
@@ -96,53 +269,55 @@ export class HackRFDevice implements ISDRDevice {
     async close(): Promise<void> {
         if (!this.device) return;
         await this.stop();
-        await this.device.releaseInterface(this.interfaceIndex);
-        await this.device.close();
+        try {
+            await this.device.releaseInterface(this.interfaceIndex);
+        } catch (releaseError) {
+            console.debug('Release interface failed during close:', releaseError);
+        }
+
+        try {
+            await this.device.close();
+        } catch (closeError) {
+            console.debug('Close failed:', closeError);
+        }
+
         this.device = null;
     }
 
     async setFrequency(hz: number): Promise<void> {
         this.frequency = hz;
         if (!this.device) return;
-        
-        // Correct implementation based on firmware source:
-        // struct set_freq_params_t { uint32_t freq_mhz; uint32_t freq_hz; };
-        const mhz = Math.floor(hz / 1_000_000);
-        const sub_hz = hz % 1_000_000;
 
+        // Official SET_FREQ payload is two LE uint32 values: MHz and Hz remainder.
+        const mhz = Math.floor(hz / 1_000_000);
+        const hzRemainder = hz - (mhz * 1_000_000);
         const buf = new ArrayBuffer(8);
         const view = new DataView(buf);
-        view.setUint32(0, mhz, true); // Little Endian
-        view.setUint32(4, sub_hz, true); // Little Endian
+        view.setUint32(0, mhz, true);
+        view.setUint32(4, hzRemainder, true);
 
-        await this.device.controlTransferOut({
-            requestType: 'vendor',
-            recipient: 'device',
-            request: HackRFCommand.SET_FREQ,
-            value: 0,
-            index: 0
-        }, buf);
+        await this.vendorOut(HackRFCommand.SET_FREQ, 0, 0, buf);
+    }
+
+    async setBasebandFilter(hz: number): Promise<void> {
+        if (!this.device) return;
+
+        const value = hz & 0xffff;
+        const index = (hz >>> 16) & 0xffff;
+        await this.vendorOut(HackRFCommand.BASEBAND_FILTER_BANDWIDTH_SET, value, index);
     }
 
     async setSampleRate(hz: number): Promise<void> {
         this.sampleRate = hz;
         if (!this.device) return;
-        
-        // Correct implementation:
-        // uint32_t freq_hz;
-        // uint32_t divider;
+
+        // Official SAMPLE_RATE_SET payload is two LE uint32 values: freq_hz and divider.
         const buf = new ArrayBuffer(8);
         const view = new DataView(buf);
-        view.setUint32(0, hz, true);     // 32-bit Hz
-        view.setUint32(4, 1, true);      // 32-bit Divider (1)
+        view.setUint32(0, hz, true);
+        view.setUint32(4, 1, true);
 
-        await this.device.controlTransferOut({
-            requestType: 'vendor',
-            recipient: 'device',
-            request: HackRFCommand.SET_SAMPLE_RATE,
-            value: 0,
-            index: 0
-        }, buf);
+        await this.vendorOut(HackRFCommand.SET_SAMPLE_RATE, 0, 0, buf);
     }
 
     async setGain(name: string, value: number): Promise<void> {
@@ -152,29 +327,19 @@ export class HackRFDevice implements ISDRDevice {
 
         if (!this.device) return;
         
-        // LNA/VGA are IN transfers with value in wIndex
+                // Official API uses control IN with gain in wIndex and a 1-byte success response.
         if (name === 'LNA' || name === 'VGA') {
-             const cmd = name === 'LNA' ? HackRFCommand.SET_LNA_GAIN : HackRFCommand.SET_VGA_GAIN;
-             // They return 1 byte (success flag)
-             await this.device.controlTransferIn({
-                requestType: 'vendor',
-                recipient: 'device',
-                request: cmd,
-                value: 0,
-                index: value // Value goes in Index!
-             }, 1);
-             return;
+                        const cmd = name === 'LNA' ? HackRFCommand.SET_LNA_GAIN : HackRFCommand.SET_VGA_GAIN;
+                        const gainResult = await this.vendorIn(cmd, 1, 0, value);
+                        if (!gainResult || gainResult.getUint8(0) === 0) {
+                                throw new Error(`${name} gain rejected by device: ${value}`);
+                        }
+                        return;
         }
 
         // AMP is OUT transfer with value in wValue
         if (name === 'AMP') {
-            await this.device.controlTransferOut({
-                requestType: 'vendor',
-                recipient: 'device',
-                request: HackRFCommand.SET_AMP_ENABLE,
-                value: value ? 1 : 0, // Value goes in Value
-                index: 0
-            });
+            await this.vendorOut(HackRFCommand.SET_AMP_ENABLE, value ? 1 : 0, 0);
             return;
         }
     }
@@ -184,13 +349,14 @@ export class HackRFDevice implements ISDRDevice {
         this.isStreaming = true;
 
         console.log("Starting RX Mode...");
-        await this.device.controlTransferOut({
-            requestType: 'vendor',
-            recipient: 'device',
-            request: HackRFCommand.SET_TRANSCEIVER_MODE,
-            value: 1, 
-            index: 0
-        });
+        try {
+            await this.vendorOut(HackRFCommand.SET_TRANSCEIVER_MODE, 1, 0);
+        } catch (modeError) {
+            console.warn('Failed to enter RX mode; attempting one handle recovery retry.', modeError);
+            await this.recoverHandle();
+            if (!this.device) throw modeError;
+            await this.vendorOut(HackRFCommand.SET_TRANSCEIVER_MODE, 1, 0);
+        }
 
         const TRANSFER_SIZE = 16384; // Reduced size for debug
         console.log("RX Mode Active. Entering Loop...");
@@ -198,7 +364,7 @@ export class HackRFDevice implements ISDRDevice {
         while (this.isStreaming && this.device.opened) {
             try {
                 // console.log("Requesting transfer...");
-                const result = await this.device.transferIn(1, TRANSFER_SIZE);
+                const result = await this.device.transferIn(this.inEndpointNumber, TRANSFER_SIZE);
                 if (result.data) {
                     // console.log("Got Data:", result.data.byteLength);
                     onData(result.data);
@@ -215,13 +381,11 @@ export class HackRFDevice implements ISDRDevice {
     async stop(): Promise<void> {
         this.isStreaming = false;
         if (this.device) {
-             await this.device.controlTransferOut({
-                requestType: 'vendor',
-                recipient: 'device',
-                request: HackRFCommand.SET_TRANSCEIVER_MODE,
-                value: 0, 
-                index: 0
-            });
+            try {
+                await this.vendorOut(HackRFCommand.SET_TRANSCEIVER_MODE, 0, 0);
+            } catch (modeStopError) {
+                console.debug('Failed to leave RX mode cleanly:', modeStopError);
+            }
         }
     }
 }

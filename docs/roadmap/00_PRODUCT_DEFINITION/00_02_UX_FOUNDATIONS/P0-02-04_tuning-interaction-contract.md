@@ -18,11 +18,11 @@ The contract should minimize accidental retunes, support precise stepping, and b
 
 ## Acceptance Criteria
 
-- [ ] docs/ux/contracts/tuning-interaction-contract.md defines tuning interactions for: click-to-tune, click-drag-to-tune, shift/alt modifiers, double-click behavior, and selection snapping rules.
-- [ ] docs/ux/contracts/frequency-entry-contract.md defines focus/commit/cancel rules, validation, formatting, and error handling for frequency input.
-- [ ] Both documents include keyboard-only tuning paths with explicit key bindings and stepping magnitudes.
-- [ ] Both documents include accessibility requirements: focus order, aria-labels, and announcement strategy for tuned frequency changes.
-- [ ] docs/ux/copy/tuning-and-frequency-entry-copy.md includes copy for invalid inputs, out-of-range tuning, and precision guidance.
+- [x] docs/ux/contracts/tuning-interaction-contract.md defines tuning interactions for: click-to-tune, click-drag-to-tune, shift/alt modifiers, double-click behavior, and selection snapping rules.
+- [x] docs/ux/contracts/frequency-entry-contract.md defines focus/commit/cancel rules, validation, formatting, and error handling for frequency input.
+- [x] Both documents include keyboard-only tuning paths with explicit key bindings and stepping magnitudes.
+- [x] Both documents include accessibility requirements: focus order, aria-labels, and announcement strategy for tuned frequency changes.
+- [x] docs/ux/copy/tuning-and-frequency-entry-copy.md includes copy for invalid inputs, out-of-range tuning, and precision guidance.
 
 ## Agent Prompt
 

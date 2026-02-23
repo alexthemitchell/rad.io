@@ -18,11 +18,11 @@ The IA should prioritize a first successful session: connect → see spectrum/wa
 
 ## Acceptance Criteria
 
-- [ ] docs/ux/ia/ia-map.md identifies at least 8 primary UI regions/panels and describes their purpose.
-- [ ] docs/ux/ia/navigation-model.md defines the navigation paradigm (tabs, panels, drawers) and includes rules for responsive behavior.
-- [ ] docs/ux/ia/mvp-user-flows.md includes at least 5 flows with start/end states and primary actions.
-- [ ] The IA explicitly lists “Always visible” elements and “Contextual” elements, with rationale.
-- [ ] The IA includes a “Discoverability” section that specifies how users find connect, start/stop, tune, and audio enablement.
+- [x] docs/ux/ia/ia-map.md identifies at least 8 primary UI regions/panels and describes their purpose.
+- [x] docs/ux/ia/navigation-model.md defines the navigation paradigm (tabs, panels, drawers) and includes rules for responsive behavior.
+- [x] docs/ux/ia/mvp-user-flows.md includes at least 5 flows with start/end states and primary actions.
+- [x] The IA explicitly lists “Always visible” elements and “Contextual” elements, with rationale.
+- [x] The IA includes a “Discoverability” section that specifies how users find connect, start/stop, tune, and audio enablement.
 
 ## Agent Prompt
 

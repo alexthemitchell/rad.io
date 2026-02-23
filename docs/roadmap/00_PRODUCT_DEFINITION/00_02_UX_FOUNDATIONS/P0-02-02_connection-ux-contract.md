@@ -18,11 +18,11 @@ Scope includes: pairing/claiming a WebUSB device, connecting/disconnecting, star
 
 ## Acceptance Criteria
 
-- [ ] docs/ux/contracts/connection-ux-contract.md includes a state-transition table for device connection with at least these states: idle, pairing, connected, streaming, error, recovering.
-- [ ] docs/ux/contracts/audio-ux-contract.md includes a state-transition table for audio with at least these states: suspended, awaiting-user-gesture, running, degraded, muted.
-- [ ] Both contracts include explicit recovery flows for: device disconnect mid-stream, permission revoked, device busy, and user denies permission.
-- [ ] docs/ux/copy/connection-and-audio-copy.md defines user-facing strings with placeholders (e.g., {deviceName}) and an action for every error state.
-- [ ] Accessibility requirements cover keyboard-only operation, focus management, and screen reader announcements for state changes.
+- [x] docs/ux/contracts/connection-ux-contract.md includes a state-transition table for device connection with at least these states: idle, pairing, connected, streaming, error, recovering.
+- [x] docs/ux/contracts/audio-ux-contract.md includes a state-transition table for audio with at least these states: suspended, awaiting-user-gesture, running, degraded, muted.
+- [x] Both contracts include explicit recovery flows for: device disconnect mid-stream, permission revoked, device busy, and user denies permission.
+- [x] docs/ux/copy/connection-and-audio-copy.md defines user-facing strings with placeholders (e.g., {deviceName}) and an action for every error state.
+- [x] Accessibility requirements cover keyboard-only operation, focus management, and screen reader announcements for state changes.
 
 ## Agent Prompt
 

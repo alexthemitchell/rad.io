@@ -21,6 +21,10 @@ export class RtlSdrDevice implements ISDRDevice {
     // Tuner Type (To be detected)
     private tunerType: 'R820T' | 'Unknown' = 'Unknown';
 
+    private statusSummary(): string {
+        return `if=${this.interfaceIndex} stream=${this.isStreaming} tuner=${this.tunerType} freq=${this.frequency} rate=${this.sampleRate} gain=${this.tunerGain}`;
+    }
+
     getGainStages(): SDRGainStage[] {
         // RTL-SDR Gain is usually a list of valid dB values, not linear.
         // For MVP skeleton, we'll expose a generic "Tuner Gain" index (0-49)
@@ -55,7 +59,7 @@ export class RtlSdrDevice implements ISDRDevice {
         await this.device.selectConfiguration(1);
         
         console.log("RTL-SDR: Claiming Interface 0...");
-        await this.device.claimInterface(0);
+        await this.device.claimInterface(this.interfaceIndex);
 
         // Reset/Init Sequence (Stub)
         // Real driver needs to:
@@ -72,36 +76,37 @@ export class RtlSdrDevice implements ISDRDevice {
     async close(): Promise<void> {
         if (!this.device) return;
         await this.stop();
-        await this.device.releaseInterface(0);
+        await this.device.releaseInterface(this.interfaceIndex);
         await this.device.close();
         this.device = null;
     }
 
     async setFrequency(hz: number): Promise<void> {
         this.frequency = hz;
-        console.log(`RTL-SDR: Set Freq ${hz} (Stub)`);
+        console.log(`RTL-SDR: Set Freq ${this.frequency} (Stub)`);
         // TODO: Calculate PLL parameters for Tuner (R820T)
     }
 
     async setSampleRate(hz: number): Promise<void> {
         this.sampleRate = hz;
-        console.log(`RTL-SDR: Set Rate ${hz} (Stub)`);
+        console.log(`RTL-SDR: Set Rate ${this.sampleRate} (Stub)`);
         // TODO: Set Sample Rate on RTL2832U
     }
 
     async setGain(name: string, value: number): Promise<void> {
         if (name === 'TUNER') {
             this.tunerGain = value;
-            console.log(`RTL-SDR: Set Tuner Gain Index ${value} (Stub)`);
+            console.log(`RTL-SDR: Set Tuner Gain Index ${this.tunerGain} (Stub)`);
             // TODO: Lookup gain value in table and set Tuner LNA
         }
     }
 
     async start(onData: (data: DataView) => void): Promise<void> {
         if (!this.device) throw new Error("Device not open");
+        void onData;
         this.isStreaming = true;
 
-        console.log("RTL-SDR: Start Streaming (Stub)");
+        console.log(`RTL-SDR: Start Streaming (Stub) ${this.statusSummary()}`);
         
         // Real Driver:
         // 1. Reset Endpoint
@@ -122,7 +127,8 @@ export class RtlSdrDevice implements ISDRDevice {
     }
 
     async stop(): Promise<void> {
+        if (!this.isStreaming) return;
         this.isStreaming = false;
-        console.log("RTL-SDR: Stop");
+        console.log(`RTL-SDR: Stop ${this.statusSummary()}`);
     }
 }

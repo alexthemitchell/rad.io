@@ -18,11 +18,11 @@ States must cover device lifecycle, signal/receive status, audio policy issues, 
 
 ## Acceptance Criteria
 
-- [ ] docs/ux/contracts/empty-and-error-state-catalog.md lists at least 18 states, including: no device, permission denied, permission revoked, device busy, device disconnected, stream start failed, no signal, likely mis-tuned, audio blocked, audio device missing, dropped samples, rendering overloaded.
-- [ ] Each state includes: detection condition, user-facing message, primary action, secondary action, and telemetry event name.
-- [ ] docs/ux/copy/empty-error-state-copy.md contains final copy for every state and avoids ambiguous terms like “failed” without context.
-- [ ] Accessibility notes exist for each state (e.g., announce via aria-live, focus placement, keyboard escape routes).
-- [ ] docs/reference/support-diagnostics-entrypoints.md defines how users access logs/diagnostics from any error state.
+- [x] docs/ux/contracts/empty-and-error-state-catalog.md lists at least 18 states, including: no device, permission denied, permission revoked, device busy, device disconnected, stream start failed, no signal, likely mis-tuned, audio blocked, audio device missing, dropped samples, rendering overloaded.
+- [x] Each state includes: detection condition, user-facing message, primary action, secondary action, and telemetry event name.
+- [x] docs/ux/copy/empty-error-state-copy.md contains final copy for every state and avoids ambiguous terms like “failed” without context.
+- [x] Accessibility notes exist for each state (e.g., announce via aria-live, focus placement, keyboard escape routes).
+- [x] docs/reference/support-diagnostics-entrypoints.md defines how users access logs/diagnostics from any error state.
 
 ## Agent Prompt
 

@@ -18,11 +18,11 @@ This artifact is used to decide when MVP is ready for a preview release and to p
 
 ## Acceptance Criteria
 
-- [ ] docs/product/mvp-exit-checklist.md contains 20–35 checkboxes grouped by: Journeys, Reliability, Accessibility, Performance, and Recovery.
-- [ ] docs/product/mvp-exit-manual-test-plan.md includes step-by-step instructions to validate at least 5 journeys, including a recovery journey.
-- [ ] docs/reference/mvp-quality-budgets.md defines at least 6 budgets (e.g., time-to-audio, time-to-first-waterfall, reconnect time) with thresholds.
-- [ ] Every checklist item is objectively verifiable (telemetry, manual steps, or automated test).
-- [ ] Checklist includes an explicit “Known limitations” section with criteria for acceptable known issues.
+- [x] docs/product/mvp-exit-checklist.md contains 20–35 checkboxes grouped by: Journeys, Reliability, Accessibility, Performance, and Recovery.
+- [x] docs/product/mvp-exit-manual-test-plan.md includes step-by-step instructions to validate at least 5 journeys, including a recovery journey.
+- [x] docs/reference/mvp-quality-budgets.md defines at least 6 budgets (e.g., time-to-audio, time-to-first-waterfall, reconnect time) with thresholds.
+- [x] Every checklist item is objectively verifiable (telemetry, manual steps, or automated test).
+- [x] Checklist includes an explicit “Known limitations” section with criteria for acceptable known issues.
 
 ## Agent Prompt
 

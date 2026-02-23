@@ -1,50 +1,328 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  --bg: #0b1217;
+  --bg-soft: #13212a;
+  --panel: #0f1a22;
+  --text: #eef7ff;
+  --text-dim: #a8becf;
+  --accent: #4fd1b8;
+  --accent-2: #f59e0b;
+  --danger: #ef4444;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --error: #ef4444;
+  --radius: 12px;
+  --font-ui: "Bahnschrift", "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-mono: "Consolas", "Cascadia Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
-  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-ui);
+  background: radial-gradient(circle at 20% 0%, #173044, var(--bg) 40%), var(--bg);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.app-shell {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
 }
 
-button {
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-title {
+  margin: 0;
+  letter-spacing: 0.02em;
+  font-size: clamp(1.5rem, 2vw + 1rem, 2.3rem);
+}
+
+.status-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.status-idle,
+.status-recovering {
+  background: #1f2937;
+  border-color: #334155;
+}
+
+.status-starting {
+  background: #3a2b0f;
+  border-color: var(--warn);
+}
+
+.status-streaming {
+  background: #133526;
+  border-color: var(--ok);
+}
+
+.status-error {
+  background: #3a1717;
+  border-color: var(--error);
+}
+
+.status-text {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.status-subtext {
+  margin: -8px 0 0;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+}
+
+.visual-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.panel {
+  background: linear-gradient(180deg, rgba(21, 35, 45, 0.9), rgba(14, 25, 33, 0.9));
+  border: 1px solid #1f3240;
+  border-radius: var(--radius);
+  padding: 10px;
+}
+
+.panel-wide {
+  grid-column: 1 / -1;
+}
+
+.panel-title {
+  margin: 0 0 8px;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--font-mono);
+}
+
+.controls-shell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  background: rgba(14, 26, 35, 0.9);
+  border: 1px solid #1d3344;
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 130px;
+}
+
+.control-label {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+}
+
+.control-input,
+.control-range {
+  width: 100%;
+}
+
+.control-check {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.control-input {
+  background: #0d1820;
+  border: 1px solid #294154;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+.control-input.compact {
+  max-width: 160px;
+}
+
+.action-btn {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-weight: 700;
+  padding: 9px 14px;
+  color: #081116;
+  cursor: pointer;
+}
+
+.btn-start {
+  background: linear-gradient(120deg, var(--accent), #34d399);
+}
+
+.btn-stop {
+  background: linear-gradient(120deg, #fb7185, var(--danger));
+}
+
+.btn-secondary {
+  background: linear-gradient(120deg, #8ec5ff, #6ca4ff);
+}
+
+.action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.control-note {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.diagnostics-log {
+  background: rgba(12, 22, 30, 0.9);
+  border: 1px solid #223949;
+  border-radius: var(--radius);
+  padding: 10px;
+}
+
+.diagnostics-log summary {
+  cursor: pointer;
+  color: var(--accent-2);
+  font-family: var(--font-mono);
+}
+
+.diagnostics-log ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
+.health-panel {
+  background: rgba(12, 22, 30, 0.9);
+  border: 1px solid #223949;
+  border-radius: var(--radius);
+  padding: 10px;
+}
+
+.health-panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.health-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
   border-radius: 8px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  font-size: 0.84rem;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.health-item span {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.health-ok {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.health-warn {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.health-error {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+canvas {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid #1d3344;
+}
+
+.viz-canvas {
+  width: 100%;
+  height: clamp(200px, 28vh, 320px);
+  display: block;
+  border-radius: 10px;
+  border: 1px solid #28465b;
+  background: #070f15;
+}
+
+.viz-canvas-interactive {
+  cursor: crosshair;
+}
+
+.waterfall-stack {
+  position: relative;
+  width: 100%;
+}
+
+.waterfall-stack .viz-canvas {
+  height: clamp(230px, 34vh, 380px);
+}
+
+.waterfall-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-color: transparent;
+  background: transparent;
+}
+
+@media (max-width: 800px) {
+  .app-shell {
+    padding: 12px;
   }
-  button {
-    background-color: #f9f9f9;
+
+  .visual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-wide {
+    grid-column: auto;
+  }
+
+  .control-group {
+    min-width: 100%;
+  }
+
+  .action-btn {
+    width: 100%;
   }
 }

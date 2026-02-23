@@ -31,17 +31,17 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 0.1 Scope & Success Definition (Must Not Churn)
 
-- [ ] **Define MVP Scope + Explicit Non-Goals**: lock MVP feature set, polish level, and what is deliberately excluded.
-- [ ] **Define “MVP Exit Checklist”**: a short acceptance checklist tied to user journeys + budgets (perf/reliability).
+- [x] **Define MVP Scope + Explicit Non-Goals**: lock MVP feature set, polish level, and what is deliberately excluded.
+- [x] **Define “MVP Exit Checklist”**: a short acceptance checklist tied to user journeys + budgets (perf/reliability).
 
 ### 0.2 UX Foundations: Information Architecture & Interaction Contracts
 
-- [ ] **Information Architecture (IA) Map**: panels/navigation, what is always visible, and how users discover key actions.
-- [ ] **Connection UX Contract**: explicit UX for device pairing/claiming, streaming start/stop, and audio enablement (including recovery states and copy).
-- [ ] **Empty/Error State Catalog (MVP)**: define UI behavior for “no device”, “no signal”, “audio blocked”, “permission revoked”, “device busy”, “dropped samples”.
-- [ ] **Tuning Interaction Contract**: click/drag-to-tune semantics, wheel/keyboard stepping rules, direct frequency entry, and focus behavior.
-- [ ] **Receiver Mental Model Decision**: define and document semantics for center frequency vs tuned frequency vs span vs VFO.
-- [ ] **Frequency Planning / Artifact Awareness Contract**: define how the UI explains DC spur, images, and aliasing risk and what one-click mitigations are permitted (LO shift/IF shift, bandwidth clamp, rate change).
+- [x] **Information Architecture (IA) Map**: panels/navigation, what is always visible, and how users discover key actions.
+- [x] **Connection UX Contract**: explicit UX for device pairing/claiming, streaming start/stop, and audio enablement (including recovery states and copy).
+- [x] **Empty/Error State Catalog (MVP)**: define UI behavior for “no device”, “no signal”, “audio blocked”, “permission revoked”, “device busy”, “dropped samples”.
+- [x] **Tuning Interaction Contract**: click/drag-to-tune semantics, wheel/keyboard stepping rules, direct frequency entry, and focus behavior.
+- [x] **Receiver Mental Model Decision**: define and document semantics for center frequency vs tuned frequency vs span vs VFO.
+- [x] **Frequency Planning / Artifact Awareness Contract**: define how the UI explains DC spur, images, and aliasing risk and what one-click mitigations are permitted (LO shift/IF shift, bandwidth clamp, rate change).
 
 ### 0.3 Design System Foundations (Tokens + Components + Accessibility)
 
@@ -120,8 +120,8 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 1.2 Diagnostics & Supportability (Early)
 
-- [ ] **Error Handling**: typed error classes for source/device failures.
-- [ ] **Diagnostics Panel**: user-facing health view with actionable recommendations.
+- [x] **Error Handling**: typed error classes for source/device failures.
+- [x] **Diagnostics Panel**: user-facing health view with actionable recommendations.
 - [ ] **RF Environment Context & Provenance (First-Class)**: capture antenna + RF chain context (preamp/attenuator/filter/bias-tee notes) and attach it to recordings, exports, and diagnostics.
 - [ ] **Structured RF Chain Model (Not Just Notes)**: represent RF chain elements (LNA/attenuator/filter/transverter/IF) as typed, queryable state so diagnostics and measurement disclosures can be computed rather than manually inferred.
 - [ ] **IQ Integrity Wizard (“Bad IQ?”)**: detect IQ swap/invert/sign/scaling, DC offset, clipping, and sample-rate mismatch; offer one-click fixes and persist results into per-device profiles.
@@ -287,7 +287,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **WFM Stereo + RDS (Early)**: pilot/stereo decode + baseline RDS/RBDS decode and UI.
 - [x] **AM Demodulator**: broadcast/airband baseline.
 - [ ] **AM Sync (SAM)**: synchronous AM demod for selective fading and improved intelligibility (Core Pro Feature).
-- [ ] **NFM Demodulator**: voice channels baseline.
+- [x] **NFM Demodulator**: voice channels baseline.
 - [ ] **NFM De-Emphasis + Audio Shaping Presets (Deterministic)**: optional time-constant presets + intelligibility EQ defaults (no “magic NR”), with clear band/mode guidance.
 - [ ] **SSB Demodulator**: USB/LSB with BFO.
 - [ ] **CW Demodulator**: BFO + narrow filter defaults and clean tuning UX (center/offset, optional pitch).
@@ -332,6 +332,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Analyzer Exports (MVP)**: export trace(s), marker tables, and key analyzer settings (RBW/VBW, window/ENBW, detector, ref level) as a reproducible artifact.
 - [ ] **Marker/VFO Quick Capture (One-Click)**: export a short IQ/audio snippet “around this marker/VFO” with required metadata (rate/frequency/PPM/offsets/discontinuities) for external-tool workflows.
 - [ ] **Marker Table Workflow (Pro)**: peak table w/ sort/filter, “tune VFO to marker”, and marker↔VFO binding for repeatable analysis.
+- [x] **FM Band Auto-Scan (Baseline)**: software tune-step-settle-measure scan across 87.5-108.0 MHz with candidate ranking and RDS-assisted station labeling.
 - [ ] **Sweep/Stitch Analyzer Mode**: device-agnostic sweep (tune-step-settle-measure) + stitching, with HackRF hardware sweep fast-path where available.
 - [ ] **Spur / Artifact Annotation Layer (Early)**: allow marking and labeling known spurs/artifacts (device/internal/external) and optionally mask them in measurement/export outputs.
 

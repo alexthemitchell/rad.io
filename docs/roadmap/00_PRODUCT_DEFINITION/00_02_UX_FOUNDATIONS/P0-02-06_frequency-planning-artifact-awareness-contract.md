@@ -18,11 +18,11 @@ The contract must be conservative: avoid false certainty, and provide “learn m
 
 ## Acceptance Criteria
 
-- [ ] docs/ux/contracts/artifact-awareness-contract.md defines at least 3 artifact classes (DC spur, images, aliasing) with: symptoms, when to warn, and what not to claim.
-- [ ] The contract specifies at least 3 permitted mitigations and their UX constraints (e.g., reversible, confirm if disruptive, explain impact).
-- [ ] docs/reference/rf-artifacts-and-mitigations.md provides a concise explanation with at least 2 “What to try next” sequences.
-- [ ] docs/ux/copy/artifact-awareness-copy.md includes user-facing messages with placeholders and an action for each warning.
-- [ ] Accessibility requirements specify how warnings are announced and how users can dismiss or learn more via keyboard.
+- [x] docs/ux/contracts/artifact-awareness-contract.md defines at least 3 artifact classes (DC spur, images, aliasing) with: symptoms, when to warn, and what not to claim.
+- [x] The contract specifies at least 3 permitted mitigations and their UX constraints (e.g., reversible, confirm if disruptive, explain impact).
+- [x] docs/reference/rf-artifacts-and-mitigations.md provides a concise explanation with at least 2 “What to try next” sequences.
+- [x] docs/ux/copy/artifact-awareness-copy.md includes user-facing messages with placeholders and an action for each warning.
+- [x] Accessibility requirements specify how warnings are announced and how users can dismiss or learn more via keyboard.
 
 ## Agent Prompt
 

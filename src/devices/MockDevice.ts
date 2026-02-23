@@ -5,7 +5,7 @@ export class MockDevice implements ISDRDevice {
     private isStreaming = false;
     private frequency = 100_000_000;
     private sampleRate = 2_000_000;
-    private intervalId: any = null;
+    private intervalId: ReturnType<typeof setInterval> | null = null;
     private phase = 0;
     
     // Internal Gain State
@@ -49,7 +49,8 @@ export class MockDevice implements ISDRDevice {
         const buffer = new Int8Array(BLOCK_SIZE);
         
         // FM Synthesis Params
-        const modFreq = 440; // 440 Hz Audio Tone
+        const tunedFrequencyHz = this.frequency;
+        const modFreq = 440 + Math.floor((tunedFrequencyHz / 1_000_000) % 20); // Slightly vary tone with tuned frequency
         const deviation = 75_000; // +/- 75 kHz deviation (Standard WFM)
         
         this.intervalId = setInterval(() => {
@@ -58,14 +59,6 @@ export class MockDevice implements ISDRDevice {
             for (let i = 0; i < BLOCK_SIZE; i += 2) {
                 const t = this.phase / this.sampleRate;
                 
-                // Modulating Signal (Audio)
-                // m(t) = sin(2*pi*f_mod*t)
-                const audio = Math.sin(2 * Math.PI * modFreq * t);
-
-                // Instantaneous Frequency Offset
-                // f_inst(t) = deviation * m(t)
-                const f_inst = deviation * audio;
-
                 // Instantaneous Phase (Integral of f_inst)
                 // phi(t) = 2*pi * integral(f_inst) 
                 // integral(sin(wt)) = -1/w * cos(wt)
