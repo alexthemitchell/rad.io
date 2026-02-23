@@ -39,6 +39,18 @@ export function SpectrumCanvas({
   const lastPaintRef = useRef<number>(performance.now());
   const [hoverBin, setHoverBin] = useState<number | null>(null);
 
+  const getBinFromCanvasX = (x: number, canvasWidth: number): number => {
+    const viewLen = Math.max(16, Math.floor(data.length / Math.max(zoom, 1)));
+    const startIdx = Math.floor((data.length - viewLen) / 2);
+    const leftPad = Math.floor(canvasWidth * 0.08);
+    const rightPad = Math.floor(canvasWidth * 0.015);
+    const plotWidth = Math.max(1, canvasWidth - leftPad - rightPad);
+    const clampedX = Math.max(leftPad, Math.min(leftPad + plotWidth, x));
+    const normalized = (clampedX - leftPad) / plotWidth;
+    const relIdx = Math.max(0, Math.min(viewLen - 1, Math.round(normalized * Math.max(1, viewLen - 1))));
+    return startIdx + relIdx;
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -265,17 +277,7 @@ export function SpectrumCanvas({
 
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
-      
-      // Reverse Map X to FFT Bin
-      const viewLen = Math.max(16, Math.floor(data.length / Math.max(zoom, 1)));
-      const startIdx = Math.floor((data.length - viewLen) / 2);
-      
-      // fraction of width
-      const frac = x / rect.width; 
-      // relative index
-      const relIdx = Math.max(0, Math.min(viewLen - 1, Math.floor(frac * viewLen)));
-      // absolute index
-      const absIdx = startIdx + relIdx;
+      const absIdx = getBinFromCanvasX(x, rect.width);
 
       onPointClick(absIdx);
   };
@@ -286,10 +288,7 @@ export function SpectrumCanvas({
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const viewLen = Math.max(16, Math.floor(data.length / Math.max(zoom, 1)));
-    const startIdx = Math.floor((data.length - viewLen) / 2);
-    const relIdx = Math.max(0, Math.min(viewLen - 1, Math.floor((x / rect.width) * viewLen)));
-    setHoverBin(startIdx + relIdx);
+    setHoverBin(getBinFromCanvasX(x, rect.width));
   };
 
   return (

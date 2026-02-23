@@ -592,7 +592,7 @@ export default function App() {
             usbTransferCountRef.current = 0;
     
             // Start Stream
-            dev.start((dataView) => {
+            void dev.start((dataView) => {
               usbTransferBytesRef.current = dataView.byteLength;
               usbTransferCountRef.current += 1;
 
@@ -618,7 +618,31 @@ export default function App() {
                     type: 'USB_DATA', 
                     data: buf 
                 }, [buf]); 
-            });
+              }).catch(async (streamError) => {
+                if (deviceRef.current !== dev) {
+                  return;
+                }
+
+                console.error('Stream loop failed:', streamError);
+                const streamErr = normalizeDeviceError(streamError);
+
+                workerRef.current?.postMessage({ command: 'STOP' });
+                setIsRunning(false);
+                setConnectionState('error');
+                setAudioState('awaiting-user-gesture');
+                setStatusMessage(`Stream failed: ${streamErr.message}`);
+                pushDiagnosticEvent(`Stream runtime error [${streamErr.code}]: ${streamErr.message}`);
+
+                try {
+                  await dev.close();
+                } catch (closeError) {
+                  console.debug('Cleanup after stream failure raised an error:', closeError);
+                }
+
+                if (deviceRef.current === dev) {
+                  deviceRef.current = null;
+                }
+              });
     
             setIsRunning(true);
                         setConnectionState('streaming');

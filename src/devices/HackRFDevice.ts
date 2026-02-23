@@ -19,6 +19,7 @@ enum HackRFCommand {
 export class HackRFDevice implements ISDRDevice {
     name = "HackRF One";
     private static readonly CONTROL_TRANSFER_TIMEOUT_MS = 1500;
+    private static readonly MODE_SETTLE_DELAY_MS = 30;
     private device: USBDevice | null = null;
     private interfaceIndex = 0;
     private inEndpointNumber = 1;
@@ -96,6 +97,22 @@ export class HackRFDevice implements ISDRDevice {
         }
 
         return res.data ?? null;
+    }
+
+    private async sleep(ms: number): Promise<void> {
+        await new Promise<void>((resolve) => {
+            window.setTimeout(resolve, ms);
+        });
+    }
+
+    private async setTransceiverMode(mode: 0 | 1): Promise<void> {
+        try {
+            await this.vendorOut(HackRFCommand.SET_TRANSCEIVER_MODE, mode, 0);
+        } catch (modeError) {
+            console.warn('Transceiver mode command failed; retrying once after handle recovery.', modeError);
+            await this.recoverHandle();
+            await this.vendorOut(HackRFCommand.SET_TRANSCEIVER_MODE, mode, 0);
+        }
     }
 
     private async recoverHandle(): Promise<void> {
@@ -346,16 +363,18 @@ export class HackRFDevice implements ISDRDevice {
 
     async start(onData: (data: DataView) => void): Promise<void> {
         if (!this.device) throw new Error("Device not open");
+        if (this.isStreaming) return;
         this.isStreaming = true;
 
         console.log("Starting RX Mode...");
         try {
-            await this.vendorOut(HackRFCommand.SET_TRANSCEIVER_MODE, 1, 0);
-        } catch (modeError) {
-            console.warn('Failed to enter RX mode; attempting one handle recovery retry.', modeError);
-            await this.recoverHandle();
-            if (!this.device) throw modeError;
-            await this.vendorOut(HackRFCommand.SET_TRANSCEIVER_MODE, 1, 0);
+            // Always force an idle -> RX transition to avoid stale mode state on first start.
+            await this.setTransceiverMode(0);
+            await this.sleep(HackRFDevice.MODE_SETTLE_DELAY_MS);
+            await this.setTransceiverMode(1);
+        } catch (startError) {
+            this.isStreaming = false;
+            throw startError;
         }
 
         const TRANSFER_SIZE = 16384; // Reduced size for debug
@@ -382,7 +401,7 @@ export class HackRFDevice implements ISDRDevice {
         this.isStreaming = false;
         if (this.device) {
             try {
-                await this.vendorOut(HackRFCommand.SET_TRANSCEIVER_MODE, 0, 0);
+                await this.setTransceiverMode(0);
             } catch (modeStopError) {
                 console.debug('Failed to leave RX mode cleanly:', modeStopError);
             }
