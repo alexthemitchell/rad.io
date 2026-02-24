@@ -10,6 +10,7 @@ import { AudioPostProcessor, applyInterferencePreset, type FilterConfig, type Fi
 import { evaluateDemodQuality, type DemodQualityMetrics } from './DemodMetrics';
 import { NoiseSquelch, type NoiseSquelchState } from './NoiseSquelch';
 import { ToneDecoder, type ToneDecodeState } from './ToneDecoder';
+import { computePpmCorrectionHz } from './ppmCorrection';
 import type { SDRStreamFrame } from '../devices/streamFrame';
 import {
     computeDemodQualityTelemetry,
@@ -77,6 +78,13 @@ let latestToneDecodeState: ToneDecodeState = {
 let mode: 'WFM' | 'AM' | 'NFM' = 'WFM';
 let nfmAudioPreset: NfmAudioPreset = 'voice-na-75us';
 let nfmOutputPath: NfmOutputPath = 'voice';
+let tunedFrequencyHz = 90_000_000;
+let ppmCorrection = 0;
+
+const applyMixerFrequency = () => {
+    const ppmCompensationHz = computePpmCorrectionHz(tunedFrequencyHz, ppmCorrection);
+    nco.setFrequency(fineFrequencyHz + ppmCompensationHz, inputSampleRateHz);
+};
 
 const postToMain = (message: unknown, transfer: Transferable[] = []) => {
     outboundPort.postMessage(message, transfer);
@@ -93,7 +101,7 @@ const resetPipelineState = () => {
     });
     downsampler = new Downsampler();
     nco = new ComplexOscillator(inputSampleRateHz);
-    nco.setFrequency(fineFrequencyHz, inputSampleRateHz);
+    applyMixerFrequency();
     rdsDecoder = new RdsDecoder();
     latestRdsSnapshot = rdsDecoder.getSnapshot();
     latestDemodMetrics = evaluateDemodQuality(mode, new Float32Array(0));
@@ -148,16 +156,22 @@ const handleMessage = (e: MessageEvent) => {
     } else if (e.data.command === 'SET_NFM_OUTPUT_PATH') {
         nfmOutputPath = e.data.value as NfmOutputPath;
         nfm.setConfig({ outputPath: nfmOutputPath });
+    } else if (e.data.command === 'SET_TUNED_FREQUENCY') {
+        tunedFrequencyHz = Number(e.data.value);
+        applyMixerFrequency();
+    } else if (e.data.command === 'SET_PPM_CORRECTION') {
+        ppmCorrection = Number(e.data.value);
+        applyMixerFrequency();
     } else if (e.data.command === 'SET_FINE_FREQ') {
         // Frequency shift in Hz (e.g. +50000 Hz)
         fineFrequencyHz = Number(e.data.value);
-        nco.setFrequency(fineFrequencyHz, inputSampleRateHz);
+        applyMixerFrequency();
     } else if (e.data.command === 'SET_SAMPLE_RATE') {
         const requestedSampleRateHz = Number(e.data.value);
         if (Number.isFinite(requestedSampleRateHz) && requestedSampleRateHz > 0) {
             inputSampleRateHz = requestedSampleRateHz;
             nco = new ComplexOscillator(inputSampleRateHz);
-            nco.setFrequency(fineFrequencyHz, inputSampleRateHz);
+            applyMixerFrequency();
         }
     } else if (e.data.command === 'SET_FILTER_CONFIG') {
         updateFilterConfig({

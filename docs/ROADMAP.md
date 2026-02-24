@@ -253,7 +253,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **NCO / Mixer (DDC)**: frequency shift for tuning and channel extraction.
 - [ ] **Multi-VFO Channel Extraction Layer**: phase-coherent per-VFO extraction (1–2 VFOs) and PFB channelizer mode (3+ VFOs).
 - [ ] **Channelizer/Decimator Correctness Contract**: define and test phase coherence + group delay guarantees (esp. PFB/multi-VFO) with regression fixtures.
-- [ ] **Frequency / Clock Error Correction (PPM)**: apply PPM correction in the DSP path (not just UI), with stable behavior across retunes.
+- [x] **Frequency / Clock Error Correction (PPM)**: apply PPM correction in the DSP path (not just UI), with stable behavior across retunes. (`src/dsp/ppmCorrection.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/ppmCorrection.test.ts`)
 - [ ] **Drift Estimation + Confidence**: estimate LO/sample-clock drift over time from pilots/beacons, surface confidence, and feed it into calibration/AFC decisions.
 - [ ] **Frequency Accuracy Model (Unified)**: define a single model for PPM + AFC/PLL lock state + drift estimate and propagate it through UI, recording metadata, and replay so frequency correctness is explainable and reproducible.
 - [ ] **Stability/Phase-Noise Characterization Mode (Guardrailed)**: quantify short-term stability using pilots/beacons (phase error metrics) and persist results into device profiles.

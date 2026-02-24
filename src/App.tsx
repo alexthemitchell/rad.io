@@ -303,6 +303,7 @@ export default function App() {
 
   const [demodMode, setDemodMode] = useState<DemodMode>('WFM');
   const [fineFreq, setFineFreq] = useState<number>(0);
+  const [ppmCorrection, setPpmCorrection] = useState<number>(0);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
     const [isMuted, setIsMuted] = useState(true);
     const [audioOutputLevel, setAudioOutputLevel] = useState(MODE_CONTROL_CONTRACTS.WFM.defaultOutputLevel);
@@ -701,6 +702,7 @@ export default function App() {
         deviceRef.current.setFrequency(frequency);
         postToWorker({ command: 'RESET_RDS' });
     }
+    postToWorker({ command: 'SET_TUNED_FREQUENCY', value: frequency });
   }, [frequency, isRunning, postToWorker]);
 
   // Update Device Gains when state changes
@@ -758,6 +760,10 @@ export default function App() {
   useEffect(() => {
     postToWorker({ command: 'SET_FINE_FREQ', value: fineFreq });
   }, [fineFreq, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_PPM_CORRECTION', value: ppmCorrection });
+  }, [ppmCorrection, postToWorker]);
 
   useEffect(() => {
     audioRef.current?.setOutputLevel(audioOutputLevel);
@@ -1026,6 +1032,8 @@ export default function App() {
             postToWorker({ command: 'START_USB_MODE' });
             postToWorker({ command: 'SET_MODE', value: demodMode });
             postToWorker({ command: 'SET_FINE_FREQ', value: fineFreq });
+            postToWorker({ command: 'SET_TUNED_FREQUENCY', value: frequency });
+            postToWorker({ command: 'SET_PPM_CORRECTION', value: ppmCorrection });
 
             usbIqRmsRef.current = 0;
             usbIqMeanAbsRef.current = 0;
@@ -1686,6 +1694,16 @@ export default function App() {
                 className="control-range"
             />
           <div className="control-note">Alias-safe fine tune limit: +/-{maxFineTuneHz.toLocaleString()} Hz</div>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">PPM Correction ({ppmCorrection.toFixed(1)} ppm)</label>
+          <input
+            type="range" min="-100" max="100" step="0.5"
+            value={ppmCorrection}
+            onChange={(e) => setPpmCorrection(parseFloat(e.target.value))}
+            className="control-range"
+          />
         </div>
 
         <div className="control-group">
