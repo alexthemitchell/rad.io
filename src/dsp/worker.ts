@@ -1,6 +1,6 @@
 import { WfmDemodulator } from './WfmDemodulator';
 import { AmDemodulator } from './AmDemodulator';
-import { NfmDemodulator } from './NfmDemodulator';
+import { NfmDemodulator, type NfmAudioPreset, type NfmOutputPath } from './NfmDemodulator';
 import { Downsampler } from './Downsampler';
 import { ComplexOscillator } from './ComplexOscillator';
 import { SimpleFFT } from './fft';
@@ -8,6 +8,8 @@ import { magnitudeSquaredToDbfs } from './fftScaling';
 import { RdsDecoder, RdsSnapshot } from './RdsDecoder';
 import { AudioPostProcessor, applyInterferencePreset, type FilterConfig, type FilterProfile, type InterferencePreset } from './AudioPostProcessor';
 import { evaluateDemodQuality, type DemodQualityMetrics } from './DemodMetrics';
+import { NoiseSquelch, type NoiseSquelchState } from './NoiseSquelch';
+import { ToneDecoder, type ToneDecodeState } from './ToneDecoder';
 import type { SDRStreamFrame } from '../devices/streamFrame';
 import {
     computeDemodQualityTelemetry,
@@ -52,13 +54,29 @@ const baseFilterConfig: FilterConfig = {
 let filterProfile: FilterProfile = baseFilterConfig.profile;
 let interferencePreset: InterferencePreset = 'off';
 const audioPostProcessor = new AudioPostProcessor(baseFilterConfig);
+const toneDecoder = new ToneDecoder();
+const noiseSquelch = new NoiseSquelch({
+    enabled: false,
+    thresholdDb: 10,
+    hysteresisDb: 1.5,
+    hangMs: 120,
+    tailMs: 140
+});
 let rdsDecoder = new RdsDecoder();
 let latestRdsSnapshot: RdsSnapshot = rdsDecoder.getSnapshot();
 let latestDemodMetrics: DemodQualityMetrics = evaluateDemodQuality('WFM', new Float32Array(0));
 let outboundPort: WorkerScope | MessagePort = workerScope;
 let metricsEmitCounter = 0;
+let latestSquelchState: NoiseSquelchState = noiseSquelch.getState(-120);
+let latestToneDecodeState: ToneDecodeState = {
+    ctcssHz: null,
+    confidence: 0,
+    active: false
+};
 
 let mode: 'WFM' | 'AM' | 'NFM' = 'WFM';
+let nfmAudioPreset: NfmAudioPreset = 'voice-na-75us';
+let nfmOutputPath: NfmOutputPath = 'voice';
 
 const postToMain = (message: unknown, transfer: Transferable[] = []) => {
     outboundPort.postMessage(message, transfer);
@@ -69,6 +87,10 @@ const resetPipelineState = () => {
     wfm = new WfmDemodulator();
     am = new AmDemodulator();
     nfm = new NfmDemodulator();
+    nfm.setConfig({
+        preset: nfmAudioPreset,
+        outputPath: nfmOutputPath
+    });
     downsampler = new Downsampler();
     nco = new ComplexOscillator(inputSampleRateHz);
     nco.setFrequency(fineFrequencyHz, inputSampleRateHz);
@@ -120,6 +142,12 @@ const handleMessage = (e: MessageEvent) => {
     } else if (e.data.command === 'SET_MODE') {
         mode = e.data.value;
         console.log(`Worker: Mode set to ${mode}`);
+    } else if (e.data.command === 'SET_NFM_AUDIO_PRESET') {
+        nfmAudioPreset = e.data.value as NfmAudioPreset;
+        nfm.setConfig({ preset: nfmAudioPreset });
+    } else if (e.data.command === 'SET_NFM_OUTPUT_PATH') {
+        nfmOutputPath = e.data.value as NfmOutputPath;
+        nfm.setConfig({ outputPath: nfmOutputPath });
     } else if (e.data.command === 'SET_FINE_FREQ') {
         // Frequency shift in Hz (e.g. +50000 Hz)
         fineFrequencyHz = Number(e.data.value);
@@ -142,6 +170,18 @@ const handleMessage = (e: MessageEvent) => {
     } else if (e.data.command === 'SET_INTERFERENCE_PRESET') {
         interferencePreset = e.data.value as InterferencePreset;
         updateFilterConfig();
+    } else if (e.data.command === 'SET_NOISE_SQUELCH') {
+        noiseSquelch.setConfig({
+            enabled: Boolean(e.data.enabled),
+            thresholdDb: Number(e.data.thresholdDb),
+            hysteresisDb: Number(e.data.hysteresisDb),
+            hangMs: Number(e.data.hangMs),
+            tailMs: Number(e.data.tailMs)
+        });
+        postToMain({
+            type: 'SQUELCH_STATE',
+            data: noiseSquelch.getState(latestDemodMetrics.snrEstimateDb)
+        }, []);
     } else if (e.data.command === 'RESET_RDS') {
         rdsDecoder = new RdsDecoder();
         latestRdsSnapshot = rdsDecoder.getSnapshot();
@@ -207,6 +247,11 @@ function processUSBData(buffer: ArrayBuffer) {
     const afterDownsampleMs = performance.now();
 
     latestDemodMetrics = evaluateDemodQuality(mode, audioOut);
+    const frameDurationMs = (audioOut.length / 50_000) * 1000;
+    latestSquelchState = noiseSquelch.applyInPlace(audioOut, latestDemodMetrics.snrEstimateDb, frameDurationMs);
+    if (mode === 'NFM') {
+        latestToneDecodeState = toneDecoder.decodeCtcss(audioOut, 50_000);
+    }
     metricsEmitCounter += 1;
     if (metricsEmitCounter % 5 === 0) {
         const amplitude = computeDspAmplitudeTelemetry(shiftedIQ, audioOut);
@@ -236,6 +281,16 @@ function processUSBData(buffer: ArrayBuffer) {
             type: 'DSP_TELEMETRY',
             data: dspTelemetry
         }, []);
+        postToMain({
+            type: 'SQUELCH_STATE',
+            data: latestSquelchState
+        }, []);
+        if (mode === 'NFM') {
+            postToMain({
+                type: 'TONE_DECODE_STATE',
+                data: latestToneDecodeState
+            }, []);
+        }
     }
 
     // Audio Output

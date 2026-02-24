@@ -25,6 +25,7 @@ import { createFixtureInteropExportBundle } from './fixtures/sigmf/interopExport
 import { WorkerBridge } from './dsp/WorkerBridge';
 import type { FilterProfile, InterferencePreset } from './dsp/AudioPostProcessor';
 import type { DemodMode, DemodQualityMetrics, LockState } from './dsp/DemodMetrics';
+import type { NfmAudioPreset, NfmOutputPath } from './dsp/NfmDemodulator';
 import {
   MODE_CONTROL_CONTRACTS,
   clampFilterForMode,
@@ -50,6 +51,23 @@ type DspFilterState = {
   highCutHz: number;
   profile: FilterProfile;
   preset: InterferencePreset;
+};
+type NoiseSquelchState = {
+  enabled: boolean;
+  thresholdDb: number;
+  hysteresisDb: number;
+  hangMs: number;
+  tailMs: number;
+  hangRemainingMs: number;
+  open: boolean;
+  gain: number;
+  snrDb: number;
+};
+
+type ToneDecodeState = {
+  ctcssHz: number | null;
+  confidence: number;
+  active: boolean;
 };
 
 type DemodQualityState = {
@@ -181,6 +199,23 @@ const emptyDemodQuality = (): DemodQualityState => ({
   carrierLevel: 0,
   deviationEstimate: 0
 });
+const defaultNoiseSquelchState = (): NoiseSquelchState => ({
+  enabled: false,
+  thresholdDb: 10,
+  hysteresisDb: 1.5,
+  hangMs: 120,
+  tailMs: 140,
+  hangRemainingMs: 0,
+  open: true,
+  gain: 1,
+  snrDb: -120
+});
+
+const defaultToneDecodeState = (): ToneDecodeState => ({
+  ctcssHz: null,
+  confidence: 0,
+  active: false
+});
 
 const detectRuntimePrerequisites = (): RuntimePrerequisites => {
   const secureContext = typeof window !== 'undefined' && window.isSecureContext;
@@ -296,6 +331,10 @@ export default function App() {
     const [scanStepLabel, setScanStepLabel] = useState('Idle');
     const [scanResults, setScanResults] = useState<FmScanResult[]>([]);
     const [permissionState, setPermissionState] = useState<RuntimePermissionState>(unknownPermissionState());
+    const [noiseSquelchState, setNoiseSquelchState] = useState<NoiseSquelchState>(defaultNoiseSquelchState);
+    const [toneDecodeState, setToneDecodeState] = useState<ToneDecodeState>(defaultToneDecodeState);
+    const [nfmAudioPreset, setNfmAudioPreset] = useState<NfmAudioPreset>('voice-na-75us');
+    const [nfmOutputPath, setNfmOutputPath] = useState<NfmOutputPath>('voice');
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -395,6 +434,10 @@ export default function App() {
           carrierLevel: metrics.carrierLevel,
           deviationEstimate: metrics.deviationEstimate
         });
+      } else if (e.data.type === 'SQUELCH_STATE') {
+        setNoiseSquelchState(e.data.data as NoiseSquelchState);
+      } else if (e.data.type === 'TONE_DECODE_STATE') {
+        setToneDecodeState(e.data.data as ToneDecodeState);
       } else if (e.data.type === 'DSP_TELEMETRY') {
         const telemetry = e.data.data as RuntimeDspTelemetryV1;
         setRuntimeTelemetry((prev) => ({
@@ -684,6 +727,14 @@ export default function App() {
   }, [applyModeAudioDefaults, demodMode, postToWorker, pushDiagnosticEvent]);
 
   useEffect(() => {
+    postToWorker({ command: 'SET_NFM_AUDIO_PRESET', value: nfmAudioPreset });
+  }, [nfmAudioPreset, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_NFM_OUTPUT_PATH', value: nfmOutputPath });
+  }, [nfmOutputPath, postToWorker]);
+
+  useEffect(() => {
     const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, filterState.highCutHz);
     if (clamped.lowCutHz !== filterState.lowCutHz || clamped.highCutHz !== filterState.highCutHz) {
       setFilterState((prev) => ({
@@ -732,6 +783,17 @@ export default function App() {
   useEffect(() => {
     postToWorker({ command: 'SET_INTERFERENCE_PRESET', value: filterState.preset });
   }, [filterState.preset, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({
+      command: 'SET_NOISE_SQUELCH',
+      enabled: noiseSquelchState.enabled,
+      thresholdDb: noiseSquelchState.thresholdDb,
+      hysteresisDb: noiseSquelchState.hysteresisDb,
+      hangMs: noiseSquelchState.hangMs,
+      tailMs: noiseSquelchState.tailMs
+    });
+  }, [noiseSquelchState.enabled, noiseSquelchState.hangMs, noiseSquelchState.hysteresisDb, noiseSquelchState.tailMs, noiseSquelchState.thresholdDb, postToWorker]);
 
   const waitFor = (ms: number) => new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
@@ -1639,6 +1701,35 @@ export default function App() {
             </select>
         </div>
 
+        {demodMode === 'NFM' && (
+          <>
+            <div className="control-group">
+              <label className="control-label">NFM De-Emphasis</label>
+              <select
+                value={nfmAudioPreset}
+                onChange={(e) => setNfmAudioPreset(e.target.value as NfmAudioPreset)}
+                className="control-input compact"
+              >
+                <option value="voice-na-75us">Voice NA (75 us)</option>
+                <option value="voice-eu-50us">Voice EU (50 us)</option>
+                <option value="flat-discriminator">Off / Flat</option>
+              </select>
+            </div>
+
+            <div className="control-group">
+              <label className="control-label">NFM Audio Path</label>
+              <select
+                value={nfmOutputPath}
+                onChange={(e) => setNfmOutputPath(e.target.value as NfmOutputPath)}
+                className="control-input compact"
+              >
+                <option value="voice">Voice</option>
+                <option value="discriminator">Discriminator (AFSK/FSK)</option>
+              </select>
+            </div>
+          </>
+        )}
+
         <div className="control-group">
           <label className="control-label">Filter Shape</label>
           <select
@@ -1654,6 +1745,57 @@ export default function App() {
 
         <div className="control-group">
           <label className="control-label">Interference Helper</label>
+                  <div className="control-group">
+                    <label className="control-label">Noise Squelch</label>
+                    <input
+                      type="checkbox"
+                      checked={noiseSquelchState.enabled}
+                      onChange={(e) => setNoiseSquelchState((prev) => ({ ...prev, enabled: e.target.checked }))}
+                      className="control-check"
+                    />
+                    <div className="control-note">
+                      {noiseSquelchState.open ? 'Open' : 'Closed'} | Gate {Math.round(noiseSquelchState.gain * 100)}% | SNR {noiseSquelchState.snrDb.toFixed(1)} dB | Hang {Math.round(noiseSquelchState.hangRemainingMs)} ms
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <label className="control-label">Squelch Threshold ({noiseSquelchState.thresholdDb.toFixed(1)} dB)</label>
+                    <input
+                      type="range"
+                      min="-5"
+                      max="25"
+                      step="0.5"
+                      value={noiseSquelchState.thresholdDb}
+                      onChange={(e) => setNoiseSquelchState((prev) => ({ ...prev, thresholdDb: parseFloat(e.target.value) }))}
+                      className="control-range"
+                    />
+                  </div>
+
+                  <div className="control-group">
+                    <label className="control-label">Squelch Hang ({Math.round(noiseSquelchState.hangMs)} ms)</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="500"
+                      step="10"
+                      value={noiseSquelchState.hangMs}
+                      onChange={(e) => setNoiseSquelchState((prev) => ({ ...prev, hangMs: parseFloat(e.target.value) }))}
+                      className="control-range"
+                    />
+                  </div>
+
+                  <div className="control-group">
+                    <label className="control-label">Squelch Tail ({Math.round(noiseSquelchState.tailMs)} ms)</label>
+                    <input
+                      type="range"
+                      min="40"
+                      max="500"
+                      step="10"
+                      value={noiseSquelchState.tailMs}
+                      onChange={(e) => setNoiseSquelchState((prev) => ({ ...prev, tailMs: parseFloat(e.target.value) }))}
+                      className="control-range"
+                    />
+                  </div>
           <select
             value={filterState.preset}
             onChange={(e) => setFilterState((prev) => ({ ...prev, preset: e.target.value as InterferencePreset }))}
@@ -1896,6 +2038,16 @@ export default function App() {
             <strong>Deviation Estimate</strong>
             <span>{demodQuality.deviationEstimate.toFixed(3)}</span>
           </li>
+          {demodMode === 'NFM' && (
+            <li className={`health-item ${toneDecodeState.active ? 'health-ok' : 'health-warn'}`}>
+              <strong>CTCSS</strong>
+              <span>
+                {toneDecodeState.active && toneDecodeState.ctcssHz !== null
+                  ? `${toneDecodeState.ctcssHz.toFixed(1)} Hz (${Math.round(toneDecodeState.confidence * 100)}%)`
+                  : 'not detected'}
+              </span>
+            </li>
+          )}
         </ul>
       </section>
 

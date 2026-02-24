@@ -1,7 +1,34 @@
+export type NfmAudioPreset = 'voice-na-75us' | 'voice-eu-50us' | 'flat-discriminator';
+export type NfmOutputPath = 'voice' | 'discriminator';
+
+type NfmConfig = {
+    preset: NfmAudioPreset;
+    outputPath: NfmOutputPath;
+};
+
 export class NfmDemodulator {
     private prevI = 0;
     private prevQ = 0;
     private deemphasis = 0;
+    private config: NfmConfig = {
+        preset: 'voice-na-75us',
+        outputPath: 'voice'
+    };
+
+    setConfig(next: Partial<NfmConfig>) {
+        this.config = {
+            ...this.config,
+            ...next
+        };
+    }
+
+    private alphaForPreset(): number {
+        if (this.config.outputPath === 'discriminator' || this.config.preset === 'flat-discriminator') {
+            return 1;
+        }
+
+        return this.config.preset === 'voice-eu-50us' ? 0.12 : 0.08;
+    }
 
     /**
      * Baseline narrowband FM demodulation.
@@ -19,11 +46,15 @@ export class NfmDemodulator {
             const dot = currI * this.prevI + currQ * this.prevQ;
             const phaseDiff = Math.atan2(cross, dot);
 
-            // Conservative gain for NFM voice path.
             const scaled = phaseDiff * 0.6;
+            const alpha = this.alphaForPreset();
 
-            // Single-pole deemphasis style smoothing.
-            this.deemphasis = this.deemphasis * 0.92 + scaled * 0.08;
+            if (alpha >= 0.9999) {
+                this.deemphasis = scaled;
+            } else {
+                this.deemphasis = this.deemphasis * (1 - alpha) + scaled * alpha;
+            }
+
             output[i] = this.deemphasis;
 
             this.prevI = currI;

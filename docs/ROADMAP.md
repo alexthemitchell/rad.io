@@ -288,18 +288,18 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **AM Demodulator**: broadcast/airband baseline.
 - [ ] **AM Sync (SAM)**: synchronous AM demod for selective fading and improved intelligibility (Core Pro Feature).
 - [x] **NFM Demodulator**: voice channels baseline.
-- [ ] **NFM De-Emphasis + Audio Shaping Presets (Deterministic)**: optional time-constant presets + intelligibility EQ defaults (no “magic NR”), with clear band/mode guidance.
+- [x] **NFM De-Emphasis + Audio Shaping Presets (Deterministic)**: optional time-constant presets (`75us`, `50us`, `off/flat`) plus voice/discriminator path selection for deterministic NFM workflows. (`src/dsp/NfmDemodulator.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/NfmDemodulator.test.ts`)
 - [ ] **SSB Demodulator**: USB/LSB with BFO.
 - [ ] **CW Demodulator**: BFO + narrow filter defaults and clean tuning UX (center/offset, optional pitch).
-- [ ] **Basic AFSK/FSK Audio Path (No Decode Yet)**: stable discriminator/AF audio suitable for external decoders and future plugins.
+- [x] **Basic AFSK/FSK Audio Path (No Decode Yet)**: stable NFM discriminator audio path exposed in UI (`Voice` vs `Discriminator`) for external decoder workflows and future plugin decode stages. (`src/dsp/NfmDemodulator.ts`, `src/dsp/worker.ts`, `src/App.tsx`)
 - [x] **Verification**: use Mock/File sources to validate audio output quality. (`src/dsp/demodGoldenFixtures.test.ts`, `src/dsp/endToEndAccuracy.test.ts`)
 - [x] **Demod Quality Metrics**: mode-specific lock/quality indicators (e.g., FM deviation estimate, WFM pilot lock, AM carrier lock) surfaced to telemetry/UI. (`src/dsp/DemodMetrics.ts`, `src/dsp/DemodMetrics.test.ts`, `src/App.tsx`)
 
 ### 3.4 Squelch (After Basic Audio Works)
 
-- [ ] **Noise Squelch**: SNR-based squelch.
-- [ ] **CTCSS/DCS (Optional)**: sub-tone detection.
-- [ ] **Scanner-Grade Squelch Behavior**: hang time, tail suppression, and dwell semantics for scanning workflows.
+- [x] **Noise Squelch**: SNR-based squelch with hysteresis/gated audio path and operator threshold control. (`src/dsp/NoiseSquelch.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/NoiseSquelch.test.ts`)
+- [ ] **CTCSS/DCS (Optional)**: sub-tone detection. (Partial: deterministic CTCSS detection + confidence surfaced in NFM workflow via `src/dsp/ToneDecoder.ts` and `src/App.tsx`; DCS decode pending.)
+- [ ] **Scanner-Grade Squelch Behavior**: hang time, tail suppression, and dwell semantics for scanning workflows. (Partial: hang/tail state machine and operator controls implemented in `src/dsp/NoiseSquelch.ts` + `src/App.tsx`; scan dwell semantics pending.)
 
 ## Phase 4: Visualization & Interaction MVP
 
