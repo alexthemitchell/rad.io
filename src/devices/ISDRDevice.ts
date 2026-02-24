@@ -29,6 +29,8 @@ export type DeviceDebugSnapshot = {
         transferSizeBytes: number;
         retryDelayMs: number;
         maxConsecutiveFailures: number;
+        profileName?: 'low-latency' | 'balanced' | 'stable' | 'custom';
+        scheduleRecommendation?: 'low-latency' | 'balanced' | 'stable';
     };
     counters?: {
         controlInCount: number;
@@ -44,6 +46,9 @@ export type DeviceDebugSnapshot = {
         transferIntervalMsAvg: number;
         transferIntervalMsJitter: number;
         shortPacketRatio: number;
+        transferCadenceExpectedMs: number;
+        transferBurstiness01: number;
+        longGapCount: number;
     };
     recentTrace?: Array<{
         ts: string;
@@ -71,5 +76,11 @@ export interface ISDRDevice {
     
     start(onData: SDRDataCallback): Promise<void>;
     stop(): Promise<void>;
+    setStreamingProfile?(profile: {
+        transferSizeBytes: number;
+        retryDelayMs: number;
+        maxConsecutiveFailures: number;
+        profileName?: 'low-latency' | 'balanced' | 'stable' | 'custom';
+    }): Promise<void>;
     getDebugSnapshot?(): DeviceDebugSnapshot;
 }

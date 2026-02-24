@@ -27,6 +27,7 @@ import type { SDRStreamFrame } from '../devices/streamFrame';
 import {
     computeDemodQualityTelemetry,
     computeDspAmplitudeTelemetry,
+    computeRfImpurityTelemetry,
     PIPELINE_TIMING_CONTRACT_VERSION,
     type RuntimeDspTelemetryV1
 } from '../telemetry/runtimeTelemetryContract';
@@ -328,6 +329,8 @@ const handleMessage = (e: MessageEvent) => {
             type: 'SQUELCH_STATE',
             data: noiseSquelch.getState(latestDemodMetrics.snrEstimateDb)
         }, []);
+    } else if (e.data.command === 'PING') {
+        // Keep-alive no-op used by background reliability guards.
     } else if (e.data.command === 'RESET_RDS') {
         rdsDecoder = new RdsDecoder();
         latestRdsSnapshot = rdsDecoder.getSnapshot();
@@ -438,6 +441,7 @@ function processUSBData(buffer: ArrayBuffer) {
             amplitude,
             mode === 'WFM' ? latestRdsSnapshot : null
         );
+        const rfImpurity = computeRfImpurityTelemetry(shiftedIQ, amplitude);
         const dspTelemetry: RuntimeDspTelemetryV1 = {
             pipelineTiming: {
                 contractVersion: PIPELINE_TIMING_CONTRACT_VERSION,
@@ -448,7 +452,8 @@ function processUSBData(buffer: ArrayBuffer) {
                 totalMs: afterDownsampleMs - startMs
             },
             amplitude,
-            demodQuality
+            demodQuality,
+            rfImpurity
         };
 
         postToMain({

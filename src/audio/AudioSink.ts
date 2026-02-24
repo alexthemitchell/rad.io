@@ -12,6 +12,11 @@ export type AudioSafetyConfig = {
     limiterDrive: number;
 };
 
+type SinkSelectableAudioContext = AudioContext & {
+    setSinkId?: (sinkId: string) => Promise<void>;
+    sinkId?: string;
+};
+
 export class AudioSink {
     private ctx: AudioContext | null = null;
     private gainNode: GainNode | null = null;
@@ -29,6 +34,7 @@ export class AudioSink {
         maxOutputLevel: 0.85,
         limiterDrive: 1.6
     };
+    private outputDeviceId = 'default';
     private static readonly RAMP_DOWN_SEC = 0.002;
     private static readonly RAMP_UP_SEC = 0.008;
     
@@ -42,6 +48,8 @@ export class AudioSink {
             this.gainNode.connect(this.ctx.destination);
             this.nextTime = this.ctx.currentTime + 0.1; // Buffer ahead slightly
         }
+
+        await this.applyOutputDeviceSelection();
         await this.ctx.resume();
 
         if (this.gainNode) {
@@ -51,6 +59,29 @@ export class AudioSink {
             this.gainNode.gain.linearRampToValueAtTime(this.resolveTargetGain(), now + AudioSink.RAMP_UP_SEC);
             this.popSuppressionCount += 1;
         }
+    }
+
+    private getSinkSelectableContext(): SinkSelectableAudioContext | null {
+        if (!this.ctx) {
+            return null;
+        }
+
+        return this.ctx as SinkSelectableAudioContext;
+    }
+
+    private async applyOutputDeviceSelection() {
+        const context = this.getSinkSelectableContext();
+        if (!context || typeof context.setSinkId !== 'function') {
+            return false;
+        }
+
+        const targetSinkId = this.outputDeviceId || 'default';
+        if (context.sinkId === targetSinkId) {
+            return true;
+        }
+
+        await context.setSinkId(targetSinkId);
+        return true;
     }
 
     private resolveTargetGain() {
@@ -153,6 +184,14 @@ export class AudioSink {
     }
 
     stop() {
+        if (this.ctx && this.gainNode) {
+            const now = this.ctx.currentTime;
+            this.gainNode.gain.cancelScheduledValues(now);
+            this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
+            this.gainNode.gain.linearRampToValueAtTime(0, now + AudioSink.RAMP_DOWN_SEC);
+            this.popSuppressionCount += 1;
+        }
+
         this.ctx?.close();
         this.ctx = null;
         this.gainNode = null;
@@ -210,6 +249,31 @@ export class AudioSink {
 
     setMaxOutputLevel(level: number) {
         this.maxOutputLevel = Math.max(0, Math.min(1, level));
+        this.applyPopSuppressionRamp();
+    }
+
+    async setOutputDevice(deviceId: string) {
+        this.outputDeviceId = deviceId || 'default';
+        const applied = await this.applyOutputDeviceSelection();
+        if (applied) {
+            this.applyPopSuppressionRamp();
+        }
+        return applied;
+    }
+
+    getOutputDeviceId() {
+        return this.outputDeviceId;
+    }
+
+    supportsOutputDeviceSelection() {
+        if (typeof AudioContext === 'undefined') {
+            return false;
+        }
+
+        return typeof (AudioContext.prototype as unknown as { setSinkId?: unknown }).setSinkId === 'function';
+    }
+
+    prepareTransitionRamp() {
         this.applyPopSuppressionRamp();
     }
 

@@ -6,6 +6,13 @@ export type StabilityProfile = {
   driftConfidence: number;
   phaseErrorRms: number;
   ppmCorrectionHz: number;
+  iqIntegrityLastReport?: {
+    recordedAtUtc: string;
+    status: 'ok' | 'warn';
+    findings: string[];
+    fixes: string[];
+    summary: string;
+  };
 };
 
 const STORAGE_KEY = 'rad.io.deviceProfiles.v1';

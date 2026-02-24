@@ -1,5 +1,6 @@
 import { DeviceDebugSnapshot, ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
 import type { SDRDiscontinuityCause, SDRDiscontinuityEvent } from './streamFrame';
+import { recommendUsbStreamingProfile } from '../measurements/usbStreamingPolicy';
 
 // HackRF One Constants
 const HACKRF_USB_VID = 0x1d50;
@@ -23,6 +24,7 @@ export class HackRFDevice implements ISDRDevice {
     private static readonly MODE_SETTLE_DELAY_MS = 30;
     private static readonly STREAM_MAX_CONSECUTIVE_FAILURES = 8;
     private static readonly STREAM_RETRY_DELAY_MS = 20;
+    private static readonly STREAM_TRANSFER_SIZE_BYTES = 16_384;
     private device: USBDevice | null = null;
     private interfaceIndex = 0;
     private inEndpointNumber = 1;
@@ -55,16 +57,25 @@ export class HackRFDevice implements ISDRDevice {
         transferRateBps: 0,
         transferIntervalMsAvg: 0,
         transferIntervalMsJitter: 0,
-        shortPacketRatio: 0
+        shortPacketRatio: 0,
+        transferCadenceExpectedMs: 0,
+        transferBurstiness01: 0,
+        longGapCount: 0
     };
     private lastTransferAtMs: number | null = null;
     private rateWindowStartedAtMs = performance.now();
     private rateWindowBytes = 0;
     private intervalEwmaMs = 0;
     private intervalJitterEwmaMs = 0;
+    private streamTransferSizeBytes = HackRFDevice.STREAM_TRANSFER_SIZE_BYTES;
+    private streamRetryDelayMs = HackRFDevice.STREAM_RETRY_DELAY_MS;
+    private streamMaxConsecutiveFailures = HackRFDevice.STREAM_MAX_CONSECUTIVE_FAILURES;
+    private streamProfileName: 'low-latency' | 'balanced' | 'stable' | 'custom' = 'balanced';
 
     private updateTransferTelemetry(bytes: number, transferSize: number): void {
         const nowMs = performance.now();
+        const expectedCadenceMs = Math.max(0.01, ((transferSize / 2) / Math.max(1, this.sampleRate)) * 1000);
+        this.debugCounters.transferCadenceExpectedMs = expectedCadenceMs;
 
         this.rateWindowBytes += bytes;
         const windowElapsedMs = nowMs - this.rateWindowStartedAtMs;
@@ -84,6 +95,15 @@ export class HackRFDevice implements ISDRDevice {
 
             const jitterMs = Math.abs(intervalMs - this.intervalEwmaMs);
             this.intervalJitterEwmaMs = (this.intervalJitterEwmaMs * 0.9) + (jitterMs * 0.1);
+
+            if (intervalMs > expectedCadenceMs * 1.8) {
+                this.debugCounters.longGapCount += 1;
+            }
+
+            this.debugCounters.transferBurstiness01 = Math.max(
+                0,
+                Math.min(1, this.intervalJitterEwmaMs / Math.max(1, expectedCadenceMs))
+            );
 
             this.debugCounters.transferIntervalMsAvg = this.intervalEwmaMs;
             this.debugCounters.transferIntervalMsJitter = this.intervalJitterEwmaMs;
@@ -549,6 +569,7 @@ export class HackRFDevice implements ISDRDevice {
         this.rateWindowBytes = 0;
         this.intervalEwmaMs = 0;
         this.intervalJitterEwmaMs = 0;
+        this.debugCounters.longGapCount = 0;
         this.markDiscontinuity('restart');
 
         console.log("Starting RX Mode...");
@@ -562,14 +583,14 @@ export class HackRFDevice implements ISDRDevice {
             throw startError;
         }
 
-        const TRANSFER_SIZE = 16384; // Reduced size for debug
+        const transferSizeBytes = this.streamTransferSizeBytes;
         let consecutiveFailures = 0;
         console.log("RX Mode Active. Entering Loop...");
         
         while (this.isStreaming && this.device.opened) {
             try {
                 // console.log("Requesting transfer...");
-                const result = await this.device.transferIn(this.inEndpointNumber, TRANSFER_SIZE);
+                const result = await this.device.transferIn(this.inEndpointNumber, transferSizeBytes);
                 this.debugCounters.bulkInCount += 1;
                 if (result.status !== 'ok') {
                     this.debugCounters.bulkInErrorCount += 1;
@@ -588,10 +609,10 @@ export class HackRFDevice implements ISDRDevice {
                 if (result.data && result.data.byteLength > 0) {
                     this.debugCounters.lastTransferBytes = result.data.byteLength;
                     this.debugCounters.lastTransferStatus = result.status;
-                    if (result.data.byteLength < TRANSFER_SIZE) {
+                    if (result.data.byteLength < transferSizeBytes) {
                         this.debugCounters.shortPacketCount += 1;
                     }
-                    this.updateTransferTelemetry(result.data.byteLength, TRANSFER_SIZE);
+                    this.updateTransferTelemetry(result.data.byteLength, transferSizeBytes);
                     this.pushUsbTrace({
                         ts: new Date().toISOString(),
                         event: 'bulk-in',
@@ -659,7 +680,7 @@ export class HackRFDevice implements ISDRDevice {
                 consecutiveFailures += 1;
                 this.debugCounters.retryCount += 1;
 
-                if (consecutiveFailures >= HackRFDevice.STREAM_MAX_CONSECUTIVE_FAILURES) {
+                if (consecutiveFailures >= this.streamMaxConsecutiveFailures) {
                     this.isStreaming = false;
                     try {
                         await this.setTransceiverMode(0);
@@ -671,7 +692,7 @@ export class HackRFDevice implements ISDRDevice {
                     throw new Error(`HackRF stream aborted after ${consecutiveFailures} consecutive transfer failures: ${detail}`);
                 }
 
-                await this.sleep(HackRFDevice.STREAM_RETRY_DELAY_MS);
+                await this.sleep(this.streamRetryDelayMs);
             }
         }
 
@@ -700,6 +721,24 @@ export class HackRFDevice implements ISDRDevice {
         }
     }
 
+    async setStreamingProfile(profile: {
+        transferSizeBytes: number;
+        retryDelayMs: number;
+        maxConsecutiveFailures: number;
+        profileName?: 'low-latency' | 'balanced' | 'stable' | 'custom';
+    }): Promise<void> {
+        this.streamTransferSizeBytes = Math.max(4096, Math.min(65536, Math.round(profile.transferSizeBytes)));
+        this.streamRetryDelayMs = Math.max(5, Math.min(200, Math.round(profile.retryDelayMs)));
+        this.streamMaxConsecutiveFailures = Math.max(2, Math.min(32, Math.round(profile.maxConsecutiveFailures)));
+        this.streamProfileName = profile.profileName ?? 'custom';
+
+        this.pushUsbTrace({
+            ts: new Date().toISOString(),
+            event: 'streaming-profile-update',
+            detail: `${this.streamProfileName}:${this.streamTransferSizeBytes}/${this.streamRetryDelayMs}/${this.streamMaxConsecutiveFailures}`
+        });
+    }
+
     getDebugSnapshot(): DeviceDebugSnapshot {
         return {
             driver: 'HackRFDevice',
@@ -716,9 +755,19 @@ export class HackRFDevice implements ISDRDevice {
                 inEndpointNumber: this.inEndpointNumber
             },
             streamingProfile: {
-                transferSizeBytes: 16384,
-                retryDelayMs: HackRFDevice.STREAM_RETRY_DELAY_MS,
-                maxConsecutiveFailures: HackRFDevice.STREAM_MAX_CONSECUTIVE_FAILURES
+                transferSizeBytes: this.streamTransferSizeBytes,
+                retryDelayMs: this.streamRetryDelayMs,
+                maxConsecutiveFailures: this.streamMaxConsecutiveFailures,
+                profileName: this.streamProfileName,
+                scheduleRecommendation: recommendUsbStreamingProfile({
+                    transferIntervalMsAvg: this.debugCounters.transferIntervalMsAvg,
+                    transferIntervalMsJitter: this.debugCounters.transferIntervalMsJitter,
+                    shortPacketRatio: this.debugCounters.shortPacketRatio,
+                    retryCount: this.debugCounters.retryCount,
+                    bulkInErrorCount: this.debugCounters.bulkInErrorCount,
+                    audioUnderruns: 0,
+                    droppedFrameEvents: 0
+                })
             },
             counters: { ...this.debugCounters },
             recentTrace: [...this.usbTrace]

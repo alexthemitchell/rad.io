@@ -31,6 +31,10 @@ import {
   type ShareableSessionStateV1
 } from './measurements/shareableSessionState';
 import {
+  consumeSessionInterrupted,
+  markSessionInterrupted
+} from './measurements/sessionResilience';
+import {
   deriveSessionLockInvalidationReason,
   evaluateSessionGradeUpgrade
 } from './measurements/sessionGradeUpgrade';
@@ -44,7 +48,21 @@ import {
   describeClockSyncPolicy,
   type ClockSyncPolicy
 } from './measurements/clockSyncPolicy';
+import { assessSampleRateMismatchStrategy } from './measurements/sampleRateMismatchStrategy';
+import { buildSignalIdTuningAdvisor } from './measurements/signalIdTuningAdvisor';
+import { assessBufferTelemetry, buildAsciiOccupancyTrend } from './measurements/bufferTelemetry';
+import { assessIqIntegrityWizard } from './measurements/iqIntegrityWizard';
 import { assessTimebaseDriftTelemetry } from './measurements/timebaseDriftTelemetry';
+import {
+  recommendUsbStreamingProfile,
+  scoreUsbProfileWindow,
+  USB_STREAMING_PROFILES,
+  type UsbStreamingProfileName
+} from './measurements/usbStreamingPolicy';
+import {
+  runHardwareSanitySelfTest,
+  type HardwareSanitySelfTestReport
+} from './measurements/hardwareSanitySelfTest';
 import { validateRecordingExportIntegrity } from './measurements/recordingExportIntegrityValidator';
 import { createRfAudioTimebaseAlignmentSnapshot } from './measurements/rfAudioTimebaseAlignment';
 import { createFixtureInteropExportBundle } from './fixtures/sigmf/interopExport';
@@ -192,6 +210,11 @@ type RuntimeEnvironment = {
   audioWorkletAvailable: boolean;
 };
 
+type WakeLockSentinelLike = {
+  released: boolean;
+  release: () => Promise<void>;
+};
+
 type RdsTelemetry = {
   synced: boolean;
   totalBlocks: number;
@@ -266,6 +289,31 @@ type RfEnvironmentContext = {
   biasTeeEnabled: boolean;
 };
 
+type AudioOutputDeviceOption = {
+  deviceId: string;
+  label: string;
+};
+
+type SafeModeSnapshot = {
+  sourceType: SourceType;
+  frequencyHz: number;
+  demodMode: DemodMode;
+  fineFreqHz: number;
+  ppmCorrection: number;
+  latencyPolicy: LatencyPolicy;
+  clockSyncPolicy: ClockSyncPolicy;
+  afcEnabled: boolean;
+  stabilityModeEnabled: boolean;
+  secondaryVfoEnabled: boolean;
+  secondaryVfoOffsetHz: number;
+};
+
+type SafeModeMarker = {
+  triggeredAtIso: string;
+  reason: string;
+  snapshot: SafeModeSnapshot;
+};
+
 type SessionParameterSnapshot = {
   frequencyHz: number;
   demodMode: DemodMode;
@@ -281,6 +329,9 @@ const APP_VERSION = '0.0.1';
 const LATENCY_POLICY_STORAGE_KEY = 'rad.io.latencyPolicy.v1';
 const CLOCK_SYNC_POLICY_STORAGE_KEY = 'rad.io.clockSyncPolicy.v1';
 const RF_ENV_CONTEXT_STORAGE_KEY = 'rad.io.rfEnvironmentContext.v1';
+const AUDIO_OUTPUT_DEVICE_STORAGE_KEY = 'rad.io.audioOutputDevice.v1';
+const SAFE_MODE_MARKER_STORAGE_KEY = 'rad.io.safeModeBoot.v1';
+const USB_STREAMING_PROFILE_STORAGE_KEY = 'rad.io.usbStreamingProfile.v1';
 const SHAREABLE_SESSION_QUERY_PARAM = 'session';
 const SESSION_GRADE_MIN_STABILITY_WINDOW_SECONDS = 30;
 const WEBUSB_CONTENTION_CHANNEL = 'rad.io.webusb.contention.v1';
@@ -614,6 +665,30 @@ export default function App() {
         return DEFAULT_RF_ENVIRONMENT_CONTEXT;
       }
     });
+    const [audioOutputDeviceId, setAudioOutputDeviceId] = useState(() => {
+      try {
+        const stored = localStorage.getItem(AUDIO_OUTPUT_DEVICE_STORAGE_KEY);
+        return typeof stored === 'string' && stored.length > 0 ? stored : 'default';
+      } catch {
+        return 'default';
+      }
+    });
+    const [audioOutputDevices, setAudioOutputDevices] = useState<AudioOutputDeviceOption[]>([
+      { deviceId: 'default', label: 'System default' }
+    ]);
+    const [audioOutputSelectionSupported, setAudioOutputSelectionSupported] = useState(false);
+    const [safeModeMarker, setSafeModeMarker] = useState<SafeModeMarker | null>(null);
+    const [adaptiveStreamingEnabled, setAdaptiveStreamingEnabled] = useState(true);
+    const [usbStreamingProfile, setUsbStreamingProfile] = useState<UsbStreamingProfileName | 'custom'>(() => {
+      try {
+        const stored = localStorage.getItem(USB_STREAMING_PROFILE_STORAGE_KEY);
+        return stored === 'low-latency' || stored === 'balanced' || stored === 'stable' ? stored : 'balanced';
+      } catch {
+        return 'balanced';
+      }
+    });
+    const [usbAutoTuneRunning, setUsbAutoTuneRunning] = useState(false);
+    const [hardwareSelfTestReport, setHardwareSelfTestReport] = useState<HardwareSanitySelfTestReport | null>(null);
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -643,6 +718,11 @@ export default function App() {
   const contentionChannelRef = useRef<BroadcastChannel | null>(null);
   const isRunningRef = useRef(false);
   const commandPaletteInputRef = useRef<HTMLInputElement | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
+  const previousFrequencyRef = useRef<number | null>(null);
+  const previousFineFreqRef = useRef<number | null>(null);
+  const previousBandwidthRef = useRef<number | null>(null);
+  const [backgroundAudioGuardActive, setBackgroundAudioGuardActive] = useState(false);
 
     const pushDiagnosticEvent = useCallback((
       message: string,
@@ -675,6 +755,65 @@ export default function App() {
       setPermissionState({ usb, microphone });
     }, []);
 
+    const refreshAudioOutputDevices = useCallback(async () => {
+      const mediaDevices = navigator.mediaDevices;
+      if (!mediaDevices?.enumerateDevices) {
+        setAudioOutputDevices([{ deviceId: 'default', label: 'System default' }]);
+        return;
+      }
+
+      try {
+        const devices = await mediaDevices.enumerateDevices();
+        const outputOptions: AudioOutputDeviceOption[] = devices
+          .filter((device) => device.kind === 'audiooutput')
+          .map((device, index) => ({
+            deviceId: device.deviceId || `audio-output-${index}`,
+            label: device.label || `Audio output ${index + 1}`
+          }));
+
+        const dedupedById = new Map<string, AudioOutputDeviceOption>();
+        dedupedById.set('default', { deviceId: 'default', label: 'System default' });
+        for (const option of outputOptions) {
+          dedupedById.set(option.deviceId, option);
+        }
+
+        setAudioOutputDevices(Array.from(dedupedById.values()));
+      } catch {
+        setAudioOutputDevices([{ deviceId: 'default', label: 'System default' }]);
+      }
+    }, []);
+
+    const applySelectedAudioOutput = useCallback(async (reason: 'startup' | 'selection' | 'device-change') => {
+      const sink = audioRef.current;
+      if (!sink) {
+        return;
+      }
+
+      try {
+        const applied = await sink.setOutputDevice(audioOutputDeviceId);
+        if (applied && reason !== 'startup' && isRunningRef.current) {
+          sink.prepareTransitionRamp();
+          setRuntimeTelemetry((prev) => ({
+            ...prev,
+            streamDiscontinuities: prev.streamDiscontinuities + 1,
+            lastDiscontinuityCause: 'output-device-change',
+            lastFrameWallClockMs: Date.now()
+          }));
+          pushDiagnosticEvent('Reconfiguration discontinuity recorded (output-device-change) with click-safe ramp.');
+        }
+        if (!applied && reason === 'selection' && audioOutputDeviceId !== 'default') {
+          setStatusMessage('Output device selection is not supported in this browser. Using default output.');
+          pushDiagnosticEvent('Audio output device selection requested but not supported by this browser.', 'warn');
+        }
+      } catch {
+        if (audioOutputDeviceId !== 'default') {
+          setAudioOutputDeviceId('default');
+        }
+        setStatusMessage('Failed to switch audio output device. Reverted to system default.');
+        pushDiagnosticEvent(`Audio output device switch failed for ${audioOutputDeviceId}. Reverted to default.`, 'warn');
+      }
+    }, [audioOutputDeviceId, pushDiagnosticEvent]);
+
     const tryResumeAudio = useCallback(async (reason: 'startup' | 'user-action' | 'visibility') => {
       try {
         await audioRef.current?.start();
@@ -706,6 +845,42 @@ export default function App() {
     workerBridgeRef.current?.postMessage(message, transfer);
   }, []);
 
+  const recordReconfigurationDiscontinuity = useCallback((cause: string) => {
+    setRuntimeTelemetry((prev) => ({
+      ...prev,
+      streamDiscontinuities: prev.streamDiscontinuities + 1,
+      lastDiscontinuityCause: cause,
+      lastFrameWallClockMs: Date.now()
+    }));
+    pushDiagnosticEvent(`Reconfiguration discontinuity recorded (${cause}) with click-safe ramp.`);
+  }, [pushDiagnosticEvent]);
+
+  const applyClickFreeReconfiguration = useCallback((cause: string) => {
+    audioRef.current?.prepareTransitionRamp();
+    recordReconfigurationDiscontinuity(cause);
+  }, [recordReconfigurationDiscontinuity]);
+
+  const applyUsbStreamingProfile = useCallback(async (profileName: UsbStreamingProfileName | 'custom') => {
+    const activeDevice = deviceRef.current;
+    if (!activeDevice?.setStreamingProfile) {
+      return;
+    }
+
+    if (profileName === 'custom') {
+      return;
+    }
+
+    const profile = USB_STREAMING_PROFILES[profileName];
+    await activeDevice.setStreamingProfile({
+      transferSizeBytes: profile.transferSizeBytes,
+      retryDelayMs: profile.retryDelayMs,
+      maxConsecutiveFailures: profile.maxConsecutiveFailures,
+      profileName: profile.name
+    });
+    setUsbStreamingProfile(profileName);
+    pushDiagnosticEvent(`USB streaming profile applied: ${profileName}.`);
+  }, [pushDiagnosticEvent]);
+
   const serializeGainProfile = useCallback((input: Record<string, number>) => {
     return Object.keys(input)
       .sort((a, b) => a.localeCompare(b))
@@ -724,6 +899,99 @@ export default function App() {
     clockSyncPolicy
   }), [clockSyncPolicy, demodMode, filterState.highCutHz, filterState.lowCutHz, fineFreq, frequency, gains, latencyPolicy, ppmCorrection, serializeGainProfile]);
 
+  const buildSafeModeSnapshot = useCallback((): SafeModeSnapshot => ({
+    sourceType,
+    frequencyHz: frequency,
+    demodMode,
+    fineFreqHz: fineFreq,
+    ppmCorrection,
+    latencyPolicy,
+    clockSyncPolicy,
+    afcEnabled,
+    stabilityModeEnabled,
+    secondaryVfoEnabled,
+    secondaryVfoOffsetHz
+  }), [
+    afcEnabled,
+    clockSyncPolicy,
+    demodMode,
+    fineFreq,
+    frequency,
+    latencyPolicy,
+    ppmCorrection,
+    secondaryVfoEnabled,
+    secondaryVfoOffsetHz,
+    sourceType,
+    stabilityModeEnabled
+  ]);
+
+  const applySafeModeDefaults = useCallback(() => {
+    setLatencyPolicy('stable');
+    setClockSyncPolicy('audio-stable');
+    setAfcEnabled(false);
+    setStabilityModeEnabled(false);
+    setSecondaryVfoEnabled(false);
+    setSecondaryVfoOffsetHz(12_500);
+    setToneDecodeMode('OFF');
+  }, []);
+
+  const clearSafeModeMarker = useCallback(() => {
+    setSafeModeMarker(null);
+    try {
+      localStorage.removeItem(SAFE_MODE_MARKER_STORAGE_KEY);
+    } catch {
+      // Non-fatal in private/incognito contexts.
+    }
+  }, []);
+
+  const persistSafeModeMarker = useCallback((reason: string) => {
+    const marker: SafeModeMarker = {
+      triggeredAtIso: new Date().toISOString(),
+      reason,
+      snapshot: buildSafeModeSnapshot()
+    };
+
+    setSafeModeMarker(marker);
+
+    try {
+      localStorage.setItem(SAFE_MODE_MARKER_STORAGE_KEY, JSON.stringify(marker));
+    } catch {
+      // Non-fatal in private/incognito contexts.
+    }
+  }, [buildSafeModeSnapshot]);
+
+  const triggerCrashOnlyRecovery = useCallback((cause: string) => {
+    persistSafeModeMarker(cause);
+    pushDiagnosticEvent(`Crash-only recovery triggered (${cause}). Restarting into safe mode.`, 'error');
+    setStatusMessage('Pipeline fault detected. Restarting in safe mode...');
+    setIsRunning(false);
+    setConnectionState('recovering');
+    setAudioState('awaiting-user-gesture');
+
+    workerBridgeRef.current?.postMessage({ command: 'STOP' });
+    audioRef.current?.stop();
+
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 150);
+    }
+  }, [persistSafeModeMarker, pushDiagnosticEvent]);
+
+  const restoreFromSafeModeSnapshot = useCallback((snapshot: SafeModeSnapshot) => {
+    setSourceType(snapshot.sourceType);
+    setFrequency(Math.round(snapshot.frequencyHz));
+    setDemodMode(snapshot.demodMode);
+    setFineFreq(Math.round(snapshot.fineFreqHz));
+    setPpmCorrection(snapshot.ppmCorrection);
+    setLatencyPolicy(snapshot.latencyPolicy);
+    setClockSyncPolicy(snapshot.clockSyncPolicy);
+    setAfcEnabled(snapshot.afcEnabled);
+    setStabilityModeEnabled(snapshot.stabilityModeEnabled);
+    setSecondaryVfoEnabled(snapshot.secondaryVfoEnabled);
+    setSecondaryVfoOffsetHz(snapshot.secondaryVfoOffsetHz);
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem(RF_ENV_CONTEXT_STORAGE_KEY, JSON.stringify(rfEnvironmentContext));
@@ -731,6 +999,59 @@ export default function App() {
       // Non-fatal in private/incognito contexts.
     }
   }, [rfEnvironmentContext]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(AUDIO_OUTPUT_DEVICE_STORAGE_KEY, audioOutputDeviceId);
+    } catch {
+      // Non-fatal in private/incognito contexts.
+    }
+  }, [audioOutputDeviceId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(USB_STREAMING_PROFILE_STORAGE_KEY, usbStreamingProfile);
+    } catch {
+      // Non-fatal in private/incognito contexts.
+    }
+  }, [usbStreamingProfile]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SAFE_MODE_MARKER_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as SafeModeMarker;
+      if (!parsed || typeof parsed.reason !== 'string' || !parsed.snapshot) {
+        return;
+      }
+
+      setSafeModeMarker(parsed);
+      applySafeModeDefaults();
+      setStatusMessage('Safe mode active after last unstable session. Review guidance and restore when ready.');
+      pushDiagnosticEvent(`Safe mode boot activated (${parsed.reason}) from ${parsed.triggeredAtIso}.`, 'warn');
+    } catch {
+      // Non-fatal in private/incognito contexts.
+    }
+  }, [applySafeModeDefaults, pushDiagnosticEvent]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.sessionStorage === 'undefined') {
+      return;
+    }
+
+    try {
+      const interruptedAt = consumeSessionInterrupted(window.sessionStorage);
+      if (interruptedAt) {
+        setStatusMessage('Previous session ended unexpectedly. Safe defaults restored (no auto-connect).');
+        pushDiagnosticEvent(`Recovered from interrupted session marker (${interruptedAt}).`, 'warn');
+      }
+    } catch {
+      // Non-fatal in private/incognito contexts.
+    }
+  }, [pushDiagnosticEvent]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -874,11 +1195,46 @@ export default function App() {
   }, [buildSessionParameterSnapshot, isRunning]);
 
   useEffect(() => {
+    const previous = previousFrequencyRef.current;
+    previousFrequencyRef.current = frequency;
+
+    if (!isRunning || previous === null || previous === frequency) {
+      return;
+    }
+
+    applyClickFreeReconfiguration('retune-frequency');
+  }, [applyClickFreeReconfiguration, frequency, isRunning]);
+
+  useEffect(() => {
+    const previous = previousFineFreqRef.current;
+    previousFineFreqRef.current = fineFreq;
+
+    if (!isRunning || previous === null || previous === fineFreq) {
+      return;
+    }
+
+    applyClickFreeReconfiguration('retune-fine');
+  }, [applyClickFreeReconfiguration, fineFreq, isRunning]);
+
+  useEffect(() => {
+    const bandwidthHz = Math.max(0, filterState.highCutHz - filterState.lowCutHz);
+    const previous = previousBandwidthRef.current;
+    previousBandwidthRef.current = bandwidthHz;
+
+    if (!isRunning || previous === null || previous === bandwidthHz) {
+      return;
+    }
+
+    applyClickFreeReconfiguration('bandwidth-change');
+  }, [applyClickFreeReconfiguration, filterState.highCutHz, filterState.lowCutHz, isRunning]);
+
+  useEffect(() => {
     workerRef.current = new Worker(new URL('./dsp/worker.ts', import.meta.url), { type: 'module' });
     workerBridgeRef.current = new WorkerBridge(workerRef.current, {
       preferMessageChannelFallback
     });
     audioRef.current = new AudioSink(50000); // 50k from worker
+    setAudioOutputSelectionSupported(audioRef.current.supportsOutputDeviceSelection());
     audioRef.current.setMuted(true);
     audioRef.current.setOutputLevel(MODE_CONTROL_CONTRACTS.WFM.defaultOutputLevel);
     audioRef.current.setMaxOutputLevel(MODE_CONTROL_CONTRACTS.WFM.defaultMaxOutputLevel);
@@ -899,8 +1255,12 @@ export default function App() {
       } else if (e.data.type === 'SCOPE_DATA') {
         setScopeData(e.data.data);
       } else if (e.data.type === 'AUDIO_DATA') {
-        const audioData = new Float32Array(e.data.data as ArrayBuffer);
-        audioRef.current?.push(audioData);
+        try {
+          const audioData = new Float32Array(e.data.data as ArrayBuffer);
+          audioRef.current?.push(audioData);
+        } catch {
+          triggerCrashOnlyRecovery('audio-pipeline-fault');
+        }
       } else if (e.data.type === 'FILTER_STATE') {
         const state = e.data.data as DspFilterState;
         setFilterState(state);
@@ -978,6 +1338,17 @@ export default function App() {
       }
     };
 
+    workerRef.current.onerror = (event) => {
+      const reason = typeof event.message === 'string' && event.message.length > 0
+        ? `worker-error:${event.message}`
+        : 'worker-error:unknown';
+      triggerCrashOnlyRecovery(reason);
+    };
+
+    workerRef.current.onmessageerror = () => {
+      triggerCrashOnlyRecovery('worker-message-deserialize-fault');
+    };
+
         pushDiagnosticEvent('DSP worker initialized.');
 
     return () => {
@@ -988,7 +1359,7 @@ export default function App() {
         audioRef.current?.stop();
         audioRef.current = null;
     };
-  }, [forceNoSab, preferMessageChannelFallback, pushDiagnosticEvent]);
+  }, [forceNoSab, preferMessageChannelFallback, pushDiagnosticEvent, triggerCrashOnlyRecovery]);
 
   useEffect(() => {
     try {
@@ -1002,9 +1373,139 @@ export default function App() {
     postToWorker({ command: 'SET_AUDIO_PLL_TARGET_QUEUE_MS', value: targetQueueMs });
   }, [clockSyncPolicy, latencyPolicy, postToWorker]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    let keepAliveIntervalId: number | null = null;
+
+    const releaseWakeLock = async () => {
+      const lock = wakeLockRef.current;
+      if (!lock) {
+        return;
+      }
+
+      try {
+        await lock.release();
+      } catch {
+        // Ignore release races.
+      }
+      wakeLockRef.current = null;
+      setBackgroundAudioGuardActive(false);
+    };
+
+    const acquireWakeLock = async () => {
+      if (document.visibilityState !== 'hidden') {
+        return;
+      }
+
+      const nav = navigator as Navigator & {
+        wakeLock?: { request: (type: 'screen') => Promise<WakeLockSentinelLike> };
+      };
+      if (!nav.wakeLock?.request) {
+        setBackgroundAudioGuardActive(false);
+        return;
+      }
+
+      try {
+        wakeLockRef.current = await nav.wakeLock.request('screen');
+        setBackgroundAudioGuardActive(true);
+      } catch {
+        setBackgroundAudioGuardActive(false);
+      }
+    };
+
+    if (isRunning) {
+      void acquireWakeLock();
+      keepAliveIntervalId = window.setInterval(() => {
+        if (document.visibilityState !== 'hidden') {
+          return;
+        }
+
+        postToWorker({ command: 'PING' });
+        void tryResumeAudio('visibility');
+      }, 15_000);
+    } else {
+      void releaseWakeLock();
+    }
+
+    return () => {
+      if (keepAliveIntervalId !== null) {
+        window.clearInterval(keepAliveIntervalId);
+      }
+      void releaseWakeLock();
+    };
+  }, [isRunning, postToWorker, tryResumeAudio]);
+
     useEffect(() => {
       void refreshPermissionState();
     }, [refreshPermissionState]);
+
+    useEffect(() => {
+      if (typeof navigator === 'undefined') {
+        return;
+      }
+
+      const mediaDevices = navigator.mediaDevices;
+      if (!mediaDevices) {
+        setAudioOutputSelectionSupported(false);
+        return;
+      }
+
+      const sinkSupportProbe = new AudioSink();
+      setAudioOutputSelectionSupported(sinkSupportProbe.supportsOutputDeviceSelection());
+
+      void refreshAudioOutputDevices();
+
+      const onDeviceChange = () => {
+        void refreshAudioOutputDevices();
+      };
+
+      mediaDevices.addEventListener?.('devicechange', onDeviceChange);
+
+      return () => {
+        mediaDevices.removeEventListener?.('devicechange', onDeviceChange);
+      };
+    }, [refreshAudioOutputDevices]);
+
+    useEffect(() => {
+      if (!audioOutputDevices.some((device) => device.deviceId === audioOutputDeviceId)) {
+        setAudioOutputDeviceId('default');
+      }
+    }, [audioOutputDeviceId, audioOutputDevices]);
+
+    useEffect(() => {
+      void applySelectedAudioOutput('selection');
+    }, [applySelectedAudioOutput]);
+
+    useEffect(() => {
+      if (typeof window === 'undefined' || typeof window.sessionStorage === 'undefined') {
+        return;
+      }
+
+      const markInterrupted = () => {
+        if (!isRunningRef.current) {
+          return;
+        }
+
+        try {
+          markSessionInterrupted(window.sessionStorage, new Date().toISOString());
+        } catch {
+          // Non-fatal in private/incognito contexts.
+        }
+
+        persistSafeModeMarker('unexpected-page-unload');
+      };
+
+      window.addEventListener('beforeunload', markInterrupted);
+      window.addEventListener('pagehide', markInterrupted);
+
+      return () => {
+        window.removeEventListener('beforeunload', markInterrupted);
+        window.removeEventListener('pagehide', markInterrupted);
+      };
+    }, [persistSafeModeMarker]);
 
     useEffect(() => {
         const onVisibilityChange = () => {
@@ -1032,11 +1533,25 @@ export default function App() {
           })();
         };
 
+        const onPageShow = () => {
+          if (!isRunning) {
+            return;
+          }
+
+          setStatusMessage('Session resumed after page restore; verifying audio/device state...');
+          void (async () => {
+            await tryResumeAudio('visibility');
+          })();
+          void refreshPermissionState();
+        };
+
         document.addEventListener('visibilitychange', onVisibilityChange);
         window.addEventListener('focus', onWindowFocus);
+        window.addEventListener('pageshow', onPageShow);
         return () => {
           document.removeEventListener('visibilitychange', onVisibilityChange);
           window.removeEventListener('focus', onWindowFocus);
+          window.removeEventListener('pageshow', onPageShow);
         };
     }, [isRunning, refreshPermissionState, pushDiagnosticEvent, tryResumeAudio]);
 
@@ -1058,6 +1573,7 @@ export default function App() {
         setAudioState('awaiting-user-gesture');
         setStatusMessage(`${product} disconnected. Reconnect the device and press Start.`);
         pushDiagnosticEvent(`USB disconnect detected for ${product}; stream halted.`, 'warn', 'webusb');
+        persistSafeModeMarker('mid-stream-usb-disconnect');
         postToWorker({ command: 'STOP' });
         audioRef.current?.stop();
 
@@ -1074,7 +1590,7 @@ export default function App() {
       return () => {
         navigator.usb.removeEventListener('disconnect', onUsbDisconnect as EventListener);
       };
-    }, [postToWorker, pushDiagnosticEvent, sourceType]);
+    }, [persistSafeModeMarker, postToWorker, pushDiagnosticEvent, sourceType]);
 
       useEffect(() => {
         if (!isRunning) {
@@ -1182,6 +1698,46 @@ export default function App() {
 
         return () => window.clearInterval(intervalId);
         }, [audioPllState.ratio, isRunning, postToWorker]);
+
+      useEffect(() => {
+        if (!isRunning || !adaptiveStreamingEnabled) {
+          return;
+        }
+
+        const intervalId = window.setInterval(() => {
+          const snapshot = deviceRef.current?.getDebugSnapshot?.();
+          const counters = snapshot?.counters;
+          if (!counters || !deviceRef.current?.setStreamingProfile || sourceType !== 'HACKRF') {
+            return;
+          }
+
+          const recommended = recommendUsbStreamingProfile({
+            transferIntervalMsAvg: counters.transferIntervalMsAvg,
+            transferIntervalMsJitter: counters.transferIntervalMsJitter,
+            shortPacketRatio: counters.shortPacketRatio,
+            retryCount: counters.retryCount,
+            bulkInErrorCount: counters.bulkInErrorCount,
+            audioUnderruns: runtimeTelemetryRef.current.audioUnderruns,
+            droppedFrameEvents: runtimeTelemetryRef.current.droppedFrameEvents
+          });
+
+          if (recommended === usbStreamingProfile) {
+            return;
+          }
+
+          void applyUsbStreamingProfile(recommended)
+            .then(() => {
+              pushDiagnosticEvent(`Adaptive streaming policy moved to ${recommended} profile.`);
+            })
+            .catch(() => {
+              pushDiagnosticEvent(`Adaptive streaming policy failed to apply ${recommended} profile.`, 'warn');
+            });
+        }, 4_000);
+
+        return () => {
+          window.clearInterval(intervalId);
+        };
+      }, [adaptiveStreamingEnabled, applyUsbStreamingProfile, isRunning, pushDiagnosticEvent, sourceType, usbStreamingProfile]);
 
     useEffect(() => {
       fftDataRef.current = fftData;
@@ -1804,6 +2360,7 @@ export default function App() {
   const toggleStream = async () => {
     if (isRunning) {
         // STOP
+      applyClickFreeReconfiguration('stream-stop');
         scanAbortRef.current = true;
         setConnectionState('recovering');
         setStatusMessage('Stopping stream...');
@@ -1890,6 +2447,7 @@ export default function App() {
             audioRef.current?.setOutputLevel(audioOutputLevel);
             audioRef.current?.setMaxOutputLevel(audioMaxOutputLevel);
             audioRef.current?.setSafetyConfig({ maxOutputLevel: audioMaxOutputLevel });
+            await applySelectedAudioOutput('startup');
             const state = audioRef.current?.getState();
             if (state !== 'running') {
                 setAudioState('awaiting-user-gesture');
@@ -1928,6 +2486,16 @@ export default function App() {
             await dev.setFrequency(frequency);
             for (const stage of stages) {
                 await dev.setGain(stage.name, stage.value);
+            }
+
+            if (dev.setStreamingProfile && (usbStreamingProfile === 'low-latency' || usbStreamingProfile === 'balanced' || usbStreamingProfile === 'stable')) {
+              const profile = USB_STREAMING_PROFILES[usbStreamingProfile];
+              await dev.setStreamingProfile({
+                transferSizeBytes: profile.transferSizeBytes,
+                retryDelayMs: profile.retryDelayMs,
+                maxConsecutiveFailures: profile.maxConsecutiveFailures,
+                profileName: profile.name
+              });
             }
     
             // Start Worker
@@ -2041,6 +2609,7 @@ export default function App() {
                 setAudioState('awaiting-user-gesture');
                 setStatusMessage(`Stream failed: ${streamErr.message}. Attempting safe recovery...`);
                 pushDiagnosticEvent(`Stream runtime error [${streamErr.code}]: ${streamErr.message}`);
+                persistSafeModeMarker(`stream-failure:${streamErr.code}`);
 
                 try {
                   await dev.close();
@@ -2058,6 +2627,7 @@ export default function App() {
               });
     
             setIsRunning(true);
+                        applyClickFreeReconfiguration('stream-start');
                         setConnectionState('streaming');
                         setAudioState(isMuted ? 'muted' : 'running');
                         setStatusMessage(`Streaming from ${dev.name}.`);
@@ -2091,6 +2661,185 @@ export default function App() {
             pushDiagnosticEvent(nextMuted ? 'Audio muted by UI.' : 'Audio unmuted by UI.');
             return nextMuted;
         });
+    };
+
+    const applyIqWizardFixes = async () => {
+      if (iqIntegrityAssessment.fixes.includes('enable-iq-correction')) {
+        setIqCorrectionEnabled(true);
+      }
+
+      if (iqIntegrityAssessment.fixes.includes('set-latency-stable')) {
+        setLatencyPolicy('stable');
+      }
+
+      if (iqIntegrityAssessment.fixes.includes('reduce-front-end-gain')) {
+        const activeDevice = deviceRef.current;
+        const nextGains: Record<string, number> = { ...gains };
+
+        for (const stage of gainStages) {
+          const current = nextGains[stage.name] ?? stage.value;
+          nextGains[stage.name] = Math.max(stage.min, current - 6);
+        }
+
+        setGains(nextGains);
+
+        if (activeDevice) {
+          for (const stage of gainStages) {
+            try {
+              await activeDevice.setGain(stage.name, nextGains[stage.name]);
+            } catch {
+              pushDiagnosticEvent(`IQ wizard could not apply gain change for ${stage.name}.`, 'warn');
+            }
+          }
+        }
+      }
+
+      setStatusMessage('Applied IQ wizard guided fixes.');
+      pushDiagnosticEvent(`IQ wizard fixes applied: ${iqIntegrityAssessment.fixes.join(', ') || 'none'}.`);
+    };
+
+    const saveIqWizardProfile = () => {
+      const key = profileKeyFor(sourceType, deviceRef.current?.name ?? null);
+      const existing = getStabilityProfile(key);
+      const persisted = upsertStabilityProfile({
+        sourceType,
+        profileKey: key,
+        updatedAtUtc: new Date().toISOString(),
+        driftEstimateHzPerSec: existing?.driftEstimateHzPerSec ?? frequencyModelState.driftEstimateHzPerSec,
+        driftConfidence: existing?.driftConfidence ?? frequencyModelState.driftConfidence,
+        phaseErrorRms: existing?.phaseErrorRms ?? frequencyModelState.phaseErrorRms,
+        ppmCorrectionHz: existing?.ppmCorrectionHz ?? ppmCorrection,
+        iqIntegrityLastReport: {
+          recordedAtUtc: new Date().toISOString(),
+          status: iqIntegrityAssessment.status,
+          findings: [...iqIntegrityAssessment.findings],
+          fixes: [...iqIntegrityAssessment.fixes],
+          summary: iqIntegrityAssessment.summary
+        }
+      });
+
+      setStabilityProfile(persisted);
+      setStatusMessage('Saved IQ integrity wizard results to device profile.');
+      pushDiagnosticEvent(`IQ wizard profile saved for ${key}.`);
+    };
+
+    const runUsbStreamingAutoTuner = async () => {
+      const activeDevice = deviceRef.current;
+      if (!isRunning || sourceType !== 'HACKRF' || !activeDevice?.setStreamingProfile || !activeDevice.getDebugSnapshot) {
+        setStatusMessage('USB auto-tuner requires active HackRF streaming.');
+        return;
+      }
+
+      setUsbAutoTuneRunning(true);
+      setAdaptiveStreamingEnabled(false);
+      pushDiagnosticEvent('USB auto-tuner started.');
+
+      try {
+        const candidates: UsbStreamingProfileName[] = ['low-latency', 'balanced', 'stable'];
+        let bestProfile: UsbStreamingProfileName = 'balanced';
+        let bestScore = Number.NEGATIVE_INFINITY;
+
+        for (const candidate of candidates) {
+          const profile = USB_STREAMING_PROFILES[candidate];
+          await activeDevice.setStreamingProfile({
+            transferSizeBytes: profile.transferSizeBytes,
+            retryDelayMs: profile.retryDelayMs,
+            maxConsecutiveFailures: profile.maxConsecutiveFailures,
+            profileName: profile.name
+          });
+
+          const before = activeDevice.getDebugSnapshot().counters;
+          if (!before) {
+            continue;
+          }
+
+          await new Promise<void>((resolve) => {
+            window.setTimeout(resolve, 450);
+          });
+
+          const after = activeDevice.getDebugSnapshot().counters;
+          if (!after) {
+            continue;
+          }
+
+          const score = scoreUsbProfileWindow(
+            {
+              bulkInErrorCount: before.bulkInErrorCount,
+              retryCount: before.retryCount,
+              transferIntervalMsJitter: before.transferIntervalMsJitter,
+              shortPacketRatio: before.shortPacketRatio,
+              droppedFrameEvents: runtimeTelemetryRef.current.droppedFrameEvents,
+              audioUnderruns: runtimeTelemetryRef.current.audioUnderruns
+            },
+            {
+              bulkInErrorCount: after.bulkInErrorCount,
+              retryCount: after.retryCount,
+              transferIntervalMsJitter: after.transferIntervalMsJitter,
+              shortPacketRatio: after.shortPacketRatio,
+              droppedFrameEvents: runtimeTelemetryRef.current.droppedFrameEvents,
+              audioUnderruns: runtimeTelemetryRef.current.audioUnderruns
+            }
+          );
+
+          pushDiagnosticEvent(`USB auto-tuner candidate ${candidate} scored ${score.toFixed(2)}.`);
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestProfile = candidate;
+          }
+        }
+
+        await applyUsbStreamingProfile(bestProfile);
+        setStatusMessage(`USB auto-tuner selected ${bestProfile} profile.`);
+        pushDiagnosticEvent(`USB auto-tuner selected ${bestProfile} profile (score ${bestScore.toFixed(2)}).`);
+      } finally {
+        setUsbAutoTuneRunning(false);
+      }
+    };
+
+    const runHardwareSanitySelfTestFlow = async () => {
+      const activeDevice = deviceRef.current;
+      if (!isRunning || !activeDevice || !isWebUsbSource(sourceType)) {
+        setStatusMessage('Hardware self-test requires active WebUSB streaming.');
+        return;
+      }
+
+      const gainStage = activeDevice.getGainStages().find((stage) => stage.name !== 'AMP' && stage.step > 0);
+      let gainStepEffective = false;
+
+      if (gainStage) {
+        const original = gains[gainStage.name] ?? gainStage.value;
+        const stepped = Math.min(gainStage.max, original + gainStage.step);
+        const baseline = usbIqRmsRef.current;
+
+        if (stepped !== original) {
+          try {
+            await activeDevice.setGain(gainStage.name, stepped);
+            await new Promise<void>((resolve) => {
+              window.setTimeout(resolve, 180);
+            });
+            const delta = Math.abs(usbIqRmsRef.current - baseline);
+            gainStepEffective = baseline > 0 ? (delta / baseline) > 0.02 : delta > 0.25;
+          } finally {
+            await activeDevice.setGain(gainStage.name, original).catch(() => {
+              // Ignore restore failures; report still includes gain-step outcome.
+            });
+          }
+        }
+      }
+
+      const report = runHardwareSanitySelfTest({
+        sampleFormatOk: runtimeTelemetry.lastFrameSampleRate !== null && runtimeTelemetry.lastFrameSampleRate > 0,
+        iqOrderingOk: !iqIntegrityAssessment.findings.includes('mapping-risk'),
+        dcOffset01: Math.max(0, Math.min(1, (runtimeTelemetry.dsp.rfImpurity.dcSpurLevelDbfs + 80) / 80)),
+        clockOffsetPpm: Math.abs(runtimeTelemetry.audioResamplerRatioDeltaPpm),
+        gainStepEffective,
+        continuityOk: runtimeTelemetry.totalDroppedSamples === 0 && runtimeTelemetry.droppedFrameEvents === 0
+      });
+
+      setHardwareSelfTestReport(report);
+      setStatusMessage(report.summary);
+      pushDiagnosticEvent(`Hardware sanity self-test completed: ${report.summary}`);
     };
 
     const exportDiagnostics = async () => {
@@ -2229,6 +2978,17 @@ export default function App() {
               latencyPolicy,
               clockSyncPolicy,
               clockSyncPolicyDescription: describeClockSyncPolicy(clockSyncPolicy),
+              audioOutputDeviceId,
+              audioOutputDeviceLabel: selectedAudioOutputLabel,
+              safeMode: safeModeMarker
+                ? {
+                    active: true,
+                    reason: safeModeMarker.reason,
+                    triggeredAtIso: safeModeMarker.triggeredAtIso
+                  }
+                : {
+                    active: false
+                  },
               streamRatePlan,
               filterState,
               demodMode,
@@ -2273,6 +3033,27 @@ export default function App() {
             recordingExportIntegrity: recordingExportIntegrityPreview,
             frontEndTriage: frontEndOverloadAssessment,
             timebaseDrift: timebaseDriftAssessment,
+            sampleRateMismatch: sampleRateMismatchAssessment,
+            iqIntegrityWizard: iqIntegrityAssessment,
+            signalIdAdvisor,
+            bufferTelemetry: {
+              ...bufferTelemetryAssessment,
+              audioQueueTrend
+            },
+            usbSchedulingTelemetry: {
+              transferCadenceExpectedMs: deviceDebugSnapshot?.counters?.transferCadenceExpectedMs ?? null,
+              transferIntervalMsAvg: deviceDebugSnapshot?.counters?.transferIntervalMsAvg ?? null,
+              transferIntervalMsJitter: deviceDebugSnapshot?.counters?.transferIntervalMsJitter ?? null,
+              transferBurstiness01: deviceDebugSnapshot?.counters?.transferBurstiness01 ?? null,
+              longGapCount: deviceDebugSnapshot?.counters?.longGapCount ?? null,
+              activeProfile: usbStreamingProfile,
+              adaptivePolicyEnabled: adaptiveStreamingEnabled
+            },
+            backgroundAudioReliability: {
+              guardActive: backgroundAudioGuardActive,
+              visibilityState: typeof document !== 'undefined' ? document.visibilityState : 'unknown'
+            },
+            hardwareSelfTest: hardwareSelfTestReport,
             rollingTelemetryWindow: telemetryWindowRef.current,
             recordingTimeline: {
               sessionStartedAtIso,
@@ -2683,6 +3464,105 @@ export default function App() {
     runtimeTelemetry.lastClockTruthMode
   ]);
 
+  const sampleRateMismatchAssessment = useMemo(() => {
+    return assessSampleRateMismatchStrategy({
+      deviceIqSampleRateHz: streamSampleRateHz,
+      dspInputSampleRateHz: streamRatePlan.sampleRateHz,
+      dspOutputSampleRateHz: streamRatePlan.outputSampleRateHz,
+      audioResamplerRatio: runtimeTelemetry.audioResamplerRatio,
+      audioResamplerRatioDeltaPpm: runtimeTelemetry.audioResamplerRatioDeltaPpm
+    });
+  }, [
+    runtimeTelemetry.audioResamplerRatio,
+    runtimeTelemetry.audioResamplerRatioDeltaPpm,
+    streamRatePlan.outputSampleRateHz,
+    streamRatePlan.sampleRateHz,
+    streamSampleRateHz
+  ]);
+
+  const iqIntegrityAssessment = useMemo(() => {
+    const sampleRateMismatchRisk = sampleRateMismatchAssessment.severity === 'warn'
+      ? (sampleRateMismatchAssessment.mismatchPpm > 500 ? 'critical' : 'warn')
+      : 'nominal';
+
+    return assessIqIntegrityWizard({
+      imageRejectionDb: runtimeTelemetry.dsp.rfImpurity.imageRejectionDb,
+      iqBalanceRatio: runtimeTelemetry.dsp.rfImpurity.iqImbalanceRatio,
+      iqDcOffset01: Math.max(0, Math.min(1, (runtimeTelemetry.dsp.rfImpurity.dcSpurLevelDbfs + 80) / 80)),
+      iqPeakLinear: runtimeTelemetry.dsp.amplitude.iqPeakLinear,
+      sampleRateMismatchRisk
+    });
+  }, [
+    runtimeTelemetry.dsp.amplitude.iqPeakLinear,
+    runtimeTelemetry.dsp.rfImpurity.dcSpurLevelDbfs,
+    runtimeTelemetry.dsp.rfImpurity.iqImbalanceRatio,
+    runtimeTelemetry.dsp.rfImpurity.imageRejectionDb,
+    sampleRateMismatchAssessment.mismatchPpm,
+    sampleRateMismatchAssessment.severity
+  ]);
+
+  const signalIdAdvisor = useMemo(() => {
+    const peakDbfs = fftData.length > 0
+      ? fftData.reduce((max, value) => Math.max(max, value), -Infinity)
+      : -160;
+    const meanDbfs = fftData.length > 0
+      ? fftData.reduce((sum, value) => sum + value, 0) / fftData.length
+      : -160;
+
+    return buildSignalIdTuningAdvisor({
+      peakDbfs,
+      meanDbfs,
+      snrEstimateDb: demodQuality.snrEstimateDb,
+      demodMode,
+      bandwidthHz: Math.max(0, filterState.highCutHz - filterState.lowCutHz),
+      dcSpurLevelDbfs: runtimeTelemetry.dsp.rfImpurity.dcSpurLevelDbfs,
+      spurDensity01: runtimeTelemetry.dsp.rfImpurity.spurDensity01
+    });
+  }, [
+    demodMode,
+    demodQuality.snrEstimateDb,
+    fftData,
+    filterState.highCutHz,
+    filterState.lowCutHz,
+    runtimeTelemetry.dsp.rfImpurity.dcSpurLevelDbfs,
+    runtimeTelemetry.dsp.rfImpurity.spurDensity01
+  ]);
+
+  const bufferTelemetryAssessment = useMemo(() => {
+    return assessBufferTelemetry({
+      audioQueueAheadMs: runtimeTelemetry.audioQueueAheadMs,
+      audioTargetQueueMs: audioPllState.targetQueueMs,
+      dspTotalMs: runtimeTelemetry.dsp.pipelineTiming.totalMs,
+      usbTransferJitterMs: deviceDebugSnapshot?.counters?.transferIntervalMsJitter ?? 0,
+      usbRetryCount: deviceDebugSnapshot?.counters?.retryCount ?? 0,
+      usbErrorCount: deviceDebugSnapshot?.counters?.bulkInErrorCount ?? 0,
+      droppedFrameEvents: runtimeTelemetry.droppedFrameEvents,
+      audioUnderruns: runtimeTelemetry.audioUnderruns
+    });
+  }, [
+    audioPllState.targetQueueMs,
+    deviceDebugSnapshot?.counters?.bulkInErrorCount,
+    deviceDebugSnapshot?.counters?.retryCount,
+    deviceDebugSnapshot?.counters?.transferIntervalMsJitter,
+    runtimeTelemetry.audioQueueAheadMs,
+    runtimeTelemetry.audioUnderruns,
+    runtimeTelemetry.droppedFrameEvents,
+    runtimeTelemetry.dsp.pipelineTiming.totalMs
+  ]);
+
+  const audioQueueTrend = useMemo(() => {
+    const queueTickMs = runtimeTelemetry.audioQueueAheadMs;
+    const normalizedQueueValues = telemetryWindowRef.current
+      .slice(-24)
+      .map((sample) => sample.audioQueueAheadMs / Math.max(1, audioPllState.targetQueueMs));
+
+    if (queueTickMs < 0) {
+      return '';
+    }
+
+    return buildAsciiOccupancyTrend(normalizedQueueValues);
+  }, [audioPllState.targetQueueMs, runtimeTelemetry.audioQueueAheadMs]);
+
     const healthItems = useMemo(() => {
       const items: Array<{ key: string; level: HealthLevel; label: string; recommendation: string }> = [];
 
@@ -2824,10 +3704,53 @@ export default function App() {
           recommendation: `${timebaseDriftAssessment.summary} ${timebaseDriftAssessment.recommendations.slice(0, 2).join('; ')}.`
         });
         items.push({
+          key: 'sample-rate-mismatch-strategy',
+          level: sampleRateMismatchAssessment.severity,
+          label: sampleRateMismatchAssessment.severity === 'warn'
+            ? 'Sample-rate mismatch strategy warning'
+            : 'Sample-rate mismatch strategy stable',
+          recommendation: `${sampleRateMismatchAssessment.summary} ${sampleRateMismatchAssessment.recommendations.slice(0, 2).join(' ')}`
+        });
+        items.push({
           key: 'clock-sync-policy',
           level: 'ok',
           label: `Clock sync policy: ${clockSyncPolicy === 'rf-accurate' ? 'RF-accurate' : 'Audio-stable'}`,
           recommendation: describeClockSyncPolicy(clockSyncPolicy)
+        });
+        items.push({
+          key: 'background-audio-reliability',
+          level: backgroundAudioGuardActive ? 'ok' : 'warn',
+          label: backgroundAudioGuardActive
+            ? 'Background audio guard active'
+            : 'Background audio guard unavailable',
+          recommendation: backgroundAudioGuardActive
+            ? 'Wake lock + keep-alive ping enabled while hidden to reduce background stutter risk.'
+            : 'Wake lock unavailable; keep the tab foregrounded for best long-run audio stability.'
+        });
+
+        items.push({
+          key: 'rf-impurity-telemetry',
+          level: runtimeTelemetry.dsp.rfImpurity.likelyImpure ? 'warn' : 'ok',
+          label: runtimeTelemetry.dsp.rfImpurity.likelyImpure
+            ? 'RF impurity indicators elevated'
+            : 'RF impurity indicators stable',
+          recommendation: runtimeTelemetry.dsp.rfImpurity.likelyImpure
+            ? `DC ${runtimeTelemetry.dsp.rfImpurity.dcSpurLevelDbfs.toFixed(1)} dBFS, IRR ${runtimeTelemetry.dsp.rfImpurity.imageRejectionDb.toFixed(1)} dB, reasons: ${runtimeTelemetry.dsp.rfImpurity.reasons.join(', ')}.`
+            : `DC ${runtimeTelemetry.dsp.rfImpurity.dcSpurLevelDbfs.toFixed(1)} dBFS, IRR ${runtimeTelemetry.dsp.rfImpurity.imageRejectionDb.toFixed(1)} dB.`
+        });
+
+        items.push({
+          key: 'signal-id-tuning-advisor',
+          level: signalIdAdvisor.warnings.length > 0 ? 'warn' : 'ok',
+          label: 'Signal ID & tuning advisor',
+          recommendation: `${signalIdAdvisor.summary}${signalIdAdvisor.warnings.length > 0 ? ` Warnings: ${signalIdAdvisor.warnings.join(', ')}.` : ''}`
+        });
+
+        items.push({
+          key: 'buffer-telemetry',
+          level: bufferTelemetryAssessment.counters.audioIssues > 0 || bufferTelemetryAssessment.counters.dspIssues > 0 ? 'warn' : 'ok',
+          label: 'Buffer telemetry',
+          recommendation: `USB ${(bufferTelemetryAssessment.occupancy01.usb * 100).toFixed(0)}% / DSP ${(bufferTelemetryAssessment.occupancy01.dsp * 100).toFixed(0)}% / Audio ${(bufferTelemetryAssessment.occupancy01.audio * 100).toFixed(0)}%, issues usb=${bufferTelemetryAssessment.counters.usbIssues} dsp=${bufferTelemetryAssessment.counters.dspIssues} audio=${bufferTelemetryAssessment.counters.audioIssues}.`
         });
       }
 
@@ -2862,6 +3785,15 @@ export default function App() {
           level: 'warn',
           label: `Dropped samples detected (${runtimeTelemetry.totalDroppedSamples})`,
           recommendation: 'Investigate host load and source backpressure; exported diagnostics include drop counters and timeline.'
+        });
+      }
+
+      if (iqIntegrityAssessment.status === 'warn') {
+        items.push({
+          key: 'iq-integrity-wizard',
+          level: 'warn',
+          label: 'IQ integrity wizard detected risks',
+          recommendation: `${iqIntegrityAssessment.summary} Suggested fixes: ${iqIntegrityAssessment.fixes.join(', ')}.`
         });
       }
 
@@ -2933,6 +3865,15 @@ export default function App() {
       runtimeTelemetry.audioSafetyMuteEvents,
       runtimeTelemetry.totalDroppedSamples,
       runtimeTelemetry.renderFps,
+      runtimeTelemetry.dsp.rfImpurity.dcSpurLevelDbfs,
+      runtimeTelemetry.dsp.rfImpurity.imageRejectionDb,
+      runtimeTelemetry.dsp.rfImpurity.likelyImpure,
+      runtimeTelemetry.dsp.rfImpurity.reasons,
+      signalIdAdvisor,
+      bufferTelemetryAssessment,
+      sampleRateMismatchAssessment,
+      iqIntegrityAssessment,
+      backgroundAudioGuardActive,
       frontEndOverloadAssessment,
       timebaseDriftAssessment,
       clockSyncPolicy,
@@ -2944,6 +3885,10 @@ export default function App() {
     ]);
 
   const modeContract = MODE_CONTROL_CONTRACTS[demodMode];
+  const selectedAudioOutputLabel = useMemo(() => {
+    const selected = audioOutputDevices.find((device) => device.deviceId === audioOutputDeviceId);
+    return selected?.label ?? 'System default';
+  }, [audioOutputDeviceId, audioOutputDevices]);
   const displayedBandwidthHz = Math.max(0, filterState.highCutHz - filterState.lowCutHz);
   const demodLockLabel = lockStateLabel(demodMode, demodQuality.lockState);
   const frontEndEnobBits = estimateEffectiveEnobBits(demodQuality.snrEstimateDb);
@@ -3126,6 +4071,37 @@ export default function App() {
         </div>
       </header>
 
+      {safeModeMarker && (
+        <div className="health-item health-warn" role="alert" aria-live="assertive">
+          <div>
+            <strong>Safe mode active:</strong> last session reported `{safeModeMarker.reason}` at {safeModeMarker.triggeredAtIso}. Minimal defaults are active and auto-connect stays disabled.
+          </div>
+          <div>
+            <button
+              className="action-btn btn-secondary"
+              onClick={() => {
+                restoreFromSafeModeSnapshot(safeModeMarker.snapshot);
+                clearSafeModeMarker();
+                setStatusMessage('Restored previous session settings from safe-mode snapshot.');
+                pushDiagnosticEvent('Safe mode dismissed and previous settings restored.');
+              }}
+            >
+              Restore Previous Settings
+            </button>
+            <button
+              className="action-btn btn-secondary"
+              onClick={() => {
+                clearSafeModeMarker();
+                setStatusMessage('Safe mode marker dismissed. Current defaults kept.');
+                pushDiagnosticEvent('Safe mode marker dismissed by user.');
+              }}
+            >
+              Dismiss Safe Mode
+            </button>
+          </div>
+        </div>
+      )}
+
       <p className="status-text" aria-live="polite">{statusMessage}</p>
       <p className="status-subtext">Audio: {audioState} | Keyboard: Ctrl+K/F1 command palette, Left/Right tune 1 kHz, Up/Down fine tune, M mute toggle, P panic mute</p>
       
@@ -3211,6 +4187,25 @@ export default function App() {
 
         <button
           onClick={() => {
+            void applyIqWizardFixes();
+          }}
+          className="action-btn btn-secondary"
+          disabled={iqIntegrityAssessment.status !== 'warn'}
+          title="Apply one-click IQ integrity wizard fixes"
+        >
+          Apply IQ Wizard Fixes
+        </button>
+
+        <button
+          onClick={saveIqWizardProfile}
+          className="action-btn btn-secondary"
+          title="Persist current IQ wizard results into the active device profile"
+        >
+          Save IQ Profile
+        </button>
+
+        <button
+          onClick={() => {
             void forgetUsbDevices();
           }}
           className="action-btn btn-secondary"
@@ -3252,6 +4247,57 @@ export default function App() {
         </div>
 
         <div className="control-group">
+          <label className="control-label">USB Streaming Profile</label>
+          <select
+            value={usbStreamingProfile}
+            onChange={(e) => {
+              const profile = e.target.value as UsbStreamingProfileName;
+              void applyUsbStreamingProfile(profile);
+            }}
+            className="control-input compact"
+            disabled={sourceType !== 'HACKRF'}
+          >
+            <option value="low-latency">Low Latency</option>
+            <option value="balanced">Balanced</option>
+            <option value="stable">Stable</option>
+          </select>
+          <div className="control-note">Scheduling recommendation: {deviceDebugSnapshot?.streamingProfile?.scheduleRecommendation ?? 'n/a'}</div>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Adaptive Streaming Policy</label>
+          <input
+            type="checkbox"
+            checked={adaptiveStreamingEnabled}
+            onChange={(e) => setAdaptiveStreamingEnabled(e.target.checked)}
+            className="control-check"
+            disabled={sourceType !== 'HACKRF'}
+          />
+        </div>
+
+        <button
+          onClick={() => {
+            void runUsbStreamingAutoTuner();
+          }}
+          className="action-btn btn-secondary"
+          disabled={sourceType !== 'HACKRF' || !isRunning || usbAutoTuneRunning}
+          title="Run measured USB profile auto-tuner"
+        >
+          {usbAutoTuneRunning ? 'USB Auto-Tuning...' : 'Run USB Auto-Tuner'}
+        </button>
+
+        <button
+          onClick={() => {
+            void runHardwareSanitySelfTestFlow();
+          }}
+          className="action-btn btn-secondary"
+          disabled={!isRunning || !isWebUsbSource(sourceType)}
+          title="Run hardware bring-up sanity checks for active WebUSB device"
+        >
+          Run Hardware Self-Test
+        </button>
+
+        <div className="control-group">
           <label className="control-label">Clock Sync Policy</label>
           <select
             value={clockSyncPolicy}
@@ -3288,6 +4334,27 @@ export default function App() {
         </div>
 
         <div className="control-group">
+          <label className="control-label">Audio Output Device</label>
+          <select
+            value={audioOutputDeviceId}
+            onChange={(e) => setAudioOutputDeviceId(e.target.value)}
+            className="control-input compact"
+            disabled={!audioOutputSelectionSupported}
+          >
+            {audioOutputDevices.map((device) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label}
+              </option>
+            ))}
+          </select>
+          <div className="control-note">
+            {audioOutputSelectionSupported
+              ? `Active output: ${selectedAudioOutputLabel}`
+              : 'Browser does not support output-device selection; using system default.'}
+          </div>
+        </div>
+
+        <div className="control-group">
           <label className="control-label">Output Level ({Math.round(audioOutputLevel * 100)}%)</label>
           <input
             type="range" min="0" max="1" step="0.01"
@@ -3320,6 +4387,26 @@ export default function App() {
             className="control-check"
           />
         </div>
+
+        <div className="control-group">
+          <label className="control-label">IQ Integrity Wizard</label>
+          <div className="control-note">{iqIntegrityAssessment.summary}</div>
+          {iqIntegrityAssessment.findings.length > 0 && (
+            <div className="control-note">Findings: {iqIntegrityAssessment.findings.join(', ')}</div>
+          )}
+        </div>
+
+        {hardwareSelfTestReport && (
+          <div className="control-group">
+            <label className="control-label">Hardware Self-Test</label>
+            <div className="control-note">{hardwareSelfTestReport.summary}</div>
+            <div className="control-note">
+              {hardwareSelfTestReport.checks
+                .map((check) => `${check.key}:${check.passed ? 'pass' : 'fail'}`)
+                .join(' | ')}
+            </div>
+          </div>
+        )}
 
         <div className="control-group">
             <label className="control-label">Zoom ({zoomLevel}x)</label>
@@ -3926,6 +5013,18 @@ export default function App() {
               jitter {runtimeTelemetry.audioQueueJitterMs.toFixed(2)} ms | ratio {runtimeTelemetry.audioResamplerRatio.toFixed(6)} | delta {runtimeTelemetry.audioResamplerRatioDeltaPpm.toFixed(1)} ppm
             </span>
           </li>
+          <li className={`health-item ${sampleRateMismatchAssessment.severity === 'warn' ? 'health-warn' : 'health-ok'}`}>
+            <strong>Sample-Rate Mismatch</strong>
+            <span>
+              DSP out {streamRatePlan.outputSampleRateHz.toFixed(0)} Hz | est OS {sampleRateMismatchAssessment.estimatedOsOutputRateHz.toFixed(1)} Hz | mismatch {sampleRateMismatchAssessment.mismatchPpm.toFixed(1)} ppm
+            </span>
+          </li>
+          <li className={`health-item ${(bufferTelemetryAssessment.counters.audioIssues + bufferTelemetryAssessment.counters.dspIssues) > 0 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Buffer Occupancy</strong>
+            <span>
+              USB {(bufferTelemetryAssessment.occupancy01.usb * 100).toFixed(0)}% | DSP {(bufferTelemetryAssessment.occupancy01.dsp * 100).toFixed(0)}% | Audio {(bufferTelemetryAssessment.occupancy01.audio * 100).toFixed(0)}% | trend {audioQueueTrend || 'n/a'}
+            </span>
+          </li>
           <li className={`health-item ${runtimeTelemetry.audioConcealmentEvents > 0 ? 'health-warn' : 'health-ok'}`}>
             <strong>Concealment Events</strong>
             <span>{runtimeTelemetry.audioConcealmentEvents}</span>
@@ -3975,6 +5074,12 @@ export default function App() {
             <strong>Front-End Health</strong>
             <span>
               clip-risk {(frontEndClipRisk01 * 100).toFixed(0)}% | SNR {demodQuality.snrEstimateDb.toFixed(1)} dB | ENOB {frontEndEnobBits.toFixed(2)} bits
+            </span>
+          </li>
+          <li className={`health-item ${runtimeTelemetry.dsp.rfImpurity.likelyImpure ? 'health-warn' : 'health-ok'}`}>
+            <strong>RF Impurity</strong>
+            <span>
+              DC {runtimeTelemetry.dsp.rfImpurity.dcSpurLevelDbfs.toFixed(1)} dBFS | IRR {runtimeTelemetry.dsp.rfImpurity.imageRejectionDb.toFixed(1)} dB | LO {(runtimeTelemetry.dsp.rfImpurity.loLeakageIndicator01 * 100).toFixed(0)}% | spur {(runtimeTelemetry.dsp.rfImpurity.spurDensity01 * 100).toFixed(1)}%
             </span>
           </li>
           <li className="health-item health-ok">

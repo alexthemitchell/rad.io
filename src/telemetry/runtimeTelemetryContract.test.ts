@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createDefaultRuntimeTelemetry,
+  computeRfImpurityTelemetry,
   computeDemodQualityTelemetry,
   computeDspAmplitudeTelemetry,
   createAgcTelemetryBaseline,
@@ -130,7 +131,29 @@ describe('runtimeTelemetryContract', () => {
     expect(telemetry.audioResamplerRatioDeltaPpm).toBe(0);
     expect(telemetry.dsp.amplitude.contractVersion).toBe('1.0.0');
     expect(telemetry.dsp.demodQuality.contractVersion).toBe('1.0.0');
+    expect(telemetry.dsp.rfImpurity.contractVersion).toBe('1.0.0');
     expect(telemetry.dsp.pipelineTiming.contractVersion).toBe('1.0.0');
     expect(telemetry.agc.implemented).toBe(false);
+  });
+
+  it('estimates rf impurity indicators from shifted IQ and amplitude telemetry', () => {
+    const shiftedIq = new Float32Array([
+      112, 7,
+      105, 6,
+      98, 8,
+      92, 7,
+      112, 9,
+      101, 6
+    ]);
+    const audio = new Float32Array([0.2, -0.1, 0.08, -0.04, 0.03, -0.02]);
+    const amplitude = computeDspAmplitudeTelemetry(shiftedIq, audio);
+    const impurity = computeRfImpurityTelemetry(shiftedIq, amplitude);
+
+    expect(impurity.dcSpurLevelDbfs).toBeGreaterThan(-20);
+    expect(impurity.imageRejectionDb).toBeLessThan(20);
+    expect(impurity.iqImbalanceRatio).toBeGreaterThan(1);
+    expect(impurity.loLeakageIndicator01).toBeGreaterThan(0.1);
+    expect(impurity.likelyImpure).toBe(true);
+    expect(impurity.reasons.length).toBeGreaterThan(0);
   });
 });

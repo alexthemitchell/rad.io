@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:browser-gate": "node scripts/browser-regression-gate.mjs",
     "test:e2e": "node -e \"console.log('No e2e tests configured yet.');\"",
     "test:e2e:real": "node -e \"console.log('No real-device e2e tests configured yet.');\"",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",

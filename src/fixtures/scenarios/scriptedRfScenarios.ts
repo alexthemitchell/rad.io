@@ -24,6 +24,22 @@ export type ScenarioEvent =
       atMs: number;
       type: 'backpressure';
       wallClockJumpMs: number;
+    }
+  | {
+      atMs: number;
+      type: 'usb_stall_storm';
+      bursts: number;
+      wallClockJumpMsPerBurst: number;
+    }
+  | {
+      atMs: number;
+      type: 'usb_short_packet_burst';
+      bursts: number;
+      wallClockJumpMsPerBurst: number;
+    }
+  | {
+      atMs: number;
+      type: 'usb_reset_mid_stream';
     };
 
 export type ScriptedRfScenario = {
@@ -48,6 +64,21 @@ export const createRetuneGainClockBackpressureScenario = (): ScriptedRfScenario 
   return {
     scenarioId: 'retune-gain-clock-backpressure-v1',
     title: 'Retune + Gain + Clock + Backpressure deterministic script',
+    events: events.sort(byAtMs)
+  };
+};
+
+export const createUsbChaosFaultScenario = (): ScriptedRfScenario => {
+  const events: ScenarioEvent[] = [
+    { atMs: 20, type: 'usb_short_packet_burst', bursts: 3, wallClockJumpMsPerBurst: 55 },
+    { atMs: 45, type: 'usb_stall_storm', bursts: 4, wallClockJumpMsPerBurst: 120 },
+    { atMs: 70, type: 'usb_reset_mid_stream' },
+    { atMs: 85, type: 'usb_short_packet_burst', bursts: 2, wallClockJumpMsPerBurst: 90 }
+  ];
+
+  return {
+    scenarioId: 'usb-chaos-fault-injection-v1',
+    title: 'USB chaos simulation: short packets, stall storms, reset mid-stream',
     events: events.sort(byAtMs)
   };
 };

@@ -39,12 +39,20 @@ describe('deviceProfileStore', () => {
       driftEstimateHzPerSec: 1.2,
       driftConfidence: 0.8,
       phaseErrorRms: 0.04,
-      ppmCorrectionHz: -12.5
+      ppmCorrectionHz: -12.5,
+      iqIntegrityLastReport: {
+        recordedAtUtc: '2026-02-24T00:01:00.000Z',
+        status: 'warn',
+        findings: ['dc-offset'],
+        fixes: ['enable-iq-correction'],
+        summary: 'Detected 1 IQ integrity risk signal(s). Apply guided fixes and persist profile if stable.'
+      }
     });
 
     const loaded = getStabilityProfile(key);
     expect(loaded).not.toBeNull();
     expect(loaded?.driftConfidence).toBeCloseTo(0.8, 6);
     expect(loaded?.sourceType).toBe('HACKRF');
+    expect(loaded?.iqIntegrityLastReport?.status).toBe('warn');
   });
 });

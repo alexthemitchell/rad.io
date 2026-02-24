@@ -10,6 +10,7 @@ export const DSP_AMPLITUDE_CONTRACT_VERSION = '1.0.0' as const;
 export const DEMOD_QUALITY_CONTRACT_VERSION = '1.0.0' as const;
 export const AGC_CONTRACT_VERSION = '1.0.0' as const;
 export const PIPELINE_TIMING_CONTRACT_VERSION = '1.0.0' as const;
+export const RF_IMPURITY_CONTRACT_VERSION = '1.0.0' as const;
 
 export type DspAmplitudeTelemetryV1 = {
   contractVersion: typeof DSP_AMPLITUDE_CONTRACT_VERSION;
@@ -62,10 +63,23 @@ export type PipelineStageTimingTelemetryV1 = {
   totalMs: number;
 };
 
+export type RfImpurityTelemetryV1 = {
+  contractVersion: typeof RF_IMPURITY_CONTRACT_VERSION;
+  dcSpurLevelDbfs: number;
+  imageRejectionDb: number;
+  iqImbalanceRatio: number;
+  loLeakageIndicator01: number;
+  spurDensity01: number;
+  overloadHeuristic01: number;
+  likelyImpure: boolean;
+  reasons: string[];
+};
+
 export type RuntimeDspTelemetryV1 = {
   pipelineTiming: PipelineStageTimingTelemetryV1;
   amplitude: DspAmplitudeTelemetryV1;
   demodQuality: DemodQualityTelemetryV1;
+  rfImpurity: RfImpurityTelemetryV1;
 };
 
 export type RuntimeTelemetryV1 = {
@@ -124,6 +138,17 @@ export const createDefaultRuntimeDspTelemetry = (): RuntimeDspTelemetryV1 => ({
     reasons: ['no_data'],
     rdsSynced: null,
     rdsBlockErrorRate: null
+  },
+  rfImpurity: {
+    contractVersion: RF_IMPURITY_CONTRACT_VERSION,
+    dcSpurLevelDbfs: -180,
+    imageRejectionDb: 0,
+    iqImbalanceRatio: 1,
+    loLeakageIndicator01: 0,
+    spurDensity01: 0,
+    overloadHeuristic01: 0,
+    likelyImpure: false,
+    reasons: []
   }
 });
 
@@ -306,5 +331,82 @@ export const computeDemodQualityTelemetry = (
     reasons,
     rdsSynced,
     rdsBlockErrorRate
+  };
+};
+
+export const computeRfImpurityTelemetry = (
+  shiftedIq: Float32Array,
+  amplitude: DspAmplitudeTelemetryV1
+): RfImpurityTelemetryV1 => {
+  const complexCount = Math.floor(shiftedIq.length / 2);
+  if (complexCount <= 0) {
+    return createDefaultRuntimeDspTelemetry().rfImpurity;
+  }
+
+  let sumI = 0;
+  let sumQ = 0;
+  let sumISq = 0;
+  let sumQSq = 0;
+  let clippedCount = 0;
+
+  for (let i = 0; i < complexCount; i += 1) {
+    const iNorm = shiftedIq[i * 2] / 128;
+    const qNorm = shiftedIq[(i * 2) + 1] / 128;
+    const absI = Math.abs(iNorm);
+    const absQ = Math.abs(qNorm);
+
+    sumI += iNorm;
+    sumQ += qNorm;
+    sumISq += iNorm * iNorm;
+    sumQSq += qNorm * qNorm;
+
+    if (absI >= 0.98 || absQ >= 0.98) {
+      clippedCount += 1;
+    }
+  }
+
+  const meanI = sumI / complexCount;
+  const meanQ = sumQ / complexCount;
+  const rmsI = Math.sqrt(sumISq / complexCount);
+  const rmsQ = Math.sqrt(sumQSq / complexCount);
+  const dcMagnitude = Math.hypot(meanI, meanQ);
+  const iqMagnitude = Math.max(1e-9, amplitude.iqRmsLinear);
+  const dcSpurLevelDbfs = 20 * Math.log10(Math.max(1e-9, dcMagnitude));
+  const imageRejectionDb = 20 * Math.log10(Math.max(1e-9, iqMagnitude / Math.max(1e-9, dcMagnitude)));
+  const iqImbalanceRatio = Math.max(1e-6, rmsI / Math.max(1e-6, rmsQ));
+  const loLeakageIndicator01 = clamp01(dcMagnitude / Math.max(1e-9, iqMagnitude));
+  const spurDensity01 = clamp01(clippedCount / complexCount);
+
+  const imbalancePenalty = Math.abs(20 * Math.log10(Math.max(1e-6, iqImbalanceRatio)));
+  const overloadHeuristic01 = clamp01(
+    (loLeakageIndicator01 * 0.45)
+    + (spurDensity01 * 0.35)
+    + (clamp01(amplitude.audioClippingRatio * 5) * 0.2)
+  );
+
+  const reasons: string[] = [];
+  if (dcSpurLevelDbfs > -28) {
+    reasons.push('dc_spur_elevated');
+  }
+  if (imbalancePenalty > 1.5) {
+    reasons.push('iq_imbalance_estimated');
+  }
+  if (loLeakageIndicator01 > 0.2) {
+    reasons.push('lo_leakage_indicator_high');
+  }
+  if (spurDensity01 > 0.03 || overloadHeuristic01 > 0.55) {
+    reasons.push('spur_density_or_overload_high');
+  }
+
+  return {
+    contractVersion: RF_IMPURITY_CONTRACT_VERSION,
+    dcSpurLevelDbfs,
+    imageRejectionDb,
+    iqImbalanceRatio,
+    loLeakageIndicator01,
+    spurDensity01,
+    overloadHeuristic01,
+    likelyImpure: reasons.length > 0,
+    reasons
   };
 };

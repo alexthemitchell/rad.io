@@ -16,9 +16,19 @@ concurrency:
 
 jobs:
   e2e:
-    name: Playwright E2E (mock + simulated + a11y)
+    name: Browser Gates + Playwright E2E
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chrome
+            channel: stable
+          - browser: edge
+            channel: stable
+          - browser: chrome
+            channel: canary
 
     steps:
       - name: Checkout
@@ -40,6 +50,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Enforce browser regression gate matrix
+        run: npm run test:browser-gate -- --browser ${{ matrix.browser }} --channel ${{ matrix.channel }}
+
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps
@@ -51,6 +64,8 @@ jobs:
       - name: Run Playwright tests (mock + simulated + a11y)
         env:
           CI: true
+          RAD_BROWSER: ${{ matrix.browser }}
+          RAD_CHANNEL: ${{ matrix.channel }}
         run: npm run test:e2e
 
       - name: Upload Playwright HTML report
