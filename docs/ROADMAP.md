@@ -135,19 +135,19 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **WebUSB Permission Lifecycle UX**: explicit “forget device / re-pair” flows, handle permission revocation, and recover from “device disappeared” without full refresh.
 - [ ] **WebUSB Error Normalization (Actionable)**: map browser/WebUSB exceptions (stall, disconnect, NotFoundError/NetworkError, transfer errors) into typed, retryable user-facing errors with clear remediation.
 - [ ] **Multi-Tab/Process Contention Handling**: detect when the device is claimed by another tab/app, coordinate across tabs, and surface actionable recovery steps.
-- [ ] **One-Click Support Bundle (Beyond Logs)**: export app/version, browser/OS, secure context + COOP/COEP/SAB status, permissions state, device identity/caps, current pipeline graph/config, and a short rolling telemetry window.
+- [x] **One-Click Support Bundle (Beyond Logs)**: export app/version, browser/OS, secure context + COOP/COEP/SAB status, permissions state, device identity/caps, current pipeline graph/config, and a short rolling telemetry window. (`src/App.tsx` diagnostics export payload)
 
 ### 1.2.1 Browser Runtime Prerequisites (Early)
 
-- [ ] **Cross-Origin Isolation Readiness (SAB)**: make COOP/COEP requirements explicit, detect when missing, and provide a tested fallback path (no-SAB) with clearly documented perf/latency tradeoffs.
-- [ ] **Secure Context & Permission Diagnostics**: surface “why WebUSB/SAB isn’t available” with actionable remediation (HTTPS, localhost exceptions, enterprise policies).
+- [x] **Cross-Origin Isolation Readiness (SAB)**: make COOP/COEP requirements explicit, detect when missing, and provide a tested fallback path (no-SAB) with clearly documented perf/latency tradeoffs. (`src/App.tsx`, `src/dsp/WorkerBridge.ts`, `vite.config.ts`, `vite.config.test.ts`)
+- [x] **Secure Context & Permission Diagnostics**: surface “why WebUSB/SAB isn’t available” with actionable remediation (HTTPS, localhost exceptions, enterprise policies). (`src/App.tsx` health/runtime prerequisite panels)
 - [ ] **Background Audio Reliability Strategy**: implement PWA keep-alive strategies and persistent workers to prevent audio stuttering/throttling when the tab is backgrounded or the screen is off.
-- [ ] **COOP/COEP Validation Test**: automated check that dev/prod responses include required headers when isolation is enabled.
+- [x] **COOP/COEP Validation Test**: automated check that dev/prod responses include required headers when isolation is enabled. (`vite.config.test.ts`)
 
 ### 1.2.2 WebAudio Runtime Hardening (Early)
 
 - [ ] **Autoplay / Suspended AudioContext Recovery UX**: first-run and post-focus flows (“click to enable audio”), plus resilient recovery after sleep/wake and tab backgrounding.
-- [ ] **AudioWorklet Output Path (Preferred)**: implement an AudioWorklet-based sink with a measured fallback path and explicit perf/latency tradeoffs.
+- [x] **AudioWorklet Output Path (Preferred)**: implement an AudioWorklet-based sink with a measured fallback path and explicit perf/latency tradeoffs. (`src/audio/AudioSink.ts`, `public/wfm-processor.js`)
 - [ ] **Sample-Rate Mismatch Strategy**: define how device IQ rates, DSP rates, and OS output rates interact; ensure stable behavior when output is forced to 48 kHz.
 - [ ] **Click-Free Reconfiguration Contract**: guarantee pop/click suppression on start/stop, retune, bandwidth changes, and output device changes (bounded ramp + discontinuity events).
 

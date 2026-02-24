@@ -45,6 +45,10 @@ Expected results:
 - `window.isSecureContext === true`
 - `navigator.usb` exists (Chromium)
 
+Note:
+
+- In this workspace the default Vite dev host is usually `http://localhost:5173` (or next available port), while secure-context and isolation checks are still valid in preview/deployed HTTPS environments.
+
 ## Production-Like Path: Trusted Local Certificate
 
 Use this path to verify behavior with browser trust and stable cert chain.
@@ -73,6 +77,8 @@ Notes:
 
 ## COOP/COEP Verification (Cross-Origin Isolation)
 
+Dev and preview are configured with isolation headers in `vite.config.ts` via `CROSS_ORIGIN_ISOLATION_HEADERS` and validated by `vite.config.test.ts`.
+
 After enabling headers (see `docs/reference/deploy/cross-origin-isolation.md`), verify in browser:
 
 ```js
@@ -94,6 +100,11 @@ typeof SharedArrayBuffer === 'function' && window.crossOriginIsolated
 - WebUSB requires secure context.
 - SAB requires both secure context and cross-origin isolation.
 - Missing COOP/COEP does not block baseline app behavior if fallback mode is implemented.
+
+No-SAB fallback control for deterministic validation:
+
+- Set `window.__RADIO_FORCE_NO_SAB = true` before app bootstrap to force message-channel transport mode.
+- Expected degraded-mode tradeoff: lower maximum planned stream rates to prioritize compatibility and reduce transport pressure.
 
 ## Validation Checklist
 

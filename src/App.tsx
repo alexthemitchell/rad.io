@@ -209,6 +209,19 @@ type FmScanResult = FmStationCandidate & {
   scannedAt: string;
 };
 
+type TelemetryWindowSample = {
+  ts: string;
+  renderFps: number | null;
+  audioUnderruns: number;
+  audioQueueAheadMs: number;
+  totalDroppedSamples: number;
+  droppedFrameEvents: number;
+  streamDiscontinuities: number;
+  workerTransportMode: RuntimeTelemetry['workerTransportMode'];
+};
+
+const APP_VERSION = '0.0.1';
+
 const fnv1a32 = (bytes: Uint8Array): number => {
   let hash = 0x811c9dc5;
 
@@ -500,6 +513,8 @@ export default function App() {
   const discontinuityTimelineRef = useRef<DiscontinuityTimelineEntry[]>([]);
   const streamSampleRateHzRef = useRef(2_000_000);
   const lastProfilePersistAtRef = useRef<number>(0);
+  const telemetryWindowRef = useRef<TelemetryWindowSample[]>([]);
+  const runtimeTelemetryRef = useRef<RuntimeTelemetry>(createDefaultRuntimeTelemetry('direct'));
 
     const pushDiagnosticEvent = useCallback((message: string) => {
         const timestamp = new Date().toISOString();
@@ -740,6 +755,21 @@ export default function App() {
             audioPopSuppressionEvents: stats.popSuppressionEvents,
             audioLimiterEvents: stats.limiterEvents
           }));
+
+          telemetryWindowRef.current = [
+            ...telemetryWindowRef.current,
+            {
+              ts: new Date().toISOString(),
+              renderFps: runtimeTelemetryRef.current.renderFps,
+              audioUnderruns: stats.underruns,
+              audioQueueAheadMs: stats.queueAheadMs,
+              totalDroppedSamples: runtimeTelemetryRef.current.totalDroppedSamples,
+              droppedFrameEvents: runtimeTelemetryRef.current.droppedFrameEvents,
+              streamDiscontinuities: runtimeTelemetryRef.current.streamDiscontinuities,
+              workerTransportMode: runtimeTelemetryRef.current.workerTransportMode
+            }
+          ].slice(-120);
+
           postToWorker({ command: 'SET_AUDIO_QUEUE_AHEAD_MS', value: stats.queueAheadMs });
 
           // Sample high-rate USB metrics at UI cadence to avoid per-transfer rerenders.
@@ -755,6 +785,10 @@ export default function App() {
     useEffect(() => {
       fftDataRef.current = fftData;
     }, [fftData]);
+
+    useEffect(() => {
+      runtimeTelemetryRef.current = runtimeTelemetry;
+    }, [runtimeTelemetry]);
 
     useEffect(() => {
       rdsTelemetryRef.current = rdsTelemetry;
@@ -1322,6 +1356,7 @@ export default function App() {
           dsp: createDefaultRuntimeDspTelemetry(),
           streamDiscontinuities: 0
         }));
+        telemetryWindowRef.current = [];
         setFrequencyModelState(defaultFrequencyModelState());
         setAudioPllState(defaultAudioPllState());
         setVfoState(defaultVfoRuntimeState());
@@ -1590,6 +1625,10 @@ export default function App() {
 
         const payload = {
             exportedAt: new Date().toISOString(),
+            app: {
+              name: 'rad.io',
+              version: APP_VERSION
+            },
             environment: {
               browserUserAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
               browserName: runtimeEnvironment.browserName,
@@ -1603,6 +1642,14 @@ export default function App() {
               permissionState: latestPermissionState
             },
             sourceType,
+            device: {
+              selectedSource: sourceType,
+              activeName: deviceRef.current?.name ?? null,
+              gainStages,
+              gains,
+              sampleRateHz: streamSampleRateHz,
+              supportsWebUsb: sourceType === 'HACKRF' || sourceType === 'RTLSDR'
+            },
             frequency,
             demodMode,
             fineFreq,
@@ -1616,6 +1663,20 @@ export default function App() {
             muted: isMuted,
             gainStages,
             gains,
+            pipelineConfig: {
+              workerTransportMode: runtimeTelemetry.workerTransportMode,
+              streamRatePlan,
+              filterState,
+              demodMode,
+              toneDecodeMode,
+              nfmAudioPreset,
+              nfmOutputPath,
+              iqCorrectionEnabled,
+              afcEnabled,
+              stabilityModeEnabled,
+              secondaryVfoEnabled,
+              secondaryVfoOffsetHz
+            },
             filterState,
             audioLevelerState,
             frequencyModelState,
@@ -1633,6 +1694,7 @@ export default function App() {
               stepLabel: scanStepLabel,
               results: scanResults
             },
+            rollingTelemetryWindow: telemetryWindowRef.current,
             recordingTimeline: {
               sessionStartedAtIso,
               sessionStartedUnixMs,
