@@ -65,10 +65,14 @@ type NoiseSquelchState = {
 };
 
 type ToneDecodeState = {
+  mode: 'off' | 'ctcss' | 'dcs';
   ctcssHz: number | null;
+  dcsDetected: boolean;
   confidence: number;
   active: boolean;
 };
+
+type ToneDecodeMode = 'OFF' | 'CTCSS' | 'DCS' | 'AUTO';
 
 type AudioLevelerState = {
   enabled: boolean;
@@ -219,7 +223,9 @@ const defaultNoiseSquelchState = (): NoiseSquelchState => ({
 });
 
 const defaultToneDecodeState = (): ToneDecodeState => ({
+  mode: 'off',
   ctcssHz: null,
+  dcsDetected: false,
   confidence: 0,
   active: false
 });
@@ -348,6 +354,7 @@ export default function App() {
     const [permissionState, setPermissionState] = useState<RuntimePermissionState>(unknownPermissionState());
     const [noiseSquelchState, setNoiseSquelchState] = useState<NoiseSquelchState>(defaultNoiseSquelchState);
     const [toneDecodeState, setToneDecodeState] = useState<ToneDecodeState>(defaultToneDecodeState);
+    const [toneDecodeMode, setToneDecodeMode] = useState<ToneDecodeMode>('CTCSS');
     const [audioLevelerState, setAudioLevelerState] = useState<AudioLevelerState>(defaultAudioLevelerState);
     const [nfmAudioPreset, setNfmAudioPreset] = useState<NfmAudioPreset>('voice-na-75us');
     const [nfmOutputPath, setNfmOutputPath] = useState<NfmOutputPath>('voice');
@@ -752,6 +759,10 @@ export default function App() {
   useEffect(() => {
     postToWorker({ command: 'SET_NFM_OUTPUT_PATH', value: nfmOutputPath });
   }, [nfmOutputPath, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_TONE_DECODE_MODE', value: toneDecodeMode });
+  }, [postToWorker, toneDecodeMode]);
 
   useEffect(() => {
     const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, filterState.highCutHz);
@@ -1767,6 +1778,20 @@ export default function App() {
                 <option value="discriminator">Discriminator (AFSK/FSK)</option>
               </select>
             </div>
+
+            <div className="control-group">
+              <label className="control-label">Tone Decode</label>
+              <select
+                value={toneDecodeMode}
+                onChange={(e) => setToneDecodeMode(e.target.value as ToneDecodeMode)}
+                className="control-input compact"
+              >
+                <option value="OFF">Off</option>
+                <option value="CTCSS">CTCSS</option>
+                <option value="DCS">DCS (Baseline)</option>
+                <option value="AUTO">Auto</option>
+              </select>
+            </div>
           </>
         )}
 
@@ -2093,10 +2118,12 @@ export default function App() {
           </li>
           {demodMode === 'NFM' && (
             <li className={`health-item ${toneDecodeState.active ? 'health-ok' : 'health-warn'}`}>
-              <strong>CTCSS</strong>
+              <strong>Tone Decode</strong>
               <span>
-                {toneDecodeState.active && toneDecodeState.ctcssHz !== null
-                  ? `${toneDecodeState.ctcssHz.toFixed(1)} Hz (${Math.round(toneDecodeState.confidence * 100)}%)`
+                {toneDecodeState.active && toneDecodeState.mode === 'ctcss' && toneDecodeState.ctcssHz !== null
+                  ? `CTCSS ${toneDecodeState.ctcssHz.toFixed(1)} Hz (${Math.round(toneDecodeState.confidence * 100)}%)`
+                  : toneDecodeState.active && toneDecodeState.mode === 'dcs' && toneDecodeState.dcsDetected
+                    ? `DCS present (${Math.round(toneDecodeState.confidence * 100)}%)`
                   : 'not detected'}
               </span>
             </li>

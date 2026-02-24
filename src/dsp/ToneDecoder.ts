@@ -1,8 +1,12 @@
 export type ToneDecodeState = {
+  mode: 'off' | 'ctcss' | 'dcs';
   ctcssHz: number | null;
+  dcsDetected: boolean;
   confidence: number;
   active: boolean;
 };
+
+export type ToneDecodeMode = 'OFF' | 'CTCSS' | 'DCS' | 'AUTO';
 
 const CTCSS_TONES_HZ = [
   67.0, 71.9, 74.4, 77.0, 79.7, 82.5, 85.4, 88.5, 91.5, 94.8,
@@ -29,10 +33,43 @@ const goertzelPower = (samples: Float32Array, sampleRateHz: number, frequencyHz:
   return q1 * q1 + q2 * q2 - coeff * q1 * q2;
 };
 
+const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
+
+const emptyToneState = (): ToneDecodeState => ({
+  mode: 'off',
+  ctcssHz: null,
+  dcsDetected: false,
+  confidence: 0,
+  active: false
+});
+
 export class ToneDecoder {
+  decode(
+    samples: Float32Array,
+    sampleRateHz: number,
+    mode: ToneDecodeMode
+  ): ToneDecodeState {
+    if (mode === 'OFF') {
+      return emptyToneState();
+    }
+
+    if (mode === 'CTCSS') {
+      return this.decodeCtcss(samples, sampleRateHz);
+    }
+
+    if (mode === 'DCS') {
+      return this.decodeDcs(samples, sampleRateHz);
+    }
+
+    const ctcss = this.decodeCtcss(samples, sampleRateHz);
+    const dcs = this.decodeDcs(samples, sampleRateHz);
+
+    return dcs.confidence > ctcss.confidence ? dcs : ctcss;
+  }
+
   decodeCtcss(samples: Float32Array, sampleRateHz: number): ToneDecodeState {
     if (samples.length < 256 || sampleRateHz <= 0) {
-      return { ctcssHz: null, confidence: 0, active: false };
+      return emptyToneState();
     }
 
     const powers = CTCSS_TONES_HZ.map((tone) => ({
@@ -48,7 +85,39 @@ export class ToneDecoder {
     const active = strongest.power > 1e-7 && ratio > 1.15;
 
     return {
+      mode: active ? 'ctcss' : 'off',
       ctcssHz: active ? strongest.tone : null,
+      dcsDetected: false,
+      confidence,
+      active
+    };
+  }
+
+  // Baseline DCS detection: detects strong digital-coded-squelch symbol energy around 134.4 bps.
+  decodeDcs(samples: Float32Array, sampleRateHz: number): ToneDecodeState {
+    if (samples.length < 512 || sampleRateHz <= 0) {
+      return emptyToneState();
+    }
+
+    const symbolPower = goertzelPower(samples, sampleRateHz, 134.4);
+    const sideLowPower = goertzelPower(samples, sampleRateHz, 110);
+    const sideHighPower = goertzelPower(samples, sampleRateHz, 160);
+    const sidebandFloor = Math.max(1e-9, (sideLowPower + sideHighPower) * 0.5);
+    const ratio = symbolPower / sidebandFloor;
+
+    let rms = 0;
+    for (let i = 0; i < samples.length; i += 1) {
+      rms += samples[i] * samples[i];
+    }
+    rms = Math.sqrt(rms / samples.length);
+
+    const confidence = clamp01(((ratio - 1) / 2.5) * clamp01((rms - 0.02) / 0.2));
+    const active = symbolPower > 1e-7 && ratio > 1.2 && rms > 0.02;
+
+    return {
+      mode: active ? 'dcs' : 'off',
+      ctcssHz: null,
+      dcsDetected: active,
       confidence,
       active
     };

@@ -9,7 +9,7 @@ import { RdsDecoder, RdsSnapshot } from './RdsDecoder';
 import { AudioPostProcessor, applyInterferencePreset, type FilterConfig, type FilterProfile, type InterferencePreset } from './AudioPostProcessor';
 import { evaluateDemodQuality, type DemodQualityMetrics } from './DemodMetrics';
 import { NoiseSquelch, type NoiseSquelchState } from './NoiseSquelch';
-import { ToneDecoder, type ToneDecodeState } from './ToneDecoder';
+import { ToneDecoder, type ToneDecodeMode, type ToneDecodeState } from './ToneDecoder';
 import { computePpmCorrectionHz } from './ppmCorrection';
 import { AudioLeveler, type AudioLevelerState } from './AudioLeveler';
 import type { SDRStreamFrame } from '../devices/streamFrame';
@@ -72,7 +72,9 @@ let outboundPort: WorkerScope | MessagePort = workerScope;
 let metricsEmitCounter = 0;
 let latestSquelchState: NoiseSquelchState = noiseSquelch.getState(-120);
 let latestToneDecodeState: ToneDecodeState = {
+    mode: 'off',
     ctcssHz: null,
+    dcsDetected: false,
     confidence: 0,
     active: false
 };
@@ -81,6 +83,7 @@ let latestAudioLevelerState: AudioLevelerState = audioLeveler.getState();
 let mode: 'WFM' | 'AM' | 'NFM' = 'WFM';
 let nfmAudioPreset: NfmAudioPreset = 'voice-na-75us';
 let nfmOutputPath: NfmOutputPath = 'voice';
+let toneDecodeMode: ToneDecodeMode = 'CTCSS';
 let tunedFrequencyHz = 90_000_000;
 let ppmCorrection = 0;
 
@@ -159,6 +162,11 @@ const handleMessage = (e: MessageEvent) => {
     } else if (e.data.command === 'SET_NFM_OUTPUT_PATH') {
         nfmOutputPath = e.data.value as NfmOutputPath;
         nfm.setConfig({ outputPath: nfmOutputPath });
+    } else if (e.data.command === 'SET_TONE_DECODE_MODE') {
+        const requested = String(e.data.value ?? '').toUpperCase();
+        if (requested === 'OFF' || requested === 'CTCSS' || requested === 'DCS' || requested === 'AUTO') {
+            toneDecodeMode = requested;
+        }
     } else if (e.data.command === 'SET_TUNED_FREQUENCY') {
         tunedFrequencyHz = Number(e.data.value);
         applyMixerFrequency();
@@ -274,7 +282,7 @@ function processUSBData(buffer: ArrayBuffer) {
     latestAudioLevelerState = audioLeveler.applyInPlace(audioOut, frameDurationMs);
     latestSquelchState = noiseSquelch.applyInPlace(audioOut, latestDemodMetrics.snrEstimateDb, frameDurationMs);
     if (mode === 'NFM') {
-        latestToneDecodeState = toneDecoder.decodeCtcss(audioOut, 50_000);
+        latestToneDecodeState = toneDecoder.decode(audioOut, 50_000, toneDecodeMode);
     }
     metricsEmitCounter += 1;
     if (metricsEmitCounter % 5 === 0) {
