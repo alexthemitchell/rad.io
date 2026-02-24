@@ -1496,17 +1496,10 @@ export default function App() {
   };
 
   const handleSpectrumClick = (binIndex: number) => {
-    // FFT Size 2048
-    // Bin 0 = -Fs/2 (-1MHz)
-    // Bin 1024 = 0 (DC)
-    // Bin 2047 = +Fs/2 (+1MHz)
-    // Fs = 2_000_000
-    
-    // Offset from DC in bins
-    const offsetBins = binIndex - 1024;
-    // Offset in Hz
-    // Bin Width = 2000000 / 2048 = 976.5625 Hz
-    const offsetHz = offsetBins * (2_000_000 / 2048);
+    const fftSize = fftDataRef.current.length > 0 ? fftDataRef.current.length : 2048;
+    const centerBin = Math.floor(fftSize / 2);
+    const offsetBins = binIndex - centerBin;
+    const offsetHz = offsetBins * (streamSampleRateHz / fftSize);
     
     // Update Fine Tune
     // Note: NCO Mix uses Positive frequency to shift DOWN.
