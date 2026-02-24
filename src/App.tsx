@@ -137,6 +137,14 @@ const fnv1a32 = (bytes: Uint8Array): number => {
   return hash >>> 0;
 };
 
+const copyDataViewToArrayBuffer = (view: DataView): ArrayBuffer => {
+  const copied = new Uint8Array(view.byteLength);
+  copied.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength));
+  return copied.buffer;
+};
+
+const decodeSignedCi8Byte = (value: number): number => (value < 128 ? value : value - 256);
+
 const emptyRdsTelemetry = (): RdsTelemetry => ({
   synced: false,
   totalBlocks: 0,
@@ -281,6 +289,7 @@ export default function App() {
     const [usbIqMeanAbs, setUsbIqMeanAbs] = useState(0);
     const [usbTransferBytes, setUsbTransferBytes] = useState(0);
     const [usbTransferCount, setUsbTransferCount] = useState(0);
+    const [streamSampleRateHz, setStreamSampleRateHz] = useState(2_000_000);
     const [rdsTelemetry, setRdsTelemetry] = useState<RdsTelemetry>(emptyRdsTelemetry);
     const [scanState, setScanState] = useState<ScanState>('idle');
     const [scanProgress, setScanProgress] = useState(0);
@@ -301,6 +310,7 @@ export default function App() {
   const scanAbortRef = useRef(false);
   const streamSessionStartedAtRef = useRef<Date | null>(null);
   const discontinuityTimelineRef = useRef<DiscontinuityTimelineEntry[]>([]);
+  const streamSampleRateHzRef = useRef(2_000_000);
 
     const pushDiagnosticEvent = useCallback((message: string) => {
         const timestamp = new Date().toISOString();
@@ -865,6 +875,8 @@ export default function App() {
         postToWorker({ command: 'STOP' });
         audioRef.current?.stop();
         setIsRunning(false);
+        streamSampleRateHzRef.current = 2_000_000;
+        setStreamSampleRateHz(2_000_000);
         setGainStages([]); // Clear UI
         usbIqRmsRef.current = 0;
         usbIqMeanAbsRef.current = 0;
@@ -942,6 +954,7 @@ export default function App() {
             setGains(initialGains);
     
             // Apply initial state to Device
+            await dev.setSampleRate(streamSampleRateHzRef.current);
             await dev.setFrequency(frequency);
             for (const stage of stages) {
                 await dev.setGain(stage.name, stage.value);
@@ -990,7 +1003,7 @@ export default function App() {
                 let sumAbs = 0;
 
                 for (let i = 0; i < metricSampleSize; i++) {
-                  const centered = iqBytes[i] - 127.5;
+                  const centered = decodeSignedCi8Byte(iqBytes[i]);
                   sumSq += centered * centered;
                   sumAbs += Math.abs(centered);
                 }
@@ -1000,13 +1013,19 @@ export default function App() {
               }
 
               if (frame) {
+                if (frame.sampleRate !== streamSampleRateHzRef.current) {
+                  streamSampleRateHzRef.current = frame.sampleRate;
+                  setStreamSampleRateHz(frame.sampleRate);
+                  postToWorker({ command: 'SET_SAMPLE_RATE', value: frame.sampleRate });
+                }
+
                 postToWorker({
                   type: 'STREAM_FRAME',
                   frame
                 });
               }
 
-                const buf = dataView.buffer.slice(0); 
+                const buf = copyDataViewToArrayBuffer(dataView);
                 postToWorker({ 
                     type: 'USB_DATA', 
                     data: buf 
@@ -1090,7 +1109,7 @@ export default function App() {
           tunedFrequencyHz: frequency,
           fineTuneHz: fineFreq,
           fftSize: fftDataRef.current.length,
-          sampleRateHzHint: 2_000_000,
+          sampleRateHzHint: streamSampleRateHz,
           zoomLevel,
           waterfallPalette,
           waterfallAutoScale,
@@ -1458,7 +1477,7 @@ export default function App() {
               maxDb={waterfallMaxDb}
               zoom={zoomLevel}
               centerFrequencyHz={frequency}
-              sampleRateHz={2_000_000}
+              sampleRateHz={streamSampleRateHz}
               autoScale={waterfallAutoScale}
               palette={waterfallPalette}
             />
@@ -1470,7 +1489,7 @@ export default function App() {
               zoom={zoomLevel}
               onPointClick={handleSpectrumClick}
               centerFrequencyHz={frequency}
-              sampleRateHz={2_000_000}
+              sampleRateHz={streamSampleRateHz}
               tunedOffsetHz={fineFreq}
             />
         </section>

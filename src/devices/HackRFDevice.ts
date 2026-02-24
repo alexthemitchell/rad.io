@@ -21,6 +21,8 @@ export class HackRFDevice implements ISDRDevice {
     name = "HackRF One";
     private static readonly CONTROL_TRANSFER_TIMEOUT_MS = 1500;
     private static readonly MODE_SETTLE_DELAY_MS = 30;
+    private static readonly STREAM_MAX_CONSECUTIVE_FAILURES = 8;
+    private static readonly STREAM_RETRY_DELAY_MS = 20;
     private device: USBDevice | null = null;
     private interfaceIndex = 0;
     private inEndpointNumber = 1;
@@ -150,6 +152,18 @@ export class HackRFDevice implements ISDRDevice {
         }
 
         await this.openAndClaim(this.device);
+    }
+
+    private async recoverStreamingEndpoint(): Promise<void> {
+        if (!this.device) {
+            return;
+        }
+
+        try {
+            await this.device.clearHalt('in', this.inEndpointNumber);
+        } catch (clearHaltError) {
+            console.debug('clearHalt(in) failed during streaming recovery:', clearHaltError);
+        }
     }
 
     private async probeDevice(): Promise<void> {
@@ -414,13 +428,20 @@ export class HackRFDevice implements ISDRDevice {
         }
 
         const TRANSFER_SIZE = 16384; // Reduced size for debug
+        let consecutiveFailures = 0;
         console.log("RX Mode Active. Entering Loop...");
         
         while (this.isStreaming && this.device.opened) {
             try {
                 // console.log("Requesting transfer...");
                 const result = await this.device.transferIn(this.inEndpointNumber, TRANSFER_SIZE);
-                if (result.data) {
+                if (result.status !== 'ok') {
+                    await this.recoverStreamingEndpoint();
+                    throw new Error(`USB transfer status=${result.status}`);
+                }
+
+                if (result.data && result.data.byteLength > 0) {
+                    consecutiveFailures = 0;
                     const nowMs = Date.now();
                     const transferSampleCount = Math.floor(result.data.byteLength / 2);
                     const expectedChunkMs = (transferSampleCount / this.sampleRate) * 1000;
@@ -468,12 +489,34 @@ export class HackRFDevice implements ISDRDevice {
                     this.sampleIndex += transferSampleCount;
                     this.timestampNs += Math.floor((transferSampleCount * 1_000_000_000) / this.sampleRate);
                 } else {
-                    console.warn("Empty Transfer?");
+                    throw new Error('USB transfer returned empty payload');
                 }
             } catch (e) {
+                if (!this.isStreaming || !this.device.opened) {
+                    break;
+                }
+
+                if (e instanceof DOMException && e.name === 'AbortError') {
+                    break;
+                }
+
                 console.error("USB Transfer Error:", e);
                 this.markDiscontinuity('overflow');
-                if (!this.device.opened) break;
+                consecutiveFailures += 1;
+
+                if (consecutiveFailures >= HackRFDevice.STREAM_MAX_CONSECUTIVE_FAILURES) {
+                    this.isStreaming = false;
+                    try {
+                        await this.setTransceiverMode(0);
+                    } catch (modeStopError) {
+                        console.debug('Failed to leave RX mode after transfer failures:', modeStopError);
+                    }
+
+                    const detail = e instanceof Error ? e.message : String(e);
+                    throw new Error(`HackRF stream aborted after ${consecutiveFailures} consecutive transfer failures: ${detail}`);
+                }
+
+                await this.sleep(HackRFDevice.STREAM_RETRY_DELAY_MS);
             }
         }
     }

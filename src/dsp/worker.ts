@@ -22,6 +22,7 @@ type WorkerScope = {
 };
 
 const workerScope = self as unknown as WorkerScope;
+const DEFAULT_INPUT_SAMPLE_RATE_HZ = 2_000_000;
 
 const fftSize = 2048;
 const fft = new SimpleFFT(fftSize);
@@ -33,11 +34,13 @@ const fftMagnitude = new Float32Array(fftSize);  // dB Magnitude
 let fftIndex = 0;
 
 // DSP Components
-const wfm = new WfmDemodulator();
-const am = new AmDemodulator();
-const nfm = new NfmDemodulator();
-const downsampler = new Downsampler();
-const nco = new ComplexOscillator(2_000_000); // 2MSPS
+let inputSampleRateHz = DEFAULT_INPUT_SAMPLE_RATE_HZ;
+let fineFrequencyHz = 0;
+let wfm = new WfmDemodulator();
+let am = new AmDemodulator();
+let nfm = new NfmDemodulator();
+let downsampler = new Downsampler();
+let nco = new ComplexOscillator(DEFAULT_INPUT_SAMPLE_RATE_HZ);
 const baseFilterConfig: FilterConfig = {
     profile: 'sharp',
     lowCutHz: 80,
@@ -59,6 +62,21 @@ let mode: 'WFM' | 'AM' | 'NFM' = 'WFM';
 
 const postToMain = (message: unknown, transfer: Transferable[] = []) => {
     outboundPort.postMessage(message, transfer);
+};
+
+const resetPipelineState = () => {
+    fftIndex = 0;
+    wfm = new WfmDemodulator();
+    am = new AmDemodulator();
+    nfm = new NfmDemodulator();
+    downsampler = new Downsampler();
+    nco = new ComplexOscillator(inputSampleRateHz);
+    nco.setFrequency(fineFrequencyHz, inputSampleRateHz);
+    rdsDecoder = new RdsDecoder();
+    latestRdsSnapshot = rdsDecoder.getSnapshot();
+    latestDemodMetrics = evaluateDemodQuality(mode, new Float32Array(0));
+    metricsEmitCounter = 0;
+    updateFilterConfig();
 };
 
 const updateFilterConfig = (overrides: Partial<FilterConfig> = {}) => {
@@ -87,12 +105,11 @@ const updateFilterConfig = (overrides: Partial<FilterConfig> = {}) => {
 
 const handleMessage = (e: MessageEvent) => {
     if (e.data.command === 'START_USB_MODE') {
-        fftIndex = 0;
-        rdsDecoder = new RdsDecoder();
-        latestRdsSnapshot = rdsDecoder.getSnapshot();
-        metricsEmitCounter = 0;
-        updateFilterConfig();
+        resetPipelineState();
         console.log("Worker: Started USB Mode");
+    } else if (e.data.command === 'STOP') {
+        resetPipelineState();
+        console.log('Worker: Stopped and reset state');
     } else if (e.data.command === 'INIT_MESSAGE_PORT') {
         const port = e.data.port as MessagePort | undefined;
         if (port) {
@@ -105,7 +122,15 @@ const handleMessage = (e: MessageEvent) => {
         console.log(`Worker: Mode set to ${mode}`);
     } else if (e.data.command === 'SET_FINE_FREQ') {
         // Frequency shift in Hz (e.g. +50000 Hz)
-        nco.setFrequency(e.data.value, 2_000_000);
+        fineFrequencyHz = Number(e.data.value);
+        nco.setFrequency(fineFrequencyHz, inputSampleRateHz);
+    } else if (e.data.command === 'SET_SAMPLE_RATE') {
+        const requestedSampleRateHz = Number(e.data.value);
+        if (Number.isFinite(requestedSampleRateHz) && requestedSampleRateHz > 0) {
+            inputSampleRateHz = requestedSampleRateHz;
+            nco = new ComplexOscillator(inputSampleRateHz);
+            nco.setFrequency(fineFrequencyHz, inputSampleRateHz);
+        }
     } else if (e.data.command === 'SET_FILTER_CONFIG') {
         updateFilterConfig({
             lowCutHz: Number(e.data.lowCutHz),

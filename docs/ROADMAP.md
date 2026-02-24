@@ -279,7 +279,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Carrier Tracking (AFC/PLL)**: optional per-mode tracking to correct residual frequency error and long-session drift (especially NFM/SSB).
 - [x] **Explicit Lock States**: expose lock/quality state machines (e.g., WFM pilot lock, AM carrier lock) so UX can drive retune-assist and safe recovery. (`src/dsp/DemodMetrics.ts`, `src/App.tsx`)
 - [x] **Audio Filter Controls**: per-mode high/low cut and optional notch helpers for intelligibility (SSB/AM/NFM). (Baseline controls delivered for WFM/AM/NFM shared path via `src/App.tsx` + `src/dsp/AudioPostProcessor.ts`.)
-- [ ] **DSP Amplitude Contract**: explicitly define IQ scaling and normalization at key tap points (pre/post-DDC, post-demod) so meters, FFT, recording, and exports are consistent across devices.
+- [x] **DSP Amplitude Contract**: explicitly define IQ scaling and normalization at key tap points (pre/post-DDC, post-demod) so meters, FFT, recording, and exports are consistent across devices. (`src/telemetry/runtimeTelemetryContract.ts`, `src/dsp/worker.ts`, `src/telemetry/runtimeTelemetryContract.test.ts`)
 
 ### 3.3 “Must-Have” Demodulators (Product Loop)
 
