@@ -22,4 +22,23 @@ describe('normalizeDeviceError', () => {
         expect(err.code).toBe('USB_TRANSFER_FAILED');
         expect(err.message).toContain('Unplug/replug HackRF');
     });
+
+    it('maps InvalidStateError to DEVICE_BUSY', () => {
+        const err = normalizeDeviceError({ name: 'InvalidStateError' } as DOMException);
+        expect(err.code).toBe('DEVICE_BUSY');
+    });
+
+    it('maps stall-like messages to USB_STALL', () => {
+        const err = normalizeDeviceError({
+            name: 'NetworkError',
+            message: 'clearHalt failed due to endpoint stall'
+        } as DOMException);
+
+        expect(err.code).toBe('USB_STALL');
+    });
+
+    it('maps disconnect-like runtime messages to DEVICE_DISCONNECTED', () => {
+        const err = normalizeDeviceError(new Error('Device disconnected while streaming'));
+        expect(err.code).toBe('DEVICE_DISCONNECTED');
+    });
 });

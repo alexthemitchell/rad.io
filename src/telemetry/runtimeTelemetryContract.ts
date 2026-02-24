@@ -5,7 +5,7 @@ import type { WorkerTransportMode } from '../dsp/WorkerBridge';
 
 export type DemodMode = 'WFM' | 'AM' | 'NFM' | 'SAM' | 'USB' | 'LSB' | 'CW';
 
-export const RUNTIME_TELEMETRY_SCHEMA_VERSION = '1.1.0' as const;
+export const RUNTIME_TELEMETRY_SCHEMA_VERSION = '1.2.0' as const;
 export const DSP_AMPLITUDE_CONTRACT_VERSION = '1.0.0' as const;
 export const DEMOD_QUALITY_CONTRACT_VERSION = '1.0.0' as const;
 export const AGC_CONTRACT_VERSION = '1.0.0' as const;
@@ -74,9 +74,13 @@ export type RuntimeTelemetryV1 = {
   lowFpsEvents: number;
   audioUnderruns: number;
   audioQueueAheadMs: number;
+  audioQueueJitterMs: number;
+  audioResamplerRatio: number;
+  audioResamplerRatioDeltaPpm: number;
   audioConcealmentEvents: number;
   audioPopSuppressionEvents: number;
   audioLimiterEvents: number;
+  audioSafetyMuteEvents: number;
   streamDiscontinuities: number;
   droppedFrameEvents: number;
   totalDroppedSamples: number;
@@ -131,9 +135,13 @@ export const createDefaultRuntimeTelemetry = (
   lowFpsEvents: 0,
   audioUnderruns: 0,
   audioQueueAheadMs: 0,
+  audioQueueJitterMs: 0,
+  audioResamplerRatio: 1,
+  audioResamplerRatioDeltaPpm: 0,
   audioConcealmentEvents: 0,
   audioPopSuppressionEvents: 0,
   audioLimiterEvents: 0,
+  audioSafetyMuteEvents: 0,
   streamDiscontinuities: 0,
   droppedFrameEvents: 0,
   totalDroppedSamples: 0,

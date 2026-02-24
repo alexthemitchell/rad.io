@@ -21,6 +21,15 @@ import { goldenToneFixtureBundle } from './fixtures/sigmf/goldenToneFixture';
 import { createAnalyzerArtifactExport } from './dsp/analyzerArtifactExport';
 import { createMeasurementCalibrationDisclosure } from './measurements/disclosure';
 import { appendDiscontinuityTimelineEntry, type DiscontinuityTimelineEntry } from './measurements/discontinuityTimeline';
+import {
+  appendSessionParameterChangeEntry,
+  type SessionParameterChangeEntry
+} from './measurements/sessionProvenanceTimeline';
+import {
+  decodeShareableSessionState,
+  encodeShareableSessionState,
+  type ShareableSessionStateV1
+} from './measurements/shareableSessionState';
 import { createRfAudioTimebaseAlignmentSnapshot } from './measurements/rfAudioTimebaseAlignment';
 import { createFixtureInteropExportBundle } from './fixtures/sigmf/interopExport';
 import { WorkerBridge } from './dsp/WorkerBridge';
@@ -225,14 +234,48 @@ type TelemetryWindowSample = {
   renderFps: number | null;
   audioUnderruns: number;
   audioQueueAheadMs: number;
+  audioSafetyMuteEvents: number;
   totalDroppedSamples: number;
   droppedFrameEvents: number;
   streamDiscontinuities: number;
   workerTransportMode: RuntimeTelemetry['workerTransportMode'];
 };
 
+type RfEnvironmentContext = {
+  antennaName: string;
+  preampNote: string;
+  attenuatorNote: string;
+  filterNote: string;
+  chainNotes: string;
+  biasTeeEnabled: boolean;
+};
+
+type SessionParameterSnapshot = {
+  frequencyHz: number;
+  demodMode: DemodMode;
+  fineTuneHz: number;
+  ppmCorrection: number;
+  bandwidthHz: number;
+  gainProfile: string;
+  latencyPolicy: LatencyPolicy;
+};
+
 const APP_VERSION = '0.0.1';
 const LATENCY_POLICY_STORAGE_KEY = 'rad.io.latencyPolicy.v1';
+const RF_ENV_CONTEXT_STORAGE_KEY = 'rad.io.rfEnvironmentContext.v1';
+const SHAREABLE_SESSION_QUERY_PARAM = 'session';
+const WEBUSB_CONTENTION_CHANNEL = 'rad.io.webusb.contention.v1';
+
+const DEFAULT_RF_ENVIRONMENT_CONTEXT: RfEnvironmentContext = {
+  antennaName: '',
+  preampNote: '',
+  attenuatorNote: '',
+  filterNote: '',
+  chainNotes: '',
+  biasTeeEnabled: false
+};
+
+const isWebUsbSource = (source: SourceType): boolean => source === 'HACKRF' || source === 'RTLSDR';
 
 const fnv1a32 = (bytes: Uint8Array): number => {
   let hash = 0x811c9dc5;
@@ -475,6 +518,7 @@ export default function App() {
     const [connectionState, setConnectionState] = useState<ConnectionState>('idle');
     const [audioState, setAudioState] = useState<AudioState>('suspended');
     const [statusMessage, setStatusMessage] = useState('Ready. Select a source and start streaming.');
+    const [webUsbContention, setWebUsbContention] = useState<'clear' | 'contended'>('clear');
     const [diagnosticEvents, setDiagnosticEvents] = useState<string[]>([]);
     const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLogEntry[]>([]);
     const [runtimeTelemetry, setRuntimeTelemetry] = useState<RuntimeTelemetry>(createDefaultRuntimeTelemetry('direct'));
@@ -519,6 +563,26 @@ export default function App() {
         return 'stable';
       }
     });
+    const [rfEnvironmentContext, setRfEnvironmentContext] = useState<RfEnvironmentContext>(() => {
+      try {
+        const raw = localStorage.getItem(RF_ENV_CONTEXT_STORAGE_KEY);
+        if (!raw) {
+          return DEFAULT_RF_ENVIRONMENT_CONTEXT;
+        }
+
+        const parsed = JSON.parse(raw) as Partial<RfEnvironmentContext>;
+        return {
+          antennaName: typeof parsed.antennaName === 'string' ? parsed.antennaName : '',
+          preampNote: typeof parsed.preampNote === 'string' ? parsed.preampNote : '',
+          attenuatorNote: typeof parsed.attenuatorNote === 'string' ? parsed.attenuatorNote : '',
+          filterNote: typeof parsed.filterNote === 'string' ? parsed.filterNote : '',
+          chainNotes: typeof parsed.chainNotes === 'string' ? parsed.chainNotes : '',
+          biasTeeEnabled: typeof parsed.biasTeeEnabled === 'boolean' ? parsed.biasTeeEnabled : false
+        };
+      } catch {
+        return DEFAULT_RF_ENVIRONMENT_CONTEXT;
+      }
+    });
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -533,12 +597,20 @@ export default function App() {
   const scanAbortRef = useRef(false);
   const streamSessionStartedAtRef = useRef<Date | null>(null);
   const discontinuityTimelineRef = useRef<DiscontinuityTimelineEntry[]>([]);
+  const parameterChangeTimelineRef = useRef<SessionParameterChangeEntry[]>([]);
+  const previousSessionSnapshotRef = useRef<SessionParameterSnapshot | null>(null);
   const streamSampleRateHzRef = useRef(2_000_000);
   const lastProfilePersistAtRef = useRef<number>(0);
   const telemetryWindowRef = useRef<TelemetryWindowSample[]>([]);
   const runtimeTelemetryRef = useRef<RuntimeTelemetry>(createDefaultRuntimeTelemetry('direct'));
+  const lastAudioQueueAheadMsRef = useRef<number | null>(null);
+  const queueJitterEwmaMsRef = useRef(0);
+  const lastAudioPllRatioRef = useRef<number | null>(null);
   const logThrottleStateRef = useRef<Record<string, number>>({});
   const throttledLogDropsRef = useRef(0);
+  const tabIdRef = useRef(`tab-${Math.random().toString(36).slice(2, 10)}`);
+  const contentionChannelRef = useRef<BroadcastChannel | null>(null);
+  const isRunningRef = useRef(false);
 
     const pushDiagnosticEvent = useCallback((
       message: string,
@@ -601,6 +673,162 @@ export default function App() {
   const postToWorker = useCallback((message: unknown, transfer: Transferable[] = []) => {
     workerBridgeRef.current?.postMessage(message, transfer);
   }, []);
+
+  const serializeGainProfile = useCallback((input: Record<string, number>) => {
+    return Object.keys(input)
+      .sort((a, b) => a.localeCompare(b))
+      .map((key) => `${key}:${input[key]}`)
+      .join('|');
+  }, []);
+
+  const buildSessionParameterSnapshot = useCallback((): SessionParameterSnapshot => ({
+    frequencyHz: frequency,
+    demodMode,
+    fineTuneHz: fineFreq,
+    ppmCorrection,
+    bandwidthHz: Math.max(0, filterState.highCutHz - filterState.lowCutHz),
+    gainProfile: serializeGainProfile(gains),
+    latencyPolicy
+  }), [demodMode, filterState.highCutHz, filterState.lowCutHz, fineFreq, frequency, gains, latencyPolicy, ppmCorrection, serializeGainProfile]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RF_ENV_CONTEXT_STORAGE_KEY, JSON.stringify(rfEnvironmentContext));
+    } catch {
+      // Non-fatal in private/incognito contexts.
+    }
+  }, [rfEnvironmentContext]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const shareToken = new URL(window.location.href).searchParams.get(SHAREABLE_SESSION_QUERY_PARAM);
+    if (!shareToken) {
+      return;
+    }
+
+    const sharedState = decodeShareableSessionState(shareToken);
+    if (!sharedState) {
+      pushDiagnosticEvent('Ignored invalid shareable session state from URL.', 'warn');
+      return;
+    }
+
+    setFrequency(Math.round(sharedState.frequencyHz));
+    setDemodMode(sharedState.demodMode);
+    setFineFreq(Math.round(sharedState.fineFreqHz));
+    setPpmCorrection(sharedState.ppmCorrection);
+    setStreamSampleRateHz(sharedState.streamSampleRateHz);
+    setLatencyPolicy(sharedState.latencyPolicy);
+    setZoomLevel(sharedState.zoomLevel);
+
+    const halfBandwidthHz = Math.max(1, Math.round(sharedState.bandwidthHz / 2));
+    const clampedFilter = clampFilterForMode(
+      sharedState.demodMode,
+      -halfBandwidthHz,
+      halfBandwidthHz,
+      sharedState.streamSampleRateHz
+    );
+    setFilterState({
+      ...defaultFilterStateForMode(sharedState.demodMode),
+      ...clampedFilter
+    });
+
+    setStatusMessage('Loaded shareable session state from URL.');
+    pushDiagnosticEvent('Loaded shareable session state from URL.');
+  }, [pushDiagnosticEvent]);
+
+  useEffect(() => {
+    const snapshot = buildSessionParameterSnapshot();
+
+    if (!isRunning) {
+      previousSessionSnapshotRef.current = snapshot;
+      return;
+    }
+
+    const previous = previousSessionSnapshotRef.current;
+    if (!previous) {
+      previousSessionSnapshotRef.current = snapshot;
+      return;
+    }
+
+    const sessionStartedUnixMs = streamSessionStartedAtRef.current?.valueOf() ?? null;
+    let nextTimeline = parameterChangeTimelineRef.current;
+
+    if (previous.frequencyHz !== snapshot.frequencyHz) {
+      nextTimeline = appendSessionParameterChangeEntry(
+        nextTimeline,
+        'frequency_hz',
+        previous.frequencyHz,
+        snapshot.frequencyHz,
+        sessionStartedUnixMs
+      );
+    }
+
+    if (previous.demodMode !== snapshot.demodMode) {
+      nextTimeline = appendSessionParameterChangeEntry(
+        nextTimeline,
+        'demod_mode',
+        previous.demodMode,
+        snapshot.demodMode,
+        sessionStartedUnixMs
+      );
+    }
+
+    if (previous.fineTuneHz !== snapshot.fineTuneHz) {
+      nextTimeline = appendSessionParameterChangeEntry(
+        nextTimeline,
+        'fine_tune_hz',
+        previous.fineTuneHz,
+        snapshot.fineTuneHz,
+        sessionStartedUnixMs
+      );
+    }
+
+    if (previous.ppmCorrection !== snapshot.ppmCorrection) {
+      nextTimeline = appendSessionParameterChangeEntry(
+        nextTimeline,
+        'ppm_correction',
+        previous.ppmCorrection,
+        snapshot.ppmCorrection,
+        sessionStartedUnixMs
+      );
+    }
+
+    if (previous.bandwidthHz !== snapshot.bandwidthHz) {
+      nextTimeline = appendSessionParameterChangeEntry(
+        nextTimeline,
+        'bandwidth_hz',
+        previous.bandwidthHz,
+        snapshot.bandwidthHz,
+        sessionStartedUnixMs
+      );
+    }
+
+    if (previous.gainProfile !== snapshot.gainProfile) {
+      nextTimeline = appendSessionParameterChangeEntry(
+        nextTimeline,
+        'gain_profile',
+        previous.gainProfile,
+        snapshot.gainProfile,
+        sessionStartedUnixMs
+      );
+    }
+
+    if (previous.latencyPolicy !== snapshot.latencyPolicy) {
+      nextTimeline = appendSessionParameterChangeEntry(
+        nextTimeline,
+        'latency_policy',
+        previous.latencyPolicy,
+        snapshot.latencyPolicy,
+        sessionStartedUnixMs
+      );
+    }
+
+    parameterChangeTimelineRef.current = nextTimeline;
+    previousSessionSnapshotRef.current = snapshot;
+  }, [buildSessionParameterSnapshot, isRunning]);
 
   useEffect(() => {
     workerRef.current = new Worker(new URL('./dsp/worker.ts', import.meta.url), { type: 'module' });
@@ -752,9 +980,57 @@ export default function App() {
             }
         };
 
+        const onWindowFocus = () => {
+          if (!isRunning) return;
+
+          void (async () => {
+            await tryResumeAudio('visibility');
+          })();
+        };
+
         document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+        window.addEventListener('focus', onWindowFocus);
+        return () => {
+          document.removeEventListener('visibilitychange', onVisibilityChange);
+          window.removeEventListener('focus', onWindowFocus);
+        };
     }, [isRunning, refreshPermissionState, pushDiagnosticEvent, tryResumeAudio]);
+
+    useEffect(() => {
+      if (typeof navigator === 'undefined' || !('usb' in navigator) || typeof navigator.usb.addEventListener !== 'function') {
+        return;
+      }
+
+      const onUsbDisconnect = (event: Event) => {
+        if (!isRunningRef.current || !isWebUsbSource(sourceType)) {
+          return;
+        }
+
+        const usbEvent = event as unknown as { device?: USBDevice };
+        const product = usbEvent.device?.productName ?? 'active device';
+
+        setIsRunning(false);
+        setConnectionState('error');
+        setAudioState('awaiting-user-gesture');
+        setStatusMessage(`${product} disconnected. Reconnect the device and press Start.`);
+        pushDiagnosticEvent(`USB disconnect detected for ${product}; stream halted.`, 'warn', 'webusb');
+        postToWorker({ command: 'STOP' });
+        audioRef.current?.stop();
+
+        const active = deviceRef.current;
+        deviceRef.current = null;
+        if (active) {
+          void active.close().catch((closeError) => {
+            console.debug('Cleanup after USB disconnect failed:', closeError);
+          });
+        }
+      };
+
+      navigator.usb.addEventListener('disconnect', onUsbDisconnect as EventListener);
+      return () => {
+        navigator.usb.removeEventListener('disconnect', onUsbDisconnect as EventListener);
+      };
+    }, [postToWorker, pushDiagnosticEvent, sourceType]);
 
       useEffect(() => {
         if (!isRunning) {
@@ -800,13 +1076,35 @@ export default function App() {
           const stats = audioRef.current?.getStats();
           if (!stats) return;
 
+          if (lastAudioQueueAheadMsRef.current === null) {
+            lastAudioQueueAheadMsRef.current = stats.queueAheadMs;
+          }
+
+          const queueDeltaMs = Math.abs(stats.queueAheadMs - (lastAudioQueueAheadMsRef.current ?? stats.queueAheadMs));
+          queueJitterEwmaMsRef.current = queueJitterEwmaMsRef.current <= 0
+            ? queueDeltaMs
+            : (queueJitterEwmaMsRef.current * 0.9) + (queueDeltaMs * 0.1);
+          lastAudioQueueAheadMsRef.current = stats.queueAheadMs;
+
+          const previousRatio = lastAudioPllRatioRef.current;
+          const currentRatio = audioPllState.ratio;
+          let ratioDeltaPpm = 0;
+          if (typeof previousRatio === 'number' && previousRatio > 0) {
+            ratioDeltaPpm = Math.abs((currentRatio - previousRatio) / previousRatio) * 1_000_000;
+          }
+          lastAudioPllRatioRef.current = currentRatio;
+
           setRuntimeTelemetry((prev) => ({
             ...prev,
             audioUnderruns: stats.underruns,
             audioQueueAheadMs: stats.queueAheadMs,
+            audioQueueJitterMs: queueJitterEwmaMsRef.current,
+            audioResamplerRatio: currentRatio,
+            audioResamplerRatioDeltaPpm: ratioDeltaPpm,
             audioConcealmentEvents: stats.concealmentEvents,
             audioPopSuppressionEvents: stats.popSuppressionEvents,
-            audioLimiterEvents: stats.limiterEvents
+            audioLimiterEvents: stats.limiterEvents,
+            audioSafetyMuteEvents: stats.safetyMuteEvents
           }));
 
           telemetryWindowRef.current = [
@@ -816,6 +1114,7 @@ export default function App() {
               renderFps: runtimeTelemetryRef.current.renderFps,
               audioUnderruns: stats.underruns,
               audioQueueAheadMs: stats.queueAheadMs,
+              audioSafetyMuteEvents: stats.safetyMuteEvents,
               totalDroppedSamples: runtimeTelemetryRef.current.totalDroppedSamples,
               droppedFrameEvents: runtimeTelemetryRef.current.droppedFrameEvents,
               streamDiscontinuities: runtimeTelemetryRef.current.streamDiscontinuities,
@@ -838,7 +1137,7 @@ export default function App() {
         }, 500);
 
         return () => window.clearInterval(intervalId);
-      }, [isRunning, postToWorker]);
+        }, [audioPllState.ratio, isRunning, postToWorker]);
 
     useEffect(() => {
       fftDataRef.current = fftData;
@@ -847,6 +1146,73 @@ export default function App() {
     useEffect(() => {
       runtimeTelemetryRef.current = runtimeTelemetry;
     }, [runtimeTelemetry]);
+
+    useEffect(() => {
+      isRunningRef.current = isRunning;
+    }, [isRunning]);
+
+    useEffect(() => {
+      if (typeof BroadcastChannel === 'undefined') {
+        return;
+      }
+
+      const channel = new BroadcastChannel(WEBUSB_CONTENTION_CHANNEL);
+      contentionChannelRef.current = channel;
+
+      const onMessage = (event: MessageEvent<unknown>) => {
+        const payload = event.data as { type?: string; source?: SourceType; from?: string };
+        if (!payload || typeof payload !== 'object' || payload.from === tabIdRef.current) {
+          return;
+        }
+
+        if (payload.type === 'webusb-claim-probe' && isRunningRef.current && isWebUsbSource(sourceType)) {
+          channel.postMessage({
+            type: 'webusb-claim-active',
+            source: sourceType,
+            from: tabIdRef.current
+          });
+        }
+      };
+
+      channel.addEventListener('message', onMessage as EventListener);
+      return () => {
+        channel.removeEventListener('message', onMessage as EventListener);
+        contentionChannelRef.current = null;
+        channel.close();
+      };
+    }, [sourceType]);
+
+    const checkWebUsbContention = useCallback(async () => {
+      if (!isWebUsbSource(sourceType) || !contentionChannelRef.current) {
+        return false;
+      }
+
+      const channel = contentionChannelRef.current;
+      const contenders = new Set<string>();
+      const collect = (event: MessageEvent<unknown>) => {
+        const payload = event.data as { type?: string; from?: string };
+        if (payload?.type === 'webusb-claim-active' && payload.from && payload.from !== tabIdRef.current) {
+          contenders.add(payload.from);
+        }
+      };
+
+      channel.addEventListener('message', collect as EventListener);
+      channel.postMessage({
+        type: 'webusb-claim-probe',
+        source: sourceType,
+        from: tabIdRef.current
+      });
+
+      await new Promise<void>((resolve) => {
+        window.setTimeout(() => resolve(), 220);
+      });
+
+      channel.removeEventListener('message', collect as EventListener);
+
+      const hasContention = contenders.size > 0;
+      setWebUsbContention(hasContention ? 'contended' : 'clear');
+      return hasContention;
+    }, [sourceType]);
 
     useEffect(() => {
       rdsTelemetryRef.current = rdsTelemetry;
@@ -1399,7 +1765,11 @@ export default function App() {
           ...prev,
           renderFps: null,
           audioQueueAheadMs: 0,
+          audioQueueJitterMs: 0,
+          audioResamplerRatio: 1,
+          audioResamplerRatioDeltaPpm: 0,
           audioLimiterEvents: 0,
+          audioSafetyMuteEvents: 0,
           audioConcealmentEvents: 0,
           audioPopSuppressionEvents: 0,
           droppedFrameEvents: 0,
@@ -1415,6 +1785,11 @@ export default function App() {
           streamDiscontinuities: 0
         }));
         telemetryWindowRef.current = [];
+        parameterChangeTimelineRef.current = [];
+        previousSessionSnapshotRef.current = buildSessionParameterSnapshot();
+        lastAudioQueueAheadMsRef.current = null;
+        queueJitterEwmaMsRef.current = 0;
+        lastAudioPllRatioRef.current = null;
         setFrequencyModelState(defaultFrequencyModelState());
         setAudioPllState(defaultAudioPllState());
         setVfoState(defaultVfoRuntimeState());
@@ -1426,6 +1801,15 @@ export default function App() {
         setConnectionState('pairing');
         setStatusMessage('Pairing and opening selected source...');
         try {
+            const hasContention = await checkWebUsbContention();
+            if (hasContention) {
+              setConnectionState('error');
+              setAudioState('awaiting-user-gesture');
+              setStatusMessage('Device appears to be claimed by another tab/session. Close it and retry.');
+              pushDiagnosticEvent('WebUSB contention detected before start; launch blocked.', 'warn', 'webusb');
+              return;
+            }
+
             await tryResumeAudio('startup');
           audioRef.current?.resetStats();
             audioRef.current?.setMuted(isMuted);
@@ -1495,6 +1879,11 @@ export default function App() {
             usbTransferCountRef.current = 0;
             streamSessionStartedAtRef.current = new Date();
             discontinuityTimelineRef.current = [];
+            parameterChangeTimelineRef.current = [];
+            previousSessionSnapshotRef.current = buildSessionParameterSnapshot();
+            lastAudioQueueAheadMsRef.current = null;
+            queueJitterEwmaMsRef.current = 0;
+            lastAudioPllRatioRef.current = null;
             setRuntimeTelemetry((prev) => ({
               ...prev,
               lowFpsEvents: 0,
@@ -1704,6 +2093,7 @@ export default function App() {
               permissionState: latestPermissionState
             },
             sourceType,
+            rfEnvironmentContext,
             device: {
               selectedSource: sourceType,
               activeName: deviceRef.current?.name ?? null,
@@ -1713,6 +2103,37 @@ export default function App() {
               supportsWebUsb: sourceType === 'HACKRF' || sourceType === 'RTLSDR'
             },
             usbDebug: deviceDebugSnapshot,
+            reproBundle: {
+              settingsSnapshot: {
+                sourceType,
+                frequency,
+                demodMode,
+                fineFreq,
+                streamSampleRateHz,
+                filterState,
+                gains,
+                latencyPolicy,
+                afcEnabled,
+                stabilityModeEnabled,
+                secondaryVfoEnabled,
+                secondaryVfoOffsetHz,
+                rfEnvironmentContext
+              },
+              deviceIdentityAndCaps: {
+                activeName: deviceRef.current?.name ?? null,
+                gainStages,
+                streamSampleRateHz,
+                supportsWebUsb: sourceType === 'HACKRF' || sourceType === 'RTLSDR',
+                descriptor: deviceDebugSnapshot?.descriptor ?? null,
+                streamingProfile: deviceDebugSnapshot?.streamingProfile ?? null
+              },
+              discontinuityTimeline: discontinuityTimelineRef.current,
+              usbTraceSlice: (deviceDebugSnapshot?.recentTrace ?? []).slice(-60)
+            },
+            shareableSessionState: {
+              queryParam: SHAREABLE_SESSION_QUERY_PARAM,
+              version: 1
+            },
             frequency,
             demodMode,
             fineFreq,
@@ -1771,8 +2192,15 @@ export default function App() {
               lastFrameWallClockMs: runtimeTelemetry.lastFrameWallClockMs,
               discontinuityTimeline: discontinuityTimelineRef.current,
               discontinuityEventTotal: discontinuityTimelineRef.current.length,
+              sessionParameterChanges: parameterChangeTimelineRef.current,
+              parameterChangeEventTotal: parameterChangeTimelineRef.current.length,
+              rfEnvironmentContext,
               rfAudioTimebaseAlignment: timebaseAlignment,
               exportUnixMs: Date.now()
+            },
+            sessionProvenance: {
+              parameterChangeTimeline: parameterChangeTimelineRef.current,
+              discontinuityTimeline: discontinuityTimelineRef.current
             },
             measurementProvenance: {
               levelReadoutPoint: 'post-ddc',
@@ -1780,6 +2208,7 @@ export default function App() {
               sourceIqFormat: 'ci8-interleaved',
               exportedFromSourceType: sourceType,
               sampleClockTruthMode: runtimeTelemetry.lastClockTruthMode ?? 'unknown',
+              rfEnvironmentContext,
               timeAlignmentExtensions: activeFixtureMetadata?.timeAlignment ?? null
             },
             calibrationDisclosure,
@@ -1845,6 +2274,61 @@ export default function App() {
       } catch (error) {
         setStatusMessage('Unable to forget paired WebUSB devices.');
         pushDiagnosticEvent(`USB forget action failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    };
+
+    const copyShareableSessionLink = async () => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const shareState: ShareableSessionStateV1 = {
+        version: 1,
+        frequencyHz: Math.round(frequency),
+        demodMode,
+        fineFreqHz: Math.round(fineFreq),
+        ppmCorrection,
+        streamSampleRateHz,
+        bandwidthHz: Math.max(1_000, Math.round(displayedBandwidthHz)),
+        latencyPolicy,
+        zoomLevel: Math.max(1, Math.round(zoomLevel))
+      };
+
+      const encodedState = encodeShareableSessionState(shareState);
+      const shareUrl = new URL(window.location.href);
+      shareUrl.searchParams.set(SHAREABLE_SESSION_QUERY_PARAM, encodedState);
+      shareUrl.hash = '';
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(shareUrl.toString());
+          setStatusMessage('Share link copied to clipboard.');
+          pushDiagnosticEvent('Shareable session link copied to clipboard.');
+          return;
+        }
+      } catch {
+        // Fall through to manual copy fallback.
+      }
+
+      const textarea = document.createElement('textarea');
+      textarea.value = shareUrl.toString();
+      textarea.setAttribute('readonly', 'true');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+
+      try {
+        const copied = document.execCommand('copy');
+        if (copied) {
+          setStatusMessage('Share link copied to clipboard.');
+          pushDiagnosticEvent('Shareable session link copied via fallback copy command.');
+        } else {
+          setStatusMessage('Unable to copy share link.');
+          pushDiagnosticEvent('Shareable session link copy command failed.', 'warn');
+        }
+      } finally {
+        document.body.removeChild(textarea);
       }
     };
 
@@ -1990,6 +2474,15 @@ export default function App() {
         });
       }
 
+      if (runtimeTelemetry.audioSafetyMuteEvents > 0) {
+        items.push({
+          key: 'audio-safety-mute-events',
+          level: 'warn',
+          label: `Audio safety mute engaged (${runtimeTelemetry.audioSafetyMuteEvents})`,
+          recommendation: 'Output was muted to prevent unsafe transients. Reduce gain/output level and inspect clipping.'
+        });
+      }
+
       if (connectionState === 'streaming') {
         if (demodQuality.lockState === 'locked') {
           items.push({
@@ -2091,6 +2584,7 @@ export default function App() {
       permissionState.microphone,
       permissionState.usb,
       runtimeTelemetry.audioUnderruns,
+      runtimeTelemetry.audioSafetyMuteEvents,
       runtimeTelemetry.totalDroppedSamples,
       runtimeTelemetry.renderFps,
       sourceType,
@@ -2118,6 +2612,10 @@ export default function App() {
       reasons.push('audio-underruns');
     }
 
+    if (runtimeTelemetry.audioSafetyMuteEvents > 0) {
+      reasons.push('audio-safety-mute');
+    }
+
     if (Math.abs(audioPllState.queueErrorMs) > 120) {
       reasons.push('clock-queue-unstable');
     }
@@ -2135,6 +2633,7 @@ export default function App() {
     audioPllState.queueErrorMs,
     runtimePrerequisites.crossOriginIsolated,
     runtimeTelemetry.audioUnderruns,
+    runtimeTelemetry.audioSafetyMuteEvents,
     runtimeTelemetry.lastClockTruthMode,
     runtimeTelemetry.totalDroppedSamples
   ]);
@@ -2217,6 +2716,10 @@ export default function App() {
 
         <button onClick={exportDiagnostics} className="action-btn btn-secondary">
           Export Diagnostics
+        </button>
+
+        <button onClick={() => void copyShareableSessionLink()} className="action-btn btn-secondary">
+          Copy Share Link
         </button>
 
         <button
@@ -2768,6 +3271,71 @@ export default function App() {
         )}
       </div>
 
+      <section className="health-panel" aria-live="polite">
+        <h2 className="panel-title">RF Environment Context</h2>
+        <div className="controls-shell">
+          <div className="control-group">
+            <label className="control-label">Antenna</label>
+            <input
+              type="text"
+              value={rfEnvironmentContext.antennaName}
+              onChange={(e) => setRfEnvironmentContext((prev) => ({ ...prev, antennaName: e.target.value }))}
+              className="control-input compact"
+              placeholder="e.g. VHF whip, discone"
+            />
+          </div>
+          <div className="control-group">
+            <label className="control-label">Preamp Note</label>
+            <input
+              type="text"
+              value={rfEnvironmentContext.preampNote}
+              onChange={(e) => setRfEnvironmentContext((prev) => ({ ...prev, preampNote: e.target.value }))}
+              className="control-input compact"
+              placeholder="e.g. +20 dB masthead LNA"
+            />
+          </div>
+          <div className="control-group">
+            <label className="control-label">Attenuator Note</label>
+            <input
+              type="text"
+              value={rfEnvironmentContext.attenuatorNote}
+              onChange={(e) => setRfEnvironmentContext((prev) => ({ ...prev, attenuatorNote: e.target.value }))}
+              className="control-input compact"
+              placeholder="e.g. 10 dB inline pad"
+            />
+          </div>
+          <div className="control-group">
+            <label className="control-label">Filter Note</label>
+            <input
+              type="text"
+              value={rfEnvironmentContext.filterNote}
+              onChange={(e) => setRfEnvironmentContext((prev) => ({ ...prev, filterNote: e.target.value }))}
+              className="control-input compact"
+              placeholder="e.g. FM broadcast notch"
+            />
+          </div>
+          <div className="control-group">
+            <label className="control-label">Bias-Tee Enabled</label>
+            <input
+              type="checkbox"
+              checked={rfEnvironmentContext.biasTeeEnabled}
+              onChange={(e) => setRfEnvironmentContext((prev) => ({ ...prev, biasTeeEnabled: e.target.checked }))}
+              className="control-check"
+            />
+          </div>
+          <div className="control-group">
+            <label className="control-label">RF Chain Notes</label>
+            <input
+              type="text"
+              value={rfEnvironmentContext.chainNotes}
+              onChange={(e) => setRfEnvironmentContext((prev) => ({ ...prev, chainNotes: e.target.value }))}
+              className="control-input compact"
+              placeholder="Optional chain/transverter/IF notes"
+            />
+          </div>
+        </div>
+      </section>
+
       <details className="diagnostics-log">
         <summary>Recent Diagnostic Events ({diagnosticEvents.length})</summary>
         <ul>
@@ -2800,6 +3368,12 @@ export default function App() {
             <strong>Render FPS</strong>
             <span>{runtimeTelemetry.renderFps === null ? 'n/a' : runtimeTelemetry.renderFps.toFixed(1)}</span>
           </li>
+          <li className="health-item health-ok">
+            <strong>Pipeline Timing</strong>
+            <span>
+              total {runtimeTelemetry.dsp.pipelineTiming.totalMs.toFixed(2)} ms | ddc {runtimeTelemetry.dsp.pipelineTiming.ddcMs.toFixed(2)} | fft {runtimeTelemetry.dsp.pipelineTiming.fftMs.toFixed(2)} | demod {runtimeTelemetry.dsp.pipelineTiming.demodMs.toFixed(2)}
+            </span>
+          </li>
           <li className={`health-item ${runtimeTelemetry.audioUnderruns > 0 ? 'health-warn' : 'health-ok'}`}>
             <strong>Audio Underruns</strong>
             <span>{runtimeTelemetry.audioUnderruns}</span>
@@ -2807,6 +3381,12 @@ export default function App() {
           <li className={`health-item ${runtimeTelemetry.audioQueueAheadMs > 250 ? 'health-warn' : 'health-ok'}`}>
             <strong>Audio Queue Ahead</strong>
             <span>{runtimeTelemetry.audioQueueAheadMs.toFixed(1)} ms</span>
+          </li>
+          <li className={`health-item ${runtimeTelemetry.audioQueueJitterMs > 6 || runtimeTelemetry.audioResamplerRatioDeltaPpm > 120 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Audio Clock Drift</strong>
+            <span>
+              jitter {runtimeTelemetry.audioQueueJitterMs.toFixed(2)} ms | ratio {runtimeTelemetry.audioResamplerRatio.toFixed(6)} | delta {runtimeTelemetry.audioResamplerRatioDeltaPpm.toFixed(1)} ppm
+            </span>
           </li>
           <li className={`health-item ${runtimeTelemetry.audioConcealmentEvents > 0 ? 'health-warn' : 'health-ok'}`}>
             <strong>Concealment Events</strong>
@@ -2819,6 +3399,10 @@ export default function App() {
           <li className={`health-item ${runtimeTelemetry.audioLimiterEvents > 0 ? 'health-warn' : 'health-ok'}`}>
             <strong>Limiter Events</strong>
             <span>{runtimeTelemetry.audioLimiterEvents}</span>
+          </li>
+          <li className={`health-item ${runtimeTelemetry.audioSafetyMuteEvents > 0 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Safety Mute Events</strong>
+            <span>{runtimeTelemetry.audioSafetyMuteEvents}</span>
           </li>
           <li className={`health-item ${runtimeTelemetry.totalDroppedSamples > 0 ? 'health-warn' : 'health-ok'}`}>
             <strong>Dropped Samples</strong>
@@ -2853,6 +3437,10 @@ export default function App() {
             <strong>Active VFOs</strong>
             <span>{vfoState.activeVfoCount}</span>
           </li>
+          <li className={`health-item ${webUsbContention === 'contended' ? 'health-warn' : 'health-ok'}`}>
+            <strong>WebUSB Contention</strong>
+            <span>{webUsbContention === 'contended' ? 'another tab active' : 'clear'}</span>
+          </li>
           {deviceDebugSnapshot?.descriptor && (
             <>
               <li className="health-item health-ok">
@@ -2873,6 +3461,12 @@ export default function App() {
                 <strong>USB Errors</strong>
                 <span>
                   bulk err {deviceDebugSnapshot.counters?.bulkInErrorCount ?? 0} | retries {deviceDebugSnapshot.counters?.retryCount ?? 0} | short {deviceDebugSnapshot.counters?.shortPacketCount ?? 0}
+                </span>
+              </li>
+              <li className={`health-item ${(deviceDebugSnapshot.counters?.transferIntervalMsJitter ?? 0) > 4 ? 'health-warn' : 'health-ok'}`}>
+                <strong>USB Throughput/Jitter</strong>
+                <span>
+                  {((deviceDebugSnapshot.counters?.transferRateBps ?? 0) / 1_000_000).toFixed(2)} MB/s | avg {(deviceDebugSnapshot.counters?.transferIntervalMsAvg ?? 0).toFixed(2)} ms | jitter {(deviceDebugSnapshot.counters?.transferIntervalMsJitter ?? 0).toFixed(2)} ms
                 </span>
               </li>
             </>

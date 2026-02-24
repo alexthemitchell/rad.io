@@ -122,8 +122,8 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **Error Handling**: typed error classes for source/device failures.
 - [x] **Diagnostics Panel**: user-facing health view with actionable recommendations and connection-state contract progression (`idle`/`pairing`/`connected`/`streaming`/`recovering`/`error`). (`src/App.tsx`)
-- [ ] **RF Environment Context & Provenance (First-Class)**: capture antenna + RF chain context (preamp/attenuator/filter/bias-tee notes) and attach it to recordings, exports, and diagnostics.
-- [ ] **Structured RF Chain Model (Not Just Notes)**: represent RF chain elements (LNA/attenuator/filter/transverter/IF) as typed, queryable state so diagnostics and measurement disclosures can be computed rather than manually inferred.
+- [x] **RF Environment Context & Provenance (First-Class)**: capture antenna + RF chain context (preamp/attenuator/filter/bias-tee notes) and attach it to recordings, exports, and diagnostics. (`src/App.tsx` RF context panel + diagnostics/recording export payload)
+- [x] **Structured RF Chain Model (Not Just Notes)**: represent RF chain elements (LNA/attenuator/filter/transverter/IF) as typed, queryable state so diagnostics and measurement disclosures can be computed rather than manually inferred. (`docs/reference/contracts/rf-chain-model-v1.md`, `src/App.tsx` diagnostics export)
 - [ ] **IQ Integrity Wizard (“Bad IQ?”)**: detect IQ swap/invert/sign/scaling, DC offset, clipping, and sample-rate mismatch; offer one-click fixes and persist results into per-device profiles.
 - [ ] **Hardware Bring-Up & Sanity Self-Test (Real Device)**: one-click checks for sample format/IQ ordering, DC offset magnitude, clock offset, gain-step effectiveness, and stream continuity; outputs a concise pass/fail report for support bundles.
 - [ ] **Front-End Overload Triage (Actionable)**: guided actions like “reduce gain/enable attenuation/LO shift/narrow bandwidth” with short explanations and links to relevant diagnostics.
@@ -131,10 +131,10 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Signal ID & Tuning Advisor (“What am I seeing?”)**: heuristic hints for likely signal class (AM/FM/narrowband/digital-ish/bursty), recommended demod + bandwidth, and warnings for common false signals (images, aliasing, DC spur, LO leakage).
 - [x] **Diagnostics Bundle Export**: anonymized export for bug reports, with live status announcement on export completion. (`src/App.tsx`)
 - [x] **Logging Discipline**: structured logs + throttling to avoid perf cliffs. (`src/App.tsx` diagnostics log schema, throttling window, structured export payload)
-- [ ] **WebUSB Runtime UX**: permissions, secure context requirements, “device already in use/claimed”, and reconnect flows after reload.
-- [ ] **WebUSB Permission Lifecycle UX**: explicit “forget device / re-pair” flows, handle permission revocation, and recover from “device disappeared” without full refresh.
-- [ ] **WebUSB Error Normalization (Actionable)**: map browser/WebUSB exceptions (stall, disconnect, NotFoundError/NetworkError, transfer errors) into typed, retryable user-facing errors with clear remediation.
-- [ ] **Multi-Tab/Process Contention Handling**: detect when the device is claimed by another tab/app, coordinate across tabs, and surface actionable recovery steps.
+- [x] **WebUSB Runtime UX**: permissions, secure context requirements, “device already in use/claimed”, and reconnect flows after reload. (`src/App.tsx` runtime prerequisite panel + contention probe, `src/devices/HackRFDevice.ts` paired-device reuse)
+- [x] **WebUSB Permission Lifecycle UX**: explicit “forget device / re-pair” flows, handle permission revocation, and recover from “device disappeared” without full refresh. (`src/App.tsx` forget flow + runtime disconnect handling)
+- [x] **WebUSB Error Normalization (Actionable)**: map browser/WebUSB exceptions (stall, disconnect, NotFoundError/NetworkError, transfer errors) into typed, retryable user-facing errors with clear remediation. (`src/devices/errors.ts`, `src/devices/errors.test.ts`, `src/App.tsx`)
+- [x] **Multi-Tab/Process Contention Handling**: detect when the device is claimed by another tab/app, coordinate across tabs, and surface actionable recovery steps. (`src/App.tsx` BroadcastChannel probe/claim checks)
 - [x] **One-Click Support Bundle (Beyond Logs)**: export app/version, browser/OS, secure context + COOP/COEP/SAB status, permissions state, device identity/caps, current pipeline graph/config, and a short rolling telemetry window. (`src/App.tsx` diagnostics export payload)
 
 ### 1.2.1 Browser Runtime Prerequisites (Early)
@@ -146,19 +146,19 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 1.2.2 WebAudio Runtime Hardening (Early)
 
-- [ ] **Autoplay / Suspended AudioContext Recovery UX**: first-run and post-focus flows (“click to enable audio”), plus resilient recovery after sleep/wake and tab backgrounding.
+- [x] **Autoplay / Suspended AudioContext Recovery UX**: first-run and post-focus flows (“click to enable audio”), plus resilient recovery after sleep/wake and tab backgrounding. (`src/App.tsx` enable-audio action + visibility/focus resume, `src/audio/AudioSink.ts`)
 - [x] **AudioWorklet Output Path (Preferred)**: implement an AudioWorklet-based sink with a measured fallback path and explicit perf/latency tradeoffs. (`src/audio/AudioSink.ts`, `public/wfm-processor.js`)
 - [ ] **Sample-Rate Mismatch Strategy**: define how device IQ rates, DSP rates, and OS output rates interact; ensure stable behavior when output is forced to 48 kHz.
 - [ ] **Click-Free Reconfiguration Contract**: guarantee pop/click suppression on start/stop, retune, bandwidth changes, and output device changes (bounded ramp + discontinuity events).
 
 ### 1.3 Health Telemetry (Not Just Logs)
 
-- [ ] **Pipeline Telemetry**: per-stage timing, end-to-end latency, and CPU budget utilization.
+- [x] **Pipeline Telemetry**: per-stage timing, end-to-end latency, and CPU budget utilization. (`src/dsp/worker.ts` timing emission, `src/telemetry/runtimeTelemetryContract.ts`, `src/App.tsx` runtime metrics)
 - [ ] **Buffer Telemetry**: buffer occupancy graphs + underrun/overrun counters across USB → DSP → audio.
-- [ ] **USB Telemetry**: transfer rate, jitter, retry/stall counters, and dropped-transfer visibility.
+- [x] **USB Telemetry**: transfer rate, jitter, retry/stall counters, and dropped-transfer visibility. (`src/devices/HackRFDevice.ts`, `src/devices/ISDRDevice.ts`, `src/App.tsx` runtime metrics + diagnostics export)
 - [ ] **USB Transfer Scheduling Telemetry**: measure transfer size/cadence effects (short packets, burstiness, controller quirks) and surface recommended “streaming profiles”.
-- [ ] **Audio Telemetry**: audio underrun counters and “muted due to safety” events surfaced to UI.
-- [ ] **Audio Clock / Drift Telemetry**: track audio callback jitter, resampler ratio changes, and “audio clock vs sample clock” divergence to support long sessions.
+- [x] **Audio Telemetry**: audio underrun counters and “muted due to safety” events surfaced to UI. (`src/audio/AudioSink.ts`, `src/telemetry/runtimeTelemetryContract.ts`, `src/App.tsx` runtime metrics/health)
+- [x] **Audio Clock / Drift Telemetry**: track audio callback jitter, resampler ratio changes, and “audio clock vs sample clock” divergence to support long sessions. (`src/telemetry/runtimeTelemetryContract.ts`, `src/App.tsx` runtime metrics + diagnostics export)
 - [ ] **RF Impurity Telemetry**: track DC spur level, estimated image rejection/IQ imbalance, LO leakage indicators, and spur density/overload heuristics and surface them in diagnostics.
 - [ ] **Timebase & Drift Telemetry**: estimate sample-rate error, resampler ratio/PLL state (if used), and long-run drift indicators for “hours-long stability” support.
 - [ ] **Front-End Health Indicators**: surface clipping/overrange, effective SNR/ENOB heuristics, and band-aware “try attenuator/LNA/filter/hub/cable” suggestions.
@@ -170,14 +170,14 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Latency/Buffer Controls**: user-facing presets (e.g., “Low Latency” vs “Stable”) with explicit tradeoffs and persisted preference. (`src/App.tsx`, `src/dsp/worker.ts`, `src/dsp/AudioPllController.ts`)
 - [ ] **Adaptive Streaming Policy**: dynamically adjust USB transfer sizing / buffering / scheduling based on rate and CPU pressure, with explicit “degraded mode” behavior.
 - [ ] **RF vs Audio Clock Sync Policy**: explicit modes and tradeoffs (e.g., “RF-accurate” timebase correction vs “audio-stable” listening), persisted and reflected in diagnostics.
-- [ ] **Shareable Session State (Safe)**: URL/state export for reproducible bug reports and “open this tuned view” sharing without leaking private data.
+- [x] **Shareable Session State (Safe)**: URL/state export for reproducible bug reports and “open this tuned view” sharing without leaking private data. (`src/measurements/shareableSessionState.ts`, `src/measurements/shareableSessionState.test.ts`, `src/App.tsx`)
 - [ ] **Command Palette / Keyboard Ops**: fast receiver operations (tune, mode, bandwidth, start/stop, record) without UI hunting.
 - [ ] **Safe Mode Boot (Crash/Perf Recovery)**: if last session ended badly (crash, runaway CPU, repeated disconnect), auto-start with minimal pipeline + no auto-connect and offer a guided restore.
-- [ ] **Browser Lifecycle Choreography (Device + Audio)**: explicitly define and harden behavior for focus/visibility changes, sleep/wake, audio suspension, device disappear/re-enumerate, and background throttling.
+- [x] **Browser Lifecycle Choreography (Device + Audio)**: explicitly define and harden behavior for focus/visibility changes, sleep/wake, audio suspension, device disappear/re-enumerate, and background throttling. (`src/App.tsx` visibility/focus handlers + USB disconnect recovery)
 - [ ] **Crash-Only Pipeline Recovery**: if a Worker/AudioWorklet fails, automatically restart into a safe minimal pipeline and preserve a support-bundle breadcrumb trail.
 - [x] **Session Trust Indicator**: surface “Measurement-grade vs Listening-grade vs Degraded” status derived from telemetry (drops, underruns, missing isolation, unstable clock) with actionable guidance. (`src/App.tsx`, diagnostics export `sessionTrust`)
 - [ ] **Session Grade Upgrade Flow (Guided)**: guided steps to become “measurement-grade” (stability window with zero drops, calibration presence, isolation status, known-good device profile) and to “lock” a session for reproducible exports.
-- [ ] **Session Provenance Timeline (Exportable)**: record key parameter changes + discontinuities with timestamps (“what changed when”) and include in diagnostics bundles and recording metadata.
+- [x] **Session Provenance Timeline (Exportable)**: record key parameter changes + discontinuities with timestamps (“what changed when”) and include in diagnostics bundles and recording metadata. (`src/measurements/sessionProvenanceTimeline.ts`, `src/App.tsx` diagnostics export)
 - [ ] **Recording/Export Integrity Validator**: validate artifacts before export (sample counts, timestamps monotonic, discontinuities accounted for, calibration snapshot present) and stamp outputs with a trust grade + warnings.
 
 ### 1.5 WebUSB Debug Harness (Supportability)
@@ -187,7 +187,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **USB Streaming Profile Capture**: persist the active transfer sizing/scheduling policy and controller hints into diagnostics bundles for reproducible support. (`src/devices/HackRFDevice.ts`, `src/App.tsx` diagnostics export)
 - [ ] **USB Streaming Profile Auto-Tuner (Measured)**: automatically try a bounded set of transfer sizes/counts and recommend a stable profile based on drop rate/jitter/CPU, storing results per controller/hub.
 - [ ] **USB Trace Replay (Sim)**: replay captured USB-level behavior into simulated runs to reproduce WebUSB flakiness deterministically.
-- [ ] **Repro Bundle Completeness**: export a single artifact including settings snapshot, device identity/caps, app/version, discontinuity timeline, and selected USB trace slices for deterministic replay.
+- [x] **Repro Bundle Completeness**: export a single artifact including settings snapshot, device identity/caps, app/version, discontinuity timeline, and selected USB trace slices for deterministic replay. (`src/App.tsx` diagnostics `reproBundle`)
 - [ ] **USB Chaos / Fault Injection (Sim)**: deterministic scenarios for stalls, short packets, device resets mid-stream, and “endpoint halt storms” to harden recovery logic.
 
 ## Phase 2: Deterministic Sources (No Hardware Required)

@@ -40,6 +40,10 @@ export type DeviceDebugSnapshot = {
         stallRecoveryCount: number;
         lastTransferBytes: number;
         lastTransferStatus: string;
+        transferRateBps: number;
+        transferIntervalMsAvg: number;
+        transferIntervalMsJitter: number;
+        shortPacketRatio: number;
     };
     recentTrace?: Array<{
         ts: string;

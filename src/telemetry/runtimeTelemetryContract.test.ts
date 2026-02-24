@@ -122,8 +122,12 @@ describe('runtimeTelemetryContract', () => {
   it('creates a default runtime telemetry envelope with schema and subcontracts', () => {
     const telemetry = createDefaultRuntimeTelemetry('direct');
 
-    expect(telemetry.telemetrySchemaVersion).toBe('1.1.0');
+    expect(telemetry.telemetrySchemaVersion).toBe('1.2.0');
     expect(telemetry.workerTransportMode).toBe('direct');
+    expect(telemetry.audioSafetyMuteEvents).toBe(0);
+    expect(telemetry.audioQueueJitterMs).toBe(0);
+    expect(telemetry.audioResamplerRatio).toBe(1);
+    expect(telemetry.audioResamplerRatioDeltaPpm).toBe(0);
     expect(telemetry.dsp.amplitude.contractVersion).toBe('1.0.0');
     expect(telemetry.dsp.demodQuality.contractVersion).toBe('1.0.0');
     expect(telemetry.dsp.pipelineTiming.contractVersion).toBe('1.0.0');

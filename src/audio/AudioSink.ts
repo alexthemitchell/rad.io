@@ -4,6 +4,7 @@ export type AudioSinkStats = {
     concealmentEvents: number;
     popSuppressionEvents: number;
     limiterEvents: number;
+    safetyMuteEvents: number;
 };
 
 export type AudioSafetyConfig = {
@@ -22,6 +23,7 @@ export class AudioSink {
     private concealmentCount = 0;
     private popSuppressionCount = 0;
     private limiterEventCount = 0;
+    private safetyMuteEventCount = 0;
     private lastSample = 0;
     private safetyConfig: AudioSafetyConfig = {
         maxOutputLevel: 0.85,
@@ -113,10 +115,23 @@ export class AudioSink {
         // Create buffer and copy input samples into channel data.
         const buffer = this.ctx.createBuffer(1, samples.length, this.sampleRate);
         const channelData = buffer.getChannelData(0);
+        let severeSampleCount = 0;
         for (let i = 0; i < samples.length; i++) {
+            if (Math.abs(samples[i]) > 1.25) {
+                severeSampleCount += 1;
+            }
             const limited = this.applyLimiter(samples[i]);
             channelData[i] = limited;
             this.lastSample = limited;
+        }
+
+        // Hard-mute pathological bursts to avoid dangerous transients at the speaker.
+        const severeThreshold = Math.max(8, Math.floor(samples.length * 0.05));
+        if (!this.muted && severeSampleCount > severeThreshold) {
+            channelData.fill(0);
+            this.lastSample = 0;
+            this.safetyMuteEventCount += 1;
+            this.applyPopSuppressionRamp();
         }
 
         // Schedule playback
@@ -148,6 +163,7 @@ export class AudioSink {
         this.concealmentCount = 0;
         this.popSuppressionCount = 0;
         this.limiterEventCount = 0;
+        this.safetyMuteEventCount = 0;
     }
 
     getStats(): AudioSinkStats {
@@ -157,7 +173,8 @@ export class AudioSink {
                 queueAheadMs: 0,
                 concealmentEvents: this.concealmentCount,
                 popSuppressionEvents: this.popSuppressionCount,
-                limiterEvents: this.limiterEventCount
+                limiterEvents: this.limiterEventCount,
+                safetyMuteEvents: this.safetyMuteEventCount
             };
         }
 
@@ -167,7 +184,8 @@ export class AudioSink {
             queueAheadMs: queueAhead,
             concealmentEvents: this.concealmentCount,
             popSuppressionEvents: this.popSuppressionCount,
-            limiterEvents: this.limiterEventCount
+            limiterEvents: this.limiterEventCount,
+            safetyMuteEvents: this.safetyMuteEventCount
         };
     }
 

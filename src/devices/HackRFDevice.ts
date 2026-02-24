@@ -51,8 +51,59 @@ export class HackRFDevice implements ISDRDevice {
         retryCount: 0,
         stallRecoveryCount: 0,
         lastTransferBytes: 0,
-        lastTransferStatus: 'n/a'
+        lastTransferStatus: 'n/a',
+        transferRateBps: 0,
+        transferIntervalMsAvg: 0,
+        transferIntervalMsJitter: 0,
+        shortPacketRatio: 0
     };
+    private lastTransferAtMs: number | null = null;
+    private rateWindowStartedAtMs = performance.now();
+    private rateWindowBytes = 0;
+    private intervalEwmaMs = 0;
+    private intervalJitterEwmaMs = 0;
+
+    private updateTransferTelemetry(bytes: number, transferSize: number): void {
+        const nowMs = performance.now();
+
+        this.rateWindowBytes += bytes;
+        const windowElapsedMs = nowMs - this.rateWindowStartedAtMs;
+        if (windowElapsedMs >= 250) {
+            this.debugCounters.transferRateBps = Math.max(0, (this.rateWindowBytes * 1000) / windowElapsedMs);
+            this.rateWindowBytes = 0;
+            this.rateWindowStartedAtMs = nowMs;
+        }
+
+        if (this.lastTransferAtMs !== null) {
+            const intervalMs = Math.max(0, nowMs - this.lastTransferAtMs);
+            if (this.intervalEwmaMs <= 0) {
+                this.intervalEwmaMs = intervalMs;
+            } else {
+                this.intervalEwmaMs = (this.intervalEwmaMs * 0.9) + (intervalMs * 0.1);
+            }
+
+            const jitterMs = Math.abs(intervalMs - this.intervalEwmaMs);
+            this.intervalJitterEwmaMs = (this.intervalJitterEwmaMs * 0.9) + (jitterMs * 0.1);
+
+            this.debugCounters.transferIntervalMsAvg = this.intervalEwmaMs;
+            this.debugCounters.transferIntervalMsJitter = this.intervalJitterEwmaMs;
+        }
+
+        this.lastTransferAtMs = nowMs;
+
+        if (this.debugCounters.bulkInCount > 0) {
+            this.debugCounters.shortPacketRatio = this.debugCounters.shortPacketCount / this.debugCounters.bulkInCount;
+        }
+
+        if (bytes < transferSize) {
+            this.pushUsbTrace({
+                ts: new Date().toISOString(),
+                event: 'bulk-short-packet',
+                bytes,
+                detail: `expected=${transferSize}`
+            });
+        }
+    }
 
     private pushUsbTrace(event: NonNullable<DeviceDebugSnapshot['recentTrace']>[number]): void {
         this.usbTrace.push(event);
@@ -493,6 +544,11 @@ export class HackRFDevice implements ISDRDevice {
         this.sampleIndex = 0;
         this.timestampNs = 0;
         this.lastTickWallClockMs = Date.now();
+        this.lastTransferAtMs = null;
+        this.rateWindowStartedAtMs = performance.now();
+        this.rateWindowBytes = 0;
+        this.intervalEwmaMs = 0;
+        this.intervalJitterEwmaMs = 0;
         this.markDiscontinuity('restart');
 
         console.log("Starting RX Mode...");
@@ -535,6 +591,7 @@ export class HackRFDevice implements ISDRDevice {
                     if (result.data.byteLength < TRANSFER_SIZE) {
                         this.debugCounters.shortPacketCount += 1;
                     }
+                    this.updateTransferTelemetry(result.data.byteLength, TRANSFER_SIZE);
                     this.pushUsbTrace({
                         ts: new Date().toISOString(),
                         event: 'bulk-in',
