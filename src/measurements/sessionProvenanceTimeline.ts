@@ -5,7 +5,8 @@ export type SessionProvenanceParameter =
   | 'ppm_correction'
   | 'bandwidth_hz'
   | 'gain_profile'
-  | 'latency_policy';
+  | 'latency_policy'
+  | 'clock_sync_policy';
 
 export type SessionParameterChangeEntry = {
   parameter: SessionProvenanceParameter;

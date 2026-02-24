@@ -30,6 +30,22 @@ import {
   encodeShareableSessionState,
   type ShareableSessionStateV1
 } from './measurements/shareableSessionState';
+import {
+  deriveSessionLockInvalidationReason,
+  evaluateSessionGradeUpgrade
+} from './measurements/sessionGradeUpgrade';
+import {
+  buildFrontEndHealthRecommendation,
+  estimateEffectiveEnobBits
+} from './measurements/frontEndHealthAdvisor';
+import { assessFrontEndOverloadTriage } from './measurements/frontEndOverloadTriage';
+import {
+  deriveTargetQueueMs,
+  describeClockSyncPolicy,
+  type ClockSyncPolicy
+} from './measurements/clockSyncPolicy';
+import { assessTimebaseDriftTelemetry } from './measurements/timebaseDriftTelemetry';
+import { validateRecordingExportIntegrity } from './measurements/recordingExportIntegrityValidator';
 import { createRfAudioTimebaseAlignmentSnapshot } from './measurements/rfAudioTimebaseAlignment';
 import { createFixtureInteropExportBundle } from './fixtures/sigmf/interopExport';
 import { WorkerBridge } from './dsp/WorkerBridge';
@@ -258,12 +274,15 @@ type SessionParameterSnapshot = {
   bandwidthHz: number;
   gainProfile: string;
   latencyPolicy: LatencyPolicy;
+  clockSyncPolicy: ClockSyncPolicy;
 };
 
 const APP_VERSION = '0.0.1';
 const LATENCY_POLICY_STORAGE_KEY = 'rad.io.latencyPolicy.v1';
+const CLOCK_SYNC_POLICY_STORAGE_KEY = 'rad.io.clockSyncPolicy.v1';
 const RF_ENV_CONTEXT_STORAGE_KEY = 'rad.io.rfEnvironmentContext.v1';
 const SHAREABLE_SESSION_QUERY_PARAM = 'session';
+const SESSION_GRADE_MIN_STABILITY_WINDOW_SECONDS = 30;
 const WEBUSB_CONTENTION_CHANNEL = 'rad.io.webusb.contention.v1';
 
 const DEFAULT_RF_ENVIRONMENT_CONTEXT: RfEnvironmentContext = {
@@ -554,6 +573,10 @@ export default function App() {
     const [secondaryVfoEnabled, setSecondaryVfoEnabled] = useState(false);
     const [secondaryVfoOffsetHz, setSecondaryVfoOffsetHz] = useState(12_500);
     const [stabilityProfile, setStabilityProfile] = useState<StabilityProfile | null>(null);
+    const [sessionGradeLockedAtIso, setSessionGradeLockedAtIso] = useState<string | null>(null);
+    const [sessionGradeLockInvalidatedReason, setSessionGradeLockInvalidatedReason] = useState<string | null>(null);
+    const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+    const [commandPaletteQuery, setCommandPaletteQuery] = useState('');
     const [deviceDebugSnapshot, setDeviceDebugSnapshot] = useState<DeviceDebugSnapshot | null>(null);
     const [latencyPolicy, setLatencyPolicy] = useState<LatencyPolicy>(() => {
       try {
@@ -561,6 +584,14 @@ export default function App() {
         return stored === 'low-latency' || stored === 'stable' ? stored : 'stable';
       } catch {
         return 'stable';
+      }
+    });
+    const [clockSyncPolicy, setClockSyncPolicy] = useState<ClockSyncPolicy>(() => {
+      try {
+        const stored = localStorage.getItem(CLOCK_SYNC_POLICY_STORAGE_KEY);
+        return stored === 'rf-accurate' || stored === 'audio-stable' ? stored : 'audio-stable';
+      } catch {
+        return 'audio-stable';
       }
     });
     const [rfEnvironmentContext, setRfEnvironmentContext] = useState<RfEnvironmentContext>(() => {
@@ -611,6 +642,7 @@ export default function App() {
   const tabIdRef = useRef(`tab-${Math.random().toString(36).slice(2, 10)}`);
   const contentionChannelRef = useRef<BroadcastChannel | null>(null);
   const isRunningRef = useRef(false);
+  const commandPaletteInputRef = useRef<HTMLInputElement | null>(null);
 
     const pushDiagnosticEvent = useCallback((
       message: string,
@@ -688,8 +720,9 @@ export default function App() {
     ppmCorrection,
     bandwidthHz: Math.max(0, filterState.highCutHz - filterState.lowCutHz),
     gainProfile: serializeGainProfile(gains),
-    latencyPolicy
-  }), [demodMode, filterState.highCutHz, filterState.lowCutHz, fineFreq, frequency, gains, latencyPolicy, ppmCorrection, serializeGainProfile]);
+    latencyPolicy,
+    clockSyncPolicy
+  }), [clockSyncPolicy, demodMode, filterState.highCutHz, filterState.lowCutHz, fineFreq, frequency, gains, latencyPolicy, ppmCorrection, serializeGainProfile]);
 
   useEffect(() => {
     try {
@@ -826,6 +859,16 @@ export default function App() {
       );
     }
 
+    if (previous.clockSyncPolicy !== snapshot.clockSyncPolicy) {
+      nextTimeline = appendSessionParameterChangeEntry(
+        nextTimeline,
+        'clock_sync_policy',
+        previous.clockSyncPolicy,
+        snapshot.clockSyncPolicy,
+        sessionStartedUnixMs
+      );
+    }
+
     parameterChangeTimelineRef.current = nextTimeline;
     previousSessionSnapshotRef.current = snapshot;
   }, [buildSessionParameterSnapshot, isRunning]);
@@ -950,13 +993,14 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(LATENCY_POLICY_STORAGE_KEY, latencyPolicy);
+      localStorage.setItem(CLOCK_SYNC_POLICY_STORAGE_KEY, clockSyncPolicy);
     } catch {
       // Non-fatal in private/incognito contexts.
     }
 
-    const targetQueueMs = latencyPolicy === 'low-latency' ? 60 : 120;
+    const targetQueueMs = deriveTargetQueueMs(latencyPolicy, clockSyncPolicy);
     postToWorker({ command: 'SET_AUDIO_PLL_TARGET_QUEUE_MS', value: targetQueueMs });
-  }, [latencyPolicy, postToWorker]);
+  }, [clockSyncPolicy, latencyPolicy, postToWorker]);
 
     useEffect(() => {
       void refreshPermissionState();
@@ -1282,9 +1326,30 @@ export default function App() {
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
+            const openCommandPalette = event.key === 'F1'
+              || ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K'));
+            if (openCommandPalette) {
+                event.preventDefault();
+                setCommandPaletteOpen(true);
+                return;
+            }
+
+            if (commandPaletteOpen) {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setCommandPaletteOpen(false);
+                setCommandPaletteQuery('');
+                return;
+              }
+            }
+
             const target = event.target as HTMLElement | null;
             const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'SELECT' || target?.tagName === 'TEXTAREA';
             if (isTyping) return;
+
+            if (commandPaletteOpen) {
+              return;
+            }
 
             if (event.key === 'm' || event.key === 'M') {
                 event.preventDefault();
@@ -1330,7 +1395,14 @@ export default function App() {
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [audioState, filterState.highCutHz, isRunning, pushDiagnosticEvent, streamSampleRateHz]);
+    }, [
+      audioState,
+      commandPaletteOpen,
+      filterState.highCutHz,
+      isRunning,
+      pushDiagnosticEvent,
+      streamSampleRateHz
+    ]);
 
   // Update Device Frequency when controls change
   useEffect(() => {
@@ -1794,6 +1866,8 @@ export default function App() {
         setAudioPllState(defaultAudioPllState());
         setVfoState(defaultVfoRuntimeState());
         setWfmStereoState(defaultWfmStereoState());
+        setSessionGradeLockedAtIso(null);
+        setSessionGradeLockInvalidatedReason(null);
         setDeviceDebugSnapshot(null);
         streamSessionStartedAtRef.current = null;
     } else {
@@ -1881,6 +1955,8 @@ export default function App() {
             discontinuityTimelineRef.current = [];
             parameterChangeTimelineRef.current = [];
             previousSessionSnapshotRef.current = buildSessionParameterSnapshot();
+            setSessionGradeLockedAtIso(null);
+            setSessionGradeLockInvalidatedReason(null);
             lastAudioQueueAheadMsRef.current = null;
             queueJitterEwmaMsRef.current = 0;
             lastAudioPllRatioRef.current = null;
@@ -2113,6 +2189,7 @@ export default function App() {
                 filterState,
                 gains,
                 latencyPolicy,
+                clockSyncPolicy,
                 afcEnabled,
                 stabilityModeEnabled,
                 secondaryVfoEnabled,
@@ -2150,6 +2227,8 @@ export default function App() {
             pipelineConfig: {
               workerTransportMode: runtimeTelemetry.workerTransportMode,
               latencyPolicy,
+              clockSyncPolicy,
+              clockSyncPolicyDescription: describeClockSyncPolicy(clockSyncPolicy),
               streamRatePlan,
               filterState,
               demodMode,
@@ -2180,7 +2259,20 @@ export default function App() {
               results: scanResults
             },
             latencyPolicy,
+            clockSyncPolicy,
             sessionTrust: trustAssessment,
+            sessionGradeUpgrade: {
+              minStableWindowSeconds: SESSION_GRADE_MIN_STABILITY_WINDOW_SECONDS,
+              stableWindowSeconds: sessionGradeStabilityWindowSeconds,
+              checks: sessionGradeEvaluation.checks,
+              eligibleToLock: sessionGradeEvaluation.eligibleToLock,
+              lockBlockedReason: sessionGradeEvaluation.lockBlockedReason,
+              lockedAtIso: sessionGradeLockedAtIso,
+              lockInvalidatedReason: sessionGradeLockInvalidatedReason
+            },
+            recordingExportIntegrity: recordingExportIntegrityPreview,
+            frontEndTriage: frontEndOverloadAssessment,
+            timebaseDrift: timebaseDriftAssessment,
             rollingTelemetryWindow: telemetryWindowRef.current,
             recordingTimeline: {
               sessionStartedAtIso,
@@ -2240,8 +2332,9 @@ export default function App() {
         a.download = `rad-io-diagnostics-${Date.now()}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        setStatusMessage('Diagnostics bundle exported.');
-        pushDiagnosticEvent('Diagnostics bundle exported.');
+        const integrityGrade = recordingExportIntegrityPreview.grade;
+        setStatusMessage(`Diagnostics bundle exported (integrity: ${integrityGrade}).`);
+        pushDiagnosticEvent(`Diagnostics bundle exported (integrity: ${integrityGrade}).`);
     };
 
     const forgetUsbDevices = async () => {
@@ -2332,6 +2425,156 @@ export default function App() {
       }
     };
 
+    type CommandPaletteAction = {
+      id: string;
+      label: string;
+      keywords: string[];
+      run: () => void | Promise<void>;
+    };
+
+    const commandPaletteActions: CommandPaletteAction[] = (() => {
+      const setBandwidthPreset = (targetBandwidthHz: number) => {
+        const halfBandwidth = Math.max(500, Math.round(targetBandwidthHz / 2));
+        const clamped = clampFilterForMode(demodMode, -halfBandwidth, halfBandwidth, streamSampleRateHz);
+        setFilterState((prev) => ({ ...prev, ...clamped }));
+      };
+
+      return [
+        {
+          id: 'stream-toggle',
+          label: isRunning ? 'Stop Stream' : 'Start Stream',
+          keywords: ['start', 'stop', 'stream', 'run'],
+          run: () => {
+            void toggleStream();
+          }
+        },
+        {
+          id: 'mute-toggle',
+          label: isMuted ? 'Unmute Audio' : 'Mute Audio',
+          keywords: ['mute', 'audio', 'sound'],
+          run: () => {
+            toggleMute();
+          }
+        },
+        {
+          id: 'panic-mute',
+          label: 'Panic Mute',
+          keywords: ['panic', 'safety', 'mute'],
+          run: () => {
+            panicMute('keyboard-shortcut');
+          }
+        },
+        {
+          id: 'mode-wfm',
+          label: 'Mode: WFM',
+          keywords: ['mode', 'wfm', 'broadcast'],
+          run: () => setDemodMode('WFM')
+        },
+        {
+          id: 'mode-nfm',
+          label: 'Mode: NFM',
+          keywords: ['mode', 'nfm', 'narrow'],
+          run: () => setDemodMode('NFM')
+        },
+        {
+          id: 'mode-am',
+          label: 'Mode: AM',
+          keywords: ['mode', 'am', 'amplitude'],
+          run: () => setDemodMode('AM')
+        },
+        {
+          id: 'bandwidth-wide',
+          label: 'Bandwidth Preset: Wide',
+          keywords: ['bandwidth', 'wide', 'filter'],
+          run: () => setBandwidthPreset(180_000)
+        },
+        {
+          id: 'bandwidth-narrow',
+          label: 'Bandwidth Preset: Narrow',
+          keywords: ['bandwidth', 'narrow', 'filter'],
+          run: () => setBandwidthPreset(12_500)
+        },
+        {
+          id: 'tune-up',
+          label: 'Tune +1 kHz',
+          keywords: ['tune', 'frequency', 'up'],
+          run: () => setFrequency((prev) => prev + 1_000)
+        },
+        {
+          id: 'tune-down',
+          label: 'Tune -1 kHz',
+          keywords: ['tune', 'frequency', 'down'],
+          run: () => setFrequency((prev) => Math.max(0, prev - 1_000))
+        },
+        {
+          id: 'export-diagnostics',
+          label: 'Export Diagnostics',
+          keywords: ['export', 'diagnostics', 'bundle', 'support'],
+          run: () => {
+            void exportDiagnostics();
+          }
+        },
+        {
+          id: 'copy-share-link',
+          label: 'Copy Share Link',
+          keywords: ['share', 'link', 'session'],
+          run: () => {
+            void copyShareableSessionLink();
+          }
+        },
+        {
+          id: 'record-placeholder',
+          label: 'Record (not yet available)',
+          keywords: ['record', 'capture', 'audio', 'iq'],
+          run: () => {
+            setStatusMessage('Recording is not available yet in MVP preview.');
+            pushDiagnosticEvent('Record command invoked from command palette; feature not available yet.', 'warn');
+          }
+        }
+      ];
+    })();
+
+    const filteredCommandPaletteActions = (() => {
+      const trimmedQuery = commandPaletteQuery.trim().toLowerCase();
+      if (trimmedQuery.length === 0) {
+        return commandPaletteActions;
+      }
+
+      return commandPaletteActions.filter((action) => {
+        if (action.label.toLowerCase().includes(trimmedQuery)) {
+          return true;
+        }
+
+        return action.keywords.some((keyword) => keyword.toLowerCase().includes(trimmedQuery));
+      });
+    })();
+
+    const runCommandPaletteAction = (action: CommandPaletteAction) => {
+      try {
+        const result = action.run();
+        if (result instanceof Promise) {
+          void result.catch((error: unknown) => {
+            pushDiagnosticEvent(`Command palette action failed (${action.id}): ${error instanceof Error ? error.message : String(error)}`, 'warn');
+          });
+        }
+      } finally {
+        setCommandPaletteOpen(false);
+        setCommandPaletteQuery('');
+      }
+    };
+
+    useEffect(() => {
+      if (!commandPaletteOpen) {
+        return;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        commandPaletteInputRef.current?.focus();
+      }, 0);
+
+      return () => window.clearTimeout(timeoutId);
+    }, [commandPaletteOpen]);
+
   const handleGainChange = (name: string, val: number) => {
       setGains(prev => ({ ...prev, [name]: val }));
   };
@@ -2358,6 +2601,87 @@ export default function App() {
 
       return createMeasurementCalibrationDisclosure();
     }, [sourceType]);
+
+  const frontEndOverloadAssessment = useMemo(() => {
+    if (connectionState !== 'streaming' || fftData.length === 0) {
+      return null;
+    }
+
+    const peakDb = fftData.reduce((max, value) => Math.max(max, value), -Infinity);
+    const meanDb = fftData.reduce((sum, value) => sum + value, 0) / fftData.length;
+    let elevatedBinCount = 0;
+    for (let i = 0; i < fftData.length; i += 1) {
+      if (fftData[i] > meanDb + 18) {
+        elevatedBinCount += 1;
+      }
+    }
+
+    const clipRisk01 = Math.max(
+      0,
+      Math.min(1, (runtimeTelemetry.dsp.amplitude.iqPeakLinear - 0.92) / 0.08)
+    );
+
+    const assessment = assessFrontEndOverloadTriage({
+      frequencyHz: frequency,
+      fftPeakDb: peakDb,
+      fftMeanDb: meanDb,
+      elevatedBinCount,
+      totalBinCount: fftData.length,
+      clipRisk01,
+      snrEstimateDb: demodQuality.snrEstimateDb,
+      hasAttenuatorHint: rfEnvironmentContext.attenuatorNote.trim().length > 0,
+      hasPreampHint: rfEnvironmentContext.preampNote.trim().length > 0
+    });
+
+    return {
+      ...assessment,
+      peakDb,
+      meanDb,
+      elevatedBinCount,
+      guidance: buildFrontEndHealthRecommendation({
+        frequencyHz: frequency,
+        sourceType,
+        rfChainNotes: rfEnvironmentContext.chainNotes,
+        hasAttenuatorHint: rfEnvironmentContext.attenuatorNote.trim().length > 0,
+        hasPreampHint: rfEnvironmentContext.preampNote.trim().length > 0,
+        overloadLikely: assessment.overloadLikely
+      })
+    };
+  }, [
+    connectionState,
+    demodQuality.snrEstimateDb,
+    fftData,
+    frequency,
+    rfEnvironmentContext.attenuatorNote,
+    rfEnvironmentContext.chainNotes,
+    rfEnvironmentContext.preampNote,
+    runtimeTelemetry.dsp.amplitude.iqPeakLinear,
+    sourceType
+  ]);
+
+  const webUsbRequired = isWebUsbSource(sourceType);
+
+  const timebaseDriftAssessment = useMemo(() => {
+    return assessTimebaseDriftTelemetry({
+      streamSampleRateHz,
+      driftEstimateHzPerSec: frequencyModelState.driftEstimateHzPerSec,
+      driftConfidence: frequencyModelState.driftConfidence,
+      phaseErrorRms: frequencyModelState.phaseErrorRms,
+      audioResamplerRatio: runtimeTelemetry.audioResamplerRatio,
+      audioResamplerRatioDeltaPpm: runtimeTelemetry.audioResamplerRatioDeltaPpm,
+      audioQueueJitterMs: runtimeTelemetry.audioQueueJitterMs,
+      clockTruthMode: runtimeTelemetry.lastClockTruthMode
+    });
+  }, [
+    streamSampleRateHz,
+    frequencyModelState.driftEstimateHzPerSec,
+    frequencyModelState.driftConfidence,
+    frequencyModelState.phaseErrorRms,
+    runtimeTelemetry.audioResamplerRatio,
+    runtimeTelemetry.audioResamplerRatioDeltaPpm,
+    runtimeTelemetry.audioQueueJitterMs,
+    runtimeTelemetry.lastClockTruthMode
+  ]);
 
     const healthItems = useMemo(() => {
       const items: Array<{ key: string; level: HealthLevel; label: string; recommendation: string }> = [];
@@ -2423,21 +2747,28 @@ export default function App() {
       }
 
       if (connectionState === 'streaming' && fftData.length > 0) {
-        const peakDb = fftData.reduce((max, value) => Math.max(max, value), -Infinity);
-        const meanDb = fftData.reduce((sum, value) => sum + value, 0) / fftData.length;
-        let elevatedBinCount = 0;
-        for (let i = 0; i < fftData.length; i += 1) {
-          if (fftData[i] > meanDb + 18) {
-            elevatedBinCount += 1;
-          }
-        }
+        const peakDb = frontEndOverloadAssessment?.peakDb ?? fftData.reduce((max, value) => Math.max(max, value), -Infinity);
 
-        if (peakDb > -8 && elevatedBinCount > 100) {
+        if (frontEndOverloadAssessment?.overloadLikely) {
+          const actionPlan = frontEndOverloadAssessment.overloadActions.slice(0, 3).join('; ');
+
           items.push({
             key: 'front-end-overload-suspected',
             level: 'warn',
             label: 'Front-end overload/intermod suspected',
-            recommendation: 'Lower RF gain, disable preamp/AMP, or add attenuation/filtering; wide spur density is elevated.'
+            recommendation: `${frontEndOverloadAssessment.overloadSummary} ${frontEndOverloadAssessment.guidance} Actions: ${actionPlan}.`
+          });
+        }
+
+        if (frontEndOverloadAssessment) {
+          const dynamicActions = frontEndOverloadAssessment.dynamicRangeActions.slice(0, 2).join('; ');
+          items.push({
+            key: 'dynamic-range-linearity-check',
+            level: frontEndOverloadAssessment.dynamicRangeDegraded ? 'warn' : 'ok',
+            label: frontEndOverloadAssessment.dynamicRangeDegraded
+              ? 'Dynamic range/linearity check: degraded'
+              : 'Dynamic range/linearity check: stable',
+            recommendation: `${frontEndOverloadAssessment.dynamicRangeSummary} ${dynamicActions}.`
           });
         }
 
@@ -2480,6 +2811,23 @@ export default function App() {
           level: 'warn',
           label: `Audio safety mute engaged (${runtimeTelemetry.audioSafetyMuteEvents})`,
           recommendation: 'Output was muted to prevent unsafe transients. Reduce gain/output level and inspect clipping.'
+        });
+      }
+
+      if (connectionState === 'streaming') {
+        items.push({
+          key: 'timebase-drift',
+          level: timebaseDriftAssessment.severity,
+          label: timebaseDriftAssessment.stable
+            ? 'Timebase and drift telemetry stable'
+            : 'Timebase and drift telemetry warning',
+          recommendation: `${timebaseDriftAssessment.summary} ${timebaseDriftAssessment.recommendations.slice(0, 2).join('; ')}.`
+        });
+        items.push({
+          key: 'clock-sync-policy',
+          level: 'ok',
+          label: `Clock sync policy: ${clockSyncPolicy === 'rf-accurate' ? 'RF-accurate' : 'Audio-stable'}`,
+          recommendation: describeClockSyncPolicy(clockSyncPolicy)
         });
       }
 
@@ -2535,9 +2883,7 @@ export default function App() {
         });
       }
 
-      const requiresWebUsb = sourceType === 'HACKRF' || sourceType === 'RTLSDR';
-
-      if (requiresWebUsb && !runtimePrerequisites.webUsbAvailable) {
+      if (webUsbRequired && !runtimePrerequisites.webUsbAvailable) {
         items.push({
           key: 'runtime-webusb-unavailable',
           level: 'error',
@@ -2555,7 +2901,7 @@ export default function App() {
         });
       }
 
-      if (requiresWebUsb && permissionState.usb === 'denied') {
+      if (webUsbRequired && permissionState.usb === 'denied') {
         items.push({
           key: 'runtime-webusb-permission-denied',
           level: 'error',
@@ -2587,7 +2933,10 @@ export default function App() {
       runtimeTelemetry.audioSafetyMuteEvents,
       runtimeTelemetry.totalDroppedSamples,
       runtimeTelemetry.renderFps,
-      sourceType,
+      frontEndOverloadAssessment,
+      timebaseDriftAssessment,
+      clockSyncPolicy,
+      webUsbRequired,
       demodMode,
       demodQuality.lockState,
       demodQuality.quality,
@@ -2597,6 +2946,48 @@ export default function App() {
   const modeContract = MODE_CONTROL_CONTRACTS[demodMode];
   const displayedBandwidthHz = Math.max(0, filterState.highCutHz - filterState.lowCutHz);
   const demodLockLabel = lockStateLabel(demodMode, demodQuality.lockState);
+  const frontEndEnobBits = estimateEffectiveEnobBits(demodQuality.snrEstimateDb);
+  const frontEndClipRisk01 = Math.max(
+    0,
+    Math.min(1, (runtimeTelemetry.dsp.amplitude.iqPeakLinear - 0.92) / 0.08)
+  );
+  const sessionGradeStabilityWindowSeconds = (() => {
+    const samples = telemetryWindowRef.current;
+    if (samples.length < 2) {
+      return 0;
+    }
+
+    let stableWindowStartIndex = 0;
+    for (let i = samples.length - 1; i >= 0; i -= 1) {
+      const sample = samples[i];
+      const unstable = sample.audioUnderruns > 0
+        || sample.totalDroppedSamples > 0
+        || sample.streamDiscontinuities > 0
+        || sample.audioSafetyMuteEvents > 0;
+
+      if (unstable) {
+        stableWindowStartIndex = i + 1;
+        break;
+      }
+
+      if (i === 0) {
+        stableWindowStartIndex = 0;
+      }
+    }
+
+    if (stableWindowStartIndex >= samples.length - 1) {
+      return 0;
+    }
+
+    const startMs = Date.parse(samples[stableWindowStartIndex].ts);
+    const endMs = Date.parse(samples[samples.length - 1].ts);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+      return 0;
+    }
+
+    return Math.max(0, (endMs - startMs) / 1000);
+  })();
+
   const trustAssessment = useMemo(() => {
     const reasons: string[] = [];
 
@@ -2638,6 +3029,94 @@ export default function App() {
     runtimeTelemetry.totalDroppedSamples
   ]);
 
+  const sessionGradeEvaluation = useMemo(() => {
+    const hasCalibration = measurementDisclosure.frequency.state !== 'uncalibrated'
+      && measurementDisclosure.level.state !== 'uncalibrated';
+
+    return evaluateSessionGradeUpgrade({
+      stableWindowSeconds: sessionGradeStabilityWindowSeconds,
+      minStableWindowSeconds: SESSION_GRADE_MIN_STABILITY_WINDOW_SECONDS,
+      hasCalibration,
+      crossOriginIsolated: runtimePrerequisites.crossOriginIsolated,
+      hasKnownGoodProfile: stabilityProfile !== null,
+      trustGrade: trustAssessment.grade
+    });
+  }, [
+    measurementDisclosure.frequency.state,
+    measurementDisclosure.level.state,
+    runtimePrerequisites.crossOriginIsolated,
+    sessionGradeStabilityWindowSeconds,
+    stabilityProfile,
+    trustAssessment.grade
+  ]);
+
+  const recordingExportIntegrityPreview = useMemo(() => {
+    return validateRecordingExportIntegrity({
+      lastFrameSequence: runtimeTelemetry.lastFrameSequence,
+      lastFrameSampleIndex: runtimeTelemetry.lastFrameSampleIndex,
+      lastFrameTimestampNs: runtimeTelemetry.lastFrameTimestampNs,
+      discontinuityEventTotal: discontinuityTimelineRef.current.length,
+      calibrationState: measurementDisclosure.frequency.state,
+      trustGrade: trustAssessment.grade,
+      sessionGradeLocked: sessionGradeLockedAtIso !== null,
+      droppedSamples: runtimeTelemetry.totalDroppedSamples,
+      audioUnderruns: runtimeTelemetry.audioUnderruns
+    });
+  }, [
+    measurementDisclosure.frequency.state,
+    runtimeTelemetry.audioUnderruns,
+    runtimeTelemetry.lastFrameSampleIndex,
+    runtimeTelemetry.lastFrameSequence,
+    runtimeTelemetry.lastFrameTimestampNs,
+    runtimeTelemetry.totalDroppedSamples,
+    sessionGradeLockedAtIso,
+    trustAssessment.grade
+  ]);
+
+  const sessionGradeStatusLabel = sessionGradeLockedAtIso !== null
+    ? 'locked'
+    : sessionGradeLockInvalidatedReason !== null
+      ? 'lock-invalidated'
+      : sessionGradeEvaluation.eligibleToLock
+        ? 'measurement-ready'
+        : 'upgrade-needed';
+
+  const lockSessionGrade = () => {
+    if (!sessionGradeEvaluation.eligibleToLock) {
+      const reason = sessionGradeEvaluation.lockBlockedReason ?? 'Session grade checks are incomplete.';
+      setStatusMessage(reason);
+      pushDiagnosticEvent(`Session lock blocked: ${reason}`, 'warn');
+      return;
+    }
+
+    const lockedAtIso = new Date().toISOString();
+    setSessionGradeLockedAtIso(lockedAtIso);
+    setSessionGradeLockInvalidatedReason(null);
+    setStatusMessage('Session locked for reproducible exports.');
+    pushDiagnosticEvent(`Session locked at ${lockedAtIso}.`);
+  };
+
+  useEffect(() => {
+    if (sessionGradeLockedAtIso === null) {
+      return;
+    }
+
+    const reason = deriveSessionLockInvalidationReason(trustAssessment.grade, trustAssessment.reasons);
+    if (reason === null) {
+      return;
+    }
+
+    setSessionGradeLockedAtIso(null);
+    setSessionGradeLockInvalidatedReason(reason);
+    setStatusMessage(`Session lock invalidated: ${reason}.`);
+    pushDiagnosticEvent(`Session lock invalidated: ${reason}.`, 'warn');
+  }, [
+    pushDiagnosticEvent,
+    sessionGradeLockedAtIso,
+    trustAssessment.grade,
+    trustAssessment.reasons
+  ]);
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -2648,7 +3127,7 @@ export default function App() {
       </header>
 
       <p className="status-text" aria-live="polite">{statusMessage}</p>
-      <p className="status-subtext">Audio: {audioState} | Keyboard: Left/Right tune 1 kHz, Up/Down fine tune, M mute toggle, P panic mute</p>
+      <p className="status-subtext">Audio: {audioState} | Keyboard: Ctrl+K/F1 command palette, Left/Right tune 1 kHz, Up/Down fine tune, M mute toggle, P panic mute</p>
       
       <div className="visual-grid">
         <section className="panel panel-wide">
@@ -2723,6 +3202,14 @@ export default function App() {
         </button>
 
         <button
+          onClick={() => setCommandPaletteOpen(true)}
+          className="action-btn btn-secondary"
+          title="Open command palette (Ctrl+K or F1)"
+        >
+          Command Palette
+        </button>
+
+        <button
           onClick={() => {
             void forgetUsbDevices();
           }}
@@ -2762,6 +3249,19 @@ export default function App() {
             <option value="low-latency">Low Latency (60 ms queue target)</option>
             <option value="stable">Stable (120 ms queue target)</option>
           </select>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Clock Sync Policy</label>
+          <select
+            value={clockSyncPolicy}
+            onChange={(e) => setClockSyncPolicy(e.target.value as ClockSyncPolicy)}
+            className="control-input compact"
+          >
+            <option value="audio-stable">Audio-stable (jitter tolerant)</option>
+            <option value="rf-accurate">RF-accurate (faster correction)</option>
+          </select>
+          <div className="control-note">{describeClockSyncPolicy(clockSyncPolicy)}</div>
         </div>
 
         <div className="control-group">
@@ -3271,6 +3771,44 @@ export default function App() {
         )}
       </div>
 
+      {commandPaletteOpen && (
+        <section className="health-panel command-palette" aria-live="polite" role="dialog" aria-label="Command palette">
+          <h2 className="panel-title">Command Palette</h2>
+          <div className="controls-shell">
+            <div className="control-group">
+              <label className="control-label">Search</label>
+              <input
+                ref={commandPaletteInputRef}
+                type="text"
+                value={commandPaletteQuery}
+                onChange={(e) => setCommandPaletteQuery(e.target.value)}
+                className="control-input"
+                placeholder="Type command (e.g. mode, tune, export)"
+              />
+              <div className="control-note">Ctrl+K / F1 open, Esc close, click Run to execute</div>
+            </div>
+          </div>
+          <ul>
+            {filteredCommandPaletteActions.length === 0 ? (
+              <li className="health-item health-warn">No commands match this query.</li>
+            ) : (
+              filteredCommandPaletteActions.slice(0, 10).map((action) => (
+                <li key={action.id} className="health-item health-ok">
+                  <strong>{action.label}</strong>
+                  <button
+                    onClick={() => runCommandPaletteAction(action)}
+                    className="action-btn btn-secondary"
+                    type="button"
+                  >
+                    Run
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </section>
+      )}
+
       <section className="health-panel" aria-live="polite">
         <h2 className="panel-title">RF Environment Context</h2>
         <div className="controls-shell">
@@ -3433,6 +3971,12 @@ export default function App() {
               Drift {frequencyModelState.driftEstimateHzPerSec.toFixed(2)} Hz/s | Total {frequencyModelState.totalCorrectionHz.toFixed(1)} Hz
             </span>
           </li>
+          <li className={`health-item ${frontEndClipRisk01 > 0.35 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Front-End Health</strong>
+            <span>
+              clip-risk {(frontEndClipRisk01 * 100).toFixed(0)}% | SNR {demodQuality.snrEstimateDb.toFixed(1)} dB | ENOB {frontEndEnobBits.toFixed(2)} bits
+            </span>
+          </li>
           <li className="health-item health-ok">
             <strong>Active VFOs</strong>
             <span>{vfoState.activeVfoCount}</span>
@@ -3472,6 +4016,45 @@ export default function App() {
             </>
           )}
         </ul>
+      </section>
+
+      <section className="health-panel" aria-live="polite">
+        <h2 className="panel-title">Session Grade Upgrade</h2>
+        <ul>
+          <li className={`health-item ${sessionGradeStatusLabel === 'locked' ? 'health-ok' : sessionGradeStatusLabel === 'lock-invalidated' ? 'health-error' : sessionGradeEvaluation.eligibleToLock ? 'health-ok' : 'health-warn'}`}>
+            <strong>Status</strong>
+            <span>
+              {sessionGradeStatusLabel}
+              {sessionGradeLockedAtIso === null ? '' : ` (locked ${sessionGradeLockedAtIso})`}
+              {sessionGradeLockInvalidatedReason === null ? '' : ` (${sessionGradeLockInvalidatedReason})`}
+            </span>
+          </li>
+          <li className="health-item health-ok">
+            <strong>Stability Window</strong>
+            <span>
+              {sessionGradeStabilityWindowSeconds.toFixed(1)} s / {SESSION_GRADE_MIN_STABILITY_WINDOW_SECONDS.toFixed(0)} s required
+            </span>
+          </li>
+          {sessionGradeEvaluation.checks.map((check) => (
+            <li key={check.key} className={`health-item ${check.passed ? 'health-ok' : 'health-warn'}`}>
+              <strong>{check.label}</strong>
+              <span>{check.detail}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="controls-shell">
+          <button
+            onClick={lockSessionGrade}
+            className="action-btn btn-secondary"
+            disabled={sessionGradeLockedAtIso !== null || !sessionGradeEvaluation.eligibleToLock}
+            title="Lock this session for reproducible diagnostics/exports"
+          >
+            Lock Session Grade
+          </button>
+          {sessionGradeEvaluation.lockBlockedReason !== null && sessionGradeLockedAtIso === null && (
+            <div className="control-note">{sessionGradeEvaluation.lockBlockedReason}</div>
+          )}
+        </div>
       </section>
 
       <section className="health-panel" aria-live="polite">
@@ -3543,6 +4126,15 @@ export default function App() {
               {measurementDisclosure.level.residualUncertaintyDb === null
                 ? ' (relative dBFS)'
                 : ` (+/-${measurementDisclosure.level.residualUncertaintyDb.toFixed(2)} dB)`}
+            </span>
+          </li>
+          <li className={`health-item ${recordingExportIntegrityPreview.grade === 'degraded' ? 'health-error' : recordingExportIntegrityPreview.grade === 'warning' ? 'health-warn' : 'health-ok'}`}>
+            <strong>Export Integrity</strong>
+            <span>
+              {recordingExportIntegrityPreview.grade}
+              {recordingExportIntegrityPreview.warnings.length === 0
+                ? ''
+                : ` (${recordingExportIntegrityPreview.warnings.length} warning${recordingExportIntegrityPreview.warnings.length === 1 ? '' : 's'})`}
             </span>
           </li>
         </ul>

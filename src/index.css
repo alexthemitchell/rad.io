@@ -306,6 +306,19 @@ canvas {
   background: transparent;
 }
 
+.command-palette .health-item {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.command-palette .health-item strong {
+  grid-column: 1;
+}
+
+.command-palette .health-item .action-btn {
+  grid-column: 2;
+}
+
 @media (width <= 800px) {
   .app-shell {
     padding: 12px;

@@ -44,4 +44,20 @@ describe('appendSessionParameterChangeEntry', () => {
     expect(timeline[0].oldValue).toBe(200);
     expect(timeline[3].newValue).toBe(600);
   });
+
+  it('supports clock sync policy change entries', () => {
+    const timeline = appendSessionParameterChangeEntry(
+      [],
+      'clock_sync_policy',
+      'audio-stable',
+      'rf-accurate',
+      null,
+      128,
+      1_772_809_601_000
+    );
+
+    expect(timeline[0].parameter).toBe('clock_sync_policy');
+    expect(timeline[0].oldValue).toBe('audio-stable');
+    expect(timeline[0].newValue).toBe('rf-accurate');
+  });
 });

@@ -126,8 +126,8 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Structured RF Chain Model (Not Just Notes)**: represent RF chain elements (LNA/attenuator/filter/transverter/IF) as typed, queryable state so diagnostics and measurement disclosures can be computed rather than manually inferred. (`docs/reference/contracts/rf-chain-model-v1.md`, `src/App.tsx` diagnostics export)
 - [ ] **IQ Integrity Wizard (“Bad IQ?”)**: detect IQ swap/invert/sign/scaling, DC offset, clipping, and sample-rate mismatch; offer one-click fixes and persist results into per-device profiles.
 - [ ] **Hardware Bring-Up & Sanity Self-Test (Real Device)**: one-click checks for sample format/IQ ordering, DC offset magnitude, clock offset, gain-step effectiveness, and stream continuity; outputs a concise pass/fail report for support bundles.
-- [ ] **Front-End Overload Triage (Actionable)**: guided actions like “reduce gain/enable attenuation/LO shift/narrow bandwidth” with short explanations and links to relevant diagnostics.
-- [ ] **Dynamic Range / Linearity Check Mode (Actionable)**: quick tests to detect likely overload/intermod (noise-floor rise, spur density changes, “strong-signal” heuristics) and recommend RF chain changes (attenuation, LNA off, filter, LO offset).
+- [x] **Front-End Overload Triage (Actionable)**: guided actions like “reduce gain/enable attenuation/LO shift/narrow bandwidth” with short explanations and links to relevant diagnostics. (`src/measurements/frontEndOverloadTriage.ts`, `src/measurements/frontEndOverloadTriage.test.ts`, `src/App.tsx` health panel + diagnostics export `frontEndTriage`)
+- [x] **Dynamic Range / Linearity Check Mode (Actionable)**: quick tests to detect likely overload/intermod (noise-floor rise, spur density changes, “strong-signal” heuristics) and recommend RF chain changes (attenuation, LNA off, filter, LO offset). (`src/measurements/frontEndOverloadTriage.ts`, `src/measurements/frontEndOverloadTriage.test.ts`, `src/App.tsx` dynamic-range health indicator)
 - [ ] **Signal ID & Tuning Advisor (“What am I seeing?”)**: heuristic hints for likely signal class (AM/FM/narrowband/digital-ish/bursty), recommended demod + bandwidth, and warnings for common false signals (images, aliasing, DC spur, LO leakage).
 - [x] **Diagnostics Bundle Export**: anonymized export for bug reports, with live status announcement on export completion. (`src/App.tsx`)
 - [x] **Logging Discipline**: structured logs + throttling to avoid perf cliffs. (`src/App.tsx` diagnostics log schema, throttling window, structured export payload)
@@ -160,8 +160,8 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Audio Telemetry**: audio underrun counters and “muted due to safety” events surfaced to UI. (`src/audio/AudioSink.ts`, `src/telemetry/runtimeTelemetryContract.ts`, `src/App.tsx` runtime metrics/health)
 - [x] **Audio Clock / Drift Telemetry**: track audio callback jitter, resampler ratio changes, and “audio clock vs sample clock” divergence to support long sessions. (`src/telemetry/runtimeTelemetryContract.ts`, `src/App.tsx` runtime metrics + diagnostics export)
 - [ ] **RF Impurity Telemetry**: track DC spur level, estimated image rejection/IQ imbalance, LO leakage indicators, and spur density/overload heuristics and surface them in diagnostics.
-- [ ] **Timebase & Drift Telemetry**: estimate sample-rate error, resampler ratio/PLL state (if used), and long-run drift indicators for “hours-long stability” support.
-- [ ] **Front-End Health Indicators**: surface clipping/overrange, effective SNR/ENOB heuristics, and band-aware “try attenuator/LNA/filter/hub/cable” suggestions.
+- [x] **Timebase & Drift Telemetry**: estimate sample-rate error, resampler ratio/PLL state (if used), and long-run drift indicators for “hours-long stability” support. (`src/measurements/timebaseDriftTelemetry.ts`, `src/measurements/timebaseDriftTelemetry.test.ts`, `src/App.tsx` health panel + diagnostics export `timebaseDrift`)
+- [x] **Front-End Health Indicators**: surface clipping/overrange, effective SNR/ENOB heuristics, and band-aware “try attenuator/LNA/filter/hub/cable” suggestions. (`src/measurements/frontEndHealthAdvisor.ts`, `src/measurements/frontEndHealthAdvisor.test.ts`, `src/App.tsx`)
 
 ### 1.4 Session Resilience & Latency Controls
 
@@ -169,16 +169,16 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Audio Output Device Selection**: choose output device and handle hot-swaps without requiring a full restart.
 - [x] **Latency/Buffer Controls**: user-facing presets (e.g., “Low Latency” vs “Stable”) with explicit tradeoffs and persisted preference. (`src/App.tsx`, `src/dsp/worker.ts`, `src/dsp/AudioPllController.ts`)
 - [ ] **Adaptive Streaming Policy**: dynamically adjust USB transfer sizing / buffering / scheduling based on rate and CPU pressure, with explicit “degraded mode” behavior.
-- [ ] **RF vs Audio Clock Sync Policy**: explicit modes and tradeoffs (e.g., “RF-accurate” timebase correction vs “audio-stable” listening), persisted and reflected in diagnostics.
+- [x] **RF vs Audio Clock Sync Policy**: explicit modes and tradeoffs (e.g., “RF-accurate” timebase correction vs “audio-stable” listening), persisted and reflected in diagnostics. (`src/measurements/clockSyncPolicy.ts`, `src/measurements/clockSyncPolicy.test.ts`, `src/App.tsx` controls + diagnostics `pipelineConfig.clockSyncPolicy`)
 - [x] **Shareable Session State (Safe)**: URL/state export for reproducible bug reports and “open this tuned view” sharing without leaking private data. (`src/measurements/shareableSessionState.ts`, `src/measurements/shareableSessionState.test.ts`, `src/App.tsx`)
-- [ ] **Command Palette / Keyboard Ops**: fast receiver operations (tune, mode, bandwidth, start/stop, record) without UI hunting.
+- [x] **Command Palette / Keyboard Ops**: fast receiver operations (tune, mode, bandwidth, start/stop, record) without UI hunting. (`src/measurements/commandPalette.ts`, `src/measurements/commandPalette.test.ts`, `src/App.tsx`, `src/index.css`)
 - [ ] **Safe Mode Boot (Crash/Perf Recovery)**: if last session ended badly (crash, runaway CPU, repeated disconnect), auto-start with minimal pipeline + no auto-connect and offer a guided restore.
 - [x] **Browser Lifecycle Choreography (Device + Audio)**: explicitly define and harden behavior for focus/visibility changes, sleep/wake, audio suspension, device disappear/re-enumerate, and background throttling. (`src/App.tsx` visibility/focus handlers + USB disconnect recovery)
 - [ ] **Crash-Only Pipeline Recovery**: if a Worker/AudioWorklet fails, automatically restart into a safe minimal pipeline and preserve a support-bundle breadcrumb trail.
 - [x] **Session Trust Indicator**: surface “Measurement-grade vs Listening-grade vs Degraded” status derived from telemetry (drops, underruns, missing isolation, unstable clock) with actionable guidance. (`src/App.tsx`, diagnostics export `sessionTrust`)
-- [ ] **Session Grade Upgrade Flow (Guided)**: guided steps to become “measurement-grade” (stability window with zero drops, calibration presence, isolation status, known-good device profile) and to “lock” a session for reproducible exports.
+- [x] **Session Grade Upgrade Flow (Guided)**: guided steps to become “measurement-grade” (stability window with zero drops, calibration presence, isolation status, known-good device profile) and to “lock” a session for reproducible exports. (`src/measurements/sessionGradeUpgrade.ts`, `src/measurements/sessionGradeUpgrade.test.ts`, `src/App.tsx`)
 - [x] **Session Provenance Timeline (Exportable)**: record key parameter changes + discontinuities with timestamps (“what changed when”) and include in diagnostics bundles and recording metadata. (`src/measurements/sessionProvenanceTimeline.ts`, `src/App.tsx` diagnostics export)
-- [ ] **Recording/Export Integrity Validator**: validate artifacts before export (sample counts, timestamps monotonic, discontinuities accounted for, calibration snapshot present) and stamp outputs with a trust grade + warnings.
+- [x] **Recording/Export Integrity Validator**: validate artifacts before export (sample counts, timestamps monotonic, discontinuities accounted for, calibration snapshot present) and stamp outputs with a trust grade + warnings. (`src/measurements/recordingExportIntegrityValidator.ts`, `src/measurements/recordingExportIntegrityValidator.test.ts`, `src/App.tsx`)
 
 ### 1.5 WebUSB Debug Harness (Supportability)
 
