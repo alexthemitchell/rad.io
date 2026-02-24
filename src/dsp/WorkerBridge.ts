@@ -27,6 +27,10 @@ export class WorkerBridge {
       };
       this.channelPort = channel.port1;
 
+      this.channelPort.onmessage = (event) => {
+        worker.onmessage?.(event as MessageEvent);
+      };
+
       worker.postMessage({ command: 'INIT_MESSAGE_PORT', port: channel.port2 }, [channel.port2]);
       this.channelPort.start();
     } else {

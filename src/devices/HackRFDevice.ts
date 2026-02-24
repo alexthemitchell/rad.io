@@ -496,10 +496,6 @@ export class HackRFDevice implements ISDRDevice {
                     break;
                 }
 
-                if (e instanceof DOMException && e.name === 'AbortError') {
-                    break;
-                }
-
                 console.error("USB Transfer Error:", e);
                 this.markDiscontinuity('overflow');
                 consecutiveFailures += 1;
@@ -518,6 +514,19 @@ export class HackRFDevice implements ISDRDevice {
 
                 await this.sleep(HackRFDevice.STREAM_RETRY_DELAY_MS);
             }
+        }
+
+        // If the loop exits while still marked as streaming, surface it as a hard
+        // failure so the app can recover UI/device state instead of stalling.
+        if (this.isStreaming) {
+            this.isStreaming = false;
+            try {
+                await this.setTransceiverMode(0);
+            } catch (modeStopError) {
+                console.debug('Failed to leave RX mode after unexpected loop exit:', modeStopError);
+            }
+
+            throw new Error('HackRF stream loop exited unexpectedly while streaming');
         }
     }
 

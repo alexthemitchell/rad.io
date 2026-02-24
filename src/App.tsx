@@ -1026,10 +1026,18 @@ export default function App() {
               }
 
                 const buf = copyDataViewToArrayBuffer(dataView);
-                postToWorker({ 
-                    type: 'USB_DATA', 
-                    data: buf 
-                }, [buf]); 
+                const transportMode = workerBridgeRef.current?.getMode() ?? 'direct';
+                if (transportMode === 'message-channel') {
+                  postToWorker({
+                    type: 'USB_DATA',
+                    data: buf
+                  });
+                } else {
+                  postToWorker({
+                    type: 'USB_DATA',
+                    data: buf
+                  }, [buf]);
+                }
               }).catch(async (streamError) => {
                 if (deviceRef.current !== dev) {
                   return;
