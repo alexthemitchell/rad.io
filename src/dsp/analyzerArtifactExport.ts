@@ -1,12 +1,15 @@
 export type AnalyzerArtifactExportV1 = {
-  schemaVersion: '1.0.0';
+  schemaVersion: '1.1.0';
   exportedAtUtc: string;
   fft: {
     size: number;
     window: 'rectangular';
     enbwBins: number;
-    averagingMode: 'none';
+    averagingMode: 'none' | 'exp' | 'linear';
+    averagingValue: number | null;
+    peakHoldEnabled: boolean;
     reference: 'dBFS';
+    referenceLevelDb: number;
   };
   visualization: {
     zoomLevel: number;
@@ -14,6 +17,12 @@ export type AnalyzerArtifactExportV1 = {
     waterfallAutoScale: boolean;
     waterfallMinDb: number;
     waterfallMaxDb: number;
+    marker: {
+      active: boolean;
+      frequencyHz: number | null;
+      powerDbfs: number | null;
+      inView: boolean;
+    };
   };
   pipeline: {
     sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
@@ -43,6 +52,10 @@ export const createAnalyzerArtifactExport = (input: {
   tunedFrequencyHz: number;
   fineTuneHz: number;
   fftSize: number;
+  fftAveragingMode: 'off' | 'exp' | 'linear';
+  fftAveragingValue: number | null;
+  fftReferenceLevelDb: number;
+  fftPeakHoldEnabled: boolean;
   sampleRateHzHint: number;
   frequencyModel: AnalyzerArtifactExportV1['pipeline']['frequencyModel'];
   audioPll: AnalyzerArtifactExportV1['pipeline']['audioPll'];
@@ -51,24 +64,29 @@ export const createAnalyzerArtifactExport = (input: {
   waterfallAutoScale: boolean;
   waterfallMinDb: number;
   waterfallMaxDb: number;
+  marker: AnalyzerArtifactExportV1['visualization']['marker'];
   exportedAtUtc?: string;
 }): AnalyzerArtifactExportV1 => {
   return {
-    schemaVersion: '1.0.0',
+    schemaVersion: '1.1.0',
     exportedAtUtc: input.exportedAtUtc ?? new Date().toISOString(),
     fft: {
       size: input.fftSize,
       window: 'rectangular',
       enbwBins: 1,
-      averagingMode: 'none',
-      reference: 'dBFS'
+      averagingMode: input.fftAveragingMode === 'off' ? 'none' : input.fftAveragingMode,
+      averagingValue: input.fftAveragingValue,
+      peakHoldEnabled: input.fftPeakHoldEnabled,
+      reference: 'dBFS',
+      referenceLevelDb: input.fftReferenceLevelDb
     },
     visualization: {
       zoomLevel: input.zoomLevel,
       waterfallPalette: input.waterfallPalette,
       waterfallAutoScale: input.waterfallAutoScale,
       waterfallMinDb: input.waterfallMinDb,
-      waterfallMaxDb: input.waterfallMaxDb
+      waterfallMaxDb: input.waterfallMaxDb,
+      marker: input.marker
     },
     pipeline: {
       sourceType: input.sourceType,

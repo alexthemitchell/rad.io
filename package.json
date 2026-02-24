@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:browser-gate": "node scripts/browser-regression-gate.mjs",
+    "test:fps-gate": "node scripts/render-fps-gate.mjs",
+    "test:fps-gate:quick": "node scripts/render-fps-gate.mjs --duration-sec 15",
     "test:e2e": "playwright test",
     "test:e2e:real": "playwright test --grep @real-device",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",

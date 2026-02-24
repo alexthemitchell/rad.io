@@ -1,4 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import {
+  blendAveragedTrace,
+  type AnalyzerAveragingMode,
+  getVisibleSpectrumBinRange,
+  updatePeakHoldTrace
+} from '../dsp/analyzerControls';
 
 interface SpectrumCanvasProps {
   data: Float32Array;
@@ -7,10 +13,14 @@ interface SpectrumCanvasProps {
   centerFrequencyHz?: number;
   sampleRateHz?: number;
   tunedOffsetHz?: number;
+  referenceLevelDb?: number;
+  averagingMode?: AnalyzerAveragingMode;
+  averagingValue?: number;
+  peakHoldEnabled?: boolean;
+  peakHoldResetToken?: number;
+  markerFrequencyHz?: number | null;
 }
 
-const MIN_DB = -130;
-const MAX_DB = -20;
 const GRID_X_DIVISIONS = 10;
 const GRID_Y_DIVISIONS = 11;
 
@@ -31,11 +41,18 @@ export function SpectrumCanvas({
   onPointClick,
   centerFrequencyHz = 0,
   sampleRateHz = 2_000_000,
-  tunedOffsetHz = 0
+  tunedOffsetHz = 0,
+  referenceLevelDb = -20,
+  averagingMode = 'exp',
+  averagingValue = 0.18,
+  peakHoldEnabled = true,
+  peakHoldResetToken = 0,
+  markerFrequencyHz = null
 }: SpectrumCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const smoothedRef = useRef<Float32Array | null>(null);
   const peakHoldRef = useRef<Float32Array | null>(null);
+  const peakHoldResetTokenRef = useRef(peakHoldResetToken);
   const lastPaintRef = useRef<number>(performance.now());
   const [hoverBin, setHoverBin] = useState<number | null>(null);
 
@@ -73,6 +90,13 @@ export function SpectrumCanvas({
   }, []);
   
   useEffect(() => {
+    if (peakHoldResetTokenRef.current !== peakHoldResetToken) {
+      peakHoldResetTokenRef.current = peakHoldResetToken;
+      peakHoldRef.current = null;
+    }
+  }, [peakHoldResetToken]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: false });
@@ -84,31 +108,25 @@ export function SpectrumCanvas({
     const elapsedSec = Math.max((now - lastPaintRef.current) / 1000, 0.001);
     lastPaintRef.current = now;
 
-    const viewLen = Math.max(16, Math.floor(data.length / Math.max(zoom, 1)));
-    const startIdx = Math.floor((data.length - viewLen) / 2);
-    if (!smoothedRef.current || smoothedRef.current.length !== viewLen) {
-      smoothedRef.current = new Float32Array(viewLen);
-      peakHoldRef.current = new Float32Array(viewLen);
-      for (let i = 0; i < viewLen; i += 1) {
-        smoothedRef.current[i] = data[startIdx + i];
-        peakHoldRef.current[i] = data[startIdx + i];
-      }
-    }
+    const visibleRange = getVisibleSpectrumBinRange(data.length, zoom);
+    const viewLen = visibleRange.endBinExclusive - visibleRange.startBinInclusive;
+    const incomingView = data.subarray(visibleRange.startBinInclusive, visibleRange.endBinExclusive);
+
+    smoothedRef.current = blendAveragedTrace(
+      smoothedRef.current,
+      incomingView,
+      averagingMode,
+      averagingValue
+    );
 
     const smoothed = smoothedRef.current;
-    const peakHold = peakHoldRef.current!;
-    const smoothingAlpha = 0.18;
-    const peakDecayPerSec = 2.2;
-
-    for (let i = 0; i < viewLen; i += 1) {
-      const rawDb = data[startIdx + i];
-      smoothed[i] += (rawDb - smoothed[i]) * smoothingAlpha;
-      if (smoothed[i] > peakHold[i]) {
-        peakHold[i] = smoothed[i];
-      } else {
-        peakHold[i] -= peakDecayPerSec * elapsedSec;
-      }
-    }
+    peakHoldRef.current = updatePeakHoldTrace(
+      peakHoldRef.current,
+      smoothed,
+      elapsedSec,
+      peakHoldEnabled
+    );
+    const peakHold = peakHoldRef.current;
 
     const width = canvas.width;
     const height = canvas.height;
@@ -118,11 +136,13 @@ export function SpectrumCanvas({
     const bottomPad = Math.floor(height * 0.16);
     const plotWidth = Math.max(1, width - leftPad - rightPad);
     const plotHeight = Math.max(1, height - topPad - bottomPad);
+    const maxDb = referenceLevelDb;
+    const minDb = maxDb - 110;
 
     const xForIndex = (idx: number) => leftPad + Math.floor((idx / (viewLen - 1 || 1)) * plotWidth);
     const yForDb = (db: number) => {
-      const clamped = Math.min(MAX_DB, Math.max(MIN_DB, db));
-      const norm = (clamped - MIN_DB) / (MAX_DB - MIN_DB);
+      const clamped = Math.min(maxDb, Math.max(minDb, db));
+      const norm = (clamped - minDb) / (maxDb - minDb);
       return topPad + Math.floor((1 - norm) * plotHeight);
     };
 
@@ -178,21 +198,23 @@ export function SpectrumCanvas({
     }
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.95)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([6, 4]);
-    for (let i = 0; i < viewLen; i += 1) {
-      const x = xForIndex(i);
-      const y = yForDb(peakHold[i]);
-      if (i === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
+    if (peakHoldEnabled && peakHold) {
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.95)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      for (let i = 0; i < viewLen; i += 1) {
+        const x = xForIndex(i);
+        const y = yForDb(peakHold[i]);
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
       }
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
-    ctx.stroke();
-    ctx.setLineDash([]);
 
     const centerX = leftPad + Math.floor(plotWidth / 2);
     ctx.beginPath();
@@ -217,12 +239,27 @@ export function SpectrumCanvas({
     ctx.fillStyle = 'rgba(189, 211, 224, 0.85)';
     for (let i = 0; i < GRID_Y_DIVISIONS; i += 2) {
       const ratio = i / (GRID_Y_DIVISIONS - 1);
-      const db = MAX_DB - ratio * (MAX_DB - MIN_DB);
+      const db = maxDb - ratio * (maxDb - minDb);
       const y = topPad + Math.floor(ratio * plotHeight);
       ctx.fillText(`${db.toFixed(0)} dB`, 6, y + 4);
     }
 
     const spanHz = sampleRateHz / Math.max(zoom, 1);
+    if (markerFrequencyHz !== null) {
+      const markerRatio = 0.5 + (markerFrequencyHz - centerFrequencyHz) / spanHz;
+      if (markerRatio >= 0 && markerRatio <= 1) {
+        const markerX = leftPad + Math.floor(markerRatio * plotWidth);
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(168, 85, 247, 0.95)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.moveTo(markerX + 0.5, topPad);
+        ctx.lineTo(markerX + 0.5, topPad + plotHeight);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
     for (let i = 0; i < GRID_X_DIVISIONS; i += 2) {
       const ratio = i / (GRID_X_DIVISIONS - 1);
       const hz = centerFrequencyHz + (ratio - 0.5) * spanHz;
@@ -235,13 +272,13 @@ export function SpectrumCanvas({
     const peakDb = smoothed.reduce((max, value) => Math.max(max, value), -Infinity);
     ctx.fillStyle = 'rgba(232, 244, 250, 0.95)';
     ctx.fillText(
-      `Peak: ${peakDb.toFixed(1)} dBFS | Span: ${(spanHz / 1_000_000).toFixed(3)} MHz`,
+      `Peak: ${peakDb.toFixed(1)} dBFS | Ref: ${referenceLevelDb.toFixed(1)} dBFS | Span: ${(spanHz / 1_000_000).toFixed(3)} MHz`,
       leftPad,
       Math.floor(topPad * 0.65)
     );
 
-    if (hoverBin !== null && hoverBin >= startIdx && hoverBin < startIdx + viewLen) {
-      const relIndex = hoverBin - startIdx;
+    if (hoverBin !== null && hoverBin >= visibleRange.startBinInclusive && hoverBin < visibleRange.endBinExclusive) {
+      const relIndex = hoverBin - visibleRange.startBinInclusive;
       const hoverX = xForIndex(relIndex);
       const hoverDb = smoothed[relIndex];
       const hoverY = yForDb(hoverDb);
@@ -268,7 +305,19 @@ export function SpectrumCanvas({
       ctx.fillStyle = 'rgba(255, 234, 234, 0.95)';
       ctx.fillText(readout, leftPad + 6, topPad + Math.floor(readoutHeight * 0.72));
     }
-  }, [data, zoom, centerFrequencyHz, sampleRateHz, tunedOffsetHz, hoverBin]); 
+  }, [
+    averagingMode,
+    averagingValue,
+    centerFrequencyHz,
+    data,
+    hoverBin,
+    markerFrequencyHz,
+    peakHoldEnabled,
+    referenceLevelDb,
+    sampleRateHz,
+    tunedOffsetHz,
+    zoom
+  ]);
 
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
       if (!onPointClick) return;

@@ -80,6 +80,15 @@ import {
   planStreamRateForMode
 } from './dsp/controlGuardrails';
 import {
+  binIndexToFrequencyHz,
+  findNearestQualifiedPeak,
+  findStrongestPeakInRange,
+  frequencyHzToBinIndex,
+  getVisibleSpectrumBinRange,
+  resolveMarkerReadout,
+  type AnalyzerAveragingMode
+} from './dsp/analyzerControls';
+import {
   createDefaultRuntimeDspTelemetry,
   createDefaultRuntimeTelemetry,
   type RuntimeDspTelemetryV1,
@@ -188,6 +197,11 @@ type DemodQualityState = {
 };
 
 type SourceType = 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+
+type AnalyzerMarkerState = {
+  frequencyHz: number;
+  placedAtIso: string;
+};
 
 type RuntimePrerequisites = {
   secureContext: boolean;
@@ -576,6 +590,16 @@ export default function App() {
   const [fineFreq, setFineFreq] = useState<number>(0);
   const [ppmCorrection, setPpmCorrection] = useState<number>(0);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [analyzerReferenceLevelDb, setAnalyzerReferenceLevelDb] = useState(-20);
+  const [analyzerAveragingMode, setAnalyzerAveragingMode] = useState<AnalyzerAveragingMode>('off');
+  const [analyzerAveragingValue, setAnalyzerAveragingValue] = useState(0.25);
+  const [analyzerLinearAveragingFrames, setAnalyzerLinearAveragingFrames] = useState(8);
+  const [analyzerPeakHoldEnabled, setAnalyzerPeakHoldEnabled] = useState(true);
+  const [analyzerPeakHoldResetToken, setAnalyzerPeakHoldResetToken] = useState(0);
+  const [analyzerMarker, setAnalyzerMarker] = useState<AnalyzerMarkerState | null>(null);
+  const [tuningStepHz, setTuningStepHz] = useState(1_000);
+  const [fineTuningStepHz, setFineTuningStepHz] = useState(1_000);
+  const [lastLockFrequencyHz, setLastLockFrequencyHz] = useState<number | null>(null);
     const [isMuted, setIsMuted] = useState(true);
     const [audioOutputLevel, setAudioOutputLevel] = useState(MODE_CONTROL_CONTRACTS.WFM.defaultOutputLevel);
     const [audioMaxOutputLevel, setAudioMaxOutputLevel] = useState(MODE_CONTROL_CONTRACTS.WFM.defaultMaxOutputLevel);
@@ -1930,22 +1954,64 @@ export default function App() {
 
             if (event.key === 'ArrowRight') {
                 event.preventDefault();
-                setFrequency((prev) => prev + 1_000);
+
+                if (event.shiftKey) {
+                  const stepHz = tuningStepHz * 10;
+                  setFrequency((prev) => prev + stepHz);
+                  setStatusMessage(`Large tune step +${stepHz.toLocaleString()} Hz.`);
+                  pushDiagnosticEvent(`Keyboard tune step +${stepHz} Hz (large).`, 'info', 'analyzer');
+                  return;
+                }
+
+                if (event.altKey) {
+                  const fineStepHz = Math.max(1, Math.floor(fineTuningStepHz / 10));
+                  setFineFreq((prev) => clampFineTuneHz(prev + fineStepHz, filterState.highCutHz, streamSampleRateHz));
+                  setStatusMessage(`Fine tune step +${fineStepHz.toLocaleString()} Hz.`);
+                  pushDiagnosticEvent(`Keyboard fine tune +${fineStepHz} Hz (alt).`, 'info', 'analyzer');
+                  return;
+                }
+
+                setFrequency((prev) => prev + tuningStepHz);
+                setStatusMessage(`Tune step +${tuningStepHz.toLocaleString()} Hz.`);
+                pushDiagnosticEvent(`Keyboard tune step +${tuningStepHz} Hz.`, 'info', 'analyzer');
             }
 
             if (event.key === 'ArrowLeft') {
                 event.preventDefault();
-                setFrequency((prev) => Math.max(0, prev - 1_000));
+
+                if (event.shiftKey) {
+                  const stepHz = tuningStepHz * 10;
+                  setFrequency((prev) => Math.max(0, prev - stepHz));
+                  setStatusMessage(`Large tune step -${stepHz.toLocaleString()} Hz.`);
+                  pushDiagnosticEvent(`Keyboard tune step -${stepHz} Hz (large).`, 'info', 'analyzer');
+                  return;
+                }
+
+                if (event.altKey) {
+                  const fineStepHz = Math.max(1, Math.floor(fineTuningStepHz / 10));
+                  setFineFreq((prev) => clampFineTuneHz(prev - fineStepHz, filterState.highCutHz, streamSampleRateHz));
+                  setStatusMessage(`Fine tune step -${fineStepHz.toLocaleString()} Hz.`);
+                  pushDiagnosticEvent(`Keyboard fine tune -${fineStepHz} Hz (alt).`, 'info', 'analyzer');
+                  return;
+                }
+
+                setFrequency((prev) => Math.max(0, prev - tuningStepHz));
+                setStatusMessage(`Tune step -${tuningStepHz.toLocaleString()} Hz.`);
+                pushDiagnosticEvent(`Keyboard tune step -${tuningStepHz} Hz.`, 'info', 'analyzer');
             }
 
             if (event.key === 'ArrowUp') {
               event.preventDefault();
-              setFineFreq((prev) => clampFineTuneHz(prev + 1_000, filterState.highCutHz, streamSampleRateHz));
+              setFineFreq((prev) => clampFineTuneHz(prev + fineTuningStepHz, filterState.highCutHz, streamSampleRateHz));
+              setStatusMessage(`Fine tune +${fineTuningStepHz.toLocaleString()} Hz.`);
+              pushDiagnosticEvent(`Keyboard fine tune +${fineTuningStepHz} Hz.`, 'info', 'analyzer');
             }
 
             if (event.key === 'ArrowDown') {
               event.preventDefault();
-              setFineFreq((prev) => clampFineTuneHz(prev - 1_000, filterState.highCutHz, streamSampleRateHz));
+              setFineFreq((prev) => clampFineTuneHz(prev - fineTuningStepHz, filterState.highCutHz, streamSampleRateHz));
+              setStatusMessage(`Fine tune -${fineTuningStepHz.toLocaleString()} Hz.`);
+              pushDiagnosticEvent(`Keyboard fine tune -${fineTuningStepHz} Hz.`, 'info', 'analyzer');
             }
         };
 
@@ -1954,10 +2020,12 @@ export default function App() {
     }, [
       audioState,
       commandPaletteOpen,
+      fineTuningStepHz,
       filterState.highCutHz,
       isRunning,
       pushDiagnosticEvent,
-      streamSampleRateHz
+      streamSampleRateHz,
+      tuningStepHz
     ]);
 
   // Update Device Frequency when controls change
@@ -2859,6 +2927,14 @@ export default function App() {
           tunedFrequencyHz: frequency,
           fineTuneHz: fineFreq,
           fftSize: fftDataRef.current.length,
+          fftAveragingMode: analyzerAveragingMode,
+          fftAveragingValue: analyzerAveragingMode === 'off'
+            ? null
+            : analyzerAveragingMode === 'linear'
+              ? analyzerLinearAveragingFrames
+              : analyzerAveragingValue,
+          fftReferenceLevelDb: analyzerReferenceLevelDb,
+          fftPeakHoldEnabled: analyzerPeakHoldEnabled,
           sampleRateHzHint: streamSampleRateHz,
           frequencyModel: {
             ppmCorrectionHz: frequencyModelState.ppmCorrectionHz,
@@ -2877,7 +2953,20 @@ export default function App() {
           waterfallPalette,
           waterfallAutoScale,
           waterfallMinDb,
-          waterfallMaxDb
+          waterfallMaxDb,
+          marker: markerReadout
+            ? {
+                active: true,
+                frequencyHz: markerReadout.frequencyHz,
+                powerDbfs: markerReadout.powerDbfs,
+                inView: markerReadout.inView
+              }
+            : {
+                active: false,
+                frequencyHz: null,
+                powerDbfs: null,
+                inView: false
+              }
         });
         const interopFixtureExport = sourceType === 'FILE'
           ? createFixtureInteropExportBundle(goldenToneFixtureBundle)
@@ -3277,15 +3366,15 @@ export default function App() {
         },
         {
           id: 'tune-up',
-          label: 'Tune +1 kHz',
+          label: `Tune +${(tuningStepHz / 1000).toFixed(1)} kHz`,
           keywords: ['tune', 'frequency', 'up'],
-          run: () => setFrequency((prev) => prev + 1_000)
+          run: () => setFrequency((prev) => prev + tuningStepHz)
         },
         {
           id: 'tune-down',
-          label: 'Tune -1 kHz',
+          label: `Tune -${(tuningStepHz / 1000).toFixed(1)} kHz`,
           keywords: ['tune', 'frequency', 'down'],
-          run: () => setFrequency((prev) => Math.max(0, prev - 1_000))
+          run: () => setFrequency((prev) => Math.max(0, prev - tuningStepHz))
         },
         {
           id: 'export-diagnostics',
@@ -3359,6 +3448,217 @@ export default function App() {
   const handleGainChange = (name: string, val: number) => {
       setGains(prev => ({ ...prev, [name]: val }));
   };
+
+  const analyzerVisibleBinRange = useMemo(
+    () => getVisibleSpectrumBinRange(fftData.length, zoomLevel),
+    [fftData.length, zoomLevel]
+  );
+
+  const tunedFrequencyHz = useMemo(() => frequency + fineFreq, [fineFreq, frequency]);
+
+  const markerReadout = useMemo(
+    () => resolveMarkerReadout(
+      analyzerMarker?.frequencyHz ?? null,
+      fftData,
+      frequency,
+      streamSampleRateHz,
+      analyzerVisibleBinRange
+    ),
+    [analyzerMarker?.frequencyHz, analyzerVisibleBinRange, fftData, frequency, streamSampleRateHz]
+  );
+
+  const runCenterOnPeak = useCallback((trigger: 'ui' | 'keyboard') => {
+    const strongestPeak = findStrongestPeakInRange(fftData, analyzerVisibleBinRange);
+    if (!strongestPeak) {
+      setStatusMessage('Center-on-peak found no valid peak in the visible span.');
+      pushDiagnosticEvent(`Center-on-peak (${trigger}) found no qualifying peak.`, 'warn', 'analyzer');
+      return;
+    }
+
+    const targetFrequencyHz = Math.round(
+      binIndexToFrequencyHz(strongestPeak.binIndex, fftData.length, frequency, streamSampleRateHz)
+    );
+    setFrequency(targetFrequencyHz);
+    setFineFreq(0);
+    setLastLockFrequencyHz(targetFrequencyHz);
+    setStatusMessage(`Centered on peak at ${targetFrequencyHz.toLocaleString()} Hz.`);
+    pushDiagnosticEvent(
+      `Center-on-peak (${trigger}) tuned to ${targetFrequencyHz} Hz (peak ${strongestPeak.powerDbfs.toFixed(1)} dBFS).`,
+      'info',
+      'analyzer'
+    );
+  }, [analyzerVisibleBinRange, fftData, frequency, pushDiagnosticEvent, streamSampleRateHz]);
+
+  const runSnapToSignal = useCallback((trigger: 'ui' | 'keyboard') => {
+    if (fftData.length === 0) {
+      setStatusMessage('Snap-to-signal is unavailable without spectrum data.');
+      return;
+    }
+
+    const focusFrequencyHz = analyzerMarker?.frequencyHz ?? tunedFrequencyHz;
+    const focusBin = frequencyHzToBinIndex(focusFrequencyHz, fftData.length, frequency, streamSampleRateHz);
+    const nearestPeak = findNearestQualifiedPeak(
+      fftData,
+      focusBin,
+      analyzerVisibleBinRange,
+      6
+    );
+
+    if (!nearestPeak) {
+      setStatusMessage('Snap-to-signal found no qualifying peak near focus.');
+      pushDiagnosticEvent(`Snap-to-signal (${trigger}) found no qualifying peak.`, 'warn', 'analyzer');
+      return;
+    }
+
+    const centerBin = Math.floor(fftData.length / 2);
+    const offsetBins = nearestPeak.binIndex - centerBin;
+    const offsetHz = Math.round(offsetBins * (streamSampleRateHz / fftData.length));
+    const clampedFineHz = clampFineTuneHz(offsetHz, filterState.highCutHz, streamSampleRateHz);
+
+    setFineFreq(clampedFineHz);
+    setLastLockFrequencyHz(Math.round(frequency + clampedFineHz));
+    setStatusMessage(`Snapped to nearest signal at dTune ${clampedFineHz.toLocaleString()} Hz.`);
+    pushDiagnosticEvent(
+      `Snap-to-signal (${trigger}) set fine tune to ${clampedFineHz} Hz (peak ${nearestPeak.powerDbfs.toFixed(1)} dBFS).`,
+      'info',
+      'analyzer'
+    );
+  }, [
+    analyzerMarker?.frequencyHz,
+    analyzerVisibleBinRange,
+    fftData,
+    filterState.highCutHz,
+    frequency,
+    pushDiagnosticEvent,
+    streamSampleRateHz,
+    tunedFrequencyHz
+  ]);
+
+  const placeMarkerAtPeak = useCallback((trigger: 'ui' | 'keyboard') => {
+    const strongestPeak = findStrongestPeakInRange(fftData, analyzerVisibleBinRange);
+    if (!strongestPeak) {
+      setStatusMessage('Unable to place marker: no qualifying peak in view.');
+      pushDiagnosticEvent(`Marker place (${trigger}) failed: no qualifying peak.`, 'warn', 'analyzer');
+      return;
+    }
+
+    const markerFrequencyHz = binIndexToFrequencyHz(strongestPeak.binIndex, fftData.length, frequency, streamSampleRateHz);
+    setAnalyzerMarker({
+      frequencyHz: markerFrequencyHz,
+      placedAtIso: new Date().toISOString()
+    });
+    setStatusMessage(`Marker placed at ${Math.round(markerFrequencyHz).toLocaleString()} Hz.`);
+    pushDiagnosticEvent(
+      `Marker placed (${trigger}) at ${Math.round(markerFrequencyHz)} Hz (${strongestPeak.powerDbfs.toFixed(1)} dBFS).`,
+      'info',
+      'analyzer'
+    );
+  }, [analyzerVisibleBinRange, fftData, frequency, pushDiagnosticEvent, streamSampleRateHz]);
+
+  const clearMarker = useCallback((trigger: 'ui' | 'keyboard') => {
+    setAnalyzerMarker(null);
+    setStatusMessage('Marker cleared.');
+    pushDiagnosticEvent(`Marker cleared (${trigger}).`, 'info', 'analyzer');
+  }, [pushDiagnosticEvent]);
+
+  const tuneToMarker = useCallback((trigger: 'ui' | 'keyboard') => {
+    if (!analyzerMarker) {
+      setStatusMessage('Tune-to-marker requires an active marker.');
+      pushDiagnosticEvent(`Tune-to-marker (${trigger}) ignored: no marker active.`, 'warn', 'analyzer');
+      return;
+    }
+
+    const nextFrequencyHz = Math.round(analyzerMarker.frequencyHz);
+    setFrequency(nextFrequencyHz);
+    setFineFreq(0);
+    setLastLockFrequencyHz(nextFrequencyHz);
+    setStatusMessage(`Tuned to marker at ${nextFrequencyHz.toLocaleString()} Hz.`);
+    pushDiagnosticEvent(`Tune-to-marker (${trigger}) tuned to ${nextFrequencyHz} Hz.`, 'info', 'analyzer');
+  }, [analyzerMarker, pushDiagnosticEvent]);
+
+  const returnToLastLock = useCallback((trigger: 'ui' | 'keyboard') => {
+    if (lastLockFrequencyHz === null) {
+      setStatusMessage('Retune assist unavailable: no previous lock candidate.');
+      pushDiagnosticEvent(`Retune assist (${trigger}) ignored: no lock candidate.`, 'warn', 'analyzer');
+      return;
+    }
+
+    setFrequency(lastLockFrequencyHz);
+    setFineFreq(0);
+    setStatusMessage(`Retune assist returned to ${lastLockFrequencyHz.toLocaleString()} Hz.`);
+    pushDiagnosticEvent(`Retune assist (${trigger}) returned to ${lastLockFrequencyHz} Hz.`, 'info', 'analyzer');
+  }, [lastLockFrequencyHz, pushDiagnosticEvent]);
+
+  useEffect(() => {
+    if (!isRunning || !afcEnabled || lastLockFrequencyHz === null) {
+      return;
+    }
+
+    const driftLikelyUnstable = frequencyModelState.driftConfidence < 0.25 && Math.abs(frequencyModelState.phaseErrorRms) > 0.1;
+    if (!driftLikelyUnstable) {
+      return;
+    }
+
+    setStatusMessage('Retune assist ready: drift lock degraded, press R to return to last lock.');
+    pushDiagnosticEvent(
+      `Retune assist armed after drift degradation (confidence ${frequencyModelState.driftConfidence.toFixed(2)}).`,
+      'warn',
+      'analyzer'
+    );
+  }, [
+    afcEnabled,
+    frequencyModelState.driftConfidence,
+    frequencyModelState.phaseErrorRms,
+    isRunning,
+    lastLockFrequencyHz,
+    pushDiagnosticEvent
+  ]);
+
+  useEffect(() => {
+    const onAnalyzerKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'SELECT' || target?.tagName === 'TEXTAREA';
+      if (isTyping || commandPaletteOpen) {
+        return;
+      }
+
+      if (event.key === 'c' || event.key === 'C') {
+        event.preventDefault();
+        runCenterOnPeak('keyboard');
+        return;
+      }
+
+      if (event.key === 's' || event.key === 'S') {
+        event.preventDefault();
+        runSnapToSignal('keyboard');
+        return;
+      }
+
+      if (event.key === 't' || event.key === 'T') {
+        event.preventDefault();
+        tuneToMarker('keyboard');
+        return;
+      }
+
+      if (event.key === 'x' || event.key === 'X') {
+        event.preventDefault();
+        clearMarker('keyboard');
+        return;
+      }
+
+      if (event.key === 'r' || event.key === 'R') {
+        event.preventDefault();
+        returnToLastLock('keyboard');
+      }
+    };
+
+    window.addEventListener('keydown', onAnalyzerKeyDown);
+    return () => window.removeEventListener('keydown', onAnalyzerKeyDown);
+  }, [clearMarker, commandPaletteOpen, returnToLastLock, runCenterOnPeak, runSnapToSignal, tuneToMarker]);
 
   const handleSpectrumClick = (binIndex: number) => {
     const fftSize = fftDataRef.current.length > 0 ? fftDataRef.current.length : 2048;
@@ -3551,17 +3851,12 @@ export default function App() {
   ]);
 
   const audioQueueTrend = useMemo(() => {
-    const queueTickMs = runtimeTelemetry.audioQueueAheadMs;
     const normalizedQueueValues = telemetryWindowRef.current
       .slice(-24)
       .map((sample) => sample.audioQueueAheadMs / Math.max(1, audioPllState.targetQueueMs));
 
-    if (queueTickMs < 0) {
-      return '';
-    }
-
     return buildAsciiOccupancyTrend(normalizedQueueValues);
-  }, [audioPllState.targetQueueMs, runtimeTelemetry.audioQueueAheadMs]);
+  }, [audioPllState.targetQueueMs]);
 
     const healthItems = useMemo(() => {
       const items: Array<{ key: string; level: HealthLevel; label: string; recommendation: string }> = [];
@@ -4103,7 +4398,7 @@ export default function App() {
       )}
 
       <p className="status-text" aria-live="polite">{statusMessage}</p>
-      <p className="status-subtext">Audio: {audioState} | Keyboard: Ctrl+K/F1 command palette, Left/Right tune 1 kHz, Up/Down fine tune, M mute toggle, P panic mute</p>
+      <p className="status-subtext">Audio: {audioState} | Keyboard: Ctrl+K/F1 palette, Left/Right tune, Shift+Left/Right large tune, Alt+Left/Right fine nudge, Up/Down fine step, C center peak, S snap signal, T tune marker, X clear marker, R return lock, M mute, P panic mute</p>
       
       <div className="visual-grid">
         <section className="panel panel-wide">
@@ -4128,6 +4423,12 @@ export default function App() {
               centerFrequencyHz={frequency}
               sampleRateHz={streamSampleRateHz}
               tunedOffsetHz={fineFreq}
+              referenceLevelDb={analyzerReferenceLevelDb}
+              averagingMode={analyzerAveragingMode}
+              averagingValue={analyzerAveragingMode === 'linear' ? analyzerLinearAveragingFrames : analyzerAveragingValue}
+              peakHoldEnabled={analyzerPeakHoldEnabled}
+              peakHoldResetToken={analyzerPeakHoldResetToken}
+              markerFrequencyHz={analyzerMarker?.frequencyHz ?? null}
             />
         </section>
         <section className="panel">
@@ -4418,6 +4719,97 @@ export default function App() {
             />
         </div>
 
+        <div className="control-group">
+          <label className="control-label">Reference Level ({analyzerReferenceLevelDb.toFixed(1)} dBFS)</label>
+          <input
+            type="range"
+            min="-80"
+            max="0"
+            step="1"
+            value={analyzerReferenceLevelDb}
+            onChange={(e) => setAnalyzerReferenceLevelDb(parseFloat(e.target.value))}
+            className="control-range"
+          />
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Averaging Mode</label>
+          <select
+            value={analyzerAveragingMode}
+            onChange={(e) => setAnalyzerAveragingMode(e.target.value as AnalyzerAveragingMode)}
+            className="control-input compact"
+          >
+            <option value="off">Off</option>
+            <option value="exp">Exponential</option>
+            <option value="linear">Linear</option>
+          </select>
+        </div>
+
+        {analyzerAveragingMode === 'exp' && (
+          <div className="control-group">
+            <label className="control-label">Exp Averaging ({Math.round(analyzerAveragingValue * 100)}%)</label>
+            <input
+              type="range"
+              min="0.05"
+              max="0.95"
+              step="0.01"
+              value={analyzerAveragingValue}
+              onChange={(e) => setAnalyzerAveragingValue(parseFloat(e.target.value))}
+              className="control-range"
+            />
+          </div>
+        )}
+
+        {analyzerAveragingMode === 'linear' && (
+          <div className="control-group">
+            <label className="control-label">Linear Frames ({analyzerLinearAveragingFrames})</label>
+            <input
+              type="range"
+              min="2"
+              max="32"
+              step="1"
+              value={analyzerLinearAveragingFrames}
+              onChange={(e) => setAnalyzerLinearAveragingFrames(parseInt(e.target.value, 10))}
+              className="control-range"
+            />
+          </div>
+        )}
+
+        <div className="control-group">
+          <label className="control-label">Peak Hold</label>
+          <input
+            type="checkbox"
+            checked={analyzerPeakHoldEnabled}
+            onChange={(e) => setAnalyzerPeakHoldEnabled(e.target.checked)}
+            className="control-check"
+          />
+          <button
+            onClick={() => setAnalyzerPeakHoldResetToken((prev) => prev + 1)}
+            className="action-btn btn-secondary"
+          >
+            Reset Peak Hold
+          </button>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Signal Discovery</label>
+          <button className="action-btn btn-secondary" onClick={() => runCenterOnPeak('ui')}>Center On Peak</button>
+          <button className="action-btn btn-secondary" onClick={() => runSnapToSignal('ui')}>Snap To Signal</button>
+          <button className="action-btn btn-secondary" onClick={() => returnToLastLock('ui')} disabled={lastLockFrequencyHz === null}>Return To Last Lock</button>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Marker</label>
+          <button className="action-btn btn-secondary" onClick={() => placeMarkerAtPeak('ui')}>Place Marker At Peak</button>
+          <button className="action-btn btn-secondary" onClick={() => tuneToMarker('ui')} disabled={!analyzerMarker}>Tune To Marker</button>
+          <button className="action-btn btn-secondary" onClick={() => clearMarker('ui')} disabled={!analyzerMarker}>Clear Marker</button>
+          <div className="control-note">
+            {markerReadout
+              ? `${Math.round(markerReadout.frequencyHz).toLocaleString()} Hz | ${markerReadout.powerDbfs.toFixed(1)} dBFS${markerReadout.inView ? '' : ' (outside visible span)'}`
+              : 'No active marker'}
+          </div>
+        </div>
+
         {/* Frequency Control */}
         <div className="control-group">
           <label className="control-label">Fine Tune ({fineFreq} Hz)</label>
@@ -4428,6 +4820,40 @@ export default function App() {
                 className="control-range"
             />
           <div className="control-note">Alias-safe fine tune limit: +/-{maxFineTuneHz.toLocaleString()} Hz</div>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Tune Step ({tuningStepHz.toLocaleString()} Hz)</label>
+          <select
+            value={String(tuningStepHz)}
+            onChange={(e) => setTuningStepHz(parseInt(e.target.value, 10))}
+            className="control-input compact"
+          >
+            <option value="100">100 Hz</option>
+            <option value="500">500 Hz</option>
+            <option value="1000">1 kHz</option>
+            <option value="2500">2.5 kHz</option>
+            <option value="5000">5 kHz</option>
+            <option value="10000">10 kHz</option>
+            <option value="12500">12.5 kHz</option>
+            <option value="25000">25 kHz</option>
+            <option value="100000">100 kHz</option>
+          </select>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Fine Step ({fineTuningStepHz.toLocaleString()} Hz)</label>
+          <select
+            value={String(fineTuningStepHz)}
+            onChange={(e) => setFineTuningStepHz(parseInt(e.target.value, 10))}
+            className="control-input compact"
+          >
+            <option value="100">100 Hz</option>
+            <option value="500">500 Hz</option>
+            <option value="1000">1 kHz</option>
+            <option value="2500">2.5 kHz</option>
+            <option value="5000">5 kHz</option>
+          </select>
         </div>
 
         <div className="control-group">

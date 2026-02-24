@@ -307,12 +307,12 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 4.0 Kickoff Plan (Prepared 2026-02-24)
 
-- [ ] **Kickoff Slice A: Analyzer Baseline Controls**: implement reference level + averaging + peak-hold with deterministic behavior and tests.
-- [ ] **Kickoff Slice B: Signal Discovery Helpers**: add center-on-peak and snap-to-signal actions with keyboard and click affordances.
-- [ ] **Kickoff Slice C: Marker MVP**: single marker with frequency/power readout and tune-to-marker action.
-- [ ] **Kickoff Slice D: FPS Validation Gate**: add repeatable synthetic-render test and record sustained `>= 60 FPS` evidence.
-- [ ] **Kickoff Slice E: Interaction Guardrails**: add keyboard-first step tuning parity and retune-assist lock return behavior.
-- [ ] **Kickoff Readiness Review**: convert 4.0 slices into issues with acceptance criteria per `docs/process/acceptance-criteria-template.md` and link them back into this section.
+- [x] **Kickoff Slice A: Analyzer Baseline Controls**: implement reference level + averaging + peak-hold with deterministic behavior and tests.
+- [x] **Kickoff Slice B: Signal Discovery Helpers**: add center-on-peak and snap-to-signal actions with keyboard and click affordances.
+- [x] **Kickoff Slice C: Marker MVP**: single marker with frequency/power readout and tune-to-marker action.
+- [x] **Kickoff Slice D: FPS Validation Gate**: add repeatable synthetic-render test and record sustained `>= 60 FPS` evidence (`scripts/render-fps-gate.mjs`, `artifacts/validation/p4-0d-render-fps-gate-2026-02-24T23-26-56-410Z.json`).
+- [x] **Kickoff Slice E: Interaction Guardrails**: add keyboard-first step tuning parity and retune-assist lock return behavior (`src/App.tsx`, `e2e/phase4-keyboard.spec.ts`).
+- [x] **Kickoff Readiness Review**: convert 4.0 slices into issue-ready acceptance criteria using `docs/process/acceptance-criteria-template.md` and link them back into this section (`docs/roadmap/04_VISUALIZATION_INTERACTION_MVP/PHASE4_KICKOFF_ISSUES_2026-02-24.md`).
 - [x] **Kickoff Plan Documented**: issue-ready sequencing, scope, and acceptance criteria are defined in `docs/roadmap/04_VISUALIZATION_INTERACTION_MVP/PHASE4_KICKOFF_2026-02-24.md`.
 
 ### 4.1 Design System

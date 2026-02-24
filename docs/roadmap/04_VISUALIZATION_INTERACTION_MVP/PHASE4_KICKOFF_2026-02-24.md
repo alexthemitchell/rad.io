@@ -114,4 +114,6 @@ Suggested issue labels:
 
 ## Traceability
 
+Issue-ready acceptance criteria for slices P4-A through P4-E are captured in `docs/roadmap/04_VISUALIZATION_INTERACTION_MVP/PHASE4_KICKOFF_ISSUES_2026-02-24.md` using the template in `docs/process/acceptance-criteria-template.md`.
+
 Link each created issue back to `docs/ROADMAP.md` Phase 4.0 and the corresponding Phase 4 subsection item(s).
