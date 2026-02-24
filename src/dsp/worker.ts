@@ -15,10 +15,14 @@ import { AudioLeveler, type AudioLevelerState } from './AudioLeveler';
 import { IqCorrection } from './IqCorrection';
 import { AudioAgc, type AudioAgcState } from './AudioAgc';
 import { ImpulseBlanker, type ImpulseBlankerState } from './ImpulseBlanker';
+import { SamDemodulator } from './SamDemodulator';
+import { SsbDemodulator } from './SsbDemodulator';
+import { CwDemodulator } from './CwDemodulator';
 import { MultiVfoChannelizer, type VfoConfig } from './MultiVfoChannelizer';
 import { FrequencyTracker, type FrequencyModelState } from './FrequencyTracker';
 import { PolyphaseResampler } from './PolyphaseResampler';
 import { AudioPllController, type AudioPllState } from './AudioPllController';
+import { WfmStereoDecoder, type WfmStereoState } from './WfmStereoDecoder';
 import type { SDRStreamFrame } from '../devices/streamFrame';
 import {
     computeDemodQualityTelemetry,
@@ -50,6 +54,9 @@ let fineFrequencyHz = 0;
 let wfm = new WfmDemodulator();
 let am = new AmDemodulator();
 let nfm = new NfmDemodulator();
+let sam = new SamDemodulator();
+let ssb = new SsbDemodulator();
+let cw = new CwDemodulator();
 let downsampler = new Downsampler(DEFAULT_INPUT_SAMPLE_RATE_HZ, 50_000);
 let nco = new ComplexOscillator(DEFAULT_INPUT_SAMPLE_RATE_HZ);
 const baseFilterConfig: FilterConfig = {
@@ -81,6 +88,7 @@ const noiseSquelch = new NoiseSquelch({
 });
 let rdsDecoder = new RdsDecoder();
 let latestRdsSnapshot: RdsSnapshot = rdsDecoder.getSnapshot();
+const wfmStereoDecoder = new WfmStereoDecoder();
 let latestDemodMetrics: DemodQualityMetrics = evaluateDemodQuality('WFM', new Float32Array(0));
 let outboundPort: WorkerScope | MessagePort = workerScope;
 let metricsEmitCounter = 0;
@@ -89,6 +97,7 @@ let latestToneDecodeState: ToneDecodeState = {
     mode: 'off',
     ctcssHz: null,
     dcsDetected: false,
+    dcsCode: null,
     confidence: 0,
     active: false
 };
@@ -102,10 +111,11 @@ let latestImpulseBlankerState: ImpulseBlankerState = {
 };
 let latestFrequencyModelState: FrequencyModelState = frequencyTracker.getState(0);
 let latestAudioPllState: AudioPllState = audioPllController.getState();
+let latestWfmStereoState: WfmStereoState = wfmStereoDecoder.getState();
 let latestAudioQueueAheadMs = 0;
 let configuredVfos: VfoConfig[] = [];
 
-let mode: 'WFM' | 'AM' | 'NFM' = 'WFM';
+let mode: 'WFM' | 'AM' | 'NFM' | 'SAM' | 'USB' | 'LSB' | 'CW' = 'WFM';
 let nfmAudioPreset: NfmAudioPreset = 'voice-na-75us';
 let nfmOutputPath: NfmOutputPath = 'voice';
 let toneDecodeMode: ToneDecodeMode = 'CTCSS';
@@ -129,6 +139,11 @@ const resetPipelineState = () => {
     wfm = new WfmDemodulator();
     am = new AmDemodulator();
     nfm = new NfmDemodulator();
+    sam = new SamDemodulator();
+    ssb = new SsbDemodulator();
+    cw = new CwDemodulator();
+    ssb.setConfig(mode === 'LSB' ? 'LSB' : 'USB', 1_500, inputSampleRateHz);
+    cw.setConfig(700, inputSampleRateHz);
     nfm.setConfig({
         preset: nfmAudioPreset,
         outputPath: nfmOutputPath
@@ -193,6 +208,12 @@ const handleMessage = (e: MessageEvent) => {
     } else if (e.data.command === 'SET_MODE') {
         mode = e.data.value;
         console.log(`Worker: Mode set to ${mode}`);
+        if (mode === 'USB' || mode === 'LSB') {
+            ssb.setConfig(mode, 1_500, inputSampleRateHz);
+        }
+        if (mode === 'CW') {
+            cw.setConfig(700, inputSampleRateHz);
+        }
     } else if (e.data.command === 'SET_NFM_AUDIO_PRESET') {
         nfmAudioPreset = e.data.value as NfmAudioPreset;
         nfm.setConfig({ preset: nfmAudioPreset });
@@ -266,6 +287,8 @@ const handleMessage = (e: MessageEvent) => {
             downsampler.setSampleRates(inputSampleRateHz, 50_000);
             nco = new ComplexOscillator(inputSampleRateHz);
             channelizer.setSampleRate(inputSampleRateHz);
+            ssb.setConfig(mode === 'LSB' ? 'LSB' : 'USB', 1_500, inputSampleRateHz);
+            cw.setConfig(700, inputSampleRateHz);
             applyMixerFrequency();
         }
     } else if (e.data.command === 'SET_IQ_CORRECTION_ENABLED') {
@@ -351,6 +374,12 @@ function processUSBData(buffer: ArrayBuffer) {
         }
     } else if (mode === 'NFM') {
         nfm.process(shiftedIQ, rawAudio);
+    } else if (mode === 'SAM') {
+        sam.process(shiftedIQ, rawAudio);
+    } else if (mode === 'USB' || mode === 'LSB') {
+        ssb.process(shiftedIQ, rawAudio);
+    } else if (mode === 'CW') {
+        cw.process(shiftedIQ, rawAudio);
     } else {
         am.process(shiftedIQ, rawAudio);
     }
@@ -360,6 +389,9 @@ function processUSBData(buffer: ArrayBuffer) {
     // Downsample
     const audioOut = downsampler.process(rawAudio);
     const audioSampleRateHz = downsampler.getOutputSampleRateHz();
+    if (mode === 'WFM') {
+        latestWfmStereoState = wfmStereoDecoder.process(audioOut, audioSampleRateHz);
+    }
     audioPostProcessor.processInPlace(audioOut);
     const afterDownsampleMs = performance.now();
 
@@ -380,7 +412,8 @@ function processUSBData(buffer: ArrayBuffer) {
 
     latestDemodMetrics = evaluateDemodQuality(mode, resampledAudio);
     const frameDurationMs = (audioOut.length / audioSampleRateHz) * 1000;
-    audioAgc.setMode(mode);
+    const agcMode = mode === 'SAM' ? 'AM' : mode === 'USB' || mode === 'LSB' || mode === 'CW' ? 'NFM' : mode;
+    audioAgc.setMode(agcMode);
     latestAgcState = audioAgc.applyInPlace(resampledAudio, frameDurationMs, latestSquelchState.open);
     latestAudioLevelerState = audioLeveler.applyInPlace(resampledAudio, frameDurationMs);
     latestSquelchState = noiseSquelch.applyInPlace(resampledAudio, latestDemodMetrics.snrEstimateDb, frameDurationMs);
@@ -465,6 +498,12 @@ function processUSBData(buffer: ArrayBuffer) {
                 })
             }
         }, []);
+        if (mode === 'WFM') {
+            postToMain({
+                type: 'WFM_STEREO_STATE',
+                data: latestWfmStereoState
+            }, []);
+        }
     }
 
     // Audio Output

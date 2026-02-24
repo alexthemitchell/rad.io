@@ -14,6 +14,7 @@ import { MockDevice } from './devices/MockDevice';
 import { RtlSdrDevice } from './devices/RtlSdrDevice';
 import { FileDevice } from './devices/FileDevice';
 import { ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
+import { getStabilityProfile, profileKeyFor, upsertStabilityProfile, type StabilityProfile } from './devices/deviceProfileStore';
 import { normalizeDeviceError } from './devices/errors';
 import type { SDRStreamFrame } from './devices/streamFrame';
 import { goldenToneFixtureBundle } from './fixtures/sigmf/goldenToneFixture';
@@ -72,6 +73,7 @@ type ToneDecodeState = {
   mode: 'off' | 'ctcss' | 'dcs';
   ctcssHz: number | null;
   dcsDetected: boolean;
+  dcsCode: number | null;
   confidence: number;
   active: boolean;
 };
@@ -116,6 +118,12 @@ type VfoRuntimeState = {
     groupDelaySamples: number;
     power: number;
   }>;
+};
+
+type WfmStereoState = {
+  locked: boolean;
+  pilotLevel: number;
+  separationDb: number;
 };
 
 type ToneDecodeMode = 'OFF' | 'CTCSS' | 'DCS' | 'AUTO';
@@ -182,7 +190,7 @@ type RadioDebugSnapshot = {
   connectionState: ConnectionState;
   audioState: AudioState;
   frequencyHz: number;
-  demodMode: 'WFM' | 'AM' | 'NFM';
+  demodMode: DemodMode;
   demodQuality: DemodQualityState;
   filterState: DspFilterState;
   fftPeakDb: number;
@@ -274,6 +282,7 @@ const defaultToneDecodeState = (): ToneDecodeState => ({
   mode: 'off',
   ctcssHz: null,
   dcsDetected: false,
+  dcsCode: null,
   confidence: 0,
   active: false
 });
@@ -320,6 +329,12 @@ const defaultAudioPllState = (): AudioPllState => ({
 const defaultVfoRuntimeState = (): VfoRuntimeState => ({
   activeVfoCount: 0,
   vfos: []
+});
+
+const defaultWfmStereoState = (): WfmStereoState => ({
+  locked: false,
+  pilotLevel: 0,
+  separationDb: 0
 });
 
 const detectRuntimePrerequisites = (): RuntimePrerequisites => {
@@ -452,8 +467,10 @@ export default function App() {
     const [frequencyModelState, setFrequencyModelState] = useState<FrequencyModelState>(defaultFrequencyModelState);
     const [audioPllState, setAudioPllState] = useState<AudioPllState>(defaultAudioPllState);
     const [vfoState, setVfoState] = useState<VfoRuntimeState>(defaultVfoRuntimeState);
+    const [wfmStereoState, setWfmStereoState] = useState<WfmStereoState>(defaultWfmStereoState);
     const [secondaryVfoEnabled, setSecondaryVfoEnabled] = useState(false);
     const [secondaryVfoOffsetHz, setSecondaryVfoOffsetHz] = useState(12_500);
+    const [stabilityProfile, setStabilityProfile] = useState<StabilityProfile | null>(null);
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -469,6 +486,7 @@ export default function App() {
   const streamSessionStartedAtRef = useRef<Date | null>(null);
   const discontinuityTimelineRef = useRef<DiscontinuityTimelineEntry[]>([]);
   const streamSampleRateHzRef = useRef(2_000_000);
+  const lastProfilePersistAtRef = useRef<number>(0);
 
     const pushDiagnosticEvent = useCallback((message: string) => {
         const timestamp = new Date().toISOString();
@@ -581,6 +599,8 @@ export default function App() {
         setAudioPllState(e.data.data as AudioPllState);
       } else if (e.data.type === 'VFO_STATE') {
         setVfoState(e.data.data as VfoRuntimeState);
+      } else if (e.data.type === 'WFM_STEREO_STATE') {
+        setWfmStereoState(e.data.data as WfmStereoState);
       } else if (e.data.type === 'DSP_TELEMETRY') {
         const telemetry = e.data.data as RuntimeDspTelemetryV1;
         setRuntimeTelemetry((prev) => ({
@@ -998,6 +1018,48 @@ export default function App() {
   }, [postToWorker, stabilityModeEnabled]);
 
   useEffect(() => {
+    const deviceName = deviceRef.current?.name ?? null;
+    const key = profileKeyFor(sourceType, deviceName);
+    setStabilityProfile(getStabilityProfile(key));
+  }, [sourceType]);
+
+  useEffect(() => {
+    if (!isRunning || !stabilityModeEnabled) {
+      return;
+    }
+
+    if (frequencyModelState.driftConfidence < 0.2) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastProfilePersistAtRef.current < 5_000) {
+      return;
+    }
+    lastProfilePersistAtRef.current = now;
+
+    const profileKey = profileKeyFor(sourceType, deviceRef.current?.name ?? null);
+    const next = upsertStabilityProfile({
+      sourceType,
+      profileKey,
+      updatedAtUtc: new Date(now).toISOString(),
+      driftEstimateHzPerSec: frequencyModelState.driftEstimateHzPerSec,
+      driftConfidence: frequencyModelState.driftConfidence,
+      phaseErrorRms: frequencyModelState.phaseErrorRms,
+      ppmCorrectionHz: frequencyModelState.ppmCorrectionHz
+    });
+    setStabilityProfile(next);
+  }, [
+    frequencyModelState.driftConfidence,
+    frequencyModelState.driftEstimateHzPerSec,
+    frequencyModelState.phaseErrorRms,
+    frequencyModelState.ppmCorrectionHz,
+    isRunning,
+    sourceType,
+    stabilityModeEnabled
+  ]);
+
+  useEffect(() => {
     const vfos = [
       { id: 'main', offsetHz: 0 },
       ...(secondaryVfoEnabled ? [{ id: 'aux', offsetHz: secondaryVfoOffsetHz }] : [])
@@ -1248,6 +1310,7 @@ export default function App() {
         setFrequencyModelState(defaultFrequencyModelState());
         setAudioPllState(defaultAudioPllState());
         setVfoState(defaultVfoRuntimeState());
+        setWfmStereoState(defaultWfmStereoState());
         streamSessionStartedAtRef.current = null;
     } else {
         // START
@@ -1467,6 +1530,19 @@ export default function App() {
           fineTuneHz: fineFreq,
           fftSize: fftDataRef.current.length,
           sampleRateHzHint: streamSampleRateHz,
+          frequencyModel: {
+            ppmCorrectionHz: frequencyModelState.ppmCorrectionHz,
+            afcCorrectionHz: frequencyModelState.afcCorrectionHz,
+            totalCorrectionHz: frequencyModelState.totalCorrectionHz,
+            driftEstimateHzPerSec: frequencyModelState.driftEstimateHzPerSec,
+            driftConfidence: frequencyModelState.driftConfidence,
+            phaseErrorRms: frequencyModelState.phaseErrorRms
+          },
+          audioPll: {
+            ratio: audioPllState.ratio,
+            targetQueueMs: audioPllState.targetQueueMs,
+            queueErrorMs: audioPllState.queueErrorMs
+          },
           zoomLevel,
           waterfallPalette,
           waterfallAutoScale,
@@ -1526,6 +1602,7 @@ export default function App() {
             frequencyModelState,
             audioPllState,
             vfoState,
+            stabilityProfile,
             demodQuality,
             runtimeTelemetry,
             dspTelemetry: runtimeTelemetry.dsp,
@@ -2025,6 +2102,10 @@ export default function App() {
                 <option value="WFM">WFM</option>
                 <option value="NFM">NFM</option>
                 <option value="AM">AM</option>
+              <option value="SAM">SAM</option>
+              <option value="USB">USB</option>
+              <option value="LSB">LSB</option>
+              <option value="CW">CW</option>
             </select>
         </div>
 
@@ -2533,6 +2614,14 @@ export default function App() {
             <strong>Deviation Estimate</strong>
             <span>{demodQuality.deviationEstimate.toFixed(3)}</span>
           </li>
+          {demodMode === 'WFM' && (
+            <li className={`health-item ${wfmStereoState.locked ? 'health-ok' : 'health-warn'}`}>
+              <strong>Stereo</strong>
+              <span>
+                {wfmStereoState.locked ? 'locked' : 'searching'} | Pilot {(wfmStereoState.pilotLevel * 100).toFixed(0)}% | Sep {wfmStereoState.separationDb.toFixed(1)} dB
+              </span>
+            </li>
+          )}
           {demodMode === 'NFM' && (
             <li className={`health-item ${toneDecodeState.active ? 'health-ok' : 'health-warn'}`}>
               <strong>Tone Decode</strong>
@@ -2540,7 +2629,7 @@ export default function App() {
                 {toneDecodeState.active && toneDecodeState.mode === 'ctcss' && toneDecodeState.ctcssHz !== null
                   ? `CTCSS ${toneDecodeState.ctcssHz.toFixed(1)} Hz (${Math.round(toneDecodeState.confidence * 100)}%)`
                   : toneDecodeState.active && toneDecodeState.mode === 'dcs' && toneDecodeState.dcsDetected
-                    ? `DCS present (${Math.round(toneDecodeState.confidence * 100)}%)`
+                    ? `DCS ${toneDecodeState.dcsCode === null ? 'present' : toneDecodeState.dcsCode.toString().padStart(3, '0')} (${Math.round(toneDecodeState.confidence * 100)}%)`
                   : 'not detected'}
               </span>
             </li>

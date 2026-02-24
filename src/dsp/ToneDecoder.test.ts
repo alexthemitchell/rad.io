@@ -54,8 +54,41 @@ describe('ToneDecoder', () => {
     expect(state.active).toBe(true);
     expect(state.mode).toBe('dcs');
     expect(state.dcsDetected).toBe(true);
+    expect(state.dcsCode).toBeNull();
     expect(state.ctcssHz).toBeNull();
     expect(state.confidence).toBeGreaterThan(0.1);
+  });
+
+  it('decodes a common DCS codeword from synthetic repeated pattern', () => {
+    const sampleRateHz = 50_000;
+    const symbolRateHz = 134.4;
+    const samplesPerSymbol = sampleRateHz / symbolRateHz;
+    const codeDigits = [1, 3, 1];
+    const bits: number[] = [];
+
+    for (const digit of codeDigits) {
+      bits.push((digit >> 2) & 1, (digit >> 1) & 1, digit & 1);
+    }
+
+    const repeatedBits: number[] = [];
+    while (repeatedBits.length < 18) {
+      repeatedBits.push(...bits);
+    }
+
+    const totalSamples = Math.floor(repeatedBits.length * samplesPerSymbol);
+    const samples = new Float32Array(totalSamples);
+    for (let i = 0; i < totalSamples; i += 1) {
+      const symbolIndex = Math.min(repeatedBits.length - 1, Math.floor(i / samplesPerSymbol));
+      samples[i] = repeatedBits[symbolIndex] === 1 ? 0.22 : -0.22;
+    }
+
+    const decoder = new ToneDecoder();
+    const state = decoder.decodeDcs(samples, sampleRateHz);
+
+    expect(state.active).toBe(true);
+    expect(state.mode).toBe('dcs');
+    expect(state.dcsDetected).toBe(true);
+    expect(state.dcsCode).toBe(131);
   });
 
   it('auto mode prefers dcs when dcs confidence exceeds ctcss', () => {

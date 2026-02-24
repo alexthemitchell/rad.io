@@ -62,4 +62,22 @@ describe('MultiVfoChannelizer', () => {
     expect(vfos[0].offsetHz).toBe(450_000);
     expect(vfos[1].offsetHz).toBe(-450_000);
   });
+
+  it('uses decimating channelizer path for 3+ VFOs', () => {
+    const sr = 2_000_000;
+    const channelizer = new MultiVfoChannelizer(sr);
+    channelizer.setVfos([
+      { id: 'a', offsetHz: 0 },
+      { id: 'b', offsetHz: 12_500 },
+      { id: 'c', offsetHz: -25_000 }
+    ]);
+
+    const input = createToneIq(4096, 40_000, sr);
+    const frames = channelizer.process(input);
+
+    expect(frames).toHaveLength(3);
+    expect(frames[0].iq.length).toBeLessThan(input.length);
+    expect(frames[0].iq.length).toBe(frames[1].iq.length);
+    expect(frames[0].groupDelaySamples).toBeGreaterThan(0);
+  });
 });

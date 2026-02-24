@@ -60,6 +60,54 @@ export const MODE_CONTROL_CONTRACTS: Record<DemodMode, ModeControlContract> = {
     defaultInterferencePreset: 'off',
     defaultOutputLevel: 0.6,
     defaultMaxOutputLevel: 0.82
+  },
+  SAM: {
+    lowCutMinHz: 40,
+    lowCutMaxHz: 1_500,
+    highCutMinHz: 2_400,
+    highCutMaxHz: 8_000,
+    defaultLowCutHz: 120,
+    defaultHighCutHz: 4_800,
+    defaultFilterProfile: 'sharp',
+    defaultInterferencePreset: 'off',
+    defaultOutputLevel: 0.5,
+    defaultMaxOutputLevel: 0.78
+  },
+  USB: {
+    lowCutMinHz: 80,
+    lowCutMaxHz: 1_200,
+    highCutMinHz: 1_800,
+    highCutMaxHz: 4_000,
+    defaultLowCutHz: 250,
+    defaultHighCutHz: 2_900,
+    defaultFilterProfile: 'low-latency',
+    defaultInterferencePreset: 'off',
+    defaultOutputLevel: 0.55,
+    defaultMaxOutputLevel: 0.8
+  },
+  LSB: {
+    lowCutMinHz: 80,
+    lowCutMaxHz: 1_200,
+    highCutMinHz: 1_800,
+    highCutMaxHz: 4_000,
+    defaultLowCutHz: 250,
+    defaultHighCutHz: 2_900,
+    defaultFilterProfile: 'low-latency',
+    defaultInterferencePreset: 'off',
+    defaultOutputLevel: 0.55,
+    defaultMaxOutputLevel: 0.8
+  },
+  CW: {
+    lowCutMinHz: 50,
+    lowCutMaxHz: 800,
+    highCutMinHz: 400,
+    highCutMaxHz: 2_400,
+    defaultLowCutHz: 180,
+    defaultHighCutHz: 900,
+    defaultFilterProfile: 'sharp',
+    defaultInterferencePreset: 'off',
+    defaultOutputLevel: 0.5,
+    defaultMaxOutputLevel: 0.78
   }
 };
 
@@ -127,6 +175,14 @@ export const lockStateLabel = (mode: DemodMode, state: LockState): string => {
 
   if (mode === 'AM') {
     return state === 'locked' ? 'carrier lock' : state === 'degraded' ? 'carrier weak' : 'carrier searching';
+  }
+
+  if (mode === 'SAM') {
+    return state === 'locked' ? 'sync carrier lock' : state === 'degraded' ? 'sync carrier weak' : 'sync carrier searching';
+  }
+
+  if (mode === 'USB' || mode === 'LSB' || mode === 'CW') {
+    return state === 'locked' ? 'bfo lock' : state === 'degraded' ? 'bfo weak' : 'bfo searching';
   }
 
   return state === 'locked' ? 'discriminator locked' : state === 'degraded' ? 'discriminator degraded' : 'discriminator searching';

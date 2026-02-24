@@ -251,12 +251,12 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **Pipeline Architecture**: define the chain: `Source → DDC/Filter → Demod → Sink`.
 - [x] **NCO / Mixer (DDC)**: frequency shift for tuning and channel extraction.
-- [ ] **Multi-VFO Channel Extraction Layer**: phase-coherent per-VFO extraction (1–2 VFOs) and PFB channelizer mode (3+ VFOs). (Partial: deterministic 1–2 VFO extraction via oscillator bank is implemented in `src/dsp/MultiVfoChannelizer.ts`/`src/dsp/worker.ts`; true 3+ VFO PFB channelizer mode remains pending.)
+- [x] **Multi-VFO Channel Extraction Layer**: phase-coherent per-VFO extraction (1–2 VFOs) and PFB channelizer mode (3+ VFOs). (`src/dsp/MultiVfoChannelizer.ts`, `src/dsp/MultiVfoChannelizer.test.ts`, `src/dsp/worker.ts`, `src/App.tsx`)
 - [x] **Channelizer/Decimator Correctness Contract**: define and test phase coherence + group delay guarantees (esp. PFB/multi-VFO) with regression fixtures. (`src/dsp/MultiVfoChannelizer.test.ts`, `src/dsp/Downsampler.test.ts`)
 - [x] **Frequency / Clock Error Correction (PPM)**: apply PPM correction in the DSP path (not just UI), with stable behavior across retunes. (`src/dsp/ppmCorrection.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/ppmCorrection.test.ts`)
 - [x] **Drift Estimation + Confidence**: estimate LO/sample-clock drift over time from pilots/beacons, surface confidence, and feed it into calibration/AFC decisions. (`src/dsp/FrequencyTracker.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/FrequencyTracker.test.ts`)
-- [ ] **Frequency Accuracy Model (Unified)**: define a single model for PPM + AFC/PLL lock state + drift estimate and propagate it through UI, recording metadata, and replay so frequency correctness is explainable and reproducible. (Partial: model is live in worker/UI/runtime diagnostics via `src/dsp/FrequencyTracker.ts`, `src/dsp/AudioPllController.ts`, `src/dsp/worker.ts`, and `src/App.tsx`; replay propagation semantics remain pending.)
-- [ ] **Stability/Phase-Noise Characterization Mode (Guardrailed)**: quantify short-term stability using pilots/beacons (phase error metrics) and persist results into device profiles. (Partial: guardrailed mode + live phase/drift metrics are implemented; persistence into device profiles remains pending.)
+- [x] **Frequency Accuracy Model (Unified)**: define a single model for PPM + AFC/PLL lock state + drift estimate and propagate it through UI, recording metadata, and replay so frequency correctness is explainable and reproducible. (`src/dsp/FrequencyTracker.ts`, `src/dsp/AudioPllController.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/analyzerArtifactExport.ts`)
+- [x] **Stability/Phase-Noise Characterization Mode (Guardrailed)**: quantify short-term stability using pilots/beacons (phase error metrics) and persist results into device profiles. (`src/dsp/FrequencyTracker.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/devices/deviceProfileStore.ts`)
 - [x] **IQ Correction**: baseline per-frame DC removal + I/Q gain-balance correction stage integrated into worker DDC path. (`src/dsp/IqCorrection.ts`, `src/dsp/worker.ts`, `src/dsp/IqCorrection.test.ts`)
 - [x] **RF Impurity Mitigation UX Hooks**: expose measurable controls for LO/IF shift (fine tune), configurable notch frequency/Q, and IQ correction enablement with safe defaults and runtime diagnostics context. (`src/App.tsx`, `src/dsp/controlGuardrails.ts`, `src/dsp/IqCorrection.ts`, `src/dsp/worker.ts`)
 - [x] **Minimal Interference Mitigation Presets (Early)**: deterministic “DC spike reduction”, “heterodyne notch”, and “hum notch” presets with measurable before/after indicators. (`src/dsp/AudioPostProcessor.ts`, `src/dsp/AudioPostProcessor.test.ts`, `src/App.tsx`)
@@ -284,13 +284,13 @@ These are gates, not features: they define what good means and prevent late-stag
 ### 3.3 “Must-Have” Demodulators (Product Loop)
 
 - [x] **WFM Demodulator**: mono + de-emphasis (50/75 µs).
-- [ ] **WFM Stereo + RDS (Early)**: pilot/stereo decode + baseline RDS/RBDS decode and UI.
+- [x] **WFM Stereo + RDS (Early)**: pilot/stereo decode + baseline RDS/RBDS decode and UI. (`src/dsp/WfmStereoDecoder.ts`, `src/dsp/WfmStereoDecoder.test.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/RdsDecoder.ts`)
 - [x] **AM Demodulator**: broadcast/airband baseline.
-- [ ] **AM Sync (SAM)**: synchronous AM demod for selective fading and improved intelligibility (Core Pro Feature).
+- [x] **AM Sync (SAM)**: synchronous AM demod for selective fading and improved intelligibility (Core Pro Feature). (`src/dsp/SamDemodulator.ts`, `src/dsp/SamDemodulator.test.ts`, `src/dsp/worker.ts`, `src/App.tsx`)
 - [x] **NFM Demodulator**: voice channels baseline.
 - [x] **NFM De-Emphasis + Audio Shaping Presets (Deterministic)**: optional time-constant presets (`75us`, `50us`, `off/flat`) plus voice/discriminator path selection for deterministic NFM workflows. (`src/dsp/NfmDemodulator.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/NfmDemodulator.test.ts`)
-- [ ] **SSB Demodulator**: USB/LSB with BFO.
-- [ ] **CW Demodulator**: BFO + narrow filter defaults and clean tuning UX (center/offset, optional pitch).
+- [x] **SSB Demodulator**: USB/LSB with BFO. (`src/dsp/SsbDemodulator.ts`, `src/dsp/SsbDemodulator.test.ts`, `src/dsp/worker.ts`, `src/App.tsx`)
+- [x] **CW Demodulator**: BFO + narrow filter defaults and clean tuning UX (center/offset, optional pitch). (`src/dsp/CwDemodulator.ts`, `src/dsp/CwDemodulator.test.ts`, `src/dsp/worker.ts`, `src/App.tsx`)
 - [x] **Basic AFSK/FSK Audio Path (No Decode Yet)**: stable NFM discriminator audio path exposed in UI (`Voice` vs `Discriminator`) for external decoder workflows and future plugin decode stages. (`src/dsp/NfmDemodulator.ts`, `src/dsp/worker.ts`, `src/App.tsx`)
 - [x] **Verification**: use Mock/File sources to validate audio output quality. (`src/dsp/demodGoldenFixtures.test.ts`, `src/dsp/endToEndAccuracy.test.ts`)
 - [x] **Demod Quality Metrics**: mode-specific lock/quality indicators (e.g., FM deviation estimate, WFM pilot lock, AM carrier lock) surfaced to telemetry/UI. (`src/dsp/DemodMetrics.ts`, `src/dsp/DemodMetrics.test.ts`, `src/App.tsx`)
@@ -298,7 +298,7 @@ These are gates, not features: they define what good means and prevent late-stag
 ### 3.4 Squelch (After Basic Audio Works)
 
 - [x] **Noise Squelch**: SNR-based squelch with hysteresis/gated audio path and operator threshold control. (`src/dsp/NoiseSquelch.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/NoiseSquelch.test.ts`)
-- [ ] **CTCSS/DCS (Optional)**: sub-tone detection. (Partial: deterministic CTCSS + baseline DCS presence detection with confidence and operator-selectable decode mode (`OFF`/`CTCSS`/`DCS`/`AUTO`) surfaced in NFM workflow via `src/dsp/ToneDecoder.ts`, `src/dsp/worker.ts`, and `src/App.tsx`; full DCS codeword decode still pending.)
+- [x] **CTCSS/DCS (Optional)**: sub-tone detection. (Deterministic CTCSS + DCS presence and baseline DCS codeword decode with confidence and operator-selectable mode (`OFF`/`CTCSS`/`DCS`/`AUTO`) via `src/dsp/ToneDecoder.ts`, `src/dsp/ToneDecoder.test.ts`, `src/dsp/worker.ts`, and `src/App.tsx`.)
 - [x] **Scanner-Grade Squelch Behavior**: hang time, tail suppression, and dwell semantics for scanning workflows. (Hang/tail state machine and operator controls in `src/dsp/NoiseSquelch.ts`; scan dwell semantics integrated into FM scan workflow with operator-configurable dwell control in `src/App.tsx`.)
 
 ## Phase 4: Visualization & Interaction MVP

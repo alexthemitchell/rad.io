@@ -3,7 +3,7 @@ import type { DemodQualityMetrics } from '../dsp/DemodMetrics';
 import type { SDRSampleClockTruthMode } from '../devices/streamFrame';
 import type { WorkerTransportMode } from '../dsp/WorkerBridge';
 
-export type DemodMode = 'WFM' | 'AM' | 'NFM';
+export type DemodMode = 'WFM' | 'AM' | 'NFM' | 'SAM' | 'USB' | 'LSB' | 'CW';
 
 export const RUNTIME_TELEMETRY_SCHEMA_VERSION = '1.1.0' as const;
 export const DSP_AMPLITUDE_CONTRACT_VERSION = '1.0.0' as const;

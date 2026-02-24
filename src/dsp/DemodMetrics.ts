@@ -1,4 +1,4 @@
-export type DemodMode = 'WFM' | 'AM' | 'NFM';
+export type DemodMode = 'WFM' | 'AM' | 'NFM' | 'SAM' | 'USB' | 'LSB' | 'CW';
 export type LockState = 'searching' | 'locked' | 'degraded';
 
 export type DemodQualityMetrics = {
@@ -63,7 +63,7 @@ export const evaluateDemodQuality = (mode: DemodMode, audio: Float32Array): Demo
     };
   }
 
-  if (mode === 'AM') {
+  if (mode === 'AM' || mode === 'SAM') {
     const carrierLevel = clamp01((Math.abs(avg) * 4) + 0.05);
     const quality = clamp01((carrierLevel * 0.65) + clamp01((snrEstimateDb + 5) / 20) * 0.35);
     const lockState: LockState = carrierLevel > 0.55 ? 'locked' : carrierLevel > 0.28 ? 'degraded' : 'searching';
@@ -79,7 +79,8 @@ export const evaluateDemodQuality = (mode: DemodMode, audio: Float32Array): Demo
   }
 
   const deviationEstimate = energy;
-  const quality = clamp01((snrEstimateDb + 2) / 16);
+  const ssbBoost = mode === 'USB' || mode === 'LSB' || mode === 'CW' ? 2 : 0;
+  const quality = clamp01((snrEstimateDb + 2 + ssbBoost) / 16);
   const lockState: LockState = quality > 0.66 ? 'locked' : quality > 0.36 ? 'degraded' : 'searching';
 
   return {
