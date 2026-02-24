@@ -1,4 +1,4 @@
-import { ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
+import { DeviceDebugSnapshot, ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
 import type { SDRDiscontinuityCause, SDRDiscontinuityEvent } from './streamFrame';
 
 // HackRF One Constants
@@ -40,6 +40,26 @@ export class HackRFDevice implements ISDRDevice {
     private timestampNs = 0;
     private pendingDiscontinuity: SDRDiscontinuityCause | null = null;
     private lastTickWallClockMs = 0;
+    private activeAlternateSetting = 0;
+    private readonly usbTrace: NonNullable<DeviceDebugSnapshot['recentTrace']> = [];
+    private debugCounters: NonNullable<DeviceDebugSnapshot['counters']> = {
+        controlInCount: 0,
+        controlOutCount: 0,
+        bulkInCount: 0,
+        bulkInErrorCount: 0,
+        shortPacketCount: 0,
+        retryCount: 0,
+        stallRecoveryCount: 0,
+        lastTransferBytes: 0,
+        lastTransferStatus: 'n/a'
+    };
+
+    private pushUsbTrace(event: NonNullable<DeviceDebugSnapshot['recentTrace']>[number]): void {
+        this.usbTrace.push(event);
+        if (this.usbTrace.length > 200) {
+            this.usbTrace.shift();
+        }
+    }
 
     private markDiscontinuity(cause: SDRDiscontinuityCause): void {
         if (this.pendingDiscontinuity === 'restart') {
@@ -86,16 +106,38 @@ export class HackRFDevice implements ISDRDevice {
             throw new Error('Device not open');
         }
 
-        const result = await this.withTimeout(this.device.controlTransferOut({
-            requestType: 'vendor',
-            recipient: 'device',
-            request,
-            value,
-            index
-        }, data), `controlTransferOut(device) req=${request}`);
+        const startedAt = performance.now();
+        try {
+            const result = await this.withTimeout(this.device.controlTransferOut({
+                requestType: 'vendor',
+                recipient: 'device',
+                request,
+                value,
+                index
+            }, data), `controlTransferOut(device) req=${request}`);
 
-        if (result.status !== 'ok') {
-            throw new Error(`controlTransferOut(device) status=${result.status} req=${request}`);
+            this.debugCounters.controlOutCount += 1;
+            this.pushUsbTrace({
+                ts: new Date().toISOString(),
+                event: 'control-out',
+                status: result.status,
+                request,
+                bytes: data ? (data as ArrayBufferLike).byteLength ?? 0 : 0,
+                durationMs: performance.now() - startedAt
+            });
+
+            if (result.status !== 'ok') {
+                throw new Error(`controlTransferOut(device) status=${result.status} req=${request}`);
+            }
+        } catch (error) {
+            this.pushUsbTrace({
+                ts: new Date().toISOString(),
+                event: 'control-out-error',
+                request,
+                durationMs: performance.now() - startedAt,
+                detail: error instanceof Error ? error.message : String(error)
+            });
+            throw error;
         }
     }
 
@@ -109,19 +151,41 @@ export class HackRFDevice implements ISDRDevice {
             throw new Error('Device not open');
         }
 
-        const res = await this.withTimeout(this.device.controlTransferIn({
-            requestType: 'vendor',
-            recipient: 'device',
-            request,
-            value,
-            index
-        }, length), `controlTransferIn(device) req=${request}`);
+        const startedAt = performance.now();
+        try {
+            const res = await this.withTimeout(this.device.controlTransferIn({
+                requestType: 'vendor',
+                recipient: 'device',
+                request,
+                value,
+                index
+            }, length), `controlTransferIn(device) req=${request}`);
 
-        if (res.status !== 'ok') {
-            throw new Error(`controlTransferIn(device) status=${res.status} req=${request}`);
+            this.debugCounters.controlInCount += 1;
+            this.pushUsbTrace({
+                ts: new Date().toISOString(),
+                event: 'control-in',
+                status: res.status,
+                request,
+                bytes: res.data?.byteLength ?? 0,
+                durationMs: performance.now() - startedAt
+            });
+
+            if (res.status !== 'ok') {
+                throw new Error(`controlTransferIn(device) status=${res.status} req=${request}`);
+            }
+
+            return res.data ?? null;
+        } catch (error) {
+            this.pushUsbTrace({
+                ts: new Date().toISOString(),
+                event: 'control-in-error',
+                request,
+                durationMs: performance.now() - startedAt,
+                detail: error instanceof Error ? error.message : String(error)
+            });
+            throw error;
         }
-
-        return res.data ?? null;
     }
 
     private async sleep(ms: number): Promise<void> {
@@ -161,8 +225,20 @@ export class HackRFDevice implements ISDRDevice {
 
         try {
             await this.device.clearHalt('in', this.inEndpointNumber);
+            this.debugCounters.stallRecoveryCount += 1;
+            this.pushUsbTrace({
+                ts: new Date().toISOString(),
+                event: 'clear-halt',
+                status: 'ok',
+                detail: `in endpoint ${this.inEndpointNumber}`
+            });
         } catch (clearHaltError) {
             console.debug('clearHalt(in) failed during streaming recovery:', clearHaltError);
+            this.pushUsbTrace({
+                ts: new Date().toISOString(),
+                event: 'clear-halt-error',
+                detail: clearHaltError instanceof Error ? clearHaltError.message : String(clearHaltError)
+            });
         }
     }
 
@@ -214,7 +290,7 @@ export class HackRFDevice implements ISDRDevice {
 
         await device.claimInterface(this.interfaceIndex);
 
-        const currentAlt = config.interfaces.find((i) => i.interfaceNumber === this.interfaceIndex)?.alternate;
+        const currentAlt = config.interfaces.find((i) => i.interfaceNumber === this.interfaceIndex)?.alternate?.alternateSetting;
         const targetAlt = config.interfaces
             .find((i) => i.interfaceNumber === this.interfaceIndex)
             ?.alternates.find((a) =>
@@ -227,6 +303,9 @@ export class HackRFDevice implements ISDRDevice {
             targetAlt !== currentAlt
         ) {
             await device.selectAlternateInterface(this.interfaceIndex, targetAlt);
+            this.activeAlternateSetting = targetAlt;
+        } else {
+            this.activeAlternateSetting = currentAlt ?? 0;
         }
 
         console.log(`Claimed interface=${this.interfaceIndex} inEp=${this.inEndpointNumber}`);
@@ -435,12 +514,33 @@ export class HackRFDevice implements ISDRDevice {
             try {
                 // console.log("Requesting transfer...");
                 const result = await this.device.transferIn(this.inEndpointNumber, TRANSFER_SIZE);
+                this.debugCounters.bulkInCount += 1;
                 if (result.status !== 'ok') {
+                    this.debugCounters.bulkInErrorCount += 1;
+                    this.debugCounters.lastTransferStatus = result.status;
+                    this.pushUsbTrace({
+                        ts: new Date().toISOString(),
+                        event: 'bulk-in-error',
+                        status: result.status,
+                        bytes: 0,
+                        detail: `endpoint=${this.inEndpointNumber}`
+                    });
                     await this.recoverStreamingEndpoint();
                     throw new Error(`USB transfer status=${result.status}`);
                 }
 
                 if (result.data && result.data.byteLength > 0) {
+                    this.debugCounters.lastTransferBytes = result.data.byteLength;
+                    this.debugCounters.lastTransferStatus = result.status;
+                    if (result.data.byteLength < TRANSFER_SIZE) {
+                        this.debugCounters.shortPacketCount += 1;
+                    }
+                    this.pushUsbTrace({
+                        ts: new Date().toISOString(),
+                        event: 'bulk-in',
+                        status: result.status,
+                        bytes: result.data.byteLength
+                    });
                     consecutiveFailures = 0;
                     const nowMs = Date.now();
                     const transferSampleCount = Math.floor(result.data.byteLength / 2);
@@ -489,6 +589,7 @@ export class HackRFDevice implements ISDRDevice {
                     this.sampleIndex += transferSampleCount;
                     this.timestampNs += Math.floor((transferSampleCount * 1_000_000_000) / this.sampleRate);
                 } else {
+                    this.debugCounters.shortPacketCount += 1;
                     throw new Error('USB transfer returned empty payload');
                 }
             } catch (e) {
@@ -499,6 +600,7 @@ export class HackRFDevice implements ISDRDevice {
                 console.error("USB Transfer Error:", e);
                 this.markDiscontinuity('overflow');
                 consecutiveFailures += 1;
+                this.debugCounters.retryCount += 1;
 
                 if (consecutiveFailures >= HackRFDevice.STREAM_MAX_CONSECUTIVE_FAILURES) {
                     this.isStreaming = false;
@@ -539,5 +641,30 @@ export class HackRFDevice implements ISDRDevice {
                 console.debug('Failed to leave RX mode cleanly:', modeStopError);
             }
         }
+    }
+
+    getDebugSnapshot(): DeviceDebugSnapshot {
+        return {
+            driver: 'HackRFDevice',
+            capturedAt: new Date().toISOString(),
+            descriptor: {
+                vendorId: this.device?.vendorId ?? HACKRF_USB_VID,
+                productId: this.device?.productId ?? HACKRF_USB_PID,
+                productName: this.device?.productName ?? undefined,
+                manufacturerName: this.device?.manufacturerName ?? undefined,
+                serialNumber: this.device?.serialNumber ?? undefined,
+                configurationValue: this.device?.configuration?.configurationValue,
+                interfaceIndex: this.interfaceIndex,
+                alternateSetting: this.activeAlternateSetting,
+                inEndpointNumber: this.inEndpointNumber
+            },
+            streamingProfile: {
+                transferSizeBytes: 16384,
+                retryDelayMs: HackRFDevice.STREAM_RETRY_DELAY_MS,
+                maxConsecutiveFailures: HackRFDevice.STREAM_MAX_CONSECUTIVE_FAILURES
+            },
+            counters: { ...this.debugCounters },
+            recentTrace: [...this.usbTrace]
+        };
     }
 }

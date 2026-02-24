@@ -182,9 +182,9 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 1.5 WebUSB Debug Harness (Supportability)
 
-- [ ] **USB Trace Capture (App-Level)**: capture control/bulk timing, stalls, short packets, and retry events into a shareable diagnostics artifact.
-- [ ] **USB Descriptor/Endpoint Inspector (Read-Only)**: show chosen configuration/interface/alt-setting/endpoints with warnings for unexpected firmware/board variants.
-- [ ] **USB Streaming Profile Capture**: persist the active transfer sizing/scheduling policy and controller hints into diagnostics bundles for reproducible support.
+- [x] **USB Trace Capture (App-Level)**: capture control/bulk timing, stalls, short packets, and retry events into a shareable diagnostics artifact. (`src/devices/HackRFDevice.ts`, `src/App.tsx` diagnostics export)
+- [x] **USB Descriptor/Endpoint Inspector (Read-Only)**: show chosen configuration/interface/alt-setting/endpoints with warnings for unexpected firmware/board variants. (`src/devices/HackRFDevice.ts`, `src/App.tsx` runtime metrics)
+- [x] **USB Streaming Profile Capture**: persist the active transfer sizing/scheduling policy and controller hints into diagnostics bundles for reproducible support. (`src/devices/HackRFDevice.ts`, `src/App.tsx` diagnostics export)
 - [ ] **USB Streaming Profile Auto-Tuner (Measured)**: automatically try a bounded set of transfer sizes/counts and recommend a stable profile based on drop rate/jitter/CPU, storing results per controller/hub.
 - [ ] **USB Trace Replay (Sim)**: replay captured USB-level behavior into simulated runs to reproduce WebUSB flakiness deterministically.
 - [ ] **Repro Bundle Completeness**: export a single artifact including settings snapshot, device identity/caps, app/version, discontinuity timeline, and selected USB trace slices for deterministic replay.

@@ -13,7 +13,7 @@ import { HackRFDevice } from './devices/HackRFDevice';
 import { MockDevice } from './devices/MockDevice';
 import { RtlSdrDevice } from './devices/RtlSdrDevice';
 import { FileDevice } from './devices/FileDevice';
-import { ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
+import { DeviceDebugSnapshot, ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
 import { getStabilityProfile, profileKeyFor, upsertStabilityProfile, type StabilityProfile } from './devices/deviceProfileStore';
 import { normalizeDeviceError } from './devices/errors';
 import type { SDRStreamFrame } from './devices/streamFrame';
@@ -497,6 +497,7 @@ export default function App() {
     const [secondaryVfoEnabled, setSecondaryVfoEnabled] = useState(false);
     const [secondaryVfoOffsetHz, setSecondaryVfoOffsetHz] = useState(12_500);
     const [stabilityProfile, setStabilityProfile] = useState<StabilityProfile | null>(null);
+    const [deviceDebugSnapshot, setDeviceDebugSnapshot] = useState<DeviceDebugSnapshot | null>(null);
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -777,6 +778,11 @@ export default function App() {
           setUsbIqMeanAbs(usbIqMeanAbsRef.current);
           setUsbTransferBytes(usbTransferBytesRef.current);
           setUsbTransferCount(usbTransferCountRef.current);
+
+          const debugSnapshot = deviceRef.current?.getDebugSnapshot?.();
+          if (debugSnapshot) {
+            setDeviceDebugSnapshot(debugSnapshot);
+          }
         }, 500);
 
         return () => window.clearInterval(intervalId);
@@ -1361,6 +1367,7 @@ export default function App() {
         setAudioPllState(defaultAudioPllState());
         setVfoState(defaultVfoRuntimeState());
         setWfmStereoState(defaultWfmStereoState());
+        setDeviceDebugSnapshot(null);
         streamSessionStartedAtRef.current = null;
     } else {
         // START
@@ -1389,6 +1396,7 @@ export default function App() {
 
             await dev.open();
             deviceRef.current = dev;
+            setDeviceDebugSnapshot(dev.getDebugSnapshot?.() ?? null);
             setConnectionState('connected');
             setStatusMessage(`Connected to ${dev.name}. Configuring stream...`);
             pushDiagnosticEvent(`${dev.name} opened.`);
@@ -1527,6 +1535,8 @@ export default function App() {
                   deviceRef.current = null;
                 }
 
+                setDeviceDebugSnapshot(null);
+
                 setConnectionState('error');
               });
     
@@ -1650,6 +1660,7 @@ export default function App() {
               sampleRateHz: streamSampleRateHz,
               supportsWebUsb: sourceType === 'HACKRF' || sourceType === 'RTLSDR'
             },
+            usbDebug: deviceDebugSnapshot,
             frequency,
             demodMode,
             fineFreq,
@@ -1742,6 +1753,39 @@ export default function App() {
         URL.revokeObjectURL(url);
         setStatusMessage('Diagnostics bundle exported.');
         pushDiagnosticEvent('Diagnostics bundle exported.');
+    };
+
+    const forgetUsbDevices = async () => {
+      if (typeof navigator === 'undefined' || !('usb' in navigator)) {
+        setStatusMessage('WebUSB is unavailable in this browser context.');
+        return;
+      }
+
+      try {
+        const pairedDevices = await navigator.usb.getDevices();
+
+        if (pairedDevices.length === 0) {
+          setStatusMessage('No paired WebUSB devices to forget.');
+          return;
+        }
+
+        let forgottenCount = 0;
+        for (const usbDevice of pairedDevices) {
+          try {
+            await usbDevice.forget();
+            forgottenCount += 1;
+          } catch (forgetError) {
+            pushDiagnosticEvent(`USB forget failed for ${usbDevice.productName ?? 'unknown device'}: ${forgetError instanceof Error ? forgetError.message : String(forgetError)}`);
+          }
+        }
+
+        void refreshPermissionState();
+        setStatusMessage(`Forgot ${forgottenCount} paired WebUSB device${forgottenCount === 1 ? '' : 's'}. Re-pair on next Start.`);
+        pushDiagnosticEvent(`Forgot ${forgottenCount} paired WebUSB device${forgottenCount === 1 ? '' : 's'}.`);
+      } catch (error) {
+        setStatusMessage('Unable to forget paired WebUSB devices.');
+        pushDiagnosticEvent(`USB forget action failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     };
 
   const handleGainChange = (name: string, val: number) => {
@@ -2078,6 +2122,17 @@ export default function App() {
 
         <button onClick={exportDiagnostics} className="action-btn btn-secondary">
           Export Diagnostics
+        </button>
+
+        <button
+          onClick={() => {
+            void forgetUsbDevices();
+          }}
+          className="action-btn btn-secondary"
+          disabled={isRunning || !runtimePrerequisites.webUsbAvailable}
+          title="Forget paired WebUSB devices and require re-pair on next connect"
+        >
+          Forget USB Pairings
         </button>
 
         {(audioState === 'awaiting-user-gesture' || audioState === 'suspended') && (
@@ -2684,6 +2739,30 @@ export default function App() {
             <strong>Active VFOs</strong>
             <span>{vfoState.activeVfoCount}</span>
           </li>
+          {deviceDebugSnapshot?.descriptor && (
+            <>
+              <li className="health-item health-ok">
+                <strong>USB Interface</strong>
+                <span>
+                  if {deviceDebugSnapshot.descriptor.interfaceIndex ?? 'n/a'} alt {deviceDebugSnapshot.descriptor.alternateSetting ?? 'n/a'} ep {deviceDebugSnapshot.descriptor.inEndpointNumber ?? 'n/a'}
+                </span>
+              </li>
+              <li className="health-item health-ok">
+                <strong>USB Profile</strong>
+                <span>
+                  {deviceDebugSnapshot.streamingProfile
+                    ? `${deviceDebugSnapshot.streamingProfile.transferSizeBytes} B | retry ${deviceDebugSnapshot.streamingProfile.retryDelayMs} ms | max fails ${deviceDebugSnapshot.streamingProfile.maxConsecutiveFailures}`
+                    : 'n/a'}
+                </span>
+              </li>
+              <li className={`health-item ${(deviceDebugSnapshot.counters?.bulkInErrorCount ?? 0) > 0 ? 'health-warn' : 'health-ok'}`}>
+                <strong>USB Errors</strong>
+                <span>
+                  bulk err {deviceDebugSnapshot.counters?.bulkInErrorCount ?? 0} | retries {deviceDebugSnapshot.counters?.retryCount ?? 0} | short {deviceDebugSnapshot.counters?.shortPacketCount ?? 0}
+                </span>
+              </li>
+            </>
+          )}
         </ul>
       </section>
 
