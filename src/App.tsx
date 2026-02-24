@@ -351,6 +351,7 @@ export default function App() {
     const [scanProgress, setScanProgress] = useState(0);
     const [scanStepLabel, setScanStepLabel] = useState('Idle');
     const [scanResults, setScanResults] = useState<FmScanResult[]>([]);
+    const [scanDwellMs, setScanDwellMs] = useState(900);
     const [permissionState, setPermissionState] = useState<RuntimePermissionState>(unknownPermissionState());
     const [noiseSquelchState, setNoiseSquelchState] = useState<NoiseSquelchState>(defaultNoiseSquelchState);
     const [toneDecodeState, setToneDecodeState] = useState<ToneDecodeState>(defaultToneDecodeState);
@@ -837,6 +838,20 @@ export default function App() {
     window.setTimeout(resolve, ms);
   });
 
+  const waitForOrAbort = async (ms: number): Promise<boolean> => {
+    const start = performance.now();
+
+    while (!scanAbortRef.current) {
+      const elapsed = performance.now() - start;
+      if (elapsed >= ms) {
+        return true;
+      }
+      await waitFor(Math.min(80, ms - elapsed));
+    }
+
+    return false;
+  };
+
   const sampleFmMeasurement = async () => {
     let best = evaluateFmScanCandidate(fftDataRef.current, rdsTelemetryRef.current);
 
@@ -925,6 +940,14 @@ export default function App() {
             callsignCandidate: rds.callsignCandidate,
             piCode: rds.piCode
           });
+
+          if (scanDwellMs > 0) {
+            setScanStepLabel(`Dwelling ${(freqHz / 1_000_000).toFixed(1)} MHz`);
+            const completed = await waitForOrAbort(scanDwellMs);
+            if (!completed) {
+              break;
+            }
+          }
         }
 
         setScanProgress((i + 1) / frequencies.length);
@@ -1671,6 +1694,19 @@ export default function App() {
           <div className="control-note">
             {scanStepLabel} ({Math.round(scanProgress * 100)}%)
           </div>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Scan Dwell ({scanDwellMs} ms)</label>
+          <input
+            type="range"
+            min="0"
+            max="3000"
+            step="100"
+            value={scanDwellMs}
+            onChange={(e) => setScanDwellMs(parseInt(e.target.value, 10))}
+            className="control-range"
+          />
         </div>
 
         <div className="control-group">

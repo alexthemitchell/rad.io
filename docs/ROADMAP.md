@@ -299,7 +299,7 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **Noise Squelch**: SNR-based squelch with hysteresis/gated audio path and operator threshold control. (`src/dsp/NoiseSquelch.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/NoiseSquelch.test.ts`)
 - [ ] **CTCSS/DCS (Optional)**: sub-tone detection. (Partial: deterministic CTCSS + baseline DCS presence detection with confidence and operator-selectable decode mode (`OFF`/`CTCSS`/`DCS`/`AUTO`) surfaced in NFM workflow via `src/dsp/ToneDecoder.ts`, `src/dsp/worker.ts`, and `src/App.tsx`; full DCS codeword decode still pending.)
-- [ ] **Scanner-Grade Squelch Behavior**: hang time, tail suppression, and dwell semantics for scanning workflows. (Partial: hang/tail state machine and operator controls implemented in `src/dsp/NoiseSquelch.ts` + `src/App.tsx`; scan dwell semantics pending.)
+- [x] **Scanner-Grade Squelch Behavior**: hang time, tail suppression, and dwell semantics for scanning workflows. (Hang/tail state machine and operator controls in `src/dsp/NoiseSquelch.ts`; scan dwell semantics integrated into FM scan workflow with operator-configurable dwell control in `src/App.tsx`.)
 
 ## Phase 4: Visualization & Interaction MVP
 
