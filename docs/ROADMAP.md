@@ -257,7 +257,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Drift Estimation + Confidence**: estimate LO/sample-clock drift over time from pilots/beacons, surface confidence, and feed it into calibration/AFC decisions.
 - [ ] **Frequency Accuracy Model (Unified)**: define a single model for PPM + AFC/PLL lock state + drift estimate and propagate it through UI, recording metadata, and replay so frequency correctness is explainable and reproducible.
 - [ ] **Stability/Phase-Noise Characterization Mode (Guardrailed)**: quantify short-term stability using pilots/beacons (phase error metrics) and persist results into device profiles.
-- [ ] **IQ Correction**: DC removal + IQ imbalance correction.
+- [x] **IQ Correction**: baseline per-frame DC removal + I/Q gain-balance correction stage integrated into worker DDC path. (`src/dsp/IqCorrection.ts`, `src/dsp/worker.ts`, `src/dsp/IqCorrection.test.ts`)
 - [ ] **RF Impurity Mitigation UX Hooks**: expose measurable controls (LO offset/IF shift, DC notch width/strength, IQ calibration) with before/after metrics and safe defaults. (Partial: deterministic notch/low-cut preset controls landed; LO/IF shift + IQ calibration controls still pending.)
 - [x] **Minimal Interference Mitigation Presets (Early)**: deterministic “DC spike reduction”, “heterodyne notch”, and “hum notch” presets with measurable before/after indicators. (`src/dsp/AudioPostProcessor.ts`, `src/dsp/AudioPostProcessor.test.ts`, `src/App.tsx`)
 - [x] **Decimation**: efficient downsampling filters.

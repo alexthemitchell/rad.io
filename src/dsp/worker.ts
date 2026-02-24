@@ -12,6 +12,7 @@ import { NoiseSquelch, type NoiseSquelchState } from './NoiseSquelch';
 import { ToneDecoder, type ToneDecodeMode, type ToneDecodeState } from './ToneDecoder';
 import { computePpmCorrectionHz } from './ppmCorrection';
 import { AudioLeveler, type AudioLevelerState } from './AudioLeveler';
+import { IqCorrection } from './IqCorrection';
 import type { SDRStreamFrame } from '../devices/streamFrame';
 import {
     computeDemodQualityTelemetry,
@@ -58,6 +59,7 @@ let interferencePreset: InterferencePreset = 'off';
 const audioPostProcessor = new AudioPostProcessor(baseFilterConfig);
 const toneDecoder = new ToneDecoder();
 const audioLeveler = new AudioLeveler();
+const iqCorrection = new IqCorrection();
 const noiseSquelch = new NoiseSquelch({
     enabled: false,
     thresholdDb: 10,
@@ -237,6 +239,7 @@ function processUSBData(buffer: ArrayBuffer) {
     // 1. DDC / NCO (Frequency Shift)
     const shiftedIQ = new Float32Array(iqData.length);
     nco.mix(iqData, shiftedIQ);
+    iqCorrection.applyInPlace(shiftedIQ);
     const afterDdcMs = performance.now();
 
     // 2. FFT Processing
