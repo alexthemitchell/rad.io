@@ -6,6 +6,8 @@
 - Contract key: `TelemetrySchemaV1`
 - Top-level version field: `schemaVersion`
 
+Runtime alignment note (2026-02-23): app diagnostics currently export runtime telemetry envelope version `1.1.0` with additive `dsp.*` and `agc` sections while preserving v1 signal naming conventions.
+
 ## Purpose
 
 Defines local-only telemetry signals for budgets, diagnostics, and triage in browser SDR runtime.
@@ -57,6 +59,7 @@ export interface TelemetrySchemaV1 {
   environment: {
     crossOriginIsolated: boolean;
     sharedArrayBufferAvailable: boolean;
+    audioWorkletAvailable: boolean;
     transportMode: 'transferable' | 'shared-array-buffer';
     telemetryEnabled: boolean;
     degradedMode: boolean;
@@ -129,6 +132,22 @@ export interface TelemetryEventV1 {
 | `render.dropped_frame_total` | counter | count | on miss | Dropped or skipped UI frames |
 | `render.fps` | gauge | frames_per_sec | 1 Hz | Smoothed frame rate |
 | `clock.audio_drift_ppm` | gauge | ratio | 1 Hz | Relative drift proxy between audio and source clocks |
+| `dsp.stage_timing_ddc_ms` | gauge | ms | ~5 Hz | Time spent in DDC/NCO step in worker |
+| `dsp.stage_timing_fft_ms` | gauge | ms | ~5 Hz | Time spent generating FFT magnitude block |
+| `dsp.stage_timing_demod_ms` | gauge | ms | ~5 Hz | Time spent in demodulator stage |
+| `dsp.stage_timing_downsample_ms` | gauge | ms | ~5 Hz | Time spent in downsampler/audio post stage |
+| `dsp.stage_timing_total_ms` | gauge | ms | ~5 Hz | End-to-end worker chunk processing time |
+| `dsp.audio_rms_linear` | gauge | ratio | ~5 Hz | Demod audio RMS estimate in normalized linear units |
+| `dsp.audio_peak_linear` | gauge | ratio | ~5 Hz | Demod audio peak absolute value in normalized linear units |
+| `dsp.audio_dc_offset` | gauge | ratio | ~5 Hz | Mean audio offset used for integrity checks |
+| `dsp.audio_clipping_ratio` | gauge | ratio | ~5 Hz | Fraction of samples near full-scale clipping |
+| `dsp.iq_rms_linear` | gauge | ratio | ~5 Hz | Shifted IQ RMS magnitude |
+| `dsp.iq_peak_linear` | gauge | ratio | ~5 Hz | Shifted IQ peak magnitude |
+| `demod.quality_score` | gauge | ratio | ~5 Hz | Normalized demod quality score (`0..1`) |
+| `demod.signal_present` | gauge | ratio | ~5 Hz | 1 if signal is present, else 0 |
+| `demod.rds_synced` | gauge | ratio | ~5 Hz (WFM) | 1 if RDS decoder is synced, else 0 |
+| `demod.rds_block_error_rate` | gauge | ratio | ~5 Hz (WFM) | RDS block error proxy for WFM quality |
+| `agc.implemented` | gauge | ratio | on export | 0 when AGC contract is baseline placeholder |
 | `runtime.cross_origin_isolated` | gauge | ratio | on change | `1` if isolated, else `0` |
 | `runtime.telemetry_backpressure_total` | counter | count | on trim | Number of times telemetry had to discard high-rate samples |
 
@@ -251,3 +270,13 @@ export interface TelemetryEventV1 {
 - Reserve new top-level `capabilities` block for negotiated telemetry feature flags.
 - Introduce per-signal `revision` when semantics evolve without renaming.
 - If histogram model changes, keep v1 compatibility export for one minor cycle.
+
+## Implemented Runtime Subcontracts (App Export)
+
+Current diagnostics export includes the following versioned runtime subcontracts:
+
+- `runtimeTelemetry.telemetrySchemaVersion = "1.1.0"`
+- `runtimeTelemetry.dsp.pipelineTiming.contractVersion = "1.0.0"`
+- `runtimeTelemetry.dsp.amplitude.contractVersion = "1.0.0"`
+- `runtimeTelemetry.dsp.demodQuality.contractVersion = "1.0.0"`
+- `runtimeTelemetry.agc.contractVersion = "1.0.0"` (baseline placeholder)

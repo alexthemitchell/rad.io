@@ -7,6 +7,8 @@ Source requirement:
 Phase 0 scope: policy and placeholders for eventual telemetry implementation.
 No remote telemetry is assumed by default.
 
+Phase 3 update (2026-02-23): runtime diagnostics now emit a versioned local telemetry envelope with DSP amplitude metrics, demod quality metrics, per-stage timing, and an explicit AGC baseline placeholder.
+
 ## Contract Goals
 
 - Make event categories explicit.
@@ -26,6 +28,74 @@ No remote telemetry is assumed by default.
   - High-level actions needed for reproducibility (not full clickstream).
 - `diagnostic.error`
   - Structured error taxonomy references and redacted context.
+
+## Runtime Telemetry Envelope (Implemented)
+
+Implementation reference:
+
+- `src/telemetry/runtimeTelemetryContract.ts`
+- `src/dsp/worker.ts` (`DSP_TELEMETRY` worker event)
+- `src/App.tsx` (runtime state + diagnostics export)
+
+Top-level runtime telemetry fields now include:
+
+- `telemetrySchemaVersion` (`"1.1.0"`)
+- Existing continuity/audio/render counters and last-frame metadata
+- `workerTransportMode` (`direct` or message-port fallback)
+- `dsp` (pipeline timing + amplitude + demod quality)
+- `agc` (baseline contract, currently not implemented)
+
+### DSP Amplitude Contract (`dsp.amplitude`)
+
+- Contract version: `1.0.0`
+- Required fields:
+  - `sampleCount`
+  - `iqRmsLinear`
+  - `iqPeakLinear`
+  - `iqCrestFactor`
+  - `audioRmsLinear`
+  - `audioPeakLinear`
+  - `audioDcOffset`
+  - `audioClippingRatio`
+- Purpose:
+  - Establish a stable baseline for gain/clipping/DC diagnostics independent of demod mode.
+
+### Demod Quality Contract (`dsp.demodQuality`)
+
+- Contract version: `1.0.0`
+- Required fields:
+  - `demodMode`
+  - `qualityScore01`
+  - `signalPresent`
+  - `reasons[]`
+  - `rdsSynced` (nullable)
+  - `rdsBlockErrorRate` (nullable)
+- Purpose:
+  - Convert DSP quality heuristics into a stable, versioned export shape for support and regressions.
+
+### Pipeline Timing Contract (`dsp.pipelineTiming`)
+
+- Contract version: `1.0.0`
+- Required fields:
+  - `ddcMs`
+  - `fftMs`
+  - `demodMs`
+  - `downsampleMs`
+  - `totalMs`
+- Purpose:
+  - Provide per-chunk stage timing breakdown for pipeline performance triage.
+
+### AGC Baseline Contract (`agc`)
+
+- Contract version: `1.0.0`
+- Current state:
+  - `implemented: false`
+  - `mode: "none"`
+  - `state: "not_available"`
+  - `targetLevelDbfs: null`
+  - `estimatedGainDb: null`
+- Purpose:
+  - Reserve a forward-compatible contract slot so AGC rollout can be additive and testable.
 
 ## Phase 2 Stream Continuity Extensions
 
@@ -73,6 +143,8 @@ These fields are required for stream continuity and sample-clock truth diagnosti
 - Discontinuity events must reference the same `sequence`/`sampleIndex` pair emitted by the stream frame metadata.
 - `droppedSamplesTotal` and `audioUnderrunTotal` are monotonic within a process lifetime.
 - `sampleClockTruthMode` must not imply stronger claims than source metadata provides.
+- `telemetrySchemaVersion` must be present in exported runtime telemetry payloads.
+- `dsp.*.contractVersion` fields are required whenever `dsp` telemetry is present.
 
 ## Required Common Fields
 
@@ -91,6 +163,7 @@ By default, do not collect:
 - Device serial numbers in plain text.
 - Raw USB payloads.
 - Free-form text that may include personal data.
+- Raw IQ sample buffers and raw audio PCM windows in telemetry payloads.
 
 If required for debugging, use explicit opt-in mode and redaction.
 
@@ -109,3 +182,12 @@ Any change to event category or field requires:
 - PR note under privacy gate in `.github/pull_request_template.md`.
 - Checklist pass in `docs/telemetry/privacy-review-checklist.md`.
 - Contract update in this file with rationale.
+
+## Validation Evidence
+
+- Contract helper tests:
+  - `src/telemetry/runtimeTelemetryContract.test.ts`
+- Runtime emission path:
+  - `src/dsp/worker.ts` emits `DSP_TELEMETRY`
+- Runtime ingestion/export path:
+  - `src/App.tsx` stores telemetry in `runtimeTelemetry` and includes it in diagnostics export

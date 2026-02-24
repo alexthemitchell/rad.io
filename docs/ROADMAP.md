@@ -129,7 +129,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Front-End Overload Triage (Actionable)**: guided actions like “reduce gain/enable attenuation/LO shift/narrow bandwidth” with short explanations and links to relevant diagnostics.
 - [ ] **Dynamic Range / Linearity Check Mode (Actionable)**: quick tests to detect likely overload/intermod (noise-floor rise, spur density changes, “strong-signal” heuristics) and recommend RF chain changes (attenuation, LNA off, filter, LO offset).
 - [ ] **Signal ID & Tuning Advisor (“What am I seeing?”)**: heuristic hints for likely signal class (AM/FM/narrowband/digital-ish/bursty), recommended demod + bandwidth, and warnings for common false signals (images, aliasing, DC spur, LO leakage).
-- [ ] **Diagnostics Bundle Export**: anonymized export for bug reports.
+- [x] **Diagnostics Bundle Export**: anonymized export for bug reports.
 - [ ] **Logging Discipline**: structured logs + throttling to avoid perf cliffs.
 - [ ] **WebUSB Runtime UX**: permissions, secure context requirements, “device already in use/claimed”, and reconnect flows after reload.
 - [ ] **WebUSB Permission Lifecycle UX**: explicit “forget device / re-pair” flows, handle permission revocation, and recover from “device disappeared” without full refresh.
@@ -245,7 +245,7 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **Worker Setup**: main DSP worker + message passing.
 - [x] **SharedArrayBuffer**: zero-copy path where available.
-- [ ] **Fallback Mode**: `MessageChannel` fallback.
+- [x] **Fallback Mode**: `MessageChannel` fallback. (`src/dsp/WorkerBridge.ts`, `src/dsp/WorkerBridge.test.ts`, `src/App.tsx`)
 
 ### 3.2 Processing Pipeline
 
@@ -258,27 +258,27 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Frequency Accuracy Model (Unified)**: define a single model for PPM + AFC/PLL lock state + drift estimate and propagate it through UI, recording metadata, and replay so frequency correctness is explainable and reproducible.
 - [ ] **Stability/Phase-Noise Characterization Mode (Guardrailed)**: quantify short-term stability using pilots/beacons (phase error metrics) and persist results into device profiles.
 - [ ] **IQ Correction**: DC removal + IQ imbalance correction.
-- [ ] **RF Impurity Mitigation UX Hooks**: expose measurable controls (LO offset/IF shift, DC notch width/strength, IQ calibration) with before/after metrics and safe defaults.
-- [ ] **Minimal Interference Mitigation Presets (Early)**: deterministic “DC spike reduction”, “heterodyne notch”, and “hum notch” presets with measurable before/after indicators.
+- [ ] **RF Impurity Mitigation UX Hooks**: expose measurable controls (LO offset/IF shift, DC notch width/strength, IQ calibration) with before/after metrics and safe defaults. (Partial: deterministic notch/low-cut preset controls landed; LO/IF shift + IQ calibration controls still pending.)
+- [x] **Minimal Interference Mitigation Presets (Early)**: deterministic “DC spike reduction”, “heterodyne notch”, and “hum notch” presets with measurable before/after indicators. (`src/dsp/AudioPostProcessor.ts`, `src/dsp/AudioPostProcessor.test.ts`, `src/App.tsx`)
 - [x] **Decimation**: efficient downsampling filters.
 - [ ] **Resampling**: polyphase resampler (IQ + audio rate).
 - [ ] **Asynchronous SRC / Audio PLL**: lock audio output to device/sample time with explicit stability/latency tradeoffs and telemetry hooks.
 - [ ] **Anti-Alias Guarantees**: validate decimation/resampling constraints (bandwidth, guard bands, transitions) so UI bandwidth controls cannot create aliasing.
 - [ ] **Auto Rate/Decimation Planning**: given requested mode/bandwidth, automatically pick device rate + decimation/resampling chain, or explain why it’s impossible.
-- [ ] **Constraint-Driven UI**: bandwidth/zoom/tuning controls reflect alias-safe limits (guard bands, transition widths) instead of allowing invalid combinations.
-- [ ] **Audio Safety**: limiter/soft-clipper to avoid clipping.
+- [ ] **Constraint-Driven UI**: bandwidth/zoom/tuning controls reflect alias-safe limits (guard bands, transition widths) instead of allowing invalid combinations. (Partial guardrails implemented in `src/App.tsx` via mode-constrained filter ranges and alias-safe fine-tune bounds.)
+- [x] **Audio Safety**: limiter/soft-clipper to avoid clipping. (`src/audio/AudioSink.ts`, `src/audio/AudioSink.test.ts`)
 - [ ] **Audio Leveling (Early)**: audio AGC/leveler for stable listening levels (with clear UX tradeoffs) and telemetry hooks to show when it’s active.
 - [ ] **AGC Contract (Per-Mode, Testable)**: explicitly define IF/BB AGC semantics (attack/release/hang/gating) and how it interacts with squelch and audio leveling so behavior is predictable and regression-testable.
-- [ ] **Hard Audio Safety UX**: startup muted, per-mode default gain staging, configurable max output level, and an always-available “panic mute” action (keyboard + UI).
+- [x] **Hard Audio Safety UX**: startup muted, per-mode default gain staging, configurable max output level, and an always-available “panic mute” action (keyboard + UI). (`src/App.tsx`, `src/audio/AudioSink.ts`)
 - [ ] **Impulse Noise Blanker (Baseline, Early)**: deterministic impulse blanker for HF/SSB usability with conservative defaults, clear tradeoffs, and telemetry hooks (blanking rate/energy) to avoid “magic knob” behavior.
 - [ ] **Front-End Overload/Intermod Heuristics**: detect likely overdrive (e.g., rising noise floor + spur density) and surface gain-staging guidance beyond simple clip detection.
-- [ ] **Audio Pop/Click Suppression**: fade-in/out on start/stop/mute/unmute and on parameter jumps.
-- [ ] **Filter Shapes & Bandwidth Control**: per-mode filter defaults + user-selectable bandwidths.
-- [ ] **Filter Profiles**: sharp vs low-latency vs low-ringing profiles (mode-dependent) with clear UX tradeoffs.
-- [ ] **Dropout / Sample-Loss Concealment**: deterministic policy for gaps (mute ramps, timebase correction, re-lock) beyond just counting drops.
+- [x] **Audio Pop/Click Suppression**: fade-in/out on start/stop/mute/unmute and on parameter jumps. (Extended with underrun concealment splice + ramped recovery in `src/audio/AudioSink.ts`.)
+- [x] **Filter Shapes & Bandwidth Control**: per-mode filter defaults + user-selectable bandwidths. (`src/dsp/AudioPostProcessor.ts`, `src/App.tsx`)
+- [x] **Filter Profiles**: sharp vs low-latency vs low-ringing profiles (mode-dependent) with clear UX tradeoffs. (`src/dsp/AudioPostProcessor.ts`, `src/App.tsx`)
+- [x] **Dropout / Sample-Loss Concealment**: deterministic policy for gaps (mute ramps, timebase correction, re-lock) beyond just counting drops. (`src/audio/AudioSink.ts`, `src/devices/recoveryRegression.test.ts`, `src/audio/AudioSink.test.ts`)
 - [ ] **Carrier Tracking (AFC/PLL)**: optional per-mode tracking to correct residual frequency error and long-session drift (especially NFM/SSB).
-- [ ] **Explicit Lock States**: expose lock/quality state machines (e.g., WFM pilot lock, AM carrier lock) so UX can drive retune-assist and safe recovery.
-- [ ] **Audio Filter Controls**: per-mode high/low cut and optional notch helpers for intelligibility (SSB/AM/NFM).
+- [x] **Explicit Lock States**: expose lock/quality state machines (e.g., WFM pilot lock, AM carrier lock) so UX can drive retune-assist and safe recovery. (`src/dsp/DemodMetrics.ts`, `src/App.tsx`)
+- [x] **Audio Filter Controls**: per-mode high/low cut and optional notch helpers for intelligibility (SSB/AM/NFM). (Baseline controls delivered for WFM/AM/NFM shared path via `src/App.tsx` + `src/dsp/AudioPostProcessor.ts`.)
 - [ ] **DSP Amplitude Contract**: explicitly define IQ scaling and normalization at key tap points (pre/post-DDC, post-demod) so meters, FFT, recording, and exports are consistent across devices.
 
 ### 3.3 “Must-Have” Demodulators (Product Loop)
@@ -292,8 +292,8 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **SSB Demodulator**: USB/LSB with BFO.
 - [ ] **CW Demodulator**: BFO + narrow filter defaults and clean tuning UX (center/offset, optional pitch).
 - [ ] **Basic AFSK/FSK Audio Path (No Decode Yet)**: stable discriminator/AF audio suitable for external decoders and future plugins.
-- [ ] **Verification**: use Mock/File sources to validate audio output quality.
-- [ ] **Demod Quality Metrics**: mode-specific lock/quality indicators (e.g., FM deviation estimate, WFM pilot lock, AM carrier lock) surfaced to telemetry/UI.
+- [x] **Verification**: use Mock/File sources to validate audio output quality. (`src/dsp/demodGoldenFixtures.test.ts`, `src/dsp/endToEndAccuracy.test.ts`)
+- [x] **Demod Quality Metrics**: mode-specific lock/quality indicators (e.g., FM deviation estimate, WFM pilot lock, AM carrier lock) surfaced to telemetry/UI. (`src/dsp/DemodMetrics.ts`, `src/dsp/DemodMetrics.test.ts`, `src/App.tsx`)
 
 ### 3.4 Squelch (After Basic Audio Works)
 

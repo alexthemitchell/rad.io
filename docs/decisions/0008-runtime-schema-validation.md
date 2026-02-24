@@ -123,3 +123,9 @@ Accepted.
 - Add schema modules (suggested path: `src/contracts/schemas/*`).
 - Add shared validation error mapper into radio error envelope pipeline.
 - Add CI checks for boundary schema coverage and version compatibility.
+
+Implemented delta (2026-02-23):
+
+- Added versioned runtime telemetry contract module at `src/telemetry/runtimeTelemetryContract.ts`.
+- Worker now emits `DSP_TELEMETRY` envelope carrying additive versioned DSP/AGC telemetry fields.
+- App diagnostics export includes runtime telemetry schema version and versioned subcontracts.

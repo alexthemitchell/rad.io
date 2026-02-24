@@ -6,7 +6,15 @@ import { ComplexOscillator } from './ComplexOscillator';
 import { SimpleFFT } from './fft';
 import { magnitudeSquaredToDbfs } from './fftScaling';
 import { RdsDecoder, RdsSnapshot } from './RdsDecoder';
+import { AudioPostProcessor, applyInterferencePreset, type FilterConfig, type FilterProfile, type InterferencePreset } from './AudioPostProcessor';
+import { evaluateDemodQuality, type DemodQualityMetrics } from './DemodMetrics';
 import type { SDRStreamFrame } from '../devices/streamFrame';
+import {
+    computeDemodQualityTelemetry,
+    computeDspAmplitudeTelemetry,
+    PIPELINE_TIMING_CONTRACT_VERSION,
+    type RuntimeDspTelemetryV1
+} from '../telemetry/runtimeTelemetryContract';
 
 type WorkerScope = {
     onmessage: ((event: MessageEvent) => void) | null;
@@ -30,30 +38,92 @@ const am = new AmDemodulator();
 const nfm = new NfmDemodulator();
 const downsampler = new Downsampler();
 const nco = new ComplexOscillator(2_000_000); // 2MSPS
+const baseFilterConfig: FilterConfig = {
+    profile: 'sharp',
+    lowCutHz: 80,
+    highCutHz: 14_000,
+    sampleRateHz: 50_000,
+    notchHz: null,
+    notchQ: 10
+};
+let filterProfile: FilterProfile = baseFilterConfig.profile;
+let interferencePreset: InterferencePreset = 'off';
+const audioPostProcessor = new AudioPostProcessor(baseFilterConfig);
 let rdsDecoder = new RdsDecoder();
 let latestRdsSnapshot: RdsSnapshot = rdsDecoder.getSnapshot();
+let latestDemodMetrics: DemodQualityMetrics = evaluateDemodQuality('WFM', new Float32Array(0));
+let outboundPort: WorkerScope | MessagePort = workerScope;
+let metricsEmitCounter = 0;
 
 let mode: 'WFM' | 'AM' | 'NFM' = 'WFM';
 
-workerScope.onmessage = (e: MessageEvent) => {
+const postToMain = (message: unknown, transfer: Transferable[] = []) => {
+    outboundPort.postMessage(message, transfer);
+};
+
+const updateFilterConfig = (overrides: Partial<FilterConfig> = {}) => {
+    const merged = applyInterferencePreset(
+        {
+            ...baseFilterConfig,
+            profile: filterProfile,
+            ...overrides
+        },
+        interferencePreset
+    );
+
+    audioPostProcessor.setConfig(merged);
+    postToMain({
+        type: 'FILTER_STATE',
+        data: {
+            profile: filterProfile,
+            preset: interferencePreset,
+            lowCutHz: merged.lowCutHz,
+            highCutHz: merged.highCutHz,
+            notchHz: merged.notchHz,
+            notchQ: merged.notchQ
+        }
+    }, []);
+};
+
+const handleMessage = (e: MessageEvent) => {
     if (e.data.command === 'START_USB_MODE') {
         fftIndex = 0;
         rdsDecoder = new RdsDecoder();
         latestRdsSnapshot = rdsDecoder.getSnapshot();
+        metricsEmitCounter = 0;
+        updateFilterConfig();
         console.log("Worker: Started USB Mode");
+    } else if (e.data.command === 'INIT_MESSAGE_PORT') {
+        const port = e.data.port as MessagePort | undefined;
+        if (port) {
+            outboundPort = port;
+            port.onmessage = handleMessage;
+            port.start();
+        }
     } else if (e.data.command === 'SET_MODE') {
         mode = e.data.value;
         console.log(`Worker: Mode set to ${mode}`);
     } else if (e.data.command === 'SET_FINE_FREQ') {
         // Frequency shift in Hz (e.g. +50000 Hz)
         nco.setFrequency(e.data.value, 2_000_000);
+    } else if (e.data.command === 'SET_FILTER_CONFIG') {
+        updateFilterConfig({
+            lowCutHz: Number(e.data.lowCutHz),
+            highCutHz: Number(e.data.highCutHz)
+        });
+    } else if (e.data.command === 'SET_FILTER_PROFILE') {
+        filterProfile = e.data.value as FilterProfile;
+        updateFilterConfig();
+    } else if (e.data.command === 'SET_INTERFERENCE_PRESET') {
+        interferencePreset = e.data.value as InterferencePreset;
+        updateFilterConfig();
     } else if (e.data.command === 'RESET_RDS') {
         rdsDecoder = new RdsDecoder();
         latestRdsSnapshot = rdsDecoder.getSnapshot();
-        workerScope.postMessage({ type: 'RDS_DATA', data: latestRdsSnapshot }, []);
+        postToMain({ type: 'RDS_DATA', data: latestRdsSnapshot }, []);
     } else if (e.data.type === 'STREAM_FRAME') {
         const frame = e.data.frame as SDRStreamFrame;
-        workerScope.postMessage({
+        postToMain({
             type: 'STREAM_FRAME_META',
             data: frame
         }, []);
@@ -62,12 +132,16 @@ workerScope.onmessage = (e: MessageEvent) => {
     }
 };
 
+workerScope.onmessage = handleMessage;
+
 function processUSBData(buffer: ArrayBuffer) {
+    const startMs = performance.now();
     const iqData = new Int8Array(buffer);
     
     // 1. DDC / NCO (Frequency Shift)
     const shiftedIQ = new Float32Array(iqData.length);
     nco.mix(iqData, shiftedIQ);
+    const afterDdcMs = performance.now();
 
     // 2. FFT Processing
     // We want to visualize the WIDEBAND signal (Unshifted) usually to see what's around.
@@ -79,6 +153,7 @@ function processUSBData(buffer: ArrayBuffer) {
     // For now, let's visualize the RAW input (iqData) so "Fine Tune" moves the "Filter" logic, not the whole world.
     // The "Fine Tune" slider in UI implies moving the reception window.
     processFFT(iqData); 
+    const afterFftMs = performance.now();
 
     // 3. Demodulate (Shifted Signal)
     const rawAudio = new Float32Array(iqData.length / 2);
@@ -89,7 +164,7 @@ function processUSBData(buffer: ArrayBuffer) {
         const rdsUpdate = rdsDecoder.process(rawAudio);
         if (rdsUpdate) {
             latestRdsSnapshot = rdsUpdate;
-            workerScope.postMessage({
+            postToMain({
                 type: 'RDS_DATA',
                 data: rdsUpdate
             }, []);
@@ -99,14 +174,49 @@ function processUSBData(buffer: ArrayBuffer) {
     } else {
         am.process(shiftedIQ, rawAudio);
     }
+    const afterDemodMs = performance.now();
 
     // Downsample
     const audioOut = downsampler.process(rawAudio);
+    audioPostProcessor.processInPlace(audioOut);
+    const afterDownsampleMs = performance.now();
+
+    latestDemodMetrics = evaluateDemodQuality(mode, audioOut);
+    metricsEmitCounter += 1;
+    if (metricsEmitCounter % 5 === 0) {
+        const amplitude = computeDspAmplitudeTelemetry(shiftedIQ, audioOut);
+        const demodQuality = computeDemodQualityTelemetry(
+            latestDemodMetrics,
+            amplitude,
+            mode === 'WFM' ? latestRdsSnapshot : null
+        );
+        const dspTelemetry: RuntimeDspTelemetryV1 = {
+            pipelineTiming: {
+                contractVersion: PIPELINE_TIMING_CONTRACT_VERSION,
+                ddcMs: afterDdcMs - startMs,
+                fftMs: afterFftMs - afterDdcMs,
+                demodMs: afterDemodMs - afterFftMs,
+                downsampleMs: afterDownsampleMs - afterDemodMs,
+                totalMs: afterDownsampleMs - startMs
+            },
+            amplitude,
+            demodQuality
+        };
+
+        postToMain({
+            type: 'DEMOD_METRICS',
+            data: latestDemodMetrics
+        }, []);
+        postToMain({
+            type: 'DSP_TELEMETRY',
+            data: dspTelemetry
+        }, []);
+    }
 
     // Audio Output
     if (audioOut.length > 0) {
         const audioBuffer = audioOut.buffer.slice(0);
-        workerScope.postMessage({ 
+        postToMain({ 
             type: 'AUDIO_DATA', 
             data: audioBuffer
         }, []);
@@ -114,14 +224,14 @@ function processUSBData(buffer: ArrayBuffer) {
 
     // Scope (Audio Time Domain)
     if (Math.random() < 0.1) {
-        workerScope.postMessage({ 
+        postToMain({ 
             type: 'SCOPE_DATA', 
             data: audioOut.slice(0, 256) 
         }, []);
     }
 
     if (mode === 'WFM' && Math.random() < 0.01) {
-        workerScope.postMessage({
+        postToMain({
             type: 'RDS_DATA',
             data: latestRdsSnapshot
         }, []);
@@ -179,7 +289,7 @@ function processFFT(iqData: Int8Array) {
                 fftMagnitude[k] = db;
             }
 
-            workerScope.postMessage({ type: 'FFT_DATA', data: fftMagnitude });
+            postToMain({ type: 'FFT_DATA', data: fftMagnitude });
             fftIndex = 0;
         }
     }

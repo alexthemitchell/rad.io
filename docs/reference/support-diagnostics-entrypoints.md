@@ -13,6 +13,12 @@
 - Gain stages and current gain values.
 - Current status message.
 - Recent diagnostic event timeline.
+- Runtime telemetry schema version + worker transport mode.
+- DSP telemetry contracts:
+  - pipeline timing (`ddc/fft/demod/downsample/total` ms)
+  - amplitude metrics (`iq/audio rms/peak`, DC offset, clipping ratio)
+  - demod quality (`quality score`, `signalPresent`, optional RDS sync/error metrics)
+- AGC contract baseline (`implemented=false`) for forward compatibility.
 
 ## Safety And Privacy
 

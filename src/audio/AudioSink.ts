@@ -3,6 +3,12 @@ export type AudioSinkStats = {
     queueAheadMs: number;
     concealmentEvents: number;
     popSuppressionEvents: number;
+    limiterEvents: number;
+};
+
+export type AudioSafetyConfig = {
+    maxOutputLevel: number;
+    limiterDrive: number;
 };
 
 export class AudioSink {
@@ -10,9 +16,17 @@ export class AudioSink {
     private gainNode: GainNode | null = null;
     private nextTime = 0;
     private muted = false;
+    private outputLevel = 0.6;
+    private maxOutputLevel = 0.8;
     private underrunCount = 0;
     private concealmentCount = 0;
     private popSuppressionCount = 0;
+    private limiterEventCount = 0;
+    private lastSample = 0;
+    private safetyConfig: AudioSafetyConfig = {
+        maxOutputLevel: 0.85,
+        limiterDrive: 1.6
+    };
     private static readonly RAMP_DOWN_SEC = 0.002;
     private static readonly RAMP_UP_SEC = 0.008;
     
@@ -22,7 +36,7 @@ export class AudioSink {
         if (!this.ctx) {
             this.ctx = new AudioContext({ sampleRate: this.sampleRate });
             this.gainNode = this.ctx.createGain();
-            this.gainNode.gain.value = this.muted ? 0 : 1;
+            this.gainNode.gain.value = this.resolveTargetGain();
             this.gainNode.connect(this.ctx.destination);
             this.nextTime = this.ctx.currentTime + 0.1; // Buffer ahead slightly
         }
@@ -32,9 +46,18 @@ export class AudioSink {
             const now = this.ctx.currentTime;
             this.gainNode.gain.cancelScheduledValues(now);
             this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
-            this.gainNode.gain.linearRampToValueAtTime(this.muted ? 0 : 1, now + AudioSink.RAMP_UP_SEC);
+            this.gainNode.gain.linearRampToValueAtTime(this.resolveTargetGain(), now + AudioSink.RAMP_UP_SEC);
             this.popSuppressionCount += 1;
         }
+    }
+
+    private resolveTargetGain() {
+        if (this.muted) {
+            return 0;
+        }
+
+        const cappedLevel = Math.min(this.outputLevel, this.maxOutputLevel);
+        return Math.max(0, Math.min(1, cappedLevel));
     }
 
     private applyPopSuppressionRamp() {
@@ -43,7 +66,7 @@ export class AudioSink {
         const now = this.ctx.currentTime;
         const gainParam = this.gainNode.gain;
         const current = gainParam.value;
-        const target = this.muted ? 0 : 1;
+        const target = this.resolveTargetGain();
 
         gainParam.cancelScheduledValues(now);
         gainParam.setValueAtTime(current, now);
@@ -53,6 +76,37 @@ export class AudioSink {
         this.popSuppressionCount += 1;
     }
 
+    private applyLimiter(sample: number): number {
+        const driven = sample * this.safetyConfig.limiterDrive;
+        const clipped = Math.tanh(driven);
+        const scaled = clipped / Math.max(1, this.safetyConfig.limiterDrive * 0.85);
+        const max = this.safetyConfig.maxOutputLevel;
+        const limited = Math.max(-max, Math.min(max, scaled));
+
+        if (Math.abs(sample) > max || Math.abs(driven) > 1.2) {
+            this.limiterEventCount += 1;
+        }
+
+        return limited;
+    }
+
+    private writeConcealmentSplice(length: number) {
+        if (!this.ctx || length <= 0) return;
+
+        const spliceBuffer = this.ctx.createBuffer(1, length, this.sampleRate);
+        const data = spliceBuffer.getChannelData(0);
+
+        for (let i = 0; i < length; i += 1) {
+            const t = 1 - (i / Math.max(1, length - 1));
+            data[i] = this.lastSample * t;
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = spliceBuffer;
+        source.connect(this.gainNode ?? this.ctx.destination);
+        source.start(this.ctx.currentTime + 0.002);
+    }
+
     push(samples: Float32Array) {
         if (!this.ctx) return;
 
@@ -60,7 +114,9 @@ export class AudioSink {
         const buffer = this.ctx.createBuffer(1, samples.length, this.sampleRate);
         const channelData = buffer.getChannelData(0);
         for (let i = 0; i < samples.length; i++) {
-            channelData[i] = samples[i];
+            const limited = this.applyLimiter(samples[i]);
+            channelData[i] = limited;
+            this.lastSample = limited;
         }
 
         // Schedule playback
@@ -73,6 +129,7 @@ export class AudioSink {
             this.underrunCount += 1;
             this.concealmentCount += 1;
             this.applyPopSuppressionRamp();
+            this.writeConcealmentSplice(Math.floor(this.sampleRate * 0.01));
             this.nextTime = this.ctx.currentTime + 0.05;
         }
 
@@ -90,6 +147,7 @@ export class AudioSink {
         this.underrunCount = 0;
         this.concealmentCount = 0;
         this.popSuppressionCount = 0;
+        this.limiterEventCount = 0;
     }
 
     getStats(): AudioSinkStats {
@@ -98,7 +156,8 @@ export class AudioSink {
                 underruns: this.underrunCount,
                 queueAheadMs: 0,
                 concealmentEvents: this.concealmentCount,
-                popSuppressionEvents: this.popSuppressionCount
+                popSuppressionEvents: this.popSuppressionCount,
+                limiterEvents: this.limiterEventCount
             };
         }
 
@@ -107,13 +166,41 @@ export class AudioSink {
             underruns: this.underrunCount,
             queueAheadMs: queueAhead,
             concealmentEvents: this.concealmentCount,
-            popSuppressionEvents: this.popSuppressionCount
+            popSuppressionEvents: this.popSuppressionCount,
+            limiterEvents: this.limiterEventCount
+        };
+    }
+
+    setSafetyConfig(config: Partial<AudioSafetyConfig>) {
+        this.safetyConfig = {
+            ...this.safetyConfig,
+            ...config,
+            maxOutputLevel: Math.max(0.1, Math.min(1, config.maxOutputLevel ?? this.safetyConfig.maxOutputLevel)),
+            limiterDrive: Math.max(0.6, Math.min(4, config.limiterDrive ?? this.safetyConfig.limiterDrive))
         };
     }
 
     setMuted(muted: boolean) {
         this.muted = muted;
         this.applyPopSuppressionRamp();
+    }
+
+    setOutputLevel(level: number) {
+        this.outputLevel = Math.max(0, Math.min(1, level));
+        this.applyPopSuppressionRamp();
+    }
+
+    setMaxOutputLevel(level: number) {
+        this.maxOutputLevel = Math.max(0, Math.min(1, level));
+        this.applyPopSuppressionRamp();
+    }
+
+    getOutputLevel() {
+        return this.outputLevel;
+    }
+
+    getMaxOutputLevel() {
+        return this.maxOutputLevel;
     }
 
     isMuted() {

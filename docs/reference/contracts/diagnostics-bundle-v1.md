@@ -72,6 +72,15 @@ export interface DiagnosticsBundleV1 {
   environment: DiagnosticsEnvironmentV1;
   sessionState: unknown; // Must satisfy SessionStateV1
   telemetry: unknown; // Must satisfy TelemetrySchemaV1
+  runtimeTelemetry?: {
+    telemetrySchemaVersion: '1.1.0';
+    dsp: {
+      pipelineTiming: { contractVersion: '1.0.0' };
+      amplitude: { contractVersion: '1.0.0' };
+      demodQuality: { contractVersion: '1.0.0' };
+    };
+    agc: { contractVersion: '1.0.0'; implemented: false };
+  };
   errors: RadioErrorEnvelopeV1[];
   pipelineConfig: DiagnosticsPipelineConfigV1;
   redactionReport: DiagnosticsRedactionReportV1;
@@ -155,6 +164,16 @@ Allowed after transformation:
 - If telemetry retention trimmed data:
   - `manifest.telemetryExportTruncated = true`.
   - Include `redaction-report` entry `trimReason`.
+
+## Runtime Contract Alignment (Current App Export)
+
+The current JSON diagnostics export emitted by the app includes:
+
+- `runtimeTelemetry` top-level object with `telemetrySchemaVersion`.
+- Additive `dspTelemetry` section (mirrors `runtimeTelemetry.dsp`) for easy support parsing.
+- AGC baseline contract shape (`implemented: false`) for forward-compatible parsing.
+
+These additions are additive and remain compatible with `DiagnosticsBundleV1` readers that ignore unknown fields.
 
 ## Example Bundle Skeleton
 

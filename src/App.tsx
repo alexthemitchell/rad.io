@@ -15,35 +15,50 @@ import { RtlSdrDevice } from './devices/RtlSdrDevice';
 import { FileDevice } from './devices/FileDevice';
 import { ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
 import { normalizeDeviceError } from './devices/errors';
-import type { SDRSampleClockTruthMode, SDRStreamFrame } from './devices/streamFrame';
+import type { SDRStreamFrame } from './devices/streamFrame';
 import { goldenToneFixtureBundle } from './fixtures/sigmf/goldenToneFixture';
 import { createAnalyzerArtifactExport } from './dsp/analyzerArtifactExport';
 import { createMeasurementCalibrationDisclosure } from './measurements/disclosure';
 import { appendDiscontinuityTimelineEntry, type DiscontinuityTimelineEntry } from './measurements/discontinuityTimeline';
 import { createRfAudioTimebaseAlignmentSnapshot } from './measurements/rfAudioTimebaseAlignment';
 import { createFixtureInteropExportBundle } from './fixtures/sigmf/interopExport';
+import { WorkerBridge } from './dsp/WorkerBridge';
+import type { FilterProfile, InterferencePreset } from './dsp/AudioPostProcessor';
+import type { DemodMode, DemodQualityMetrics, LockState } from './dsp/DemodMetrics';
+import {
+  MODE_CONTROL_CONTRACTS,
+  clampFilterForMode,
+  clampFineTuneHz,
+  lockStateLabel,
+  maxFineTuneHzForFilter
+} from './dsp/controlGuardrails';
+import {
+  createDefaultRuntimeDspTelemetry,
+  createDefaultRuntimeTelemetry,
+  type RuntimeDspTelemetryV1,
+  type RuntimeTelemetryV1
+} from './telemetry/runtimeTelemetryContract';
 
 type ConnectionState = 'idle' | 'starting' | 'streaming' | 'recovering' | 'error';
 type AudioState = 'suspended' | 'awaiting-user-gesture' | 'running' | 'degraded' | 'muted';
 type ScanState = 'idle' | 'running' | 'completed' | 'cancelled' | 'error';
 type HealthLevel = 'ok' | 'warn' | 'error';
-type RuntimeTelemetry = {
-  renderFps: number | null;
-  lowFpsEvents: number;
-  audioUnderruns: number;
-  audioQueueAheadMs: number;
-  audioConcealmentEvents: number;
-  audioPopSuppressionEvents: number;
-  streamDiscontinuities: number;
-  droppedFrameEvents: number;
-  totalDroppedSamples: number;
-  lastDiscontinuityCause: string | null;
-  lastFrameSequence: number | null;
-  lastFrameSampleIndex: number | null;
-  lastFrameTimestampNs: number | null;
-  lastFrameSampleRate: number | null;
-  lastFrameWallClockMs: number | null;
-  lastClockTruthMode: SDRSampleClockTruthMode | null;
+type RuntimeTelemetry = RuntimeTelemetryV1;
+
+type DspFilterState = {
+  lowCutHz: number;
+  highCutHz: number;
+  profile: FilterProfile;
+  preset: InterferencePreset;
+};
+
+type DemodQualityState = {
+  lockState: LockState;
+  quality: number;
+  snrEstimateDb: number;
+  pilotLevel: number;
+  carrierLevel: number;
+  deviationEstimate: number;
 };
 
 type SourceType = 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
@@ -93,6 +108,8 @@ type RadioDebugSnapshot = {
   audioState: AudioState;
   frequencyHz: number;
   demodMode: 'WFM' | 'AM' | 'NFM';
+  demodQuality: DemodQualityState;
+  filterState: DspFilterState;
   fftPeakDb: number;
   fftNonDcPeakDb: number;
   scopeRms: number;
@@ -135,6 +152,26 @@ const emptyRdsTelemetry = (): RdsTelemetry => ({
   ps: '',
   radiotext: '',
   latestGroup: null
+});
+
+const defaultFilterStateForMode = (mode: DemodMode): DspFilterState => {
+  const contract = MODE_CONTROL_CONTRACTS[mode];
+
+  return {
+    lowCutHz: contract.defaultLowCutHz,
+    highCutHz: contract.defaultHighCutHz,
+    profile: contract.defaultFilterProfile,
+    preset: contract.defaultInterferencePreset
+  };
+};
+
+const emptyDemodQuality = (): DemodQualityState => ({
+  lockState: 'searching',
+  quality: 0,
+  snrEstimateDb: -60,
+  pilotLevel: 0,
+  carrierLevel: 0,
+  deviationEstimate: 0
 });
 
 const detectRuntimePrerequisites = (): RuntimePrerequisites => {
@@ -221,10 +258,13 @@ export default function App() {
   const [gains, setGains] = useState<Record<string, number>>({});
   const [gainStages, setGainStages] = useState<SDRGainStage[]>([]);
 
-  const [demodMode, setDemodMode] = useState<'WFM' | 'AM' | 'NFM'>('WFM');
+  const [demodMode, setDemodMode] = useState<DemodMode>('WFM');
   const [fineFreq, setFineFreq] = useState<number>(0);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
-    const [isMuted, setIsMuted] = useState(false);
+    const [isMuted, setIsMuted] = useState(true);
+    const [audioOutputLevel, setAudioOutputLevel] = useState(MODE_CONTROL_CONTRACTS.WFM.defaultOutputLevel);
+    const [audioMaxOutputLevel, setAudioMaxOutputLevel] = useState(MODE_CONTROL_CONTRACTS.WFM.defaultMaxOutputLevel);
+    const [applyModeAudioDefaults, setApplyModeAudioDefaults] = useState(true);
     const [waterfallPalette, setWaterfallPalette] = useState<'cividis' | 'inferno'>('cividis');
     const [waterfallAutoScale, setWaterfallAutoScale] = useState(true);
     const [waterfallMinDb, setWaterfallMinDb] = useState(-125);
@@ -234,24 +274,9 @@ export default function App() {
     const [audioState, setAudioState] = useState<AudioState>('suspended');
     const [statusMessage, setStatusMessage] = useState('Ready. Select a source and start streaming.');
     const [diagnosticEvents, setDiagnosticEvents] = useState<string[]>([]);
-    const [runtimeTelemetry, setRuntimeTelemetry] = useState<RuntimeTelemetry>({
-      renderFps: null,
-      lowFpsEvents: 0,
-      audioUnderruns: 0,
-      audioQueueAheadMs: 0,
-      audioConcealmentEvents: 0,
-      audioPopSuppressionEvents: 0,
-      streamDiscontinuities: 0,
-      droppedFrameEvents: 0,
-      totalDroppedSamples: 0,
-      lastDiscontinuityCause: null,
-      lastFrameSequence: null,
-      lastFrameSampleIndex: null,
-      lastFrameTimestampNs: null,
-      lastFrameSampleRate: null,
-      lastFrameWallClockMs: null,
-      lastClockTruthMode: null
-    });
+    const [runtimeTelemetry, setRuntimeTelemetry] = useState<RuntimeTelemetry>(createDefaultRuntimeTelemetry('direct'));
+    const [filterState, setFilterState] = useState<DspFilterState>(() => defaultFilterStateForMode('WFM'));
+    const [demodQuality, setDemodQuality] = useState<DemodQualityState>(emptyDemodQuality);
     const [usbIqRms, setUsbIqRms] = useState(0);
     const [usbIqMeanAbs, setUsbIqMeanAbs] = useState(0);
     const [usbTransferBytes, setUsbTransferBytes] = useState(0);
@@ -264,6 +289,7 @@ export default function App() {
     const [permissionState, setPermissionState] = useState<RuntimePermissionState>(unknownPermissionState());
   
   const workerRef = useRef<Worker | null>(null);
+  const workerBridgeRef = useRef<WorkerBridge | null>(null);
   const deviceRef = useRef<ISDRDevice | null>(null);
   const audioRef = useRef<AudioSink | null>(null);
   const usbIqRmsRef = useRef(0);
@@ -316,10 +342,27 @@ export default function App() {
       }
     }, [isMuted, pushDiagnosticEvent]);
 
+  const postToWorker = useCallback((message: unknown, transfer: Transferable[] = []) => {
+    workerBridgeRef.current?.postMessage(message, transfer);
+  }, []);
+
   useEffect(() => {
     workerRef.current = new Worker(new URL('./dsp/worker.ts', import.meta.url), { type: 'module' });
+    const fallbackMode = !runtimePrerequisites.crossOriginIsolated || !runtimeEnvironment.sharedArrayBufferAvailable;
+    workerBridgeRef.current = new WorkerBridge(workerRef.current, {
+      preferMessageChannelFallback: fallbackMode
+    });
     audioRef.current = new AudioSink(50000); // 50k from worker
-        audioRef.current.setMuted(false);
+    audioRef.current.setMuted(true);
+    audioRef.current.setOutputLevel(MODE_CONTROL_CONTRACTS.WFM.defaultOutputLevel);
+    audioRef.current.setMaxOutputLevel(MODE_CONTROL_CONTRACTS.WFM.defaultMaxOutputLevel);
+    audioRef.current.setSafetyConfig({ maxOutputLevel: MODE_CONTROL_CONTRACTS.WFM.defaultMaxOutputLevel });
+
+    setRuntimeTelemetry((prev) => ({
+      ...prev,
+      workerTransportMode: workerBridgeRef.current?.getMode() ?? 'direct'
+    }));
+    pushDiagnosticEvent(`Worker transport mode: ${workerBridgeRef.current?.getMode() ?? 'direct'}.`);
 
     workerRef.current.onmessage = (e) => {
       if (e.data.type === 'FFT_DATA') {
@@ -329,6 +372,25 @@ export default function App() {
       } else if (e.data.type === 'AUDIO_DATA') {
         const audioData = new Float32Array(e.data.data as ArrayBuffer);
         audioRef.current?.push(audioData);
+      } else if (e.data.type === 'FILTER_STATE') {
+        const state = e.data.data as DspFilterState;
+        setFilterState(state);
+      } else if (e.data.type === 'DEMOD_METRICS') {
+        const metrics = e.data.data as DemodQualityMetrics;
+        setDemodQuality({
+          lockState: metrics.lockState,
+          quality: metrics.quality,
+          snrEstimateDb: metrics.snrEstimateDb,
+          pilotLevel: metrics.pilotLevel,
+          carrierLevel: metrics.carrierLevel,
+          deviationEstimate: metrics.deviationEstimate
+        });
+      } else if (e.data.type === 'DSP_TELEMETRY') {
+        const telemetry = e.data.data as RuntimeDspTelemetryV1;
+        setRuntimeTelemetry((prev) => ({
+          ...prev,
+          dsp: telemetry
+        }));
       } else if (e.data.type === 'RDS_DATA') {
         setRdsTelemetry(e.data.data as RdsTelemetry);
       } else if (e.data.type === 'STREAM_FRAME_META') {
@@ -360,10 +422,14 @@ export default function App() {
         pushDiagnosticEvent('DSP worker initialized.');
 
     return () => {
+        workerBridgeRef.current?.dispose();
+        workerBridgeRef.current = null;
         workerRef.current?.terminate();
+        workerRef.current = null;
         audioRef.current?.stop();
+        audioRef.current = null;
     };
-  }, [pushDiagnosticEvent]);
+  }, [pushDiagnosticEvent, runtimeEnvironment.sharedArrayBufferAvailable, runtimePrerequisites.crossOriginIsolated]);
 
     useEffect(() => {
       void refreshPermissionState();
@@ -440,7 +506,8 @@ export default function App() {
             audioUnderruns: stats.underruns,
             audioQueueAheadMs: stats.queueAheadMs,
             audioConcealmentEvents: stats.concealmentEvents,
-            audioPopSuppressionEvents: stats.popSuppressionEvents
+            audioPopSuppressionEvents: stats.popSuppressionEvents,
+            audioLimiterEvents: stats.limiterEvents
           }));
 
           // Sample high-rate USB metrics at UI cadence to avoid per-transfer rerenders.
@@ -501,6 +568,8 @@ export default function App() {
           audioState,
           frequencyHz: frequency,
           demodMode,
+          demodQuality,
+          filterState,
           fftPeakDb,
           fftNonDcPeakDb,
           scopeRms,
@@ -519,7 +588,7 @@ export default function App() {
           delete window.__radIoDebug;
         }
       };
-    }, [audioState, connectionState, demodMode, fftData, frequency, isRunning, rdsTelemetry, runtimeTelemetry, scopeData, sourceType, usbIqMeanAbs, usbIqRms, usbTransferBytes, usbTransferCount]);
+    }, [audioState, connectionState, demodMode, demodQuality, fftData, filterState, frequency, isRunning, rdsTelemetry, runtimeTelemetry, scopeData, sourceType, usbIqMeanAbs, usbIqRms, usbTransferBytes, usbTransferCount]);
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -532,12 +601,21 @@ export default function App() {
                 setIsMuted((prev) => {
                     const nextMuted = !prev;
                     audioRef.current?.setMuted(nextMuted);
-                    setAudioState(nextMuted ? 'muted' : 'running');
+                  setAudioState(nextMuted ? 'muted' : isRunning ? 'running' : audioState);
                     setStatusMessage(nextMuted ? 'Audio muted.' : 'Audio unmuted.');
                     pushDiagnosticEvent(nextMuted ? 'Audio muted by keyboard.' : 'Audio unmuted by keyboard.');
                     return nextMuted;
                 });
             }
+
+                if (event.key === 'p' || event.key === 'P') {
+                  event.preventDefault();
+                  setIsMuted(true);
+                  audioRef.current?.setMuted(true);
+                  setAudioState('muted');
+                  setStatusMessage('Panic mute engaged.');
+                  pushDiagnosticEvent('Panic mute engaged by keyboard.');
+                }
 
             if (event.key === 'ArrowRight') {
                 event.preventDefault();
@@ -548,19 +626,29 @@ export default function App() {
                 event.preventDefault();
                 setFrequency((prev) => Math.max(0, prev - 1_000));
             }
+
+            if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              setFineFreq((prev) => clampFineTuneHz(prev + 1_000, filterState.highCutHz));
+            }
+
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              setFineFreq((prev) => clampFineTuneHz(prev - 1_000, filterState.highCutHz));
+            }
         };
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [pushDiagnosticEvent]);
+    }, [audioState, filterState.highCutHz, isRunning, pushDiagnosticEvent]);
 
   // Update Device Frequency when controls change
   useEffect(() => {
     if (deviceRef.current && isRunning) {
         deviceRef.current.setFrequency(frequency);
-        workerRef.current?.postMessage({ command: 'RESET_RDS' });
+        postToWorker({ command: 'RESET_RDS' });
     }
-  }, [frequency, isRunning]);
+  }, [frequency, isRunning, postToWorker]);
 
   // Update Device Gains when state changes
   useEffect(() => {
@@ -573,13 +661,67 @@ export default function App() {
 
   // Update Mode
   useEffect(() => {
-    workerRef.current?.postMessage({ command: 'SET_MODE', value: demodMode });
-  }, [demodMode]);
+    postToWorker({ command: 'SET_MODE', value: demodMode });
+    const modeDefaults = defaultFilterStateForMode(demodMode);
+    setFilterState(modeDefaults);
+
+    if (applyModeAudioDefaults) {
+      const contract = MODE_CONTROL_CONTRACTS[demodMode];
+      setAudioOutputLevel(contract.defaultOutputLevel);
+      setAudioMaxOutputLevel(contract.defaultMaxOutputLevel);
+      pushDiagnosticEvent(`Applied ${demodMode} audio defaults for safe monitoring.`);
+    }
+  }, [applyModeAudioDefaults, demodMode, postToWorker, pushDiagnosticEvent]);
+
+  useEffect(() => {
+    const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, filterState.highCutHz);
+    if (clamped.lowCutHz !== filterState.lowCutHz || clamped.highCutHz !== filterState.highCutHz) {
+      setFilterState((prev) => ({
+        ...prev,
+        lowCutHz: clamped.lowCutHz,
+        highCutHz: clamped.highCutHz
+      }));
+    }
+  }, [demodMode, filterState.highCutHz, filterState.lowCutHz]);
+
+  const maxFineTuneHz = useMemo(
+    () => maxFineTuneHzForFilter(filterState.highCutHz),
+    [filterState.highCutHz]
+  );
+
+  useEffect(() => {
+    setFineFreq((prev) => clampFineTuneHz(prev, filterState.highCutHz));
+  }, [filterState.highCutHz]);
 
   // Update Fine Freq
   useEffect(() => {
-    workerRef.current?.postMessage({ command: 'SET_FINE_FREQ', value: fineFreq });
-  }, [fineFreq]);
+    postToWorker({ command: 'SET_FINE_FREQ', value: fineFreq });
+  }, [fineFreq, postToWorker]);
+
+  useEffect(() => {
+    audioRef.current?.setOutputLevel(audioOutputLevel);
+  }, [audioOutputLevel]);
+
+  useEffect(() => {
+    audioRef.current?.setMaxOutputLevel(audioMaxOutputLevel);
+    audioRef.current?.setSafetyConfig({ maxOutputLevel: audioMaxOutputLevel });
+  }, [audioMaxOutputLevel]);
+
+  useEffect(() => {
+    postToWorker({
+      command: 'SET_FILTER_CONFIG',
+      lowCutHz: filterState.lowCutHz,
+      highCutHz: filterState.highCutHz
+    });
+  }, [filterState.highCutHz, filterState.lowCutHz, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_FILTER_PROFILE', value: filterState.profile });
+  }, [filterState.profile, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_INTERFERENCE_PRESET', value: filterState.preset });
+  }, [filterState.preset, postToWorker]);
 
   const waitFor = (ms: number) => new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
@@ -720,7 +862,7 @@ export default function App() {
             await deviceRef.current.close();
             deviceRef.current = null;
         }
-        workerRef.current?.postMessage({ command: 'STOP' });
+        postToWorker({ command: 'STOP' });
         audioRef.current?.stop();
         setIsRunning(false);
         setGainStages([]); // Clear UI
@@ -744,6 +886,7 @@ export default function App() {
           ...prev,
           renderFps: null,
           audioQueueAheadMs: 0,
+          audioLimiterEvents: 0,
           audioConcealmentEvents: 0,
           audioPopSuppressionEvents: 0,
           droppedFrameEvents: 0,
@@ -755,6 +898,7 @@ export default function App() {
           lastFrameSampleRate: null,
           lastFrameWallClockMs: null,
           lastClockTruthMode: null,
+          dsp: createDefaultRuntimeDspTelemetry(),
           streamDiscontinuities: 0
         }));
         streamSessionStartedAtRef.current = null;
@@ -766,6 +910,9 @@ export default function App() {
             await tryResumeAudio('startup');
           audioRef.current?.resetStats();
             audioRef.current?.setMuted(isMuted);
+            audioRef.current?.setOutputLevel(audioOutputLevel);
+            audioRef.current?.setMaxOutputLevel(audioMaxOutputLevel);
+            audioRef.current?.setSafetyConfig({ maxOutputLevel: audioMaxOutputLevel });
             const state = audioRef.current?.getState();
             if (state !== 'running') {
                 setAudioState('awaiting-user-gesture');
@@ -801,9 +948,9 @@ export default function App() {
             }
     
             // Start Worker
-            workerRef.current?.postMessage({ command: 'START_USB_MODE' });
-            workerRef.current?.postMessage({ command: 'SET_MODE', value: demodMode });
-            workerRef.current?.postMessage({ command: 'SET_FINE_FREQ', value: fineFreq });
+            postToWorker({ command: 'START_USB_MODE' });
+            postToWorker({ command: 'SET_MODE', value: demodMode });
+            postToWorker({ command: 'SET_FINE_FREQ', value: fineFreq });
 
             usbIqRmsRef.current = 0;
             usbIqMeanAbsRef.current = 0;
@@ -814,6 +961,7 @@ export default function App() {
             setRuntimeTelemetry((prev) => ({
               ...prev,
               lowFpsEvents: 0,
+              audioLimiterEvents: 0,
               audioConcealmentEvents: 0,
               audioPopSuppressionEvents: 0,
               streamDiscontinuities: 0,
@@ -825,7 +973,8 @@ export default function App() {
               lastFrameTimestampNs: null,
               lastFrameSampleRate: null,
               lastFrameWallClockMs: null,
-              lastClockTruthMode: null
+              lastClockTruthMode: null,
+              dsp: createDefaultRuntimeDspTelemetry()
             }));
     
             // Start Stream
@@ -851,14 +1000,14 @@ export default function App() {
               }
 
               if (frame) {
-                workerRef.current?.postMessage({
+                postToWorker({
                   type: 'STREAM_FRAME',
                   frame
                 });
               }
 
                 const buf = dataView.buffer.slice(0); 
-                workerRef.current?.postMessage({ 
+                postToWorker({ 
                     type: 'USB_DATA', 
                     data: buf 
                 }, [buf]); 
@@ -870,7 +1019,7 @@ export default function App() {
                 console.error('Stream loop failed:', streamError);
                 const streamErr = normalizeDeviceError(streamError);
 
-                workerRef.current?.postMessage({ command: 'STOP' });
+                postToWorker({ command: 'STOP' });
                 setIsRunning(false);
                 setConnectionState('error');
                 setAudioState('awaiting-user-gesture');
@@ -905,11 +1054,19 @@ export default function App() {
     }
   };
 
+    const panicMute = (trigger: 'ui' | 'keyboard-shortcut') => {
+      setIsMuted(true);
+      audioRef.current?.setMuted(true);
+      setAudioState('muted');
+      setStatusMessage('Panic mute engaged.');
+      pushDiagnosticEvent(`Panic mute engaged by ${trigger}.`);
+    };
+
     const toggleMute = () => {
         setIsMuted((prev) => {
             const nextMuted = !prev;
             audioRef.current?.setMuted(nextMuted);
-            setAudioState(nextMuted ? 'muted' : 'running');
+        setAudioState(nextMuted ? 'muted' : isRunning ? 'running' : audioState);
             setStatusMessage(nextMuted ? 'Audio muted.' : 'Audio unmuted.');
             pushDiagnosticEvent(nextMuted ? 'Audio muted by UI.' : 'Audio unmuted by UI.');
             return nextMuted;
@@ -988,7 +1145,10 @@ export default function App() {
             muted: isMuted,
             gainStages,
             gains,
+            filterState,
+            demodQuality,
             runtimeTelemetry,
+            dspTelemetry: runtimeTelemetry.dsp,
             runtimePrerequisites,
             permissionState: latestPermissionState,
             fmScan: {
@@ -1068,7 +1228,7 @@ export default function App() {
     // So NCO Frequency should be +200kHz.
     // So logic is direct: fineFreq = offsetHz.
     
-    setFineFreq(Math.round(offsetHz));
+    setFineFreq(clampFineTuneHz(Math.round(offsetHz), filterState.highCutHz));
   };
 
     const measurementDisclosure = useMemo(() => {
@@ -1163,6 +1323,31 @@ export default function App() {
         });
       }
 
+      if (connectionState === 'streaming') {
+        if (demodQuality.lockState === 'locked') {
+          items.push({
+            key: 'demod-locked',
+            level: 'ok',
+            label: `${demodMode} lock acquired`,
+            recommendation: `Quality ${(demodQuality.quality * 100).toFixed(0)}%, SNR ${demodQuality.snrEstimateDb.toFixed(1)} dB.`
+          });
+        } else if (demodQuality.lockState === 'degraded') {
+          items.push({
+            key: 'demod-degraded',
+            level: 'warn',
+            label: `${demodMode} lock degraded`,
+            recommendation: 'Adjust fine tune, bandwidth profile, or gain staging to improve lock quality.'
+          });
+        } else {
+          items.push({
+            key: 'demod-searching',
+            level: 'warn',
+            label: `${demodMode} lock searching`,
+            recommendation: 'Tune onto a stronger signal or widen high-cut temporarily to assist lock.'
+          });
+        }
+      }
+
       if (runtimeTelemetry.totalDroppedSamples > 0) {
         items.push({
           key: 'stream-drops',
@@ -1241,8 +1426,16 @@ export default function App() {
       runtimeTelemetry.audioUnderruns,
       runtimeTelemetry.totalDroppedSamples,
       runtimeTelemetry.renderFps,
-      sourceType
+      sourceType,
+      demodMode,
+      demodQuality.lockState,
+      demodQuality.quality,
+      demodQuality.snrEstimateDb
     ]);
+
+  const modeContract = MODE_CONTROL_CONTRACTS[demodMode];
+  const displayedBandwidthHz = Math.max(0, filterState.highCutHz - filterState.lowCutHz);
+  const demodLockLabel = lockStateLabel(demodMode, demodQuality.lockState);
 
   return (
     <div className="app-shell">
@@ -1254,7 +1447,7 @@ export default function App() {
       </header>
 
       <p className="status-text" aria-live="polite">{statusMessage}</p>
-      <p className="status-subtext">Audio: {audioState} | Keyboard: Left/Right tune 1 kHz, M mute</p>
+      <p className="status-subtext">Audio: {audioState} | Keyboard: Left/Right tune 1 kHz, Up/Down fine tune, M mute toggle, P panic mute</p>
       
       <div className="visual-grid">
         <section className="panel panel-wide">
@@ -1312,8 +1505,12 @@ export default function App() {
             {isRunning ? 'Stop' : 'Start'}
         </button>
 
-        <button onClick={toggleMute} className="action-btn btn-secondary" disabled={!isRunning}>
+        <button onClick={toggleMute} className="action-btn btn-secondary">
           {isMuted ? 'Unmute' : 'Mute'}
+        </button>
+
+        <button onClick={() => panicMute('ui')} className="action-btn btn-stop">
+          Panic Mute
         </button>
 
         <button onClick={exportDiagnostics} className="action-btn btn-secondary">
@@ -1347,6 +1544,40 @@ export default function App() {
         </div>
 
         <div className="control-group">
+          <label className="control-label">Output Level ({Math.round(audioOutputLevel * 100)}%)</label>
+          <input
+            type="range" min="0" max="1" step="0.01"
+            value={audioOutputLevel}
+            onChange={(e) => setAudioOutputLevel(parseFloat(e.target.value))}
+            className="control-range"
+          />
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Max Output ({Math.round(audioMaxOutputLevel * 100)}%)</label>
+          <input
+            type="range" min="0.2" max="1" step="0.01"
+            value={audioMaxOutputLevel}
+            onChange={(e) => {
+              const next = parseFloat(e.target.value);
+              setAudioMaxOutputLevel(next);
+              setAudioOutputLevel((prev) => Math.min(prev, next));
+            }}
+            className="control-range"
+          />
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Auto Mode Audio Defaults</label>
+          <input
+            type="checkbox"
+            checked={applyModeAudioDefaults}
+            onChange={(e) => setApplyModeAudioDefaults(e.target.checked)}
+            className="control-check"
+          />
+        </div>
+
+        <div className="control-group">
             <label className="control-label">Zoom ({zoomLevel}x)</label>
             <input 
                 type="range" min="1" max="8" step="1"
@@ -1358,26 +1589,105 @@ export default function App() {
 
         {/* Frequency Control */}
         <div className="control-group">
-            <label className="control-label">Fine Tune ({fineFreq} Hz)</label>
+          <label className="control-label">Fine Tune ({fineFreq} Hz)</label>
             <input 
-                type="range" min="-100000" max="100000" step="1000"
+            type="range" min={-maxFineTuneHz} max={maxFineTuneHz} step="1000"
                 value={fineFreq}
-                onChange={(e) => setFineFreq(parseInt(e.target.value))}
+            onChange={(e) => setFineFreq(clampFineTuneHz(parseInt(e.target.value), filterState.highCutHz))}
                 className="control-range"
             />
+          <div className="control-note">Alias-safe fine tune limit: +/-{maxFineTuneHz.toLocaleString()} Hz</div>
         </div>
 
         <div className="control-group">
             <label className="control-label">Mode</label>
             <select 
                 value={demodMode}
-                onChange={(e) => setDemodMode(e.target.value as 'WFM' | 'AM' | 'NFM')}
+                onChange={(e) => setDemodMode(e.target.value as DemodMode)}
                 className="control-input compact"
             >
                 <option value="WFM">WFM</option>
                 <option value="NFM">NFM</option>
                 <option value="AM">AM</option>
             </select>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Filter Shape</label>
+          <select
+            value={filterState.profile}
+            onChange={(e) => setFilterState((prev) => ({ ...prev, profile: e.target.value as FilterProfile }))}
+            className="control-input compact"
+          >
+            <option value="sharp">Sharp</option>
+            <option value="low-ringing">Low Ringing</option>
+            <option value="low-latency">Low Latency</option>
+          </select>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Interference Helper</label>
+          <select
+            value={filterState.preset}
+            onChange={(e) => setFilterState((prev) => ({ ...prev, preset: e.target.value as InterferencePreset }))}
+            className="control-input compact"
+          >
+            <option value="off">Off</option>
+            <option value="dc-spike-reduction">DC Spike Reduction</option>
+            <option value="heterodyne-notch">Heterodyne Notch</option>
+            <option value="hum-notch">Hum Notch</option>
+          </select>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Bandwidth ({displayedBandwidthHz} Hz)</label>
+          <input
+            type="range"
+            min={Math.max(400, modeContract.highCutMinHz - modeContract.lowCutMinHz)}
+            max={modeContract.highCutMaxHz - modeContract.lowCutMinHz}
+            step="100"
+            value={displayedBandwidthHz}
+            onChange={(e) => {
+              const bandwidth = parseInt(e.target.value);
+              const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, filterState.lowCutHz + bandwidth);
+              setFilterState((prev) => ({ ...prev, ...clamped }));
+            }}
+            className="control-range"
+          />
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Low Cut ({filterState.lowCutHz} Hz)</label>
+          <input
+            type="range"
+            min={modeContract.lowCutMinHz}
+            max={modeContract.lowCutMaxHz}
+            step="10"
+            value={filterState.lowCutHz}
+            onChange={(e) => {
+              const nextLow = parseInt(e.target.value);
+              const clamped = clampFilterForMode(demodMode, nextLow, filterState.highCutHz);
+              setFilterState((prev) => ({ ...prev, ...clamped }));
+            }}
+            className="control-range"
+          />
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">High Cut ({filterState.highCutHz} Hz)</label>
+          <input
+            type="range"
+            min={modeContract.highCutMinHz}
+            max={modeContract.highCutMaxHz}
+            step="50"
+            value={filterState.highCutHz}
+            onChange={(e) => {
+              const nextHigh = parseInt(e.target.value);
+              const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, nextHigh);
+              setFilterState((prev) => ({ ...prev, ...clamped }));
+            }}
+            className="control-range"
+          />
         </div>
 
         <div className="control-group">
@@ -1437,7 +1747,13 @@ export default function App() {
             <input 
                 type="number" 
                 value={(frequency / 1_000_000).toFixed(3)}
-                onChange={(e) => setFrequency(Math.floor(parseFloat(e.target.value) * 1_000_000))}
+                onChange={(e) => {
+                  const parsed = parseFloat(e.target.value);
+                  if (!Number.isFinite(parsed)) {
+                    return;
+                  }
+                  setFrequency(Math.max(0, Math.floor(parsed * 1_000_000)));
+                }}
                 className="control-input compact"
                 step="0.1"
             />
@@ -1511,13 +1827,47 @@ export default function App() {
             <strong>Pop Suppression Events</strong>
             <span>{runtimeTelemetry.audioPopSuppressionEvents}</span>
           </li>
+          <li className={`health-item ${runtimeTelemetry.audioLimiterEvents > 0 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Limiter Events</strong>
+            <span>{runtimeTelemetry.audioLimiterEvents}</span>
+          </li>
           <li className={`health-item ${runtimeTelemetry.totalDroppedSamples > 0 ? 'health-warn' : 'health-ok'}`}>
             <strong>Dropped Samples</strong>
             <span>{runtimeTelemetry.totalDroppedSamples} ({runtimeTelemetry.droppedFrameEvents} events)</span>
           </li>
           <li className="health-item health-ok">
+            <strong>Worker Transport</strong>
+            <span>{runtimeTelemetry.workerTransportMode}</span>
+          </li>
+          <li className="health-item health-ok">
             <strong>Last Clock Truth Mode</strong>
             <span>{runtimeTelemetry.lastClockTruthMode ?? 'unknown'}</span>
+          </li>
+        </ul>
+      </section>
+
+      <section className="health-panel" aria-live="polite">
+        <h2 className="panel-title">Demod Lock & Quality</h2>
+        <ul>
+          <li className={`health-item ${demodQuality.lockState === 'locked' ? 'health-ok' : demodQuality.lockState === 'degraded' ? 'health-warn' : 'health-error'}`}>
+            <strong>Lock State</strong>
+            <span>{demodMode} {demodQuality.lockState} ({demodLockLabel})</span>
+          </li>
+          <li className="health-item health-ok">
+            <strong>Quality</strong>
+            <span>{(demodQuality.quality * 100).toFixed(0)}%</span>
+          </li>
+          <li className="health-item health-ok">
+            <strong>SNR Estimate</strong>
+            <span>{demodQuality.snrEstimateDb.toFixed(1)} dB</span>
+          </li>
+          <li className="health-item health-ok">
+            <strong>Pilot / Carrier</strong>
+            <span>{demodQuality.pilotLevel.toFixed(2)} / {demodQuality.carrierLevel.toFixed(2)}</span>
+          </li>
+          <li className="health-item health-ok">
+            <strong>Deviation Estimate</strong>
+            <span>{demodQuality.deviationEstimate.toFixed(3)}</span>
           </li>
         </ul>
       </section>
