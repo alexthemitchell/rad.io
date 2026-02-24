@@ -325,7 +325,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Canvas/WebGL Context**: robust setup and resizing.
 - [x] **Spectrum View**: FFT rendering.
 - [x] **Waterfall View**: scrolling waterfall with colormaps.
-- [ ] **Verification**: sustain 60 FPS on synthetic input.
+- [x] **Verification**: sustain 60 FPS on synthetic input. (`scripts/render-fps-gate.mjs`, `artifacts/validation/p4-0d-render-fps-gate-2026-02-24T23-26-56-410Z.json`)
 
 ### 4.3 Analyzer Controls (MVP)
 
@@ -351,7 +351,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Tuning Interaction**: click/drag-to-tune (Click-to-tune implemented).
 - [ ] **Retune Assist**: center-on-peak, snap-to-raster, pilot/carrier “lock retune”, and “return to last locked” for drift-prone sessions.
 - [x] **Zoom & Pan**: smooth frequency navigation.
-- [ ] **Markers/Cursors (Early)**: basic markers to support workflows and debugging.
+- [x] **Markers/Cursors (Early)**: basic markers to support workflows and debugging. (`src/App.tsx`, `src/components/SpectrumCanvas.tsx`, `src/dsp/analyzerArtifactExport.ts`)
 - [ ] **Marker↔VFO Binding Controls**: explicit “bind this marker to active VFO” and “follow VFO” modes with clear affordances.
 - [ ] **Delta Markers + Peak Readout**: delta frequency/power readouts and a simple peak list for “find the signal” workflows.
 - [ ] **Band Plans & Stepping**: regional band presets, channel raster snapping, and per-mode step sizes.
