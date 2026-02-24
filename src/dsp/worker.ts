@@ -11,6 +11,7 @@ import { evaluateDemodQuality, type DemodQualityMetrics } from './DemodMetrics';
 import { NoiseSquelch, type NoiseSquelchState } from './NoiseSquelch';
 import { ToneDecoder, type ToneDecodeState } from './ToneDecoder';
 import { computePpmCorrectionHz } from './ppmCorrection';
+import { AudioLeveler, type AudioLevelerState } from './AudioLeveler';
 import type { SDRStreamFrame } from '../devices/streamFrame';
 import {
     computeDemodQualityTelemetry,
@@ -56,6 +57,7 @@ let filterProfile: FilterProfile = baseFilterConfig.profile;
 let interferencePreset: InterferencePreset = 'off';
 const audioPostProcessor = new AudioPostProcessor(baseFilterConfig);
 const toneDecoder = new ToneDecoder();
+const audioLeveler = new AudioLeveler();
 const noiseSquelch = new NoiseSquelch({
     enabled: false,
     thresholdDb: 10,
@@ -74,6 +76,7 @@ let latestToneDecodeState: ToneDecodeState = {
     confidence: 0,
     active: false
 };
+let latestAudioLevelerState: AudioLevelerState = audioLeveler.getState();
 
 let mode: 'WFM' | 'AM' | 'NFM' = 'WFM';
 let nfmAudioPreset: NfmAudioPreset = 'voice-na-75us';
@@ -162,6 +165,12 @@ const handleMessage = (e: MessageEvent) => {
     } else if (e.data.command === 'SET_PPM_CORRECTION') {
         ppmCorrection = Number(e.data.value);
         applyMixerFrequency();
+    } else if (e.data.command === 'SET_AUDIO_LEVELER_ENABLED') {
+        audioLeveler.setEnabled(Boolean(e.data.value));
+        postToMain({
+            type: 'AUDIO_LEVELER_STATE',
+            data: audioLeveler.getState()
+        }, []);
     } else if (e.data.command === 'SET_FINE_FREQ') {
         // Frequency shift in Hz (e.g. +50000 Hz)
         fineFrequencyHz = Number(e.data.value);
@@ -262,6 +271,7 @@ function processUSBData(buffer: ArrayBuffer) {
 
     latestDemodMetrics = evaluateDemodQuality(mode, audioOut);
     const frameDurationMs = (audioOut.length / 50_000) * 1000;
+    latestAudioLevelerState = audioLeveler.applyInPlace(audioOut, frameDurationMs);
     latestSquelchState = noiseSquelch.applyInPlace(audioOut, latestDemodMetrics.snrEstimateDb, frameDurationMs);
     if (mode === 'NFM') {
         latestToneDecodeState = toneDecoder.decodeCtcss(audioOut, 50_000);
@@ -305,6 +315,10 @@ function processUSBData(buffer: ArrayBuffer) {
                 data: latestToneDecodeState
             }, []);
         }
+        postToMain({
+            type: 'AUDIO_LEVELER_STATE',
+            data: latestAudioLevelerState
+        }, []);
     }
 
     // Audio Output

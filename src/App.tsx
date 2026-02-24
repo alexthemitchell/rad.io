@@ -70,6 +70,13 @@ type ToneDecodeState = {
   active: boolean;
 };
 
+type AudioLevelerState = {
+  enabled: boolean;
+  gainLinear: number;
+  gainDb: number;
+  targetRms: number;
+};
+
 type DemodQualityState = {
   lockState: LockState;
   quality: number;
@@ -217,6 +224,13 @@ const defaultToneDecodeState = (): ToneDecodeState => ({
   active: false
 });
 
+const defaultAudioLevelerState = (): AudioLevelerState => ({
+  enabled: false,
+  gainLinear: 1,
+  gainDb: 0,
+  targetRms: 0.22
+});
+
 const detectRuntimePrerequisites = (): RuntimePrerequisites => {
   const secureContext = typeof window !== 'undefined' && window.isSecureContext;
   const crossOriginIsolated = typeof window !== 'undefined' && window.crossOriginIsolated;
@@ -334,6 +348,7 @@ export default function App() {
     const [permissionState, setPermissionState] = useState<RuntimePermissionState>(unknownPermissionState());
     const [noiseSquelchState, setNoiseSquelchState] = useState<NoiseSquelchState>(defaultNoiseSquelchState);
     const [toneDecodeState, setToneDecodeState] = useState<ToneDecodeState>(defaultToneDecodeState);
+    const [audioLevelerState, setAudioLevelerState] = useState<AudioLevelerState>(defaultAudioLevelerState);
     const [nfmAudioPreset, setNfmAudioPreset] = useState<NfmAudioPreset>('voice-na-75us');
     const [nfmOutputPath, setNfmOutputPath] = useState<NfmOutputPath>('voice');
   
@@ -439,6 +454,8 @@ export default function App() {
         setNoiseSquelchState(e.data.data as NoiseSquelchState);
       } else if (e.data.type === 'TONE_DECODE_STATE') {
         setToneDecodeState(e.data.data as ToneDecodeState);
+      } else if (e.data.type === 'AUDIO_LEVELER_STATE') {
+        setAudioLevelerState(e.data.data as AudioLevelerState);
       } else if (e.data.type === 'DSP_TELEMETRY') {
         const telemetry = e.data.data as RuntimeDspTelemetryV1;
         setRuntimeTelemetry((prev) => ({
@@ -764,6 +781,10 @@ export default function App() {
   useEffect(() => {
     postToWorker({ command: 'SET_PPM_CORRECTION', value: ppmCorrection });
   }, [ppmCorrection, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_AUDIO_LEVELER_ENABLED', value: audioLevelerState.enabled });
+  }, [audioLevelerState.enabled, postToWorker]);
 
   useEffect(() => {
     audioRef.current?.setOutputLevel(audioOutputLevel);
@@ -1243,6 +1264,7 @@ export default function App() {
             gainStages,
             gains,
             filterState,
+            audioLevelerState,
             demodQuality,
             runtimeTelemetry,
             dspTelemetry: runtimeTelemetry.dsp,
@@ -1787,6 +1809,19 @@ export default function App() {
                       onChange={(e) => setNoiseSquelchState((prev) => ({ ...prev, thresholdDb: parseFloat(e.target.value) }))}
                       className="control-range"
                     />
+                  </div>
+
+                  <div className="control-group">
+                    <label className="control-label">Audio Leveler</label>
+                    <input
+                      type="checkbox"
+                      checked={audioLevelerState.enabled}
+                      onChange={(e) => setAudioLevelerState((prev) => ({ ...prev, enabled: e.target.checked }))}
+                      className="control-check"
+                    />
+                    <div className="control-note">
+                      Gain {audioLevelerState.gainDb.toFixed(1)} dB ({audioLevelerState.gainLinear.toFixed(2)}x)
+                    </div>
                   </div>
 
                   <div className="control-group">

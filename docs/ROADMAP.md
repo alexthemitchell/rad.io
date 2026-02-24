@@ -267,7 +267,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Auto Rate/Decimation Planning**: given requested mode/bandwidth, automatically pick device rate + decimation/resampling chain, or explain why it’s impossible.
 - [ ] **Constraint-Driven UI**: bandwidth/zoom/tuning controls reflect alias-safe limits (guard bands, transition widths) instead of allowing invalid combinations. (Partial guardrails implemented in `src/App.tsx` via mode-constrained filter ranges and alias-safe fine-tune bounds.)
 - [x] **Audio Safety**: limiter/soft-clipper to avoid clipping. (`src/audio/AudioSink.ts`, `src/audio/AudioSink.test.ts`)
-- [ ] **Audio Leveling (Early)**: audio AGC/leveler for stable listening levels (with clear UX tradeoffs) and telemetry hooks to show when it’s active.
+- [x] **Audio Leveling (Early)**: deterministic post-demod audio leveler with operator toggle and live gain-state telemetry (`enabled`, linear gain, dB gain) surfaced to UI for “active/not-active” visibility. (`src/dsp/AudioLeveler.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/AudioLeveler.test.ts`)
 - [ ] **AGC Contract (Per-Mode, Testable)**: explicitly define IF/BB AGC semantics (attack/release/hang/gating) and how it interacts with squelch and audio leveling so behavior is predictable and regression-testable.
 - [x] **Hard Audio Safety UX**: startup muted, per-mode default gain staging, configurable max output level, and an always-available “panic mute” action (keyboard + UI). (`src/App.tsx`, `src/audio/AudioSink.ts`)
 - [ ] **Impulse Noise Blanker (Baseline, Early)**: deterministic impulse blanker for HF/SSB usability with conservative defaults, clear tradeoffs, and telemetry hooks (blanking rate/energy) to avoid “magic knob” behavior.
