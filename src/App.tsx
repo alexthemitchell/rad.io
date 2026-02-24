@@ -91,6 +91,33 @@ type ImpulseBlankerState = {
   estimatedImpulseEnergy: number;
 };
 
+type FrequencyModelState = {
+  afcEnabled: boolean;
+  afcCorrectionHz: number;
+  driftEstimateHzPerSec: number;
+  driftConfidence: number;
+  ppmCorrectionHz: number;
+  totalCorrectionHz: number;
+  stabilityMode: boolean;
+  phaseErrorRms: number;
+};
+
+type AudioPllState = {
+  ratio: number;
+  targetQueueMs: number;
+  queueErrorMs: number;
+};
+
+type VfoRuntimeState = {
+  activeVfoCount: number;
+  vfos: Array<{
+    id: string;
+    offsetHz: number;
+    groupDelaySamples: number;
+    power: number;
+  }>;
+};
+
 type ToneDecodeMode = 'OFF' | 'CTCSS' | 'DCS' | 'AUTO';
 
 type AudioLevelerState = {
@@ -273,6 +300,28 @@ const defaultAudioLevelerState = (): AudioLevelerState => ({
   targetRms: 0.22
 });
 
+const defaultFrequencyModelState = (): FrequencyModelState => ({
+  afcEnabled: false,
+  afcCorrectionHz: 0,
+  driftEstimateHzPerSec: 0,
+  driftConfidence: 0,
+  ppmCorrectionHz: 0,
+  totalCorrectionHz: 0,
+  stabilityMode: false,
+  phaseErrorRms: 0
+});
+
+const defaultAudioPllState = (): AudioPllState => ({
+  ratio: 1,
+  targetQueueMs: 120,
+  queueErrorMs: 0
+});
+
+const defaultVfoRuntimeState = (): VfoRuntimeState => ({
+  activeVfoCount: 0,
+  vfos: []
+});
+
 const detectRuntimePrerequisites = (): RuntimePrerequisites => {
   const secureContext = typeof window !== 'undefined' && window.isSecureContext;
   const crossOriginIsolated = typeof window !== 'undefined' && window.crossOriginIsolated;
@@ -398,6 +447,13 @@ export default function App() {
     const [nfmAudioPreset, setNfmAudioPreset] = useState<NfmAudioPreset>('voice-na-75us');
     const [nfmOutputPath, setNfmOutputPath] = useState<NfmOutputPath>('voice');
     const [iqCorrectionEnabled, setIqCorrectionEnabled] = useState(true);
+    const [afcEnabled, setAfcEnabled] = useState(false);
+    const [stabilityModeEnabled, setStabilityModeEnabled] = useState(false);
+    const [frequencyModelState, setFrequencyModelState] = useState<FrequencyModelState>(defaultFrequencyModelState);
+    const [audioPllState, setAudioPllState] = useState<AudioPllState>(defaultAudioPllState);
+    const [vfoState, setVfoState] = useState<VfoRuntimeState>(defaultVfoRuntimeState);
+    const [secondaryVfoEnabled, setSecondaryVfoEnabled] = useState(false);
+    const [secondaryVfoOffsetHz, setSecondaryVfoOffsetHz] = useState(12_500);
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -519,6 +575,12 @@ export default function App() {
         }));
       } else if (e.data.type === 'IMPULSE_BLANKER_STATE') {
         setImpulseBlankerState(e.data.data as ImpulseBlankerState);
+      } else if (e.data.type === 'FREQUENCY_MODEL_STATE') {
+        setFrequencyModelState(e.data.data as FrequencyModelState);
+      } else if (e.data.type === 'AUDIO_PLL_STATE') {
+        setAudioPllState(e.data.data as AudioPllState);
+      } else if (e.data.type === 'VFO_STATE') {
+        setVfoState(e.data.data as VfoRuntimeState);
       } else if (e.data.type === 'DSP_TELEMETRY') {
         const telemetry = e.data.data as RuntimeDspTelemetryV1;
         setRuntimeTelemetry((prev) => ({
@@ -626,7 +688,7 @@ export default function App() {
 
         rafId = window.requestAnimationFrame(tick);
         return () => window.cancelAnimationFrame(rafId);
-      }, [isRunning]);
+      }, [isRunning, postToWorker]);
 
       useEffect(() => {
         if (!isRunning) return;
@@ -643,6 +705,7 @@ export default function App() {
             audioPopSuppressionEvents: stats.popSuppressionEvents,
             audioLimiterEvents: stats.limiterEvents
           }));
+          postToWorker({ command: 'SET_AUDIO_QUEUE_AHEAD_MS', value: stats.queueAheadMs });
 
           // Sample high-rate USB metrics at UI cadence to avoid per-transfer rerenders.
           setUsbIqRms(usbIqRmsRef.current);
@@ -652,7 +715,7 @@ export default function App() {
         }, 500);
 
         return () => window.clearInterval(intervalId);
-      }, [isRunning]);
+      }, [isRunning, postToWorker]);
 
     useEffect(() => {
       fftDataRef.current = fftData;
@@ -927,6 +990,22 @@ export default function App() {
   }, [iqCorrectionEnabled, postToWorker]);
 
   useEffect(() => {
+    postToWorker({ command: 'SET_AFC_ENABLED', value: afcEnabled });
+  }, [afcEnabled, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_STABILITY_MODE', value: stabilityModeEnabled });
+  }, [postToWorker, stabilityModeEnabled]);
+
+  useEffect(() => {
+    const vfos = [
+      { id: 'main', offsetHz: 0 },
+      ...(secondaryVfoEnabled ? [{ id: 'aux', offsetHz: secondaryVfoOffsetHz }] : [])
+    ];
+    postToWorker({ command: 'SET_VFOS', value: vfos });
+  }, [postToWorker, secondaryVfoEnabled, secondaryVfoOffsetHz]);
+
+  useEffect(() => {
     audioRef.current?.setOutputLevel(audioOutputLevel);
   }, [audioOutputLevel]);
 
@@ -1166,6 +1245,9 @@ export default function App() {
           dsp: createDefaultRuntimeDspTelemetry(),
           streamDiscontinuities: 0
         }));
+        setFrequencyModelState(defaultFrequencyModelState());
+        setAudioPllState(defaultAudioPllState());
+        setVfoState(defaultVfoRuntimeState());
         streamSessionStartedAtRef.current = null;
     } else {
         // START
@@ -1222,6 +1304,15 @@ export default function App() {
             postToWorker({ command: 'SET_TUNED_FREQUENCY', value: frequency });
             postToWorker({ command: 'SET_PPM_CORRECTION', value: ppmCorrection });
             postToWorker({ command: 'SET_SAMPLE_RATE', value: streamRatePlan.sampleRateHz });
+            postToWorker({ command: 'SET_AFC_ENABLED', value: afcEnabled });
+            postToWorker({ command: 'SET_STABILITY_MODE', value: stabilityModeEnabled });
+            postToWorker({
+              command: 'SET_VFOS',
+              value: [
+                { id: 'main', offsetHz: 0 },
+                ...(secondaryVfoEnabled ? [{ id: 'aux', offsetHz: secondaryVfoOffsetHz }] : [])
+              ]
+            });
 
             usbIqRmsRef.current = 0;
             usbIqMeanAbsRef.current = 0;
@@ -1432,6 +1523,9 @@ export default function App() {
             gains,
             filterState,
             audioLevelerState,
+            frequencyModelState,
+            audioPllState,
+            vfoState,
             demodQuality,
             runtimeTelemetry,
             dspTelemetry: runtimeTelemetry.dsp,
@@ -2068,6 +2162,60 @@ export default function App() {
                   </div>
 
                   <div className="control-group">
+                    <label className="control-label">Carrier Tracking (AFC)</label>
+                    <input
+                      type="checkbox"
+                      checked={afcEnabled}
+                      onChange={(e) => setAfcEnabled(e.target.checked)}
+                      className="control-check"
+                    />
+                    <div className="control-note">
+                      AFC {frequencyModelState.afcEnabled ? 'enabled' : 'disabled'} | Correction {frequencyModelState.afcCorrectionHz.toFixed(1)} Hz
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <label className="control-label">Stability Characterization</label>
+                    <input
+                      type="checkbox"
+                      checked={stabilityModeEnabled}
+                      onChange={(e) => setStabilityModeEnabled(e.target.checked)}
+                      className="control-check"
+                    />
+                    <div className="control-note">
+                      Drift {frequencyModelState.driftEstimateHzPerSec.toFixed(2)} Hz/s | Confidence {(frequencyModelState.driftConfidence * 100).toFixed(0)}%
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <label className="control-label">Secondary VFO</label>
+                    <input
+                      type="checkbox"
+                      checked={secondaryVfoEnabled}
+                      onChange={(e) => setSecondaryVfoEnabled(e.target.checked)}
+                      className="control-check"
+                    />
+                    <div className="control-note">
+                      {secondaryVfoEnabled ? `Offset ${secondaryVfoOffsetHz.toFixed(0)} Hz` : 'Disabled'}
+                    </div>
+                  </div>
+
+                  {secondaryVfoEnabled && (
+                    <div className="control-group">
+                      <label className="control-label">Secondary VFO Offset ({secondaryVfoOffsetHz.toFixed(0)} Hz)</label>
+                      <input
+                        type="range"
+                        min="-150000"
+                        max="150000"
+                        step="250"
+                        value={secondaryVfoOffsetHz}
+                        onChange={(e) => setSecondaryVfoOffsetHz(parseFloat(e.target.value))}
+                        className="control-range"
+                      />
+                    </div>
+                  )}
+
+                  <div className="control-group">
                     <label className="control-label">Squelch Hang ({Math.round(noiseSquelchState.hangMs)} ms)</label>
                     <input
                       type="range"
@@ -2344,6 +2492,20 @@ export default function App() {
           <li className="health-item health-ok">
             <strong>Last Clock Truth Mode</strong>
             <span>{runtimeTelemetry.lastClockTruthMode ?? 'unknown'}</span>
+          </li>
+          <li className={`health-item ${Math.abs(audioPllState.queueErrorMs) > 80 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Audio PLL Ratio</strong>
+            <span>{audioPllState.ratio.toFixed(5)} (error {audioPllState.queueErrorMs.toFixed(1)} ms)</span>
+          </li>
+          <li className={`health-item ${frequencyModelState.driftConfidence < 0.35 ? 'health-warn' : 'health-ok'}`}>
+            <strong>Freq Model</strong>
+            <span>
+              Drift {frequencyModelState.driftEstimateHzPerSec.toFixed(2)} Hz/s | Total {frequencyModelState.totalCorrectionHz.toFixed(1)} Hz
+            </span>
+          </li>
+          <li className="health-item health-ok">
+            <strong>Active VFOs</strong>
+            <span>{vfoState.activeVfoCount}</span>
           </li>
         </ul>
       </section>

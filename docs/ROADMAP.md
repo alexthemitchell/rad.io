@@ -251,18 +251,18 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **Pipeline Architecture**: define the chain: `Source → DDC/Filter → Demod → Sink`.
 - [x] **NCO / Mixer (DDC)**: frequency shift for tuning and channel extraction.
-- [ ] **Multi-VFO Channel Extraction Layer**: phase-coherent per-VFO extraction (1–2 VFOs) and PFB channelizer mode (3+ VFOs).
-- [ ] **Channelizer/Decimator Correctness Contract**: define and test phase coherence + group delay guarantees (esp. PFB/multi-VFO) with regression fixtures.
+- [ ] **Multi-VFO Channel Extraction Layer**: phase-coherent per-VFO extraction (1–2 VFOs) and PFB channelizer mode (3+ VFOs). (Partial: deterministic 1–2 VFO extraction via oscillator bank is implemented in `src/dsp/MultiVfoChannelizer.ts`/`src/dsp/worker.ts`; true 3+ VFO PFB channelizer mode remains pending.)
+- [x] **Channelizer/Decimator Correctness Contract**: define and test phase coherence + group delay guarantees (esp. PFB/multi-VFO) with regression fixtures. (`src/dsp/MultiVfoChannelizer.test.ts`, `src/dsp/Downsampler.test.ts`)
 - [x] **Frequency / Clock Error Correction (PPM)**: apply PPM correction in the DSP path (not just UI), with stable behavior across retunes. (`src/dsp/ppmCorrection.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/ppmCorrection.test.ts`)
-- [ ] **Drift Estimation + Confidence**: estimate LO/sample-clock drift over time from pilots/beacons, surface confidence, and feed it into calibration/AFC decisions.
-- [ ] **Frequency Accuracy Model (Unified)**: define a single model for PPM + AFC/PLL lock state + drift estimate and propagate it through UI, recording metadata, and replay so frequency correctness is explainable and reproducible.
-- [ ] **Stability/Phase-Noise Characterization Mode (Guardrailed)**: quantify short-term stability using pilots/beacons (phase error metrics) and persist results into device profiles.
+- [x] **Drift Estimation + Confidence**: estimate LO/sample-clock drift over time from pilots/beacons, surface confidence, and feed it into calibration/AFC decisions. (`src/dsp/FrequencyTracker.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/FrequencyTracker.test.ts`)
+- [ ] **Frequency Accuracy Model (Unified)**: define a single model for PPM + AFC/PLL lock state + drift estimate and propagate it through UI, recording metadata, and replay so frequency correctness is explainable and reproducible. (Partial: model is live in worker/UI/runtime diagnostics via `src/dsp/FrequencyTracker.ts`, `src/dsp/AudioPllController.ts`, `src/dsp/worker.ts`, and `src/App.tsx`; replay propagation semantics remain pending.)
+- [ ] **Stability/Phase-Noise Characterization Mode (Guardrailed)**: quantify short-term stability using pilots/beacons (phase error metrics) and persist results into device profiles. (Partial: guardrailed mode + live phase/drift metrics are implemented; persistence into device profiles remains pending.)
 - [x] **IQ Correction**: baseline per-frame DC removal + I/Q gain-balance correction stage integrated into worker DDC path. (`src/dsp/IqCorrection.ts`, `src/dsp/worker.ts`, `src/dsp/IqCorrection.test.ts`)
 - [x] **RF Impurity Mitigation UX Hooks**: expose measurable controls for LO/IF shift (fine tune), configurable notch frequency/Q, and IQ correction enablement with safe defaults and runtime diagnostics context. (`src/App.tsx`, `src/dsp/controlGuardrails.ts`, `src/dsp/IqCorrection.ts`, `src/dsp/worker.ts`)
 - [x] **Minimal Interference Mitigation Presets (Early)**: deterministic “DC spike reduction”, “heterodyne notch”, and “hum notch” presets with measurable before/after indicators. (`src/dsp/AudioPostProcessor.ts`, `src/dsp/AudioPostProcessor.test.ts`, `src/App.tsx`)
 - [x] **Decimation**: efficient downsampling filters.
-- [ ] **Resampling**: polyphase resampler (IQ + audio rate).
-- [ ] **Asynchronous SRC / Audio PLL**: lock audio output to device/sample time with explicit stability/latency tradeoffs and telemetry hooks.
+- [x] **Resampling**: polyphase resampler (IQ + audio rate). (`src/dsp/PolyphaseResampler.ts`, `src/dsp/worker.ts`, `src/dsp/PolyphaseResampler.test.ts`)
+- [x] **Asynchronous SRC / Audio PLL**: lock audio output to device/sample time with explicit stability/latency tradeoffs and telemetry hooks. (`src/dsp/AudioPllController.ts`, `src/dsp/worker.ts`, `src/App.tsx`, `src/dsp/AudioPllController.test.ts`)
 - [x] **Anti-Alias Guarantees**: mode filter constraints now include live sample-rate guard bands; fine-tune and high-cut controls are clamped by alias-safe limits at runtime. (`src/dsp/controlGuardrails.ts`, `src/App.tsx`, `src/dsp/controlGuardrails.test.ts`)
 - [x] **Auto Rate/Decimation Planning**: mode/bandwidth-aware stream-rate planner selects source sample rate and decimation factor, and runtime applies plan to device/worker with diagnostics. (`src/dsp/controlGuardrails.ts`, `src/App.tsx`, `src/dsp/Downsampler.ts`, `src/dsp/controlGuardrails.test.ts`)
 - [x] **Constraint-Driven UI**: UI now surfaces alias-safe limits and planned stream/decimation state, while control interactions enforce valid combinations under active sample-rate constraints. (`src/App.tsx`, `src/dsp/controlGuardrails.ts`)
@@ -276,7 +276,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Filter Shapes & Bandwidth Control**: per-mode filter defaults + user-selectable bandwidths. (`src/dsp/AudioPostProcessor.ts`, `src/App.tsx`)
 - [x] **Filter Profiles**: sharp vs low-latency vs low-ringing profiles (mode-dependent) with clear UX tradeoffs. (`src/dsp/AudioPostProcessor.ts`, `src/App.tsx`)
 - [x] **Dropout / Sample-Loss Concealment**: deterministic policy for gaps (mute ramps, timebase correction, re-lock) beyond just counting drops. (`src/audio/AudioSink.ts`, `src/devices/recoveryRegression.test.ts`, `src/audio/AudioSink.test.ts`)
-- [ ] **Carrier Tracking (AFC/PLL)**: optional per-mode tracking to correct residual frequency error and long-session drift (especially NFM/SSB).
+- [x] **Carrier Tracking (AFC/PLL)**: optional per-mode tracking to correct residual frequency error and long-session drift (especially NFM/SSB). (`src/dsp/FrequencyTracker.ts`, `src/dsp/worker.ts`, `src/App.tsx`)
 - [x] **Explicit Lock States**: expose lock/quality state machines (e.g., WFM pilot lock, AM carrier lock) so UX can drive retune-assist and safe recovery. (`src/dsp/DemodMetrics.ts`, `src/App.tsx`)
 - [x] **Audio Filter Controls**: per-mode high/low cut and optional notch helpers for intelligibility (SSB/AM/NFM). (Baseline controls delivered for WFM/AM/NFM shared path via `src/App.tsx` + `src/dsp/AudioPostProcessor.ts`.)
 - [x] **DSP Amplitude Contract**: explicitly define IQ scaling and normalization at key tap points (pre/post-DDC, post-demod) so meters, FFT, recording, and exports are consistent across devices. (`src/telemetry/runtimeTelemetryContract.ts`, `src/dsp/worker.ts`, `src/telemetry/runtimeTelemetryContract.test.ts`)

@@ -15,6 +15,10 @@ import { AudioLeveler, type AudioLevelerState } from './AudioLeveler';
 import { IqCorrection } from './IqCorrection';
 import { AudioAgc, type AudioAgcState } from './AudioAgc';
 import { ImpulseBlanker, type ImpulseBlankerState } from './ImpulseBlanker';
+import { MultiVfoChannelizer, type VfoConfig } from './MultiVfoChannelizer';
+import { FrequencyTracker, type FrequencyModelState } from './FrequencyTracker';
+import { PolyphaseResampler } from './PolyphaseResampler';
+import { AudioPllController, type AudioPllState } from './AudioPllController';
 import type { SDRStreamFrame } from '../devices/streamFrame';
 import {
     computeDemodQualityTelemetry,
@@ -64,6 +68,10 @@ const audioLeveler = new AudioLeveler();
 const iqCorrection = new IqCorrection();
 const audioAgc = new AudioAgc();
 const impulseBlanker = new ImpulseBlanker();
+const channelizer = new MultiVfoChannelizer(DEFAULT_INPUT_SAMPLE_RATE_HZ);
+const frequencyTracker = new FrequencyTracker();
+const audioResampler = new PolyphaseResampler();
+const audioPllController = new AudioPllController();
 const noiseSquelch = new NoiseSquelch({
     enabled: false,
     thresholdDb: 10,
@@ -92,6 +100,10 @@ let latestImpulseBlankerState: ImpulseBlankerState = {
     blankingRatio: 0,
     estimatedImpulseEnergy: 0
 };
+let latestFrequencyModelState: FrequencyModelState = frequencyTracker.getState(0);
+let latestAudioPllState: AudioPllState = audioPllController.getState();
+let latestAudioQueueAheadMs = 0;
+let configuredVfos: VfoConfig[] = [];
 
 let mode: 'WFM' | 'AM' | 'NFM' = 'WFM';
 let nfmAudioPreset: NfmAudioPreset = 'voice-na-75us';
@@ -102,7 +114,10 @@ let ppmCorrection = 0;
 
 const applyMixerFrequency = () => {
     const ppmCompensationHz = computePpmCorrectionHz(tunedFrequencyHz, ppmCorrection);
-    nco.setFrequency(fineFrequencyHz + ppmCompensationHz, inputSampleRateHz);
+    nco.setFrequency(
+        fineFrequencyHz + ppmCompensationHz + latestFrequencyModelState.afcCorrectionHz,
+        inputSampleRateHz
+    );
 };
 
 const postToMain = (message: unknown, transfer: Transferable[] = []) => {
@@ -120,10 +135,19 @@ const resetPipelineState = () => {
     });
     downsampler = new Downsampler(inputSampleRateHz, 50_000);
     nco = new ComplexOscillator(inputSampleRateHz);
+    frequencyTracker.reset();
+    audioPllController.reset();
+    latestAudioQueueAheadMs = 0;
+    channelizer.setSampleRate(inputSampleRateHz);
+    channelizer.setVfos(configuredVfos);
     applyMixerFrequency();
     rdsDecoder = new RdsDecoder();
     latestRdsSnapshot = rdsDecoder.getSnapshot();
     latestDemodMetrics = evaluateDemodQuality(mode, new Float32Array(0));
+    latestFrequencyModelState = frequencyTracker.getState(
+        computePpmCorrectionHz(tunedFrequencyHz, ppmCorrection)
+    );
+    latestAudioPllState = audioPllController.getState();
     metricsEmitCounter = 0;
     updateFilterConfig();
 };
@@ -186,6 +210,37 @@ const handleMessage = (e: MessageEvent) => {
     } else if (e.data.command === 'SET_PPM_CORRECTION') {
         ppmCorrection = Number(e.data.value);
         applyMixerFrequency();
+    } else if (e.data.command === 'SET_VFOS') {
+        const requested = Array.isArray(e.data.value) ? e.data.value : [];
+        configuredVfos = requested
+            .filter((item: unknown) => {
+                if (!item || typeof item !== 'object') {
+                    return false;
+                }
+                const maybe = item as { id?: unknown; offsetHz?: unknown };
+                return typeof maybe.id === 'string' && Number.isFinite(Number(maybe.offsetHz));
+            })
+            .map((item: unknown) => {
+                const value = item as { id: string; offsetHz: number };
+                return {
+                    id: value.id.trim(),
+                    offsetHz: Number(value.offsetHz)
+                };
+            })
+            .filter((value: VfoConfig) => value.id.length > 0)
+            .slice(0, 4);
+        channelizer.setVfos(configuredVfos);
+        configuredVfos = channelizer.getVfos();
+    } else if (e.data.command === 'SET_AFC_ENABLED') {
+        frequencyTracker.setAfcEnabled(Boolean(e.data.value));
+        applyMixerFrequency();
+    } else if (e.data.command === 'SET_STABILITY_MODE') {
+        frequencyTracker.setStabilityMode(Boolean(e.data.value));
+    } else if (e.data.command === 'SET_AUDIO_QUEUE_AHEAD_MS') {
+        const requestedQueueAheadMs = Number(e.data.value);
+        if (Number.isFinite(requestedQueueAheadMs)) {
+            latestAudioQueueAheadMs = Math.max(0, requestedQueueAheadMs);
+        }
     } else if (e.data.command === 'SET_AUDIO_LEVELER_ENABLED') {
         audioLeveler.setEnabled(Boolean(e.data.value));
         postToMain({
@@ -210,6 +265,7 @@ const handleMessage = (e: MessageEvent) => {
             inputSampleRateHz = requestedSampleRateHz;
             downsampler.setSampleRates(inputSampleRateHz, 50_000);
             nco = new ComplexOscillator(inputSampleRateHz);
+            channelizer.setSampleRate(inputSampleRateHz);
             applyMixerFrequency();
         }
     } else if (e.data.command === 'SET_IQ_CORRECTION_ENABLED') {
@@ -259,6 +315,7 @@ workerScope.onmessage = handleMessage;
 function processUSBData(buffer: ArrayBuffer) {
     const startMs = performance.now();
     const iqData = new Int8Array(buffer);
+    const vfoFrames = channelizer.process(iqData);
     
     // 1. DDC / NCO (Frequency Shift)
     const shiftedIQ = new Float32Array(iqData.length);
@@ -306,18 +363,33 @@ function processUSBData(buffer: ArrayBuffer) {
     audioPostProcessor.processInPlace(audioOut);
     const afterDownsampleMs = performance.now();
 
-    latestDemodMetrics = evaluateDemodQuality(mode, audioOut);
+    const complexSampleCount = shiftedIQ.length / 2;
+    const frameDurationSec = complexSampleCount > 0 ? complexSampleCount / inputSampleRateHz : 0;
+    const ppmCompensationHz = computePpmCorrectionHz(tunedFrequencyHz, ppmCorrection);
+    latestFrequencyModelState = frequencyTracker.update(
+        shiftedIQ,
+        inputSampleRateHz,
+        frameDurationSec,
+        ppmCompensationHz
+    );
+    applyMixerFrequency();
+
+    latestAudioPllState = audioPllController.update(latestAudioQueueAheadMs);
+    const resampledAudio = audioResampler.process(audioOut, latestAudioPllState.ratio);
+    const effectiveAudioSampleRateHz = audioSampleRateHz * latestAudioPllState.ratio;
+
+    latestDemodMetrics = evaluateDemodQuality(mode, resampledAudio);
     const frameDurationMs = (audioOut.length / audioSampleRateHz) * 1000;
     audioAgc.setMode(mode);
-    latestAgcState = audioAgc.applyInPlace(audioOut, frameDurationMs, latestSquelchState.open);
-    latestAudioLevelerState = audioLeveler.applyInPlace(audioOut, frameDurationMs);
-    latestSquelchState = noiseSquelch.applyInPlace(audioOut, latestDemodMetrics.snrEstimateDb, frameDurationMs);
+    latestAgcState = audioAgc.applyInPlace(resampledAudio, frameDurationMs, latestSquelchState.open);
+    latestAudioLevelerState = audioLeveler.applyInPlace(resampledAudio, frameDurationMs);
+    latestSquelchState = noiseSquelch.applyInPlace(resampledAudio, latestDemodMetrics.snrEstimateDb, frameDurationMs);
     if (mode === 'NFM') {
-        latestToneDecodeState = toneDecoder.decode(audioOut, audioSampleRateHz, toneDecodeMode);
+        latestToneDecodeState = toneDecoder.decode(resampledAudio, effectiveAudioSampleRateHz, toneDecodeMode);
     }
     metricsEmitCounter += 1;
     if (metricsEmitCounter % 5 === 0) {
-        const amplitude = computeDspAmplitudeTelemetry(shiftedIQ, audioOut);
+        const amplitude = computeDspAmplitudeTelemetry(shiftedIQ, resampledAudio);
         const demodQuality = computeDemodQualityTelemetry(
             latestDemodMetrics,
             amplitude,
@@ -366,11 +438,38 @@ function processUSBData(buffer: ArrayBuffer) {
             type: 'IMPULSE_BLANKER_STATE',
             data: latestImpulseBlankerState
         }, []);
+        postToMain({
+            type: 'FREQUENCY_MODEL_STATE',
+            data: latestFrequencyModelState
+        }, []);
+        postToMain({
+            type: 'AUDIO_PLL_STATE',
+            data: latestAudioPllState
+        }, []);
+        postToMain({
+            type: 'VFO_STATE',
+            data: {
+                activeVfoCount: vfoFrames.length,
+                vfos: vfoFrames.map((frame) => {
+                    let power = 0;
+                    for (let i = 0; i < frame.iq.length; i += 1) {
+                        const s = frame.iq[i];
+                        power += s * s;
+                    }
+                    return {
+                        id: frame.id,
+                        offsetHz: configuredVfos.find((vfo) => vfo.id === frame.id)?.offsetHz ?? 0,
+                        groupDelaySamples: frame.groupDelaySamples,
+                        power: frame.iq.length > 0 ? power / frame.iq.length : 0
+                    };
+                })
+            }
+        }, []);
     }
 
     // Audio Output
-    if (audioOut.length > 0) {
-        const audioBuffer = audioOut.buffer.slice(0);
+    if (resampledAudio.length > 0) {
+        const audioBuffer = resampledAudio.slice(0).buffer;
         postToMain({ 
             type: 'AUDIO_DATA', 
             data: audioBuffer
@@ -381,7 +480,7 @@ function processUSBData(buffer: ArrayBuffer) {
     if (Math.random() < 0.1) {
         postToMain({ 
             type: 'SCOPE_DATA', 
-            data: audioOut.slice(0, 256) 
+            data: resampledAudio.slice(0, 256) 
         }, []);
     }
 
