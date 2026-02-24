@@ -70,7 +70,8 @@ body {
   border-color: #334155;
 }
 
-.status-starting {
+.status-pairing,
+.status-connected {
   background: #3a2b0f;
   border-color: var(--warn);
 }

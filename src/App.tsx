@@ -43,7 +43,7 @@ import {
   type RuntimeTelemetryV1
 } from './telemetry/runtimeTelemetryContract';
 
-type ConnectionState = 'idle' | 'starting' | 'streaming' | 'recovering' | 'error';
+type ConnectionState = 'idle' | 'pairing' | 'connected' | 'streaming' | 'recovering' | 'error';
 type AudioState = 'suspended' | 'awaiting-user-gesture' | 'running' | 'degraded' | 'muted';
 type ScanState = 'idle' | 'running' | 'completed' | 'cancelled' | 'error';
 type HealthLevel = 'ok' | 'warn' | 'error';
@@ -402,6 +402,7 @@ const queryPermissionState = async (name: 'usb' | 'microphone'): Promise<Permiss
 
 declare global {
   interface Window {
+    __RADIO_FORCE_NO_SAB?: boolean;
     __radIoDebug?: {
       getSnapshot: () => RadioDebugSnapshot;
     };
@@ -411,6 +412,18 @@ declare global {
 export default function App() {
   const runtimePrerequisites = useMemo(() => detectRuntimePrerequisites(), []);
   const runtimeEnvironment = useMemo(() => detectRuntimeEnvironment(), []);
+  const forceNoSab = useMemo(
+    () => typeof window !== 'undefined' && window.__RADIO_FORCE_NO_SAB === true,
+    []
+  );
+  const preferMessageChannelFallback = useMemo(
+    () => forceNoSab || !runtimePrerequisites.crossOriginIsolated || !runtimeEnvironment.sharedArrayBufferAvailable,
+    [forceNoSab, runtimeEnvironment.sharedArrayBufferAvailable, runtimePrerequisites.crossOriginIsolated]
+  );
+  const streamRateCandidates = useMemo<readonly number[]>(
+    () => (preferMessageChannelFallback ? [250_000, 500_000, 1_000_000] : [250_000, 500_000, 1_000_000, 2_000_000, 2_400_000]),
+    [preferMessageChannelFallback]
+  );
   const [isRunning, setIsRunning] = useState(false);
   const [sourceType, setSourceType] = useState<SourceType>('MOCK');
   const [fftData, setFftData] = useState<Float32Array>(new Float32Array(2048));
@@ -534,9 +547,8 @@ export default function App() {
 
   useEffect(() => {
     workerRef.current = new Worker(new URL('./dsp/worker.ts', import.meta.url), { type: 'module' });
-    const fallbackMode = !runtimePrerequisites.crossOriginIsolated || !runtimeEnvironment.sharedArrayBufferAvailable;
     workerBridgeRef.current = new WorkerBridge(workerRef.current, {
-      preferMessageChannelFallback: fallbackMode
+      preferMessageChannelFallback
     });
     audioRef.current = new AudioSink(50000); // 50k from worker
     audioRef.current.setMuted(true);
@@ -548,6 +560,9 @@ export default function App() {
       ...prev,
       workerTransportMode: workerBridgeRef.current?.getMode() ?? 'direct'
     }));
+    if (forceNoSab) {
+      pushDiagnosticEvent('SharedArrayBuffer transport forced off by __RADIO_FORCE_NO_SAB; running in degraded compatibility mode.');
+    }
     pushDiagnosticEvent(`Worker transport mode: ${workerBridgeRef.current?.getMode() ?? 'direct'}.`);
 
     workerRef.current.onmessage = (e) => {
@@ -645,7 +660,7 @@ export default function App() {
         audioRef.current?.stop();
         audioRef.current = null;
     };
-  }, [pushDiagnosticEvent, runtimeEnvironment.sharedArrayBufferAvailable, runtimePrerequisites.crossOriginIsolated]);
+  }, [forceNoSab, preferMessageChannelFallback, pushDiagnosticEvent]);
 
     useEffect(() => {
       void refreshPermissionState();
@@ -915,8 +930,8 @@ export default function App() {
   }, [demodMode, filterState.highCutHz, filterState.lowCutHz, streamSampleRateHz]);
 
   const streamRatePlan = useMemo(
-    () => planStreamRateForMode(demodMode, filterState.highCutHz),
-    [demodMode, filterState.highCutHz]
+    () => planStreamRateForMode(demodMode, filterState.highCutHz, streamRateCandidates),
+    [demodMode, filterState.highCutHz, streamRateCandidates]
   );
 
   const aliasSafeHighCutHz = useMemo(
@@ -1314,8 +1329,8 @@ export default function App() {
         streamSessionStartedAtRef.current = null;
     } else {
         // START
-        setConnectionState('starting');
-        setStatusMessage('Starting stream and opening selected source...');
+        setConnectionState('pairing');
+        setStatusMessage('Pairing and opening selected source...');
         try {
             await tryResumeAudio('startup');
           audioRef.current?.resetStats();
@@ -1339,6 +1354,8 @@ export default function App() {
 
             await dev.open();
             deviceRef.current = dev;
+            setConnectionState('connected');
+            setStatusMessage(`Connected to ${dev.name}. Configuring stream...`);
             pushDiagnosticEvent(`${dev.name} opened.`);
 
             // Initialize Gain UI from Device Capabilities
@@ -1460,9 +1477,9 @@ export default function App() {
 
                 postToWorker({ command: 'STOP' });
                 setIsRunning(false);
-                setConnectionState('error');
+                setConnectionState('recovering');
                 setAudioState('awaiting-user-gesture');
-                setStatusMessage(`Stream failed: ${streamErr.message}`);
+                setStatusMessage(`Stream failed: ${streamErr.message}. Attempting safe recovery...`);
                 pushDiagnosticEvent(`Stream runtime error [${streamErr.code}]: ${streamErr.message}`);
 
                 try {
@@ -1474,6 +1491,8 @@ export default function App() {
                 if (deviceRef.current === dev) {
                   deviceRef.current = null;
                 }
+
+                setConnectionState('error');
               });
     
             setIsRunning(true);
@@ -1659,6 +1678,7 @@ export default function App() {
         a.download = `rad-io-diagnostics-${Date.now()}.json`;
         a.click();
         URL.revokeObjectURL(url);
+        setStatusMessage('Diagnostics bundle exported.');
         pushDiagnosticEvent('Diagnostics bundle exported.');
     };
 
@@ -1698,6 +1718,20 @@ export default function App() {
           level: 'error',
           label: 'Connection failed',
           recommendation: 'Retry stream start and export diagnostics if it repeats.'
+        });
+      } else if (connectionState === 'pairing') {
+        items.push({
+          key: 'connection-pairing',
+          level: 'warn',
+          label: 'Pairing and opening source',
+          recommendation: 'Approve browser permission prompts and wait for source open.'
+        });
+      } else if (connectionState === 'connected') {
+        items.push({
+          key: 'connection-connected',
+          level: 'ok',
+          label: 'Source connected',
+          recommendation: 'Configuring DSP and stream pipeline.'
         });
       } else if (connectionState === 'recovering') {
         items.push({

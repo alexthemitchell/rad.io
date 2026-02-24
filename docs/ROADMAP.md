@@ -107,7 +107,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **NPM Scripts as Contract**: standardize `start`, `build`, `test`, `lint`, `type-check`, `validate`.
 - [x] **Repo Bootstrap Parity Check**: ensure VS Code tasks, package scripts, and README instructions are aligned (no “task exists but script missing”).
 - [x] **Strict TypeScript Config**: keep `tsconfig.json` strict and avoid `any`.
-- [x] **Test Infrastructure**: Jest unit tests with coverage for DSP and critical UI state.
+- [x] **Test Infrastructure**: Vitest unit tests covering DSP contracts and critical UI state paths. (`src/**/*.test.ts`, `package.json`)
 - [ ] **Cross-Browser Regression Gates (WebUSB/WebAudio)**: define a minimal browser matrix (Chrome/Edge stable + one canary) and block merges on known WebUSB/WebAudio regressions.
 - [x] **Linting & Formatting**: ESLint + Prettier as hard gates.
 - [x] **Build System**: Vite + TypeScript production build pipeline.
@@ -121,7 +121,7 @@ These are gates, not features: they define what good means and prevent late-stag
 ### 1.2 Diagnostics & Supportability (Early)
 
 - [x] **Error Handling**: typed error classes for source/device failures.
-- [x] **Diagnostics Panel**: user-facing health view with actionable recommendations.
+- [x] **Diagnostics Panel**: user-facing health view with actionable recommendations and connection-state contract progression (`idle`/`pairing`/`connected`/`streaming`/`recovering`/`error`). (`src/App.tsx`)
 - [ ] **RF Environment Context & Provenance (First-Class)**: capture antenna + RF chain context (preamp/attenuator/filter/bias-tee notes) and attach it to recordings, exports, and diagnostics.
 - [ ] **Structured RF Chain Model (Not Just Notes)**: represent RF chain elements (LNA/attenuator/filter/transverter/IF) as typed, queryable state so diagnostics and measurement disclosures can be computed rather than manually inferred.
 - [ ] **IQ Integrity Wizard (“Bad IQ?”)**: detect IQ swap/invert/sign/scaling, DC offset, clipping, and sample-rate mismatch; offer one-click fixes and persist results into per-device profiles.
@@ -129,7 +129,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Front-End Overload Triage (Actionable)**: guided actions like “reduce gain/enable attenuation/LO shift/narrow bandwidth” with short explanations and links to relevant diagnostics.
 - [ ] **Dynamic Range / Linearity Check Mode (Actionable)**: quick tests to detect likely overload/intermod (noise-floor rise, spur density changes, “strong-signal” heuristics) and recommend RF chain changes (attenuation, LNA off, filter, LO offset).
 - [ ] **Signal ID & Tuning Advisor (“What am I seeing?”)**: heuristic hints for likely signal class (AM/FM/narrowband/digital-ish/bursty), recommended demod + bandwidth, and warnings for common false signals (images, aliasing, DC spur, LO leakage).
-- [x] **Diagnostics Bundle Export**: anonymized export for bug reports.
+- [x] **Diagnostics Bundle Export**: anonymized export for bug reports, with live status announcement on export completion. (`src/App.tsx`)
 - [ ] **Logging Discipline**: structured logs + throttling to avoid perf cliffs.
 - [ ] **WebUSB Runtime UX**: permissions, secure context requirements, “device already in use/claimed”, and reconnect flows after reload.
 - [ ] **WebUSB Permission Lifecycle UX**: explicit “forget device / re-pair” flows, handle permission revocation, and recover from “device disappeared” without full refresh.
