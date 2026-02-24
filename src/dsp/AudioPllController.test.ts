@@ -30,4 +30,20 @@ describe('AudioPllController', () => {
     pll.reset();
     expect(pll.getState().ratio).toBe(1);
   });
+
+  it('updates target queue when configured', () => {
+    const pll = new AudioPllController();
+    pll.setTargetQueueMs(80);
+    const state = pll.getState();
+    expect(state.targetQueueMs).toBe(80);
+  });
+
+  it('clamps configured target queue to supported bounds', () => {
+    const pll = new AudioPllController();
+    pll.setTargetQueueMs(5);
+    expect(pll.getState().targetQueueMs).toBe(20);
+
+    pll.setTargetQueueMs(1000);
+    expect(pll.getState().targetQueueMs).toBe(400);
+  });
 });

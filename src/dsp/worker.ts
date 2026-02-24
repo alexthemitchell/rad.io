@@ -262,6 +262,16 @@ const handleMessage = (e: MessageEvent) => {
         if (Number.isFinite(requestedQueueAheadMs)) {
             latestAudioQueueAheadMs = Math.max(0, requestedQueueAheadMs);
         }
+    } else if (e.data.command === 'SET_AUDIO_PLL_TARGET_QUEUE_MS') {
+        const requestedTargetQueueMs = Number(e.data.value);
+        if (Number.isFinite(requestedTargetQueueMs)) {
+            audioPllController.setTargetQueueMs(requestedTargetQueueMs);
+            latestAudioPllState = audioPllController.getState();
+            postToMain({
+                type: 'AUDIO_PLL_STATE',
+                data: latestAudioPllState
+            }, []);
+        }
     } else if (e.data.command === 'SET_AUDIO_LEVELER_ENABLED') {
         audioLeveler.setEnabled(Boolean(e.data.value));
         postToMain({

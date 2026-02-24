@@ -130,7 +130,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Dynamic Range / Linearity Check Mode (Actionable)**: quick tests to detect likely overload/intermod (noise-floor rise, spur density changes, “strong-signal” heuristics) and recommend RF chain changes (attenuation, LNA off, filter, LO offset).
 - [ ] **Signal ID & Tuning Advisor (“What am I seeing?”)**: heuristic hints for likely signal class (AM/FM/narrowband/digital-ish/bursty), recommended demod + bandwidth, and warnings for common false signals (images, aliasing, DC spur, LO leakage).
 - [x] **Diagnostics Bundle Export**: anonymized export for bug reports, with live status announcement on export completion. (`src/App.tsx`)
-- [ ] **Logging Discipline**: structured logs + throttling to avoid perf cliffs.
+- [x] **Logging Discipline**: structured logs + throttling to avoid perf cliffs. (`src/App.tsx` diagnostics log schema, throttling window, structured export payload)
 - [ ] **WebUSB Runtime UX**: permissions, secure context requirements, “device already in use/claimed”, and reconnect flows after reload.
 - [ ] **WebUSB Permission Lifecycle UX**: explicit “forget device / re-pair” flows, handle permission revocation, and recover from “device disappeared” without full refresh.
 - [ ] **WebUSB Error Normalization (Actionable)**: map browser/WebUSB exceptions (stall, disconnect, NotFoundError/NetworkError, transfer errors) into typed, retryable user-facing errors with clear remediation.
@@ -167,7 +167,7 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [ ] **Suspend/Resume Resilience**: handle tab reload, sleep/wake, and mid-stream disconnects with clear UX and safe defaults.
 - [ ] **Audio Output Device Selection**: choose output device and handle hot-swaps without requiring a full restart.
-- [ ] **Latency/Buffer Controls**: user-facing presets (e.g., “Low Latency” vs “Stable”) with explicit tradeoffs and persisted preference.
+- [x] **Latency/Buffer Controls**: user-facing presets (e.g., “Low Latency” vs “Stable”) with explicit tradeoffs and persisted preference. (`src/App.tsx`, `src/dsp/worker.ts`, `src/dsp/AudioPllController.ts`)
 - [ ] **Adaptive Streaming Policy**: dynamically adjust USB transfer sizing / buffering / scheduling based on rate and CPU pressure, with explicit “degraded mode” behavior.
 - [ ] **RF vs Audio Clock Sync Policy**: explicit modes and tradeoffs (e.g., “RF-accurate” timebase correction vs “audio-stable” listening), persisted and reflected in diagnostics.
 - [ ] **Shareable Session State (Safe)**: URL/state export for reproducible bug reports and “open this tuned view” sharing without leaking private data.
@@ -175,7 +175,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Safe Mode Boot (Crash/Perf Recovery)**: if last session ended badly (crash, runaway CPU, repeated disconnect), auto-start with minimal pipeline + no auto-connect and offer a guided restore.
 - [ ] **Browser Lifecycle Choreography (Device + Audio)**: explicitly define and harden behavior for focus/visibility changes, sleep/wake, audio suspension, device disappear/re-enumerate, and background throttling.
 - [ ] **Crash-Only Pipeline Recovery**: if a Worker/AudioWorklet fails, automatically restart into a safe minimal pipeline and preserve a support-bundle breadcrumb trail.
-- [ ] **Session Trust Indicator**: surface “Measurement-grade vs Listening-grade vs Degraded” status derived from telemetry (drops, underruns, missing isolation, unstable clock) with actionable guidance.
+- [x] **Session Trust Indicator**: surface “Measurement-grade vs Listening-grade vs Degraded” status derived from telemetry (drops, underruns, missing isolation, unstable clock) with actionable guidance. (`src/App.tsx`, diagnostics export `sessionTrust`)
 - [ ] **Session Grade Upgrade Flow (Guided)**: guided steps to become “measurement-grade” (stability window with zero drops, calibration presence, isolation status, known-good device profile) and to “lock” a session for reproducible exports.
 - [ ] **Session Provenance Timeline (Exportable)**: record key parameter changes + discontinuities with timestamps (“what changed when”) and include in diagnostics bundles and recording metadata.
 - [ ] **Recording/Export Integrity Validator**: validate artifacts before export (sample counts, timestamps monotonic, discontinuities accounted for, calibration snapshot present) and stamp outputs with a trust grade + warnings.

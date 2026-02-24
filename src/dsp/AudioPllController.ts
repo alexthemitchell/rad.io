@@ -6,7 +6,7 @@ export type AudioPllState = {
 
 export class AudioPllController {
   private ratio = 1;
-  private readonly targetQueueMs = 120;
+  private targetQueueMs = 120;
 
   update(queueAheadMs: number): AudioPllState {
     const safeQueueAheadMs = Number.isFinite(queueAheadMs) ? Math.max(0, queueAheadMs) : this.targetQueueMs;
@@ -24,6 +24,14 @@ export class AudioPllController {
 
   reset(): void {
     this.ratio = 1;
+  }
+
+  setTargetQueueMs(targetQueueMs: number): void {
+    if (!Number.isFinite(targetQueueMs)) {
+      return;
+    }
+
+    this.targetQueueMs = Math.max(20, Math.min(400, targetQueueMs));
   }
 
   getState(): AudioPllState {

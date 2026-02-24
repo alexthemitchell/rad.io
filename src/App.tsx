@@ -209,6 +209,17 @@ type FmScanResult = FmStationCandidate & {
   scannedAt: string;
 };
 
+type DiagnosticLogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+type DiagnosticLogEntry = {
+  ts: string;
+  level: DiagnosticLogLevel;
+  source: string;
+  message: string;
+};
+
+type LatencyPolicy = 'low-latency' | 'stable';
+
 type TelemetryWindowSample = {
   ts: string;
   renderFps: number | null;
@@ -221,6 +232,7 @@ type TelemetryWindowSample = {
 };
 
 const APP_VERSION = '0.0.1';
+const LATENCY_POLICY_STORAGE_KEY = 'rad.io.latencyPolicy.v1';
 
 const fnv1a32 = (bytes: Uint8Array): number => {
   let hash = 0x811c9dc5;
@@ -464,6 +476,7 @@ export default function App() {
     const [audioState, setAudioState] = useState<AudioState>('suspended');
     const [statusMessage, setStatusMessage] = useState('Ready. Select a source and start streaming.');
     const [diagnosticEvents, setDiagnosticEvents] = useState<string[]>([]);
+    const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLogEntry[]>([]);
     const [runtimeTelemetry, setRuntimeTelemetry] = useState<RuntimeTelemetry>(createDefaultRuntimeTelemetry('direct'));
     const [filterState, setFilterState] = useState<DspFilterState>(() => defaultFilterStateForMode('WFM'));
     const [demodQuality, setDemodQuality] = useState<DemodQualityState>(emptyDemodQuality);
@@ -498,6 +511,14 @@ export default function App() {
     const [secondaryVfoOffsetHz, setSecondaryVfoOffsetHz] = useState(12_500);
     const [stabilityProfile, setStabilityProfile] = useState<StabilityProfile | null>(null);
     const [deviceDebugSnapshot, setDeviceDebugSnapshot] = useState<DeviceDebugSnapshot | null>(null);
+    const [latencyPolicy, setLatencyPolicy] = useState<LatencyPolicy>(() => {
+      try {
+        const stored = localStorage.getItem(LATENCY_POLICY_STORAGE_KEY);
+        return stored === 'low-latency' || stored === 'stable' ? stored : 'stable';
+      } catch {
+        return 'stable';
+      }
+    });
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -516,10 +537,30 @@ export default function App() {
   const lastProfilePersistAtRef = useRef<number>(0);
   const telemetryWindowRef = useRef<TelemetryWindowSample[]>([]);
   const runtimeTelemetryRef = useRef<RuntimeTelemetry>(createDefaultRuntimeTelemetry('direct'));
+  const logThrottleStateRef = useRef<Record<string, number>>({});
+  const throttledLogDropsRef = useRef(0);
 
-    const pushDiagnosticEvent = useCallback((message: string) => {
-        const timestamp = new Date().toISOString();
-        setDiagnosticEvents((prev) => [`${timestamp} ${message}`, ...prev].slice(0, 100));
+    const pushDiagnosticEvent = useCallback((
+      message: string,
+      level: DiagnosticLogLevel = 'info',
+      source = 'app'
+    ) => {
+        const now = Date.now();
+        const throttleKey = `${level}:${source}:${message}`;
+        const previousTs = logThrottleStateRef.current[throttleKey];
+
+        // Drop repeated identical logs inside a short window to avoid diagnostics spam.
+        if (typeof previousTs === 'number' && now - previousTs < 2000) {
+          throttledLogDropsRef.current += 1;
+          return;
+        }
+
+        logThrottleStateRef.current[throttleKey] = now;
+
+        const timestamp = new Date(now).toISOString();
+        const formatted = `${timestamp} [${level.toUpperCase()}] [${source}] ${message}`;
+        setDiagnosticEvents((prev) => [formatted, ...prev].slice(0, 100));
+        setDiagnosticLogs((prev) => [{ ts: timestamp, level, source, message }, ...prev].slice(0, 200));
     }, []);
 
     const refreshPermissionState = useCallback(async () => {
@@ -677,6 +718,17 @@ export default function App() {
         audioRef.current = null;
     };
   }, [forceNoSab, preferMessageChannelFallback, pushDiagnosticEvent]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LATENCY_POLICY_STORAGE_KEY, latencyPolicy);
+    } catch {
+      // Non-fatal in private/incognito contexts.
+    }
+
+    const targetQueueMs = latencyPolicy === 'low-latency' ? 60 : 120;
+    postToWorker({ command: 'SET_AUDIO_PLL_TARGET_QUEUE_MS', value: targetQueueMs });
+  }, [latencyPolicy, postToWorker]);
 
     useEffect(() => {
       void refreshPermissionState();
@@ -1676,6 +1728,7 @@ export default function App() {
             gains,
             pipelineConfig: {
               workerTransportMode: runtimeTelemetry.workerTransportMode,
+              latencyPolicy,
               streamRatePlan,
               filterState,
               demodMode,
@@ -1705,6 +1758,8 @@ export default function App() {
               stepLabel: scanStepLabel,
               results: scanResults
             },
+            latencyPolicy,
+            sessionTrust: trustAssessment,
             rollingTelemetryWindow: telemetryWindowRef.current,
             recordingTimeline: {
               sessionStartedAtIso,
@@ -1741,7 +1796,12 @@ export default function App() {
                 }
               : null,
             statusMessage,
-            events: diagnosticEvents
+            events: diagnosticEvents,
+            structuredLogs: diagnosticLogs,
+            logThrottling: {
+              throttleWindowMs: 2000,
+              droppedRepeats: throttledLogDropsRef.current
+            }
         };
 
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -2043,6 +2103,41 @@ export default function App() {
   const modeContract = MODE_CONTROL_CONTRACTS[demodMode];
   const displayedBandwidthHz = Math.max(0, filterState.highCutHz - filterState.lowCutHz);
   const demodLockLabel = lockStateLabel(demodMode, demodQuality.lockState);
+  const trustAssessment = useMemo(() => {
+    const reasons: string[] = [];
+
+    if (!runtimePrerequisites.crossOriginIsolated) {
+      reasons.push('missing-isolation');
+    }
+
+    if (runtimeTelemetry.totalDroppedSamples > 0) {
+      reasons.push('dropped-samples');
+    }
+
+    if (runtimeTelemetry.audioUnderruns > 0) {
+      reasons.push('audio-underruns');
+    }
+
+    if (Math.abs(audioPllState.queueErrorMs) > 120) {
+      reasons.push('clock-queue-unstable');
+    }
+
+    if (reasons.length > 0) {
+      return { grade: 'degraded' as const, reasons };
+    }
+
+    if (runtimeTelemetry.lastClockTruthMode === 'corrected_ppm' || runtimeTelemetry.lastClockTruthMode === 'disciplined_ref') {
+      return { grade: 'measurement' as const, reasons: [] };
+    }
+
+    return { grade: 'listening' as const, reasons: [] };
+  }, [
+    audioPllState.queueErrorMs,
+    runtimePrerequisites.crossOriginIsolated,
+    runtimeTelemetry.audioUnderruns,
+    runtimeTelemetry.lastClockTruthMode,
+    runtimeTelemetry.totalDroppedSamples
+  ]);
 
   return (
     <div className="app-shell">
@@ -2153,6 +2248,18 @@ export default function App() {
         >
           {scanState === 'running' ? 'Stop FM Scan' : 'Run FM Scan'}
         </button>
+
+        <div className="control-group">
+          <label className="control-label">Latency Policy</label>
+          <select
+            value={latencyPolicy}
+            onChange={(e) => setLatencyPolicy(e.target.value as LatencyPolicy)}
+            className="control-input compact"
+          >
+            <option value="low-latency">Low Latency (60 ms queue target)</option>
+            <option value="stable">Stable (120 ms queue target)</option>
+          </select>
+        </div>
 
         <div className="control-group">
           <label className="control-label">Scan Progress</label>
@@ -2728,6 +2835,13 @@ export default function App() {
           <li className={`health-item ${Math.abs(audioPllState.queueErrorMs) > 80 ? 'health-warn' : 'health-ok'}`}>
             <strong>Audio PLL Ratio</strong>
             <span>{audioPllState.ratio.toFixed(5)} (error {audioPllState.queueErrorMs.toFixed(1)} ms)</span>
+          </li>
+          <li className={`health-item ${trustAssessment.grade === 'degraded' ? 'health-error' : trustAssessment.grade === 'measurement' ? 'health-ok' : 'health-warn'}`}>
+            <strong>Session Trust</strong>
+            <span>
+              {trustAssessment.grade}
+              {trustAssessment.reasons.length > 0 ? ` (${trustAssessment.reasons.join(', ')})` : ''}
+            </span>
           </li>
           <li className={`health-item ${frequencyModelState.driftConfidence < 0.35 ? 'health-warn' : 'health-ok'}`}>
             <strong>Freq Model</strong>
