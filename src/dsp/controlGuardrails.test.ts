@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  aliasSafeHighCutMaxHz,
   MODE_CONTROL_CONTRACTS,
   clampFilterForMode,
   clampFineTuneHz,
   lockStateLabel,
-  maxFineTuneHzForFilter
+  maxFineTuneHzForFilter,
+  planStreamRateForMode
 } from './controlGuardrails';
 
 describe('controlGuardrails', () => {
@@ -28,5 +30,23 @@ describe('controlGuardrails', () => {
     expect(lockStateLabel('WFM', 'locked')).toContain('pilot');
     expect(lockStateLabel('AM', 'degraded')).toContain('carrier');
     expect(lockStateLabel('NFM', 'searching')).toContain('discriminator');
+  });
+
+  it('constrains high cut by alias-safe ceiling for active sample rate', () => {
+    const sampleRateHz = 250_000;
+    const clamped = clampFilterForMode('WFM', 80, 18_000, sampleRateHz);
+    const expectedMax = Math.min(MODE_CONTROL_CONTRACTS.WFM.highCutMaxHz, aliasSafeHighCutMaxHz(sampleRateHz));
+
+    expect(clamped.highCutHz).toBeLessThanOrEqual(expectedMax);
+  });
+
+  it('plans stream rate from mode and bandwidth constraints', () => {
+    const nfmPlan = planStreamRateForMode('NFM', 3_400);
+    const wfmPlan = planStreamRateForMode('WFM', 18_000);
+
+    expect(nfmPlan.sampleRateHz).toBeGreaterThanOrEqual(250_000);
+    expect(nfmPlan.decimationFactor).toBeGreaterThanOrEqual(1);
+    expect(Math.abs(nfmPlan.outputSampleRateHz - 50_000)).toBeLessThanOrEqual(2_000);
+    expect(wfmPlan.sampleRateHz).toBeGreaterThanOrEqual(nfmPlan.sampleRateHz);
   });
 });

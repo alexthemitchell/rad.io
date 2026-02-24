@@ -43,4 +43,15 @@ describe('Downsampler', () => {
         expect(out2.length).toBe(1);
         expect(out2[0]).toBeCloseTo(1.0);
     });
+
+    it('derives decimation factor from input sample rate', () => {
+        const downsampler = new Downsampler(1_000_000, 50_000);
+
+        expect(downsampler.getFactor()).toBe(20);
+        expect(downsampler.getOutputSampleRateHz()).toBeCloseTo(50_000, 2);
+
+        downsampler.setSampleRates(2_400_000, 50_000);
+        expect(downsampler.getFactor()).toBe(48);
+        expect(downsampler.getOutputSampleRateHz()).toBeCloseTo(50_000, 2);
+    });
 });

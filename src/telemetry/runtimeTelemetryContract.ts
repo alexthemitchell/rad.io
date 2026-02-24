@@ -42,6 +42,17 @@ export type AgcTelemetryBaselineV1 = {
   estimatedGainDb: null;
 };
 
+export type AgcTelemetryActiveV1 = {
+  contractVersion: typeof AGC_CONTRACT_VERSION;
+  implemented: true;
+  mode: 'bb' | 'if';
+  state: 'idle' | 'tracking' | 'hold';
+  targetLevelDbfs: number;
+  estimatedGainDb: number;
+};
+
+export type AgcTelemetryV1 = AgcTelemetryBaselineV1 | AgcTelemetryActiveV1;
+
 export type PipelineStageTimingTelemetryV1 = {
   contractVersion: typeof PIPELINE_TIMING_CONTRACT_VERSION;
   ddcMs: number;
@@ -78,7 +89,7 @@ export type RuntimeTelemetryV1 = {
   lastClockTruthMode: SDRSampleClockTruthMode | null;
   workerTransportMode: WorkerTransportMode;
   dsp: RuntimeDspTelemetryV1;
-  agc: AgcTelemetryBaselineV1;
+  agc: AgcTelemetryV1;
 };
 
 export const createDefaultRuntimeDspTelemetry = (): RuntimeDspTelemetryV1 => ({
@@ -169,6 +180,20 @@ export const createAgcTelemetryBaseline = (): AgcTelemetryBaselineV1 => ({
   state: 'not_available',
   targetLevelDbfs: null,
   estimatedGainDb: null
+});
+
+export const createAgcTelemetryActive = (
+  mode: 'bb' | 'if',
+  state: 'idle' | 'tracking' | 'hold',
+  targetLevelDbfs: number,
+  estimatedGainDb: number
+): AgcTelemetryActiveV1 => ({
+  contractVersion: AGC_CONTRACT_VERSION,
+  implemented: true,
+  mode,
+  state,
+  targetLevelDbfs,
+  estimatedGainDb
 });
 
 export const computeDspAmplitudeTelemetry = (

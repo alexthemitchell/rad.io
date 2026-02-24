@@ -3,7 +3,8 @@ import {
   createDefaultRuntimeTelemetry,
   computeDemodQualityTelemetry,
   computeDspAmplitudeTelemetry,
-  createAgcTelemetryBaseline
+  createAgcTelemetryBaseline,
+  createAgcTelemetryActive
 } from './runtimeTelemetryContract';
 
 describe('runtimeTelemetryContract', () => {
@@ -106,6 +107,16 @@ describe('runtimeTelemetryContract', () => {
     expect(agc.state).toBe('not_available');
     expect(agc.targetLevelDbfs).toBeNull();
     expect(agc.estimatedGainDb).toBeNull();
+  });
+
+  it('exposes AGC active contract for implemented runtime state', () => {
+    const agc = createAgcTelemetryActive('bb', 'tracking', -20, 4.5);
+
+    expect(agc.implemented).toBe(true);
+    expect(agc.mode).toBe('bb');
+    expect(agc.state).toBe('tracking');
+    expect(agc.targetLevelDbfs).toBe(-20);
+    expect(agc.estimatedGainDb).toBeCloseTo(4.5, 6);
   });
 
   it('creates a default runtime telemetry envelope with schema and subcontracts', () => {

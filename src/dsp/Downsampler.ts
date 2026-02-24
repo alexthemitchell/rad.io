@@ -7,7 +7,30 @@ export class Downsampler {
     
     private accumulator = 0;
     private count = 0;
-    private readonly factor = 40; 
+    private factor = 40;
+    private outputSampleRateHz = 50_000;
+
+    constructor(inputSampleRateHz = 2_000_000, targetOutputSampleRateHz = 50_000) {
+        this.setSampleRates(inputSampleRateHz, targetOutputSampleRateHz);
+    }
+
+    setSampleRates(inputSampleRateHz: number, targetOutputSampleRateHz = 50_000): void {
+        const safeInput = Number.isFinite(inputSampleRateHz) && inputSampleRateHz > 0 ? inputSampleRateHz : 2_000_000;
+        const safeTarget = Number.isFinite(targetOutputSampleRateHz) && targetOutputSampleRateHz > 0
+            ? targetOutputSampleRateHz
+            : 50_000;
+
+        this.factor = Math.max(1, Math.round(safeInput / safeTarget));
+        this.outputSampleRateHz = safeInput / this.factor;
+    }
+
+    getFactor(): number {
+        return this.factor;
+    }
+
+    getOutputSampleRateHz(): number {
+        return this.outputSampleRateHz;
+    }
 
     process(input: Float32Array): Float32Array {
         // Output size is not just input/factor, it depends on state

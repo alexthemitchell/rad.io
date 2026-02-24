@@ -28,10 +28,12 @@ import type { DemodMode, DemodQualityMetrics, LockState } from './dsp/DemodMetri
 import type { NfmAudioPreset, NfmOutputPath } from './dsp/NfmDemodulator';
 import {
   MODE_CONTROL_CONTRACTS,
+  aliasSafeHighCutMaxHz,
   clampFilterForMode,
   clampFineTuneHz,
   lockStateLabel,
-  maxFineTuneHzForFilter
+  maxFineTuneHzForFilter,
+  planStreamRateForMode
 } from './dsp/controlGuardrails';
 import {
   createDefaultRuntimeDspTelemetry,
@@ -49,6 +51,8 @@ type RuntimeTelemetry = RuntimeTelemetryV1;
 type DspFilterState = {
   lowCutHz: number;
   highCutHz: number;
+  notchHz: number | null;
+  notchQ: number;
   profile: FilterProfile;
   preset: InterferencePreset;
 };
@@ -70,6 +74,21 @@ type ToneDecodeState = {
   dcsDetected: boolean;
   confidence: number;
   active: boolean;
+};
+
+type AgcState = {
+  enabled: boolean;
+  mode: DemodMode;
+  state: 'idle' | 'tracking' | 'hold';
+  targetLevelDbfs: number;
+  estimatedGainDb: number;
+};
+
+type ImpulseBlankerState = {
+  enabled: boolean;
+  blankedSamples: number;
+  blankingRatio: number;
+  estimatedImpulseEnergy: number;
 };
 
 type ToneDecodeMode = 'OFF' | 'CTCSS' | 'DCS' | 'AUTO';
@@ -197,6 +216,8 @@ const defaultFilterStateForMode = (mode: DemodMode): DspFilterState => {
   return {
     lowCutHz: contract.defaultLowCutHz,
     highCutHz: contract.defaultHighCutHz,
+    notchHz: null,
+    notchQ: 10,
     profile: contract.defaultFilterProfile,
     preset: contract.defaultInterferencePreset
   };
@@ -228,6 +249,21 @@ const defaultToneDecodeState = (): ToneDecodeState => ({
   dcsDetected: false,
   confidence: 0,
   active: false
+});
+
+const defaultAgcState = (): AgcState => ({
+  enabled: false,
+  mode: 'WFM',
+  state: 'idle',
+  targetLevelDbfs: -18,
+  estimatedGainDb: 0
+});
+
+const defaultImpulseBlankerState = (): ImpulseBlankerState => ({
+  enabled: false,
+  blankedSamples: 0,
+  blankingRatio: 0,
+  estimatedImpulseEnergy: 0
 });
 
 const defaultAudioLevelerState = (): AudioLevelerState => ({
@@ -356,9 +392,12 @@ export default function App() {
     const [noiseSquelchState, setNoiseSquelchState] = useState<NoiseSquelchState>(defaultNoiseSquelchState);
     const [toneDecodeState, setToneDecodeState] = useState<ToneDecodeState>(defaultToneDecodeState);
     const [toneDecodeMode, setToneDecodeMode] = useState<ToneDecodeMode>('CTCSS');
+    const [agcState, setAgcState] = useState<AgcState>(defaultAgcState);
+    const [impulseBlankerState, setImpulseBlankerState] = useState<ImpulseBlankerState>(defaultImpulseBlankerState);
     const [audioLevelerState, setAudioLevelerState] = useState<AudioLevelerState>(defaultAudioLevelerState);
     const [nfmAudioPreset, setNfmAudioPreset] = useState<NfmAudioPreset>('voice-na-75us');
     const [nfmOutputPath, setNfmOutputPath] = useState<NfmOutputPath>('voice');
+    const [iqCorrectionEnabled, setIqCorrectionEnabled] = useState(true);
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -464,6 +503,22 @@ export default function App() {
         setToneDecodeState(e.data.data as ToneDecodeState);
       } else if (e.data.type === 'AUDIO_LEVELER_STATE') {
         setAudioLevelerState(e.data.data as AudioLevelerState);
+      } else if (e.data.type === 'AGC_STATE') {
+        const state = e.data.data as AgcState;
+        setAgcState(state);
+        setRuntimeTelemetry((prev) => ({
+          ...prev,
+          agc: {
+            contractVersion: prev.agc.contractVersion,
+            implemented: true,
+            mode: 'bb',
+            state: state.state,
+            targetLevelDbfs: state.targetLevelDbfs,
+            estimatedGainDb: state.estimatedGainDb
+          }
+        }));
+      } else if (e.data.type === 'IMPULSE_BLANKER_STATE') {
+        setImpulseBlankerState(e.data.data as ImpulseBlankerState);
       } else if (e.data.type === 'DSP_TELEMETRY') {
         const telemetry = e.data.data as RuntimeDspTelemetryV1;
         setRuntimeTelemetry((prev) => ({
@@ -708,18 +763,18 @@ export default function App() {
 
             if (event.key === 'ArrowUp') {
               event.preventDefault();
-              setFineFreq((prev) => clampFineTuneHz(prev + 1_000, filterState.highCutHz));
+              setFineFreq((prev) => clampFineTuneHz(prev + 1_000, filterState.highCutHz, streamSampleRateHz));
             }
 
             if (event.key === 'ArrowDown') {
               event.preventDefault();
-              setFineFreq((prev) => clampFineTuneHz(prev - 1_000, filterState.highCutHz));
+              setFineFreq((prev) => clampFineTuneHz(prev - 1_000, filterState.highCutHz, streamSampleRateHz));
             }
         };
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [audioState, filterState.highCutHz, isRunning, pushDiagnosticEvent]);
+    }, [audioState, filterState.highCutHz, isRunning, pushDiagnosticEvent, streamSampleRateHz]);
 
   // Update Device Frequency when controls change
   useEffect(() => {
@@ -766,7 +821,7 @@ export default function App() {
   }, [postToWorker, toneDecodeMode]);
 
   useEffect(() => {
-    const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, filterState.highCutHz);
+    const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, filterState.highCutHz, streamSampleRateHz);
     if (clamped.lowCutHz !== filterState.lowCutHz || clamped.highCutHz !== filterState.highCutHz) {
       setFilterState((prev) => ({
         ...prev,
@@ -774,16 +829,77 @@ export default function App() {
         highCutHz: clamped.highCutHz
       }));
     }
-  }, [demodMode, filterState.highCutHz, filterState.lowCutHz]);
+  }, [demodMode, filterState.highCutHz, filterState.lowCutHz, streamSampleRateHz]);
+
+  const streamRatePlan = useMemo(
+    () => planStreamRateForMode(demodMode, filterState.highCutHz),
+    [demodMode, filterState.highCutHz]
+  );
+
+  const aliasSafeHighCutHz = useMemo(
+    () => aliasSafeHighCutMaxHz(streamSampleRateHz),
+    [streamSampleRateHz]
+  );
 
   const maxFineTuneHz = useMemo(
-    () => maxFineTuneHzForFilter(filterState.highCutHz),
-    [filterState.highCutHz]
+    () => maxFineTuneHzForFilter(filterState.highCutHz, streamSampleRateHz),
+    [filterState.highCutHz, streamSampleRateHz]
   );
 
   useEffect(() => {
-    setFineFreq((prev) => clampFineTuneHz(prev, filterState.highCutHz));
-  }, [filterState.highCutHz]);
+    setFineFreq((prev) => clampFineTuneHz(prev, filterState.highCutHz, streamSampleRateHz));
+  }, [filterState.highCutHz, streamSampleRateHz]);
+
+  useEffect(() => {
+    if (isRunning || streamSampleRateHzRef.current === streamRatePlan.sampleRateHz) {
+      return;
+    }
+
+    streamSampleRateHzRef.current = streamRatePlan.sampleRateHz;
+    setStreamSampleRateHz(streamRatePlan.sampleRateHz);
+  }, [isRunning, streamRatePlan.sampleRateHz]);
+
+  useEffect(() => {
+    if (!isRunning || !deviceRef.current) {
+      return;
+    }
+
+    const requestedRate = streamRatePlan.sampleRateHz;
+    if (requestedRate === streamSampleRateHzRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        await deviceRef.current?.setSampleRate(requestedRate);
+        if (cancelled) {
+          return;
+        }
+
+        streamSampleRateHzRef.current = requestedRate;
+        setStreamSampleRateHz(requestedRate);
+        postToWorker({ command: 'SET_SAMPLE_RATE', value: requestedRate });
+        pushDiagnosticEvent(`Auto sample-rate plan applied: ${(requestedRate / 1_000).toFixed(0)} kHz (decim ${streamRatePlan.decimationFactor} -> ${(streamRatePlan.outputSampleRateHz / 1_000).toFixed(1)} kHz).`);
+      } catch {
+        if (!cancelled) {
+          pushDiagnosticEvent('Auto sample-rate plan could not be applied by source; keeping current rate.');
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isRunning,
+    postToWorker,
+    pushDiagnosticEvent,
+    streamRatePlan.decimationFactor,
+    streamRatePlan.outputSampleRateHz,
+    streamRatePlan.sampleRateHz
+  ]);
 
   // Update Fine Freq
   useEffect(() => {
@@ -799,6 +915,18 @@ export default function App() {
   }, [audioLevelerState.enabled, postToWorker]);
 
   useEffect(() => {
+    postToWorker({ command: 'SET_AGC_ENABLED', value: agcState.enabled });
+  }, [agcState.enabled, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_IMPULSE_BLANKER_ENABLED', value: impulseBlankerState.enabled });
+  }, [impulseBlankerState.enabled, postToWorker]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_IQ_CORRECTION_ENABLED', value: iqCorrectionEnabled });
+  }, [iqCorrectionEnabled, postToWorker]);
+
+  useEffect(() => {
     audioRef.current?.setOutputLevel(audioOutputLevel);
   }, [audioOutputLevel]);
 
@@ -811,9 +939,11 @@ export default function App() {
     postToWorker({
       command: 'SET_FILTER_CONFIG',
       lowCutHz: filterState.lowCutHz,
-      highCutHz: filterState.highCutHz
+      highCutHz: filterState.highCutHz,
+      notchHz: filterState.notchHz,
+      notchQ: filterState.notchQ
     });
-  }, [filterState.highCutHz, filterState.lowCutHz, postToWorker]);
+  }, [filterState.highCutHz, filterState.lowCutHz, filterState.notchHz, filterState.notchQ, postToWorker]);
 
   useEffect(() => {
     postToWorker({ command: 'SET_FILTER_PROFILE', value: filterState.profile });
@@ -998,8 +1128,8 @@ export default function App() {
         postToWorker({ command: 'STOP' });
         audioRef.current?.stop();
         setIsRunning(false);
-        streamSampleRateHzRef.current = 2_000_000;
-        setStreamSampleRateHz(2_000_000);
+        streamSampleRateHzRef.current = streamRatePlan.sampleRateHz;
+        setStreamSampleRateHz(streamRatePlan.sampleRateHz);
         setGainStages([]); // Clear UI
         usbIqRmsRef.current = 0;
         usbIqMeanAbsRef.current = 0;
@@ -1077,7 +1207,9 @@ export default function App() {
             setGains(initialGains);
     
             // Apply initial state to Device
-            await dev.setSampleRate(streamSampleRateHzRef.current);
+            streamSampleRateHzRef.current = streamRatePlan.sampleRateHz;
+            setStreamSampleRateHz(streamRatePlan.sampleRateHz);
+            await dev.setSampleRate(streamRatePlan.sampleRateHz);
             await dev.setFrequency(frequency);
             for (const stage of stages) {
                 await dev.setGain(stage.name, stage.value);
@@ -1089,6 +1221,7 @@ export default function App() {
             postToWorker({ command: 'SET_FINE_FREQ', value: fineFreq });
             postToWorker({ command: 'SET_TUNED_FREQUENCY', value: frequency });
             postToWorker({ command: 'SET_PPM_CORRECTION', value: ppmCorrection });
+            postToWorker({ command: 'SET_SAMPLE_RATE', value: streamRatePlan.sampleRateHz });
 
             usbIqRmsRef.current = 0;
             usbIqMeanAbsRef.current = 0;
@@ -1381,7 +1514,7 @@ export default function App() {
     // So NCO Frequency should be +200kHz.
     // So logic is direct: fineFreq = offsetHz.
     
-    setFineFreq(clampFineTuneHz(Math.round(offsetHz), filterState.highCutHz));
+    setFineFreq(clampFineTuneHz(Math.round(offsetHz), filterState.highCutHz, streamSampleRateHz));
   };
 
     const measurementDisclosure = useMemo(() => {
@@ -1443,6 +1576,23 @@ export default function App() {
 
       if (connectionState === 'streaming' && fftData.length > 0) {
         const peakDb = fftData.reduce((max, value) => Math.max(max, value), -Infinity);
+        const meanDb = fftData.reduce((sum, value) => sum + value, 0) / fftData.length;
+        let elevatedBinCount = 0;
+        for (let i = 0; i < fftData.length; i += 1) {
+          if (fftData[i] > meanDb + 18) {
+            elevatedBinCount += 1;
+          }
+        }
+
+        if (peakDb > -8 && elevatedBinCount > 100) {
+          items.push({
+            key: 'front-end-overload-suspected',
+            level: 'warn',
+            label: 'Front-end overload/intermod suspected',
+            recommendation: 'Lower RF gain, disable preamp/AMP, or add attenuation/filtering; wide spur density is elevated.'
+          });
+        }
+
         if (peakDb > 1) {
           items.push({
             key: 'fft-saturated',
@@ -1694,6 +1844,9 @@ export default function App() {
           <div className="control-note">
             {scanStepLabel} ({Math.round(scanProgress * 100)}%)
           </div>
+          <div className="control-note">
+            Planned rate {(streamRatePlan.sampleRateHz / 1_000).toFixed(0)} kHz | Decim {streamRatePlan.decimationFactor} | Audio {(streamRatePlan.outputSampleRateHz / 1_000).toFixed(1)} kHz
+          </div>
         </div>
 
         <div className="control-group">
@@ -1759,7 +1912,7 @@ export default function App() {
             <input 
             type="range" min={-maxFineTuneHz} max={maxFineTuneHz} step="1000"
                 value={fineFreq}
-            onChange={(e) => setFineFreq(clampFineTuneHz(parseInt(e.target.value), filterState.highCutHz))}
+            onChange={(e) => setFineFreq(clampFineTuneHz(parseInt(e.target.value), filterState.highCutHz, streamSampleRateHz))}
                 className="control-range"
             />
           <div className="control-note">Alias-safe fine tune limit: +/-{maxFineTuneHz.toLocaleString()} Hz</div>
@@ -1847,6 +2000,16 @@ export default function App() {
         <div className="control-group">
           <label className="control-label">Interference Helper</label>
                   <div className="control-group">
+                    <label className="control-label">IQ Correction</label>
+                    <input
+                      type="checkbox"
+                      checked={iqCorrectionEnabled}
+                      onChange={(e) => setIqCorrectionEnabled(e.target.checked)}
+                      className="control-check"
+                    />
+                  </div>
+
+                  <div className="control-group">
                     <label className="control-label">Noise Squelch</label>
                     <input
                       type="checkbox"
@@ -1886,6 +2049,32 @@ export default function App() {
                   </div>
 
                   <div className="control-group">
+                    <label className="control-label">Audio AGC</label>
+                    <input
+                      type="checkbox"
+                      checked={agcState.enabled}
+                      onChange={(e) => setAgcState((prev) => ({ ...prev, enabled: e.target.checked }))}
+                      className="control-check"
+                    />
+                    <div className="control-note">
+                      {agcState.state} | Target {agcState.targetLevelDbfs.toFixed(1)} dBFS | Gain {agcState.estimatedGainDb.toFixed(1)} dB
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <label className="control-label">Impulse Blanker</label>
+                    <input
+                      type="checkbox"
+                      checked={impulseBlankerState.enabled}
+                      onChange={(e) => setImpulseBlankerState((prev) => ({ ...prev, enabled: e.target.checked }))}
+                      className="control-check"
+                    />
+                    <div className="control-note">
+                      Blanked {Math.round(impulseBlankerState.blankingRatio * 100)}% ({impulseBlankerState.blankedSamples} samples)
+                    </div>
+                  </div>
+
+                  <div className="control-group">
                     <label className="control-label">Squelch Hang ({Math.round(noiseSquelchState.hangMs)} ms)</label>
                     <input
                       type="range"
@@ -1920,6 +2109,42 @@ export default function App() {
             <option value="heterodyne-notch">Heterodyne Notch</option>
             <option value="hum-notch">Hum Notch</option>
           </select>
+
+          {filterState.preset === 'off' && (
+            <>
+              <div className="control-group">
+                <label className="control-label">Notch Frequency ({filterState.notchHz === null ? 'off' : `${Math.round(filterState.notchHz)} Hz`})</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="5000"
+                  step="50"
+                  value={filterState.notchHz ?? 0}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    setFilterState((prev) => ({
+                      ...prev,
+                      notchHz: value <= 0 ? null : value
+                    }));
+                  }}
+                  className="control-range"
+                />
+              </div>
+
+              <div className="control-group">
+                <label className="control-label">Notch Q ({filterState.notchQ.toFixed(1)})</label>
+                <input
+                  type="range"
+                  min="2"
+                  max="30"
+                  step="0.5"
+                  value={filterState.notchQ}
+                  onChange={(e) => setFilterState((prev) => ({ ...prev, notchQ: parseFloat(e.target.value) }))}
+                  className="control-range"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="control-group">
@@ -1932,7 +2157,7 @@ export default function App() {
             value={displayedBandwidthHz}
             onChange={(e) => {
               const bandwidth = parseInt(e.target.value);
-              const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, filterState.lowCutHz + bandwidth);
+              const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, filterState.lowCutHz + bandwidth, streamSampleRateHz);
               setFilterState((prev) => ({ ...prev, ...clamped }));
             }}
             className="control-range"
@@ -1949,7 +2174,7 @@ export default function App() {
             value={filterState.lowCutHz}
             onChange={(e) => {
               const nextLow = parseInt(e.target.value);
-              const clamped = clampFilterForMode(demodMode, nextLow, filterState.highCutHz);
+              const clamped = clampFilterForMode(demodMode, nextLow, filterState.highCutHz, streamSampleRateHz);
               setFilterState((prev) => ({ ...prev, ...clamped }));
             }}
             className="control-range"
@@ -1966,11 +2191,12 @@ export default function App() {
             value={filterState.highCutHz}
             onChange={(e) => {
               const nextHigh = parseInt(e.target.value);
-              const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, nextHigh);
+              const clamped = clampFilterForMode(demodMode, filterState.lowCutHz, nextHigh, streamSampleRateHz);
               setFilterState((prev) => ({ ...prev, ...clamped }));
             }}
             className="control-range"
           />
+          <div className="control-note">Alias-safe high cut at current rate: {aliasSafeHighCutHz.toLocaleString()} Hz</div>
         </div>
 
         <div className="control-group">
