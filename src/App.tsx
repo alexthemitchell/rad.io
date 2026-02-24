@@ -652,6 +652,9 @@ export default function App() {
     const [sessionGradeLockInvalidatedReason, setSessionGradeLockInvalidatedReason] = useState<string | null>(null);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
     const [commandPaletteQuery, setCommandPaletteQuery] = useState('');
+    const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
+    const [diagnosticsLogOpen, setDiagnosticsLogOpen] = useState(false);
+    const [frequencyInputDraftMhz, setFrequencyInputDraftMhz] = useState((90_000_000 / 1_000_000).toFixed(3));
     const [deviceDebugSnapshot, setDeviceDebugSnapshot] = useState<DeviceDebugSnapshot | null>(null);
     const [latencyPolicy, setLatencyPolicy] = useState<LatencyPolicy>(() => {
       try {
@@ -742,10 +745,15 @@ export default function App() {
   const contentionChannelRef = useRef<BroadcastChannel | null>(null);
   const isRunningRef = useRef(false);
   const commandPaletteInputRef = useRef<HTMLInputElement | null>(null);
+  const commandPaletteInvokerRef = useRef<HTMLElement | null>(null);
+  const shortcutsHelpInvokerRef = useRef<HTMLElement | null>(null);
+  const frequencyInputRef = useRef<HTMLInputElement | null>(null);
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
   const previousFrequencyRef = useRef<number | null>(null);
   const previousFineFreqRef = useRef<number | null>(null);
   const previousBandwidthRef = useRef<number | null>(null);
+  const streamToggleShortcutRef = useRef<(() => void) | null>(null);
+  const exportDiagnosticsShortcutRef = useRef<(() => void) | null>(null);
   const [backgroundAudioGuardActive, setBackgroundAudioGuardActive] = useState(false);
 
     const pushDiagnosticEvent = useCallback((
@@ -1904,30 +1912,173 @@ export default function App() {
       };
     }, [audioState, connectionState, demodMode, demodQuality, fftData, filterState, frequency, isRunning, rdsTelemetry, runtimeTelemetry, scopeData, sourceType, usbIqMeanAbs, usbIqRms, usbTransferBytes, usbTransferCount]);
 
+    const openCommandPalette = useCallback(() => {
+      commandPaletteInvokerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setShortcutsHelpOpen(false);
+      setCommandPaletteOpen(true);
+    }, []);
+
+    const closeCommandPalette = useCallback(() => {
+      const invoker = commandPaletteInvokerRef.current;
+      setCommandPaletteOpen(false);
+      setCommandPaletteQuery('');
+      window.setTimeout(() => {
+        invoker?.focus();
+      }, 0);
+    }, []);
+
+    const openShortcutsHelp = useCallback(() => {
+      shortcutsHelpInvokerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setCommandPaletteOpen(false);
+      setCommandPaletteQuery('');
+      setShortcutsHelpOpen(true);
+      pushDiagnosticEvent('shortcut_help_opened', 'info', 'shortcut');
+    }, [pushDiagnosticEvent]);
+
+    const closeShortcutsHelp = useCallback(() => {
+      const invoker = shortcutsHelpInvokerRef.current;
+      setShortcutsHelpOpen(false);
+      window.setTimeout(() => {
+        invoker?.focus();
+      }, 0);
+    }, []);
+
+    const commitFrequencyInputDraft = useCallback(() => {
+      const parsedMhz = parseFloat(frequencyInputDraftMhz);
+      if (!Number.isFinite(parsedMhz)) {
+        setFrequencyInputDraftMhz((frequency / 1_000_000).toFixed(3));
+        setStatusMessage('Frequency edit is invalid. Restored last tuned value.');
+        pushDiagnosticEvent('shortcut_blocked_due_to_focus:freq-commit-invalid', 'warn', 'shortcut');
+        return;
+      }
+
+      const nextFrequencyHz = Math.max(0, Math.floor(parsedMhz * 1_000_000));
+      setFrequency(nextFrequencyHz);
+      setFrequencyInputDraftMhz((nextFrequencyHz / 1_000_000).toFixed(3));
+      setStatusMessage(`Frequency set to ${(nextFrequencyHz / 1_000_000).toFixed(3)} MHz.`);
+      pushDiagnosticEvent('shortcut_invoked:freq-commit', 'info', 'shortcut');
+    }, [frequency, frequencyInputDraftMhz, pushDiagnosticEvent]);
+
+    const cancelFrequencyInputDraft = useCallback(() => {
+      setFrequencyInputDraftMhz((frequency / 1_000_000).toFixed(3));
+      setStatusMessage('Frequency edit canceled.');
+      pushDiagnosticEvent('shortcut_invoked:freq-cancel', 'info', 'shortcut');
+    }, [frequency, pushDiagnosticEvent]);
+
+    useEffect(() => {
+      const focusedElement = typeof document !== 'undefined' ? document.activeElement : null;
+      if (focusedElement !== frequencyInputRef.current) {
+        setFrequencyInputDraftMhz((frequency / 1_000_000).toFixed(3));
+      }
+    }, [frequency]);
+
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
-            const openCommandPalette = event.key === 'F1'
-              || ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K'));
-            if (openCommandPalette) {
-                event.preventDefault();
-                setCommandPaletteOpen(true);
-                return;
-            }
-
-            if (commandPaletteOpen) {
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                setCommandPaletteOpen(false);
-                setCommandPaletteQuery('');
-                return;
-              }
-            }
-
             const target = event.target as HTMLElement | null;
             const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'SELECT' || target?.tagName === 'TEXTAREA';
-            if (isTyping) return;
+            const frequencyInputFocused = typeof document !== 'undefined' && document.activeElement === frequencyInputRef.current;
+
+            if (frequencyInputFocused && event.key === 'Enter') {
+              event.preventDefault();
+              commitFrequencyInputDraft();
+              frequencyInputRef.current?.blur();
+              return;
+            }
+
+            if (frequencyInputFocused && (event.key === 'Escape' || event.key === 'Esc')) {
+              event.preventDefault();
+              cancelFrequencyInputDraft();
+              frequencyInputRef.current?.blur();
+              return;
+            }
+
+            const openHelpOverlay = event.key === 'F1' || event.key === '?';
+            if (openHelpOverlay) {
+              event.preventDefault();
+              openShortcutsHelp();
+              return;
+            }
+
+            const openPalette = (event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K');
+            if (openPalette) {
+              event.preventDefault();
+              openCommandPalette();
+              pushDiagnosticEvent('shortcut_invoked:command-palette', 'info', 'shortcut');
+              return;
+            }
+
+            if (shortcutsHelpOpen) {
+              if (event.key === 'Escape' || event.key === 'Esc') {
+                event.preventDefault();
+                closeShortcutsHelp();
+              }
+              return;
+            }
 
             if (commandPaletteOpen) {
+              if (event.key === 'Escape' || event.key === 'Esc') {
+                event.preventDefault();
+                closeCommandPalette();
+              }
+              return;
+            }
+
+            const primaryModifier = event.ctrlKey || event.metaKey;
+
+            if (primaryModifier && event.shiftKey && (event.key === 'D' || event.key === 'd')) {
+              event.preventDefault();
+              exportDiagnosticsShortcutRef.current?.();
+              pushDiagnosticEvent('shortcut_invoked:export-diagnostics', 'info', 'shortcut');
+              return;
+            }
+
+            if (primaryModifier && event.key === '/') {
+              event.preventDefault();
+              setDiagnosticsLogOpen((prev) => !prev);
+              pushDiagnosticEvent('shortcut_invoked:toggle-diagnostics-log', 'info', 'shortcut');
+              return;
+            }
+
+            if ((primaryModifier || event.altKey) && (event.key === 'l' || event.key === 'L')) {
+              event.preventDefault();
+              frequencyInputRef.current?.focus();
+              frequencyInputRef.current?.select();
+              pushDiagnosticEvent('shortcut_invoked:focus-frequency-input', 'info', 'shortcut');
+              return;
+            }
+
+            if (primaryModifier && (event.key === 'r' || event.key === 'R')) {
+              event.preventDefault();
+              if (!isRunning || connectionState === 'error') {
+                streamToggleShortcutRef.current?.();
+                setStatusMessage('Reconnect requested.');
+                pushDiagnosticEvent('shortcut_invoked:reconnect', 'info', 'shortcut');
+              } else {
+                pushDiagnosticEvent('shortcut_conflict_fallback_used:reconnect-ignored-running', 'info', 'shortcut');
+              }
+              return;
+            }
+
+            if (primaryModifier && (event.key === 'e' || event.key === 'E')) {
+              event.preventDefault();
+              if (connectionState === 'error') {
+                streamToggleShortcutRef.current?.();
+                setStatusMessage('Retrying last failed stream action.');
+                pushDiagnosticEvent('shortcut_invoked:retry-last-failure', 'info', 'shortcut');
+              } else {
+                pushDiagnosticEvent('shortcut_conflict_fallback_used:retry-no-error-state', 'info', 'shortcut');
+              }
+              return;
+            }
+
+            if (isTyping) {
+              return;
+            }
+
+            if (event.key === ' ') {
+              event.preventDefault();
+              streamToggleShortcutRef.current?.();
+              pushDiagnosticEvent('shortcut_invoked:stream-toggle', 'info', 'shortcut');
               return;
             }
 
@@ -1936,21 +2087,25 @@ export default function App() {
                 setIsMuted((prev) => {
                     const nextMuted = !prev;
                     audioRef.current?.setMuted(nextMuted);
-                  setAudioState(nextMuted ? 'muted' : isRunning ? 'running' : audioState);
+                    setAudioState(nextMuted ? 'muted' : isRunning ? 'running' : audioState);
                     setStatusMessage(nextMuted ? 'Audio muted.' : 'Audio unmuted.');
                     pushDiagnosticEvent(nextMuted ? 'Audio muted by keyboard.' : 'Audio unmuted by keyboard.');
+                    pushDiagnosticEvent('shortcut_invoked:mute-toggle', 'info', 'shortcut');
                     return nextMuted;
                 });
+                return;
             }
 
-                if (event.key === 'p' || event.key === 'P') {
-                  event.preventDefault();
-                  setIsMuted(true);
-                  audioRef.current?.setMuted(true);
-                  setAudioState('muted');
-                  setStatusMessage('Panic mute engaged.');
-                  pushDiagnosticEvent('Panic mute engaged by keyboard.');
-                }
+            if (event.key === 'p' || event.key === 'P') {
+              event.preventDefault();
+              setIsMuted(true);
+              audioRef.current?.setMuted(true);
+              setAudioState('muted');
+              setStatusMessage('Panic mute engaged.');
+              pushDiagnosticEvent('Panic mute engaged by keyboard.');
+              pushDiagnosticEvent('shortcut_invoked:panic-mute', 'info', 'shortcut');
+              return;
+            }
 
             if (event.key === 'ArrowRight') {
                 event.preventDefault();
@@ -1974,6 +2129,7 @@ export default function App() {
                 setFrequency((prev) => prev + tuningStepHz);
                 setStatusMessage(`Tune step +${tuningStepHz.toLocaleString()} Hz.`);
                 pushDiagnosticEvent(`Keyboard tune step +${tuningStepHz} Hz.`, 'info', 'analyzer');
+                return;
             }
 
             if (event.key === 'ArrowLeft') {
@@ -1998,6 +2154,7 @@ export default function App() {
                 setFrequency((prev) => Math.max(0, prev - tuningStepHz));
                 setStatusMessage(`Tune step -${tuningStepHz.toLocaleString()} Hz.`);
                 pushDiagnosticEvent(`Keyboard tune step -${tuningStepHz} Hz.`, 'info', 'analyzer');
+                return;
             }
 
             if (event.key === 'ArrowUp') {
@@ -2005,6 +2162,7 @@ export default function App() {
               setFineFreq((prev) => clampFineTuneHz(prev + fineTuningStepHz, filterState.highCutHz, streamSampleRateHz));
               setStatusMessage(`Fine tune +${fineTuningStepHz.toLocaleString()} Hz.`);
               pushDiagnosticEvent(`Keyboard fine tune +${fineTuningStepHz} Hz.`, 'info', 'analyzer');
+              return;
             }
 
             if (event.key === 'ArrowDown') {
@@ -2019,11 +2177,19 @@ export default function App() {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [
       audioState,
+      closeCommandPalette,
+      closeShortcutsHelp,
+      commitFrequencyInputDraft,
       commandPaletteOpen,
+      connectionState,
+      cancelFrequencyInputDraft,
       fineTuningStepHz,
       filterState.highCutHz,
       isRunning,
+      openCommandPalette,
+      openShortcutsHelp,
       pushDiagnosticEvent,
+      shortcutsHelpOpen,
       streamSampleRateHz,
       tuningStepHz
     ]);
@@ -3207,6 +3373,13 @@ export default function App() {
         pushDiagnosticEvent(`Diagnostics bundle exported (integrity: ${integrityGrade}).`);
     };
 
+    streamToggleShortcutRef.current = () => {
+      void toggleStream();
+    };
+    exportDiagnosticsShortcutRef.current = () => {
+      void exportDiagnostics();
+    };
+
     const forgetUsbDevices = async () => {
       if (typeof navigator === 'undefined' || !('usb' in navigator)) {
         setStatusMessage('WebUSB is unavailable in this browser context.');
@@ -3428,8 +3601,7 @@ export default function App() {
           });
         }
       } finally {
-        setCommandPaletteOpen(false);
-        setCommandPaletteQuery('');
+        closeCommandPalette();
       }
     };
 
@@ -3622,7 +3794,7 @@ export default function App() {
 
       const target = event.target as HTMLElement | null;
       const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'SELECT' || target?.tagName === 'TEXTAREA';
-      if (isTyping || commandPaletteOpen) {
+      if (isTyping || commandPaletteOpen || shortcutsHelpOpen) {
         return;
       }
 
@@ -3658,7 +3830,7 @@ export default function App() {
 
     window.addEventListener('keydown', onAnalyzerKeyDown);
     return () => window.removeEventListener('keydown', onAnalyzerKeyDown);
-  }, [clearMarker, commandPaletteOpen, returnToLastLock, runCenterOnPeak, runSnapToSignal, tuneToMarker]);
+  }, [clearMarker, commandPaletteOpen, returnToLastLock, runCenterOnPeak, runSnapToSignal, shortcutsHelpOpen, tuneToMarker]);
 
   const handleSpectrumClick = (binIndex: number) => {
     const fftSize = fftDataRef.current.length > 0 ? fftDataRef.current.length : 2048;
@@ -4398,7 +4570,7 @@ export default function App() {
       )}
 
       <p className="status-text" aria-live="polite">{statusMessage}</p>
-      <p className="status-subtext">Audio: {audioState} | Keyboard: Ctrl+K/F1 palette, Left/Right tune, Shift+Left/Right large tune, Alt+Left/Right fine nudge, Up/Down fine step, C center peak, S snap signal, T tune marker, X clear marker, R return lock, M mute, P panic mute</p>
+      <p className="status-subtext">Audio: {audioState} | Keyboard: Ctrl+K palette, ?/F1 help, Ctrl+L/Alt+L frequency focus, Left/Right tune, Shift+Left/Right large tune, Alt+Left/Right fine nudge, Up/Down fine step, C center peak, S snap signal, T tune marker, X clear marker, R return lock, M mute, P panic mute</p>
       
       <div className="visual-grid">
         <section className="panel panel-wide">
@@ -4479,9 +4651,9 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => setCommandPaletteOpen(true)}
+          onClick={openCommandPalette}
           className="action-btn btn-secondary"
-          title="Open command palette (Ctrl+K or F1)"
+          title="Open command palette (Ctrl+K)"
         >
           Command Palette
         </button>
@@ -5248,16 +5420,29 @@ export default function App() {
         )}
 
         <div className="control-group">
-            <label className="control-label">Frequency (MHz)</label>
+            <label htmlFor="frequency-mhz-input" className="control-label">Frequency (MHz)</label>
             <input 
-                type="number" 
-                value={(frequency / 1_000_000).toFixed(3)}
-                onChange={(e) => {
-                  const parsed = parseFloat(e.target.value);
-                  if (!Number.isFinite(parsed)) {
+                id="frequency-mhz-input"
+                ref={frequencyInputRef}
+                type="text"
+                inputMode="decimal"
+                aria-label="Frequency in MHz"
+                value={frequencyInputDraftMhz}
+                onFocus={() => setFrequencyInputDraftMhz((frequency / 1_000_000).toFixed(3))}
+                onChange={(e) => setFrequencyInputDraftMhz(e.target.value)}
+                onBlur={cancelFrequencyInputDraft}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    commitFrequencyInputDraft();
                     return;
                   }
-                  setFrequency(Math.max(0, Math.floor(parsed * 1_000_000)));
+
+                  if (event.key === 'Escape' || event.key === 'Esc') {
+                    event.preventDefault();
+                    cancelFrequencyInputDraft();
+                    frequencyInputRef.current?.blur();
+                  }
                 }}
                 className="control-input compact"
                 step="0.1"
@@ -5298,7 +5483,7 @@ export default function App() {
                 className="control-input"
                 placeholder="Type command (e.g. mode, tune, export)"
               />
-              <div className="control-note">Ctrl+K / F1 open, Esc close, click Run to execute</div>
+              <div className="control-note">Ctrl+K open, Esc close, click Run to execute</div>
             </div>
           </div>
           <ul>
@@ -5319,6 +5504,24 @@ export default function App() {
               ))
             )}
           </ul>
+        </section>
+      )}
+
+      {shortcutsHelpOpen && (
+        <section className="health-panel command-palette" aria-live="polite" role="dialog" aria-label="Keyboard shortcuts help">
+          <h2 className="panel-title">Keyboard Shortcuts</h2>
+          <ul>
+            <li className="health-item health-ok"><strong>Tuning</strong><span>ArrowLeft / ArrowRight, Shift+Arrows (large), Alt+Arrows (fine)</span></li>
+            <li className="health-item health-ok"><strong>Frequency Input</strong><span>Ctrl+L or Alt+L focus, Enter commit, Escape cancel</span></li>
+            <li className="health-item health-ok"><strong>Stream</strong><span>Space toggle, Ctrl+R reconnect, Ctrl+E retry error</span></li>
+            <li className="health-item health-ok"><strong>Audio</strong><span>M mute toggle, P panic mute</span></li>
+            <li className="health-item health-ok"><strong>Analyzer</strong><span>C center peak, S snap, T tune marker, X clear marker, R return lock</span></li>
+            <li className="health-item health-ok"><strong>Diagnostics</strong><span>Ctrl+Shift+D export, Ctrl+/ toggle diagnostics log</span></li>
+            <li className="health-item health-ok"><strong>Help and Commands</strong><span>? or F1 help, Ctrl+K command palette</span></li>
+          </ul>
+          <div className="controls-shell">
+            <button onClick={closeShortcutsHelp} className="action-btn btn-secondary" type="button">Close</button>
+          </div>
         </section>
       )}
 
@@ -5387,7 +5590,14 @@ export default function App() {
         </div>
       </section>
 
-      <details className="diagnostics-log">
+      <details
+        className="diagnostics-log"
+        open={diagnosticsLogOpen}
+        onToggle={(event) => {
+          const nextOpen = (event.currentTarget as HTMLDetailsElement).open;
+          setDiagnosticsLogOpen(nextOpen);
+        }}
+      >
         <summary>Recent Diagnostic Events ({diagnosticEvents.length})</summary>
         <ul>
           {diagnosticEvents.slice(0, 12).map((event, idx) => (

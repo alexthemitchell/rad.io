@@ -311,7 +311,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Kickoff Slice B: Signal Discovery Helpers**: add center-on-peak and snap-to-signal actions with keyboard and click affordances.
 - [x] **Kickoff Slice C: Marker MVP**: single marker with frequency/power readout and tune-to-marker action.
 - [x] **Kickoff Slice D: FPS Validation Gate**: add repeatable synthetic-render test and record sustained `>= 60 FPS` evidence (`scripts/render-fps-gate.mjs`, `artifacts/validation/p4-0d-render-fps-gate-2026-02-24T23-26-56-410Z.json`).
-- [x] **Kickoff Slice E: Interaction Guardrails**: add keyboard-first step tuning parity and retune-assist lock return behavior (`src/App.tsx`, `e2e/phase4-keyboard.spec.ts`).
+- [x] **Kickoff Slice E: Interaction Guardrails**: add keyboard-first step tuning parity, retune-assist lock return behavior, and help/diagnostics keyboard entrypoints (`src/App.tsx`, `e2e/phase4-keyboard.spec.ts`).
 - [x] **Kickoff Readiness Review**: convert 4.0 slices into issue-ready acceptance criteria using `docs/process/acceptance-criteria-template.md` and link them back into this section (`docs/roadmap/04_VISUALIZATION_INTERACTION_MVP/PHASE4_KICKOFF_ISSUES_2026-02-24.md`).
 - [x] **Kickoff Plan Documented**: issue-ready sequencing, scope, and acceptance criteria are defined in `docs/roadmap/04_VISUALIZATION_INTERACTION_MVP/PHASE4_KICKOFF_2026-02-24.md`.
 
@@ -349,14 +349,14 @@ These are gates, not features: they define what good means and prevent late-stag
 ### 4.4 Interaction
 
 - [x] **Tuning Interaction**: click/drag-to-tune (Click-to-tune implemented).
-- [ ] **Retune Assist**: center-on-peak, snap-to-raster, pilot/carrier “lock retune”, and “return to last locked” for drift-prone sessions.
+- [x] **Retune Assist**: center-on-peak, snap-to-raster, pilot/carrier “lock retune”, and “return to last locked” for drift-prone sessions. (`src/App.tsx`, `e2e/phase4-keyboard.spec.ts`)
 - [x] **Zoom & Pan**: smooth frequency navigation.
 - [x] **Markers/Cursors (Early)**: basic markers to support workflows and debugging. (`src/App.tsx`, `src/components/SpectrumCanvas.tsx`, `src/dsp/analyzerArtifactExport.ts`)
 - [ ] **Marker↔VFO Binding Controls**: explicit “bind this marker to active VFO” and “follow VFO” modes with clear affordances.
 - [ ] **Delta Markers + Peak Readout**: delta frequency/power readouts and a simple peak list for “find the signal” workflows.
 - [ ] **Band Plans & Stepping**: regional band presets, channel raster snapping, and per-mode step sizes.
 - [ ] **Band-Aware Defaults & Constraints (Guardrails)**: enforce alias-safe bandwidth limits, region-appropriate defaults (e.g., de-emphasis), and warning prompts when settings are likely invalid for the selected band/mode.
-- [ ] **Keyboard-First Tuning**: fast step up/down, direct frequency entry, and quick mode/bandwidth controls.
+- [x] **Keyboard-First Tuning**: fast step up/down, direct frequency entry, and quick command entry via keyboard shortcuts/palette. (`src/App.tsx`, `e2e/phase4-keyboard.spec.ts`)
 - [ ] **History & Recall**: last-tuned list, last-heard list, and quick A/B recall to support exploration workflows.
 - [ ] **Frequency Mapping / Transverter Support**: separate “RF frequency” vs “tuner LO” vs “display frequency” with per-band offsets/profiles (up/downconverters, IF sampling workflows).
 
