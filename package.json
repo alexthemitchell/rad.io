@@ -12,8 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:browser-gate": "node scripts/browser-regression-gate.mjs",
-    "test:e2e": "node -e \"console.log('No e2e tests configured yet.');\"",
-    "test:e2e:real": "node -e \"console.log('No real-device e2e tests configured yet.');\"",
+    "test:e2e": "playwright test",
+    "test:e2e:real": "playwright test --grep @real-device",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "npm run lint -- --fix",
     "lint:css": "stylelint \"src/**/*.css\"",
@@ -33,6 +33,7 @@
     "usb": "^2.17.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@typescript-eslint/eslint-plugin": "^7.2.0",

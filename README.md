@@ -23,8 +23,8 @@ npm start
 - `npm run build:prod`: alias for `npm run build`.
 - `npm test`: run unit tests.
 - `npm run test:watch`: run tests in watch mode.
-- `npm run test:e2e`: placeholder e2e hook (prints status).
-- `npm run test:e2e:real`: placeholder real-device e2e hook (prints status).
+- `npm run test:e2e`: run Playwright E2E smoke tests (CI-safe, no physical hardware required).
+- `npm run test:e2e:real`: run Playwright tests tagged `@real-device` (set `RAD_REAL_DEVICE=1` to execute device-gated checks).
 - `npm run lint`: run ESLint.
 - `npm run lint:fix`: auto-fix ESLint issues.
 - `npm run lint:css`: run Stylelint on CSS.
