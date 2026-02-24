@@ -45,11 +45,11 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 0.3 Design System Foundations (Tokens + Components + Accessibility)
 
-- [ ] **Design Tokens Spec**: CSS variables for spacing, typography scale, elevation, focus rings, and semantic colors.
-- [ ] **Core Component Spec Pack**: Button/Toggle, Slider, Numeric input (frequency), Dropdown, Tabs, Toast/Alert, Modal, Tooltip.
-- [ ] **Accessibility-First Requirements (UX)**: keyboard-only flows for MVP, minimum contrast targets, reduced-motion behavior.
-- [ ] **Interaction Prototype (Clickable)**: validate tuning + layout + safety flows before implementation (e.g., Figma prototype).
-- [ ] **Keyboard Shortcut Map (Early)**: reserve key bindings for core ops (tune, step, start/stop, mute, record) to avoid rework.
+- [x] **Design Tokens Spec**: CSS variables for spacing, typography scale, elevation, focus rings, and semantic colors. (`docs/design-system/design-tokens-spec.md`, `docs/design-system/token-naming-and-usage.md`)
+- [x] **Core Component Spec Pack**: Button/Toggle, Slider, Numeric input (frequency), Dropdown, Tabs, Toast/Alert, Modal, Tooltip. (`docs/design-system/components/`)
+- [x] **Accessibility-First Requirements (UX)**: keyboard-only flows for MVP, minimum contrast targets, reduced-motion behavior. (`docs/ux/accessibility/mvp-accessibility-requirements.md`, `docs/design-system/theme-contrast-requirements.md`, `docs/ux/accessibility/reduced-motion-and-animation-rules.md`)
+- [x] **Interaction Prototype (Clickable)**: validate tuning + layout + safety flows before implementation (e.g., Figma prototype). (`docs/ux/prototypes/p0-interaction-prototype-brief.md`, `docs/ux/prototypes/p0-interaction-prototype-findings.md`)
+- [x] **Keyboard Shortcut Map (Early)**: reserve key bindings for core ops (tune, step, start/stop, mute, record) to avoid rework. (`docs/reference/keyboard-shortcuts.md`)
 
 ### 0.4 Architecture “Irreversible Decisions” (ADRs)
 
@@ -81,21 +81,21 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 0.7 Project Hygiene & Execution System
 
-- [ ] **Definition of Done (PR/Issue)**: required checks, test updates, perf impact notes, ADR-needed rule.
-- [ ] **Roadmap → Issues Policy**: every roadmap checkbox becomes an issue with acceptance criteria; epics get sub-issues.
-- [ ] **Labeling/Ownership Conventions**: area labels (usb/dsp/audio/ui), risk tags, and owner expectations.
-- [ ] **MVP Cutline + Sequencing Rules**: label items as Must/Should/Could and define “vertical slice first” sequencing for new subsystems.
+- [x] **Definition of Done (PR/Issue)**: required checks, test updates, perf impact notes, ADR-needed rule. (`docs/process/definition-of-done.md`)
+- [x] **Roadmap → Issues Policy**: every roadmap checkbox becomes an issue with acceptance criteria; epics get sub-issues. (`docs/process/roadmap-to-issues-policy.md`)
+- [x] **Labeling/Ownership Conventions**: area labels (usb/dsp/audio/ui), risk tags, and owner expectations. (`docs/process/labels-and-ownership.md`)
+- [x] **MVP Cutline + Sequencing Rules**: label items as Must/Should/Could and define “vertical slice first” sequencing for new subsystems. (`docs/process/mvp-cutline-and-sequencing.md`)
 
 ### 0.8 Preview/Release Strategy (Feedback Loop)
 
-- [ ] **Preview Distribution Plan**: how pre-release builds are shared and how feedback is collected and triaged.
+- [x] **Preview Distribution Plan**: how pre-release builds are shared and how feedback is collected and triaged. (`docs/release/preview-distribution.md`, `docs/release/preview-feedback-triage.md`)
 - [x] **Versioning Policy for Fixtures/Recordings**: compatibility expectations for early users and regression assets.
 
 ### 0.9 Backlog, Release, and Change Management
 
-- [ ] **Issue Templates + Acceptance Criteria Template**: standardize bug/feature/driver issues so work stays testable and user-visible.
-- [ ] **Release Checklist (MVP)**: versioning, changelog notes, migration notes, browser matrix, and “demo script passes” gate.
-- [ ] **Telemetry/Privacy Review Gate**: ensure diagnostics/telemetry items always include redaction rules and explicit user consent UX.
+- [x] **Issue Templates + Acceptance Criteria Template**: standardize bug/feature/driver issues so work stays testable and user-visible. (`docs/process/acceptance-criteria-template.md`, `.github/ISSUE_TEMPLATE/`)
+- [x] **Release Checklist (MVP)**: versioning, changelog notes, migration notes, browser matrix, and “demo script passes” gate. (`docs/release/release-checklist-mvp.md`, `docs/release/changelog-policy.md`)
+- [x] **Telemetry/Privacy Review Gate**: ensure diagnostics/telemetry items always include redaction rules and explicit user consent UX. (`docs/telemetry/privacy-review-checklist.md`)
 
 ## Phase 1: Foundation, Tooling & Observability
 
@@ -304,6 +304,16 @@ These are gates, not features: they define what good means and prevent late-stag
 ## Phase 4: Visualization & Interaction MVP
 
 **Goal:** Make the app feel like a “real receiver” early; visuals and tuning UX drive adoption.
+
+### 4.0 Kickoff Plan (Prepared 2026-02-24)
+
+- [ ] **Kickoff Slice A: Analyzer Baseline Controls**: implement reference level + averaging + peak-hold with deterministic behavior and tests.
+- [ ] **Kickoff Slice B: Signal Discovery Helpers**: add center-on-peak and snap-to-signal actions with keyboard and click affordances.
+- [ ] **Kickoff Slice C: Marker MVP**: single marker with frequency/power readout and tune-to-marker action.
+- [ ] **Kickoff Slice D: FPS Validation Gate**: add repeatable synthetic-render test and record sustained `>= 60 FPS` evidence.
+- [ ] **Kickoff Slice E: Interaction Guardrails**: add keyboard-first step tuning parity and retune-assist lock return behavior.
+- [ ] **Kickoff Readiness Review**: convert 4.0 slices into issues with acceptance criteria per `docs/process/acceptance-criteria-template.md` and link them back into this section.
+- [x] **Kickoff Plan Documented**: issue-ready sequencing, scope, and acceptance criteria are defined in `docs/roadmap/04_VISUALIZATION_INTERACTION_MVP/PHASE4_KICKOFF_2026-02-24.md`.
 
 ### 4.1 Design System
 
