@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AudioSink } from './audio/AudioSink';
 import { AudioScopeCanvas } from './components/AudioScopeCanvas';
 import { SpectrumCanvas } from './components/SpectrumCanvas';
-import { WaterfallCanvas } from './components/WaterfallCanvas';
+import { WaterfallCanvas, type WaterfallCursorReadout } from './components/WaterfallCanvas';
 import {
   evaluateFmScanCandidate,
   isStationCandidate,
@@ -80,13 +80,18 @@ import {
   planStreamRateForMode
 } from './dsp/controlGuardrails';
 import {
+  estimateOccupiedBandwidthHz,
   binIndexToFrequencyHz,
   findNearestQualifiedPeak,
+  listStrongestPeaks,
   findStrongestPeakInRange,
   frequencyHzToBinIndex,
+  getWindowEnbwBins,
   getVisibleSpectrumBinRange,
   resolveMarkerReadout,
-  type AnalyzerAveragingMode
+  type AnalyzerAveragingMode,
+  type AnalyzerPeakHoldMode,
+  type AnalyzerWindowMode
 } from './dsp/analyzerControls';
 import {
   createDefaultRuntimeDspTelemetry,
@@ -594,9 +599,12 @@ export default function App() {
   const [analyzerAveragingMode, setAnalyzerAveragingMode] = useState<AnalyzerAveragingMode>('off');
   const [analyzerAveragingValue, setAnalyzerAveragingValue] = useState(0.25);
   const [analyzerLinearAveragingFrames, setAnalyzerLinearAveragingFrames] = useState(8);
+  const [analyzerWindowMode, setAnalyzerWindowMode] = useState<AnalyzerWindowMode>('hann');
   const [analyzerPeakHoldEnabled, setAnalyzerPeakHoldEnabled] = useState(true);
+  const [analyzerPeakHoldMode, setAnalyzerPeakHoldMode] = useState<AnalyzerPeakHoldMode>('decay');
   const [analyzerPeakHoldResetToken, setAnalyzerPeakHoldResetToken] = useState(0);
   const [analyzerMarker, setAnalyzerMarker] = useState<AnalyzerMarkerState | null>(null);
+  const [analyzerSecondaryMarker, setAnalyzerSecondaryMarker] = useState<AnalyzerMarkerState | null>(null);
   const [tuningStepHz, setTuningStepHz] = useState(1_000);
   const [fineTuningStepHz, setFineTuningStepHz] = useState(1_000);
   const [lastLockFrequencyHz, setLastLockFrequencyHz] = useState<number | null>(null);
@@ -606,6 +614,8 @@ export default function App() {
     const [applyModeAudioDefaults, setApplyModeAudioDefaults] = useState(true);
     const [waterfallPalette, setWaterfallPalette] = useState<'cividis' | 'inferno'>('cividis');
     const [waterfallAutoScale, setWaterfallAutoScale] = useState(true);
+    const [waterfallFrozen, setWaterfallFrozen] = useState(false);
+    const [waterfallCursorReadout, setWaterfallCursorReadout] = useState<WaterfallCursorReadout | null>(null);
     const [waterfallMinDb, setWaterfallMinDb] = useState(-125);
     const [waterfallMaxDb, setWaterfallMaxDb] = useState(-35);
 
@@ -3093,6 +3103,8 @@ export default function App() {
           tunedFrequencyHz: frequency,
           fineTuneHz: fineFreq,
           fftSize: fftDataRef.current.length,
+          fftWindow: analyzerWindowMode,
+          fftEnbwBins: getWindowEnbwBins(analyzerWindowMode),
           fftAveragingMode: analyzerAveragingMode,
           fftAveragingValue: analyzerAveragingMode === 'off'
             ? null
@@ -3126,6 +3138,19 @@ export default function App() {
                 frequencyHz: markerReadout.frequencyHz,
                 powerDbfs: markerReadout.powerDbfs,
                 inView: markerReadout.inView
+              }
+            : {
+                active: false,
+                frequencyHz: null,
+                powerDbfs: null,
+                inView: false
+              },
+          markerB: secondaryMarkerReadout
+            ? {
+                active: true,
+                frequencyHz: secondaryMarkerReadout.frequencyHz,
+                powerDbfs: secondaryMarkerReadout.powerDbfs,
+                inView: secondaryMarkerReadout.inView
               }
             : {
                 active: false,
@@ -3639,6 +3664,46 @@ export default function App() {
     [analyzerMarker?.frequencyHz, analyzerVisibleBinRange, fftData, frequency, streamSampleRateHz]
   );
 
+  const secondaryMarkerReadout = useMemo(
+    () => resolveMarkerReadout(
+      analyzerSecondaryMarker?.frequencyHz ?? null,
+      fftData,
+      frequency,
+      streamSampleRateHz,
+      analyzerVisibleBinRange
+    ),
+    [analyzerSecondaryMarker?.frequencyHz, analyzerVisibleBinRange, fftData, frequency, streamSampleRateHz]
+  );
+
+  const occupiedBandwidth = useMemo(
+    () => estimateOccupiedBandwidthHz(
+      fftData,
+      analyzerVisibleBinRange,
+      frequency,
+      streamSampleRateHz,
+      0.99
+    ),
+    [analyzerVisibleBinRange, fftData, frequency, streamSampleRateHz]
+  );
+
+  const strongestPeaks = useMemo(
+    () => listStrongestPeaks(fftData, analyzerVisibleBinRange, 6, 3),
+    [analyzerVisibleBinRange, fftData]
+  );
+
+  const markerDeltaReadout = useMemo(() => {
+    if (!markerReadout || !secondaryMarkerReadout) {
+      return null;
+    }
+
+    const deltaFrequencyHz = secondaryMarkerReadout.frequencyHz - markerReadout.frequencyHz;
+    const deltaPowerDb = secondaryMarkerReadout.powerDbfs - markerReadout.powerDbfs;
+    return {
+      deltaFrequencyHz,
+      deltaPowerDb
+    };
+  }, [markerReadout, secondaryMarkerReadout]);
+
   const runCenterOnPeak = useCallback((trigger: 'ui' | 'keyboard') => {
     const strongestPeak = findStrongestPeakInRange(fftData, analyzerVisibleBinRange);
     if (!strongestPeak) {
@@ -3729,8 +3794,36 @@ export default function App() {
 
   const clearMarker = useCallback((trigger: 'ui' | 'keyboard') => {
     setAnalyzerMarker(null);
+    setAnalyzerSecondaryMarker(null);
     setStatusMessage('Marker cleared.');
     pushDiagnosticEvent(`Marker cleared (${trigger}).`, 'info', 'analyzer');
+  }, [pushDiagnosticEvent]);
+
+  const placeSecondaryMarkerAtPeak = useCallback((trigger: 'ui' | 'keyboard') => {
+    const strongestPeak = findStrongestPeakInRange(fftData, analyzerVisibleBinRange);
+    if (!strongestPeak) {
+      setStatusMessage('Unable to place marker B: no qualifying peak in view.');
+      pushDiagnosticEvent(`Marker B place (${trigger}) failed: no qualifying peak.`, 'warn', 'analyzer');
+      return;
+    }
+
+    const markerFrequencyHz = binIndexToFrequencyHz(strongestPeak.binIndex, fftData.length, frequency, streamSampleRateHz);
+    setAnalyzerSecondaryMarker({
+      frequencyHz: markerFrequencyHz,
+      placedAtIso: new Date().toISOString()
+    });
+    setStatusMessage(`Marker B placed at ${Math.round(markerFrequencyHz).toLocaleString()} Hz.`);
+    pushDiagnosticEvent(
+      `Marker B placed (${trigger}) at ${Math.round(markerFrequencyHz)} Hz (${strongestPeak.powerDbfs.toFixed(1)} dBFS).`,
+      'info',
+      'analyzer'
+    );
+  }, [analyzerVisibleBinRange, fftData, frequency, pushDiagnosticEvent, streamSampleRateHz]);
+
+  const clearSecondaryMarker = useCallback((trigger: 'ui' | 'keyboard') => {
+    setAnalyzerSecondaryMarker(null);
+    setStatusMessage('Marker B cleared.');
+    pushDiagnosticEvent(`Marker B cleared (${trigger}).`, 'info', 'analyzer');
   }, [pushDiagnosticEvent]);
 
   const tuneToMarker = useCallback((trigger: 'ui' | 'keyboard') => {
@@ -4584,6 +4677,8 @@ export default function App() {
               sampleRateHz={streamSampleRateHz}
               autoScale={waterfallAutoScale}
               palette={waterfallPalette}
+              freeze={waterfallFrozen}
+              onCursorChange={setWaterfallCursorReadout}
             />
         </section>
         <section className="panel">
@@ -4598,7 +4693,9 @@ export default function App() {
               referenceLevelDb={analyzerReferenceLevelDb}
               averagingMode={analyzerAveragingMode}
               averagingValue={analyzerAveragingMode === 'linear' ? analyzerLinearAveragingFrames : analyzerAveragingValue}
+              windowMode={analyzerWindowMode}
               peakHoldEnabled={analyzerPeakHoldEnabled}
+              peakHoldMode={analyzerPeakHoldMode}
               peakHoldResetToken={analyzerPeakHoldResetToken}
               markerFrequencyHz={analyzerMarker?.frequencyHz ?? null}
             />
@@ -4905,6 +5002,20 @@ export default function App() {
         </div>
 
         <div className="control-group">
+          <label className="control-label">FFT Window</label>
+          <select
+            value={analyzerWindowMode}
+            onChange={(e) => setAnalyzerWindowMode(e.target.value as AnalyzerWindowMode)}
+            className="control-input compact"
+          >
+            <option value="rectangular">Rectangular</option>
+            <option value="hann">Hann</option>
+            <option value="blackman-harris">Blackman-Harris</option>
+          </select>
+          <div className="control-note">ENBW: {getWindowEnbwBins(analyzerWindowMode).toFixed(2)} bins</div>
+        </div>
+
+        <div className="control-group">
           <label className="control-label">Averaging Mode</label>
           <select
             value={analyzerAveragingMode}
@@ -4955,6 +5066,15 @@ export default function App() {
             onChange={(e) => setAnalyzerPeakHoldEnabled(e.target.checked)}
             className="control-check"
           />
+          <select
+            value={analyzerPeakHoldMode}
+            onChange={(e) => setAnalyzerPeakHoldMode(e.target.value as AnalyzerPeakHoldMode)}
+            className="control-input compact"
+            disabled={!analyzerPeakHoldEnabled}
+          >
+            <option value="decay">Decay Hold</option>
+            <option value="max">Max Hold</option>
+          </select>
           <button
             onClick={() => setAnalyzerPeakHoldResetToken((prev) => prev + 1)}
             className="action-btn btn-secondary"
@@ -4968,18 +5088,43 @@ export default function App() {
           <button className="action-btn btn-secondary" onClick={() => runCenterOnPeak('ui')}>Center On Peak</button>
           <button className="action-btn btn-secondary" onClick={() => runSnapToSignal('ui')}>Snap To Signal</button>
           <button className="action-btn btn-secondary" onClick={() => returnToLastLock('ui')} disabled={lastLockFrequencyHz === null}>Return To Last Lock</button>
+          <div className="control-note">
+            {occupiedBandwidth
+              ? `OBW ${(occupiedBandwidth.percentPower * 100).toFixed(0)}%: ${(occupiedBandwidth.bandwidthHz / 1000).toFixed(1)} kHz`
+              : 'OBW unavailable'}
+          </div>
+          {strongestPeaks.length > 0 && (
+            <div className="control-note">
+              Peaks: {strongestPeaks.map((peak, index) => {
+                const peakHz = Math.round(binIndexToFrequencyHz(peak.binIndex, fftData.length, frequency, streamSampleRateHz));
+                return `#${index + 1} ${peakHz.toLocaleString()} Hz (${peak.powerDbfs.toFixed(1)} dBFS)`;
+              }).join(' | ')}
+            </div>
+          )}
         </div>
 
         <div className="control-group">
           <label className="control-label">Marker</label>
           <button className="action-btn btn-secondary" onClick={() => placeMarkerAtPeak('ui')}>Place Marker At Peak</button>
+          <button className="action-btn btn-secondary" onClick={() => placeSecondaryMarkerAtPeak('ui')}>Place Marker B At Peak</button>
           <button className="action-btn btn-secondary" onClick={() => tuneToMarker('ui')} disabled={!analyzerMarker}>Tune To Marker</button>
           <button className="action-btn btn-secondary" onClick={() => clearMarker('ui')} disabled={!analyzerMarker}>Clear Marker</button>
+          <button className="action-btn btn-secondary" onClick={() => clearSecondaryMarker('ui')} disabled={!analyzerSecondaryMarker}>Clear Marker B</button>
           <div className="control-note">
             {markerReadout
               ? `${Math.round(markerReadout.frequencyHz).toLocaleString()} Hz | ${markerReadout.powerDbfs.toFixed(1)} dBFS${markerReadout.inView ? '' : ' (outside visible span)'}`
-              : 'No active marker'}
+              : 'No active marker A'}
           </div>
+          <div className="control-note">
+            {secondaryMarkerReadout
+              ? `${Math.round(secondaryMarkerReadout.frequencyHz).toLocaleString()} Hz | ${secondaryMarkerReadout.powerDbfs.toFixed(1)} dBFS${secondaryMarkerReadout.inView ? '' : ' (outside visible span)'} (Marker B)`
+              : 'No active marker B'}
+          </div>
+          {markerDeltaReadout && (
+            <div className="control-note">
+              Delta A to B: {markerDeltaReadout.deltaFrequencyHz.toLocaleString(undefined, { maximumFractionDigits: 0 })} Hz | {markerDeltaReadout.deltaPowerDb.toFixed(1)} dB
+            </div>
+          )}
         </div>
 
         {/* Frequency Control */}
@@ -5387,6 +5532,22 @@ export default function App() {
             onChange={(e) => setWaterfallAutoScale(e.target.checked)}
             className="control-check"
           />
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Waterfall Freeze</label>
+          <input
+            type="checkbox"
+            checked={waterfallFrozen}
+            onChange={(e) => setWaterfallFrozen(e.target.checked)}
+            className="control-check"
+          />
+          <div className="control-note">{waterfallFrozen ? 'Frozen for inspection' : 'Live updating'}</div>
+          <div className="control-note">
+            {waterfallCursorReadout
+              ? `${Math.round(waterfallCursorReadout.frequencyHz).toLocaleString()} Hz | ${waterfallCursorReadout.powerDbfs.toFixed(1)} dB`
+              : 'Move cursor over waterfall for readout'}
+          </div>
         </div>
 
         {!waterfallAutoScale && (

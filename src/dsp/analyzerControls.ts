@@ -1,4 +1,6 @@
 export type AnalyzerAveragingMode = 'off' | 'exp' | 'linear';
+export type AnalyzerWindowMode = 'rectangular' | 'hann' | 'blackman-harris';
+export type AnalyzerPeakHoldMode = 'decay' | 'max';
 
 export type SpectrumBinRange = {
   startBinInclusive: number;
@@ -9,6 +11,13 @@ export type SpectrumPeak = {
   binIndex: number;
   powerDbfs: number;
   prominenceDb: number;
+};
+
+export type OccupiedBandwidthEstimate = {
+  lowerFrequencyHz: number;
+  upperFrequencyHz: number;
+  bandwidthHz: number;
+  percentPower: number;
 };
 
 export type MarkerReadout = {
@@ -97,12 +106,56 @@ export const blendAveragedTrace = (
   return next;
 };
 
+const blackmanHarrisWeight = (phase: number): number => {
+  const a0 = 0.35875;
+  const a1 = 0.48829;
+  const a2 = 0.14128;
+  const a3 = 0.01168;
+  const twoPiPhase = 2 * Math.PI * phase;
+  return a0
+    - a1 * Math.cos(twoPiPhase)
+    + a2 * Math.cos(2 * twoPiPhase)
+    - a3 * Math.cos(3 * twoPiPhase);
+};
+
+export const applyWindowToTrace = (
+  trace: Float32Array,
+  windowMode: AnalyzerWindowMode
+): Float32Array => {
+  if (trace.length === 0 || windowMode === 'rectangular') {
+    return trace.slice();
+  }
+
+  const windowed = new Float32Array(trace.length);
+  const denom = Math.max(1, trace.length - 1);
+  for (let i = 0; i < trace.length; i += 1) {
+    const phase = i / denom;
+    const weight = windowMode === 'hann'
+      ? 0.5 - 0.5 * Math.cos(2 * Math.PI * phase)
+      : blackmanHarrisWeight(phase);
+    windowed[i] = trace[i] * weight;
+  }
+
+  return windowed;
+};
+
+export const getWindowEnbwBins = (windowMode: AnalyzerWindowMode): number => {
+  if (windowMode === 'hann') {
+    return 1.5;
+  }
+  if (windowMode === 'blackman-harris') {
+    return 2.0;
+  }
+  return 1;
+};
+
 export const updatePeakHoldTrace = (
   previousPeakHold: Float32Array | null,
   trace: Float32Array,
   elapsedSec: number,
   enabled: boolean,
-  decayDbPerSec = 2.2
+  decayDbPerSec = 2.2,
+  mode: AnalyzerPeakHoldMode = 'decay'
 ): Float32Array | null => {
   if (!enabled || trace.length === 0) {
     return null;
@@ -116,11 +169,113 @@ export const updatePeakHoldTrace = (
   const decayed = new Float32Array(trace.length);
 
   for (let i = 0; i < trace.length; i += 1) {
-    const held = previousPeakHold[i] - decayDbPerSec * safeElapsedSec;
+    const held = mode === 'max'
+      ? previousPeakHold[i]
+      : previousPeakHold[i] - decayDbPerSec * safeElapsedSec;
     decayed[i] = Math.max(trace[i], held);
   }
 
   return decayed;
+};
+
+export const estimateOccupiedBandwidthHz = (
+  trace: Float32Array,
+  range: SpectrumBinRange,
+  centerFrequencyHz: number,
+  sampleRateHz: number,
+  percentPower = 0.99
+): OccupiedBandwidthEstimate | null => {
+  if (trace.length === 0) {
+    return null;
+  }
+
+  const start = clamp(range.startBinInclusive, 0, trace.length - 1);
+  const end = clamp(range.endBinExclusive, start + 1, trace.length);
+  const peak = findStrongestPeakInRange(trace, range);
+  if (!peak) {
+    return null;
+  }
+
+  const powers = new Float64Array(trace.length);
+  let totalPower = 0;
+  for (let i = start; i < end; i += 1) {
+    const linear = Math.pow(10, trace[i] / 10);
+    powers[i] = linear;
+    totalPower += linear;
+  }
+
+  if (!Number.isFinite(totalPower) || totalPower <= DB_EPSILON) {
+    return null;
+  }
+
+  const targetPower = totalPower * clamp(percentPower, 0.5, 0.9999);
+  let includedPower = powers[peak.binIndex];
+  let lowerBin = peak.binIndex;
+  let upperBin = peak.binIndex;
+
+  while (includedPower < targetPower && (lowerBin > start || upperBin < end - 1)) {
+    const nextLeftPower = lowerBin > start ? powers[lowerBin - 1] : -1;
+    const nextRightPower = upperBin < end - 1 ? powers[upperBin + 1] : -1;
+
+    if (nextRightPower > nextLeftPower) {
+      upperBin += 1;
+      includedPower += Math.max(0, nextRightPower);
+    } else {
+      lowerBin -= 1;
+      includedPower += Math.max(0, nextLeftPower);
+    }
+  }
+
+  const lowerFrequencyHz = binIndexToFrequencyHz(lowerBin, trace.length, centerFrequencyHz, sampleRateHz);
+  const upperFrequencyHz = binIndexToFrequencyHz(upperBin, trace.length, centerFrequencyHz, sampleRateHz);
+
+  return {
+    lowerFrequencyHz,
+    upperFrequencyHz,
+    bandwidthHz: Math.max(0, upperFrequencyHz - lowerFrequencyHz),
+    percentPower: clamp(percentPower, 0.5, 0.9999)
+  };
+};
+
+export const listStrongestPeaks = (
+  trace: Float32Array,
+  range: SpectrumBinRange,
+  minimumProminenceDb: number,
+  limit = 5
+): SpectrumPeak[] => {
+  if (trace.length < 3) {
+    return [];
+  }
+
+  const start = clamp(range.startBinInclusive, 1, trace.length - 2);
+  const end = clamp(range.endBinExclusive, start + 1, trace.length - 1);
+  const values: number[] = [];
+  for (let i = start; i < end; i += 1) {
+    values.push(trace[i]);
+  }
+  const noiseFloorDb = percentile(values, 0.2);
+
+  const candidates: SpectrumPeak[] = [];
+  for (let i = start; i < end; i += 1) {
+    const center = trace[i];
+    if (center < trace[i - 1] || center < trace[i + 1]) {
+      continue;
+    }
+
+    const prominenceDb = Number.isFinite(noiseFloorDb) ? center - noiseFloorDb : 0;
+    if (prominenceDb < minimumProminenceDb) {
+      continue;
+    }
+
+    candidates.push({
+      binIndex: i,
+      powerDbfs: center,
+      prominenceDb
+    });
+  }
+
+  candidates.sort((a, b) => b.powerDbfs - a.powerDbfs);
+  return candidates.slice(0, Math.max(1, Math.floor(limit)));
 };
 
 export const binIndexToFrequencyHz = (

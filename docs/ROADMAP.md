@@ -317,20 +317,20 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 4.1 Design System
 
-- [ ] **Theme Setup**: CSS variables for “Professional” theme.
+- [x] **Theme Setup**: CSS variables for “Professional” theme. (`src/index.css`, `docs/design-system/design-tokens-spec.md`)
 - [ ] **Core Components**: Button, Slider, Card, etc.
 
 ### 4.2 Rendering
 
-- [ ] **Canvas/WebGL Context**: robust setup and resizing.
+- [x] **Canvas/WebGL Context**: robust setup and resizing. (`src/components/SpectrumCanvas.tsx`, `src/components/WaterfallCanvas.tsx`)
 - [x] **Spectrum View**: FFT rendering.
 - [x] **Waterfall View**: scrolling waterfall with colormaps.
 - [x] **Verification**: sustain 60 FPS on synthetic input. (`scripts/render-fps-gate.mjs`, `artifacts/validation/p4-0d-render-fps-gate-2026-02-24T23-26-56-410Z.json`)
 
 ### 4.3 Analyzer Controls (MVP)
 
-- [ ] **Spectrum Controls**: window selection, averaging (linear/exp), peak-hold/max-hold, reference level.
-- [ ] **Signal Discovery Helpers (MVP)**: peak picking, occupied bandwidth estimation, and quick actions like “center-on-peak” and “snap-to-signal” based on trace features.
+- [x] **Spectrum Controls**: window selection, averaging (linear/exp), peak-hold/max-hold, reference level. (`src/App.tsx`, `src/components/SpectrumCanvas.tsx`, `src/dsp/analyzerControls.ts`, `src/dsp/analyzerControls.test.ts`)
+- [x] **Signal Discovery Helpers (MVP)**: peak picking, occupied bandwidth estimation, and quick actions like “center-on-peak” and “snap-to-signal” based on trace features. (`src/App.tsx`, `src/dsp/analyzerControls.ts`, `src/dsp/analyzerControls.test.ts`)
 - [ ] **Signal Type Hints + False-Signal Warnings (MVP)**: annotate likely artifacts (images, aliasing risk, DC/LO spurs) and provide “why” tooltips + one-click mitigations (LO shift, bandwidth clamp, notch presets).
 - [ ] **Candidate Signal Stats (MVP)**: lightweight stats (noise floor estimate, SNR estimate, persistence/occupancy hints) to drive retune assist and user guidance.
 - [ ] **Analyzer Semantics (Early)**: RBW/VBW-style controls, detector modes (sample/peak/RMS/avg), and ENBW-aware scaling so measurements are repeatable.
@@ -338,7 +338,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Trace Normalization & Math**: explicit dBFS conventions, trace math (A/B/max), and clear “what does this number mean?” UI.
 - [ ] **FFT Scaling Contract (End-to-End)**: formalize FFT bin scaling, window ENBW handling, and dBFS reference so on-screen levels match exported measurements and don’t vary by device.
 - [ ] **Noise Floor Estimator Contract (ENBW-Aware)**: define a robust estimator method (e.g., percentile/trimmed mean) and ensure it matches exported analyzer artifacts.
-- [ ] **Waterfall Inspection**: freeze + cursor readouts over historical bins; dynamic range clamp.
+- [x] **Waterfall Inspection**: freeze + cursor readouts over historical bins; dynamic range clamp. (`src/App.tsx`, `src/components/WaterfallCanvas.tsx`)
 - [ ] **Analyzer Exports (MVP)**: export trace(s), marker tables, and key analyzer settings (RBW/VBW, window/ENBW, detector, ref level) as a reproducible artifact.
 - [ ] **Marker/VFO Quick Capture (One-Click)**: export a short IQ/audio snippet “around this marker/VFO” with required metadata (rate/frequency/PPM/offsets/discontinuities) for external-tool workflows.
 - [ ] **Marker Table Workflow (Pro)**: peak table w/ sort/filter, “tune VFO to marker”, and marker↔VFO binding for repeatable analysis.
@@ -353,7 +353,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Zoom & Pan**: smooth frequency navigation.
 - [x] **Markers/Cursors (Early)**: basic markers to support workflows and debugging. (`src/App.tsx`, `src/components/SpectrumCanvas.tsx`, `src/dsp/analyzerArtifactExport.ts`)
 - [ ] **Marker↔VFO Binding Controls**: explicit “bind this marker to active VFO” and “follow VFO” modes with clear affordances.
-- [ ] **Delta Markers + Peak Readout**: delta frequency/power readouts and a simple peak list for “find the signal” workflows.
+- [x] **Delta Markers + Peak Readout**: delta frequency/power readouts and a simple peak list for “find the signal” workflows. (`src/App.tsx`, `src/dsp/analyzerControls.ts`)
 - [ ] **Band Plans & Stepping**: regional band presets, channel raster snapping, and per-mode step sizes.
 - [ ] **Band-Aware Defaults & Constraints (Guardrails)**: enforce alias-safe bandwidth limits, region-appropriate defaults (e.g., de-emphasis), and warning prompts when settings are likely invalid for the selected band/mode.
 - [x] **Keyboard-First Tuning**: fast step up/down, direct frequency entry, and quick command entry via keyboard shortcuts/palette. (`src/App.tsx`, `e2e/phase4-keyboard.spec.ts`)

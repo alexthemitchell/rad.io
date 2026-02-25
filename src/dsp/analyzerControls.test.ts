@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyWindowToTrace,
   blendAveragedTrace,
   binIndexToFrequencyHz,
+  estimateOccupiedBandwidthHz,
   findNearestQualifiedPeak,
   findStrongestPeakInRange,
   frequencyHzToBinIndex,
+  getWindowEnbwBins,
   getVisibleSpectrumBinRange,
   resolveMarkerReadout,
   updatePeakHoldTrace
@@ -54,6 +57,25 @@ describe('analyzerControls', () => {
     expect(Array.from(hold3 ?? new Float32Array(0))).toEqual([-60, -74]);
   });
 
+  it('keeps max hold values when mode is max', () => {
+    const seed = new Float32Array([-70, -68, -65]);
+    const next = new Float32Array([-90, -90, -90]);
+
+    const hold1 = updatePeakHoldTrace(null, seed, 0.016, true, 2, 'max');
+    const hold2 = updatePeakHoldTrace(hold1, next, 2, true, 2, 'max');
+
+    expect(Array.from(hold2 ?? new Float32Array(0))).toEqual([-70, -68, -65]);
+  });
+
+  it('applies non-rectangular window weighting', () => {
+    const trace = new Float32Array([1, 1, 1, 1, 1]);
+    const hann = applyWindowToTrace(trace, 'hann');
+
+    expect(hann[0]).toBeCloseTo(0, 6);
+    expect(hann[2]).toBeGreaterThan(hann[1]);
+    expect(getWindowEnbwBins('hann')).toBeCloseTo(1.5, 6);
+  });
+
   it('finds strongest peak in visible range while skipping DC center', () => {
     const trace = new Float32Array(128).fill(-100);
     trace[18] = -48;
@@ -83,6 +105,26 @@ describe('analyzerControls', () => {
 
     expect(peak?.binIndex).toBe(21);
     expect(peak?.powerDbfs).toBe(-75);
+  });
+
+  it('estimates occupied bandwidth around strongest peak', () => {
+    const trace = new Float32Array(256).fill(-120);
+    trace[120] = -55;
+    trace[121] = -48;
+    trace[122] = -50;
+    trace[123] = -60;
+
+    const obw = estimateOccupiedBandwidthHz(
+      trace,
+      { startBinInclusive: 64, endBinExclusive: 192 },
+      100_000_000,
+      2_000_000,
+      0.99
+    );
+
+    expect(obw).not.toBeNull();
+    expect((obw?.bandwidthHz ?? 0)).toBeGreaterThan(0);
+    expect(obw?.percentPower).toBeCloseTo(0.99, 6);
   });
 
   it('maps marker frequency to bin/power readout', () => {

@@ -1,9 +1,9 @@
 export type AnalyzerArtifactExportV1 = {
-  schemaVersion: '1.1.0';
+  schemaVersion: '1.2.0';
   exportedAtUtc: string;
   fft: {
     size: number;
-    window: 'rectangular';
+    window: 'rectangular' | 'hann' | 'blackman-harris';
     enbwBins: number;
     averagingMode: 'none' | 'exp' | 'linear';
     averagingValue: number | null;
@@ -18,6 +18,12 @@ export type AnalyzerArtifactExportV1 = {
     waterfallMinDb: number;
     waterfallMaxDb: number;
     marker: {
+      active: boolean;
+      frequencyHz: number | null;
+      powerDbfs: number | null;
+      inView: boolean;
+    };
+    markerB?: {
       active: boolean;
       frequencyHz: number | null;
       powerDbfs: number | null;
@@ -52,6 +58,8 @@ export const createAnalyzerArtifactExport = (input: {
   tunedFrequencyHz: number;
   fineTuneHz: number;
   fftSize: number;
+  fftWindow: AnalyzerArtifactExportV1['fft']['window'];
+  fftEnbwBins: number;
   fftAveragingMode: 'off' | 'exp' | 'linear';
   fftAveragingValue: number | null;
   fftReferenceLevelDb: number;
@@ -65,15 +73,16 @@ export const createAnalyzerArtifactExport = (input: {
   waterfallMinDb: number;
   waterfallMaxDb: number;
   marker: AnalyzerArtifactExportV1['visualization']['marker'];
+  markerB?: AnalyzerArtifactExportV1['visualization']['markerB'];
   exportedAtUtc?: string;
 }): AnalyzerArtifactExportV1 => {
   return {
-    schemaVersion: '1.1.0',
+    schemaVersion: '1.2.0',
     exportedAtUtc: input.exportedAtUtc ?? new Date().toISOString(),
     fft: {
       size: input.fftSize,
-      window: 'rectangular',
-      enbwBins: 1,
+      window: input.fftWindow,
+      enbwBins: input.fftEnbwBins,
       averagingMode: input.fftAveragingMode === 'off' ? 'none' : input.fftAveragingMode,
       averagingValue: input.fftAveragingValue,
       peakHoldEnabled: input.fftPeakHoldEnabled,
@@ -86,7 +95,8 @@ export const createAnalyzerArtifactExport = (input: {
       waterfallAutoScale: input.waterfallAutoScale,
       waterfallMinDb: input.waterfallMinDb,
       waterfallMaxDb: input.waterfallMaxDb,
-      marker: input.marker
+      marker: input.marker,
+      markerB: input.markerB
     },
     pipeline: {
       sourceType: input.sourceType,

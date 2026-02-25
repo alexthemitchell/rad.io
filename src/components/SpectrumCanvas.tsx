@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  applyWindowToTrace,
   blendAveragedTrace,
   type AnalyzerAveragingMode,
+  type AnalyzerPeakHoldMode,
+  type AnalyzerWindowMode,
   getVisibleSpectrumBinRange,
   updatePeakHoldTrace
 } from '../dsp/analyzerControls';
@@ -16,7 +19,9 @@ interface SpectrumCanvasProps {
   referenceLevelDb?: number;
   averagingMode?: AnalyzerAveragingMode;
   averagingValue?: number;
+  windowMode?: AnalyzerWindowMode;
   peakHoldEnabled?: boolean;
+  peakHoldMode?: AnalyzerPeakHoldMode;
   peakHoldResetToken?: number;
   markerFrequencyHz?: number | null;
 }
@@ -45,7 +50,9 @@ export function SpectrumCanvas({
   referenceLevelDb = -20,
   averagingMode = 'exp',
   averagingValue = 0.18,
+  windowMode = 'rectangular',
   peakHoldEnabled = true,
+  peakHoldMode = 'decay',
   peakHoldResetToken = 0,
   markerFrequencyHz = null
 }: SpectrumCanvasProps) {
@@ -111,10 +118,11 @@ export function SpectrumCanvas({
     const visibleRange = getVisibleSpectrumBinRange(data.length, zoom);
     const viewLen = visibleRange.endBinExclusive - visibleRange.startBinInclusive;
     const incomingView = data.subarray(visibleRange.startBinInclusive, visibleRange.endBinExclusive);
+    const windowedView = applyWindowToTrace(incomingView, windowMode);
 
     smoothedRef.current = blendAveragedTrace(
       smoothedRef.current,
-      incomingView,
+      windowedView,
       averagingMode,
       averagingValue
     );
@@ -124,7 +132,9 @@ export function SpectrumCanvas({
       peakHoldRef.current,
       smoothed,
       elapsedSec,
-      peakHoldEnabled
+      peakHoldEnabled,
+      2.2,
+      peakHoldMode
     );
     const peakHold = peakHoldRef.current;
 
@@ -313,9 +323,11 @@ export function SpectrumCanvas({
     hoverBin,
     markerFrequencyHz,
     peakHoldEnabled,
+    peakHoldMode,
     referenceLevelDb,
     sampleRateHz,
     tunedOffsetHz,
+    windowMode,
     zoom
   ]);
 

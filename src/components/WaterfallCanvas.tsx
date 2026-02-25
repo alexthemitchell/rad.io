@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+export type WaterfallCursorReadout = {
+  frequencyHz: number;
+  powerDbfs: number;
+};
+
 interface WaterfallCanvasProps {
   data: Float32Array;
   minDb?: number;
@@ -9,6 +14,8 @@ interface WaterfallCanvasProps {
   sampleRateHz?: number;
   autoScale?: boolean;
   palette?: 'cividis' | 'inferno';
+  freeze?: boolean;
+  onCursorChange?: (readout: WaterfallCursorReadout | null) => void;
 }
 
 const formatFrequency = (hz: number) => {
@@ -51,7 +58,9 @@ export function WaterfallCanvas({
   centerFrequencyHz = 0,
   sampleRateHz = 2_000_000,
   autoScale = true,
-  palette = 'cividis'
+  palette = 'cividis',
+  freeze = false,
+  onCursorChange
 }: WaterfallCanvasProps) {
   const dataCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -61,6 +70,38 @@ export function WaterfallCanvas({
   const displayMaxDbRef = useRef(maxDb);
 
   const colormap = useRef<Uint32Array | null>(null);
+
+  const readCursor = useCallback((xPx: number, yPx: number): WaterfallCursorReadout | null => {
+    const canvas = overlayCanvasRef.current;
+    if (!canvas) {
+      return null;
+    }
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const leftPad = Math.floor(width * 0.08);
+    const rightPad = Math.floor(width * 0.015);
+    const topPad = Math.floor(height * 0.035);
+    const bottomPad = Math.floor(height * 0.14);
+    const plotWidth = Math.max(1, width - leftPad - rightPad);
+    const plotHeight = Math.max(1, height - topPad - bottomPad);
+
+    const x = Math.max(leftPad, Math.min(leftPad + plotWidth, xPx));
+    const y = Math.max(topPad, Math.min(topPad + plotHeight, yPx));
+    const xRatio = (x - leftPad) / Math.max(1, plotWidth);
+    const yRatio = (y - topPad) / Math.max(1, plotHeight);
+
+    const spanHz = sampleRateHz / Math.max(zoom, 1);
+    const frequencyHz = centerFrequencyHz + (xRatio - 0.5) * spanHz;
+    const displayMin = displayMinDbRef.current;
+    const displayMax = displayMaxDbRef.current;
+    const powerDbfs = displayMax - yRatio * (displayMax - displayMin);
+
+    return {
+      frequencyHz,
+      powerDbfs
+    };
+  }, [centerFrequencyHz, sampleRateHz, zoom]);
 
   const drawOverlay = useCallback(() => {
     const overlayCanvas = overlayCanvasRef.current;
@@ -217,6 +258,10 @@ export function WaterfallCanvas({
     const canvas = dataCanvasRef.current;
     if (!canvas || data.length === 0) return;
 
+    if (freeze) {
+      return;
+    }
+
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
@@ -324,7 +369,7 @@ export function WaterfallCanvas({
 
     ctx.putImageData(imageData, leftPad, topPad);
     drawOverlay();
-  }, [autoScale, data, drawOverlay, maxDb, minDb, zoom]);
+  }, [autoScale, data, drawOverlay, freeze, maxDb, minDb, zoom]);
 
   return (
     <div className="waterfall-stack">
@@ -340,6 +385,19 @@ export function WaterfallCanvas({
         height={420}
         className="viz-canvas waterfall-overlay"
         aria-hidden="true"
+        onMouseMove={(event) => {
+          if (!onCursorChange) {
+            return;
+          }
+
+          const rect = event.currentTarget.getBoundingClientRect();
+          const dpr = dprRef.current;
+          const readout = readCursor((event.clientX - rect.left) * dpr, (event.clientY - rect.top) * dpr);
+          onCursorChange(readout);
+        }}
+        onMouseLeave={() => {
+          onCursorChange?.(null);
+        }}
       />
     </div>
   );
