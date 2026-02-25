@@ -7,6 +7,14 @@ export type TuneHistoryEntry = {
   demodMode: InteractionDemodMode;
 };
 
+export type HeardHistoryEntry = {
+  heardAtIso: string;
+  displayFrequencyHz: number;
+  demodMode: InteractionDemodMode;
+  snrEstimateDb: number;
+  lockState: 'searching' | 'locked' | 'degraded';
+};
+
 export const appendTuneHistory = (
   history: readonly TuneHistoryEntry[],
   nextEntry: TuneHistoryEntry,
@@ -41,4 +49,29 @@ export const swapRecallPair = (
     slotAHz: slotBHz,
     slotBHz: slotAHz
   };
+};
+
+export const appendHeardHistory = (
+  history: readonly HeardHistoryEntry[],
+  nextEntry: HeardHistoryEntry,
+  maxEntries = 12,
+  dedupeWithinHz = 500
+): HeardHistoryEntry[] => {
+  const next: HeardHistoryEntry[] = [nextEntry];
+
+  for (const entry of history) {
+    const duplicate =
+      Math.abs(entry.displayFrequencyHz - nextEntry.displayFrequencyHz) <= dedupeWithinHz
+      && entry.demodMode === nextEntry.demodMode;
+
+    if (!duplicate) {
+      next.push(entry);
+    }
+
+    if (next.length >= maxEntries) {
+      break;
+    }
+  }
+
+  return next;
 };

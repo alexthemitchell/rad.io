@@ -343,7 +343,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Marker/VFO Quick Capture (One-Click)**: export a short IQ/audio snippet “around this marker/VFO” with required metadata (rate/frequency/PPM/offsets/discontinuities) for external-tool workflows. (`src/App.tsx`)
 - [x] **Marker Table Workflow (Pro)**: peak table w/ sort/filter, “tune VFO to marker”, and marker↔VFO binding for repeatable analysis. (`src/App.tsx`, `src/measurements/markerVfoBinding.ts`, `src/measurements/markerVfoBinding.test.ts`)
 - [x] **FM Band Auto-Scan (Baseline)**: software tune-step-settle-measure scan across 87.5-108.0 MHz with candidate ranking and RDS-assisted station labeling.
-- [x] **Sweep/Stitch Analyzer Mode**: device-agnostic sweep (tune-step-settle-measure) + stitching, with HackRF hardware sweep fast-path where available. (`src/App.tsx`, `src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerSemantics.test.ts`)
+- [x] **Sweep/Stitch Analyzer Mode**: device-agnostic sweep (tune-step-settle-measure) + stitching with deterministic software fallback; HackRF hardware sweep acceleration remains tracked in Phase 5 hardware tasks. (`src/App.tsx`, `src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerSemantics.test.ts`)
 - [x] **Spur / Artifact Annotation Layer (Early)**: allow marking and labeling known spurs/artifacts (device/internal/external) and optionally mask them in measurement/export outputs. (`src/App.tsx`, `src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerArtifactExport.ts`)
 
 ### 4.4 Interaction

@@ -18,6 +18,7 @@ test('phase 4 interaction supports history A/B recall', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Recall A' }).click();
   await expect.poll(async () => readDisplayFrequencyHz(page)).toBe(initialHz);
+  await expect(page.getByText('Last heard:', { exact: false })).toBeVisible();
 });
 
 test('phase 4 interaction applies band raster snapping', async ({ page }) => {

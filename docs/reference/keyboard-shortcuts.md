@@ -12,8 +12,8 @@ MVP shortcut map for core receiving workflows implemented in the app today.
 | `ArrowLeft` | Step frequency down (base step) | Global when focus not in text input | Required action |
 | `Shift + ArrowRight` | Large step up | Global when focus not in text input | `10x` current tune step |
 | `Shift + ArrowLeft` | Large step down | Global when focus not in text input | `10x` current tune step |
-| `Alt + ArrowRight` | Fine step up | Global when focus not in text input | `0.1x` fine step |
-| `Alt + ArrowLeft` | Fine step down | Global when focus not in text input | `0.1x` fine step |
+| `Alt + ArrowRight` | Fine-tune (NCO) nudge up | Global when focus not in text input | Adjusts fine offset by `0.1x` configured fine step |
+| `Alt + ArrowLeft` | Fine-tune (NCO) nudge down | Global when focus not in text input | Adjusts fine offset by `0.1x` configured fine step |
 | `Ctrl + L` | Focus frequency input | Global | Required action |
 | `Alt + L` | Focus frequency input (fallback) | Global | Use when browser intercepts `Ctrl + L` |
 | `Enter` | Commit frequency edit | Frequency input focused | Required action |

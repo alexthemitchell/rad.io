@@ -68,7 +68,13 @@ import {
   type BandRegionId,
   type InteractionDemodMode
 } from './measurements/bandPlans';
-import { appendTuneHistory, swapRecallPair, type TuneHistoryEntry } from './measurements/interactionHistory';
+import {
+  appendHeardHistory,
+  appendTuneHistory,
+  swapRecallPair,
+  type HeardHistoryEntry,
+  type TuneHistoryEntry
+} from './measurements/interactionHistory';
 import { resolveSecondaryOffsetFromMarkerHz, resolveVfoDisplayFrequencyHz, type VfoBindingId } from './measurements/markerVfoBinding';
 import { assessBufferTelemetry, buildAsciiOccupancyTrend } from './measurements/bufferTelemetry';
 import { assessIqIntegrityWizard } from './measurements/iqIntegrityWizard';
@@ -688,8 +694,10 @@ export default function App() {
   const [autoApplyBandDefaults, setAutoApplyBandDefaults] = useState(false);
   const [enforceBandLimits, setEnforceBandLimits] = useState(false);
   const [bandGuardrailWarning, setBandGuardrailWarning] = useState<string | null>(null);
+  const [bandGuardrailPromptDismissed, setBandGuardrailPromptDismissed] = useState(false);
   const [frequencyMapping, setFrequencyMapping] = useState<FrequencyMappingConfig>(defaultFrequencyMappingState);
   const [tuneHistory, setTuneHistory] = useState<TuneHistoryEntry[]>([]);
+  const [heardHistory, setHeardHistory] = useState<HeardHistoryEntry[]>([]);
   const [recallSlotAHz, setRecallSlotAHz] = useState<number | null>(null);
   const [recallSlotBHz, setRecallSlotBHz] = useState<number | null>(null);
   const [tuningStepHz, setTuningStepHz] = useState(1_000);
@@ -853,6 +861,7 @@ export default function App() {
   const usbTransferCountRef = useRef(0);
   const fftDataRef = useRef<Float32Array>(new Float32Array(2048));
   const detectorHistoryRef = useRef<Float32Array[]>([]);
+  const lastHeardCaptureAtMsRef = useRef(0);
   const rdsTelemetryRef = useRef<RdsTelemetry>(emptyRdsTelemetry());
   const scanAbortRef = useRef(false);
   const streamSessionStartedAtRef = useRef<Date | null>(null);
@@ -2384,6 +2393,7 @@ export default function App() {
   useEffect(() => {
     const validation = validateBandMode(selectedBand, demodMode as InteractionDemodMode);
     setBandGuardrailWarning(validation.warning);
+    setBandGuardrailPromptDismissed(false);
   }, [demodMode, selectedBand]);
 
   useEffect(() => {
@@ -2474,6 +2484,39 @@ export default function App() {
       demodMode: demodMode as InteractionDemodMode
     }, 12, Math.max(20, Math.floor(tuningStepHz / 4))));
   }, [demodMode, isRunning, tunedDisplayFrequencyHz, tunedTunerFrequencyHz, tuningStepHz]);
+
+  useEffect(() => {
+    if (!isRunning) {
+      return;
+    }
+
+    const isHeard = noiseSquelchState.open || demodQuality.lockState !== 'searching';
+    if (!isHeard) {
+      return;
+    }
+
+    const nowMs = Date.now();
+    if (nowMs - lastHeardCaptureAtMsRef.current < 1500) {
+      return;
+    }
+
+    lastHeardCaptureAtMsRef.current = nowMs;
+    setHeardHistory((prev) => appendHeardHistory(prev, {
+      heardAtIso: new Date(nowMs).toISOString(),
+      displayFrequencyHz: Math.round(tunedDisplayFrequencyHz),
+      demodMode: demodMode as InteractionDemodMode,
+      snrEstimateDb: demodQuality.snrEstimateDb,
+      lockState: demodQuality.lockState
+    }, 12, Math.max(500, tuningStepHz)));
+  }, [
+    demodMode,
+    demodQuality.lockState,
+    demodQuality.snrEstimateDb,
+    isRunning,
+    noiseSquelchState.open,
+    tunedDisplayFrequencyHz,
+    tuningStepHz
+  ]);
 
   useEffect(() => {
     postToWorker({ command: 'SET_NFM_AUDIO_PRESET', value: nfmAudioPreset });
@@ -4515,6 +4558,28 @@ export default function App() {
     setStatusMessage(`Recalled slot ${slot} at ${(appliedDisplayHz / 1_000_000).toFixed(3)} MHz.`);
   }, [recallSlotAHz, recallSlotBHz, tuneToDisplayFrequency]);
 
+  const applyBandGuardrailSuggestedDefaults = useCallback(() => {
+    if (!selectedBand) {
+      return;
+    }
+
+    setDemodMode(selectedBand.defaultMode as DemodMode);
+    const suggestedStepHz = stepForBandModeHz(
+      selectedBand,
+      selectedBand.defaultMode,
+      defaultStepForModeHz(selectedBand.defaultMode)
+    );
+    setTuningStepHz(suggestedStepHz);
+    setFineTuningStepHz(Math.max(50, Math.min(1_000, Math.floor(suggestedStepHz / 10) || 50)));
+
+    if (selectedBand.preferredNfmPreset && selectedBand.defaultMode === 'NFM') {
+      setNfmAudioPreset(selectedBand.preferredNfmPreset);
+    }
+
+    setBandGuardrailPromptDismissed(true);
+    setStatusMessage(`Applied ${selectedBand.label} defaults (${selectedBand.defaultMode}).`);
+  }, [selectedBand]);
+
   const tuneToMarker = useCallback((trigger: 'ui' | 'keyboard') => {
     if (!analyzerMarker) {
       setStatusMessage('Tune-to-marker requires an active marker.');
@@ -6134,7 +6199,15 @@ export default function App() {
             Active band at tuned frequency: {inferredBandAtTunedFrequency?.label ?? 'outside configured regional bands'}
           </div>
           {bandGuardrailWarning && (
-            <div className="control-note">Warning: {bandGuardrailWarning}</div>
+            <div className="control-note" role="alert">
+              Warning: {bandGuardrailWarning}
+              {!bandGuardrailPromptDismissed && (
+                <span style={{ display: 'inline-flex', gap: 8, marginLeft: 8, flexWrap: 'wrap' }}>
+                  <Button variant="secondary" onClick={applyBandGuardrailSuggestedDefaults}>Apply Suggested Defaults</Button>
+                  <Button variant="secondary" onClick={() => setBandGuardrailPromptDismissed(true)}>Dismiss</Button>
+                </span>
+              )}
+            </div>
           )}
         </Card>
 
@@ -6221,6 +6294,22 @@ export default function App() {
               }}
             >
               {(entry.displayFrequencyHz / 1_000_000).toFixed(3)} MHz ({entry.demodMode})
+            </button>
+          ))}
+          <div className="control-note">
+            Last heard: {heardHistory.length === 0 ? 'none yet' : `${heardHistory.length} entries`}
+          </div>
+          {heardHistory.slice(0, 6).map((entry) => (
+            <button
+              key={`${entry.heardAtIso}-${entry.displayFrequencyHz}`}
+              className="action-btn btn-secondary"
+              onClick={() => {
+                tuneToDisplayFrequency(entry.displayFrequencyHz);
+                setDemodMode(entry.demodMode as DemodMode);
+                setStatusMessage(`Recalled heard ${(entry.displayFrequencyHz / 1_000_000).toFixed(3)} MHz (${entry.demodMode}).`);
+              }}
+            >
+              {(entry.displayFrequencyHz / 1_000_000).toFixed(3)} MHz ({entry.demodMode}) SNR {entry.snrEstimateDb.toFixed(1)} dB [{entry.lockState}]
             </button>
           ))}
         </Card>
