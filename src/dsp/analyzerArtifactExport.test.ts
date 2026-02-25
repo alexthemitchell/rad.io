@@ -46,10 +46,48 @@ describe('createAnalyzerArtifactExport', () => {
         powerDbfs: -39.2,
         inView: true
       },
+      analyzer: {
+        semantics: {
+          detectorMode: 'p95',
+          traceMathMode: 'a-minus-b',
+          rbwHz: 1464.8,
+          vbwHz: 366.2,
+          enbwBins: 1.5,
+          noiseFloorEstimator: 'trimmed-mean-percentile',
+          noiseFloorDbfs: -109.8
+        },
+        candidateStats: {
+          strongestPeakDbfs: -39.2,
+          strongestPeakSnrDb: 70.6,
+          occupancy01: 0.12,
+          persistence01: 0.34
+        },
+        traceSummary: {
+          traceABinCount: 2048,
+          traceBBinCount: 2048,
+          stitchedSweepPointCount: 8192
+        },
+        markerTable: [
+          {
+            frequencyHz: 101_093_200,
+            powerDbfs: -39.2,
+            snrDb: 70.6,
+            boundVfoId: 'main'
+          }
+        ],
+        spurAnnotations: [
+          {
+            frequencyHz: 101_090_500,
+            label: 'Clock spur',
+            kind: 'device',
+            masked: true
+          }
+        ]
+      },
       exportedAtUtc: '2026-02-23T00:00:00.000Z'
     });
 
-    expect(artifact.schemaVersion).toBe('1.2.0');
+    expect(artifact.schemaVersion).toBe('1.3.0');
     expect(artifact.fft.window).toBe('hann');
     expect(artifact.fft.enbwBins).toBe(1.5);
     expect(artifact.fft.averagingMode).toBe('linear');
@@ -63,6 +101,8 @@ describe('createAnalyzerArtifactExport', () => {
     expect(artifact.visualization.marker.active).toBe(true);
     expect(artifact.visualization.marker.frequencyHz).toBe(101_090_500);
     expect(artifact.visualization.markerB?.frequencyHz).toBe(101_093_200);
+    expect(artifact.analyzer?.semantics.detectorMode).toBe('p95');
+    expect(artifact.analyzer?.markerTable[0]?.boundVfoId).toBe('main');
     expect(artifact.exportedAtUtc).toBe('2026-02-23T00:00:00.000Z');
   });
 });

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-const frequencyInputSelector = '.control-group:has(label:has-text("Frequency (MHz)")) input';
+const frequencyInputSelector = '.control-group:has(label:has-text("Display Frequency (MHz)")) input';
 const tuneStepSelectSelector = '.control-group:has(label:has-text("Tune Step")) select';
 const fineStepSelectSelector = '.control-group:has(label:has-text("Fine Step")) select';
 const fineTuneLabelSelector = '.control-group:has(label:has-text("Fine Tune (")) .control-label';

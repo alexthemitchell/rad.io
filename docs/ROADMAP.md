@@ -318,7 +318,7 @@ These are gates, not features: they define what good means and prevent late-stag
 ### 4.1 Design System
 
 - [x] **Theme Setup**: CSS variables for “Professional” theme. (`src/index.css`, `docs/design-system/design-tokens-spec.md`)
-- [ ] **Core Components**: Button, Slider, Card, etc.
+- [x] **Core Components**: Button, Slider, Card, etc. (`src/components/ui/Button.tsx`, `src/components/ui/Slider.tsx`, `src/components/ui/Card.tsx`, `src/App.tsx`)
 
 ### 4.2 Rendering
 
@@ -331,20 +331,20 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **Spectrum Controls**: window selection, averaging (linear/exp), peak-hold/max-hold, reference level. (`src/App.tsx`, `src/components/SpectrumCanvas.tsx`, `src/dsp/analyzerControls.ts`, `src/dsp/analyzerControls.test.ts`)
 - [x] **Signal Discovery Helpers (MVP)**: peak picking, occupied bandwidth estimation, and quick actions like “center-on-peak” and “snap-to-signal” based on trace features. (`src/App.tsx`, `src/dsp/analyzerControls.ts`, `src/dsp/analyzerControls.test.ts`)
-- [ ] **Signal Type Hints + False-Signal Warnings (MVP)**: annotate likely artifacts (images, aliasing risk, DC/LO spurs) and provide “why” tooltips + one-click mitigations (LO shift, bandwidth clamp, notch presets).
-- [ ] **Candidate Signal Stats (MVP)**: lightweight stats (noise floor estimate, SNR estimate, persistence/occupancy hints) to drive retune assist and user guidance.
-- [ ] **Analyzer Semantics (Early)**: RBW/VBW-style controls, detector modes (sample/peak/RMS/avg), and ENBW-aware scaling so measurements are repeatable.
-- [ ] **Detector Extensions (Practical)**: add min-hold and percentile (e.g., P95) detectors for occupancy/weak-signal work with defined semantics.
-- [ ] **Trace Normalization & Math**: explicit dBFS conventions, trace math (A/B/max), and clear “what does this number mean?” UI.
-- [ ] **FFT Scaling Contract (End-to-End)**: formalize FFT bin scaling, window ENBW handling, and dBFS reference so on-screen levels match exported measurements and don’t vary by device.
-- [ ] **Noise Floor Estimator Contract (ENBW-Aware)**: define a robust estimator method (e.g., percentile/trimmed mean) and ensure it matches exported analyzer artifacts.
+- [x] **Signal Type Hints + False-Signal Warnings (MVP)**: annotate likely artifacts (images, aliasing risk, DC/LO spurs) and provide “why” tooltips + one-click mitigations (LO shift, bandwidth clamp, notch presets). (`src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerSemantics.test.ts`, `src/App.tsx`)
+- [x] **Candidate Signal Stats (MVP)**: lightweight stats (noise floor estimate, SNR estimate, persistence/occupancy hints) to drive retune assist and user guidance. (`src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerSemantics.test.ts`, `src/App.tsx`)
+- [x] **Analyzer Semantics (Early)**: RBW/VBW-style controls, detector modes (sample/peak/RMS/avg), and ENBW-aware scaling so measurements are repeatable. (`src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerSemantics.test.ts`, `src/App.tsx`)
+- [x] **Detector Extensions (Practical)**: add min-hold and percentile (e.g., P95) detectors for occupancy/weak-signal work with defined semantics. (`src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerSemantics.test.ts`, `src/App.tsx`)
+- [x] **Trace Normalization & Math**: explicit dBFS conventions, trace math (A/B/max), and clear “what does this number mean?” UI. (`src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerSemantics.test.ts`, `src/App.tsx`)
+- [x] **FFT Scaling Contract (End-to-End)**: formalize FFT bin scaling, window ENBW handling, and dBFS reference so on-screen levels match exported measurements and don’t vary by device. (`docs/reference/contracts/fft-scaling-v1.md`, `src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerArtifactExport.ts`)
+- [x] **Noise Floor Estimator Contract (ENBW-Aware)**: define a robust estimator method (e.g., percentile/trimmed mean) and ensure it matches exported analyzer artifacts. (`docs/reference/contracts/noise-floor-estimator-v1.md`, `src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerArtifactExport.ts`)
 - [x] **Waterfall Inspection**: freeze + cursor readouts over historical bins; dynamic range clamp. (`src/App.tsx`, `src/components/WaterfallCanvas.tsx`)
-- [ ] **Analyzer Exports (MVP)**: export trace(s), marker tables, and key analyzer settings (RBW/VBW, window/ENBW, detector, ref level) as a reproducible artifact.
-- [ ] **Marker/VFO Quick Capture (One-Click)**: export a short IQ/audio snippet “around this marker/VFO” with required metadata (rate/frequency/PPM/offsets/discontinuities) for external-tool workflows.
-- [ ] **Marker Table Workflow (Pro)**: peak table w/ sort/filter, “tune VFO to marker”, and marker↔VFO binding for repeatable analysis.
+- [x] **Analyzer Exports (MVP)**: export trace(s), marker tables, and key analyzer settings (RBW/VBW, window/ENBW, detector, ref level) as a reproducible artifact. (`src/App.tsx`, `src/dsp/analyzerArtifactExport.ts`, `src/dsp/analyzerArtifactExport.test.ts`)
+- [x] **Marker/VFO Quick Capture (One-Click)**: export a short IQ/audio snippet “around this marker/VFO” with required metadata (rate/frequency/PPM/offsets/discontinuities) for external-tool workflows. (`src/App.tsx`)
+- [x] **Marker Table Workflow (Pro)**: peak table w/ sort/filter, “tune VFO to marker”, and marker↔VFO binding for repeatable analysis. (`src/App.tsx`, `src/measurements/markerVfoBinding.ts`, `src/measurements/markerVfoBinding.test.ts`)
 - [x] **FM Band Auto-Scan (Baseline)**: software tune-step-settle-measure scan across 87.5-108.0 MHz with candidate ranking and RDS-assisted station labeling.
-- [ ] **Sweep/Stitch Analyzer Mode**: device-agnostic sweep (tune-step-settle-measure) + stitching, with HackRF hardware sweep fast-path where available.
-- [ ] **Spur / Artifact Annotation Layer (Early)**: allow marking and labeling known spurs/artifacts (device/internal/external) and optionally mask them in measurement/export outputs.
+- [x] **Sweep/Stitch Analyzer Mode**: device-agnostic sweep (tune-step-settle-measure) + stitching, with HackRF hardware sweep fast-path where available. (`src/App.tsx`, `src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerSemantics.test.ts`)
+- [x] **Spur / Artifact Annotation Layer (Early)**: allow marking and labeling known spurs/artifacts (device/internal/external) and optionally mask them in measurement/export outputs. (`src/App.tsx`, `src/dsp/analyzerSemantics.ts`, `src/dsp/analyzerArtifactExport.ts`)
 
 ### 4.4 Interaction
 
@@ -352,18 +352,18 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Retune Assist**: center-on-peak, snap-to-raster, pilot/carrier “lock retune”, and “return to last locked” for drift-prone sessions. (`src/App.tsx`, `e2e/phase4-keyboard.spec.ts`)
 - [x] **Zoom & Pan**: smooth frequency navigation.
 - [x] **Markers/Cursors (Early)**: basic markers to support workflows and debugging. (`src/App.tsx`, `src/components/SpectrumCanvas.tsx`, `src/dsp/analyzerArtifactExport.ts`)
-- [ ] **Marker↔VFO Binding Controls**: explicit “bind this marker to active VFO” and “follow VFO” modes with clear affordances.
+- [x] **Marker↔VFO Binding Controls**: explicit “bind this marker to active VFO” and “follow VFO” modes with clear affordances. (`src/App.tsx`, `src/measurements/markerVfoBinding.ts`, `src/measurements/markerVfoBinding.test.ts`)
 - [x] **Delta Markers + Peak Readout**: delta frequency/power readouts and a simple peak list for “find the signal” workflows. (`src/App.tsx`, `src/dsp/analyzerControls.ts`)
-- [ ] **Band Plans & Stepping**: regional band presets, channel raster snapping, and per-mode step sizes.
-- [ ] **Band-Aware Defaults & Constraints (Guardrails)**: enforce alias-safe bandwidth limits, region-appropriate defaults (e.g., de-emphasis), and warning prompts when settings are likely invalid for the selected band/mode.
+- [x] **Band Plans & Stepping**: regional band presets, channel raster snapping, and per-mode step sizes. (`src/App.tsx`, `src/measurements/bandPlans.ts`, `src/measurements/bandPlans.test.ts`, `e2e/phase4-interaction.spec.ts`)
+- [x] **Band-Aware Defaults & Constraints (Guardrails)**: enforce alias-safe bandwidth limits, region-appropriate defaults (e.g., de-emphasis), and warning prompts when settings are likely invalid for the selected band/mode. (`src/App.tsx`, `src/measurements/bandPlans.ts`, `src/measurements/bandPlans.test.ts`)
 - [x] **Keyboard-First Tuning**: fast step up/down, direct frequency entry, and quick command entry via keyboard shortcuts/palette. (`src/App.tsx`, `e2e/phase4-keyboard.spec.ts`)
-- [ ] **History & Recall**: last-tuned list, last-heard list, and quick A/B recall to support exploration workflows.
-- [ ] **Frequency Mapping / Transverter Support**: separate “RF frequency” vs “tuner LO” vs “display frequency” with per-band offsets/profiles (up/downconverters, IF sampling workflows).
+- [x] **History & Recall**: last-tuned list, last-heard list, and quick A/B recall to support exploration workflows. (`src/App.tsx`, `src/measurements/interactionHistory.ts`, `src/measurements/interactionHistory.test.ts`, `e2e/phase4-interaction.spec.ts`)
+- [x] **Frequency Mapping / Transverter Support**: separate “RF frequency” vs “tuner LO” vs “display frequency” with per-band offsets/profiles (up/downconverters, IF sampling workflows). (`src/App.tsx`, `src/dsp/frequencyMapping.ts`, `src/dsp/frequencyMapping.test.ts`, `e2e/phase4-interaction.spec.ts`)
 
 ### 4.5 Debug & Signal Views (High-Leverage)
 
-- [ ] **I/Q Scope View**: time-domain I/Q oscilloscope to debug DC offset, clipping, and phase issues quickly.
-- [ ] **Constellation View**: scatter/constellation visualization for IQ integrity checks and future digital-mode bring-up.
+- [x] **I/Q Scope View**: time-domain I/Q oscilloscope to debug DC offset, clipping, and phase issues quickly. (`src/components/IqScopeCanvas.tsx`, `src/components/iqViewUtils.ts`, `src/App.tsx`, `src/components/iqViewUtils.test.ts`)
+- [x] **Constellation View**: scatter/constellation visualization for IQ integrity checks and future digital-mode bring-up. (`src/components/ConstellationCanvas.tsx`, `src/components/iqViewUtils.ts`, `src/App.tsx`, `src/components/iqViewUtils.test.ts`)
 
 ## Phase 5: Device Abstraction + Hardware Enablement
 

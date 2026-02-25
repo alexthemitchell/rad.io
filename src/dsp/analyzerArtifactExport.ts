@@ -1,5 +1,5 @@
 export type AnalyzerArtifactExportV1 = {
-  schemaVersion: '1.2.0';
+  schemaVersion: '1.3.0';
   exportedAtUtc: string;
   fft: {
     size: number;
@@ -50,6 +50,40 @@ export type AnalyzerArtifactExportV1 = {
       queueErrorMs: number;
     };
   };
+  analyzer?: {
+    semantics: {
+      detectorMode: 'sample' | 'peak' | 'rms' | 'avg' | 'min-hold' | 'p95';
+      traceMathMode: 'a' | 'a-minus-b' | 'max-a-b';
+      rbwHz: number;
+      vbwHz: number;
+      enbwBins: number;
+      noiseFloorEstimator: 'trimmed-mean-percentile';
+      noiseFloorDbfs: number;
+    };
+    candidateStats: {
+      strongestPeakDbfs: number;
+      strongestPeakSnrDb: number;
+      occupancy01: number;
+      persistence01: number;
+    };
+    traceSummary: {
+      traceABinCount: number;
+      traceBBinCount: number;
+      stitchedSweepPointCount: number;
+    };
+    markerTable: Array<{
+      frequencyHz: number;
+      powerDbfs: number;
+      snrDb: number;
+      boundVfoId: 'main' | 'aux' | null;
+    }>;
+    spurAnnotations: Array<{
+      frequencyHz: number;
+      label: string;
+      kind: 'device' | 'internal' | 'external';
+      masked: boolean;
+    }>;
+  };
 };
 
 export const createAnalyzerArtifactExport = (input: {
@@ -74,10 +108,11 @@ export const createAnalyzerArtifactExport = (input: {
   waterfallMaxDb: number;
   marker: AnalyzerArtifactExportV1['visualization']['marker'];
   markerB?: AnalyzerArtifactExportV1['visualization']['markerB'];
+  analyzer?: AnalyzerArtifactExportV1['analyzer'];
   exportedAtUtc?: string;
 }): AnalyzerArtifactExportV1 => {
   return {
-    schemaVersion: '1.2.0',
+    schemaVersion: '1.3.0',
     exportedAtUtc: input.exportedAtUtc ?? new Date().toISOString(),
     fft: {
       size: input.fftSize,
@@ -106,6 +141,7 @@ export const createAnalyzerArtifactExport = (input: {
       sampleRateHzHint: input.sampleRateHzHint,
       frequencyModel: input.frequencyModel,
       audioPll: input.audioPll
-    }
+    },
+    analyzer: input.analyzer
   };
 };

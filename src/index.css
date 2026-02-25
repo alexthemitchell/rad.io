@@ -142,6 +142,18 @@ body {
   min-width: 130px;
 }
 
+.control-group-wide {
+  min-width: min(340px, 100%);
+}
+
+.control-inline-check {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.84rem;
+  color: var(--text-dim);
+}
+
 .control-label {
   font-size: 0.74rem;
   color: var(--text-dim);
@@ -180,6 +192,28 @@ body {
   padding: 9px 14px;
   color: #081116;
   cursor: pointer;
+}
+
+.ui-card {
+  background: rgb(11 21 29 / 65%);
+  border: 1px solid #294153;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.ui-card-title {
+  margin: 0 0 4px;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+}
+
+.ui-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .btn-start {

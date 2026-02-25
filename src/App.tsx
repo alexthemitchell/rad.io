@@ -1,8 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AudioSink } from './audio/AudioSink';
 import { AudioScopeCanvas } from './components/AudioScopeCanvas';
+import { ConstellationCanvas } from './components/ConstellationCanvas';
+import { IqScopeCanvas } from './components/IqScopeCanvas';
 import { SpectrumCanvas } from './components/SpectrumCanvas';
 import { WaterfallCanvas, type WaterfallCursorReadout } from './components/WaterfallCanvas';
+import { Button } from './components/ui/Button';
+import { Card } from './components/ui/Card';
+import { Slider } from './components/ui/Slider';
 import {
   evaluateFmScanCandidate,
   isStationCandidate,
@@ -50,6 +55,21 @@ import {
 } from './measurements/clockSyncPolicy';
 import { assessSampleRateMismatchStrategy } from './measurements/sampleRateMismatchStrategy';
 import { buildSignalIdTuningAdvisor } from './measurements/signalIdTuningAdvisor';
+import {
+  clampFrequencyToBandHz,
+  defaultStepForModeHz,
+  findBandForFrequencyHz,
+  getBandById,
+  getBandRegionPlan,
+  listBandRegionPlans,
+  snapFrequencyToRasterHz,
+  stepForBandModeHz,
+  validateBandMode,
+  type BandRegionId,
+  type InteractionDemodMode
+} from './measurements/bandPlans';
+import { appendTuneHistory, swapRecallPair, type TuneHistoryEntry } from './measurements/interactionHistory';
+import { resolveSecondaryOffsetFromMarkerHz, resolveVfoDisplayFrequencyHz, type VfoBindingId } from './measurements/markerVfoBinding';
 import { assessBufferTelemetry, buildAsciiOccupancyTrend } from './measurements/bufferTelemetry';
 import { assessIqIntegrityWizard } from './measurements/iqIntegrityWizard';
 import { assessTimebaseDriftTelemetry } from './measurements/timebaseDriftTelemetry';
@@ -67,6 +87,12 @@ import { validateRecordingExportIntegrity } from './measurements/recordingExport
 import { createRfAudioTimebaseAlignmentSnapshot } from './measurements/rfAudioTimebaseAlignment';
 import { createFixtureInteropExportBundle } from './fixtures/sigmf/interopExport';
 import { WorkerBridge } from './dsp/WorkerBridge';
+import {
+  displayToTunerFrequencyHz,
+  formatFrequencyModelSummary,
+  tunerToDisplayFrequencyHz,
+  type FrequencyMappingConfig
+} from './dsp/frequencyMapping';
 import type { FilterProfile, InterferencePreset } from './dsp/AudioPostProcessor';
 import type { DemodMode, DemodQualityMetrics, LockState } from './dsp/DemodMetrics';
 import type { NfmAudioPreset, NfmOutputPath } from './dsp/NfmDemodulator';
@@ -93,6 +119,20 @@ import {
   type AnalyzerPeakHoldMode,
   type AnalyzerWindowMode
 } from './dsp/analyzerControls';
+import {
+  applyArtifactMaskToPeaks,
+  applyDetectorMode,
+  applyTraceMath,
+  buildCandidateSignalStats,
+  computeAnalyzerSemantics,
+  deriveSignalWarnings,
+  stitchSweepSegments,
+  type AnalyzerDetectorMode,
+  type AnalyzerTraceMathMode,
+  type SpurArtifactAnnotation,
+  type SweepSegment,
+  type SweptPoint
+} from './dsp/analyzerSemantics';
 import {
   createDefaultRuntimeDspTelemetry,
   createDefaultRuntimeTelemetry,
@@ -207,6 +247,15 @@ type AnalyzerMarkerState = {
   frequencyHz: number;
   placedAtIso: string;
 };
+
+type MarkerBindingState = {
+  enabled: boolean;
+  boundVfoId: VfoBindingId;
+  followVfo: boolean;
+};
+
+type MarkerTableSortMode = 'power' | 'frequency' | 'snr';
+type AnalyzerSweepState = 'idle' | 'running' | 'completed' | 'error';
 
 type RuntimePrerequisites = {
   secureContext: boolean;
@@ -494,6 +543,19 @@ const defaultWfmStereoState = (): WfmStereoState => ({
   separationDb: 0
 });
 
+const defaultFrequencyMappingState = (): FrequencyMappingConfig => ({
+  ifOffsetHz: 0,
+  transverterEnabled: false,
+  transverterLoHz: 125_000_000,
+  transverterDirection: 'up'
+});
+
+const defaultMarkerBindingState = (): MarkerBindingState => ({
+  enabled: false,
+  boundVfoId: 'main',
+  followVfo: false
+});
+
 const detectRuntimePrerequisites = (): RuntimePrerequisites => {
   const secureContext = typeof window !== 'undefined' && window.isSecureContext;
   const crossOriginIsolated = typeof window !== 'undefined' && window.crossOriginIsolated;
@@ -603,8 +665,33 @@ export default function App() {
   const [analyzerPeakHoldEnabled, setAnalyzerPeakHoldEnabled] = useState(true);
   const [analyzerPeakHoldMode, setAnalyzerPeakHoldMode] = useState<AnalyzerPeakHoldMode>('decay');
   const [analyzerPeakHoldResetToken, setAnalyzerPeakHoldResetToken] = useState(0);
+  const [analyzerDetectorMode, setAnalyzerDetectorMode] = useState<AnalyzerDetectorMode>('sample');
+  const [analyzerVbwFrames, setAnalyzerVbwFrames] = useState(4);
+  const [analyzerTraceMathMode, setAnalyzerTraceMathMode] = useState<AnalyzerTraceMathMode>('a');
+  const [traceB, setTraceB] = useState<Float32Array | null>(null);
+  const [markerTableSortMode, setMarkerTableSortMode] = useState<MarkerTableSortMode>('power');
+  const [markerTableSnrMinDb, setMarkerTableSnrMinDb] = useState(6);
+  const [spurAnnotations, setSpurAnnotations] = useState<SpurArtifactAnnotation[]>([]);
+  const [artifactMaskEnabled, setArtifactMaskEnabled] = useState(false);
+  const [sweepState, setSweepState] = useState<AnalyzerSweepState>('idle');
+  const [sweepStatus, setSweepStatus] = useState('No sweep run yet.');
+  const [sweepStitchedPoints, setSweepStitchedPoints] = useState<SweptPoint[]>([]);
+  const [showIqScopeView, setShowIqScopeView] = useState(true);
+  const [showConstellationView, setShowConstellationView] = useState(true);
   const [analyzerMarker, setAnalyzerMarker] = useState<AnalyzerMarkerState | null>(null);
   const [analyzerSecondaryMarker, setAnalyzerSecondaryMarker] = useState<AnalyzerMarkerState | null>(null);
+  const [activeVfoId, setActiveVfoId] = useState<VfoBindingId>('main');
+  const [markerBindingState, setMarkerBindingState] = useState<MarkerBindingState>(defaultMarkerBindingState);
+  const [bandRegionId, setBandRegionId] = useState<BandRegionId>('na');
+  const [selectedBandId, setSelectedBandId] = useState<string>('fm-broadcast');
+  const [bandRasterSnapEnabled, setBandRasterSnapEnabled] = useState(false);
+  const [autoApplyBandDefaults, setAutoApplyBandDefaults] = useState(false);
+  const [enforceBandLimits, setEnforceBandLimits] = useState(false);
+  const [bandGuardrailWarning, setBandGuardrailWarning] = useState<string | null>(null);
+  const [frequencyMapping, setFrequencyMapping] = useState<FrequencyMappingConfig>(defaultFrequencyMappingState);
+  const [tuneHistory, setTuneHistory] = useState<TuneHistoryEntry[]>([]);
+  const [recallSlotAHz, setRecallSlotAHz] = useState<number | null>(null);
+  const [recallSlotBHz, setRecallSlotBHz] = useState<number | null>(null);
   const [tuningStepHz, setTuningStepHz] = useState(1_000);
   const [fineTuningStepHz, setFineTuningStepHz] = useState(1_000);
   const [lastLockFrequencyHz, setLastLockFrequencyHz] = useState<number | null>(null);
@@ -726,6 +813,35 @@ export default function App() {
     });
     const [usbAutoTuneRunning, setUsbAutoTuneRunning] = useState(false);
     const [hardwareSelfTestReport, setHardwareSelfTestReport] = useState<HardwareSanitySelfTestReport | null>(null);
+
+  const bandRegionPlans = useMemo(() => listBandRegionPlans(), []);
+
+  const selectedBand = useMemo(
+    () => getBandById(bandRegionId, selectedBandId) ?? null,
+    [bandRegionId, selectedBandId]
+  );
+
+  const tunedTunerFrequencyHz = useMemo(() => frequency + fineFreq, [fineFreq, frequency]);
+
+  const displayCenterFrequencyHz = useMemo(
+    () => tunerToDisplayFrequencyHz(frequency, frequencyMapping),
+    [frequency, frequencyMapping]
+  );
+
+  const tunedDisplayFrequencyHz = useMemo(
+    () => tunerToDisplayFrequencyHz(tunedTunerFrequencyHz, frequencyMapping),
+    [frequencyMapping, tunedTunerFrequencyHz]
+  );
+
+  const inferredBandAtTunedFrequency = useMemo(
+    () => findBandForFrequencyHz(bandRegionId, tunedDisplayFrequencyHz),
+    [bandRegionId, tunedDisplayFrequencyHz]
+  );
+
+  const activeVfoDisplayFrequencyHz = useMemo(
+    () => resolveVfoDisplayFrequencyHz(activeVfoId, tunedDisplayFrequencyHz, secondaryVfoEnabled, secondaryVfoOffsetHz),
+    [activeVfoId, secondaryVfoEnabled, secondaryVfoOffsetHz, tunedDisplayFrequencyHz]
+  );
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -736,6 +852,7 @@ export default function App() {
   const usbTransferBytesRef = useRef(0);
   const usbTransferCountRef = useRef(0);
   const fftDataRef = useRef<Float32Array>(new Float32Array(2048));
+  const detectorHistoryRef = useRef<Float32Array[]>([]);
   const rdsTelemetryRef = useRef<RdsTelemetry>(emptyRdsTelemetry());
   const scanAbortRef = useRef(false);
   const streamSessionStartedAtRef = useRef<Date | null>(null);
@@ -901,6 +1018,13 @@ export default function App() {
     audioRef.current?.prepareTransitionRamp();
     recordReconfigurationDiscontinuity(cause);
   }, [recordReconfigurationDiscontinuity]);
+
+  const tuneToDisplayFrequency = useCallback((displayFrequencyHz: number) => {
+    const tunerHz = Math.max(0, displayToTunerFrequencyHz(displayFrequencyHz, frequencyMapping));
+    setFrequency(Math.round(tunerHz));
+    setFineFreq(0);
+    return tunerToDisplayFrequencyHz(tunerHz, frequencyMapping);
+  }, [frequencyMapping]);
 
   const applyUsbStreamingProfile = useCallback(async (profileName: UsbStreamingProfileName | 'custom') => {
     const activeDevice = deviceRef.current;
@@ -1783,6 +1907,7 @@ export default function App() {
 
     useEffect(() => {
       fftDataRef.current = fftData;
+      detectorHistoryRef.current = [...detectorHistoryRef.current, fftData.slice()].slice(-32);
     }, [fftData]);
 
     useEffect(() => {
@@ -1956,31 +2081,31 @@ export default function App() {
     const commitFrequencyInputDraft = useCallback(() => {
       const parsedMhz = parseFloat(frequencyInputDraftMhz);
       if (!Number.isFinite(parsedMhz)) {
-        setFrequencyInputDraftMhz((frequency / 1_000_000).toFixed(3));
+        setFrequencyInputDraftMhz((tunedDisplayFrequencyHz / 1_000_000).toFixed(3));
         setStatusMessage('Frequency edit is invalid. Restored last tuned value.');
         pushDiagnosticEvent('shortcut_blocked_due_to_focus:freq-commit-invalid', 'warn', 'shortcut');
         return;
       }
 
-      const nextFrequencyHz = Math.max(0, Math.floor(parsedMhz * 1_000_000));
-      setFrequency(nextFrequencyHz);
-      setFrequencyInputDraftMhz((nextFrequencyHz / 1_000_000).toFixed(3));
-      setStatusMessage(`Frequency set to ${(nextFrequencyHz / 1_000_000).toFixed(3)} MHz.`);
+      const nextDisplayFrequencyHz = Math.max(0, Math.floor(parsedMhz * 1_000_000));
+      const appliedDisplayHz = tuneToDisplayFrequency(nextDisplayFrequencyHz);
+      setFrequencyInputDraftMhz((appliedDisplayHz / 1_000_000).toFixed(3));
+      setStatusMessage(`Display frequency set to ${(appliedDisplayHz / 1_000_000).toFixed(3)} MHz.`);
       pushDiagnosticEvent('shortcut_invoked:freq-commit', 'info', 'shortcut');
-    }, [frequency, frequencyInputDraftMhz, pushDiagnosticEvent]);
+    }, [frequencyInputDraftMhz, pushDiagnosticEvent, tuneToDisplayFrequency, tunedDisplayFrequencyHz]);
 
     const cancelFrequencyInputDraft = useCallback(() => {
-      setFrequencyInputDraftMhz((frequency / 1_000_000).toFixed(3));
+      setFrequencyInputDraftMhz((tunedDisplayFrequencyHz / 1_000_000).toFixed(3));
       setStatusMessage('Frequency edit canceled.');
       pushDiagnosticEvent('shortcut_invoked:freq-cancel', 'info', 'shortcut');
-    }, [frequency, pushDiagnosticEvent]);
+    }, [pushDiagnosticEvent, tunedDisplayFrequencyHz]);
 
     useEffect(() => {
       const focusedElement = typeof document !== 'undefined' ? document.activeElement : null;
       if (focusedElement !== frequencyInputRef.current) {
-        setFrequencyInputDraftMhz((frequency / 1_000_000).toFixed(3));
+        setFrequencyInputDraftMhz((tunedDisplayFrequencyHz / 1_000_000).toFixed(3));
       }
-    }, [frequency]);
+    }, [tunedDisplayFrequencyHz]);
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -2122,7 +2247,7 @@ export default function App() {
 
                 if (event.shiftKey) {
                   const stepHz = tuningStepHz * 10;
-                  setFrequency((prev) => prev + stepHz);
+                  tuneToDisplayFrequency(tunedDisplayFrequencyHz + stepHz);
                   setStatusMessage(`Large tune step +${stepHz.toLocaleString()} Hz.`);
                   pushDiagnosticEvent(`Keyboard tune step +${stepHz} Hz (large).`, 'info', 'analyzer');
                   return;
@@ -2136,7 +2261,7 @@ export default function App() {
                   return;
                 }
 
-                setFrequency((prev) => prev + tuningStepHz);
+                tuneToDisplayFrequency(tunedDisplayFrequencyHz + tuningStepHz);
                 setStatusMessage(`Tune step +${tuningStepHz.toLocaleString()} Hz.`);
                 pushDiagnosticEvent(`Keyboard tune step +${tuningStepHz} Hz.`, 'info', 'analyzer');
                 return;
@@ -2147,7 +2272,7 @@ export default function App() {
 
                 if (event.shiftKey) {
                   const stepHz = tuningStepHz * 10;
-                  setFrequency((prev) => Math.max(0, prev - stepHz));
+                  tuneToDisplayFrequency(Math.max(0, tunedDisplayFrequencyHz - stepHz));
                   setStatusMessage(`Large tune step -${stepHz.toLocaleString()} Hz.`);
                   pushDiagnosticEvent(`Keyboard tune step -${stepHz} Hz (large).`, 'info', 'analyzer');
                   return;
@@ -2161,7 +2286,7 @@ export default function App() {
                   return;
                 }
 
-                setFrequency((prev) => Math.max(0, prev - tuningStepHz));
+                tuneToDisplayFrequency(Math.max(0, tunedDisplayFrequencyHz - tuningStepHz));
                 setStatusMessage(`Tune step -${tuningStepHz.toLocaleString()} Hz.`);
                 pushDiagnosticEvent(`Keyboard tune step -${tuningStepHz} Hz.`, 'info', 'analyzer');
                 return;
@@ -2201,6 +2326,8 @@ export default function App() {
       pushDiagnosticEvent,
       shortcutsHelpOpen,
       streamSampleRateHz,
+      tuneToDisplayFrequency,
+      tunedDisplayFrequencyHz,
       tuningStepHz
     ]);
 
@@ -2235,6 +2362,118 @@ export default function App() {
       pushDiagnosticEvent(`Applied ${demodMode} audio defaults for safe monitoring.`);
     }
   }, [applyModeAudioDefaults, demodMode, postToWorker, pushDiagnosticEvent]);
+
+  useEffect(() => {
+    if (activeVfoId === 'aux' && !secondaryVfoEnabled) {
+      setActiveVfoId('main');
+    }
+  }, [activeVfoId, secondaryVfoEnabled]);
+
+  useEffect(() => {
+    const region = getBandRegionPlan(bandRegionId);
+    if (region.bands.length === 0) {
+      return;
+    }
+
+    const existing = region.bands.some((band) => band.id === selectedBandId);
+    if (!existing) {
+      setSelectedBandId(region.bands[0].id);
+    }
+  }, [bandRegionId, selectedBandId]);
+
+  useEffect(() => {
+    const validation = validateBandMode(selectedBand, demodMode as InteractionDemodMode);
+    setBandGuardrailWarning(validation.warning);
+  }, [demodMode, selectedBand]);
+
+  useEffect(() => {
+    if (!autoApplyBandDefaults || !selectedBand) {
+      return;
+    }
+
+    const validation = validateBandMode(selectedBand, demodMode as InteractionDemodMode);
+    if (!validation.valid) {
+      setDemodMode(selectedBand.defaultMode as DemodMode);
+      setStatusMessage(`Band defaults applied: mode -> ${selectedBand.defaultMode}.`);
+    }
+
+    const suggestedStepHz = stepForBandModeHz(
+      selectedBand,
+      demodMode as InteractionDemodMode,
+      defaultStepForModeHz(demodMode as InteractionDemodMode)
+    );
+    setTuningStepHz(suggestedStepHz);
+    setFineTuningStepHz(Math.max(50, Math.min(1_000, Math.floor(suggestedStepHz / 10) || 50)));
+
+    if (selectedBand.preferredNfmPreset && demodMode === 'NFM' && nfmAudioPreset !== selectedBand.preferredNfmPreset) {
+      setNfmAudioPreset(selectedBand.preferredNfmPreset);
+      setStatusMessage(`Band defaults applied: NFM preset -> ${selectedBand.preferredNfmPreset}.`);
+    }
+  }, [autoApplyBandDefaults, demodMode, nfmAudioPreset, selectedBand]);
+
+  useEffect(() => {
+    if (!selectedBand) {
+      return;
+    }
+
+    let constrainedDisplayHz = tunedDisplayFrequencyHz;
+    if (enforceBandLimits) {
+      constrainedDisplayHz = clampFrequencyToBandHz(constrainedDisplayHz, selectedBand);
+    }
+
+    if (bandRasterSnapEnabled) {
+      constrainedDisplayHz = snapFrequencyToRasterHz(constrainedDisplayHz, selectedBand.rasterHz, selectedBand.startHz);
+    }
+
+    if (Math.round(constrainedDisplayHz) !== Math.round(tunedDisplayFrequencyHz)) {
+      const appliedDisplayHz = tuneToDisplayFrequency(constrainedDisplayHz);
+      setFrequencyInputDraftMhz((appliedDisplayHz / 1_000_000).toFixed(3));
+    }
+  }, [bandRasterSnapEnabled, enforceBandLimits, selectedBand, tuneToDisplayFrequency, tunedDisplayFrequencyHz]);
+
+  useEffect(() => {
+    if (!markerBindingState.enabled || !markerBindingState.followVfo) {
+      return;
+    }
+
+    const boundMarkerHz = resolveVfoDisplayFrequencyHz(
+      markerBindingState.boundVfoId,
+      tunedDisplayFrequencyHz,
+      secondaryVfoEnabled,
+      secondaryVfoOffsetHz
+    );
+
+    setAnalyzerMarker((prev) => {
+      if (prev && Math.round(prev.frequencyHz) === Math.round(boundMarkerHz)) {
+        return prev;
+      }
+
+      return {
+        frequencyHz: boundMarkerHz,
+        placedAtIso: prev?.placedAtIso ?? new Date().toISOString()
+      };
+    });
+  }, [
+    markerBindingState.boundVfoId,
+    markerBindingState.enabled,
+    markerBindingState.followVfo,
+    secondaryVfoEnabled,
+    secondaryVfoOffsetHz,
+    tunedDisplayFrequencyHz
+  ]);
+
+  useEffect(() => {
+    if (!isRunning) {
+      return;
+    }
+
+    setTuneHistory((prev) => appendTuneHistory(prev, {
+      tunedAtIso: new Date().toISOString(),
+      displayFrequencyHz: Math.round(tunedDisplayFrequencyHz),
+      tunerFrequencyHz: Math.round(tunedTunerFrequencyHz),
+      demodMode: demodMode as InteractionDemodMode
+    }, 12, Math.max(20, Math.floor(tuningStepHz / 4))));
+  }, [demodMode, isRunning, tunedDisplayFrequencyHz, tunedTunerFrequencyHz, tuningStepHz]);
 
   useEffect(() => {
     postToWorker({ command: 'SET_NFM_AUDIO_PRESET', value: nfmAudioPreset });
@@ -2601,7 +2840,7 @@ export default function App() {
     }
   };
 
-  const toggleStream = async () => {
+  const toggleStream = useCallback(async () => {
     if (isRunning) {
         // STOP
       applyClickFreeReconfiguration('stream-stop');
@@ -2886,7 +3125,31 @@ export default function App() {
           pushDiagnosticEvent(`Stream start error [${err.code}]: ${err.message}`);
         }
     }
-  };
+  }, [
+    afcEnabled,
+    applyClickFreeReconfiguration,
+    applySelectedAudioOutput,
+    audioMaxOutputLevel,
+    audioOutputLevel,
+    buildSessionParameterSnapshot,
+    checkWebUsbContention,
+    demodMode,
+    fineFreq,
+    frequency,
+    isMuted,
+    isRunning,
+    persistSafeModeMarker,
+    postToWorker,
+    ppmCorrection,
+    pushDiagnosticEvent,
+    secondaryVfoEnabled,
+    secondaryVfoOffsetHz,
+    sourceType,
+    stabilityModeEnabled,
+    streamRatePlan.sampleRateHz,
+    tryResumeAudio,
+    usbStreamingProfile
+  ]);
 
     const panicMute = (trigger: 'ui' | 'keyboard-shortcut') => {
       setIsMuted(true);
@@ -3157,7 +3420,41 @@ export default function App() {
                 frequencyHz: null,
                 powerDbfs: null,
                 inView: false
-              }
+              },
+          analyzer: {
+            semantics: {
+              detectorMode: analyzerDetectorMode,
+              traceMathMode: analyzerTraceMathMode,
+              rbwHz: analyzerSemantics.rbwHz,
+              vbwHz: analyzerSemantics.vbwHz,
+              enbwBins: analyzerSemantics.enbwBins,
+              noiseFloorEstimator: 'trimmed-mean-percentile',
+              noiseFloorDbfs: candidateSignalStats.noiseFloorDbfs
+            },
+            candidateStats: {
+              strongestPeakDbfs: candidateSignalStats.strongestPeakDbfs,
+              strongestPeakSnrDb: candidateSignalStats.strongestPeakSnrDb,
+              occupancy01: candidateSignalStats.occupancy01,
+              persistence01: candidateSignalStats.persistence01
+            },
+            traceSummary: {
+              traceABinCount: analyzerTrace.length,
+              traceBBinCount: traceB?.length ?? 0,
+              stitchedSweepPointCount: sweepStitchedPoints.length
+            },
+            markerTable: markerTableRows.map((row) => ({
+              frequencyHz: row.frequencyHz,
+              powerDbfs: row.powerDbfs,
+              snrDb: row.snrDb,
+              boundVfoId: row.boundVfoId
+            })),
+            spurAnnotations: spurAnnotations.map((annotation) => ({
+              frequencyHz: annotation.frequencyHz,
+              label: annotation.label,
+              kind: annotation.kind,
+              masked: annotation.masked
+            }))
+          }
         });
         const interopFixtureExport = sourceType === 'FILE'
           ? createFixtureInteropExportBundle(goldenToneFixtureBundle)
@@ -3566,13 +3863,13 @@ export default function App() {
           id: 'tune-up',
           label: `Tune +${(tuningStepHz / 1000).toFixed(1)} kHz`,
           keywords: ['tune', 'frequency', 'up'],
-          run: () => setFrequency((prev) => prev + tuningStepHz)
+          run: () => tuneToDisplayFrequency(tunedDisplayFrequencyHz + tuningStepHz)
         },
         {
           id: 'tune-down',
           label: `Tune -${(tuningStepHz / 1000).toFixed(1)} kHz`,
           keywords: ['tune', 'frequency', 'down'],
-          run: () => setFrequency((prev) => Math.max(0, prev - tuningStepHz))
+          run: () => tuneToDisplayFrequency(Math.max(0, tunedDisplayFrequencyHz - tuningStepHz))
         },
         {
           id: 'export-diagnostics',
@@ -3651,45 +3948,158 @@ export default function App() {
     [fftData.length, zoomLevel]
   );
 
-  const tunedFrequencyHz = useMemo(() => frequency + fineFreq, [fineFreq, frequency]);
+  const analyzerSemantics = useMemo(() => computeAnalyzerSemantics({
+    sampleRateHz: streamSampleRateHz,
+    fftSize: fftData.length,
+    vbwAveragingFrames: analyzerVbwFrames,
+    windowMode: analyzerWindowMode
+  }), [analyzerVbwFrames, analyzerWindowMode, fftData.length, streamSampleRateHz]);
+
+  const detectorTrace = useMemo(
+    () => applyDetectorMode(detectorHistoryRef.current, analyzerDetectorMode),
+    [analyzerDetectorMode]
+  );
+
+  const analyzerTrace = useMemo(
+    () => applyTraceMath(detectorTrace.length > 0 ? detectorTrace : fftData, traceB, analyzerTraceMathMode),
+    [analyzerTraceMathMode, detectorTrace, fftData, traceB]
+  );
 
   const markerReadout = useMemo(
     () => resolveMarkerReadout(
       analyzerMarker?.frequencyHz ?? null,
-      fftData,
-      frequency,
+      analyzerTrace,
+      displayCenterFrequencyHz,
       streamSampleRateHz,
       analyzerVisibleBinRange
     ),
-    [analyzerMarker?.frequencyHz, analyzerVisibleBinRange, fftData, frequency, streamSampleRateHz]
+    [analyzerMarker?.frequencyHz, analyzerTrace, analyzerVisibleBinRange, displayCenterFrequencyHz, streamSampleRateHz]
   );
 
   const secondaryMarkerReadout = useMemo(
     () => resolveMarkerReadout(
       analyzerSecondaryMarker?.frequencyHz ?? null,
-      fftData,
-      frequency,
+      analyzerTrace,
+      displayCenterFrequencyHz,
       streamSampleRateHz,
       analyzerVisibleBinRange
     ),
-    [analyzerSecondaryMarker?.frequencyHz, analyzerVisibleBinRange, fftData, frequency, streamSampleRateHz]
+    [analyzerSecondaryMarker?.frequencyHz, analyzerTrace, analyzerVisibleBinRange, displayCenterFrequencyHz, streamSampleRateHz]
   );
 
   const occupiedBandwidth = useMemo(
     () => estimateOccupiedBandwidthHz(
-      fftData,
+      analyzerTrace,
       analyzerVisibleBinRange,
-      frequency,
+      displayCenterFrequencyHz,
       streamSampleRateHz,
       0.99
     ),
-    [analyzerVisibleBinRange, fftData, frequency, streamSampleRateHz]
+    [analyzerTrace, analyzerVisibleBinRange, displayCenterFrequencyHz, streamSampleRateHz]
+  );
+
+  const rawStrongestPeaks = useMemo(
+    () => listStrongestPeaks(analyzerTrace, analyzerVisibleBinRange, 6, 8),
+    [analyzerTrace, analyzerVisibleBinRange]
   );
 
   const strongestPeaks = useMemo(
-    () => listStrongestPeaks(fftData, analyzerVisibleBinRange, 6, 3),
-    [analyzerVisibleBinRange, fftData]
+    () => artifactMaskEnabled
+      ? applyArtifactMaskToPeaks(
+          rawStrongestPeaks,
+          spurAnnotations,
+          analyzerTrace.length,
+          displayCenterFrequencyHz,
+          streamSampleRateHz,
+          Math.max(500, analyzerSemantics.rbwHz * 2)
+        )
+      : rawStrongestPeaks,
+    [
+      analyzerSemantics.rbwHz,
+      analyzerTrace.length,
+      artifactMaskEnabled,
+      displayCenterFrequencyHz,
+      rawStrongestPeaks,
+      spurAnnotations,
+      streamSampleRateHz
+    ]
   );
+
+  const candidateSignalStats = useMemo(() => buildCandidateSignalStats({
+    trace: analyzerTrace,
+    peaks: strongestPeaks,
+    enbwBins: analyzerSemantics.enbwBins,
+    persistenceHistory: detectorHistoryRef.current
+  }), [analyzerSemantics.enbwBins, analyzerTrace, strongestPeaks]);
+
+  const signalWarnings = useMemo(() => deriveSignalWarnings({
+    trace: analyzerTrace,
+    centerFrequencyHz: displayCenterFrequencyHz,
+    sampleRateHz: streamSampleRateHz,
+    peaks: strongestPeaks,
+    noiseFloorDbfs: candidateSignalStats.noiseFloorDbfs,
+    spurDensity01: runtimeTelemetry.dsp.rfImpurity.spurDensity01
+  }), [
+    analyzerTrace,
+    candidateSignalStats.noiseFloorDbfs,
+    displayCenterFrequencyHz,
+    runtimeTelemetry.dsp.rfImpurity.spurDensity01,
+    streamSampleRateHz,
+    strongestPeaks
+  ]);
+
+  const markerTableRows = useMemo(() => {
+    const rows = strongestPeaks
+      .map((peak) => {
+        const frequencyHz = Math.round(binIndexToFrequencyHz(
+          peak.binIndex,
+          analyzerTrace.length,
+          displayCenterFrequencyHz,
+          streamSampleRateHz
+        ));
+        const snrDb = peak.powerDbfs - candidateSignalStats.noiseFloorDbfs;
+        return {
+          frequencyHz,
+          powerDbfs: peak.powerDbfs,
+          snrDb,
+          boundVfoId:
+            markerBindingState.enabled
+            && Math.round(resolveVfoDisplayFrequencyHz(
+              markerBindingState.boundVfoId,
+              tunedDisplayFrequencyHz,
+              secondaryVfoEnabled,
+              secondaryVfoOffsetHz
+            )) === frequencyHz
+              ? markerBindingState.boundVfoId
+              : null
+        };
+      })
+      .filter((row) => row.snrDb >= markerTableSnrMinDb);
+
+    rows.sort((a, b) => {
+      if (markerTableSortMode === 'frequency') {
+        return a.frequencyHz - b.frequencyHz;
+      }
+      if (markerTableSortMode === 'snr') {
+        return b.snrDb - a.snrDb;
+      }
+      return b.powerDbfs - a.powerDbfs;
+    });
+    return rows;
+  }, [
+    candidateSignalStats.noiseFloorDbfs,
+    displayCenterFrequencyHz,
+    markerBindingState.boundVfoId,
+    markerBindingState.enabled,
+    markerTableSnrMinDb,
+    markerTableSortMode,
+    secondaryVfoEnabled,
+    secondaryVfoOffsetHz,
+    streamSampleRateHz,
+    strongestPeaks,
+    tunedDisplayFrequencyHz,
+    analyzerTrace.length
+  ]);
 
   const markerDeltaReadout = useMemo(() => {
     if (!markerReadout || !secondaryMarkerReadout) {
@@ -3705,7 +4115,7 @@ export default function App() {
   }, [markerReadout, secondaryMarkerReadout]);
 
   const runCenterOnPeak = useCallback((trigger: 'ui' | 'keyboard') => {
-    const strongestPeak = findStrongestPeakInRange(fftData, analyzerVisibleBinRange);
+    const strongestPeak = findStrongestPeakInRange(analyzerTrace, analyzerVisibleBinRange);
     if (!strongestPeak) {
       setStatusMessage('Center-on-peak found no valid peak in the visible span.');
       pushDiagnosticEvent(`Center-on-peak (${trigger}) found no qualifying peak.`, 'warn', 'analyzer');
@@ -3713,10 +4123,9 @@ export default function App() {
     }
 
     const targetFrequencyHz = Math.round(
-      binIndexToFrequencyHz(strongestPeak.binIndex, fftData.length, frequency, streamSampleRateHz)
+      binIndexToFrequencyHz(strongestPeak.binIndex, analyzerTrace.length, displayCenterFrequencyHz, streamSampleRateHz)
     );
-    setFrequency(targetFrequencyHz);
-    setFineFreq(0);
+    tuneToDisplayFrequency(targetFrequencyHz);
     setLastLockFrequencyHz(targetFrequencyHz);
     setStatusMessage(`Centered on peak at ${targetFrequencyHz.toLocaleString()} Hz.`);
     pushDiagnosticEvent(
@@ -3724,18 +4133,18 @@ export default function App() {
       'info',
       'analyzer'
     );
-  }, [analyzerVisibleBinRange, fftData, frequency, pushDiagnosticEvent, streamSampleRateHz]);
+  }, [analyzerTrace, analyzerVisibleBinRange, displayCenterFrequencyHz, pushDiagnosticEvent, streamSampleRateHz, tuneToDisplayFrequency]);
 
   const runSnapToSignal = useCallback((trigger: 'ui' | 'keyboard') => {
-    if (fftData.length === 0) {
+    if (analyzerTrace.length === 0) {
       setStatusMessage('Snap-to-signal is unavailable without spectrum data.');
       return;
     }
 
-    const focusFrequencyHz = analyzerMarker?.frequencyHz ?? tunedFrequencyHz;
-    const focusBin = frequencyHzToBinIndex(focusFrequencyHz, fftData.length, frequency, streamSampleRateHz);
+    const focusFrequencyHz = analyzerMarker?.frequencyHz ?? tunedDisplayFrequencyHz;
+    const focusBin = frequencyHzToBinIndex(focusFrequencyHz, analyzerTrace.length, displayCenterFrequencyHz, streamSampleRateHz);
     const nearestPeak = findNearestQualifiedPeak(
-      fftData,
+      analyzerTrace,
       focusBin,
       analyzerVisibleBinRange,
       6
@@ -3747,13 +4156,13 @@ export default function App() {
       return;
     }
 
-    const centerBin = Math.floor(fftData.length / 2);
+    const centerBin = Math.floor(analyzerTrace.length / 2);
     const offsetBins = nearestPeak.binIndex - centerBin;
-    const offsetHz = Math.round(offsetBins * (streamSampleRateHz / fftData.length));
+    const offsetHz = Math.round(offsetBins * (streamSampleRateHz / analyzerTrace.length));
     const clampedFineHz = clampFineTuneHz(offsetHz, filterState.highCutHz, streamSampleRateHz);
 
     setFineFreq(clampedFineHz);
-    setLastLockFrequencyHz(Math.round(frequency + clampedFineHz));
+    setLastLockFrequencyHz(Math.round(tunedDisplayFrequencyHz));
     setStatusMessage(`Snapped to nearest signal at dTune ${clampedFineHz.toLocaleString()} Hz.`);
     pushDiagnosticEvent(
       `Snap-to-signal (${trigger}) set fine tune to ${clampedFineHz} Hz (peak ${nearestPeak.powerDbfs.toFixed(1)} dBFS).`,
@@ -3762,24 +4171,24 @@ export default function App() {
     );
   }, [
     analyzerMarker?.frequencyHz,
+    analyzerTrace,
     analyzerVisibleBinRange,
-    fftData,
     filterState.highCutHz,
-    frequency,
+    displayCenterFrequencyHz,
     pushDiagnosticEvent,
     streamSampleRateHz,
-    tunedFrequencyHz
+    tunedDisplayFrequencyHz
   ]);
 
   const placeMarkerAtPeak = useCallback((trigger: 'ui' | 'keyboard') => {
-    const strongestPeak = findStrongestPeakInRange(fftData, analyzerVisibleBinRange);
+    const strongestPeak = findStrongestPeakInRange(analyzerTrace, analyzerVisibleBinRange);
     if (!strongestPeak) {
       setStatusMessage('Unable to place marker: no qualifying peak in view.');
       pushDiagnosticEvent(`Marker place (${trigger}) failed: no qualifying peak.`, 'warn', 'analyzer');
       return;
     }
 
-    const markerFrequencyHz = binIndexToFrequencyHz(strongestPeak.binIndex, fftData.length, frequency, streamSampleRateHz);
+    const markerFrequencyHz = binIndexToFrequencyHz(strongestPeak.binIndex, analyzerTrace.length, displayCenterFrequencyHz, streamSampleRateHz);
     setAnalyzerMarker({
       frequencyHz: markerFrequencyHz,
       placedAtIso: new Date().toISOString()
@@ -3790,24 +4199,25 @@ export default function App() {
       'info',
       'analyzer'
     );
-  }, [analyzerVisibleBinRange, fftData, frequency, pushDiagnosticEvent, streamSampleRateHz]);
+  }, [analyzerTrace, analyzerVisibleBinRange, displayCenterFrequencyHz, pushDiagnosticEvent, streamSampleRateHz]);
 
   const clearMarker = useCallback((trigger: 'ui' | 'keyboard') => {
     setAnalyzerMarker(null);
     setAnalyzerSecondaryMarker(null);
+    setMarkerBindingState(defaultMarkerBindingState());
     setStatusMessage('Marker cleared.');
     pushDiagnosticEvent(`Marker cleared (${trigger}).`, 'info', 'analyzer');
   }, [pushDiagnosticEvent]);
 
   const placeSecondaryMarkerAtPeak = useCallback((trigger: 'ui' | 'keyboard') => {
-    const strongestPeak = findStrongestPeakInRange(fftData, analyzerVisibleBinRange);
+    const strongestPeak = findStrongestPeakInRange(analyzerTrace, analyzerVisibleBinRange);
     if (!strongestPeak) {
       setStatusMessage('Unable to place marker B: no qualifying peak in view.');
       pushDiagnosticEvent(`Marker B place (${trigger}) failed: no qualifying peak.`, 'warn', 'analyzer');
       return;
     }
 
-    const markerFrequencyHz = binIndexToFrequencyHz(strongestPeak.binIndex, fftData.length, frequency, streamSampleRateHz);
+    const markerFrequencyHz = binIndexToFrequencyHz(strongestPeak.binIndex, analyzerTrace.length, displayCenterFrequencyHz, streamSampleRateHz);
     setAnalyzerSecondaryMarker({
       frequencyHz: markerFrequencyHz,
       placedAtIso: new Date().toISOString()
@@ -3818,13 +4228,292 @@ export default function App() {
       'info',
       'analyzer'
     );
-  }, [analyzerVisibleBinRange, fftData, frequency, pushDiagnosticEvent, streamSampleRateHz]);
+  }, [analyzerTrace, analyzerVisibleBinRange, displayCenterFrequencyHz, pushDiagnosticEvent, streamSampleRateHz]);
 
   const clearSecondaryMarker = useCallback((trigger: 'ui' | 'keyboard') => {
     setAnalyzerSecondaryMarker(null);
     setStatusMessage('Marker B cleared.');
     pushDiagnosticEvent(`Marker B cleared (${trigger}).`, 'info', 'analyzer');
   }, [pushDiagnosticEvent]);
+
+  const bindMarkerToActiveVfo = useCallback((followVfo: boolean) => {
+    const nextMarkerHz = resolveVfoDisplayFrequencyHz(
+      activeVfoId,
+      tunedDisplayFrequencyHz,
+      secondaryVfoEnabled,
+      secondaryVfoOffsetHz
+    );
+    setAnalyzerMarker({
+      frequencyHz: nextMarkerHz,
+      placedAtIso: new Date().toISOString()
+    });
+    setMarkerBindingState({
+      enabled: true,
+      boundVfoId: activeVfoId,
+      followVfo
+    });
+    setStatusMessage(`Marker bound to ${activeVfoId.toUpperCase()} VFO${followVfo ? ' (follow enabled)' : ''}.`);
+    pushDiagnosticEvent(`Marker bound to ${activeVfoId} VFO${followVfo ? ' with follow mode' : ''}.`, 'info', 'analyzer');
+  }, [activeVfoId, pushDiagnosticEvent, secondaryVfoEnabled, secondaryVfoOffsetHz, tunedDisplayFrequencyHz]);
+
+  const tuneActiveVfoToMarker = useCallback(() => {
+    if (!analyzerMarker) {
+      setStatusMessage('Tune active VFO to marker requires an active marker.');
+      return;
+    }
+
+    if (activeVfoId === 'main') {
+      tuneToDisplayFrequency(analyzerMarker.frequencyHz);
+      setStatusMessage(`Main VFO tuned to marker ${Math.round(analyzerMarker.frequencyHz).toLocaleString()} Hz.`);
+      return;
+    }
+
+    const nextOffsetHz = resolveSecondaryOffsetFromMarkerHz(analyzerMarker.frequencyHz, tunedDisplayFrequencyHz);
+    setSecondaryVfoEnabled(true);
+    setSecondaryVfoOffsetHz(nextOffsetHz);
+    setStatusMessage(`Aux VFO offset set to ${nextOffsetHz.toLocaleString()} Hz from marker.`);
+  }, [activeVfoId, analyzerMarker, tuneToDisplayFrequency, tunedDisplayFrequencyHz]);
+
+  const applySignalWarningMitigation = useCallback((warningId: string) => {
+    const warning = signalWarnings.find((entry) => entry.id === warningId);
+    if (!warning) {
+      return;
+    }
+
+    if (warning.mitigation === 'lo-shift') {
+      setFineFreq((prev) => clampFineTuneHz(prev + 12_500, filterState.highCutHz, streamSampleRateHz));
+      setStatusMessage('Applied LO shift mitigation (+12.5 kHz fine tune).');
+      return;
+    }
+
+    if (warning.mitigation === 'bandwidth-clamp') {
+      setFilterState((prev) => {
+        const clamped = clampFilterForMode(demodMode, prev.lowCutHz, prev.highCutHz, streamSampleRateHz);
+        return {
+          ...prev,
+          ...clamped
+        };
+      });
+      setStatusMessage('Applied bandwidth clamp mitigation.');
+      return;
+    }
+
+    if (warning.mitigation === 'notch-preset') {
+      setFilterState((prev) => ({
+        ...prev,
+        preset: 'heterodyne-notch',
+        notchHz: 0,
+        notchQ: 20
+      }));
+      setStatusMessage('Applied notch preset mitigation (heterodyne).');
+    }
+  }, [demodMode, filterState.highCutHz, signalWarnings, streamSampleRateHz]);
+
+  const captureTraceB = useCallback(() => {
+    if (analyzerTrace.length === 0) {
+      setStatusMessage('Trace B capture unavailable: no analyzer trace yet.');
+      return;
+    }
+    setTraceB(analyzerTrace.slice());
+    setStatusMessage(`Captured Trace B (${analyzerTrace.length} bins).`);
+  }, [analyzerTrace]);
+
+  const clearTraceB = useCallback(() => {
+    setTraceB(null);
+    setStatusMessage('Cleared Trace B.');
+  }, []);
+
+  const tuneToMarkerTableFrequency = useCallback((frequencyHz: number) => {
+    tuneToDisplayFrequency(frequencyHz);
+    setAnalyzerMarker({
+      frequencyHz,
+      placedAtIso: new Date().toISOString()
+    });
+    setStatusMessage(`Tuned to marker table frequency ${Math.round(frequencyHz).toLocaleString()} Hz.`);
+  }, [tuneToDisplayFrequency]);
+
+  const addSpurAnnotationFromMarker = useCallback(() => {
+    if (!markerReadout) {
+      setStatusMessage('Add spur annotation requires marker A.');
+      return;
+    }
+
+    const next: SpurArtifactAnnotation = {
+      id: `spur-${Date.now()}`,
+      frequencyHz: Math.round(markerReadout.frequencyHz),
+      label: 'User annotation',
+      kind: 'device',
+      masked: false
+    };
+    setSpurAnnotations((prev) => [next, ...prev].slice(0, 64));
+    setStatusMessage(`Added spur annotation at ${next.frequencyHz.toLocaleString()} Hz.`);
+  }, [markerReadout]);
+
+  const exportAnalyzerSnapshot = useCallback(() => {
+    const payload = {
+      schemaVersion: 'analyzer-export.v1',
+      exportedAtUtc: new Date().toISOString(),
+      settings: {
+        detectorMode: analyzerDetectorMode,
+        traceMathMode: analyzerTraceMathMode,
+        vbwFrames: analyzerVbwFrames,
+        rbwHz: analyzerSemantics.rbwHz,
+        vbwHz: analyzerSemantics.vbwHz,
+        enbwBins: analyzerSemantics.enbwBins,
+        referenceLevelDb: analyzerReferenceLevelDb,
+        windowMode: analyzerWindowMode,
+        peakHoldEnabled: analyzerPeakHoldEnabled,
+        peakHoldMode: analyzerPeakHoldMode,
+        artifactMaskEnabled
+      },
+      traces: {
+        traceA: Array.from(analyzerTrace),
+        traceB: traceB ? Array.from(traceB) : null,
+        stitchedSweep: sweepStitchedPoints
+      },
+      markerTable: markerTableRows,
+      markers: {
+        markerA: markerReadout,
+        markerB: secondaryMarkerReadout
+      },
+      candidateStats: candidateSignalStats,
+      signalWarnings,
+      spurAnnotations
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rad-io-analyzer-export-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatusMessage('Analyzer export created.');
+  }, [
+    analyzerDetectorMode,
+    analyzerPeakHoldEnabled,
+    analyzerPeakHoldMode,
+    analyzerReferenceLevelDb,
+    analyzerSemantics.enbwBins,
+    analyzerSemantics.rbwHz,
+    analyzerSemantics.vbwHz,
+    analyzerTrace,
+    analyzerTraceMathMode,
+    analyzerVbwFrames,
+    analyzerWindowMode,
+    artifactMaskEnabled,
+    candidateSignalStats,
+    markerReadout,
+    markerTableRows,
+    secondaryMarkerReadout,
+    signalWarnings,
+    spurAnnotations,
+    sweepStitchedPoints,
+    traceB
+  ]);
+
+  const quickCaptureMarkerOrVfo = useCallback(() => {
+    const captureFrequencyHz = markerReadout?.frequencyHz ?? activeVfoDisplayFrequencyHz;
+    const trace = analyzerTrace;
+    if (!Number.isFinite(captureFrequencyHz) || trace.length === 0) {
+      setStatusMessage('Quick capture unavailable: analyzer trace not ready.');
+      return;
+    }
+
+    const centerBin = frequencyHzToBinIndex(captureFrequencyHz, trace.length, displayCenterFrequencyHz, streamSampleRateHz);
+    const start = Math.max(0, centerBin - 64);
+    const end = Math.min(trace.length, centerBin + 65);
+
+    const payload = {
+      schemaVersion: 'marker-vfo-quick-capture.v1',
+      capturedAtUtc: new Date().toISOString(),
+      captureTarget: markerReadout ? 'marker' : 'active-vfo',
+      frequencyHz: Math.round(captureFrequencyHz),
+      sampleRateHz: streamSampleRateHz,
+      ppmCorrection: ppmCorrection,
+      fineTuneHz: fineFreq,
+      centerFrequencyHz: displayCenterFrequencyHz,
+      secondaryVfoEnabled,
+      secondaryVfoOffsetHz,
+      discontinuities: discontinuityTimelineRef.current.slice(-20),
+      traceWindow: {
+        startBin: start,
+        endBinExclusive: end,
+        valuesDbfs: Array.from(trace.slice(start, end))
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rad-io-marker-quick-capture-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatusMessage('Marker/VFO quick capture exported.');
+  }, [
+    activeVfoDisplayFrequencyHz,
+    analyzerTrace,
+    displayCenterFrequencyHz,
+    fineFreq,
+    markerReadout,
+    ppmCorrection,
+    secondaryVfoEnabled,
+    secondaryVfoOffsetHz,
+    streamSampleRateHz
+  ]);
+
+  const runSweepStitch = useCallback(async () => {
+    if (sweepState === 'running') {
+      return;
+    }
+
+    setSweepState('running');
+    setSweepStatus('Running software sweep/stitch...');
+    const originalHz = tunedDisplayFrequencyHz;
+    const spanHz = Math.max(streamSampleRateHz, 2_000_000);
+    const stepHz = Math.max(50_000, Math.round(spanHz / 4));
+    const startHz = Math.round(originalHz - spanHz / 2);
+    const stopHz = Math.round(originalHz + spanHz / 2);
+    const segments: SweepSegment[] = [];
+
+    try {
+      for (let freqHz = startHz; freqHz <= stopHz; freqHz += stepHz) {
+        tuneToDisplayFrequency(freqHz);
+        setSweepStatus(`Sweep capture at ${(freqHz / 1_000_000).toFixed(3)} MHz`);
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 220);
+        });
+        const trace = fftDataRef.current.slice();
+        segments.push({
+          centerFrequencyHz: freqHz,
+          sampleRateHz: streamSampleRateHz,
+          trace
+        });
+      }
+
+      tuneToDisplayFrequency(originalHz);
+      const stitched = stitchSweepSegments(segments);
+      setSweepStitchedPoints(stitched);
+      setSweepState('completed');
+      setSweepStatus(`Sweep complete (${segments.length} segments, ${stitched.length} stitched points).`);
+    } catch (error) {
+      tuneToDisplayFrequency(originalHz);
+      setSweepState('error');
+      setSweepStatus(`Sweep failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }, [streamSampleRateHz, sweepState, tuneToDisplayFrequency, tunedDisplayFrequencyHz]);
+
+  const recallDisplayFrequency = useCallback((slot: 'A' | 'B') => {
+    const target = slot === 'A' ? recallSlotAHz : recallSlotBHz;
+    if (target === null) {
+      setStatusMessage(`Recall slot ${slot} is empty.`);
+      return;
+    }
+
+    const appliedDisplayHz = tuneToDisplayFrequency(target);
+    setStatusMessage(`Recalled slot ${slot} at ${(appliedDisplayHz / 1_000_000).toFixed(3)} MHz.`);
+  }, [recallSlotAHz, recallSlotBHz, tuneToDisplayFrequency]);
 
   const tuneToMarker = useCallback((trigger: 'ui' | 'keyboard') => {
     if (!analyzerMarker) {
@@ -3834,12 +4523,11 @@ export default function App() {
     }
 
     const nextFrequencyHz = Math.round(analyzerMarker.frequencyHz);
-    setFrequency(nextFrequencyHz);
-    setFineFreq(0);
+    tuneToDisplayFrequency(nextFrequencyHz);
     setLastLockFrequencyHz(nextFrequencyHz);
     setStatusMessage(`Tuned to marker at ${nextFrequencyHz.toLocaleString()} Hz.`);
     pushDiagnosticEvent(`Tune-to-marker (${trigger}) tuned to ${nextFrequencyHz} Hz.`, 'info', 'analyzer');
-  }, [analyzerMarker, pushDiagnosticEvent]);
+  }, [analyzerMarker, pushDiagnosticEvent, tuneToDisplayFrequency]);
 
   const returnToLastLock = useCallback((trigger: 'ui' | 'keyboard') => {
     if (lastLockFrequencyHz === null) {
@@ -3848,11 +4536,10 @@ export default function App() {
       return;
     }
 
-    setFrequency(lastLockFrequencyHz);
-    setFineFreq(0);
+    tuneToDisplayFrequency(lastLockFrequencyHz);
     setStatusMessage(`Retune assist returned to ${lastLockFrequencyHz.toLocaleString()} Hz.`);
     pushDiagnosticEvent(`Retune assist (${trigger}) returned to ${lastLockFrequencyHz} Hz.`, 'info', 'analyzer');
-  }, [lastLockFrequencyHz, pushDiagnosticEvent]);
+  }, [lastLockFrequencyHz, pushDiagnosticEvent, tuneToDisplayFrequency]);
 
   useEffect(() => {
     if (!isRunning || !afcEnabled || lastLockFrequencyHz === null) {
@@ -4673,7 +5360,7 @@ export default function App() {
               minDb={waterfallMinDb}
               maxDb={waterfallMaxDb}
               zoom={zoomLevel}
-              centerFrequencyHz={frequency}
+              centerFrequencyHz={displayCenterFrequencyHz}
               sampleRateHz={streamSampleRateHz}
               autoScale={waterfallAutoScale}
               palette={waterfallPalette}
@@ -4684,10 +5371,10 @@ export default function App() {
         <section className="panel">
             <h2 className="panel-title">RF Spectrum (FFT)</h2>
             <SpectrumCanvas
-              data={fftData}
+              data={analyzerTrace}
               zoom={zoomLevel}
               onPointClick={handleSpectrumClick}
-              centerFrequencyHz={frequency}
+              centerFrequencyHz={displayCenterFrequencyHz}
               sampleRateHz={streamSampleRateHz}
               tunedOffsetHz={fineFreq}
               referenceLevelDb={analyzerReferenceLevelDb}
@@ -4704,6 +5391,18 @@ export default function App() {
             <h2 className="panel-title">Demod Audio (Scope)</h2>
             <AudioScopeCanvas samples={scopeData} sampleRateHz={50_000} />
         </section>
+        {showIqScopeView && (
+          <section className="panel">
+            <h2 className="panel-title">I/Q Scope</h2>
+            <IqScopeCanvas samples={scopeData} />
+          </section>
+        )}
+        {showConstellationView && (
+          <section className="panel">
+            <h2 className="panel-title">Constellation</h2>
+            <ConstellationCanvas samples={scopeData} />
+          </section>
+        )}
       </div>
 
       <div className="controls-shell">
@@ -4724,36 +5423,36 @@ export default function App() {
         </div>
 
         {/* Connection Control */}
-        <button 
-            onClick={toggleStream}
-            className={`action-btn ${isRunning ? 'btn-stop' : 'btn-start'}`}
+        <Button
+          onClick={toggleStream}
+          variant={isRunning ? 'stop' : 'start'}
         >
-            {isRunning ? 'Stop' : 'Start'}
-        </button>
+          {isRunning ? 'Stop' : 'Start'}
+        </Button>
 
-        <button onClick={toggleMute} className="action-btn btn-secondary">
+        <Button onClick={toggleMute} variant="secondary">
           {isMuted ? 'Unmute' : 'Mute'}
-        </button>
+        </Button>
 
-        <button onClick={() => panicMute('ui')} className="action-btn btn-stop">
+        <Button onClick={() => panicMute('ui')} variant="stop">
           Panic Mute
-        </button>
+        </Button>
 
-        <button onClick={exportDiagnostics} className="action-btn btn-secondary">
+        <Button onClick={exportDiagnostics} variant="secondary">
           Export Diagnostics
-        </button>
+        </Button>
 
-        <button onClick={() => void copyShareableSessionLink()} className="action-btn btn-secondary">
+        <Button onClick={() => void copyShareableSessionLink()} variant="secondary">
           Copy Share Link
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={openCommandPalette}
-          className="action-btn btn-secondary"
+          variant="secondary"
           title="Open command palette (Ctrl+K)"
         >
           Command Palette
-        </button>
+        </Button>
 
         <button
           onClick={() => {
@@ -4796,13 +5495,35 @@ export default function App() {
           </button>
         )}
 
-        <button
+        <Button
           onClick={scanState === 'running' ? cancelFmBandScan : runFmBandScan}
-          className="action-btn btn-secondary"
+          variant="secondary"
           disabled={!isRunning}
         >
           {scanState === 'running' ? 'Stop FM Scan' : 'Run FM Scan'}
-        </button>
+        </Button>
+
+        <div className="control-group">
+          <label className="control-label">Debug Views</label>
+          <label className="control-inline-check">
+            <input
+              type="checkbox"
+              checked={showIqScopeView}
+              onChange={(e) => setShowIqScopeView(e.target.checked)}
+              className="control-check"
+            />
+            I/Q Scope
+          </label>
+          <label className="control-inline-check">
+            <input
+              type="checkbox"
+              checked={showConstellationView}
+              onChange={(e) => setShowConstellationView(e.target.checked)}
+              className="control-check"
+            />
+            Constellation
+          </label>
+        </div>
 
         <div className="control-group">
           <label className="control-label">Latency Policy</label>
@@ -4979,25 +5700,24 @@ export default function App() {
         )}
 
         <div className="control-group">
-            <label className="control-label">Zoom ({zoomLevel}x)</label>
-            <input 
-                type="range" min="1" max="8" step="1"
-                value={zoomLevel}
-                onChange={(e) => setZoomLevel(parseInt(e.target.value))}
-                className="control-range"
-            />
+          <Slider
+            label={`Zoom (${zoomLevel}x)`}
+            min={1}
+            max={8}
+            step={1}
+            value={zoomLevel}
+            onChange={(value) => setZoomLevel(Math.round(value))}
+          />
         </div>
 
         <div className="control-group">
-          <label className="control-label">Reference Level ({analyzerReferenceLevelDb.toFixed(1)} dBFS)</label>
-          <input
-            type="range"
-            min="-80"
-            max="0"
-            step="1"
+          <Slider
+            label={`Reference Level (${analyzerReferenceLevelDb.toFixed(1)} dBFS)`}
+            min={-80}
+            max={0}
+            step={1}
             value={analyzerReferenceLevelDb}
-            onChange={(e) => setAnalyzerReferenceLevelDb(parseFloat(e.target.value))}
-            className="control-range"
+            onChange={setAnalyzerReferenceLevelDb}
           />
         </div>
 
@@ -5013,6 +5733,49 @@ export default function App() {
             <option value="blackman-harris">Blackman-Harris</option>
           </select>
           <div className="control-note">ENBW: {getWindowEnbwBins(analyzerWindowMode).toFixed(2)} bins</div>
+          <div className="control-note">RBW: {(analyzerSemantics.rbwHz / 1000).toFixed(2)} kHz | VBW: {(analyzerSemantics.vbwHz / 1000).toFixed(2)} kHz</div>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Detector</label>
+          <select
+            value={analyzerDetectorMode}
+            onChange={(e) => setAnalyzerDetectorMode(e.target.value as AnalyzerDetectorMode)}
+            className="control-input compact"
+          >
+            <option value="sample">Sample</option>
+            <option value="peak">Peak</option>
+            <option value="rms">RMS</option>
+            <option value="avg">Average</option>
+            <option value="min-hold">Min Hold</option>
+            <option value="p95">Percentile P95</option>
+          </select>
+        </div>
+
+        <div className="control-group">
+          <Slider
+            label={`VBW Frames (${analyzerVbwFrames})`}
+            min={1}
+            max={32}
+            step={1}
+            value={analyzerVbwFrames}
+            onChange={(value) => setAnalyzerVbwFrames(Math.round(value))}
+          />
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Trace Math</label>
+          <select
+            value={analyzerTraceMathMode}
+            onChange={(e) => setAnalyzerTraceMathMode(e.target.value as AnalyzerTraceMathMode)}
+            className="control-input compact"
+          >
+            <option value="a">Trace A</option>
+            <option value="a-minus-b">A-B</option>
+            <option value="max-a-b">Max(A,B)</option>
+          </select>
+          <Button variant="secondary" onClick={captureTraceB}>Capture Trace B</Button>
+          <Button variant="secondary" onClick={clearTraceB} disabled={!traceB}>Clear Trace B</Button>
         </div>
 
         <div className="control-group">
@@ -5030,30 +5793,26 @@ export default function App() {
 
         {analyzerAveragingMode === 'exp' && (
           <div className="control-group">
-            <label className="control-label">Exp Averaging ({Math.round(analyzerAveragingValue * 100)}%)</label>
-            <input
-              type="range"
-              min="0.05"
-              max="0.95"
-              step="0.01"
+            <Slider
+              label={`Exp Averaging (${Math.round(analyzerAveragingValue * 100)}%)`}
+              min={0.05}
+              max={0.95}
+              step={0.01}
               value={analyzerAveragingValue}
-              onChange={(e) => setAnalyzerAveragingValue(parseFloat(e.target.value))}
-              className="control-range"
+              onChange={setAnalyzerAveragingValue}
             />
           </div>
         )}
 
         {analyzerAveragingMode === 'linear' && (
           <div className="control-group">
-            <label className="control-label">Linear Frames ({analyzerLinearAveragingFrames})</label>
-            <input
-              type="range"
-              min="2"
-              max="32"
-              step="1"
+            <Slider
+              label={`Linear Frames (${analyzerLinearAveragingFrames})`}
+              min={2}
+              max={32}
+              step={1}
               value={analyzerLinearAveragingFrames}
-              onChange={(e) => setAnalyzerLinearAveragingFrames(parseInt(e.target.value, 10))}
-              className="control-range"
+              onChange={(value) => setAnalyzerLinearAveragingFrames(Math.round(value))}
             />
           </div>
         )}
@@ -5075,41 +5834,62 @@ export default function App() {
             <option value="decay">Decay Hold</option>
             <option value="max">Max Hold</option>
           </select>
-          <button
+          <Button
             onClick={() => setAnalyzerPeakHoldResetToken((prev) => prev + 1)}
-            className="action-btn btn-secondary"
+            variant="secondary"
           >
             Reset Peak Hold
-          </button>
+          </Button>
         </div>
 
-        <div className="control-group">
-          <label className="control-label">Signal Discovery</label>
-          <button className="action-btn btn-secondary" onClick={() => runCenterOnPeak('ui')}>Center On Peak</button>
-          <button className="action-btn btn-secondary" onClick={() => runSnapToSignal('ui')}>Snap To Signal</button>
-          <button className="action-btn btn-secondary" onClick={() => returnToLastLock('ui')} disabled={lastLockFrequencyHz === null}>Return To Last Lock</button>
+        <Card className="control-group control-group-wide" title="Signal Discovery">
+          <Button variant="secondary" onClick={() => runCenterOnPeak('ui')}>Center On Peak</Button>
+          <Button variant="secondary" onClick={() => runSnapToSignal('ui')}>Snap To Signal</Button>
+          <Button variant="secondary" onClick={() => returnToLastLock('ui')} disabled={lastLockFrequencyHz === null}>Return To Last Lock</Button>
+          <Button variant="secondary" onClick={quickCaptureMarkerOrVfo}>Quick Capture Marker/VFO</Button>
+          <Button variant="secondary" onClick={exportAnalyzerSnapshot}>Export Analyzer Snapshot</Button>
           <div className="control-note">
             {occupiedBandwidth
               ? `OBW ${(occupiedBandwidth.percentPower * 100).toFixed(0)}%: ${(occupiedBandwidth.bandwidthHz / 1000).toFixed(1)} kHz`
               : 'OBW unavailable'}
           </div>
+          <div className="control-note">
+            Noise floor {candidateSignalStats.noiseFloorDbfs.toFixed(1)} dBFS | Peak SNR {candidateSignalStats.strongestPeakSnrDb.toFixed(1)} dB | Occupancy {(candidateSignalStats.occupancy01 * 100).toFixed(1)}% | Persistence {(candidateSignalStats.persistence01 * 100).toFixed(1)}%
+          </div>
           {strongestPeaks.length > 0 && (
             <div className="control-note">
               Peaks: {strongestPeaks.map((peak, index) => {
-                const peakHz = Math.round(binIndexToFrequencyHz(peak.binIndex, fftData.length, frequency, streamSampleRateHz));
+                const peakHz = Math.round(binIndexToFrequencyHz(peak.binIndex, analyzerTrace.length, displayCenterFrequencyHz, streamSampleRateHz));
                 return `#${index + 1} ${peakHz.toLocaleString()} Hz (${peak.powerDbfs.toFixed(1)} dBFS)`;
               }).join(' | ')}
             </div>
           )}
-        </div>
+          {signalWarnings.length > 0 && (
+            <div className="control-note">
+              {signalWarnings.map((warning) => (
+                <span key={warning.id} style={{ display: 'block', marginTop: 4 }}>
+                  [{warning.severity}] {warning.summary}: {warning.why}
+                  {warning.mitigation !== 'none' && (
+                    <button
+                      className="action-btn btn-secondary"
+                      onClick={() => applySignalWarningMitigation(warning.id)}
+                      style={{ marginLeft: 8 }}
+                    >
+                      Apply {warning.mitigation}
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+        </Card>
 
-        <div className="control-group">
-          <label className="control-label">Marker</label>
-          <button className="action-btn btn-secondary" onClick={() => placeMarkerAtPeak('ui')}>Place Marker At Peak</button>
-          <button className="action-btn btn-secondary" onClick={() => placeSecondaryMarkerAtPeak('ui')}>Place Marker B At Peak</button>
-          <button className="action-btn btn-secondary" onClick={() => tuneToMarker('ui')} disabled={!analyzerMarker}>Tune To Marker</button>
-          <button className="action-btn btn-secondary" onClick={() => clearMarker('ui')} disabled={!analyzerMarker}>Clear Marker</button>
-          <button className="action-btn btn-secondary" onClick={() => clearSecondaryMarker('ui')} disabled={!analyzerSecondaryMarker}>Clear Marker B</button>
+        <Card className="control-group control-group-wide" title="Marker">
+          <Button variant="secondary" onClick={() => placeMarkerAtPeak('ui')}>Place Marker At Peak</Button>
+          <Button variant="secondary" onClick={() => placeSecondaryMarkerAtPeak('ui')}>Place Marker B At Peak</Button>
+          <Button variant="secondary" onClick={() => tuneToMarker('ui')} disabled={!analyzerMarker}>Tune To Marker</Button>
+          <Button variant="secondary" onClick={() => clearMarker('ui')} disabled={!analyzerMarker}>Clear Marker</Button>
+          <Button variant="secondary" onClick={() => clearSecondaryMarker('ui')} disabled={!analyzerSecondaryMarker}>Clear Marker B</Button>
           <div className="control-note">
             {markerReadout
               ? `${Math.round(markerReadout.frequencyHz).toLocaleString()} Hz | ${markerReadout.powerDbfs.toFixed(1)} dBFS${markerReadout.inView ? '' : ' (outside visible span)'}`
@@ -5125,7 +5905,325 @@ export default function App() {
               Delta A to B: {markerDeltaReadout.deltaFrequencyHz.toLocaleString(undefined, { maximumFractionDigits: 0 })} Hz | {markerDeltaReadout.deltaPowerDb.toFixed(1)} dB
             </div>
           )}
-        </div>
+        </Card>
+
+        <Card className="control-group control-group-wide" title="Marker ↔ VFO Binding">
+          <div className="control-group">
+            <label className="control-label">Active VFO</label>
+            <select
+              value={activeVfoId}
+              onChange={(e) => setActiveVfoId(e.target.value as VfoBindingId)}
+              className="control-input compact"
+            >
+              <option value="main">Main VFO</option>
+              <option value="aux" disabled={!secondaryVfoEnabled}>Aux VFO</option>
+            </select>
+          </div>
+          <Button variant="secondary" onClick={() => bindMarkerToActiveVfo(false)}>
+            Bind Marker To Active VFO
+          </Button>
+          <label className="control-inline-check">
+            <input
+              type="checkbox"
+              checked={markerBindingState.followVfo}
+              onChange={(e) => {
+                const follow = e.target.checked;
+                setMarkerBindingState((prev) => ({
+                  ...prev,
+                  enabled: prev.enabled || follow,
+                  boundVfoId: activeVfoId,
+                  followVfo: follow
+                }));
+                if (follow) {
+                  bindMarkerToActiveVfo(true);
+                }
+              }}
+              className="control-check"
+            />
+            Follow Active VFO
+          </label>
+          <Button variant="secondary" onClick={tuneActiveVfoToMarker} disabled={!analyzerMarker}>
+            Tune Active VFO To Marker
+          </Button>
+          <div className="control-note">
+            Main: {Math.round(tunedDisplayFrequencyHz).toLocaleString()} Hz
+            {secondaryVfoEnabled ? ` | Aux: ${Math.round(tunedDisplayFrequencyHz + secondaryVfoOffsetHz).toLocaleString()} Hz` : ''}
+          </div>
+          <div className="control-note">
+            Binding: {markerBindingState.enabled ? `${markerBindingState.boundVfoId.toUpperCase()}${markerBindingState.followVfo ? ' (follow)' : ''}` : 'off'}
+            {' | '}Active VFO: {activeVfoId.toUpperCase()} @ {Math.round(activeVfoDisplayFrequencyHz).toLocaleString()} Hz
+          </div>
+        </Card>
+
+        <Card className="control-group control-group-wide" title="Marker Table (Pro)">
+          <div className="control-group">
+            <label className="control-label">Sort</label>
+            <select
+              value={markerTableSortMode}
+              onChange={(e) => setMarkerTableSortMode(e.target.value as MarkerTableSortMode)}
+              className="control-input compact"
+            >
+              <option value="power">Power</option>
+              <option value="snr">SNR</option>
+              <option value="frequency">Frequency</option>
+            </select>
+          </div>
+          <div className="control-group">
+            <Slider
+              label={`Min SNR (${markerTableSnrMinDb.toFixed(0)} dB)`}
+              min={0}
+              max={40}
+              step={1}
+              value={markerTableSnrMinDb}
+              onChange={setMarkerTableSnrMinDb}
+            />
+          </div>
+          <div className="control-note">{markerTableRows.length} candidate markers</div>
+          {markerTableRows.slice(0, 8).map((row) => (
+            <div key={`${row.frequencyHz}-${row.powerDbfs}`} className="control-note" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>{row.frequencyHz.toLocaleString()} Hz | {row.powerDbfs.toFixed(1)} dBFS | SNR {row.snrDb.toFixed(1)} dB{row.boundVfoId ? ` | ${row.boundVfoId.toUpperCase()} bound` : ''}</span>
+              <Button variant="secondary" onClick={() => tuneToMarkerTableFrequency(row.frequencyHz)}>Tune</Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setAnalyzerMarker({
+                    frequencyHz: row.frequencyHz,
+                    placedAtIso: new Date().toISOString()
+                  });
+                  setStatusMessage(`Marker A set from marker table at ${row.frequencyHz.toLocaleString()} Hz.`);
+                }}
+              >
+                Set Marker A
+              </Button>
+            </div>
+          ))}
+        </Card>
+
+        <Card className="control-group control-group-wide" title="Sweep / Stitch Analyzer">
+          <Button variant="secondary" onClick={() => void runSweepStitch()} disabled={!isRunning || sweepState === 'running'}>
+            {sweepState === 'running' ? 'Sweeping...' : 'Run Sweep/Stitch'}
+          </Button>
+          <div className="control-note">{sweepStatus}</div>
+          <div className="control-note">Stitched points: {sweepStitchedPoints.length}</div>
+        </Card>
+
+        <Card className="control-group control-group-wide" title="Spur / Artifact Layer">
+          <Button variant="secondary" onClick={addSpurAnnotationFromMarker} disabled={!markerReadout}>Add Annotation From Marker A</Button>
+          <label className="control-inline-check">
+            <input
+              type="checkbox"
+              checked={artifactMaskEnabled}
+              onChange={(e) => setArtifactMaskEnabled(e.target.checked)}
+              className="control-check"
+            />
+            Mask annotated spur bins in marker table
+          </label>
+          {spurAnnotations.length === 0 && <div className="control-note">No artifact annotations yet.</div>}
+          {spurAnnotations.map((annotation) => (
+            <div key={annotation.id} className="control-note" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>{annotation.frequencyHz.toLocaleString()} Hz | {annotation.kind} | {annotation.label}</span>
+              <label className="control-inline-check">
+                <input
+                  type="checkbox"
+                  checked={annotation.masked}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setSpurAnnotations((prev) => prev.map((entry) => {
+                      if (entry.id !== annotation.id) {
+                        return entry;
+                      }
+                      return {
+                        ...entry,
+                        masked: checked
+                      };
+                    }));
+                  }}
+                  className="control-check"
+                />
+                Mask
+              </label>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setSpurAnnotations((prev) => prev.filter((entry) => entry.id !== annotation.id));
+                }}
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+        </Card>
+
+        <Card className="control-group control-group-wide" title="Band Plans & Stepping">
+          <div className="control-group">
+            <label className="control-label">Region Preset</label>
+            <select
+              value={bandRegionId}
+              onChange={(e) => setBandRegionId(e.target.value as BandRegionId)}
+              className="control-input compact"
+            >
+              {bandRegionPlans.map((plan) => (
+                <option key={plan.id} value={plan.id}>{plan.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="control-group">
+            <label className="control-label">Band</label>
+            <select
+              value={selectedBandId}
+              onChange={(e) => setSelectedBandId(e.target.value)}
+              className="control-input compact"
+            >
+              {getBandRegionPlan(bandRegionId).bands.map((band) => (
+                <option key={band.id} value={band.id}>{band.label}</option>
+              ))}
+            </select>
+          </div>
+          <label className="control-inline-check">
+            <input
+              type="checkbox"
+              checked={bandRasterSnapEnabled}
+              onChange={(e) => setBandRasterSnapEnabled(e.target.checked)}
+              className="control-check"
+            />
+            Snap To Channel Raster
+          </label>
+          <label className="control-inline-check">
+            <input
+              type="checkbox"
+              checked={enforceBandLimits}
+              onChange={(e) => setEnforceBandLimits(e.target.checked)}
+              className="control-check"
+            />
+            Enforce Band Limits
+          </label>
+          <label className="control-inline-check">
+            <input
+              type="checkbox"
+              checked={autoApplyBandDefaults}
+              onChange={(e) => setAutoApplyBandDefaults(e.target.checked)}
+              className="control-check"
+            />
+            Auto-Apply Band Defaults
+          </label>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (!selectedBand) {
+                return;
+              }
+
+              const snapped = snapFrequencyToRasterHz(
+                clampFrequencyToBandHz(tunedDisplayFrequencyHz, selectedBand),
+                selectedBand.rasterHz,
+                selectedBand.startHz
+              );
+              tuneToDisplayFrequency(snapped);
+              setStatusMessage(`Snapped to ${Math.round(snapped).toLocaleString()} Hz in ${selectedBand.label}.`);
+            }}
+            disabled={!selectedBand}
+          >
+            Snap Now
+          </Button>
+          <div className="control-note">
+            {selectedBand
+              ? `${selectedBand.label}: ${(selectedBand.startHz / 1_000_000).toFixed(3)}-${(selectedBand.stopHz / 1_000_000).toFixed(3)} MHz | raster ${selectedBand.rasterHz.toLocaleString()} Hz | default ${selectedBand.defaultMode}`
+              : 'No band selected'}
+          </div>
+          <div className="control-note">
+            Active band at tuned frequency: {inferredBandAtTunedFrequency?.label ?? 'outside configured regional bands'}
+          </div>
+          {bandGuardrailWarning && (
+            <div className="control-note">Warning: {bandGuardrailWarning}</div>
+          )}
+        </Card>
+
+        <Card className="control-group control-group-wide" title="Frequency Mapping / Transverter">
+          <label className="control-inline-check">
+            <input
+              type="checkbox"
+              checked={frequencyMapping.transverterEnabled}
+              onChange={(e) => setFrequencyMapping((prev) => ({ ...prev, transverterEnabled: e.target.checked }))}
+              className="control-check"
+            />
+            Enable Transverter Offset
+          </label>
+          <div className="control-group">
+            <label className="control-label">Direction</label>
+            <select
+              value={frequencyMapping.transverterDirection}
+              onChange={(e) => setFrequencyMapping((prev) => ({ ...prev, transverterDirection: e.target.value as 'up' | 'down' }))}
+              className="control-input compact"
+            >
+              <option value="up">Upconverter (add LO)</option>
+              <option value="down">Downconverter (subtract LO)</option>
+            </select>
+          </div>
+          <div className="control-group">
+            <label className="control-label">Transverter LO ({Math.round(frequencyMapping.transverterLoHz).toLocaleString()} Hz)</label>
+            <input
+              type="range"
+              min="1000000"
+              max="5000000000"
+              step="1000"
+              value={frequencyMapping.transverterLoHz}
+              onChange={(e) => setFrequencyMapping((prev) => ({ ...prev, transverterLoHz: parseInt(e.target.value, 10) }))}
+              className="control-range"
+            />
+          </div>
+          <div className="control-group">
+            <label className="control-label">IF Offset ({Math.round(frequencyMapping.ifOffsetHz).toLocaleString()} Hz)</label>
+            <input
+              type="range"
+              min="-25000000"
+              max="25000000"
+              step="100"
+              value={frequencyMapping.ifOffsetHz}
+              onChange={(e) => setFrequencyMapping((prev) => ({ ...prev, ifOffsetHz: parseInt(e.target.value, 10) }))}
+              className="control-range"
+            />
+          </div>
+          <div className="control-note">{formatFrequencyModelSummary(tunedTunerFrequencyHz, frequencyMapping)}</div>
+        </Card>
+
+        <Card className="control-group control-group-wide" title="History & Recall">
+          <Button variant="secondary" onClick={() => setRecallSlotAHz(Math.round(tunedDisplayFrequencyHz))}>Store A</Button>
+          <Button variant="secondary" onClick={() => setRecallSlotBHz(Math.round(tunedDisplayFrequencyHz))}>Store B</Button>
+          <Button variant="secondary" onClick={() => recallDisplayFrequency('A')} disabled={recallSlotAHz === null}>Recall A</Button>
+          <Button variant="secondary" onClick={() => recallDisplayFrequency('B')} disabled={recallSlotBHz === null}>Recall B</Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const swapped = swapRecallPair(recallSlotAHz, recallSlotBHz);
+              setRecallSlotAHz(swapped.slotAHz);
+              setRecallSlotBHz(swapped.slotBHz);
+              setStatusMessage('Swapped A/B recall slots.');
+            }}
+            disabled={recallSlotAHz === null && recallSlotBHz === null}
+          >
+            Swap A/B
+          </Button>
+          <div className="control-note">
+            A: {recallSlotAHz === null ? 'empty' : `${(recallSlotAHz / 1_000_000).toFixed(3)} MHz`}
+            {' | '}B: {recallSlotBHz === null ? 'empty' : `${(recallSlotBHz / 1_000_000).toFixed(3)} MHz`}
+          </div>
+          <div className="control-note">
+            Last tuned: {tuneHistory.length === 0 ? 'none yet' : `${tuneHistory.length} entries`}
+          </div>
+          {tuneHistory.slice(0, 6).map((entry) => (
+            <button
+              key={`${entry.tunedAtIso}-${entry.displayFrequencyHz}`}
+              className="action-btn btn-secondary"
+              onClick={() => {
+                tuneToDisplayFrequency(entry.displayFrequencyHz);
+                setDemodMode(entry.demodMode as DemodMode);
+                setStatusMessage(`Recalled ${(entry.displayFrequencyHz / 1_000_000).toFixed(3)} MHz (${entry.demodMode}).`);
+              }}
+            >
+              {(entry.displayFrequencyHz / 1_000_000).toFixed(3)} MHz ({entry.demodMode})
+            </button>
+          ))}
+        </Card>
 
         {/* Frequency Control */}
         <div className="control-group">
@@ -5146,15 +6244,18 @@ export default function App() {
             onChange={(e) => setTuningStepHz(parseInt(e.target.value, 10))}
             className="control-input compact"
           >
+            <option value="50">50 Hz</option>
             <option value="100">100 Hz</option>
             <option value="500">500 Hz</option>
             <option value="1000">1 kHz</option>
             <option value="2500">2.5 kHz</option>
             <option value="5000">5 kHz</option>
+            <option value="8333">8.333 kHz</option>
             <option value="10000">10 kHz</option>
             <option value="12500">12.5 kHz</option>
             <option value="25000">25 kHz</option>
             <option value="100000">100 kHz</option>
+            <option value="200000">200 kHz</option>
           </select>
         </div>
 
@@ -5165,8 +6266,11 @@ export default function App() {
             onChange={(e) => setFineTuningStepHz(parseInt(e.target.value, 10))}
             className="control-input compact"
           >
+            <option value="50">50 Hz</option>
             <option value="100">100 Hz</option>
+            <option value="250">250 Hz</option>
             <option value="500">500 Hz</option>
+            <option value="833">833 Hz</option>
             <option value="1000">1 kHz</option>
             <option value="2500">2.5 kHz</option>
             <option value="5000">5 kHz</option>
@@ -5581,15 +6685,15 @@ export default function App() {
         )}
 
         <div className="control-group">
-            <label htmlFor="frequency-mhz-input" className="control-label">Frequency (MHz)</label>
+            <label htmlFor="frequency-mhz-input" className="control-label">Display Frequency (MHz)</label>
             <input 
                 id="frequency-mhz-input"
                 ref={frequencyInputRef}
                 type="text"
                 inputMode="decimal"
-                aria-label="Frequency in MHz"
+              aria-label="Display frequency in MHz"
                 value={frequencyInputDraftMhz}
-                onFocus={() => setFrequencyInputDraftMhz((frequency / 1_000_000).toFixed(3))}
+              onFocus={() => setFrequencyInputDraftMhz((tunedDisplayFrequencyHz / 1_000_000).toFixed(3))}
                 onChange={(e) => setFrequencyInputDraftMhz(e.target.value)}
                 onBlur={cancelFrequencyInputDraft}
                 onKeyDown={(event) => {
@@ -6115,8 +7219,7 @@ export default function App() {
                 <button
                   className="action-btn btn-secondary"
                   onClick={() => {
-                    setFrequency(result.frequencyHz);
-                    setFineFreq(0);
+                    tuneToDisplayFrequency(result.frequencyHz);
                     setDemodMode('WFM');
                     setStatusMessage(`Tuned to ${(result.frequencyHz / 1_000_000).toFixed(1)} MHz from FM scan results.`);
                     pushDiagnosticEvent(`Tuned to scan result ${(result.frequencyHz / 1_000_000).toFixed(1)} MHz.`);

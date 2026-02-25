@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAtIso": "2026-02-25T01:42:46.510Z",
+  "durationSec": 1,
+  "targetFps": 60,
+  "frameCount": 16168,
+  "sustainedFps": 16167.18840714196,
+  "medianFps": 16528.92561985285,
+  "p95Fps": 16835.016835017806,
+  "passed": true
+}
