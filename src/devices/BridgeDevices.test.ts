@@ -118,4 +118,28 @@ describe('Bridge-backed SDR devices', () => {
 
     await device.close();
   });
+
+  it('redacts sensitive bridge diagnostics fields in debug traces', async () => {
+    const device = new SdrplayBridgeDevice();
+
+    await device.open();
+
+    (device as unknown as { trace: string[] }).trace.push(
+      'auth=super-secret-token peerId=sdrplay-bridge-peer secret=rad-sdrplay-bridge'
+    );
+
+    const traceEvents = device
+      .getDebugSnapshot?.()
+      ?.recentTrace
+      ?.map((entry) => entry.event)
+      .join('|');
+
+    expect(traceEvents).toContain('auth=[REDACTED]');
+    expect(traceEvents).toContain('peerId=[REDACTED]');
+    expect(traceEvents).toContain('secret=[REDACTED]');
+    expect(traceEvents).not.toContain('rad-sdrplay-bridge');
+    expect(traceEvents).not.toContain('sdrplay-bridge-peer');
+
+    await device.close();
+  });
 });

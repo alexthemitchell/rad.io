@@ -537,7 +537,30 @@ export abstract class BridgeBackedDevice implements ISDRDevice {
     };
   }
 
+  private redactTraceEntry(entry: string): string {
+    let redacted = entry;
+
+    const secretHints = [
+      this.config.secret,
+      this.config.bridgePeerId,
+      this.config.name,
+      this.name
+    ].filter((hint) => hint.length > 0);
+
+    for (const hint of secretHints) {
+      redacted = redacted.split(hint).join('[REDACTED]');
+    }
+
+    // Redact key-value diagnostics tokens to avoid leaking auth/session details.
+    redacted = redacted.replace(
+      /\b(token|secret|credential|auth|peerId|peer_id)\s*[:=]\s*[^\s,;]+/gi,
+      '$1=[REDACTED]'
+    );
+
+    return redacted;
+  }
+
   protected getBridgeTrace(): string[] {
-    return [...this.trace];
+    return this.trace.map((entry) => this.redactTraceEntry(entry));
   }
 }

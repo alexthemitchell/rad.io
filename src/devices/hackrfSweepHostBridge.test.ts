@@ -47,6 +47,22 @@ describe('hackrfSweepHostBridge', () => {
     expect(probe.reason).toContain('not advertised');
   });
 
+  it('rejects bridge with unsupported protocol version', () => {
+    const bridge: HackrfSweepHostBridgeApi = {
+      providerLabel: 'bridge-daemon',
+      protocolVersion: 0,
+      capabilities: [HACKRF_SWEEP_BRIDGE_CAPABILITY_ID],
+      runHackrfSweep: vi.fn(async () => ({
+        points: [{ frequencyHz: 100_000_000, powerDbfs: -40 }],
+        elapsedMs: 125
+      }))
+    };
+
+    const probe = probeHackrfSweepHostBridge({ __RADIO_HOST_BRIDGE__: bridge });
+    expect(probe.available).toBe(false);
+    expect(probe.reason).toContain('Unsupported host bridge protocol version');
+  });
+
   it('runs host sweep and normalizes diagnostics', async () => {
     const bridge: HackrfSweepHostBridgeApi = {
       protocolVersion: 1,
@@ -97,5 +113,29 @@ describe('hackrfSweepHostBridge', () => {
         timeoutMs: 20_000
       }
     })).rejects.toThrow('no sweep points');
+  });
+
+  it('validates request bounds before invoking bridge execution', async () => {
+    const bridge: HackrfSweepHostBridgeApi = {
+      protocolVersion: 1,
+      capabilities: [HACKRF_SWEEP_BRIDGE_CAPABILITY_ID],
+      runHackrfSweep: vi.fn(async () => ({
+        points: [{ frequencyHz: 100_000_000, powerDbfs: -40 }],
+        elapsedMs: 5
+      }))
+    };
+
+    await expect(runHackrfSweepViaHostBridge({
+      bridge,
+      request: {
+        startFrequencyHz: 100_500_000,
+        stopFrequencyHz: 99_500_000,
+        stepHz: 250_000,
+        sampleRateHz: 2_000_000,
+        timeoutMs: 20_000
+      }
+    })).rejects.toThrow('stop frequency must be greater than start frequency');
+
+    expect(bridge.runHackrfSweep).not.toHaveBeenCalled();
   });
 });

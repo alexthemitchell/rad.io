@@ -4,7 +4,7 @@ Date: 2026-02-25
 
 ## Decision
 
-`hackrf_sweep` hardware mode is implemented as a host-assisted path when an explicit bridge capability is present, and remains unavailable in pure browser-only WebUSB. The app now executes hardware sweep through a gated bridge contract and falls back deterministically to software tune/settle/stitch otherwise.
+`hackrf_sweep` hardware mode is implemented only as a host-assisted path when an explicit bridge capability is present, and remains unavailable in pure browser-only WebUSB. The app executes hardware sweep through a gated bridge contract and otherwise falls back to software tune/settle/stitch.
 
 ## Evidence
 
