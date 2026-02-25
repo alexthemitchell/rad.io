@@ -452,61 +452,61 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 6.1 VFO Management
 
-- [ ] **Multi-VFO Core (DSP + State)**: multiple demodulators, channel extraction strategy selection, and per-VFO metrics (CPU/time/quality).
-- [ ] **Resource Budget UX**: surface VFO CPU/memory/audio-stream warnings with actionable suggestions (pause/solo/disable audio).
-- [ ] **VFO UI (Productized)**: per-VFO tuning, mode, bandwidth, squelch, gain, priority, plus focus/solo/mute semantics.
-- [ ] **Multi-VFO Overlays**: render multiple VFO markers/regions on spectrum + waterfall (not just a single cursor), with color coding and selection.
-- [ ] **Per-VFO Audio Routing**: multi-stream mixer with per-VFO gain and optional pan; configurable max concurrent audio > 1.
-- [ ] **VFO Presets**: persist VFO sets as named presets (separate from runtime state) and safely reapply on reconnect.
-- [ ] **Multi-VFO Conformance Suite**: continuity/timestamp/discontinuity behavior, strategy-switch correctness, and regression fixtures.
+- [x] **Multi-VFO Core (DSP + State)**: multiple demodulators, channel extraction strategy selection, and per-VFO metrics (CPU/time/quality). (`src/dsp/worker.ts`, `src/dsp/MultiVfoChannelizer.ts`, `src/dsp/multiVfoCore.ts`, `src/App.tsx`)
+- [x] **Resource Budget UX**: surface VFO CPU/memory/audio-stream warnings with actionable suggestions (pause/solo/disable audio). (`src/measurements/vfoResourceBudget.ts`, `src/measurements/vfoResourceBudget.test.ts`, `src/App.tsx`)
+- [x] **VFO UI (Productized)**: per-VFO tuning, mode, bandwidth, squelch, gain, priority, plus focus/solo/mute semantics. (`src/App.tsx` command palette + VFO management panel)
+- [x] **Multi-VFO Overlays**: render multiple VFO markers/regions on spectrum + waterfall (not just a single cursor), with color coding and selection. (`src/components/WaterfallCanvas.tsx`, `src/App.tsx`)
+- [x] **Per-VFO Audio Routing**: multi-stream mixer with per-VFO gain and optional pan; configurable max concurrent audio > 1. (`src/dsp/multiVfoCore.ts`, `src/dsp/multiVfoCore.test.ts`, `src/dsp/worker.ts`, `src/App.tsx`)
+- [x] **VFO Presets**: persist VFO sets as named presets (separate from runtime state) and safely reapply on reconnect. (`src/measurements/vfoPresetsStore.ts`, `src/measurements/vfoPresetsStore.test.ts`, `src/App.tsx`)
+- [x] **Multi-VFO Conformance Suite**: continuity/timestamp/discontinuity behavior, strategy-switch correctness, and regression fixtures. (`src/dsp/multiVfoConformance.ts`, `src/dsp/multiVfoConformance.test.ts`, `src/dsp/MultiVfoChannelizer.test.ts`)
 
 ### 6.2 Recording & Persistence
 
-- [ ] **IQ Recording**: record IQ to IndexedDB (SigMF compliant).
-- [ ] **Audio Recording**: record demodulated audio.
-- [ ] **Instant Replay Ring Buffer**: time-shift listening (“record last N seconds”) with deterministic export that includes tuned state + discontinuity markers.
-- [ ] **Quick “Tap Export” (Post-DDC IQ + Post-Demod Audio)**: export short ring-buffer captures (with full metadata) for debugging, sharing, and external-tool interoperability.
-- [ ] **Shareable “RF Scene” Bundles**: export an IQ clip + exact pipeline graph/config + analyzer state + device/profile metadata for deterministic support and benchmarking.
-- [ ] **Structured Annotations (“RF Notebook”)**: time/frequency-range notes + tags stored with sessions/recordings and included in exports/support bundles.
-- [ ] **Repro Manifest + One-Click Replay Entry Point**: each exported bundle includes a single manifest and a deterministic replay entrypoint (no manual “rebuild state” steps).
-- [ ] **Trust-Stamped Exports (Measurement Disclosure)**: embed a compact “trust stamp” (session grade, calibration snapshot, drop/underrun stats, RF chain assumptions) into SigMF/WAV metadata and bundle manifests.
-- [ ] **Bookmarks**: frequency bookmarking.
-- [ ] **Device Presets**: bundle device settings + VFO settings.
-- [ ] **SigMF Metadata Editor**: edit/validate metadata and annotations.
-- [ ] **Scheduled/Chunked Recording**: quotas, long-running recordings.
-- [ ] **Deterministic Replay**: replay recordings through pipeline reproducibly.
-- [ ] **IQ Import/Export (Interchange)**: support common interchange formats (e.g., interleaved `int16`/`float32`) plus a metadata sidecar.
-- [ ] **Standardized IQ Export Profiles (Scaling Rules)**: define canonical export formats (e.g., `cf32_le`, `cs16_le`, `cu8`) with explicit amplitude scaling/signedness/IQ order guarantees.
-- [ ] **Interop-Required Metadata Checklist (Hard Gate)**: validate exports include rate, center/display/LO frequencies, applied PPM, offsets (LO/IF), gain stages, RF chain snapshot, and discontinuity timeline.
-- [ ] **Offline Render (Deterministic Demod)**: render demodulated audio from IQ recordings non-realtime for perfect reproducibility and “export even on slow machines”.
-- [ ] **Audio Export (Interchange)**: export demodulated output as WAV (and optionally FLAC) with embedded metadata about mode/bandwidth/demod params.
-- [ ] **Workspace State Import/Export**: save/load VFOs, markers, band plan selection, calibration profiles, and UI state for portability.
-- [ ] **Replay Reproducibility Metadata**: store the DSP chain parameters + app/version info with each recording so replay is actually reproducible.
-- [ ] **Frequency/Calibration Provenance in SigMF**: persist PPM, drift estimate/confidence, AFC/lock state, and calibration offsets into recording metadata so frequency and level claims remain meaningful on replay/export.
-- [ ] **Storage/Quota UX & Retention**: show available storage, detect IndexedDB quota failures early, and provide retention/cleanup (auto-expire, “export then delete”, compaction).
+- [x] **IQ Recording**: record IQ to IndexedDB (SigMF compliant). (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Audio Recording**: record demodulated audio. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Instant Replay Ring Buffer**: time-shift listening (“record last N seconds”) with deterministic export that includes tuned state + discontinuity markers. (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Quick “Tap Export” (Post-DDC IQ + Post-Demod Audio)**: export short ring-buffer captures (with full metadata) for debugging, sharing, and external-tool interoperability. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Shareable “RF Scene” Bundles**: export an IQ clip + exact pipeline graph/config + analyzer state + device/profile metadata for deterministic support and benchmarking. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `docs/reference/phase6-2-recording-persistence.md`)
+- [x] **Structured Annotations (“RF Notebook”)**: time/frequency-range notes + tags stored with sessions/recordings and included in exports/support bundles. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Repro Manifest + One-Click Replay Entry Point**: each exported bundle includes a single manifest and a deterministic replay entrypoint (no manual “rebuild state” steps). (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Trust-Stamped Exports (Measurement Disclosure)**: embed a compact “trust stamp” (session grade, calibration snapshot, drop/underrun stats, RF chain assumptions) into SigMF/WAV metadata and bundle manifests. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Bookmarks**: frequency bookmarking. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`)
+- [x] **Device Presets**: bundle device settings + VFO settings. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`)
+- [x] **SigMF Metadata Editor**: edit/validate metadata and annotations. (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Scheduled/Chunked Recording**: quotas, long-running recordings. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Deterministic Replay**: replay recordings through pipeline reproducibly. (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **IQ Import/Export (Interchange)**: support common interchange formats (e.g., interleaved `int16`/`float32`) plus a metadata sidecar. (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Standardized IQ Export Profiles (Scaling Rules)**: define canonical export formats (e.g., `cf32_le`, `cs16_le`, `cu8`) with explicit amplitude scaling/signedness/IQ order guarantees. (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Interop-Required Metadata Checklist (Hard Gate)**: validate exports include rate, center/display/LO frequencies, applied PPM, offsets (LO/IF), gain stages, RF chain snapshot, and discontinuity timeline. (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Offline Render (Deterministic Demod)**: render demodulated audio from IQ recordings non-realtime for perfect reproducibility and “export even on slow machines”. (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Audio Export (Interchange)**: export demodulated output as WAV (and optionally FLAC) with embedded metadata about mode/bandwidth/demod params. (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Workspace State Import/Export**: save/load VFOs, markers, band plan selection, calibration profiles, and UI state for portability. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Replay Reproducibility Metadata**: store the DSP chain parameters + app/version info with each recording so replay is actually reproducible. (`src/measurements/recordingPersistence.ts`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Frequency/Calibration Provenance in SigMF**: persist PPM, drift estimate/confidence, AFC/lock state, and calibration offsets into recording metadata so frequency and level claims remain meaningful on replay/export. (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `src/measurements/recordingPersistence.test.ts`)
+- [x] **Storage/Quota UX & Retention**: show available storage, detect IndexedDB quota failures early, and provide retention/cleanup (auto-expire, “export then delete”, compaction). (`src/measurements/recordingPersistence.ts`, `src/App.tsx`, `src/measurements/recordingPersistence.test.ts`)
 
 ### 6.3 Recovery UX
 
-- [ ] **Safe Mode**: reset pipeline/device/selected persisted state.
-- [ ] **Safe Mode Startup Shortcut**: allow holding a key or URL param to bypass auto-restore/auto-connect for support and recovery.
+- [x] **Safe Mode**: reset pipeline/device/selected persisted state. (`src/App.tsx` safe-mode reset action + banner reset path, `src/measurements/safeMode.ts`, `src/measurements/safeMode.test.ts`)
+- [x] **Safe Mode Startup Shortcut**: allow holding a key or URL param to bypass auto-restore/auto-connect for support and recovery. (`src/App.tsx` startup safe-mode gating + bypass behavior, `src/measurements/safeMode.ts`, `src/measurements/safeMode.test.ts`)
 
 ### 6.4 Frequency Database & Memories (Workflow)
 
-- [ ] **Channel/Memories System**: memory banks with labels/tags/notes, per-entry mode/bandwidth/step, and “apply on tune”.
-- [ ] **Scan Lists**: prioritized scan lists with dwell, lockout, and per-list squelch semantics (scanner-grade workflows).
-- [ ] **Import/Export**: CSV import/export for memories and scan lists, plus curated regional bandplan packs.
-- [ ] **Constraint-Checked “Known Good” Presets**: band/mode/device presets that validate rate/decimation/filter constraints and restore safely on reconnect.
+- [x] **Channel/Memories System**: memory banks with labels/tags/notes, per-entry mode/bandwidth/step, and “apply on tune”. (`src/measurements/phase64Workflow.ts`, `src/measurements/phase64Workflow.test.ts`, `src/App.tsx` Phase 6.4 Memories controls)
+- [x] **Scan Lists**: prioritized scan lists with dwell, lockout, and per-list squelch semantics (scanner-grade workflows). (`src/measurements/phase64Workflow.ts`, `src/measurements/phase64Workflow.test.ts`, `src/App.tsx` Scan Lists controls + runtime advance action)
+- [x] **Import/Export**: CSV import/export for memories and scan lists, plus curated regional bandplan packs. (`src/measurements/phase64Workflow.ts`, `src/measurements/phase64Workflow.test.ts`, `src/App.tsx` CSV import/export + curated pack buttons)
+- [x] **Constraint-Checked “Known Good” Presets**: band/mode/device presets that validate rate/decimation/filter constraints and restore safely on reconnect. (`src/measurements/phase64Workflow.ts`, `src/measurements/phase64Workflow.test.ts`, `src/App.tsx` known-good preset save/apply with validation)
 
 ### 6.5 Scanning & Occupancy (Workflow)
 
-- [ ] **Wideband Scan Mode**: fast sweep/step scanning (tune-settle-measure), persistence/hold, occupancy logging, and export for monitoring workflows.
+- [x] **Wideband Scan Mode**: fast sweep/step scanning (tune-settle-measure), persistence/hold, occupancy logging, and export for monitoring workflows. (`src/measurements/phase65ScanningOccupancy.ts`, `src/measurements/phase65ScanningOccupancy.test.ts`, `src/App.tsx`, `docs/reference/phase6-5-scanning-occupancy.md`)
 
 ### 6.6 Satellite & Doppler Workflows
 
-- [ ] **TLE Import & Propagation**: Import Two-Line Element sets and propagate orbits (SGP4).
-- [ ] **Doppler Correction**: Real-time VFO frequency tracking based on relative velocity.
-- [ ] **Rotator Control**: Integration with `rotctld` (via local bridge) for antenna pointing.
-- [ ] **Predictive Pass List**: Calculate and display upcoming satellite passes.
+- [x] **TLE Import & Propagation**: Import Two-Line Element sets and propagate orbits (SGP4) for pass prediction and Doppler workflows. (`src/measurements/phase66SatelliteWorkflows.ts`, `src/measurements/phase66SatelliteWorkflows.test.ts`, `docs/reference/phase6-6-satellite-workflows.md`)
+- [x] **Doppler Correction**: Real-time VFO frequency tracking based on relative velocity. (`src/measurements/phase66SatelliteWorkflows.ts`, `src/measurements/phase66SatelliteWorkflows.test.ts`, `src/App.tsx`)
+- [x] **Rotator Control**: Integration with `rotctld` (via local bridge) for antenna pointing. (`src/devices/rotctldHostBridge.ts`, `src/devices/rotctldHostBridge.test.ts`, `src/App.tsx`)
+- [x] **Predictive Pass List**: Calculate and display upcoming satellite passes. (`src/measurements/phase66SatelliteWorkflows.ts`, `src/measurements/phase66SatelliteWorkflows.test.ts`, `src/App.tsx`)
 
 ## Phase 7: Performance Scaling & Advanced DSP
 
@@ -641,3 +641,4 @@ These are gates, not features: they define what good means and prevent late-stag
 ## Out of Scope
 
 - **Transmit Capabilities**: due to regulatory considerations and safety, no transmission features (Signal Generator, TX mode).
+

@@ -5,6 +5,13 @@ export type WaterfallCursorReadout = {
   powerDbfs: number;
 };
 
+export type WaterfallVfoOverlay = {
+  id: string;
+  label: string;
+  frequencyHz: number;
+  active: boolean;
+};
+
 interface WaterfallCanvasProps {
   data: Float32Array;
   minDb?: number;
@@ -15,6 +22,7 @@ interface WaterfallCanvasProps {
   autoScale?: boolean;
   palette?: 'cividis' | 'inferno';
   freeze?: boolean;
+  vfoOverlays?: WaterfallVfoOverlay[];
   onCursorChange?: (readout: WaterfallCursorReadout | null) => void;
 }
 
@@ -60,6 +68,7 @@ export function WaterfallCanvas({
   autoScale = true,
   palette = 'cividis',
   freeze = false,
+  vfoOverlays = [],
   onCursorChange
 }: WaterfallCanvasProps) {
   const dataCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -176,13 +185,39 @@ export function WaterfallCanvas({
       ctx.fillText(label, x - Math.floor(textWidth / 2), topPad + plotHeight + Math.floor(bottomPad * 0.65));
     }
 
+    if (vfoOverlays.length > 0) {
+      for (const overlay of vfoOverlays) {
+        const ratio = ((overlay.frequencyHz - centerFrequencyHz) / spanHz) + 0.5;
+        if (ratio < 0 || ratio > 1) {
+          continue;
+        }
+
+        const x = leftPad + Math.floor(ratio * plotWidth);
+        ctx.strokeStyle = overlay.active ? 'rgba(56, 189, 248, 0.95)' : 'rgba(125, 211, 252, 0.72)';
+        ctx.lineWidth = overlay.active ? 2 : 1;
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, topPad);
+        ctx.lineTo(x + 0.5, topPad + plotHeight);
+        ctx.stroke();
+
+        const chip = overlay.active ? ` ${overlay.label}* ` : ` ${overlay.label} `;
+        ctx.fillStyle = overlay.active ? 'rgba(12, 74, 110, 0.95)' : 'rgba(15, 23, 42, 0.88)';
+        const chipWidth = ctx.measureText(chip).width + 10;
+        const chipX = Math.max(leftPad, Math.min(leftPad + plotWidth - chipWidth, x - chipWidth / 2));
+        const chipY = topPad + 8;
+        ctx.fillRect(chipX, chipY, chipWidth, 18);
+        ctx.fillStyle = 'rgba(224, 242, 254, 0.95)';
+        ctx.fillText(chip, chipX + 5, chipY + 13);
+      }
+    }
+
     ctx.fillStyle = 'rgba(236, 245, 252, 0.95)';
     ctx.fillText(
       `RF Waterfall (newest at top) | Range ${displayMin.toFixed(0)}..${displayMax.toFixed(0)} dB`,
       leftPad,
       Math.floor(topPad * 0.7)
     );
-  }, [centerFrequencyHz, sampleRateHz, zoom]);
+  }, [centerFrequencyHz, sampleRateHz, vfoOverlays, zoom]);
 
   useEffect(() => {
     colormap.current = new Uint32Array(256);

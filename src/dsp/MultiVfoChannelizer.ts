@@ -9,6 +9,7 @@ export type VfoFrame = {
   id: string;
   iq: Float32Array;
   groupDelaySamples: number;
+  strategy: 'direct' | 'pfb-decimate';
 };
 
 export class MultiVfoChannelizer {
@@ -90,7 +91,7 @@ export class MultiVfoChannelizer {
 
       const out = new Float32Array(inputIq.length);
       osc.mix(inputIq, out);
-      frames.push({ id: vfo.id, iq: out, groupDelaySamples: 0 });
+      frames.push({ id: vfo.id, iq: out, groupDelaySamples: 0, strategy: 'direct' });
     }
 
     return frames;
@@ -109,7 +110,7 @@ export class MultiVfoChannelizer {
       const mixed = new Float32Array(inputIq.length);
       osc.mix(inputIq, mixed);
       const decimated = this.filterDecimateComplex(mixed, this.pfbDecimation);
-      frames.push({ id: vfo.id, iq: decimated, groupDelaySamples });
+      frames.push({ id: vfo.id, iq: decimated, groupDelaySamples, strategy: 'pfb-decimate' });
     }
 
     return frames;

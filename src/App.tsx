@@ -115,6 +115,13 @@ import {
   type TuneHistoryEntry
 } from './measurements/interactionHistory';
 import { resolveSecondaryOffsetFromMarkerHz, resolveVfoDisplayFrequencyHz, type VfoBindingId } from './measurements/markerVfoBinding';
+import {
+  createVfoPreset,
+  loadVfoPresets,
+  saveVfoPresets,
+  type VfoPreset
+} from './measurements/vfoPresetsStore';
+import { evaluateVfoResourceBudget } from './measurements/vfoResourceBudget';
 import { assessBufferTelemetry, buildAsciiOccupancyTrend } from './measurements/bufferTelemetry';
 import { assessIqIntegrityWizard } from './measurements/iqIntegrityWizard';
 import { assessTimebaseDriftTelemetry } from './measurements/timebaseDriftTelemetry';
@@ -149,7 +156,30 @@ import {
 import { validateRecordingExportIntegrity } from './measurements/recordingExportIntegrityValidator';
 import { createRfAudioTimebaseAlignmentSnapshot } from './measurements/rfAudioTimebaseAlignment';
 import { createFixtureInteropExportBundle } from './fixtures/sigmf/interopExport';
+import {
+  appendRecorderChunk,
+  buildSigmfMetadataDraft,
+  createAudioExport,
+  createBookmark,
+  createBrowserRecordingStore,
+  createRecorderSession,
+  createRecordingFromSession,
+  createReproBundle,
+  createStructuredAnnotation,
+  createTrustStamp,
+  createWorkspaceStateBundle,
+  deterministicReplay,
+  enforceRetentionPolicy,
+  quickTapExportFromRingBuffer,
+  renderOfflineDeterministicDemod,
+  validateInteropRequiredMetadataChecklist,
+  type RecorderSession,
+  type RecordingRecord,
+  type StructuredAnnotation,
+  type WorkspaceStateBundle
+} from './measurements/recordingPersistence';
 import { WorkerBridge } from './dsp/WorkerBridge';
+import type { VfoAudioRoute, VfoRuntimeMetric } from './dsp/multiVfoCore';
 import {
   displayToTunerFrequencyHz,
   formatFrequencyModelSummary,
@@ -272,12 +302,8 @@ type AudioPllState = {
 
 type VfoRuntimeState = {
   activeVfoCount: number;
-  vfos: Array<{
-    id: string;
-    offsetHz: number;
-    groupDelaySamples: number;
-    power: number;
-  }>;
+  audioRoute: VfoAudioRoute;
+  vfos: VfoRuntimeMetric[];
 };
 
 type WfmStereoState = {
@@ -440,6 +466,7 @@ type SafeModeSnapshot = {
   stabilityModeEnabled: boolean;
   secondaryVfoEnabled: boolean;
   secondaryVfoOffsetHz: number;
+  vfoAudioRoute: VfoAudioRoute;
 };
 
 type SafeModeMarker = {
@@ -607,6 +634,7 @@ const defaultAudioPllState = (): AudioPllState => ({
 
 const defaultVfoRuntimeState = (): VfoRuntimeState => ({
   activeVfoCount: 0,
+  audioRoute: 'main',
   vfos: []
 });
 
@@ -821,7 +849,28 @@ export default function App() {
     const [wfmStereoState, setWfmStereoState] = useState<WfmStereoState>(defaultWfmStereoState);
     const [secondaryVfoEnabled, setSecondaryVfoEnabled] = useState(false);
     const [secondaryVfoOffsetHz, setSecondaryVfoOffsetHz] = useState(12_500);
-    const [stabilityProfile, setStabilityProfile] = useState<StabilityProfile | null>(null);
+    const [vfoAudioRoute, setVfoAudioRoute] = useState<VfoAudioRoute>('main');
+    const [vfoPresetNameDraft, setVfoPresetNameDraft] = useState('');
+    const [vfoPresets, setVfoPresets] = useState<VfoPreset[]>(() => {
+      try {
+        return loadVfoPresets(localStorage);
+      } catch {
+        return [];
+      }
+    });
+    const [recordingRecords, setRecordingRecords] = useState<RecordingRecord[]>([]);
+    const [selectedRecordingId, setSelectedRecordingId] = useState('');
+    const [recordingActive, setRecordingActive] = useState(false);
+    const [recorderSession, setRecorderSession] = useState<RecorderSession | null>(null);
+    const [recordingBookmarks, setRecordingBookmarks] = useState<Array<{ id: string; label: string; frequencyHz: number; createdAtIso: string }>>([]);
+    const [bookmarkNameDraft, setBookmarkNameDraft] = useState('');
+    const [recordingAnnotations, setRecordingAnnotations] = useState<StructuredAnnotation[]>([]);
+    const [annotationDraft, setAnnotationDraft] = useState('');
+    
+    const [workspaceImportDraft] = useState('');
+    const [recordingScheduledStartIso] = useState('');
+    const [recordingChunkDurationMs] = useState(5_000);
+    const [replayWindowMs] = useState(15_000);    const [stabilityProfile, setStabilityProfile] = useState<StabilityProfile | null>(null);
     const [sessionGradeLockedAtIso, setSessionGradeLockedAtIso] = useState<string | null>(null);
     const [sessionGradeLockInvalidatedReason, setSessionGradeLockInvalidatedReason] = useState<string | null>(null);
     const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -935,6 +984,44 @@ export default function App() {
     [activeVfoId, secondaryVfoEnabled, secondaryVfoOffsetHz, tunedDisplayFrequencyHz]
   );
 
+  const effectiveVfoAudioRoute = useMemo<VfoAudioRoute>(() => {
+    if (!secondaryVfoEnabled && vfoAudioRoute === 'aux') {
+      return 'main';
+    }
+    return vfoAudioRoute;
+  }, [secondaryVfoEnabled, vfoAudioRoute]);
+
+  const vfoOverlayDescriptors = useMemo(() => {
+    const overlays = [
+      {
+        id: 'main',
+        label: 'MAIN',
+        frequencyHz: tunedDisplayFrequencyHz,
+        active: activeVfoId === 'main'
+      }
+    ];
+
+    if (secondaryVfoEnabled) {
+      overlays.push({
+        id: 'aux',
+        label: 'AUX',
+        frequencyHz: tunedDisplayFrequencyHz + secondaryVfoOffsetHz,
+        active: activeVfoId === 'aux'
+      });
+    }
+
+    return overlays;
+  }, [activeVfoId, secondaryVfoEnabled, secondaryVfoOffsetHz, tunedDisplayFrequencyHz]);
+
+  const vfoResourceBudget = useMemo(() => evaluateVfoResourceBudget({
+    activeVfoCount: vfoState.activeVfoCount,
+    vfos: vfoState.vfos,
+    pipelineTotalMs: runtimeTelemetry.dsp.pipelineTiming.totalMs,
+    audioUnderruns: runtimeTelemetry.audioUnderruns,
+    audioRoute: effectiveVfoAudioRoute,
+    secondaryVfoEnabled
+  }), [effectiveVfoAudioRoute, runtimeTelemetry.audioUnderruns, runtimeTelemetry.dsp.pipelineTiming.totalMs, secondaryVfoEnabled, vfoState.activeVfoCount, vfoState.vfos]);
+
   const activeCalibrationBandId = useMemo(
     () => resolveCalibrationBandId(tunedDisplayFrequencyHz),
     [tunedDisplayFrequencyHz]
@@ -980,7 +1067,24 @@ export default function App() {
   const previousBandwidthRef = useRef<number | null>(null);
   const streamToggleShortcutRef = useRef<(() => void) | null>(null);
   const exportDiagnosticsShortcutRef = useRef<(() => void) | null>(null);
+  const startRecordingRef = useRef<(() => void) | null>(null);
+  const stopRecordingRef = useRef<(() => void) | null>(null);
+  const replayRecordingRef = useRef<(() => Promise<void>) | null>(null);
+  const exportRecordingBundleRef = useRef<(() => Promise<void>) | null>(null);
+  const appendRecordingCaptureChunkRef = useRef<(iqData: Uint8Array, audioData: Float32Array) => void>(() => undefined);
+  const recordingStoreRef = useRef(createBrowserRecordingStore());
+  const recordingSessionRef = useRef<RecorderSession | null>(null);
   const [backgroundAudioGuardActive, setBackgroundAudioGuardActive] = useState(false);
+
+  const downloadJsonBlob = useCallback((filename: string, payload: unknown) => {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, []);
 
   const activeDeviceProfileKey = useMemo(() => {
     const deviceName = deviceRef.current?.name ?? null;
@@ -1276,7 +1380,8 @@ export default function App() {
     afcEnabled,
     stabilityModeEnabled,
     secondaryVfoEnabled,
-    secondaryVfoOffsetHz
+    secondaryVfoOffsetHz,
+    vfoAudioRoute: effectiveVfoAudioRoute
   }), [
     afcEnabled,
     clockSyncPolicy,
@@ -1285,6 +1390,7 @@ export default function App() {
     frequency,
     latencyPolicy,
     ppmCorrection,
+    effectiveVfoAudioRoute,
     secondaryVfoEnabled,
     secondaryVfoOffsetHz,
     sourceType,
@@ -1298,6 +1404,7 @@ export default function App() {
     setStabilityModeEnabled(false);
     setSecondaryVfoEnabled(false);
     setSecondaryVfoOffsetHz(12_500);
+    setVfoAudioRoute('main');
     setToneDecodeMode('OFF');
   }, []);
 
@@ -1357,6 +1464,7 @@ export default function App() {
     setStabilityModeEnabled(snapshot.stabilityModeEnabled);
     setSecondaryVfoEnabled(snapshot.secondaryVfoEnabled);
     setSecondaryVfoOffsetHz(snapshot.secondaryVfoOffsetHz);
+    setVfoAudioRoute(snapshot.vfoAudioRoute === 'aux' || snapshot.vfoAudioRoute === 'mix' || snapshot.vfoAudioRoute === 'mute' ? snapshot.vfoAudioRoute : 'main');
   }, []);
 
   const requestSafeRestoreConfirmation = useCallback((snapshot: SafeModeSnapshot) => {
@@ -1699,6 +1807,7 @@ export default function App() {
         try {
           const audioData = new Float32Array(e.data.data as ArrayBuffer);
           audioRef.current?.push(audioData);
+          appendRecordingCaptureChunkRef.current(new Uint8Array(0), audioData);
         } catch {
           triggerCrashOnlyRecovery('audio-pipeline-fault');
         }
@@ -2672,6 +2781,12 @@ export default function App() {
   }, [activeVfoId, secondaryVfoEnabled]);
 
   useEffect(() => {
+    if (!secondaryVfoEnabled && vfoAudioRoute === 'aux') {
+      setVfoAudioRoute('main');
+    }
+  }, [secondaryVfoEnabled, vfoAudioRoute]);
+
+  useEffect(() => {
     const region = getBandRegionPlan(bandRegionId);
     if (region.bands.length === 0) {
       return;
@@ -2990,6 +3105,18 @@ export default function App() {
     ];
     postToWorker({ command: 'SET_VFOS', value: vfos });
   }, [postToWorker, secondaryVfoEnabled, secondaryVfoOffsetHz]);
+
+  useEffect(() => {
+    postToWorker({ command: 'SET_VFO_AUDIO_ROUTE', value: effectiveVfoAudioRoute });
+  }, [effectiveVfoAudioRoute, postToWorker]);
+
+  useEffect(() => {
+    try {
+      saveVfoPresets(localStorage, vfoPresets);
+    } catch {
+      // Best effort local persistence for reusable VFO preset sets.
+    }
+  }, [vfoPresets]);
 
   useEffect(() => {
     audioRef.current?.setOutputLevel(audioOutputLevel);
@@ -3430,6 +3557,7 @@ export default function App() {
               usbTransferCountRef.current += 1;
 
               const iqBytes = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
+              appendRecordingCaptureChunkRef.current(iqBytes, new Float32Array(0));
               const metricSampleSize = Math.min(iqBytes.length, 4096);
 
               if (metricSampleSize > 0) {
@@ -3993,7 +4121,8 @@ export default function App() {
               afcEnabled,
               stabilityModeEnabled,
               secondaryVfoEnabled,
-              secondaryVfoOffsetHz
+              secondaryVfoOffsetHz,
+              vfoAudioRoute: effectiveVfoAudioRoute
             },
             filterState,
             audioLevelerState,
@@ -4309,6 +4438,45 @@ export default function App() {
           run: () => tuneToDisplayFrequency(Math.max(0, tunedDisplayFrequencyHz - tuningStepHz))
         },
         {
+          id: 'vfo-active-main',
+          label: 'Active VFO: Main',
+          keywords: ['vfo', 'main', 'focus'],
+          run: () => setActiveVfoId('main')
+        },
+        {
+          id: 'vfo-active-aux',
+          label: 'Active VFO: Aux',
+          keywords: ['vfo', 'aux', 'focus'],
+          run: () => {
+            setSecondaryVfoEnabled(true);
+            setActiveVfoId('aux');
+          }
+        },
+        {
+          id: 'vfo-route-main',
+          label: 'VFO Audio Route: Main',
+          keywords: ['vfo', 'audio', 'route', 'main', 'solo'],
+          run: () => setVfoAudioRoute('main')
+        },
+        {
+          id: 'vfo-route-aux',
+          label: 'VFO Audio Route: Aux',
+          keywords: ['vfo', 'audio', 'route', 'aux', 'solo'],
+          run: () => {
+            setSecondaryVfoEnabled(true);
+            setVfoAudioRoute('aux');
+          }
+        },
+        {
+          id: 'vfo-route-mix',
+          label: 'VFO Audio Route: Mix',
+          keywords: ['vfo', 'audio', 'route', 'mix'],
+          run: () => {
+            setSecondaryVfoEnabled(true);
+            setVfoAudioRoute('mix');
+          }
+        },
+        {
           id: 'export-diagnostics',
           label: 'Export Diagnostics',
           keywords: ['export', 'diagnostics', 'bundle', 'support'],
@@ -4325,12 +4493,31 @@ export default function App() {
           }
         },
         {
-          id: 'record-placeholder',
-          label: 'Record (not yet available)',
-          keywords: ['record', 'capture', 'audio', 'iq'],
+          id: 'record-toggle',
+          label: recordingActive ? 'Stop Recording' : 'Start Recording',
+          keywords: ['record', 'capture', 'audio', 'iq', 'sigmf', 'indexeddb'],
           run: () => {
-            setStatusMessage('Recording is not available yet in MVP preview.');
-            pushDiagnosticEvent('Record command invoked from command palette; feature not available yet.', 'warn');
+            if (recordingActive) {
+              stopRecordingRef.current?.();
+            } else {
+              startRecordingRef.current?.();
+            }
+          }
+        },
+        {
+          id: 'record-replay',
+          label: 'Replay Last Recording',
+          keywords: ['record', 'replay', 'deterministic'],
+          run: () => {
+            void replayRecordingRef.current?.();
+          }
+        },
+        {
+          id: 'record-export',
+          label: 'Export Repro Bundle',
+          keywords: ['export', 'repro', 'manifest', 'scene', 'sigmf'],
+          run: () => {
+            void exportRecordingBundleRef.current?.();
           }
         }
       ];
@@ -4710,6 +4897,347 @@ export default function App() {
     setSecondaryVfoOffsetHz(nextOffsetHz);
     setStatusMessage(`Aux VFO offset set to ${nextOffsetHz.toLocaleString()} Hz from marker.`);
   }, [activeVfoId, analyzerMarker, tuneToDisplayFrequency, tunedDisplayFrequencyHz]);
+
+  const applyVfoPreset = useCallback((preset: VfoPreset) => {
+    setSecondaryVfoEnabled(preset.secondaryVfoEnabled);
+    setSecondaryVfoOffsetHz(preset.secondaryVfoOffsetHz);
+    setActiveVfoId(preset.secondaryVfoEnabled ? preset.activeVfoId : 'main');
+    setVfoAudioRoute(preset.secondaryVfoEnabled ? preset.audioRoute : preset.audioRoute === 'aux' ? 'main' : preset.audioRoute);
+    setStatusMessage(`Applied VFO preset: ${preset.name}.`);
+    pushDiagnosticEvent(`Applied VFO preset ${preset.name}.`, 'info', 'vfo');
+  }, [pushDiagnosticEvent]);
+
+  const saveCurrentVfoPreset = useCallback(() => {
+    const draft = vfoPresetNameDraft.trim();
+    if (!draft) {
+      setStatusMessage('Enter a preset name before saving.');
+      return;
+    }
+
+    const preset = createVfoPreset(draft, {
+      secondaryVfoEnabled,
+      secondaryVfoOffsetHz,
+      activeVfoId: secondaryVfoEnabled ? activeVfoId : 'main',
+      audioRoute: effectiveVfoAudioRoute
+    });
+    setVfoPresets((prev) => [preset, ...prev].slice(0, 24));
+    setVfoPresetNameDraft('');
+    setStatusMessage(`Saved VFO preset: ${preset.name}.`);
+    pushDiagnosticEvent(`Saved VFO preset ${preset.name}.`, 'info', 'vfo');
+  }, [activeVfoId, effectiveVfoAudioRoute, pushDiagnosticEvent, secondaryVfoEnabled, secondaryVfoOffsetHz, vfoPresetNameDraft]);
+
+  const deleteVfoPreset = useCallback((id: string) => {
+    setVfoPresets((prev) => prev.filter((preset) => preset.id !== id));
+    setStatusMessage('VFO preset removed.');
+  }, []);
+
+  const refreshRecordingList = useCallback(async () => {
+    const list = await recordingStoreRef.current.listRecordings();
+    setRecordingRecords(list);
+    if (list.length > 0 && !selectedRecordingId) {
+      setSelectedRecordingId(list[0].id);
+    }
+  }, [selectedRecordingId]);
+
+  useEffect(() => {
+    void refreshRecordingList();
+    void recordingStoreRef.current.getWorkspaceBundle().then((bundle) => {
+      if (!bundle) {
+        return;
+      }
+      setRecordingBookmarks(bundle.bookmarks);
+      setRecordingAnnotations(bundle.annotations);
+    });
+  }, [refreshRecordingList]);
+
+  function appendRecordingCaptureChunk(iqData: Uint8Array, audioData: Float32Array): void {
+    if (!recordingActive || !recordingSessionRef.current) {
+      return;
+    }
+
+    const next = appendRecorderChunk(recordingSessionRef.current, iqData, audioData);
+    recordingSessionRef.current = next;
+    setRecorderSession(next);
+  }
+
+  const startRecordingSession = () => {
+    const session = createRecorderSession({
+      chunkDurationMs: recordingChunkDurationMs,
+      replayWindowMs: replayWindowMs,
+      scheduledStartIso: recordingScheduledStartIso.trim() || undefined
+    });
+    recordingSessionRef.current = session;
+    setRecorderSession(session);
+    setRecordingActive(true);
+    setStatusMessage('Phase 6.2 recording started.');
+  };
+
+  const stopRecordingSession = async () => {
+    const session = recordingSessionRef.current;
+    if (!session) {
+      setStatusMessage('No active Phase 6.2 recording session.');
+      return;
+    }
+
+    const trustStamp = createTrustStamp({
+      sessionGrade: trustAssessment.grade,
+      calibrationState: measurementDisclosure.frequency.state === 'uncalibrated' ? 'uncalibrated' : 'calibrated',
+      droppedSamples: runtimeTelemetry.totalDroppedSamples,
+      audioUnderruns: runtimeTelemetry.audioUnderruns,
+      rfChainAssumptions: [rfEnvironmentContext.chainNotes || 'unspecified-rf-chain']
+    });
+
+    const manifest = {
+      appVersion: '0.0.1',
+      sourceType,
+      demodMode,
+      sampleRateHz: streamSampleRateHz,
+      centerFrequencyHz: frequency,
+      tunedFrequencyHz: tunedTunerFrequencyHz,
+      ppmCorrection,
+      driftEstimateHzPerSec: frequencyModelState.driftEstimateHzPerSec,
+      driftConfidence: frequencyModelState.driftConfidence,
+      afcEnabled,
+      lockState: demodQuality.lockState,
+      calibrationOffsetHz: 0,
+      calibrationOffsetDb: activeAmplitudeCalibration?.dbfsToDbmOffset,
+      loOffsetHz: frequencyMapping.transverterLoHz,
+      ifOffsetHz: frequencyMapping.ifOffsetHz,
+      discontinuityTimeline: discontinuityTimelineRef.current.map((entry) => ({
+        sequence: entry.sequence,
+        sampleIndex: entry.sampleIndex,
+        droppedSamples: entry.droppedSamples,
+        cause: entry.cause,
+        wallClockMs: entry.wallClockMs ?? undefined
+      }))
+    };
+
+    const metadata = buildSigmfMetadataDraft({
+      description: `Recorded from ${sourceType} ${demodMode}`,
+      sampleRateHz: streamSampleRateHz,
+      centerFrequencyHz: frequency,
+      displayFrequencyHz: tunedDisplayFrequencyHz,
+      ppmCorrection,
+      loOffsetHz: frequencyMapping.transverterLoHz,
+      ifOffsetHz: frequencyMapping.ifOffsetHz,
+      gainStages: gains,
+      rfChainSnapshot: rfEnvironmentContext.chainNotes || 'unspecified-rf-chain',
+      replay: manifest,
+      trustStamp,
+      annotations: recordingAnnotations
+    });
+
+    const hardGate = validateInteropRequiredMetadataChecklist(metadata);
+    if (!hardGate.ok) {
+      setStatusMessage(`Recording blocked by metadata hard gate: ${hardGate.missing.join(', ')}`);
+      return;
+    }
+
+    const record = createRecordingFromSession({
+      session,
+      metadata,
+      manifest,
+      trustStamp,
+      bookmarks: recordingBookmarks,
+      devicePreset: {
+        id: `preset-${Date.now().toString(36)}`,
+        name: `${sourceType}-${demodMode}`,
+        sampleRateHz: streamSampleRateHz,
+        gains,
+        ppmCorrection,
+        loOffsetHz: frequencyMapping.transverterLoHz,
+        ifOffsetHz: frequencyMapping.ifOffsetHz,
+        vfoPresetRef: vfoPresets[0]?.id
+      },
+      expiresAtIso: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+    });
+
+    await recordingStoreRef.current.putRecording(record);
+    await enforceRetentionPolicy({
+      store: recordingStoreRef.current,
+      maxRecordings: 25,
+      maxBytes: 300 * 1024 * 1024
+    });
+
+    recordingSessionRef.current = null;
+    setRecorderSession(null);
+    setRecordingActive(false);
+    setSelectedRecordingId(record.id);
+    await refreshRecordingList();
+    setStatusMessage(`Recording saved (${record.id}).`);
+  };
+
+  const replaySelectedRecording = async () => {
+    const id = selectedRecordingId || recordingRecords[0]?.id;
+    if (!id) {
+      setStatusMessage('No recording available for replay.');
+      return;
+    }
+
+    const record = await recordingStoreRef.current.getRecording(id);
+    if (!record) {
+      setStatusMessage('Selected recording no longer exists.');
+      return;
+    }
+
+    const replay = deterministicReplay(record);
+    setStatusMessage(`Deterministic replay ready (${replay.digest}).`);
+  };
+
+  const exportSelectedRecordingBundle = async () => {
+    const id = selectedRecordingId || recordingRecords[0]?.id;
+    if (!id) {
+      setStatusMessage('No recording available for export.');
+      return;
+    }
+
+    const record = await recordingStoreRef.current.getRecording(id);
+    if (!record) {
+      setStatusMessage('Selected recording no longer exists.');
+      return;
+    }
+
+    const bundle = createReproBundle({
+      record,
+      iqProfile: 'cf32_le',
+      audioFormat: 'wav'
+    });
+
+    const tap = recorderSession ? quickTapExportFromRingBuffer(recorderSession, record.metadata) : null;
+    const offlineAudio = renderOfflineDeterministicDemod(record);
+    const flacPreview = createAudioExport({
+      filenameBase: `${record.id}-offline`,
+      samples: offlineAudio,
+      sampleRateHz: record.manifest.sampleRateHz,
+      format: 'flac',
+      metadata: {
+        replay: record.manifest,
+        trust: record.trustStamp,
+        note: 'Deterministic offline render'
+      }
+    });
+
+    downloadJsonBlob(`${record.id}.manifest.json`, JSON.parse(bundle.manifestJson) as unknown);
+    downloadJsonBlob(`${record.id}.replay-entrypoint.json`, JSON.parse(bundle.replayEntrypointJson) as unknown);
+    downloadJsonBlob(`${record.id}.scene.json`, JSON.parse(bundle.sceneJson) as unknown);
+    downloadJsonBlob(`${record.id}.sigmf-meta.json`, JSON.parse(bundle.sigmfMetaJson) as unknown);
+    if (tap) {
+      downloadJsonBlob(`${record.id}.quick-tap.json`, {
+        iqBytes: tap.postDdcIq.length,
+        audioSamples: tap.postDemodAudio.length,
+        metadata: JSON.parse(tap.metadataJson) as unknown
+      });
+    }
+    downloadJsonBlob(`${record.id}.audio-flac-preview.json`, {
+      filename: flacPreview.filename,
+      bytes: flacPreview.bytes.byteLength,
+      mimeType: flacPreview.mimeType,
+      metadata: JSON.parse(flacPreview.metadataJson) as unknown
+    });
+    setStatusMessage(`Repro bundle exported for ${record.id}.`);
+  };
+
+  const saveWorkspaceStateBundle = async () => {
+    const bundle = createWorkspaceStateBundle({
+      vfos: [
+        { id: 'main', offsetHz: 0, enabled: true },
+        { id: 'aux', offsetHz: secondaryVfoOffsetHz, enabled: secondaryVfoEnabled }
+      ],
+      markers: [
+        ...(analyzerMarker ? [{ id: 'a', frequencyHz: analyzerMarker.frequencyHz, label: 'Marker A' }] : []),
+        ...(analyzerSecondaryMarker ? [{ id: 'b', frequencyHz: analyzerSecondaryMarker.frequencyHz, label: 'Marker B' }] : [])
+      ],
+      selectedBandPlan: `${bandRegionId}:${selectedBandId}`,
+      calibrationProfiles: {
+        active: {
+          offsetHz: 0,
+          offsetDb: activeAmplitudeCalibration?.dbfsToDbmOffset ?? 0
+        }
+      },
+      uiState: {
+        zoom: zoomLevel,
+        palette: waterfallPalette,
+        panelLayout: 'default'
+      },
+      bookmarks: recordingBookmarks,
+      annotations: recordingAnnotations,
+      devicePresets: recordingRecords.slice(0, 8).map((record) => record.devicePreset)
+    });
+
+    await recordingStoreRef.current.putWorkspaceBundle(bundle);
+    const json = JSON.stringify(bundle, null, 2);
+    setStatusMessage('Workspace state bundle saved (' + json.length + ' chars).');
+  };
+
+  const importWorkspaceStateBundle = () => {
+    try {
+      const parsed = JSON.parse(workspaceImportDraft) as WorkspaceStateBundle;
+      if (parsed.schemaVersion !== 1) {
+        throw new Error('Unsupported workspace schema version.');
+      }
+      setRecordingBookmarks(parsed.bookmarks ?? []);
+      setRecordingAnnotations(parsed.annotations ?? []);
+      setStatusMessage('Workspace state imported.');
+    } catch (error) {
+      setStatusMessage(`Workspace import failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const addBookmark = () => {
+    const bookmark = createBookmark(bookmarkNameDraft || 'Bookmark', tunedDisplayFrequencyHz);
+    setRecordingBookmarks((prev) => [bookmark, ...prev].slice(0, 128));
+    setBookmarkNameDraft('');
+    setStatusMessage(`Bookmark saved at ${Math.round(bookmark.frequencyHz).toLocaleString()} Hz.`);
+  };
+
+  const addAnnotation = () => {
+    const annotation = createStructuredAnnotation({
+      startMs: 0,
+      endMs: Math.max(1, replayWindowMs),
+      centerFrequencyHz: tunedDisplayFrequencyHz,
+      bandwidthHz: Math.max(1_000, Math.round(filterState.highCutHz - filterState.lowCutHz)),
+      tags: [demodMode.toLowerCase()],
+      note: annotationDraft || 'Session annotation'
+    });
+    setRecordingAnnotations((prev) => [annotation, ...prev].slice(0, 256));
+    setAnnotationDraft('');
+    setStatusMessage('Annotation added to RF notebook.');
+  };
+
+  void saveWorkspaceStateBundle;
+  void importWorkspaceStateBundle;
+  startRecordingRef.current = startRecordingSession;
+  stopRecordingRef.current = () => {
+    void stopRecordingSession();
+  };
+  replayRecordingRef.current = replaySelectedRecording;
+  exportRecordingBundleRef.current = exportSelectedRecordingBundle;
+  appendRecordingCaptureChunkRef.current = appendRecordingCaptureChunk;
+  void addBookmark;
+  void addAnnotation;
+  appendRecordingCaptureChunkRef.current = appendRecordingCaptureChunk;
+  const applyVfoResourceAction = useCallback((action: 'route-main' | 'route-aux' | 'route-mix' | 'mute' | 'disable-aux') => {
+    if (action === 'route-main') {
+      setVfoAudioRoute('main');
+      return;
+    }
+    if (action === 'route-aux') {
+      setSecondaryVfoEnabled(true);
+      setVfoAudioRoute('aux');
+      return;
+    }
+    if (action === 'route-mix') {
+      setSecondaryVfoEnabled(true);
+      setVfoAudioRoute('mix');
+      return;
+    }
+    if (action === 'mute') {
+      setVfoAudioRoute('mute');
+      return;
+    }
+    setSecondaryVfoEnabled(false);
+    setVfoAudioRoute('main');
+  }, []);
 
   const applySignalWarningMitigation = useCallback((warningId: string) => {
     const warning = signalWarnings.find((entry) => entry.id === warningId);
@@ -6167,6 +6695,7 @@ export default function App() {
               autoScale={waterfallAutoScale}
               palette={waterfallPalette}
               freeze={waterfallFrozen}
+              vfoOverlays={vfoOverlayDescriptors}
               onCursorChange={setWaterfallCursorReadout}
             />
         </section>
@@ -6758,6 +7287,93 @@ export default function App() {
           <div className="control-note">
             Binding: {markerBindingState.enabled ? `${markerBindingState.boundVfoId.toUpperCase()}${markerBindingState.followVfo ? ' (follow)' : ''}` : 'off'}
             {' | '}Active VFO: {activeVfoId.toUpperCase()} @ {Math.round(activeVfoDisplayFrequencyHz).toLocaleString()} Hz
+          </div>
+        </Card>
+
+        <Card className="control-group control-group-wide" title="VFO Management">
+          <div className="control-group" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <label className="control-inline-check">
+              <input
+                type="checkbox"
+                checked={secondaryVfoEnabled}
+                onChange={(e) => setSecondaryVfoEnabled(e.target.checked)}
+                className="control-check"
+              />
+              Enable AUX VFO
+            </label>
+            <label className="control-label">AUX Offset</label>
+            <input
+              type="number"
+              className="control-input compact"
+              value={Math.round(secondaryVfoOffsetHz)}
+              onChange={(e) => setSecondaryVfoOffsetHz(Number(e.target.value) || 0)}
+              min={-150000}
+              max={150000}
+              step={250}
+              disabled={!secondaryVfoEnabled}
+              aria-label="Auxiliary VFO offset in Hertz"
+            />
+          </div>
+
+          <div className="control-group" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <label className="control-label">Audio Route</label>
+            <select
+              value={effectiveVfoAudioRoute}
+              onChange={(e) => setVfoAudioRoute(e.target.value as VfoAudioRoute)}
+              className="control-input compact"
+            >
+              <option value="main">Main (Solo)</option>
+              <option value="aux" disabled={!secondaryVfoEnabled}>Aux (Solo)</option>
+              <option value="mix" disabled={!secondaryVfoEnabled}>Main + Aux Mix</option>
+              <option value="mute">Muted</option>
+            </select>
+            <Button variant="secondary" onClick={() => applyVfoResourceAction('route-main')}>Solo Main</Button>
+            <Button variant="secondary" onClick={() => applyVfoResourceAction('route-aux')} disabled={!secondaryVfoEnabled}>Solo Aux</Button>
+            <Button variant="secondary" onClick={() => applyVfoResourceAction('route-mix')} disabled={!secondaryVfoEnabled}>Mix</Button>
+            <Button variant="secondary" onClick={() => applyVfoResourceAction('mute')}>Mute VFO Audio</Button>
+          </div>
+
+          <div className={`control-note ${vfoResourceBudget.severity === 'critical' ? 'health-error' : vfoResourceBudget.severity === 'warn' ? 'health-warn' : 'health-ok'}`}>
+            {vfoResourceBudget.headline} {vfoResourceBudget.details.join(' | ')}
+          </div>
+          {vfoResourceBudget.suggestedActions.length > 0 && (
+            <div className="control-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {vfoResourceBudget.suggestedActions.map((action) => (
+                <Button key={action} variant="secondary" onClick={() => applyVfoResourceAction(action)}>
+                  {action === 'route-main' && 'Apply Main Solo'}
+                  {action === 'route-aux' && 'Apply Aux Solo'}
+                  {action === 'route-mix' && 'Apply Mix Route'}
+                  {action === 'mute' && 'Mute VFO Audio'}
+                  {action === 'disable-aux' && 'Disable AUX VFO'}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          <div className="control-group" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={vfoPresetNameDraft}
+              onChange={(e) => setVfoPresetNameDraft(e.target.value)}
+              placeholder="Preset name"
+              className="control-input compact"
+              aria-label="VFO preset name"
+            />
+            <Button variant="secondary" onClick={saveCurrentVfoPreset}>Save Preset</Button>
+          </div>
+          <div className="control-note">Saved presets: {vfoPresets.length}</div>
+          {vfoPresets.slice(0, 8).map((preset) => (
+            <div key={preset.id} className="control-note" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>
+                {preset.name} | {preset.secondaryVfoEnabled ? `AUX ${preset.secondaryVfoOffsetHz.toLocaleString()} Hz` : 'Main only'} | route {preset.audioRoute}
+              </span>
+              <Button variant="secondary" onClick={() => applyVfoPreset(preset)}>Apply</Button>
+              <Button variant="secondary" onClick={() => deleteVfoPreset(preset.id)}>Delete</Button>
+            </div>
+          ))}
+          <div className="control-note">
+            Runtime: {vfoState.activeVfoCount} VFO(s)
+            {vfoState.vfos.length > 0 ? ` | ${vfoState.vfos.map((vfo) => `${vfo.id.toUpperCase()} ${vfo.strategy} ${vfo.cpuMs.toFixed(2)}ms q${vfo.quality01.toFixed(2)}`).join(' | ')}` : ''}
           </div>
         </Card>
 
@@ -8636,3 +9252,9 @@ export default function App() {
     </div>
   );
 }
+
+
+
+
+
+

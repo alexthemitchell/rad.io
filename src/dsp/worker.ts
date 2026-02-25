@@ -23,6 +23,12 @@ import { FrequencyTracker, type FrequencyModelState } from './FrequencyTracker';
 import { PolyphaseResampler } from './PolyphaseResampler';
 import { AudioPllController, type AudioPllState } from './AudioPllController';
 import { WfmStereoDecoder, type WfmStereoState } from './WfmStereoDecoder';
+import {
+    buildVfoRuntimeMetrics,
+    normalizeVfoAudioRoute,
+    routeVfoAudio,
+    type VfoAudioRoute
+} from './multiVfoCore';
 import type { SDRStreamFrame } from '../devices/streamFrame';
 import {
     computeDemodQualityTelemetry,
@@ -115,6 +121,7 @@ let latestAudioPllState: AudioPllState = audioPllController.getState();
 let latestWfmStereoState: WfmStereoState = wfmStereoDecoder.getState();
 let latestAudioQueueAheadMs = 0;
 let configuredVfos: VfoConfig[] = [];
+let vfoAudioRoute: VfoAudioRoute = 'main';
 
 let mode: 'WFM' | 'AM' | 'NFM' | 'SAM' | 'USB' | 'LSB' | 'CW' = 'WFM';
 let nfmAudioPreset: NfmAudioPreset = 'voice-na-75us';
@@ -122,6 +129,45 @@ let nfmOutputPath: NfmOutputPath = 'voice';
 let toneDecodeMode: ToneDecodeMode = 'CTCSS';
 let tunedFrequencyHz = 90_000_000;
 let ppmCorrection = 0;
+
+let auxWfm = new WfmDemodulator();
+let auxAm = new AmDemodulator();
+let auxNfm = new NfmDemodulator();
+let auxSam = new SamDemodulator();
+let auxSsb = new SsbDemodulator();
+let auxCw = new CwDemodulator();
+let auxDownsampler = new Downsampler(DEFAULT_INPUT_SAMPLE_RATE_HZ, 50_000);
+
+const demodulateForMode = (
+    targetMode: typeof mode,
+    iq: Float32Array,
+    demod: {
+        wfm: WfmDemodulator;
+        am: AmDemodulator;
+        nfm: NfmDemodulator;
+        sam: SamDemodulator;
+        ssb: SsbDemodulator;
+        cw: CwDemodulator;
+    }
+): Float32Array => {
+    const rawAudio = new Float32Array(iq.length / 2);
+
+    if (targetMode === 'WFM') {
+        demod.wfm.process(iq, rawAudio);
+    } else if (targetMode === 'NFM') {
+        demod.nfm.process(iq, rawAudio);
+    } else if (targetMode === 'SAM') {
+        demod.sam.process(iq, rawAudio);
+    } else if (targetMode === 'USB' || targetMode === 'LSB') {
+        demod.ssb.process(iq, rawAudio);
+    } else if (targetMode === 'CW') {
+        demod.cw.process(iq, rawAudio);
+    } else {
+        demod.am.process(iq, rawAudio);
+    }
+
+    return rawAudio;
+};
 
 const applyMixerFrequency = () => {
     const ppmCompensationHz = computePpmCorrectionHz(tunedFrequencyHz, ppmCorrection);
@@ -143,13 +189,26 @@ const resetPipelineState = () => {
     sam = new SamDemodulator();
     ssb = new SsbDemodulator();
     cw = new CwDemodulator();
+    auxWfm = new WfmDemodulator();
+    auxAm = new AmDemodulator();
+    auxNfm = new NfmDemodulator();
+    auxSam = new SamDemodulator();
+    auxSsb = new SsbDemodulator();
+    auxCw = new CwDemodulator();
     ssb.setConfig(mode === 'LSB' ? 'LSB' : 'USB', 1_500, inputSampleRateHz);
+    auxSsb.setConfig(mode === 'LSB' ? 'LSB' : 'USB', 1_500, inputSampleRateHz);
     cw.setConfig(700, inputSampleRateHz);
+    auxCw.setConfig(700, inputSampleRateHz);
     nfm.setConfig({
         preset: nfmAudioPreset,
         outputPath: nfmOutputPath
     });
+    auxNfm.setConfig({
+        preset: nfmAudioPreset,
+        outputPath: nfmOutputPath
+    });
     downsampler = new Downsampler(inputSampleRateHz, 50_000);
+    auxDownsampler = new Downsampler(inputSampleRateHz, 50_000);
     nco = new ComplexOscillator(inputSampleRateHz);
     frequencyTracker.reset();
     audioPllController.reset();
@@ -211,16 +270,20 @@ const handleMessage = (e: MessageEvent) => {
         console.log(`Worker: Mode set to ${mode}`);
         if (mode === 'USB' || mode === 'LSB') {
             ssb.setConfig(mode, 1_500, inputSampleRateHz);
+            auxSsb.setConfig(mode, 1_500, inputSampleRateHz);
         }
         if (mode === 'CW') {
             cw.setConfig(700, inputSampleRateHz);
+            auxCw.setConfig(700, inputSampleRateHz);
         }
     } else if (e.data.command === 'SET_NFM_AUDIO_PRESET') {
         nfmAudioPreset = e.data.value as NfmAudioPreset;
         nfm.setConfig({ preset: nfmAudioPreset });
+        auxNfm.setConfig({ preset: nfmAudioPreset });
     } else if (e.data.command === 'SET_NFM_OUTPUT_PATH') {
         nfmOutputPath = e.data.value as NfmOutputPath;
         nfm.setConfig({ outputPath: nfmOutputPath });
+        auxNfm.setConfig({ outputPath: nfmOutputPath });
     } else if (e.data.command === 'SET_TONE_DECODE_MODE') {
         const requested = String(e.data.value ?? '').toUpperCase();
         if (requested === 'OFF' || requested === 'CTCSS' || requested === 'DCS' || requested === 'AUTO') {
@@ -253,6 +316,9 @@ const handleMessage = (e: MessageEvent) => {
             .slice(0, 4);
         channelizer.setVfos(configuredVfos);
         configuredVfos = channelizer.getVfos();
+        vfoAudioRoute = normalizeVfoAudioRoute(vfoAudioRoute, configuredVfos.some((vfo) => vfo.id === 'aux'));
+    } else if (e.data.command === 'SET_VFO_AUDIO_ROUTE') {
+        vfoAudioRoute = normalizeVfoAudioRoute(e.data.value, configuredVfos.some((vfo) => vfo.id === 'aux'));
     } else if (e.data.command === 'SET_AFC_ENABLED') {
         frequencyTracker.setAfcEnabled(Boolean(e.data.value));
         applyMixerFrequency();
@@ -296,10 +362,13 @@ const handleMessage = (e: MessageEvent) => {
         if (Number.isFinite(requestedSampleRateHz) && requestedSampleRateHz > 0) {
             inputSampleRateHz = requestedSampleRateHz;
             downsampler.setSampleRates(inputSampleRateHz, 50_000);
+            auxDownsampler.setSampleRates(inputSampleRateHz, 50_000);
             nco = new ComplexOscillator(inputSampleRateHz);
             channelizer.setSampleRate(inputSampleRateHz);
             ssb.setConfig(mode === 'LSB' ? 'LSB' : 'USB', 1_500, inputSampleRateHz);
+            auxSsb.setConfig(mode === 'LSB' ? 'LSB' : 'USB', 1_500, inputSampleRateHz);
             cw.setConfig(700, inputSampleRateHz);
+            auxCw.setConfig(700, inputSampleRateHz);
             applyMixerFrequency();
         }
     } else if (e.data.command === 'SET_IQ_CORRECTION_ENABLED') {
@@ -352,6 +421,8 @@ function processUSBData(buffer: ArrayBuffer) {
     const startMs = performance.now();
     const iqData = new Int8Array(buffer);
     const vfoFrames = channelizer.process(iqData);
+    const vfoFrameById = new Map(vfoFrames.map((frame) => [frame.id, frame]));
+    const configuredOffsetById = new Map(configuredVfos.map((vfo) => [vfo.id, vfo.offsetHz]));
     
     // 1. DDC / NCO (Frequency Shift)
     const shiftedIQ = new Float32Array(iqData.length);
@@ -371,13 +442,18 @@ function processUSBData(buffer: ArrayBuffer) {
     processFFT(iqData); 
     const afterFftMs = performance.now();
 
-    // 3. Demodulate (Shifted Signal)
-    const rawAudio = new Float32Array(iqData.length / 2);
-    
-    if (mode === 'WFM') {
-        wfm.process(shiftedIQ, rawAudio);
+    // 3. Demodulate main and optional aux paths.
+    const mainRawAudio = demodulateForMode(mode, shiftedIQ, {
+        wfm,
+        am,
+        nfm,
+        sam,
+        ssb,
+        cw
+    });
 
-        const rdsUpdate = rdsDecoder.process(rawAudio);
+    if (mode === 'WFM') {
+        const rdsUpdate = rdsDecoder.process(mainRawAudio);
         if (rdsUpdate) {
             latestRdsSnapshot = rdsUpdate;
             postToMain({
@@ -385,22 +461,34 @@ function processUSBData(buffer: ArrayBuffer) {
                 data: rdsUpdate
             }, []);
         }
-    } else if (mode === 'NFM') {
-        nfm.process(shiftedIQ, rawAudio);
-    } else if (mode === 'SAM') {
-        sam.process(shiftedIQ, rawAudio);
-    } else if (mode === 'USB' || mode === 'LSB') {
-        ssb.process(shiftedIQ, rawAudio);
-    } else if (mode === 'CW') {
-        cw.process(shiftedIQ, rawAudio);
-    } else {
-        am.process(shiftedIQ, rawAudio);
     }
-    latestImpulseBlankerState = impulseBlanker.applyInPlace(rawAudio);
+
+    const auxFrame = vfoFrameById.get('aux');
+    const hasAuxVfo = Boolean(auxFrame);
+    const normalizedRoute = normalizeVfoAudioRoute(vfoAudioRoute, hasAuxVfo);
+    let auxRawAudio: Float32Array | null = null;
+    if (auxFrame) {
+        const auxIq = auxFrame.iq;
+        auxRawAudio = demodulateForMode(mode, auxIq, {
+            wfm: auxWfm,
+            am: auxAm,
+            nfm: auxNfm,
+            sam: auxSam,
+            ssb: auxSsb,
+            cw: auxCw
+        });
+    }
+
+    latestImpulseBlankerState = impulseBlanker.applyInPlace(mainRawAudio);
+    if (auxRawAudio) {
+        impulseBlanker.applyInPlace(auxRawAudio);
+    }
     const afterDemodMs = performance.now();
 
     // Downsample
-    const audioOut = downsampler.process(rawAudio);
+    const downsampledMainAudio = downsampler.process(mainRawAudio);
+    const downsampledAuxAudio = auxRawAudio ? auxDownsampler.process(auxRawAudio) : null;
+    const audioOut = routeVfoAudio(normalizedRoute, downsampledMainAudio, downsampledAuxAudio);
     const audioSampleRateHz = downsampler.getOutputSampleRateHz();
     if (mode === 'WFM') {
         latestWfmStereoState = wfmStereoDecoder.process(audioOut, audioSampleRateHz);
@@ -498,19 +586,8 @@ function processUSBData(buffer: ArrayBuffer) {
             type: 'VFO_STATE',
             data: {
                 activeVfoCount: vfoFrames.length,
-                vfos: vfoFrames.map((frame) => {
-                    let power = 0;
-                    for (let i = 0; i < frame.iq.length; i += 1) {
-                        const s = frame.iq[i];
-                        power += s * s;
-                    }
-                    return {
-                        id: frame.id,
-                        offsetHz: configuredVfos.find((vfo) => vfo.id === frame.id)?.offsetHz ?? 0,
-                        groupDelaySamples: frame.groupDelaySamples,
-                        power: frame.iq.length > 0 ? power / frame.iq.length : 0
-                    };
-                })
+                audioRoute: normalizedRoute,
+                vfos: buildVfoRuntimeMetrics(vfoFrames, configuredOffsetById, afterDemodMs - startMs)
             }
         }, []);
         if (mode === 'WFM') {
