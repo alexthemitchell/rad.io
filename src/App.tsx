@@ -20,6 +20,7 @@ import { RtlSdrDevice } from './devices/RtlSdrDevice';
 import { FileDevice } from './devices/FileDevice';
 import { DeviceDebugSnapshot, ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
 import { getStabilityProfile, profileKeyFor, upsertStabilityProfile, type StabilityProfile } from './devices/deviceProfileStore';
+import { deriveStableDeviceIdentity } from './devices/deviceIdentity';
 import { normalizeDeviceError } from './devices/errors';
 import type { SDRStreamFrame } from './devices/streamFrame';
 import { goldenToneFixtureBundle } from './fixtures/sigmf/goldenToneFixture';
@@ -891,6 +892,15 @@ export default function App() {
   const streamToggleShortcutRef = useRef<(() => void) | null>(null);
   const exportDiagnosticsShortcutRef = useRef<(() => void) | null>(null);
   const [backgroundAudioGuardActive, setBackgroundAudioGuardActive] = useState(false);
+
+  const activeDeviceProfileKey = useMemo(() => {
+    const deviceName = deviceRef.current?.name ?? null;
+    if (!deviceName) {
+      return profileKeyFor(sourceType, null);
+    }
+
+    return deriveStableDeviceIdentity(sourceType, deviceName, deviceDebugSnapshot).key;
+  }, [deviceDebugSnapshot, sourceType]);
 
     const pushDiagnosticEvent = useCallback((
       message: string,
@@ -2645,10 +2655,8 @@ export default function App() {
   }, [postToWorker, stabilityModeEnabled]);
 
   useEffect(() => {
-    const deviceName = deviceRef.current?.name ?? null;
-    const key = profileKeyFor(sourceType, deviceName);
-    setStabilityProfile(getStabilityProfile(key));
-  }, [sourceType]);
+    setStabilityProfile(getStabilityProfile(activeDeviceProfileKey));
+  }, [activeDeviceProfileKey]);
 
   useEffect(() => {
     if (!isRunning || !stabilityModeEnabled) {
@@ -2665,7 +2673,7 @@ export default function App() {
     }
     lastProfilePersistAtRef.current = now;
 
-    const profileKey = profileKeyFor(sourceType, deviceRef.current?.name ?? null);
+    const profileKey = activeDeviceProfileKey;
     const next = upsertStabilityProfile({
       sourceType,
       profileKey,
@@ -2677,6 +2685,7 @@ export default function App() {
     });
     setStabilityProfile(next);
   }, [
+    activeDeviceProfileKey,
     frequencyModelState.driftConfidence,
     frequencyModelState.driftEstimateHzPerSec,
     frequencyModelState.phaseErrorRms,
@@ -3249,7 +3258,7 @@ export default function App() {
     };
 
     const saveIqWizardProfile = () => {
-      const key = profileKeyFor(sourceType, deviceRef.current?.name ?? null);
+      const key = activeDeviceProfileKey;
       const existing = getStabilityProfile(key);
       const persisted = upsertStabilityProfile({
         sourceType,
@@ -3570,6 +3579,7 @@ export default function App() {
                 gainStages,
                 streamSampleRateHz,
                 supportsWebUsb: sourceType === 'HACKRF' || sourceType === 'RTLSDR',
+                capabilityModel: deviceRef.current?.getCapabilityModel?.() ?? null,
                 descriptor: deviceDebugSnapshot?.descriptor ?? null,
                 streamingProfile: deviceDebugSnapshot?.streamingProfile ?? null
               },

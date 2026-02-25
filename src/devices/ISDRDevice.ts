@@ -1,4 +1,5 @@
 import type { SDRStreamFrame } from './streamFrame';
+import type { DeviceCapabilityModel } from './CapabilityModel';
 
 export interface SDRGainStage {
     name: string;
@@ -65,6 +66,19 @@ export type DeviceDebugSnapshot = {
         status: 'known-good' | 'unknown' | 'known-unsupported';
         note?: string;
     };
+    sweep?: {
+        hardwareSupported: boolean;
+        fallbackMode: 'software-sweep-stitch' | 'none';
+        command?: string;
+        note?: string;
+    };
+};
+
+export type DeviceSweepCapability = {
+    hardwareSupported: boolean;
+    fallbackMode: 'software-sweep-stitch' | 'none';
+    command?: string;
+    note?: string;
 };
 
 export interface ISDRDevice {
@@ -88,5 +102,7 @@ export interface ISDRDevice {
         maxConsecutiveFailures: number;
         profileName?: 'low-latency' | 'balanced' | 'stable' | 'custom';
     }): Promise<void>;
+    getSweepCapability?(): DeviceSweepCapability;
+    getCapabilityModel?(): DeviceCapabilityModel;
     getDebugSnapshot?(): DeviceDebugSnapshot;
 }

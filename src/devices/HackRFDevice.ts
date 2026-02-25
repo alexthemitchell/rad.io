@@ -1,5 +1,6 @@
-import { DeviceDebugSnapshot, ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
+import { DeviceDebugSnapshot, DeviceSweepCapability, ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
 import type { SDRDiscontinuityCause, SDRDiscontinuityEvent } from './streamFrame';
+import { defaultCapabilityModel, type DeviceCapabilityModel } from './CapabilityModel';
 import { recommendUsbStreamingProfile } from '../measurements/usbStreamingPolicy';
 
 // HackRF One Constants
@@ -25,6 +26,8 @@ export class HackRFDevice implements ISDRDevice {
     private static readonly STREAM_MAX_CONSECUTIVE_FAILURES = 8;
     private static readonly STREAM_RETRY_DELAY_MS = 20;
     private static readonly STREAM_TRANSFER_SIZE_BYTES = 16_384;
+    private static readonly STALL_STORM_WINDOW_MS = 2_000;
+    private static readonly STALL_STORM_THRESHOLD = 4;
     private device: USBDevice | null = null;
     private interfaceIndex = 0;
     private inEndpointNumber = 1;
@@ -73,6 +76,8 @@ export class HackRFDevice implements ISDRDevice {
     private streamProfileName: 'low-latency' | 'balanced' | 'stable' | 'custom' = 'balanced';
     private boardId: number | null = null;
     private firmwareVersion = 'unknown';
+    private recentStallCount = 0;
+    private recentStallWindowStartedAtMs = 0;
 
     private updateTransferTelemetry(bytes: number, transferSize: number): void {
         const nowMs = performance.now();
@@ -315,6 +320,63 @@ export class HackRFDevice implements ISDRDevice {
         }
     }
 
+    private classifyTransferFailure(error: unknown): 'stall' | 'disconnect' | 'unknown' {
+        const detail = error instanceof Error
+            ? error.message
+            : typeof error === 'string'
+                ? error
+                : JSON.stringify(error ?? 'unknown');
+
+        if (/stall|clearhalt|endpoint halt|babble/i.test(detail)) {
+            return 'stall';
+        }
+
+        if (/disconnected|unavailable|device disappeared|closed/i.test(detail)) {
+            return 'disconnect';
+        }
+
+        return 'unknown';
+    }
+
+    private async recoverFromTransferFailure(kind: 'stall' | 'disconnect' | 'unknown'): Promise<void> {
+        if (!this.device || !this.device.opened) {
+            return;
+        }
+
+        if (kind === 'stall') {
+            await this.recoverStreamingEndpoint();
+            const nowMs = performance.now();
+            if (nowMs - this.recentStallWindowStartedAtMs > HackRFDevice.STALL_STORM_WINDOW_MS) {
+                this.recentStallWindowStartedAtMs = nowMs;
+                this.recentStallCount = 0;
+            }
+
+            this.recentStallCount += 1;
+            if (this.recentStallCount < HackRFDevice.STALL_STORM_THRESHOLD) {
+                return;
+            }
+
+            // Escalate repeated stalls to a handle + RX mode refresh.
+            this.pushUsbTrace({
+                ts: new Date().toISOString(),
+                event: 'stall-storm-recover',
+                detail: `stallCount=${this.recentStallCount}`
+            });
+            await this.recoverHandle();
+            await this.setTransceiverMode(0);
+            await this.sleep(HackRFDevice.MODE_SETTLE_DELAY_MS);
+            await this.setTransceiverMode(1);
+            this.markDiscontinuity('reset');
+            this.recentStallCount = 0;
+            return;
+        }
+
+        if (kind === 'unknown') {
+            await this.recoverHandle();
+            this.markDiscontinuity('reset');
+        }
+    }
+
     private async probeDevice(): Promise<void> {
         if (!this.device) return;
 
@@ -334,21 +396,42 @@ export class HackRFDevice implements ISDRDevice {
     }
 
     private getCompatibilityStatus(): NonNullable<DeviceDebugSnapshot['compatibility']> {
-        const knownGoodPrefix = ['2021.03.1'];
+        const knownGoodPrefix = ['2021.03.1', '2022.09.1', '2024.02.1'];
+        const knownUnsupportedPrefix = ['2014.', '2015.', '2016.'];
         const version = this.firmwareVersion;
-        const status = knownGoodPrefix.some((prefix) => version.startsWith(prefix))
+        const status = /dfu|bootloader/i.test(version)
+            ? 'known-unsupported'
+            : knownUnsupportedPrefix.some((prefix) => version.startsWith(prefix))
+                ? 'known-unsupported'
+                : knownGoodPrefix.some((prefix) => version.startsWith(prefix))
             ? 'known-good'
             : version === 'unknown'
                 ? 'unknown'
                 : 'unknown';
 
+        let note = 'Firmware not in known-good list; continue with conservative defaults and diagnostics.';
+        if (status === 'known-good') {
+            note = 'Validated against current WebUSB profile defaults.';
+        } else if (/dfu|bootloader/i.test(version)) {
+            note = 'Device appears to be in DFU/bootloader mode; flash normal firmware and reconnect.';
+        } else if (status === 'known-unsupported') {
+            note = 'Firmware likely too old for reliable WebUSB streaming; update HackRF firmware and retry.';
+        }
+
         return {
             boardId: this.boardId ?? undefined,
             firmwareVersion: version,
             status,
-            note: status === 'known-good'
-                ? 'Validated against current WebUSB profile defaults.'
-                : 'Firmware not in known-good list; continue with conservative defaults and diagnostics.'
+            note
+        };
+    }
+
+    getSweepCapability(): DeviceSweepCapability {
+        return {
+            hardwareSupported: false,
+            fallbackMode: 'software-sweep-stitch',
+            command: 'hackrf_sweep',
+            note: 'hackrf_sweep requires host-native execution; WebUSB path falls back to software tune/settle/stitch.'
         };
     }
 
@@ -412,6 +495,36 @@ export class HackRFDevice implements ISDRDevice {
             { name: 'VGA', label: 'VGA Gain', min: 0, max: 62, step: 2, value: this.vgaGain },
             { name: 'AMP', label: 'RF Amp (+14dB)', min: 0, max: 1, step: 1, value: this.ampEnable }
         ];
+    }
+
+    getCapabilityModel(): DeviceCapabilityModel {
+        return {
+            ...defaultCapabilityModel('HACKRF', this.name),
+            supportedSampleRatesHz: [1_000_000, 2_000_000, 2_500_000, 5_000_000, 8_000_000, 10_000_000],
+            supportedAnalogBandwidthsHz: [1_750_000, 2_500_000, 5_000_000, 10_000_000],
+            gainStages: [
+                { name: 'LNA', min: 0, max: 40, step: 8, order: 1 },
+                { name: 'VGA', min: 0, max: 62, step: 2, order: 2 },
+                { name: 'AMP', min: 0, max: 1, step: 1, order: 3, coupledWith: ['LNA', 'VGA'] }
+            ],
+            agcControl: 'unsupported',
+            dcCorrectionControl: 'unsupported',
+            loOffsetControl: 'supported',
+            basebandFilterControl: 'supported',
+            rfPower: {
+                biasTee: 'unsupported',
+                ampControl: 'supported',
+                gpioControl: 'unknown'
+            },
+            sampleFormat: {
+                iqOrder: 'iq',
+                sampleType: 'i8',
+                interleaved: true,
+                normalizedToUnitRange: false,
+                invertIQSupported: 'unsupported',
+                swapIQSupported: 'unsupported'
+            }
+        };
     }
 
     async open(): Promise<void> {
@@ -594,6 +707,8 @@ export class HackRFDevice implements ISDRDevice {
         this.intervalEwmaMs = 0;
         this.intervalJitterEwmaMs = 0;
         this.debugCounters.longGapCount = 0;
+        this.recentStallCount = 0;
+        this.recentStallWindowStartedAtMs = 0;
         this.markDiscontinuity('restart');
 
         console.log("Starting RX Mode...");
@@ -626,7 +741,6 @@ export class HackRFDevice implements ISDRDevice {
                         bytes: 0,
                         detail: `endpoint=${this.inEndpointNumber}`
                     });
-                    await this.recoverStreamingEndpoint();
                     throw new Error(`USB transfer status=${result.status}`);
                 }
 
@@ -703,6 +817,17 @@ export class HackRFDevice implements ISDRDevice {
                 this.markDiscontinuity('overflow');
                 consecutiveFailures += 1;
                 this.debugCounters.retryCount += 1;
+
+                try {
+                    const kind = this.classifyTransferFailure(e);
+                    await this.recoverFromTransferFailure(kind);
+                } catch (recoveryError) {
+                    this.pushUsbTrace({
+                        ts: new Date().toISOString(),
+                        event: 'transfer-recovery-error',
+                        detail: recoveryError instanceof Error ? recoveryError.message : String(recoveryError)
+                    });
+                }
 
                 if (consecutiveFailures >= this.streamMaxConsecutiveFailures) {
                     this.isStreaming = false;
@@ -795,7 +920,8 @@ export class HackRFDevice implements ISDRDevice {
             },
             counters: { ...this.debugCounters },
             recentTrace: [...this.usbTrace],
-            compatibility: this.getCompatibilityStatus()
+            compatibility: this.getCompatibilityStatus(),
+            sweep: this.getSweepCapability()
         };
     }
 }

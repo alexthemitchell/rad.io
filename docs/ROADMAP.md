@@ -371,10 +371,10 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 5.1 Device Interface & Capabilities
 
-- [ ] **`ISDRDevice` Interface**: open/close/tune/stream contract.
-- [ ] **Capabilities Model**: gain stages, AGC, filters, amp, bias-tee, clocking.
-- [ ] **Capability Negotiation Algorithm (Safe Defaults)**: choose rate/bandwidth/gain/streaming profile with an explainable decision trace and deterministic reapply on reconnect.
-- [ ] **Gain Stage Ordering & Validation**: device-specific gain constraints (order, ranges, coupling) with UI guidance and safe clamping.
+- [x] **`ISDRDevice` Interface**: open/close/tune/stream contract. (`src/devices/ISDRDevice.ts`, `src/devices/HackRFDevice.ts`, `src/devices/MockDevice.ts`, `src/devices/FileDevice.ts`)
+- [x] **Capabilities Model**: gain stages, AGC, filters, amp, bias-tee, clocking. (`src/devices/CapabilityModel.ts`, `src/devices/HackRFDevice.ts` `getCapabilityModel`)
+- [x] **Capability Negotiation Algorithm (Safe Defaults)**: choose rate/bandwidth/gain/streaming profile with an explainable decision trace and deterministic reapply on reconnect. (`src/devices/CapabilityNegotiationAlgorithm.ts`, `src/devices/CapabilityNegotiationAlgorithm.test.ts`)
+- [x] **Gain Stage Ordering & Validation**: device-specific gain constraints (order, ranges, coupling) with UI guidance and safe clamping. (`src/devices/GainStageValidator.ts`, `src/devices/GainStageValidator.test.ts`)
 - [ ] **IQ Conventions & Toggles**: IQ swap/invert controls and explicit sample-format conventions per device.
 - [ ] **DC/Front-End Correction Toggles**: device-side DC offset correction options (when supported) surfaced consistently.
 - [ ] **Bias-Tee / Antenna Power Safety**: explicit “power on” controls with warnings/timeouts where applicable.
@@ -382,7 +382,7 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Analog Bandwidth / Baseband Filter Awareness**: expose usable analog bandwidth and any device-side baseband filter selections.
 - [ ] **Front-End Controls**: per-device gain staging and toggles.
 - [ ] **LO Offset / IF Shift**: mitigate DC spike and LO artifacts.
-- [ ] **Sample-Format Normalization Contract**: explicit scaling/signedness/IQ order conventions and invariant tests so DSP stays device-agnostic.
+- [x] **Sample-Format Normalization Contract**: explicit scaling/signedness/IQ order conventions and invariant tests so DSP stays device-agnostic. (`src/devices/SampleFormatContract.ts`, `src/devices/SampleFormatContract.test.ts`)
 - [ ] **Per-Device Sample-Format Fixtures**: conformance fixtures per driver covering signedness, endian, interleaving, saturation/clipping behavior, and IQ swap/invert to prevent subtle device-specific regressions.
 - [ ] **`ISDRDevice` Conformance Suite**: required tests for all drivers (stream continuity, timestamp/sequence rules, and recovery semantics).
 - [ ] **Timestamp/Continuity Conformance Gates (Hard)**: explicitly validate sample-count continuity, gap sizing invariants, and retune discontinuity semantics across drivers.
@@ -393,8 +393,8 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 5.2 Identity, Persistence, and Safety
 
-- [ ] **Stable Device Identity**: persist per-device identifiers for settings/reconnect.
-- [ ] **Stable Identity Fallback Strategy**: define identity derivation when USB serial is missing/blank (common), and how it impacts profiles, reconnect, and diagnostics.
+- [x] **Stable Device Identity**: persist per-device identifiers for settings/reconnect. (`src/devices/deviceIdentity.ts`, `src/App.tsx` profile key selection)
+- [x] **Stable Identity Fallback Strategy**: define identity derivation when USB serial is missing/blank (common), and how it impacts profiles, reconnect, and diagnostics. (`src/devices/deviceIdentity.ts`, `src/devices/deviceIdentity.test.ts`)
 - [ ] **Per-Device Profiles**: “apply on connect” profiles (rate/gains/PPM/etc).
 - [ ] **Session Restore Hooks**: safe best-effort restore + user confirmation for risky settings.
 - [ ] **Clipping/Overrange Detection**: warn + guide gain staging.
