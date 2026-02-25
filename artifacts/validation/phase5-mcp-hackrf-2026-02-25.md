@@ -1,3 +1,5 @@
+# Phase5 MCP HackRF Snapshot (Idle)
+
 - generic [ref=e3]:
   - banner [ref=e4]:
     - heading "rad.io MVP Preview" [level=1] [ref=e5]
