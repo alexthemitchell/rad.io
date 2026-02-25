@@ -78,6 +78,7 @@ describe('AudioSink', () => {
     expect(stats.limiterEvents).toBeGreaterThan(0);
     expect(stats.concealmentEvents).toBeGreaterThan(0);
     expect(stats.popSuppressionEvents).toBeGreaterThan(0);
+    expect(stats.safetyMuteEvents).toBeGreaterThan(0);
 
     sink.stop();
     (globalThis as { AudioContext?: unknown }).AudioContext = originalAudioContext;
@@ -146,6 +147,24 @@ describe('AudioSink', () => {
     const applied = await sink.setOutputDevice('device-speaker');
     expect(applied).toBe(false);
     expect(sink.getOutputDeviceId()).toBe('device-speaker');
+
+    sink.stop();
+    (globalThis as { AudioContext?: unknown }).AudioContext = originalAudioContext;
+  });
+
+  it('applies click-safe ramp when mute state changes', async () => {
+    const originalAudioContext = (globalThis as { AudioContext?: unknown }).AudioContext;
+    (globalThis as { AudioContext?: unknown }).AudioContext = MockAudioContext;
+
+    const sink = new AudioSink(50_000);
+    await sink.start();
+
+    const before = sink.getStats().popSuppressionEvents;
+    sink.setMuted(true);
+    sink.setMuted(false);
+    const after = sink.getStats().popSuppressionEvents;
+
+    expect(after).toBeGreaterThan(before);
 
     sink.stop();
     (globalThis as { AudioContext?: unknown }).AudioContext = originalAudioContext;

@@ -1,4 +1,17 @@
-import { DeviceDebugSnapshot, DeviceSweepCapability, ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
+import {
+    DeviceDebugSnapshot,
+    DeviceDriverState,
+    DeviceFrontEndCorrectionPatch,
+    DeviceFrontEndCorrectionState,
+    DeviceIqControlPatch,
+    DeviceIqControlState,
+    DeviceStateMachineSnapshot,
+    DeviceStreamContinuityContract,
+    DeviceSweepCapability,
+    ISDRDevice,
+    SDRDataCallback,
+    SDRGainStage
+} from './ISDRDevice';
 import type { SDRDiscontinuityCause, SDRDiscontinuityEvent } from './streamFrame';
 import { defaultCapabilityModel, type DeviceCapabilityModel } from './CapabilityModel';
 import { recommendUsbStreamingProfile } from '../measurements/usbStreamingPolicy';
@@ -6,6 +19,7 @@ import { recommendUsbStreamingProfile } from '../measurements/usbStreamingPolicy
 // HackRF One Constants
 const HACKRF_USB_VID = 0x1d50;
 const HACKRF_USB_PID = 0x6089;
+const HACKRF_BOOTLOADER_USB_PIDS = new Set([0x608b, 0x608c]);
 
 enum HackRFCommand {
     SET_TRANSCEIVER_MODE = 1,
@@ -18,6 +32,88 @@ enum HackRFCommand {
     BOARD_ID_READ = 14,
     VERSION_STRING_READ = 15,
 }
+
+type HackRfDescriptorSelection = {
+    interfaceIndex: number;
+    alternateSetting: number;
+    inEndpointNumber: number;
+    warnings: string[];
+    candidateCount: number;
+};
+
+const describeAlternate = (iface: USBInterface, alt: USBAlternateInterface): string => {
+    const endpointSummary = alt.endpoints
+        .map((endpoint) => `${endpoint.direction}:${endpoint.type}:ep${endpoint.endpointNumber}`)
+        .join(', ');
+    return `if=${iface.interfaceNumber} alt=${alt.alternateSetting} [${endpointSummary || 'no-endpoints'}]`;
+};
+
+export const resolveHackRfStreamingInterface = (config: USBConfiguration): HackRfDescriptorSelection => {
+    const warnings: string[] = [];
+    const candidates: Array<{
+        iface: USBInterface;
+        alt: USBAlternateInterface;
+        inEndpoint: USBEndpoint;
+    }> = [];
+    const inspectedAlternates: string[] = [];
+
+    for (const iface of config.interfaces) {
+        for (const alt of iface.alternates) {
+            inspectedAlternates.push(describeAlternate(iface, alt));
+
+            const bulkInEndpoints = alt.endpoints.filter((endpoint) => endpoint.direction === 'in' && endpoint.type === 'bulk');
+            if (bulkInEndpoints.length === 0) {
+                continue;
+            }
+
+            const selectedEndpoint = [...bulkInEndpoints].sort((a, b) => a.endpointNumber - b.endpointNumber)[0];
+            if (bulkInEndpoints.length > 1) {
+                warnings.push(
+                    `Interface ${iface.interfaceNumber} alt ${alt.alternateSetting} exposes ${bulkInEndpoints.length} bulk-in endpoints; selected ep${selectedEndpoint.endpointNumber}.`
+                );
+            }
+
+            if (selectedEndpoint.packetSize < 256) {
+                warnings.push(
+                    `Interface ${iface.interfaceNumber} alt ${alt.alternateSetting} endpoint ep${selectedEndpoint.endpointNumber} packetSize=${selectedEndpoint.packetSize} may be unstable for IQ throughput.`
+                );
+            }
+
+            candidates.push({ iface, alt, inEndpoint: selectedEndpoint });
+        }
+    }
+
+    if (candidates.length === 0) {
+        const detail = inspectedAlternates.length > 0
+            ? inspectedAlternates.join('; ')
+            : 'no USB interfaces/alternates exposed by descriptor';
+        throw new Error(`HackRF descriptor has no bulk-in IQ endpoint candidate (${detail}).`);
+    }
+
+    const selected = [...candidates].sort((a, b) => {
+        if (b.inEndpoint.packetSize !== a.inEndpoint.packetSize) {
+            return b.inEndpoint.packetSize - a.inEndpoint.packetSize;
+        }
+
+        if (a.iface.interfaceNumber !== b.iface.interfaceNumber) {
+            return a.iface.interfaceNumber - b.iface.interfaceNumber;
+        }
+
+        return a.alt.alternateSetting - b.alt.alternateSetting;
+    })[0];
+
+    if (candidates.length > 1) {
+        warnings.push(`Multiple streaming candidates found (${candidates.length}); preferred largest packet-size path.`);
+    }
+
+    return {
+        interfaceIndex: selected.iface.interfaceNumber,
+        alternateSetting: selected.alt.alternateSetting,
+        inEndpointNumber: selected.inEndpoint.endpointNumber,
+        warnings,
+        candidateCount: candidates.length
+    };
+};
 
 export class HackRFDevice implements ISDRDevice {
     name = "HackRF One";
@@ -78,6 +174,42 @@ export class HackRFDevice implements ISDRDevice {
     private firmwareVersion = 'unknown';
     private recentStallCount = 0;
     private recentStallWindowStartedAtMs = 0;
+
+    private isBootloaderPersonality(device: Pick<USBDevice, 'productId' | 'productName'>): boolean {
+        if (HACKRF_BOOTLOADER_USB_PIDS.has(device.productId)) {
+            return true;
+        }
+
+        return /bootloader|dfu/i.test(device.productName ?? '');
+    }
+
+    private buildBootloaderRecoveryMessage(device: Pick<USBDevice, 'productId' | 'productName'>): string {
+        const label = device.productName ?? `USB PID 0x${device.productId.toString(16)}`;
+        return `Detected HackRF in bootloader/DFU mode (${label}). Flash normal firmware, power-cycle/replug the device, then retry Start.`;
+    }
+    private descriptorWarnings: string[] = [];
+    private descriptorCandidateCount = 0;
+    private iqControlState: DeviceIqControlState = {
+        swapEnabled: false,
+        invertEnabled: false,
+        implementation: 'none'
+    };
+    private frontEndCorrectionState: DeviceFrontEndCorrectionState = {
+        dcOffsetEnabled: false,
+        iqBalanceEnabled: false,
+        implementation: 'none'
+    };
+    private driverState: DeviceDriverState = 'idle';
+    private transitionCount = 0;
+    private lastTransitionAtIso = new Date(0).toISOString();
+    private lastStateEvent = 'init';
+
+    private transitionState(next: DeviceDriverState, event: string): void {
+        this.driverState = next;
+        this.transitionCount += 1;
+        this.lastStateEvent = event;
+        this.lastTransitionAtIso = new Date().toISOString();
+    }
 
     private updateTransferTelemetry(bytes: number, transferSize: number): void {
         const nowMs = performance.now();
@@ -285,6 +417,8 @@ export class HackRFDevice implements ISDRDevice {
     private async recoverHandle(): Promise<void> {
         if (!this.device) return;
 
+        this.transitionState('recovering', 'recover-handle');
+
         try {
             if (this.device.opened) {
                 await this.device.close();
@@ -294,12 +428,15 @@ export class HackRFDevice implements ISDRDevice {
         }
 
         await this.openAndClaim(this.device);
+        this.transitionState(this.isStreaming ? 'streaming' : 'open', 'recover-handle-complete');
     }
 
-    private async recoverStreamingEndpoint(): Promise<void> {
+    private async recoverStreamingEndpoint(): Promise<boolean> {
         if (!this.device) {
-            return;
+            return false;
         }
+
+        this.transitionState('recovering', 'recover-endpoint');
 
         try {
             await this.device.clearHalt('in', this.inEndpointNumber);
@@ -310,6 +447,8 @@ export class HackRFDevice implements ISDRDevice {
                 status: 'ok',
                 detail: `in endpoint ${this.inEndpointNumber}`
             });
+            this.transitionState(this.isStreaming ? 'streaming' : 'open', 'recover-endpoint-complete');
+            return true;
         } catch (clearHaltError) {
             console.debug('clearHalt(in) failed during streaming recovery:', clearHaltError);
             this.pushUsbTrace({
@@ -317,6 +456,8 @@ export class HackRFDevice implements ISDRDevice {
                 event: 'clear-halt-error',
                 detail: clearHaltError instanceof Error ? clearHaltError.message : String(clearHaltError)
             });
+            this.transitionState('error', 'recover-endpoint-failed');
+            return false;
         }
     }
 
@@ -327,7 +468,7 @@ export class HackRFDevice implements ISDRDevice {
                 ? error
                 : JSON.stringify(error ?? 'unknown');
 
-        if (/stall|clearhalt|endpoint halt|babble/i.test(detail)) {
+        if (/stall|clearhalt|endpoint halt|halted|babble/i.test(detail)) {
             return 'stall';
         }
 
@@ -344,7 +485,22 @@ export class HackRFDevice implements ISDRDevice {
         }
 
         if (kind === 'stall') {
-            await this.recoverStreamingEndpoint();
+            const endpointRecovered = await this.recoverStreamingEndpoint();
+            if (!endpointRecovered) {
+                this.pushUsbTrace({
+                    ts: new Date().toISOString(),
+                    event: 'clear-halt-escalate',
+                    detail: 'clearHalt failed; escalating to handle reopen + RX reset'
+                });
+                await this.recoverHandle();
+                await this.setTransceiverMode(0);
+                await this.sleep(HackRFDevice.MODE_SETTLE_DELAY_MS);
+                await this.setTransceiverMode(1);
+                this.markDiscontinuity('reset');
+                this.recentStallCount = 0;
+                return;
+            }
+
             const nowMs = performance.now();
             if (nowMs - this.recentStallWindowStartedAtMs > HackRFDevice.STALL_STORM_WINDOW_MS) {
                 this.recentStallWindowStartedAtMs = nowMs;
@@ -426,6 +582,32 @@ export class HackRFDevice implements ISDRDevice {
         };
     }
 
+    private getCompatibilityGatingDecision(): {
+        blocked: boolean;
+        forcedProfile?: 'balanced' | 'stable';
+        message?: string;
+    } {
+        const compatibility = this.getCompatibilityStatus();
+        if (compatibility.status === 'known-unsupported') {
+            return {
+                blocked: true,
+                message: compatibility.note
+            };
+        }
+
+        if (compatibility.status === 'unknown') {
+            return {
+                blocked: false,
+                forcedProfile: 'balanced',
+                message: 'Compatibility unknown; low-latency profile is gated to balanced defaults.'
+            };
+        }
+
+        return {
+            blocked: false
+        };
+    }
+
     getSweepCapability(): DeviceSweepCapability {
         return {
             hardwareSupported: false,
@@ -449,31 +631,16 @@ export class HackRFDevice implements ISDRDevice {
             throw new Error('HackRF configuration unavailable after selectConfiguration.');
         }
 
-        const candidate = config.interfaces
-            .map((iface) => {
-                const alt = iface.alternates.find((a) =>
-                    a.endpoints.some((e) => e.direction === 'in' && e.type === 'bulk')
-                );
-                return alt ? { iface, alt } : null;
-            })
-            .find((entry): entry is { iface: USBInterface; alt: USBAlternateInterface } => entry !== null);
-
-        if (candidate) {
-            this.interfaceIndex = candidate.iface.interfaceNumber;
-            const inEp = candidate.alt.endpoints.find((e) => e.direction === 'in' && e.type === 'bulk');
-            if (inEp) {
-                this.inEndpointNumber = inEp.endpointNumber;
-            }
-        }
+        const selected = resolveHackRfStreamingInterface(config);
+        this.interfaceIndex = selected.interfaceIndex;
+        this.inEndpointNumber = selected.inEndpointNumber;
+        this.descriptorWarnings = selected.warnings;
+        this.descriptorCandidateCount = selected.candidateCount;
 
         await device.claimInterface(this.interfaceIndex);
 
         const currentAlt = config.interfaces.find((i) => i.interfaceNumber === this.interfaceIndex)?.alternate?.alternateSetting;
-        const targetAlt = config.interfaces
-            .find((i) => i.interfaceNumber === this.interfaceIndex)
-            ?.alternates.find((a) =>
-                a.endpoints.some((e) => e.direction === 'in' && e.type === 'bulk')
-            )?.alternateSetting;
+        const targetAlt = selected.alternateSetting;
 
         if (
             typeof targetAlt === 'number' &&
@@ -483,7 +650,7 @@ export class HackRFDevice implements ISDRDevice {
             await device.selectAlternateInterface(this.interfaceIndex, targetAlt);
             this.activeAlternateSetting = targetAlt;
         } else {
-            this.activeAlternateSetting = currentAlt ?? 0;
+            this.activeAlternateSetting = currentAlt ?? targetAlt ?? 0;
         }
 
         console.log(`Claimed interface=${this.interfaceIndex} inEp=${this.inEndpointNumber}`);
@@ -523,26 +690,112 @@ export class HackRFDevice implements ISDRDevice {
                 normalizedToUnitRange: false,
                 invertIQSupported: 'unsupported',
                 swapIQSupported: 'unsupported'
+            },
+            iqControl: {
+                swap: 'unsupported',
+                invert: 'unsupported',
+                implementation: 'none'
+            },
+            frontEndCorrection: {
+                dcOffset: 'unsupported',
+                iqBalance: 'unsupported',
+                implementation: 'none'
             }
         };
     }
 
+    getIqControlState(): DeviceIqControlState {
+        return { ...this.iqControlState };
+    }
+
+    async setIqControlState(patch: DeviceIqControlPatch): Promise<void> {
+        if (patch.swapEnabled === true || patch.invertEnabled === true) {
+            throw new Error('HackRF WebUSB driver does not support device-side IQ swap/invert controls.');
+        }
+
+        this.iqControlState = {
+            ...this.iqControlState,
+            ...(patch.swapEnabled !== undefined ? { swapEnabled: patch.swapEnabled } : {}),
+            ...(patch.invertEnabled !== undefined ? { invertEnabled: patch.invertEnabled } : {})
+        };
+    }
+
+    getFrontEndCorrectionState(): DeviceFrontEndCorrectionState {
+        return { ...this.frontEndCorrectionState };
+    }
+
+    async setFrontEndCorrectionState(patch: DeviceFrontEndCorrectionPatch): Promise<void> {
+        if (patch.dcOffsetEnabled === true || patch.iqBalanceEnabled === true) {
+            throw new Error('HackRF WebUSB driver does not support device-side DC/IQ correction toggles.');
+        }
+
+        this.frontEndCorrectionState = {
+            ...this.frontEndCorrectionState,
+            ...(patch.dcOffsetEnabled !== undefined ? { dcOffsetEnabled: patch.dcOffsetEnabled } : {}),
+            ...(patch.iqBalanceEnabled !== undefined ? { iqBalanceEnabled: patch.iqBalanceEnabled } : {})
+        };
+    }
+
+    getStateMachineSnapshot(): DeviceStateMachineSnapshot {
+        return {
+            state: this.driverState,
+            opened: Boolean(this.device?.opened),
+            streaming: this.isStreaming,
+            transitionCount: this.transitionCount,
+            lastEvent: this.lastStateEvent,
+            lastTransitionAtIso: this.lastTransitionAtIso
+        };
+    }
+
+    getStreamContinuityContract(): DeviceStreamContinuityContract {
+        return {
+            timestampModel: 'monotonic-with-explicit-gaps',
+            sampleIndexModel: 'continuous-with-gap-accounting',
+            glitchlessOperations: ['gain_change', 'streaming_profile_change', 'recover_endpoint'],
+            discontinuityOperations: [
+                { operation: 'start', cause: 'restart', note: 'Each stream start emits a restart marker.' },
+                { operation: 'retune', cause: 'retune' },
+                { operation: 'sample_rate_change', cause: 'sample_rate_change' },
+                { operation: 'recover_handle', cause: 'reset', note: 'Handle reopen forces RX mode reset.' },
+                { operation: 'reset', cause: 'reset' }
+            ],
+            emittedDiscontinuityCauses: ['restart', 'retune', 'sample_rate_change', 'reset', 'overflow', 'dropped_samples']
+        };
+    }
+
     async open(): Promise<void> {
-        const filter = { vendorId: HACKRF_USB_VID, productId: HACKRF_USB_PID };
+        this.transitionState('opening', 'open-begin');
+        const normalFilter = { vendorId: HACKRF_USB_VID, productId: HACKRF_USB_PID };
+        const broadHackRfFilter = { vendorId: HACKRF_USB_VID };
         console.log("Checking for previously paired HackRF devices...");
 
         const pairedDevices = await navigator.usb.getDevices();
         const existing = pairedDevices.find((d) => d.vendorId === HACKRF_USB_VID && d.productId === HACKRF_USB_PID);
+        const pairedBootloader = pairedDevices.find((d) => d.vendorId === HACKRF_USB_VID && this.isBootloaderPersonality(d));
 
         if (existing) {
             console.log("Using previously paired HackRF without showing picker.");
             this.device = existing;
+        } else if (pairedBootloader) {
+            throw new Error(this.buildBootloaderRecoveryMessage(pairedBootloader));
         } else {
             console.log("No paired HackRF found. Requesting device selection...");
-            this.device = await navigator.usb.requestDevice({ filters: [filter] });
+            const selectedDevice = await navigator.usb.requestDevice({ filters: [normalFilter, broadHackRfFilter] });
+
+            if (selectedDevice.vendorId === HACKRF_USB_VID && this.isBootloaderPersonality(selectedDevice)) {
+                throw new Error(this.buildBootloaderRecoveryMessage(selectedDevice));
+            }
+
+            if (selectedDevice.vendorId === HACKRF_USB_VID && selectedDevice.productId !== HACKRF_USB_PID) {
+                const pid = `0x${selectedDevice.productId.toString(16)}`;
+                throw new Error(`Unsupported HackRF USB personality detected (${pid}). Ensure normal firmware mode is active and retry.`);
+            }
+
+            this.device = selectedDevice;
         }
 
         if (!this.device) {
+            this.transitionState('error', 'open-no-device');
             throw new Error('HackRF device not available.');
         }
 
@@ -605,10 +858,12 @@ export class HackRFDevice implements ISDRDevice {
         }
         
         console.log("Open Sequence Complete.");
+        this.transitionState('open', 'open-complete');
     }
 
     async close(): Promise<void> {
         if (!this.device) return;
+        this.transitionState('closing', 'close-begin');
         await this.stop();
         try {
             await this.device.releaseInterface(this.interfaceIndex);
@@ -623,6 +878,7 @@ export class HackRFDevice implements ISDRDevice {
         }
 
         this.device = null;
+        this.transitionState('idle', 'close-complete');
     }
 
     async setFrequency(hz: number): Promise<void> {
@@ -696,6 +952,14 @@ export class HackRFDevice implements ISDRDevice {
     async start(onData: SDRDataCallback): Promise<void> {
         if (!this.device) throw new Error("Device not open");
         if (this.isStreaming) return;
+
+        const compatibilityGate = this.getCompatibilityGatingDecision();
+        if (compatibilityGate.blocked) {
+            this.transitionState('error', 'compatibility-gate-blocked');
+            throw new Error(`HackRF streaming blocked by compatibility gate: ${compatibilityGate.message ?? 'unsupported firmware/board profile'}`);
+        }
+
+        this.transitionState('streaming', 'stream-start-requested');
         this.isStreaming = true;
         this.sequence = 0;
         this.sampleIndex = 0;
@@ -719,6 +983,7 @@ export class HackRFDevice implements ISDRDevice {
             await this.setTransceiverMode(1);
         } catch (startError) {
             this.isStreaming = false;
+            this.transitionState('error', 'stream-start-failed');
             throw startError;
         }
 
@@ -838,6 +1103,7 @@ export class HackRFDevice implements ISDRDevice {
                     }
 
                     const detail = e instanceof Error ? e.message : String(e);
+                    this.transitionState('error', 'stream-failure-budget-exhausted');
                     throw new Error(`HackRF stream aborted after ${consecutiveFailures} consecutive transfer failures: ${detail}`);
                 }
 
@@ -855,12 +1121,16 @@ export class HackRFDevice implements ISDRDevice {
                 console.debug('Failed to leave RX mode after unexpected loop exit:', modeStopError);
             }
 
+            this.transitionState('error', 'stream-loop-unexpected-exit');
             throw new Error('HackRF stream loop exited unexpectedly while streaming');
         }
+
+        this.transitionState('open', 'stream-loop-exit');
     }
 
     async stop(): Promise<void> {
         this.isStreaming = false;
+        this.transitionState(this.device ? 'open' : 'idle', 'stream-stop');
         if (this.device) {
             try {
                 await this.setTransceiverMode(0);
@@ -876,10 +1146,28 @@ export class HackRFDevice implements ISDRDevice {
         maxConsecutiveFailures: number;
         profileName?: 'low-latency' | 'balanced' | 'stable' | 'custom';
     }): Promise<void> {
+        const compatibilityGate = this.getCompatibilityGatingDecision();
+        if (compatibilityGate.blocked) {
+            throw new Error(`HackRF streaming profile update blocked by compatibility gate: ${compatibilityGate.message ?? 'unsupported firmware/board profile'}`);
+        }
+
+        const requestedProfileName = profile.profileName ?? 'custom';
+        const profileName = requestedProfileName === 'low-latency' && compatibilityGate.forcedProfile === 'balanced'
+            ? 'balanced'
+            : requestedProfileName;
+
         this.streamTransferSizeBytes = Math.max(4096, Math.min(65536, Math.round(profile.transferSizeBytes)));
         this.streamRetryDelayMs = Math.max(5, Math.min(200, Math.round(profile.retryDelayMs)));
         this.streamMaxConsecutiveFailures = Math.max(2, Math.min(32, Math.round(profile.maxConsecutiveFailures)));
-        this.streamProfileName = profile.profileName ?? 'custom';
+        this.streamProfileName = profileName;
+
+        if (profileName !== requestedProfileName) {
+            this.pushUsbTrace({
+                ts: new Date().toISOString(),
+                event: 'compatibility-profile-gate',
+                detail: compatibilityGate.message ?? `${requestedProfileName} gated to ${profileName}`
+            });
+        }
 
         this.pushUsbTrace({
             ts: new Date().toISOString(),
@@ -901,7 +1189,9 @@ export class HackRFDevice implements ISDRDevice {
                 configurationValue: this.device?.configuration?.configurationValue,
                 interfaceIndex: this.interfaceIndex,
                 alternateSetting: this.activeAlternateSetting,
-                inEndpointNumber: this.inEndpointNumber
+                inEndpointNumber: this.inEndpointNumber,
+                endpointWarnings: [...this.descriptorWarnings],
+                alternateCandidates: this.descriptorCandidateCount
             },
             streamingProfile: {
                 transferSizeBytes: this.streamTransferSizeBytes,

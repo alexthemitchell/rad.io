@@ -32,6 +32,18 @@ export type DeviceSampleFormatCapabilities = {
   swapIQSupported: DeviceCapabilityState;
 };
 
+export type DeviceIqControlCapabilities = {
+  swap: DeviceCapabilityState;
+  invert: DeviceCapabilityState;
+  implementation: 'device' | 'dsp' | 'none';
+};
+
+export type DeviceFrontEndCorrectionCapabilities = {
+  dcOffset: DeviceCapabilityState;
+  iqBalance: DeviceCapabilityState;
+  implementation: 'device' | 'dsp' | 'none';
+};
+
 export type DeviceCapabilityModel = {
   sourceType: SdrSourceType;
   deviceName: string;
@@ -45,6 +57,8 @@ export type DeviceCapabilityModel = {
   rfPower: DeviceRfPowerCapabilities;
   clocking: DeviceClockingCapabilities;
   sampleFormat: DeviceSampleFormatCapabilities;
+  iqControl: DeviceIqControlCapabilities;
+  frontEndCorrection: DeviceFrontEndCorrectionCapabilities;
 };
 
 export const defaultCapabilityModel = (sourceType: SdrSourceType, deviceName: string): DeviceCapabilityModel => ({
@@ -74,5 +88,15 @@ export const defaultCapabilityModel = (sourceType: SdrSourceType, deviceName: st
     normalizedToUnitRange: false,
     invertIQSupported: 'unknown',
     swapIQSupported: 'unknown'
+  },
+  iqControl: {
+    swap: 'unknown',
+    invert: 'unknown',
+    implementation: 'none'
+  },
+  frontEndCorrection: {
+    dcOffset: 'unknown',
+    iqBalance: 'unknown',
+    implementation: 'none'
   }
 });

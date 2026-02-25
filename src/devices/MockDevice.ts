@@ -1,5 +1,16 @@
-import { ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
+import {
+    DeviceFrontEndCorrectionPatch,
+    DeviceFrontEndCorrectionState,
+    DeviceIqControlPatch,
+    DeviceIqControlState,
+    DeviceStateMachineSnapshot,
+    DeviceStreamContinuityContract,
+    ISDRDevice,
+    SDRDataCallback,
+    SDRGainStage
+} from './ISDRDevice';
 import { SDRDiscontinuityCause, SDRDiscontinuityEvent, SDRStreamFrame } from './streamFrame';
+import { defaultCapabilityModel, type DeviceCapabilityModel } from './CapabilityModel';
 
 export class MockDevice implements ISDRDevice {
     name = "Mock Source (Synthetic)";
@@ -14,6 +25,34 @@ export class MockDevice implements ISDRDevice {
     private pendingDiscontinuity: SDRDiscontinuityCause | null = null;
     private lastTickWallClockMs = 0;
     private readonly blockIntervalMs = 10;
+    private iqControlState: DeviceIqControlState = {
+        swapEnabled: false,
+        invertEnabled: false,
+        implementation: 'dsp'
+    };
+    private frontEndCorrectionState: DeviceFrontEndCorrectionState = {
+        dcOffsetEnabled: false,
+        iqBalanceEnabled: false,
+        implementation: 'dsp'
+    };
+    private state: DeviceStateMachineSnapshot = {
+        state: 'idle',
+        opened: false,
+        streaming: false,
+        transitionCount: 0,
+        lastEvent: 'init',
+        lastTransitionAtIso: new Date(0).toISOString()
+    };
+
+    private transitionState(next: DeviceStateMachineSnapshot['state'], event: string): void {
+        this.state = {
+            ...this.state,
+            state: next,
+            transitionCount: this.state.transitionCount + 1,
+            lastEvent: event,
+            lastTransitionAtIso: new Date().toISOString()
+        };
+    }
 
     private markDiscontinuity(cause: SDRDiscontinuityCause): void {
         if (this.pendingDiscontinuity === 'restart') {
@@ -42,13 +81,57 @@ export class MockDevice implements ISDRDevice {
         ];
     }
 
+    getCapabilityModel(): DeviceCapabilityModel {
+        return {
+            ...defaultCapabilityModel('MOCK', this.name),
+            supportedSampleRatesHz: [250_000, 500_000, 1_000_000, 2_000_000, 2_400_000],
+            supportedAnalogBandwidthsHz: [200_000, 500_000, 1_000_000, 2_000_000],
+            gainStages: [{ name: 'MAIN', min: 0, max: 100, step: 1, order: 1 }],
+            agcControl: 'unsupported',
+            loOffsetControl: 'supported',
+            basebandFilterControl: 'supported',
+            sampleFormat: {
+                iqOrder: 'iq',
+                sampleType: 'i8',
+                interleaved: true,
+                normalizedToUnitRange: false,
+                invertIQSupported: 'supported',
+                swapIQSupported: 'supported'
+            },
+            iqControl: {
+                swap: 'supported',
+                invert: 'supported',
+                implementation: 'dsp'
+            },
+            frontEndCorrection: {
+                dcOffset: 'supported',
+                iqBalance: 'supported',
+                implementation: 'dsp'
+            }
+        };
+    }
+
     async open(): Promise<void> {
+        this.transitionState('opening', 'open-begin');
         console.log("Mock Device Opened");
+        this.state = {
+            ...this.state,
+            opened: true,
+            streaming: false
+        };
+        this.transitionState('open', 'open-complete');
     }
 
     async close(): Promise<void> {
-        this.stop();
+        this.transitionState('closing', 'close-begin');
+        await this.stop();
         console.log("Mock Device Closed");
+        this.state = {
+            ...this.state,
+            opened: false,
+            streaming: false
+        };
+        this.transitionState('idle', 'close-complete');
     }
 
     async setFrequency(hz: number): Promise<void> {
@@ -77,6 +160,11 @@ export class MockDevice implements ISDRDevice {
     async start(onData: SDRDataCallback): Promise<void> {
         if (this.isStreaming) return;
         this.isStreaming = true;
+        this.state = {
+            ...this.state,
+            streaming: true
+        };
+        this.transitionState('streaming', 'stream-start');
         this.markDiscontinuity('restart');
         this.lastTickWallClockMs = Date.now();
 
@@ -176,9 +264,56 @@ export class MockDevice implements ISDRDevice {
 
     async stop(): Promise<void> {
         this.isStreaming = false;
+        this.state = {
+            ...this.state,
+            streaming: false
+        };
+        this.transitionState(this.state.opened ? 'open' : 'idle', 'stream-stop');
         if (this.intervalId) {
             clearInterval(this.intervalId);
             this.intervalId = null;
         }
+    }
+
+    getIqControlState(): DeviceIqControlState {
+        return { ...this.iqControlState };
+    }
+
+    async setIqControlState(patch: DeviceIqControlPatch): Promise<void> {
+        this.iqControlState = {
+            ...this.iqControlState,
+            ...(patch.swapEnabled !== undefined ? { swapEnabled: patch.swapEnabled } : {}),
+            ...(patch.invertEnabled !== undefined ? { invertEnabled: patch.invertEnabled } : {})
+        };
+    }
+
+    getFrontEndCorrectionState(): DeviceFrontEndCorrectionState {
+        return { ...this.frontEndCorrectionState };
+    }
+
+    async setFrontEndCorrectionState(patch: DeviceFrontEndCorrectionPatch): Promise<void> {
+        this.frontEndCorrectionState = {
+            ...this.frontEndCorrectionState,
+            ...(patch.dcOffsetEnabled !== undefined ? { dcOffsetEnabled: patch.dcOffsetEnabled } : {}),
+            ...(patch.iqBalanceEnabled !== undefined ? { iqBalanceEnabled: patch.iqBalanceEnabled } : {})
+        };
+    }
+
+    getStateMachineSnapshot(): DeviceStateMachineSnapshot {
+        return { ...this.state };
+    }
+
+    getStreamContinuityContract(): DeviceStreamContinuityContract {
+        return {
+            timestampModel: 'monotonic-with-explicit-gaps',
+            sampleIndexModel: 'continuous-with-gap-accounting',
+            glitchlessOperations: ['gain_change'],
+            discontinuityOperations: [
+                { operation: 'start', cause: 'restart' },
+                { operation: 'retune', cause: 'retune' },
+                { operation: 'sample_rate_change', cause: 'sample_rate_change' }
+            ],
+            emittedDiscontinuityCauses: ['restart', 'retune', 'sample_rate_change', 'dropped_samples']
+        };
     }
 }

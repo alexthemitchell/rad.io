@@ -1,5 +1,6 @@
 import type { SDRStreamFrame } from './streamFrame';
 import type { DeviceCapabilityModel } from './CapabilityModel';
+import type { SDRDiscontinuityCause } from './streamFrame';
 
 export interface SDRGainStage {
     name: string;
@@ -11,6 +12,69 @@ export interface SDRGainStage {
 }
 
 export type SDRDataCallback = (data: DataView, frame?: SDRStreamFrame) => void;
+
+export type DeviceIqControlState = {
+    swapEnabled: boolean;
+    invertEnabled: boolean;
+    implementation: 'device' | 'dsp' | 'none';
+};
+
+export type DeviceIqControlPatch = {
+    swapEnabled?: boolean;
+    invertEnabled?: boolean;
+};
+
+export type DeviceFrontEndCorrectionState = {
+    dcOffsetEnabled: boolean;
+    iqBalanceEnabled: boolean;
+    implementation: 'device' | 'dsp' | 'none';
+};
+
+export type DeviceFrontEndCorrectionPatch = {
+    dcOffsetEnabled?: boolean;
+    iqBalanceEnabled?: boolean;
+};
+
+export type DeviceDriverState =
+    | 'idle'
+    | 'opening'
+    | 'open'
+    | 'streaming'
+    | 'recovering'
+    | 'closing'
+    | 'error';
+
+export type DeviceStateMachineSnapshot = {
+    state: DeviceDriverState;
+    opened: boolean;
+    streaming: boolean;
+    transitionCount: number;
+    lastEvent: string;
+    lastTransitionAtIso: string;
+};
+
+export type DeviceContinuityOperation =
+    | 'start'
+    | 'stop'
+    | 'retune'
+    | 'sample_rate_change'
+    | 'gain_change'
+    | 'streaming_profile_change'
+    | 'recover_handle'
+    | 'recover_endpoint'
+    | 'reset';
+
+export type DeviceStreamContinuityContract = {
+    timestampModel: 'monotonic-with-explicit-gaps' | 'best-effort';
+    sampleIndexModel: 'continuous-with-gap-accounting' | 'best-effort';
+    glitchlessOperations: DeviceContinuityOperation[];
+    discontinuityOperations: Array<{
+        operation: DeviceContinuityOperation;
+        cause: SDRDiscontinuityCause;
+        note?: string;
+    }>;
+    emittedDiscontinuityCauses: SDRDiscontinuityCause[];
+};
 
 export type DeviceDebugSnapshot = {
     driver: string;
@@ -25,6 +89,8 @@ export type DeviceDebugSnapshot = {
         interfaceIndex?: number;
         alternateSetting?: number;
         inEndpointNumber?: number;
+        endpointWarnings?: string[];
+        alternateCandidates?: number;
     };
     streamingProfile?: {
         transferSizeBytes: number;
@@ -105,4 +171,10 @@ export interface ISDRDevice {
     getSweepCapability?(): DeviceSweepCapability;
     getCapabilityModel?(): DeviceCapabilityModel;
     getDebugSnapshot?(): DeviceDebugSnapshot;
+    getIqControlState?(): DeviceIqControlState;
+    setIqControlState?(patch: DeviceIqControlPatch): Promise<void>;
+    getFrontEndCorrectionState?(): DeviceFrontEndCorrectionState;
+    setFrontEndCorrectionState?(patch: DeviceFrontEndCorrectionPatch): Promise<void>;
+    getStateMachineSnapshot?(): DeviceStateMachineSnapshot;
+    getStreamContinuityContract?(): DeviceStreamContinuityContract;
 }

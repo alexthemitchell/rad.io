@@ -21,6 +21,7 @@ import { FileDevice } from './devices/FileDevice';
 import { DeviceDebugSnapshot, ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
 import { getStabilityProfile, profileKeyFor, upsertStabilityProfile, type StabilityProfile } from './devices/deviceProfileStore';
 import { deriveStableDeviceIdentity } from './devices/deviceIdentity';
+import { buildHackrfFirmwareRecoveryPlan } from './devices/hackrfFirmwareRecovery';
 import { normalizeDeviceError } from './devices/errors';
 import type { SDRStreamFrame } from './devices/streamFrame';
 import { goldenToneFixtureBundle } from './fixtures/sigmf/goldenToneFixture';
@@ -49,6 +50,17 @@ import {
   estimateEffectiveEnobBits
 } from './measurements/frontEndHealthAdvisor';
 import { assessFrontEndOverloadTriage } from './measurements/frontEndOverloadTriage';
+import { assessExternalReferenceStability } from './measurements/externalReferenceStability';
+import { assessRestoreSafety } from './measurements/sessionRestoreSafety';
+import {
+  CALIBRATION_SOURCE_CATALOG,
+  buildFrequencyCalibrationResult,
+  canApplySuggestedPpm,
+  runFrequencyCalibrationWizard,
+  type CalibrationSourceId
+} from './measurements/frequencyCalibrationWizard';
+import { assessGainStagingAssistant } from './measurements/gainStagingAssistant';
+import { deriveReferenceClockVisibility } from './measurements/referenceClockVisibility';
 import {
   deriveTargetQueueMs,
   describeClockSyncPolicy,
@@ -387,6 +399,12 @@ type SafeModeMarker = {
   triggeredAtIso: string;
   reason: string;
   snapshot: SafeModeSnapshot;
+};
+
+type PendingSafeRestoreConfirmation = {
+  snapshot: SafeModeSnapshot;
+  reasons: string[];
+  summary: string;
 };
 
 type SessionParameterSnapshot = {
@@ -811,6 +829,7 @@ export default function App() {
     ]);
     const [audioOutputSelectionSupported, setAudioOutputSelectionSupported] = useState(false);
     const [safeModeMarker, setSafeModeMarker] = useState<SafeModeMarker | null>(null);
+    const [pendingSafeRestoreConfirmation, setPendingSafeRestoreConfirmation] = useState<PendingSafeRestoreConfirmation | null>(null);
     const [adaptiveStreamingEnabled, setAdaptiveStreamingEnabled] = useState(true);
     const [usbStreamingProfile, setUsbStreamingProfile] = useState<UsbStreamingProfileName | 'custom'>(() => {
       try {
@@ -822,6 +841,7 @@ export default function App() {
     });
     const [usbAutoTuneRunning, setUsbAutoTuneRunning] = useState(false);
     const [hardwareSelfTestReport, setHardwareSelfTestReport] = useState<HardwareSanitySelfTestReport | null>(null);
+    const [calibrationWizardSourceId, setCalibrationWizardSourceId] = useState<CalibrationSourceId>('wfm-pilot-19khz');
 
   const bandRegionPlans = useMemo(() => listBandRegionPlans(), []);
 
@@ -1122,6 +1142,7 @@ export default function App() {
 
   const clearSafeModeMarker = useCallback(() => {
     setSafeModeMarker(null);
+    setPendingSafeRestoreConfirmation(null);
     try {
       localStorage.removeItem(SAFE_MODE_MARKER_STORAGE_KEY);
     } catch {
@@ -1176,6 +1197,31 @@ export default function App() {
     setSecondaryVfoEnabled(snapshot.secondaryVfoEnabled);
     setSecondaryVfoOffsetHz(snapshot.secondaryVfoOffsetHz);
   }, []);
+
+  const requestSafeRestoreConfirmation = useCallback((snapshot: SafeModeSnapshot) => {
+    const assessment = assessRestoreSafety({
+      sourceType: snapshot.sourceType,
+      demodMode: snapshot.demodMode,
+      frequencyHz: snapshot.frequencyHz,
+      fineFreqHz: snapshot.fineFreqHz,
+      ppmCorrection: snapshot.ppmCorrection
+    });
+
+    if (!assessment.requiresConfirmation) {
+      restoreFromSafeModeSnapshot(snapshot);
+      clearSafeModeMarker();
+      setStatusMessage('Restored previous session settings from safe-mode snapshot.');
+      pushDiagnosticEvent('Safe mode dismissed and previous settings restored.');
+      return;
+    }
+
+    setPendingSafeRestoreConfirmation({
+      snapshot,
+      reasons: assessment.reasons,
+      summary: assessment.summary
+    });
+    setStatusMessage('Safe-mode restore has risky settings. Review and confirm before applying.');
+  }, [clearSafeModeMarker, pushDiagnosticEvent, restoreFromSafeModeSnapshot]);
 
   useEffect(() => {
     try {
@@ -1745,6 +1791,19 @@ export default function App() {
         return;
       }
 
+      const onUsbConnect = (event: Event) => {
+        if (!isWebUsbSource(sourceType) || isRunningRef.current) {
+          return;
+        }
+
+        const usbEvent = event as unknown as { device?: USBDevice };
+        const product = usbEvent.device?.productName ?? 'USB device';
+
+        setStatusMessage(`${product} detected. Press Start to resume streaming.`);
+        pushDiagnosticEvent(`USB connect detected for ${product}; resume-ready.`, 'info', 'webusb');
+        void refreshPermissionState();
+      };
+
       const onUsbDisconnect = (event: Event) => {
         if (!isRunningRef.current || !isWebUsbSource(sourceType)) {
           return;
@@ -1771,11 +1830,13 @@ export default function App() {
         }
       };
 
+      navigator.usb.addEventListener('connect', onUsbConnect as EventListener);
       navigator.usb.addEventListener('disconnect', onUsbDisconnect as EventListener);
       return () => {
+        navigator.usb.removeEventListener('connect', onUsbConnect as EventListener);
         navigator.usb.removeEventListener('disconnect', onUsbDisconnect as EventListener);
       };
-    }, [persistSafeModeMarker, postToWorker, pushDiagnosticEvent, sourceType]);
+    }, [persistSafeModeMarker, postToWorker, pushDiagnosticEvent, refreshPermissionState, sourceType]);
 
       useEffect(() => {
         if (!isRunning) {
@@ -2674,6 +2735,7 @@ export default function App() {
     lastProfilePersistAtRef.current = now;
 
     const profileKey = activeDeviceProfileKey;
+    const existing = getStabilityProfile(profileKey);
     const next = upsertStabilityProfile({
       sourceType,
       profileKey,
@@ -2681,7 +2743,11 @@ export default function App() {
       driftEstimateHzPerSec: frequencyModelState.driftEstimateHzPerSec,
       driftConfidence: frequencyModelState.driftConfidence,
       phaseErrorRms: frequencyModelState.phaseErrorRms,
-      ppmCorrectionHz: frequencyModelState.ppmCorrectionHz
+      ppmCorrectionHz: frequencyModelState.ppmCorrectionHz,
+      iqIntegrityLastReport: existing?.iqIntegrityLastReport,
+      applyOnConnect: existing?.applyOnConnect,
+      calibrationSeed: existing?.calibrationSeed,
+      frequencyCalibration: existing?.frequencyCalibration
     });
     setStabilityProfile(next);
   }, [
@@ -3012,15 +3078,50 @@ export default function App() {
             for (const stage of stages) {
                 initialGains[stage.name] = stage.value;
             }
-            setGains(initialGains);
+
+            const profileIdentity = deriveStableDeviceIdentity(sourceType, dev.name, dev.getDebugSnapshot?.() ?? null);
+            const persistedProfile = getStabilityProfile(profileIdentity.key);
+            const applyOnConnect = persistedProfile?.applyOnConnect;
+            let nextPpmCorrection = ppmCorrection;
+            let nextSampleRateHz = streamRatePlan.sampleRateHz;
+            const nextGains: Record<string, number> = { ...initialGains };
+
+            if (applyOnConnect?.enabled) {
+              if (typeof applyOnConnect.sampleRateHz === 'number' && Number.isFinite(applyOnConnect.sampleRateHz) && applyOnConnect.sampleRateHz > 0) {
+                nextSampleRateHz = Math.round(applyOnConnect.sampleRateHz);
+              }
+
+              if (typeof applyOnConnect.ppmCorrection === 'number' && Number.isFinite(applyOnConnect.ppmCorrection)) {
+                nextPpmCorrection = applyOnConnect.ppmCorrection;
+              }
+
+              if (applyOnConnect.gains) {
+                for (const stage of stages) {
+                  const candidate = applyOnConnect.gains[stage.name];
+                  if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+                    const clamped = Math.max(stage.min, Math.min(stage.max, candidate));
+                    nextGains[stage.name] = clamped;
+                  }
+                }
+              }
+            }
+
+            setGains(nextGains);
+            if (nextPpmCorrection !== ppmCorrection) {
+              setPpmCorrection(nextPpmCorrection);
+            }
     
             // Apply initial state to Device
-            streamSampleRateHzRef.current = streamRatePlan.sampleRateHz;
-            setStreamSampleRateHz(streamRatePlan.sampleRateHz);
-            await dev.setSampleRate(streamRatePlan.sampleRateHz);
+            streamSampleRateHzRef.current = nextSampleRateHz;
+            setStreamSampleRateHz(nextSampleRateHz);
+            await dev.setSampleRate(nextSampleRateHz);
             await dev.setFrequency(frequency);
             for (const stage of stages) {
-                await dev.setGain(stage.name, stage.value);
+                await dev.setGain(stage.name, nextGains[stage.name]);
+            }
+
+            if (applyOnConnect?.enabled) {
+              pushDiagnosticEvent(`Applied per-device connect profile (${profileIdentity.key}).`);
             }
 
             if (dev.setStreamingProfile && (usbStreamingProfile === 'low-latency' || usbStreamingProfile === 'balanced' || usbStreamingProfile === 'stable')) {
@@ -3038,8 +3139,8 @@ export default function App() {
             postToWorker({ command: 'SET_MODE', value: demodMode });
             postToWorker({ command: 'SET_FINE_FREQ', value: fineFreq });
             postToWorker({ command: 'SET_TUNED_FREQUENCY', value: frequency });
-            postToWorker({ command: 'SET_PPM_CORRECTION', value: ppmCorrection });
-            postToWorker({ command: 'SET_SAMPLE_RATE', value: streamRatePlan.sampleRateHz });
+            postToWorker({ command: 'SET_PPM_CORRECTION', value: nextPpmCorrection });
+            postToWorker({ command: 'SET_SAMPLE_RATE', value: nextSampleRateHz });
             postToWorker({ command: 'SET_AFC_ENABLED', value: afcEnabled });
             postToWorker({ command: 'SET_STABILITY_MODE', value: stabilityModeEnabled });
             postToWorker({
@@ -3268,6 +3369,9 @@ export default function App() {
         driftConfidence: existing?.driftConfidence ?? frequencyModelState.driftConfidence,
         phaseErrorRms: existing?.phaseErrorRms ?? frequencyModelState.phaseErrorRms,
         ppmCorrectionHz: existing?.ppmCorrectionHz ?? ppmCorrection,
+        applyOnConnect: existing?.applyOnConnect,
+        calibrationSeed: existing?.calibrationSeed,
+        frequencyCalibration: existing?.frequencyCalibration,
         iqIntegrityLastReport: {
           recordedAtUtc: new Date().toISOString(),
           status: iqIntegrityAssessment.status,
@@ -3580,6 +3684,10 @@ export default function App() {
                 streamSampleRateHz,
                 supportsWebUsb: sourceType === 'HACKRF' || sourceType === 'RTLSDR',
                 capabilityModel: deviceRef.current?.getCapabilityModel?.() ?? null,
+                iqControlState: deviceRef.current?.getIqControlState?.() ?? null,
+                frontEndCorrectionState: deviceRef.current?.getFrontEndCorrectionState?.() ?? null,
+                stateMachine: deviceRef.current?.getStateMachineSnapshot?.() ?? null,
+                streamContinuityContract: deviceRef.current?.getStreamContinuityContract?.() ?? null,
                 descriptor: deviceDebugSnapshot?.descriptor ?? null,
                 streamingProfile: deviceDebugSnapshot?.streamingProfile ?? null
               },
@@ -3662,7 +3770,12 @@ export default function App() {
             },
             recordingExportIntegrity: recordingExportIntegrityPreview,
             frontEndTriage: frontEndOverloadAssessment,
+            overloadClippingTelemetry,
             timebaseDrift: timebaseDriftAssessment,
+            externalReferenceStability: externalReferenceAssessment,
+            referenceClockVisibility,
+            firmwareRecoveryPlan,
+            frequencyCalibrationWizard: calibrationWizardAssessment,
             sampleRateMismatch: sampleRateMismatchAssessment,
             iqIntegrityWizard: iqIntegrityAssessment,
             signalIdAdvisor,
@@ -4767,6 +4880,99 @@ export default function App() {
     sourceType
   ]);
 
+  const sessionGradeStabilityWindowSeconds = (() => {
+    const samples = telemetryWindowRef.current;
+    if (samples.length < 2) {
+      return 0;
+    }
+
+    let stableWindowStartIndex = 0;
+    for (let i = samples.length - 1; i >= 0; i -= 1) {
+      const sample = samples[i];
+      const unstable = sample.audioUnderruns > 0
+        || sample.totalDroppedSamples > 0
+        || sample.streamDiscontinuities > 0
+        || sample.audioSafetyMuteEvents > 0;
+
+      if (unstable) {
+        stableWindowStartIndex = i + 1;
+        break;
+      }
+
+      if (i === 0) {
+        stableWindowStartIndex = 0;
+      }
+    }
+
+    if (stableWindowStartIndex >= samples.length - 1) {
+      return 0;
+    }
+
+    const startMs = Date.parse(samples[stableWindowStartIndex].ts);
+    const endMs = Date.parse(samples[samples.length - 1].ts);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+      return 0;
+    }
+
+    return Math.max(0, (endMs - startMs) / 1000);
+  })();
+
+  const calibrationWizardAssessment = useMemo(() => {
+    return runFrequencyCalibrationWizard({
+      sourceId: calibrationWizardSourceId,
+      observedSNRDb: demodQuality.snrEstimateDb,
+      observationSeconds: sessionGradeStabilityWindowSeconds,
+      lockStable: demodQuality.lockState === 'locked',
+      driftEstimateHzPerSec: frequencyModelState.driftEstimateHzPerSec
+    });
+  }, [
+    calibrationWizardSourceId,
+    demodQuality.lockState,
+    demodQuality.snrEstimateDb,
+    frequencyModelState.driftEstimateHzPerSec,
+    sessionGradeStabilityWindowSeconds
+  ]);
+
+  const externalReferenceAssessment = useMemo(() => {
+    const counters = deviceDebugSnapshot?.counters;
+    return assessExternalReferenceStability({
+      sourceType,
+      isStreaming: connectionState === 'streaming',
+      lastClockTruthMode: runtimeTelemetry.lastClockTruthMode,
+      driftConfidence: frequencyModelState.driftConfidence,
+      phaseErrorRms: frequencyModelState.phaseErrorRms,
+      audioResamplerRatioDeltaPpm: runtimeTelemetry.audioResamplerRatioDeltaPpm,
+      usbTransferJitterMs: counters?.transferIntervalMsJitter ?? 0,
+      usbRetryCount: counters?.retryCount ?? 0,
+      usbErrorCount: counters?.bulkInErrorCount ?? 0
+    });
+  }, [
+    connectionState,
+    deviceDebugSnapshot?.counters,
+    frequencyModelState.driftConfidence,
+    frequencyModelState.phaseErrorRms,
+    runtimeTelemetry.audioResamplerRatioDeltaPpm,
+    runtimeTelemetry.lastClockTruthMode,
+    sourceType
+  ]);
+
+  const referenceClockVisibility = useMemo(() => {
+    return deriveReferenceClockVisibility({
+      capabilityModel: deviceRef.current?.getCapabilityModel?.() ?? null,
+      sampleClockTruthMode: runtimeTelemetry.lastClockTruthMode,
+      externalReferenceAssessment,
+      sourceType
+    });
+  }, [externalReferenceAssessment, runtimeTelemetry.lastClockTruthMode, sourceType]);
+
+  const firmwareRecoveryPlan = useMemo(() => {
+    if (sourceType !== 'HACKRF') {
+      return null;
+    }
+
+    return buildHackrfFirmwareRecoveryPlan(deviceDebugSnapshot?.compatibility);
+  }, [deviceDebugSnapshot?.compatibility, sourceType]);
+
   const webUsbRequired = isWebUsbSource(sourceType);
 
   const timebaseDriftAssessment = useMemo(() => {
@@ -5218,42 +5424,74 @@ export default function App() {
     0,
     Math.min(1, (runtimeTelemetry.dsp.amplitude.iqPeakLinear - 0.92) / 0.08)
   );
-  const sessionGradeStabilityWindowSeconds = (() => {
-    const samples = telemetryWindowRef.current;
-    if (samples.length < 2) {
-      return 0;
-    }
+  const overloadClippingTelemetry = useMemo(() => {
+    const iqPeakLinear = runtimeTelemetry.dsp.amplitude.iqPeakLinear;
+    const audioClippingRatio = runtimeTelemetry.dsp.amplitude.audioClippingRatio;
+    const overrangeLikely = iqPeakLinear >= 0.99 || frontEndClipRisk01 >= 0.45;
+    const warning = overrangeLikely || audioClippingRatio > 0.03;
+    const actions: string[] = [];
 
-    let stableWindowStartIndex = 0;
-    for (let i = samples.length - 1; i >= 0; i -= 1) {
-      const sample = samples[i];
-      const unstable = sample.audioUnderruns > 0
-        || sample.totalDroppedSamples > 0
-        || sample.streamDiscontinuities > 0
-        || sample.audioSafetyMuteEvents > 0;
-
-      if (unstable) {
-        stableWindowStartIndex = i + 1;
-        break;
+    if (warning) {
+      actions.push('Reduce RF gain by one stage and watch clip-risk + IQ peak metrics.');
+      if ((rfEnvironmentContext.attenuatorNote ?? '').trim().length === 0) {
+        actions.push('Insert 6-12 dB attenuation before the SDR if strong local signals are present.');
       }
-
-      if (i === 0) {
-        stableWindowStartIndex = 0;
+      if ((rfEnvironmentContext.preampNote ?? '').trim().length > 0) {
+        actions.push('Temporarily disable external preamp to validate front-end margin.');
+      }
+      if (frontEndOverloadAssessment?.guidance) {
+        actions.push(frontEndOverloadAssessment.overloadSummary);
       }
     }
 
-    if (stableWindowStartIndex >= samples.length - 1) {
-      return 0;
+    return {
+      warning,
+      overrangeLikely,
+      iqPeakLinear,
+      clipRisk01: frontEndClipRisk01,
+      audioClippingRatio,
+      actions
+    };
+  }, [
+    frontEndClipRisk01,
+    frontEndOverloadAssessment?.guidance,
+    frontEndOverloadAssessment?.overloadSummary,
+    rfEnvironmentContext.attenuatorNote,
+    rfEnvironmentContext.preampNote,
+    runtimeTelemetry.dsp.amplitude.audioClippingRatio,
+    runtimeTelemetry.dsp.amplitude.iqPeakLinear
+  ]);
+  const gainStagingAssistant = useMemo(() => {
+    return assessGainStagingAssistant({
+      frequencyHz: tunedDisplayFrequencyHz,
+      demodMode,
+      gainStages,
+      currentGains: gains,
+      iqPeakLinear: overloadClippingTelemetry.iqPeakLinear,
+      audioClippingRatio: overloadClippingTelemetry.audioClippingRatio,
+      snrEstimateDb: demodQuality.snrEstimateDb,
+      overloadLikely: overloadClippingTelemetry.overrangeLikely
+    });
+  }, [
+    demodMode,
+    demodQuality.snrEstimateDb,
+    gainStages,
+    gains,
+    overloadClippingTelemetry.audioClippingRatio,
+    overloadClippingTelemetry.iqPeakLinear,
+    overloadClippingTelemetry.overrangeLikely,
+    tunedDisplayFrequencyHz
+  ]);
+  const applyGainStagingAssistantPreset = useCallback(() => {
+    if (gainStages.length === 0) {
+      setStatusMessage('No gain stages available for assistant preset application.');
+      return;
     }
 
-    const startMs = Date.parse(samples[stableWindowStartIndex].ts);
-    const endMs = Date.parse(samples[samples.length - 1].ts);
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-      return 0;
-    }
-
-    return Math.max(0, (endMs - startMs) / 1000);
-  })();
+    setGains(gainStagingAssistant.recommendedGains);
+    setStatusMessage(`Applied ${gainStagingAssistant.presetLabel}.`);
+    pushDiagnosticEvent(`Gain staging assistant applied ${gainStagingAssistant.presetLabel}.`);
+  }, [gainStages.length, gainStagingAssistant.presetLabel, gainStagingAssistant.recommendedGains, pushDiagnosticEvent]);
 
   const trustAssessment = useMemo(() => {
     const reasons: string[] = [];
@@ -5398,15 +5636,43 @@ export default function App() {
           <div>
             <strong>Safe mode active:</strong> last session reported `{safeModeMarker.reason}` at {safeModeMarker.triggeredAtIso}. Minimal defaults are active and auto-connect stays disabled.
           </div>
+          {pendingSafeRestoreConfirmation && (
+            <div className="control-note" role="alert">
+              <strong>{pendingSafeRestoreConfirmation.summary}</strong>
+              <ul>
+                {pendingSafeRestoreConfirmation.reasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+              <div>
+                <button
+                  className="action-btn btn-secondary"
+                  onClick={() => {
+                    restoreFromSafeModeSnapshot(pendingSafeRestoreConfirmation.snapshot);
+                    clearSafeModeMarker();
+                    setStatusMessage('Risk-confirmed restore applied from safe-mode snapshot.');
+                    pushDiagnosticEvent('Safe mode restore confirmed with risk acknowledgment.', 'warn');
+                  }}
+                >
+                  Confirm Risky Restore
+                </button>
+                <button
+                  className="action-btn btn-secondary"
+                  onClick={() => {
+                    setPendingSafeRestoreConfirmation(null);
+                    setStatusMessage('Safe-mode restore canceled. Defaults remain active.');
+                    pushDiagnosticEvent('Safe mode restore canceled after risk review.');
+                  }}
+                >
+                  Cancel Restore
+                </button>
+              </div>
+            </div>
+          )}
           <div>
             <button
               className="action-btn btn-secondary"
-              onClick={() => {
-                restoreFromSafeModeSnapshot(safeModeMarker.snapshot);
-                clearSafeModeMarker();
-                setStatusMessage('Restored previous session settings from safe-mode snapshot.');
-                pushDiagnosticEvent('Safe mode dismissed and previous settings restored.');
-              }}
+              onClick={() => requestSafeRestoreConfirmation(safeModeMarker.snapshot)}
             >
               Restore Previous Settings
             </button>
@@ -6386,6 +6652,176 @@ export default function App() {
           />
         </div>
 
+        <Card className="control-group control-group-wide" title="Per-Device Profile">
+          <label className="control-inline-check">
+            <input
+              type="checkbox"
+              checked={stabilityProfile?.applyOnConnect?.enabled ?? false}
+              onChange={(e) => {
+                const existing = getStabilityProfile(activeDeviceProfileKey);
+                const next = upsertStabilityProfile({
+                  sourceType,
+                  profileKey: activeDeviceProfileKey,
+                  updatedAtUtc: new Date().toISOString(),
+                  driftEstimateHzPerSec: existing?.driftEstimateHzPerSec ?? frequencyModelState.driftEstimateHzPerSec,
+                  driftConfidence: existing?.driftConfidence ?? frequencyModelState.driftConfidence,
+                  phaseErrorRms: existing?.phaseErrorRms ?? frequencyModelState.phaseErrorRms,
+                  ppmCorrectionHz: existing?.ppmCorrectionHz ?? frequencyModelState.ppmCorrectionHz,
+                  iqIntegrityLastReport: existing?.iqIntegrityLastReport,
+                  calibrationSeed: existing?.calibrationSeed,
+                  frequencyCalibration: existing?.frequencyCalibration,
+                  applyOnConnect: {
+                    enabled: e.target.checked,
+                    sampleRateHz: existing?.applyOnConnect?.sampleRateHz ?? streamSampleRateHz,
+                    ppmCorrection,
+                    gains
+                  }
+                });
+                setStabilityProfile(next);
+                setStatusMessage(e.target.checked
+                  ? 'Per-device connect profile will apply automatically on stream start.'
+                  : 'Per-device connect auto-apply disabled.');
+              }}
+              className="control-check"
+            />
+            Apply profile on connect
+          </label>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const existing = getStabilityProfile(activeDeviceProfileKey);
+              const next = upsertStabilityProfile({
+                sourceType,
+                profileKey: activeDeviceProfileKey,
+                updatedAtUtc: new Date().toISOString(),
+                driftEstimateHzPerSec: existing?.driftEstimateHzPerSec ?? frequencyModelState.driftEstimateHzPerSec,
+                driftConfidence: existing?.driftConfidence ?? frequencyModelState.driftConfidence,
+                phaseErrorRms: existing?.phaseErrorRms ?? frequencyModelState.phaseErrorRms,
+                ppmCorrectionHz: existing?.ppmCorrectionHz ?? frequencyModelState.ppmCorrectionHz,
+                iqIntegrityLastReport: existing?.iqIntegrityLastReport,
+                calibrationSeed: existing?.calibrationSeed,
+                frequencyCalibration: existing?.frequencyCalibration,
+                applyOnConnect: {
+                  enabled: true,
+                  sampleRateHz: streamSampleRateHz,
+                  ppmCorrection,
+                  gains
+                }
+              });
+              setStabilityProfile(next);
+              setStatusMessage('Saved current rate/gain/PPM as per-device connect profile.');
+              pushDiagnosticEvent(`Per-device connect profile saved for ${activeDeviceProfileKey}.`);
+            }}
+          >
+            Save Current As Connect Profile
+          </Button>
+          <div className="control-note">
+            {stabilityProfile?.applyOnConnect?.enabled
+              ? `Auto-apply enabled | ${Math.round(stabilityProfile.applyOnConnect.sampleRateHz ?? streamSampleRateHz).toLocaleString()} S/s | PPM ${(stabilityProfile.applyOnConnect.ppmCorrection ?? ppmCorrection).toFixed(1)}`
+              : 'No auto-apply profile enabled for this device identity.'}
+          </div>
+        </Card>
+
+        <Card className="control-group control-group-wide" title="Frequency Calibration Wizard (Foundation)">
+          <div className="control-group">
+            <label className="control-label">Known Signal Source</label>
+            <select
+              value={calibrationWizardSourceId}
+              onChange={(e) => setCalibrationWizardSourceId(e.target.value as CalibrationSourceId)}
+              className="control-input compact"
+            >
+              {CALIBRATION_SOURCE_CATALOG.map((entry) => (
+                <option key={entry.id} value={entry.id}>{entry.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="control-note">{calibrationWizardAssessment.summary}</div>
+          <div className="control-note">
+            Confidence {(calibrationWizardAssessment.confidence01 * 100).toFixed(0)}% | Suggested PPM {calibrationWizardAssessment.suggestedPpmCorrection.toFixed(2)}
+          </div>
+          <div className="control-note">
+            Prerequisites: {calibrationWizardAssessment.source.prerequisites.join(' | ')}
+          </div>
+          {calibrationWizardAssessment.actions.length > 0 && (
+            <div className="control-note">Actions: {calibrationWizardAssessment.actions.join(' | ')}</div>
+          )}
+          {stabilityProfile?.frequencyCalibration && (
+            <div className="control-note">
+              Last stored calibration: {stabilityProfile.frequencyCalibration.sourceId} | PPM {stabilityProfile.frequencyCalibration.ppmCorrection.toFixed(2)} |
+              confidence {(stabilityProfile.frequencyCalibration.confidence01 * 100).toFixed(0)}%
+            </div>
+          )}
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (!canApplySuggestedPpm(calibrationWizardAssessment)) {
+                setStatusMessage('Calibration confidence is not high enough to auto-apply PPM yet.');
+                return;
+              }
+
+              const nowIso = new Date().toISOString();
+              const calibrationResult = buildFrequencyCalibrationResult({
+                assessedAtUtc: nowIso,
+                assessment: calibrationWizardAssessment,
+                driftEstimateHzPerSec: frequencyModelState.driftEstimateHzPerSec,
+                observationSeconds: sessionGradeStabilityWindowSeconds
+              });
+              const existing = getStabilityProfile(activeDeviceProfileKey);
+              const next = upsertStabilityProfile({
+                sourceType,
+                profileKey: activeDeviceProfileKey,
+                updatedAtUtc: nowIso,
+                driftEstimateHzPerSec: existing?.driftEstimateHzPerSec ?? frequencyModelState.driftEstimateHzPerSec,
+                driftConfidence: existing?.driftConfidence ?? frequencyModelState.driftConfidence,
+                phaseErrorRms: existing?.phaseErrorRms ?? frequencyModelState.phaseErrorRms,
+                ppmCorrectionHz: calibrationResult.ppmCorrection,
+                iqIntegrityLastReport: existing?.iqIntegrityLastReport,
+                applyOnConnect: existing?.applyOnConnect,
+                calibrationSeed: existing?.calibrationSeed,
+                frequencyCalibration: calibrationResult
+              });
+
+              setPpmCorrection(calibrationResult.ppmCorrection);
+              setStabilityProfile(next);
+              setStatusMessage(`Applied suggested calibration PPM (${calibrationResult.ppmCorrection.toFixed(2)}).`);
+              pushDiagnosticEvent(`Frequency calibration applied and stored for ${activeDeviceProfileKey}.`);
+            }}
+          >
+            Apply Suggested PPM Safely
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const existing = getStabilityProfile(activeDeviceProfileKey);
+              const next = upsertStabilityProfile({
+                sourceType,
+                profileKey: activeDeviceProfileKey,
+                updatedAtUtc: new Date().toISOString(),
+                driftEstimateHzPerSec: existing?.driftEstimateHzPerSec ?? frequencyModelState.driftEstimateHzPerSec,
+                driftConfidence: existing?.driftConfidence ?? frequencyModelState.driftConfidence,
+                phaseErrorRms: existing?.phaseErrorRms ?? frequencyModelState.phaseErrorRms,
+                ppmCorrectionHz: existing?.ppmCorrectionHz ?? frequencyModelState.ppmCorrectionHz,
+                iqIntegrityLastReport: existing?.iqIntegrityLastReport,
+                applyOnConnect: existing?.applyOnConnect,
+                frequencyCalibration: existing?.frequencyCalibration,
+                calibrationSeed: {
+                  updatedAtUtc: new Date().toISOString(),
+                  sourceId: calibrationWizardAssessment.source.id,
+                  suggestedPpmCorrection: calibrationWizardAssessment.suggestedPpmCorrection,
+                  driftEstimateHzPerSec: frequencyModelState.driftEstimateHzPerSec,
+                  confidence01: calibrationWizardAssessment.confidence01,
+                  notes: calibrationWizardAssessment.actions
+                }
+              });
+              setStabilityProfile(next);
+              setStatusMessage('Saved calibration wizard seed to per-device profile.');
+              pushDiagnosticEvent(`Calibration wizard seed saved for ${activeDeviceProfileKey}.`);
+            }}
+          >
+            Save Calibration Seed To Device Profile
+          </Button>
+        </Card>
+
         <div className="control-group">
             <label className="control-label">Mode</label>
             <select 
@@ -6831,6 +7267,16 @@ export default function App() {
         {gainStages.length === 0 && isRunning && (
             <div className="control-note">No gain controls available for this source.</div>
         )}
+        {gainStages.length > 0 && (
+          <Card className="control-group control-group-wide" title="Gain Staging Assistant (Scaffold)">
+            <div className="control-note">{gainStagingAssistant.summary}</div>
+            <div className="control-note">Band preset: {gainStagingAssistant.presetLabel}</div>
+            <div className="control-note">Actions: {gainStagingAssistant.actions.join(' | ')}</div>
+            <Button variant="secondary" onClick={applyGainStagingAssistantPreset}>
+              Apply Recommended Gain Preset
+            </Button>
+          </Card>
+        )}
       </div>
 
       {commandPaletteOpen && (
@@ -7076,6 +7522,18 @@ export default function App() {
               clip-risk {(frontEndClipRisk01 * 100).toFixed(0)}% | SNR {demodQuality.snrEstimateDb.toFixed(1)} dB | ENOB {frontEndEnobBits.toFixed(2)} bits
             </span>
           </li>
+          <li className={`health-item ${overloadClippingTelemetry.warning ? 'health-warn' : 'health-ok'}`}>
+            <strong>Overload/Clipping Telemetry</strong>
+            <span>
+              IQ peak {overloadClippingTelemetry.iqPeakLinear.toFixed(3)} | audio clip {(overloadClippingTelemetry.audioClippingRatio * 100).toFixed(1)}% | {overloadClippingTelemetry.overrangeLikely ? 'overrange likely' : 'within margin'}
+            </span>
+          </li>
+          {overloadClippingTelemetry.actions.length > 0 && (
+            <li className="health-item health-warn">
+              <strong>Overload Guidance</strong>
+              <span>{overloadClippingTelemetry.actions.join(' | ')}</span>
+            </li>
+          )}
           <li className={`health-item ${runtimeTelemetry.dsp.rfImpurity.likelyImpure ? 'health-warn' : 'health-ok'}`}>
             <strong>RF Impurity</strong>
             <span>
@@ -7127,7 +7585,27 @@ export default function App() {
                   </span>
                 </li>
               )}
+              {firmwareRecoveryPlan && (
+                <li className={`health-item ${firmwareRecoveryPlan.severity === 'error' ? 'health-error' : firmwareRecoveryPlan.severity === 'warn' ? 'health-warn' : 'health-ok'}`}>
+                  <strong>Firmware Recovery Flow</strong>
+                  <span>
+                    {firmwareRecoveryPlan.headline} {firmwareRecoveryPlan.steps.join(' ')}
+                  </span>
+                </li>
+              )}
             </>
+          )}
+          <li className={`health-item ${referenceClockVisibility.lockState === 'locked' ? 'health-ok' : referenceClockVisibility.lockState === 'unlocked' ? 'health-warn' : 'health-ok'}`}>
+            <strong>Reference Clock</strong>
+            <span>
+              {referenceClockVisibility.supported ? `${referenceClockVisibility.lockState} (${(referenceClockVisibility.confidence01 * 100).toFixed(0)}%)` : 'not supported'}
+            </span>
+          </li>
+          {referenceClockVisibility.supported && (
+            <li className="health-item health-ok">
+              <strong>Reference Summary</strong>
+              <span>{referenceClockVisibility.summary}</span>
+            </li>
           )}
         </ul>
       </section>

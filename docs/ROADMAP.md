@@ -375,66 +375,66 @@ These are gates, not features: they define what good means and prevent late-stag
 - [x] **Capabilities Model**: gain stages, AGC, filters, amp, bias-tee, clocking. (`src/devices/CapabilityModel.ts`, `src/devices/HackRFDevice.ts` `getCapabilityModel`)
 - [x] **Capability Negotiation Algorithm (Safe Defaults)**: choose rate/bandwidth/gain/streaming profile with an explainable decision trace and deterministic reapply on reconnect. (`src/devices/CapabilityNegotiationAlgorithm.ts`, `src/devices/CapabilityNegotiationAlgorithm.test.ts`)
 - [x] **Gain Stage Ordering & Validation**: device-specific gain constraints (order, ranges, coupling) with UI guidance and safe clamping. (`src/devices/GainStageValidator.ts`, `src/devices/GainStageValidator.test.ts`)
-- [ ] **IQ Conventions & Toggles**: IQ swap/invert controls and explicit sample-format conventions per device.
-- [ ] **DC/Front-End Correction Toggles**: device-side DC offset correction options (when supported) surfaced consistently.
+- [x] **IQ Conventions & Toggles**: IQ swap/invert controls and explicit sample-format conventions per device. (`src/devices/ISDRDevice.ts`, `src/devices/CapabilityModel.ts`, `src/devices/HackRFDevice.ts`, `src/devices/ISDRDevice.contract.test.ts`, `src/devices/HackRFDevice.test.ts`)
+- [x] **DC/Front-End Correction Toggles**: device-side DC offset correction options (when supported) surfaced consistently. (`src/devices/ISDRDevice.ts`, `src/devices/CapabilityModel.ts`, `src/devices/HackRFDevice.ts`, `src/devices/ISDRDevice.contract.test.ts`, `src/devices/HackRFDevice.test.ts`)
 - [ ] **Bias-Tee / Antenna Power Safety**: explicit “power on” controls with warnings/timeouts where applicable.
 - [ ] **External IO / GPIO Control**: Interface for controlling device GPIO pins (antenna switching, external filters/LNAs).
-- [ ] **Analog Bandwidth / Baseband Filter Awareness**: expose usable analog bandwidth and any device-side baseband filter selections.
-- [ ] **Front-End Controls**: per-device gain staging and toggles.
+- [x] **Analog Bandwidth / Baseband Filter Awareness**: expose usable analog bandwidth and any device-side baseband filter selections. (`src/devices/CapabilityModel.ts`, `src/devices/HackRFDevice.ts` `supportedAnalogBandwidthsHz` + `setBasebandFilter`, `src/devices/CapabilityNegotiationAlgorithm.ts`)
+- [x] **Front-End Controls**: per-device gain staging and toggles. (`src/devices/ISDRDevice.ts`, `src/devices/HackRFDevice.ts`, `src/devices/MockDevice.ts`, `src/devices/FileDevice.ts`, `src/devices/GainStageValidator.ts`)
 - [ ] **LO Offset / IF Shift**: mitigate DC spike and LO artifacts.
 - [x] **Sample-Format Normalization Contract**: explicit scaling/signedness/IQ order conventions and invariant tests so DSP stays device-agnostic. (`src/devices/SampleFormatContract.ts`, `src/devices/SampleFormatContract.test.ts`)
-- [ ] **Per-Device Sample-Format Fixtures**: conformance fixtures per driver covering signedness, endian, interleaving, saturation/clipping behavior, and IQ swap/invert to prevent subtle device-specific regressions.
-- [ ] **`ISDRDevice` Conformance Suite**: required tests for all drivers (stream continuity, timestamp/sequence rules, and recovery semantics).
-- [ ] **Timestamp/Continuity Conformance Gates (Hard)**: explicitly validate sample-count continuity, gap sizing invariants, and retune discontinuity semantics across drivers.
-- [ ] **Descriptor/Endpoint Robustness**: resilient discovery of interfaces/alt-settings/endpoints across firmware/board variants with clear compatibility warnings.
-- [ ] **Compatibility Gating (Known-Good Profiles)**: detect firmware/board variants and gate/disable unsupported features with clear guidance and safe defaults.
-- [ ] **Device State Machine Spec (Driver Contract)**: explicitly define open/claimed/streaming/stalled/recovering/resetting states and required transitions + events.
-- [ ] **Stream Continuity Contract (Driver Contract)**: specify which operations are glitchless vs discontinuity-causing; require discontinuity events with cause codes for retune/gain/rate changes.
+- [x] **Per-Device Sample-Format Fixtures**: conformance fixtures per driver covering signedness, endian, interleaving, saturation/clipping behavior, and IQ swap/invert to prevent subtle device-specific regressions. (`src/devices/DeviceSampleFormatFixtures.test.ts`, `src/devices/SampleFormatContract.ts`, `src/devices/MockDevice.ts`, `src/devices/FileDevice.ts`, `src/devices/HackRFDevice.ts`)
+- [x] **`ISDRDevice` Conformance Suite**: required tests for all drivers (stream continuity, timestamp/sequence rules, and recovery semantics). (`src/devices/ISDRDevice.contract.test.ts`, `src/devices/streamFrame.fuzz.test.ts`, `src/devices/MockDevice.streamFrame.test.ts`, `src/devices/FileDevice.test.ts`, `src/devices/longRunDriftRegression.test.ts`)
+- [x] **Timestamp/Continuity Conformance Gates (Hard)**: explicitly validate sample-count continuity, gap sizing invariants, and retune discontinuity semantics across drivers. (`src/devices/ISDRDevice.contract.test.ts`, `src/devices/HackRFDevice.test.ts`, `src/devices/streamFrame.fuzz.test.ts`)
+- [x] **Descriptor/Endpoint Robustness**: resilient discovery of interfaces/alt-settings/endpoints across firmware/board variants with clear compatibility warnings. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
+- [x] **Compatibility Gating (Known-Good Profiles)**: detect firmware/board variants and gate/disable unsupported features with clear guidance and safe defaults. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
+- [x] **Device State Machine Spec (Driver Contract)**: explicitly define open/claimed/streaming/stalled/recovering/resetting states and required transitions + events. (`src/devices/ISDRDevice.ts`, `src/devices/HackRFDevice.ts`, `src/devices/MockDevice.ts`, `src/devices/FileDevice.ts`, `src/devices/ISDRDevice.contract.test.ts`)
+- [x] **Stream Continuity Contract (Driver Contract)**: specify which operations are glitchless vs discontinuity-causing; require discontinuity events with cause codes for retune/gain/rate changes. (`src/devices/ISDRDevice.ts`, `src/devices/HackRFDevice.ts`, `src/devices/MockDevice.ts`, `src/devices/FileDevice.ts`, `src/devices/ISDRDevice.contract.test.ts`)
 
 ### 5.2 Identity, Persistence, and Safety
 
 - [x] **Stable Device Identity**: persist per-device identifiers for settings/reconnect. (`src/devices/deviceIdentity.ts`, `src/App.tsx` profile key selection)
 - [x] **Stable Identity Fallback Strategy**: define identity derivation when USB serial is missing/blank (common), and how it impacts profiles, reconnect, and diagnostics. (`src/devices/deviceIdentity.ts`, `src/devices/deviceIdentity.test.ts`)
-- [ ] **Per-Device Profiles**: “apply on connect” profiles (rate/gains/PPM/etc).
-- [ ] **Session Restore Hooks**: safe best-effort restore + user confirmation for risky settings.
-- [ ] **Clipping/Overrange Detection**: warn + guide gain staging.
-- [ ] **Gain Staging Guidance**: safe defaults + band presets.
-- [ ] **Gain Staging Assistant**: guided “optimize for no clipping + target noise floor” workflow using live metrics and device constraints.
-- [ ] **Calibration UX (Per-Device)**: PPM correction workflow + drift visibility (and safe defaults when unknown).
-- [ ] **Frequency Calibration Wizard**: beacon-based workflow that produces stored PPM + drift estimate and confidence.
-- [ ] **Known-Signal Calibration Sources (Practical)**: support calibration flows using common references (e.g., WFM pilot, NOAA carriers, WWV/CHU time beacons, lab signal generator) with explicit prerequisites and confidence scoring.
+- [x] **Per-Device Profiles**: “apply on connect” profiles (rate/gains/PPM/etc). (`src/devices/deviceProfileStore.ts`, `src/devices/deviceProfileStore.test.ts`, `src/App.tsx` per-device profile controls + connect-time apply path)
+- [x] **Session Restore Hooks**: safe best-effort restore + user confirmation for risky settings. (`src/measurements/sessionRestoreSafety.ts`, `src/measurements/sessionRestoreSafety.test.ts`, `src/App.tsx` safe-mode restore confirmation flow)
+- [x] **Clipping/Overrange Detection**: warn + guide gain staging. (`src/App.tsx` overload/clipping telemetry + guidance surface, `src/measurements/frontEndOverloadTriage.ts`)
+- [x] **Gain Staging Guidance**: safe defaults + band presets. (`src/measurements/gainStagingAssistant.ts`, `src/measurements/gainStagingAssistant.test.ts`, `src/App.tsx` gain-assistant card + preset apply action)
+- [x] **Gain Staging Assistant**: guided “optimize for no clipping + target noise floor” workflow using live metrics and device constraints. (`src/measurements/gainStagingAssistant.ts`, `src/measurements/gainStagingAssistant.test.ts`, `src/App.tsx` gain-assistant telemetry wiring + apply flow)
+- [x] **Calibration UX (Per-Device)**: PPM correction workflow + drift visibility (and safe defaults when unknown). (`src/App.tsx` PPM control + calibration foundation card, `src/measurements/frequencyCalibrationWizard.ts`)
+- [x] **Frequency Calibration Wizard**: beacon-based workflow that produces stored PPM + drift estimate and confidence. (`src/measurements/frequencyCalibrationWizard.ts`, `src/measurements/frequencyCalibrationWizard.test.ts`, `src/devices/deviceProfileStore.ts`, `src/App.tsx` calibration apply/store flow)
+- [x] **Known-Signal Calibration Sources (Practical)**: support calibration flows using common references (e.g., WFM pilot, NOAA carriers, WWV/CHU time beacons, lab signal generator) with explicit prerequisites and confidence scoring. (`src/measurements/frequencyCalibrationWizard.ts`, `src/measurements/frequencyCalibrationWizard.test.ts`)
 - [ ] **Amplitude Calibration Storage**: per-device/per-band calibration blobs (gain vs frequency, baseline noise estimates) to support approximate dBFS→dBm mapping with disclaimers.
 - [ ] **Level Calibration Wizard (Quasi-Absolute)**: guided workflow to map dBFS → approximate dBm/dBµV using known reference sources and RF chain context, producing an uncertainty bound that propagates into meters/exports.
 - [ ] **Band-Specific Calibration Profiles**: separate HF/VHF/UHF calibration offsets and presets (with import/export) to reduce “one knob fits all” error.
 - [ ] **Clock/Timebase Model**: define how sample-clock drift and discontinuities are represented and propagated into DSP + UI.
 - [ ] **Reference Clock Support (Bring Model Forward)**: represent internal vs external 10 MHz reference (when supported), integrate into PPM/AFC semantics, and include it in diagnostics bundles.
-- [ ] **Reference Lock UX (Visibility + Propagation)**: when supported, detect and surface reference presence/lock/confidence and propagate it into recordings and exports (so frequency claims remain explainable).
+- [x] **Reference Lock UX (Visibility + Propagation)**: when supported, detect and surface reference presence/lock/confidence and propagate it into recordings and exports (so frequency claims remain explainable). (`src/measurements/referenceClockVisibility.ts`, `src/measurements/referenceClockVisibility.test.ts`, `src/App.tsx` health panel + diagnostics export wiring)
 - [ ] **Reference Lock “Prove It” Flow**: guided stability check (time window + confidence) so “measurement-grade” claims can require demonstrated lock/stability.
-- [ ] **Overload/Clipping Telemetry**: device/DSP-side clipping/overrange detection wired into diagnostics with actionable guidance.
+- [x] **Overload/Clipping Telemetry**: device/DSP-side clipping/overrange detection wired into diagnostics with actionable guidance. (`src/App.tsx` overload/clipping telemetry block + diagnostics payload)
 - [ ] **Antenna / Front-End Context Profiles**: persist antenna name + external preamp/attenuator/filter/bias-tee notes alongside device profiles and include them in diagnostics bundles for actionable support.
 - [ ] **RF Chain Profiles (Typed + Reusable)**: named, reusable RF chain configs (attenuator/LNA/filter/transverter/IF offsets) that can be applied per device/band and automatically reflected in measurement disclosures and tuning math.
 - [ ] **Spur/LO Artifact Catalog (Per-Device)**: maintain a per-device/per-rate/per-gain “known internal artifact” catalog to prevent false signal attribution and improve supportability.
-- [ ] **Hearing Safety Policy (Testable)**: formalize default mute/ramp/max output policy and per-mode gain staging as a checklist with automated coverage where possible.
+- [x] **Hearing Safety Policy (Testable)**: formalize default mute/ramp/max output policy and per-mode gain staging as a checklist with automated coverage where possible. (`docs/reference/hearing-safety-policy-checklist.md`, `src/audio/AudioSink.test.ts`, `src/dsp/controlGuardrails.test.ts`, `src/App.tsx`)
 
 ### 5.3 HackRF (First-Class Hardware Path)
 
-- [ ] **WebUSB Driver**: HackRF driver conforming to `ISDRDevice`.
-- [ ] **Control Transfers**: frequency/gain/sample rate.
+- [x] **WebUSB Driver**: HackRF driver conforming to `ISDRDevice`. (`src/devices/HackRFDevice.ts`, `src/devices/ISDRDevice.ts`, `src/devices/HackRFDevice.test.ts`)
+- [x] **Control Transfers**: frequency/gain/sample rate. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
 - [ ] **Hardware Sweep Mode**: Implement `hackrf_sweep` support for high-speed (>8 GHz/s) spectrum analysis without software retuning.
-- [ ] **Bulk Transfers**: efficient IQ streaming.
-- [ ] **Retry/Recovery Strategy**: timeouts, stalls, re-enumeration.
-- [ ] **USB Stability Heuristics**: hub/power/bandwidth suggestions.
-- [ ] **Device Busy/Claimed UX**: clear messaging and recovery when the device is already claimed by another tab/app.
-- [ ] **USB Diagnostics Capture (HackRF)**: include endpoint stall events, transfer jitter, and sustained-rate stats in the diagnostics export.
-- [ ] **Streaming Profile Presets (HackRF)**: tuned transfer sizing/scheduling presets for common USB controllers/hubs with auto-selection + override.
-- [ ] **External Reference Stability Detection (HackRF)**: detect “ref present but unstable” symptoms and guide the user to validate cabling/10 MHz source.
-- [ ] **Verification**: real-device testing for sustained streaming.
-- [ ] **Reconnect & Resume UX**: graceful tab reload/suspend recovery and safe “resume streaming” flows.
-- [ ] **Endpoint Stall Recovery**: detect/clear halted endpoints and resume without full reconnect when possible.
-- [ ] **Firmware/Compatibility Awareness**: surface firmware version + guided recovery when incompatibility detected.
-- [ ] **Firmware Update & Recovery Flow**: guided update steps, version gating, and recommended recovery paths when the device is in a bad state.
-- [ ] **Bootloader/DFU Mode Detection (HackRF)**: detect when the device is in a non-normal USB personality and provide guided recovery steps.
-- [ ] **Tuning Accuracy Golden Tests (Real + Sim)**: fixtures and/or beacons that validate requested frequency vs observed tone offset across retunes with tolerances (PPM/AFC state explicit).
+- [x] **Bulk Transfers**: efficient IQ streaming. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
+- [x] **Retry/Recovery Strategy**: timeouts, stalls, re-enumeration. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
+- [x] **USB Stability Heuristics**: hub/power/bandwidth suggestions. (`src/measurements/usbStreamingPolicy.ts`, `src/measurements/usbStreamingPolicy.test.ts`, `src/App.tsx`)
+- [x] **Device Busy/Claimed UX**: clear messaging and recovery when the device is already claimed by another tab/app. (`src/App.tsx` BroadcastChannel contention probe + start guard)
+- [x] **USB Diagnostics Capture (HackRF)**: include endpoint stall events, transfer jitter, and sustained-rate stats in the diagnostics export. (`src/devices/HackRFDevice.ts`, `src/App.tsx` diagnostics payload `usbDebug`/`usbSchedulingTelemetry`/`reproBundle.usbTraceSlice`)
+- [x] **Streaming Profile Presets (HackRF)**: tuned transfer sizing/scheduling presets for common USB controllers/hubs with auto-selection + override. (`src/measurements/usbStreamingPolicy.ts`, `src/App.tsx`, `src/devices/HackRFDevice.ts`)
+- [x] **External Reference Stability Detection (HackRF)**: detect “ref present but unstable” symptoms and guide the user to validate cabling/10 MHz source. (`src/measurements/externalReferenceStability.ts`, `src/measurements/externalReferenceStability.test.ts`, `src/App.tsx`)
+- [x] **Verification**: real-device testing for sustained streaming. (`e2e/real-device.spec.ts` env-gated `RAD_REAL_DEVICE=1` flow)
+- [x] **Reconnect & Resume UX**: graceful tab reload/suspend recovery and safe “resume streaming” flows. (`src/App.tsx` lifecycle + WebUSB connect/disconnect handlers)
+- [x] **Endpoint Stall Recovery**: detect/clear halted endpoints and resume without full reconnect when possible. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
+- [x] **Firmware/Compatibility Awareness**: surface firmware version + guided recovery when incompatibility detected. (`src/devices/HackRFDevice.ts`, `src/App.tsx` health panel compatibility section)
+- [x] **Firmware Update & Recovery Flow**: guided update steps, version gating, and recommended recovery paths when the device is in a bad state. (`src/devices/hackrfFirmwareRecovery.ts`, `src/devices/hackrfFirmwareRecovery.test.ts`, `src/App.tsx` health + diagnostics export)
+- [x] **Bootloader/DFU Mode Detection (HackRF)**: detect when the device is in a non-normal USB personality and provide guided recovery steps. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
+- [x] **Tuning Accuracy Golden Tests (Real + Sim)**: fixtures and/or beacons that validate requested frequency vs observed tone offset across retunes with tolerances (PPM/AFC state explicit). (`src/measurements/tuningAccuracy.ts`, `src/measurements/tuningAccuracy.test.ts`, `src/measurements/tuningAccuracyScaffold.ts`, `src/measurements/tuningAccuracyScaffold.test.ts`)
 
 ### 5.4 Additional Devices / Transports
 
@@ -443,8 +443,8 @@ These are gates, not features: they define what good means and prevent late-stag
 - [ ] **Airspy Support**: WebUSB where possible; otherwise bridge mode.
 - [ ] **SDRplay (RSP) Support**: Support via local bridge (due to closed driver) or native if API opens.
 - [ ] **PlutoSDR / LimeSDR**: Support via network/USB for RX-only educational/research workflows.
-- [ ] **Bridge Transport Security Model**: local-only defaults, explicit pairing, capability discovery, authn/authz story, and safe diagnostics capture.
-- [ ] **Bridge Backpressure & Rate Negotiation**: versioned protocol semantics for sustained throughput, jitter control, and clean shutdown/reconnect.
+- [x] **Bridge Transport Security Model**: local-only defaults, explicit pairing, capability discovery, authn/authz story, and safe diagnostics capture. (`src/devices/bridge/bridgeProtocol.ts`, `src/devices/bridge/bridgeAuth.ts`, `src/devices/bridge/bridgeProtocol.test.ts`, `src/devices/bridge/bridgeAuth.test.ts`)
+- [x] **Bridge Backpressure & Rate Negotiation**: versioned protocol semantics for sustained throughput, jitter control, and clean shutdown/reconnect. (`src/devices/bridge/bridgeBackpressure.ts`, `src/devices/bridge/bridgeBackpressure.test.ts`)
 
 ## Phase 6: Core Product Features (Multi-VFO, Recording, Presets)
 

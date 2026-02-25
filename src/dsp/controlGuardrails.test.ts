@@ -49,4 +49,14 @@ describe('controlGuardrails', () => {
     expect(Math.abs(nfmPlan.outputSampleRateHz - 50_000)).toBeLessThanOrEqual(2_000);
     expect(wfmPlan.sampleRateHz).toBeGreaterThanOrEqual(nfmPlan.sampleRateHz);
   });
+
+  it('keeps per-mode hearing-safety output defaults within policy bounds', () => {
+    const contracts = Object.values(MODE_CONTROL_CONTRACTS);
+    for (const contract of contracts) {
+      expect(contract.defaultOutputLevel).toBeGreaterThanOrEqual(0.35);
+      expect(contract.defaultOutputLevel).toBeLessThanOrEqual(0.6);
+      expect(contract.defaultMaxOutputLevel).toBeGreaterThanOrEqual(contract.defaultOutputLevel);
+      expect(contract.defaultMaxOutputLevel).toBeLessThanOrEqual(0.82);
+    }
+  });
 });

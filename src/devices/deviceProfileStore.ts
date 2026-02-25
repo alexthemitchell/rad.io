@@ -13,6 +13,30 @@ export type StabilityProfile = {
     fixes: string[];
     summary: string;
   };
+  applyOnConnect?: {
+    enabled: boolean;
+    sampleRateHz?: number;
+    ppmCorrection?: number;
+    gains?: Record<string, number>;
+  };
+  calibrationSeed?: {
+    updatedAtUtc: string;
+    sourceId: string;
+    suggestedPpmCorrection: number;
+    driftEstimateHzPerSec: number;
+    confidence01: number;
+    notes: string[];
+  };
+  frequencyCalibration?: {
+    updatedAtUtc: string;
+    sourceId: string;
+    readiness: 'ready' | 'needs-more-evidence';
+    confidence01: number;
+    ppmCorrection: number;
+    driftEstimateHzPerSec: number;
+    observationSeconds: number;
+    notes: string[];
+  };
 };
 
 const STORAGE_KEY = 'rad.io.deviceProfiles.v1';

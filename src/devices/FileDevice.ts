@@ -1,6 +1,17 @@
-import { ISDRDevice, SDRDataCallback, SDRGainStage } from './ISDRDevice';
+import {
+  DeviceFrontEndCorrectionPatch,
+  DeviceFrontEndCorrectionState,
+  DeviceIqControlPatch,
+  DeviceIqControlState,
+  DeviceStateMachineSnapshot,
+  DeviceStreamContinuityContract,
+  ISDRDevice,
+  SDRDataCallback,
+  SDRGainStage
+} from './ISDRDevice';
 import { type SigmfFixtureBundle } from '../fixtures/sigmf/schema';
 import { SDRDiscontinuityCause, SDRDiscontinuityEvent, SDRStreamFrame } from './streamFrame';
+import { defaultCapabilityModel, type DeviceCapabilityModel } from './CapabilityModel';
 
 type FileDeviceOptions = {
   chunkSizeBytes?: number;
@@ -21,6 +32,34 @@ export class FileDevice implements ISDRDevice {
   private timestampNs = 0;
   private pendingDiscontinuity: SDRDiscontinuityCause | null = null;
   private lastTickWallClockMs = 0;
+  private iqControlState: DeviceIqControlState = {
+    swapEnabled: false,
+    invertEnabled: false,
+    implementation: 'dsp'
+  };
+  private frontEndCorrectionState: DeviceFrontEndCorrectionState = {
+    dcOffsetEnabled: false,
+    iqBalanceEnabled: false,
+    implementation: 'dsp'
+  };
+  private state: DeviceStateMachineSnapshot = {
+    state: 'idle',
+    opened: false,
+    streaming: false,
+    transitionCount: 0,
+    lastEvent: 'init',
+    lastTransitionAtIso: new Date(0).toISOString()
+  };
+
+  private transitionState(next: DeviceStateMachineSnapshot['state'], event: string): void {
+    this.state = {
+      ...this.state,
+      state: next,
+      transitionCount: this.state.transitionCount + 1,
+      lastEvent: event,
+      lastTransitionAtIso: new Date().toISOString()
+    };
+  }
 
   private markDiscontinuity(cause: SDRDiscontinuityCause): void {
     if (this.pendingDiscontinuity === 'restart') {
@@ -56,21 +95,65 @@ export class FileDevice implements ISDRDevice {
     return [];
   }
 
+  getCapabilityModel(): DeviceCapabilityModel {
+    return {
+      ...defaultCapabilityModel('FILE', this.name),
+      supportedSampleRatesHz: [this.fixture.metadata.sampleRateHz],
+      supportedAnalogBandwidthsHz: [Math.floor(this.fixture.metadata.sampleRateHz * 0.875)],
+      gainStages: [],
+      agcControl: 'unsupported',
+      loOffsetControl: 'supported',
+      basebandFilterControl: 'supported',
+      sampleFormat: {
+        iqOrder: 'iq',
+        sampleType: 'u8',
+        interleaved: true,
+        normalizedToUnitRange: false,
+        invertIQSupported: 'supported',
+        swapIQSupported: 'supported'
+      },
+      iqControl: {
+        swap: 'supported',
+        invert: 'supported',
+        implementation: 'dsp'
+      },
+      frontEndCorrection: {
+        dcOffset: 'supported',
+        iqBalance: 'supported',
+        implementation: 'dsp'
+      }
+    };
+  }
+
   getFixtureMetadata(): SigmfFixtureBundle['metadata'] {
     return this.fixture.metadata;
   }
 
   async open(): Promise<void> {
+    this.transitionState('opening', 'open-begin');
     this.isOpen = true;
     this.playbackCursor = 0;
     this.sequence = 0;
     this.sampleIndex = 0;
     this.timestampNs = 0;
+    this.state = {
+      ...this.state,
+      opened: true,
+      streaming: false
+    };
+    this.transitionState('open', 'open-complete');
   }
 
   async close(): Promise<void> {
+    this.transitionState('closing', 'close-begin');
     await this.stop();
     this.isOpen = false;
+    this.state = {
+      ...this.state,
+      opened: false,
+      streaming: false
+    };
+    this.transitionState('idle', 'close-complete');
   }
 
   async setFrequency(hz: number): Promise<void> {
@@ -116,6 +199,11 @@ export class FileDevice implements ISDRDevice {
     }
 
     this.isStreaming = true;
+    this.state = {
+      ...this.state,
+      streaming: true
+    };
+    this.transitionState('streaming', 'stream-start');
     this.markDiscontinuity('restart');
 
     const complexSamplesPerChunk = this.chunkSizeBytes / 2;
@@ -178,10 +266,57 @@ export class FileDevice implements ISDRDevice {
 
   async stop(): Promise<void> {
     this.isStreaming = false;
+    this.state = {
+      ...this.state,
+      streaming: false
+    };
+    this.transitionState(this.state.opened ? 'open' : 'idle', 'stream-stop');
 
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
+  }
+
+  getIqControlState(): DeviceIqControlState {
+    return { ...this.iqControlState };
+  }
+
+  async setIqControlState(patch: DeviceIqControlPatch): Promise<void> {
+    this.iqControlState = {
+      ...this.iqControlState,
+      ...(patch.swapEnabled !== undefined ? { swapEnabled: patch.swapEnabled } : {}),
+      ...(patch.invertEnabled !== undefined ? { invertEnabled: patch.invertEnabled } : {})
+    };
+  }
+
+  getFrontEndCorrectionState(): DeviceFrontEndCorrectionState {
+    return { ...this.frontEndCorrectionState };
+  }
+
+  async setFrontEndCorrectionState(patch: DeviceFrontEndCorrectionPatch): Promise<void> {
+    this.frontEndCorrectionState = {
+      ...this.frontEndCorrectionState,
+      ...(patch.dcOffsetEnabled !== undefined ? { dcOffsetEnabled: patch.dcOffsetEnabled } : {}),
+      ...(patch.iqBalanceEnabled !== undefined ? { iqBalanceEnabled: patch.iqBalanceEnabled } : {})
+    };
+  }
+
+  getStateMachineSnapshot(): DeviceStateMachineSnapshot {
+    return { ...this.state };
+  }
+
+  getStreamContinuityContract(): DeviceStreamContinuityContract {
+    return {
+      timestampModel: 'monotonic-with-explicit-gaps',
+      sampleIndexModel: 'continuous-with-gap-accounting',
+      glitchlessOperations: ['gain_change'],
+      discontinuityOperations: [
+        { operation: 'start', cause: 'restart' },
+        { operation: 'retune', cause: 'retune' },
+        { operation: 'sample_rate_change', cause: 'sample_rate_change' }
+      ],
+      emittedDiscontinuityCauses: ['restart', 'retune', 'sample_rate_change', 'dropped_samples']
+    };
   }
 }
