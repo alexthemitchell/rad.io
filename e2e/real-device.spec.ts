@@ -15,7 +15,7 @@ test.describe('@real-device', () => {
     await sourceSelect.selectOption('RTLSDR');
     await expect(sourceSelect).toHaveValue('RTLSDR');
 
-    await expect(page.getByRole('button', { name: 'Start' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
   });
 
   test('hackrf sustains streaming for a short validation window', async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe('@real-device', () => {
     await sourceSelect.selectOption('HACKRF');
     await expect(sourceSelect).toHaveValue('HACKRF');
 
-    const startButton = page.getByRole('button', { name: 'Start' });
+    const startButton = page.getByRole('button', { name: 'Start', exact: true });
     await startButton.click();
 
     await page.waitForFunction(() => {
@@ -48,7 +48,7 @@ test.describe('@real-device', () => {
     await expect(page.getByText(/Connection:\s*streaming/i)).toBeVisible();
     await expect(page.getByText('USB Throughput/Jitter', { exact: false })).toBeVisible();
 
-    const stopButton = page.getByRole('button', { name: 'Stop' });
+    const stopButton = page.getByRole('button', { name: 'Stop', exact: true });
     await stopButton.click();
     await expect(page.getByText(/Connection:\s*idle/i)).toBeVisible({ timeout: 10_000 });
   });

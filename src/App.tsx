@@ -22,6 +22,7 @@ import { DeviceDebugSnapshot, ISDRDevice, SDRGainStage } from './devices/ISDRDev
 import { getStabilityProfile, profileKeyFor, upsertStabilityProfile, type StabilityProfile } from './devices/deviceProfileStore';
 import { deriveStableDeviceIdentity } from './devices/deviceIdentity';
 import { buildHackrfFirmwareRecoveryPlan } from './devices/hackrfFirmwareRecovery';
+import { buildSweepExecutionPlan } from './devices/hackrfSweepFallbackPlan';
 import { normalizeDeviceError } from './devices/errors';
 import type { SDRStreamFrame } from './devices/streamFrame';
 import { goldenToneFixtureBundle } from './fixtures/sigmf/goldenToneFixture';
@@ -59,13 +60,29 @@ import {
   runFrequencyCalibrationWizard,
   type CalibrationSourceId
 } from './measurements/frequencyCalibrationWizard';
+import {
+  createDefaultBandCalibrationProfile,
+  exportCalibrationBundle,
+  getAmplitudeCalibration,
+  getBandCalibrationProfile,
+  resolveCalibrationBandId,
+  upsertAmplitudeCalibration,
+  upsertBandCalibrationProfile
+} from './measurements/amplitudeCalibrationStore';
+import { runLevelCalibrationWizard } from './measurements/levelCalibrationWizard';
 import { assessGainStagingAssistant } from './measurements/gainStagingAssistant';
 import { deriveReferenceClockVisibility } from './measurements/referenceClockVisibility';
+import {
+  deriveReferenceClockSupportModel,
+  evaluateReferenceLockProof,
+  type ReferenceLockProofSample
+} from './measurements/referenceClockModel';
 import {
   deriveTargetQueueMs,
   describeClockSyncPolicy,
   type ClockSyncPolicy
 } from './measurements/clockSyncPolicy';
+import { buildTimebaseModelState } from './measurements/timebaseModel';
 import { assessSampleRateMismatchStrategy } from './measurements/sampleRateMismatchStrategy';
 import { buildSignalIdTuningAdvisor } from './measurements/signalIdTuningAdvisor';
 import {
@@ -92,6 +109,24 @@ import { resolveSecondaryOffsetFromMarkerHz, resolveVfoDisplayFrequencyHz, type 
 import { assessBufferTelemetry, buildAsciiOccupancyTrend } from './measurements/bufferTelemetry';
 import { assessIqIntegrityWizard } from './measurements/iqIntegrityWizard';
 import { assessTimebaseDriftTelemetry } from './measurements/timebaseDriftTelemetry';
+import {
+  applyRfChainProfileToFrequencyMapping,
+  buildRfChainProfileFromContext,
+  createDefaultAntennaFrontEndContext,
+  listAntennaFrontEndProfiles,
+  listRfChainProfiles,
+  upsertAntennaFrontEndProfile,
+  upsertRfChainProfile,
+  type AntennaFrontEndContext,
+  type AntennaFrontEndProfile,
+  type RfChainProfile
+} from './measurements/rfContextProfiles';
+import {
+  buildCatalogEntriesFromAnnotations,
+  findSpurCatalogMatches,
+  listSpurArtifactEntries,
+  upsertSpurArtifactEntries
+} from './measurements/spurArtifactCatalog';
 import {
   recommendUsbStreamingProfile,
   scoreUsbProfileWindow,
@@ -367,15 +402,6 @@ type TelemetryWindowSample = {
   workerTransportMode: RuntimeTelemetry['workerTransportMode'];
 };
 
-type RfEnvironmentContext = {
-  antennaName: string;
-  preampNote: string;
-  attenuatorNote: string;
-  filterNote: string;
-  chainNotes: string;
-  biasTeeEnabled: boolean;
-};
-
 type AudioOutputDeviceOption = {
   deviceId: string;
   label: string;
@@ -427,16 +453,17 @@ const SAFE_MODE_MARKER_STORAGE_KEY = 'rad.io.safeModeBoot.v1';
 const USB_STREAMING_PROFILE_STORAGE_KEY = 'rad.io.usbStreamingProfile.v1';
 const SHAREABLE_SESSION_QUERY_PARAM = 'session';
 const SESSION_GRADE_MIN_STABILITY_WINDOW_SECONDS = 30;
+const REFERENCE_LOCK_PROOF_WINDOW_SECONDS = 30;
 const WEBUSB_CONTENTION_CHANNEL = 'rad.io.webusb.contention.v1';
-
-const DEFAULT_RF_ENVIRONMENT_CONTEXT: RfEnvironmentContext = {
-  antennaName: '',
-  preampNote: '',
-  attenuatorNote: '',
-  filterNote: '',
-  chainNotes: '',
-  biasTeeEnabled: false
+const BIAS_TEE_DEFAULT_AUTO_OFF_SECONDS = 90;
+const BIAS_TEE_MIN_AUTO_OFF_SECONDS = 15;
+const BIAS_TEE_MAX_AUTO_OFF_SECONDS = 300;
+const DEFAULT_GPIO_OUTPUTS: Record<string, boolean> = {
+  GPIO0: false,
+  GPIO1: false
 };
+
+const DEFAULT_RF_ENVIRONMENT_CONTEXT: AntennaFrontEndContext = createDefaultAntennaFrontEndContext();
 
 const isWebUsbSource = (source: SourceType): boolean => source === 'HACKRF' || source === 'RTLSDR';
 
@@ -796,14 +823,14 @@ export default function App() {
         return 'audio-stable';
       }
     });
-    const [rfEnvironmentContext, setRfEnvironmentContext] = useState<RfEnvironmentContext>(() => {
+    const [rfEnvironmentContext, setRfEnvironmentContext] = useState<AntennaFrontEndContext>(() => {
       try {
         const raw = localStorage.getItem(RF_ENV_CONTEXT_STORAGE_KEY);
         if (!raw) {
           return DEFAULT_RF_ENVIRONMENT_CONTEXT;
         }
 
-        const parsed = JSON.parse(raw) as Partial<RfEnvironmentContext>;
+        const parsed = JSON.parse(raw) as Partial<AntennaFrontEndContext>;
         return {
           antennaName: typeof parsed.antennaName === 'string' ? parsed.antennaName : '',
           preampNote: typeof parsed.preampNote === 'string' ? parsed.preampNote : '',
@@ -816,6 +843,10 @@ export default function App() {
         return DEFAULT_RF_ENVIRONMENT_CONTEXT;
       }
     });
+    const [biasTeeAutoOffSeconds, setBiasTeeAutoOffSeconds] = useState(BIAS_TEE_DEFAULT_AUTO_OFF_SECONDS);
+    const [biasTeeArmedUntilMs, setBiasTeeArmedUntilMs] = useState<number | null>(null);
+    const [biasTeeSecondsRemaining, setBiasTeeSecondsRemaining] = useState(0);
+    const [gpioOutputs, setGpioOutputs] = useState<Record<string, boolean>>(DEFAULT_GPIO_OUTPUTS);
     const [audioOutputDeviceId, setAudioOutputDeviceId] = useState(() => {
       try {
         const stored = localStorage.getItem(AUDIO_OUTPUT_DEVICE_STORAGE_KEY);
@@ -842,6 +873,15 @@ export default function App() {
     const [usbAutoTuneRunning, setUsbAutoTuneRunning] = useState(false);
     const [hardwareSelfTestReport, setHardwareSelfTestReport] = useState<HardwareSanitySelfTestReport | null>(null);
     const [calibrationWizardSourceId, setCalibrationWizardSourceId] = useState<CalibrationSourceId>('wfm-pilot-19khz');
+    const [levelCalibrationReferenceDbm, setLevelCalibrationReferenceDbm] = useState(-67);
+    const [calibrationStoreRevision, setCalibrationStoreRevision] = useState(0);
+    const [rfContextProfileNameDraft, setRfContextProfileNameDraft] = useState('Default Context');
+    const [rfChainProfileNameDraft, setRfChainProfileNameDraft] = useState('Default RF Chain');
+    const [selectedAntennaContextProfileId, setSelectedAntennaContextProfileId] = useState('');
+    const [selectedRfChainProfileId, setSelectedRfChainProfileId] = useState('');
+    const [antennaContextProfiles, setAntennaContextProfiles] = useState<AntennaFrontEndProfile[]>([]);
+    const [rfChainProfiles, setRfChainProfiles] = useState<RfChainProfile[]>([]);
+    const [spurCatalogRevision, setSpurCatalogRevision] = useState(0);
 
   const bandRegionPlans = useMemo(() => listBandRegionPlans(), []);
 
@@ -871,6 +911,11 @@ export default function App() {
     () => resolveVfoDisplayFrequencyHz(activeVfoId, tunedDisplayFrequencyHz, secondaryVfoEnabled, secondaryVfoOffsetHz),
     [activeVfoId, secondaryVfoEnabled, secondaryVfoOffsetHz, tunedDisplayFrequencyHz]
   );
+
+  const activeCalibrationBandId = useMemo(
+    () => resolveCalibrationBandId(tunedDisplayFrequencyHz),
+    [tunedDisplayFrequencyHz]
+  );
   
   const workerRef = useRef<Worker | null>(null);
   const workerBridgeRef = useRef<WorkerBridge | null>(null);
@@ -892,6 +937,7 @@ export default function App() {
   const streamSampleRateHzRef = useRef(2_000_000);
   const lastProfilePersistAtRef = useRef<number>(0);
   const telemetryWindowRef = useRef<TelemetryWindowSample[]>([]);
+  const referenceLockSamplesRef = useRef<ReferenceLockProofSample[]>([]);
   const runtimeTelemetryRef = useRef<RuntimeTelemetry>(createDefaultRuntimeTelemetry('direct'));
   const lastAudioQueueAheadMsRef = useRef<number | null>(null);
   const queueJitterEwmaMsRef = useRef(0);
@@ -922,6 +968,34 @@ export default function App() {
     return deriveStableDeviceIdentity(sourceType, deviceName, deviceDebugSnapshot).key;
   }, [deviceDebugSnapshot, sourceType]);
 
+  const activeCapabilityModel = deviceRef.current?.getCapabilityModel?.() ?? null;
+
+  useEffect(() => {
+    const contextProfiles = listAntennaFrontEndProfiles(activeDeviceProfileKey);
+    const chainProfiles = listRfChainProfiles(activeDeviceProfileKey);
+
+    setAntennaContextProfiles(contextProfiles);
+    setRfChainProfiles(chainProfiles);
+
+    if (contextProfiles.length > 0 && selectedAntennaContextProfileId.length === 0) {
+      setSelectedAntennaContextProfileId(contextProfiles[0].id);
+      setRfContextProfileNameDraft(contextProfiles[0].name);
+    }
+
+    if (chainProfiles.length > 0 && selectedRfChainProfileId.length === 0) {
+      setSelectedRfChainProfileId(chainProfiles[0].profileId);
+      setRfChainProfileNameDraft(chainProfiles[0].profileName);
+    }
+  }, [activeDeviceProfileKey, selectedAntennaContextProfileId.length, selectedRfChainProfileId.length]);
+
+  const sweepExecutionPlan = useMemo(() => {
+    return buildSweepExecutionPlan({
+      sourceType,
+      isStreaming: isRunning,
+      capability: deviceDebugSnapshot?.sweep ?? null
+    });
+  }, [deviceDebugSnapshot?.sweep, isRunning, sourceType]);
+
     const pushDiagnosticEvent = useCallback((
       message: string,
       level: DiagnosticLogLevel = 'info',
@@ -944,6 +1018,56 @@ export default function App() {
         setDiagnosticEvents((prev) => [formatted, ...prev].slice(0, 100));
         setDiagnosticLogs((prev) => [{ ts: timestamp, level, source, message }, ...prev].slice(0, 200));
     }, []);
+
+    const applyRfPowerState = useCallback(async (patch: { biasTeeEnabled?: boolean; ampEnabled?: boolean }) => {
+      const activeDevice = deviceRef.current;
+      if (!activeDevice?.setRfPowerState) {
+        return;
+      }
+
+      try {
+        await activeDevice.setRfPowerState(patch);
+        setDeviceDebugSnapshot(activeDevice.getDebugSnapshot?.() ?? null);
+      } catch (error) {
+        const normalized = normalizeDeviceError(error);
+        setStatusMessage(`RF power update failed: ${normalized.message}`);
+        pushDiagnosticEvent(`RF power update failed [${normalized.code}]: ${normalized.message}`, 'warn', 'device');
+      }
+    }, [pushDiagnosticEvent]);
+
+    const applyGpioOutputs = useCallback(async (nextOutputs: Record<string, boolean>) => {
+      const activeDevice = deviceRef.current;
+      if (
+        !activeDevice?.setGpioState
+        || activeCapabilityModel?.rfPower.gpioControl !== 'supported'
+      ) {
+        return;
+      }
+
+      try {
+        await activeDevice.setGpioState({ outputPins: nextOutputs });
+        setDeviceDebugSnapshot(activeDevice.getDebugSnapshot?.() ?? null);
+        const activePins = Object.entries(nextOutputs)
+          .filter(([, enabled]) => enabled)
+          .map(([pin]) => pin);
+        setStatusMessage(activePins.length > 0
+          ? `GPIO outputs active: ${activePins.join(', ')}.`
+          : 'GPIO outputs all low.');
+      } catch (error) {
+        const normalized = normalizeDeviceError(error);
+        setStatusMessage(`GPIO update failed: ${normalized.message}`);
+        pushDiagnosticEvent(`GPIO update failed [${normalized.code}]: ${normalized.message}`, 'warn', 'device');
+      }
+    }, [activeCapabilityModel?.rfPower.gpioControl, pushDiagnosticEvent]);
+
+    const armBiasTeeSafetyWindow = useCallback(() => {
+      const now = Date.now();
+      const safeSeconds = Math.max(BIAS_TEE_MIN_AUTO_OFF_SECONDS, Math.min(BIAS_TEE_MAX_AUTO_OFF_SECONDS, Math.round(biasTeeAutoOffSeconds)));
+      setBiasTeeAutoOffSeconds(safeSeconds);
+      setBiasTeeArmedUntilMs(now + (safeSeconds * 1000));
+      setStatusMessage(`Bias-tee safety armed for ${safeSeconds} seconds.`);
+      pushDiagnosticEvent(`Bias-tee safety armed for ${safeSeconds}s.`, 'info', 'safety');
+    }, [biasTeeAutoOffSeconds, pushDiagnosticEvent]);
 
     const refreshPermissionState = useCallback(async () => {
       const [usb, microphone] = await Promise.all([
@@ -1230,6 +1354,55 @@ export default function App() {
       // Non-fatal in private/incognito contexts.
     }
   }, [rfEnvironmentContext]);
+
+  useEffect(() => {
+    if (biasTeeArmedUntilMs === null) {
+      setBiasTeeSecondsRemaining(0);
+      return;
+    }
+
+    const updateRemaining = () => {
+      const remaining = Math.max(0, Math.ceil((biasTeeArmedUntilMs - Date.now()) / 1000));
+      setBiasTeeSecondsRemaining(remaining);
+      if (remaining <= 0) {
+        setBiasTeeArmedUntilMs(null);
+      }
+    };
+
+    updateRemaining();
+    const intervalId = window.setInterval(updateRemaining, 1000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [biasTeeArmedUntilMs]);
+
+  useEffect(() => {
+    if (isRunning && rfEnvironmentContext.biasTeeEnabled && biasTeeArmedUntilMs === null) {
+      setRfEnvironmentContext((prev) => ({
+        ...prev,
+        biasTeeEnabled: false
+      }));
+      setStatusMessage('Bias-tee disabled automatically after safety timeout.');
+      pushDiagnosticEvent('Bias-tee auto-disabled after safety timeout.', 'warn', 'safety');
+      void applyRfPowerState({ biasTeeEnabled: false });
+    }
+  }, [applyRfPowerState, biasTeeArmedUntilMs, isRunning, pushDiagnosticEvent, rfEnvironmentContext.biasTeeEnabled]);
+
+  useEffect(() => {
+    if (!isRunning) {
+      return;
+    }
+
+    void applyRfPowerState({ biasTeeEnabled: rfEnvironmentContext.biasTeeEnabled });
+  }, [applyRfPowerState, isRunning, rfEnvironmentContext.biasTeeEnabled]);
+
+  useEffect(() => {
+    if (!isRunning) {
+      return;
+    }
+
+    void applyGpioOutputs(gpioOutputs);
+  }, [applyGpioOutputs, gpioOutputs, isRunning]);
 
   useEffect(() => {
     try {
@@ -1928,6 +2101,18 @@ export default function App() {
             }
           ].slice(-120);
 
+          referenceLockSamplesRef.current = [
+            ...referenceLockSamplesRef.current,
+            {
+              tsIso: new Date().toISOString(),
+              driftConfidence01: frequencyModelState.driftConfidence,
+              phaseErrorRms: frequencyModelState.phaseErrorRms,
+              audioResamplerRatioDeltaPpm: ratioDeltaPpm,
+              usbTransferJitterMs: deviceRef.current?.getDebugSnapshot?.().counters?.transferIntervalMsJitter ?? 0,
+              usbErrorCount: deviceRef.current?.getDebugSnapshot?.().counters?.bulkInErrorCount ?? 0
+            }
+          ].slice(-240);
+
           postToWorker({ command: 'SET_AUDIO_QUEUE_AHEAD_MS', value: stats.queueAheadMs });
 
           // Sample high-rate USB metrics at UI cadence to avoid per-transfer rerenders.
@@ -1943,7 +2128,7 @@ export default function App() {
         }, 500);
 
         return () => window.clearInterval(intervalId);
-        }, [audioPllState.ratio, isRunning, postToWorker]);
+        }, [audioPllState.ratio, frequencyModelState.driftConfidence, frequencyModelState.phaseErrorRms, isRunning, postToWorker]);
 
       useEffect(() => {
         if (!isRunning || !adaptiveStreamingEnabled) {
@@ -3015,6 +3200,7 @@ export default function App() {
           streamDiscontinuities: 0
         }));
         telemetryWindowRef.current = [];
+        referenceLockSamplesRef.current = [];
         parameterChangeTimelineRef.current = [];
         previousSessionSnapshotRef.current = buildSessionParameterSnapshot();
         lastAudioQueueAheadMsRef.current = null;
@@ -3118,6 +3304,20 @@ export default function App() {
             await dev.setFrequency(frequency);
             for (const stage of stages) {
                 await dev.setGain(stage.name, nextGains[stage.name]);
+            }
+
+            if (dev.setRfPowerState) {
+              await dev.setRfPowerState({ biasTeeEnabled: rfEnvironmentContext.biasTeeEnabled }).catch((error) => {
+                const normalized = normalizeDeviceError(error);
+                pushDiagnosticEvent(`RF power init skipped [${normalized.code}]: ${normalized.message}`, 'warn', 'device');
+              });
+            }
+
+            if (dev.setGpioState) {
+              await dev.setGpioState({ outputPins: gpioOutputs }).catch((error) => {
+                const normalized = normalizeDeviceError(error);
+                pushDiagnosticEvent(`GPIO init skipped [${normalized.code}]: ${normalized.message}`, 'warn', 'device');
+              });
             }
 
             if (applyOnConnect?.enabled) {
@@ -3295,6 +3495,8 @@ export default function App() {
     postToWorker,
     ppmCorrection,
     pushDiagnosticEvent,
+    gpioOutputs,
+    rfEnvironmentContext.biasTeeEnabled,
     secondaryVfoEnabled,
     secondaryVfoOffsetHz,
     sourceType,
@@ -3772,13 +3974,28 @@ export default function App() {
             frontEndTriage: frontEndOverloadAssessment,
             overloadClippingTelemetry,
             timebaseDrift: timebaseDriftAssessment,
+            timebaseModel: timebaseModelState,
             externalReferenceStability: externalReferenceAssessment,
             referenceClockVisibility,
+            referenceClockSupportModel,
+            referenceLockProof,
             firmwareRecoveryPlan,
             frequencyCalibrationWizard: calibrationWizardAssessment,
+            levelCalibrationWizard: levelCalibrationAssessment,
+            activeBandCalibrationProfile,
+            activeAmplitudeCalibration,
+            calibrationBundle: exportCalibrationBundle(activeDeviceProfileKey),
             sampleRateMismatch: sampleRateMismatchAssessment,
             iqIntegrityWizard: iqIntegrityAssessment,
             signalIdAdvisor,
+            antennaFrontEndProfiles: antennaContextProfiles,
+            rfChainProfiles,
+            activeAntennaFrontEndProfileId: selectedAntennaContextProfileId,
+            activeRfChainProfileId: selectedRfChainProfileId,
+            spurArtifactCatalog: {
+              totalEntries: listSpurArtifactEntries(activeDeviceProfileKey).length,
+              matchesAtMarker: spurCatalogMatches
+            },
             bufferTelemetry: {
               ...bufferTelemetryAssessment,
               audioQueueTrend
@@ -4447,8 +4664,11 @@ export default function App() {
     }
 
     if (warning.mitigation === 'lo-shift') {
-      setFineFreq((prev) => clampFineTuneHz(prev + 12_500, filterState.highCutHz, streamSampleRateHz));
-      setStatusMessage('Applied LO shift mitigation (+12.5 kHz fine tune).');
+      setFrequencyMapping((prev) => ({
+        ...prev,
+        ifOffsetHz: Math.max(-25_000_000, Math.min(25_000_000, prev.ifOffsetHz + 12_500))
+      }));
+      setStatusMessage('Applied LO shift mitigation (+12.5 kHz IF shift).');
       return;
     }
 
@@ -4473,7 +4693,7 @@ export default function App() {
       }));
       setStatusMessage('Applied notch preset mitigation (heterodyne).');
     }
-  }, [demodMode, filterState.highCutHz, signalWarnings, streamSampleRateHz]);
+  }, [demodMode, signalWarnings, streamSampleRateHz]);
 
   const captureTraceB = useCallback(() => {
     if (analyzerTrace.length === 0) {
@@ -4630,12 +4850,22 @@ export default function App() {
   ]);
 
   const runSweepStitch = useCallback(async () => {
+    if (!sweepExecutionPlan.canRun) {
+      setSweepStatus(sweepExecutionPlan.status);
+      setStatusMessage(sweepExecutionPlan.status);
+      return;
+    }
+
     if (sweepState === 'running') {
       return;
     }
 
     setSweepState('running');
-    setSweepStatus('Running software sweep/stitch...');
+    setSweepStatus(
+      sweepExecutionPlan.mode === 'hardware'
+        ? 'Running hardware sweep...'
+        : 'Running software sweep/stitch...'
+    );
     const originalHz = tunedDisplayFrequencyHz;
     const spanHz = Math.max(streamSampleRateHz, 2_000_000);
     const stepHz = Math.max(50_000, Math.round(spanHz / 4));
@@ -4668,7 +4898,7 @@ export default function App() {
       setSweepState('error');
       setSweepStatus(`Sweep failed: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }, [streamSampleRateHz, sweepState, tuneToDisplayFrequency, tunedDisplayFrequencyHz]);
+  }, [streamSampleRateHz, sweepExecutionPlan.canRun, sweepExecutionPlan.mode, sweepExecutionPlan.status, sweepState, tuneToDisplayFrequency, tunedDisplayFrequencyHz]);
 
   const recallDisplayFrequency = useCallback((slot: 'A' | 'B') => {
     const target = slot === 'A' ? recallSlotAHz : recallSlotBHz;
@@ -4933,6 +5163,43 @@ export default function App() {
     sessionGradeStabilityWindowSeconds
   ]);
 
+  const activeBandCalibrationProfile = useMemo(() => {
+    void calibrationStoreRevision;
+    return getBandCalibrationProfile(activeDeviceProfileKey, activeCalibrationBandId)
+      ?? createDefaultBandCalibrationProfile(activeCalibrationBandId, calibrationWizardSourceId);
+  }, [activeCalibrationBandId, activeDeviceProfileKey, calibrationStoreRevision, calibrationWizardSourceId]);
+
+  const activeAmplitudeCalibration = useMemo(() => {
+    void calibrationStoreRevision;
+    return getAmplitudeCalibration(activeDeviceProfileKey, activeCalibrationBandId);
+  }, [activeCalibrationBandId, activeDeviceProfileKey, calibrationStoreRevision]);
+
+  const levelCalibrationAssessment = useMemo(() => {
+    const observedSignalDbfs = markerReadout?.powerDbfs ?? candidateSignalStats.strongestPeakDbfs;
+
+    return runLevelCalibrationWizard({
+      sourceId: calibrationWizardSourceId,
+      bandId: activeCalibrationBandId,
+      observedSignalDbfs,
+      expectedSignalDbm: levelCalibrationReferenceDbm,
+      observedNoiseFloorDbfs: candidateSignalStats.noiseFloorDbfs,
+      observationSeconds: sessionGradeStabilityWindowSeconds,
+      driftConfidence01: frequencyModelState.driftConfidence,
+      lockStable: demodQuality.lockState === 'locked',
+      rfChainNetGainDb: 0
+    });
+  }, [
+    activeCalibrationBandId,
+    calibrationWizardSourceId,
+    candidateSignalStats.noiseFloorDbfs,
+    candidateSignalStats.strongestPeakDbfs,
+    demodQuality.lockState,
+    frequencyModelState.driftConfidence,
+    levelCalibrationReferenceDbm,
+    markerReadout?.powerDbfs,
+    sessionGradeStabilityWindowSeconds
+  ]);
+
   const externalReferenceAssessment = useMemo(() => {
     const counters = deviceDebugSnapshot?.counters;
     return assessExternalReferenceStability({
@@ -4958,12 +5225,30 @@ export default function App() {
 
   const referenceClockVisibility = useMemo(() => {
     return deriveReferenceClockVisibility({
-      capabilityModel: deviceRef.current?.getCapabilityModel?.() ?? null,
+      capabilityModel: activeCapabilityModel,
       sampleClockTruthMode: runtimeTelemetry.lastClockTruthMode,
       externalReferenceAssessment,
       sourceType
     });
-  }, [externalReferenceAssessment, runtimeTelemetry.lastClockTruthMode, sourceType]);
+  }, [activeCapabilityModel, externalReferenceAssessment, runtimeTelemetry.lastClockTruthMode, sourceType]);
+
+  const referenceClockSupportModel = useMemo(() => {
+    return deriveReferenceClockSupportModel({
+      sourceType,
+      capabilityModel: activeCapabilityModel,
+      sampleClockTruthMode: runtimeTelemetry.lastClockTruthMode
+    });
+  }, [activeCapabilityModel, runtimeTelemetry.lastClockTruthMode, sourceType]);
+
+  const referenceLockProof = useMemo(() => {
+    void runtimeTelemetry.lastFrameSequence;
+    return evaluateReferenceLockProof({
+      supportModel: referenceClockSupportModel,
+      sampleClockTruthMode: runtimeTelemetry.lastClockTruthMode,
+      samples: referenceLockSamplesRef.current,
+      minWindowSeconds: REFERENCE_LOCK_PROOF_WINDOW_SECONDS
+    });
+  }, [referenceClockSupportModel, runtimeTelemetry.lastClockTruthMode, runtimeTelemetry.lastFrameSequence]);
 
   const firmwareRecoveryPlan = useMemo(() => {
     if (sourceType !== 'HACKRF') {
@@ -4995,6 +5280,30 @@ export default function App() {
     runtimeTelemetry.audioResamplerRatioDeltaPpm,
     runtimeTelemetry.audioQueueJitterMs,
     runtimeTelemetry.lastClockTruthMode
+  ]);
+
+  const timebaseModelState = useMemo(() => {
+    return buildTimebaseModelState({
+      sampleClockTruthMode: runtimeTelemetry.lastClockTruthMode,
+      clockSyncPolicy,
+      streamSampleRateHz,
+      driftEstimateHzPerSec: frequencyModelState.driftEstimateHzPerSec,
+      driftConfidence01: frequencyModelState.driftConfidence,
+      phaseErrorRms: frequencyModelState.phaseErrorRms,
+      audioResamplerRatio: runtimeTelemetry.audioResamplerRatio,
+      audioResamplerRatioDeltaPpm: runtimeTelemetry.audioResamplerRatioDeltaPpm,
+      audioQueueJitterMs: runtimeTelemetry.audioQueueJitterMs
+    });
+  }, [
+    clockSyncPolicy,
+    frequencyModelState.driftConfidence,
+    frequencyModelState.driftEstimateHzPerSec,
+    frequencyModelState.phaseErrorRms,
+    runtimeTelemetry.audioQueueJitterMs,
+    runtimeTelemetry.audioResamplerRatio,
+    runtimeTelemetry.audioResamplerRatioDeltaPpm,
+    runtimeTelemetry.lastClockTruthMode,
+    streamSampleRateHz
   ]);
 
   const sampleRateMismatchAssessment = useMemo(() => {
@@ -5032,6 +5341,28 @@ export default function App() {
     runtimeTelemetry.dsp.rfImpurity.imageRejectionDb,
     sampleRateMismatchAssessment.mismatchPpm,
     sampleRateMismatchAssessment.severity
+  ]);
+
+  const spurCatalogMatches = useMemo(() => {
+    void spurCatalogRevision;
+    if (!markerReadout) {
+      return [];
+    }
+
+    return findSpurCatalogMatches({
+      deviceProfileKey: activeDeviceProfileKey,
+      sampleRateHz: streamSampleRateHz,
+      gainSignature: serializeGainProfile(gains),
+      candidateFrequencyHz: markerReadout.frequencyHz,
+      toleranceHz: Math.max(100, streamSampleRateHz / 4096)
+    });
+  }, [
+    activeDeviceProfileKey,
+    gains,
+    markerReadout,
+    serializeGainProfile,
+    spurCatalogRevision,
+    streamSampleRateHz
   ]);
 
   const signalIdAdvisor = useMemo(() => {
@@ -5536,7 +5867,7 @@ export default function App() {
 
   const sessionGradeEvaluation = useMemo(() => {
     const hasCalibration = measurementDisclosure.frequency.state !== 'uncalibrated'
-      && measurementDisclosure.level.state !== 'uncalibrated';
+      && (measurementDisclosure.level.state !== 'uncalibrated' || activeAmplitudeCalibration !== null);
 
     return evaluateSessionGradeUpgrade({
       stableWindowSeconds: sessionGradeStabilityWindowSeconds,
@@ -5547,6 +5878,7 @@ export default function App() {
       trustGrade: trustAssessment.grade
     });
   }, [
+    activeAmplitudeCalibration,
     measurementDisclosure.frequency.state,
     measurementDisclosure.level.state,
     runtimePrerequisites.crossOriginIsolated,
@@ -6341,11 +6673,17 @@ export default function App() {
         </Card>
 
         <Card className="control-group control-group-wide" title="Sweep / Stitch Analyzer">
-          <Button variant="secondary" onClick={() => void runSweepStitch()} disabled={!isRunning || sweepState === 'running'}>
-            {sweepState === 'running' ? 'Sweeping...' : 'Run Sweep/Stitch'}
+          <Button variant="secondary" onClick={() => void runSweepStitch()} disabled={!sweepExecutionPlan.canRun || sweepState === 'running'}>
+            {sweepState === 'running' ? 'Sweeping...' : sweepExecutionPlan.buttonLabel}
           </Button>
+          <div className="control-note">{sweepExecutionPlan.status}</div>
           <div className="control-note">{sweepStatus}</div>
           <div className="control-note">Stitched points: {sweepStitchedPoints.length}</div>
+          {sweepExecutionPlan.blockers.length > 0 && (
+            <div className="control-note">
+              Blockers: {sweepExecutionPlan.blockers.join(' | ')}
+            </div>
+          )}
         </Card>
 
         <Card className="control-group control-group-wide" title="Spur / Artifact Layer">
@@ -6532,6 +6870,33 @@ export default function App() {
               className="control-range"
             />
           </div>
+          <div className="control-group" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button
+              variant="secondary"
+              onClick={() => setFrequencyMapping((prev) => ({
+                ...prev,
+                ifOffsetHz: Math.max(-25_000_000, Math.min(25_000_000, prev.ifOffsetHz - 12_500))
+              }))}
+            >
+              IF Shift -12.5 kHz
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setFrequencyMapping((prev) => ({
+                ...prev,
+                ifOffsetHz: Math.max(-25_000_000, Math.min(25_000_000, prev.ifOffsetHz + 12_500))
+              }))}
+            >
+              IF Shift +12.5 kHz
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setFrequencyMapping((prev) => ({ ...prev, ifOffsetHz: 0 }))}
+            >
+              Zero IF Shift
+            </Button>
+          </div>
+          <div className="control-note">Use IF shift to move a wanted signal away from center-frequency DC/LO artifacts.</div>
           <div className="control-note">{formatFrequencyModelSummary(tunedTunerFrequencyHz, frequencyMapping)}</div>
         </Card>
 
@@ -6819,6 +7184,120 @@ export default function App() {
             }}
           >
             Save Calibration Seed To Device Profile
+          </Button>
+
+          <div className="control-group">
+            <label className="control-label">Level Reference ({levelCalibrationReferenceDbm.toFixed(1)} dBm)</label>
+            <input
+              type="range"
+              min="-130"
+              max="-20"
+              step="0.5"
+              value={levelCalibrationReferenceDbm}
+              onChange={(e) => setLevelCalibrationReferenceDbm(parseFloat(e.target.value))}
+              className="control-range"
+            />
+          </div>
+          <div className="control-note">{levelCalibrationAssessment.summary}</div>
+          <div className="control-note">
+            Band {activeCalibrationBandId.toUpperCase()} | Offset {levelCalibrationAssessment.dbfsToDbmOffset.toFixed(2)} dB | Uncertainty +/-{levelCalibrationAssessment.uncertaintyDb.toFixed(1)} dB
+          </div>
+          {levelCalibrationAssessment.actions.length > 0 && (
+            <div className="control-note">Level actions: {levelCalibrationAssessment.actions.join(' | ')}</div>
+          )}
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (levelCalibrationAssessment.readiness !== 'ready') {
+                setStatusMessage('Level calibration is not ready yet. Collect more stable evidence first.');
+                return;
+              }
+
+              upsertAmplitudeCalibration({
+                updatedAtUtc: new Date().toISOString(),
+                deviceProfileKey: activeDeviceProfileKey,
+                bandId: activeCalibrationBandId,
+                sourceId: calibrationWizardSourceId,
+                centerFrequencyHz: tunedDisplayFrequencyHz,
+                sampleRateHz: streamSampleRateHz,
+                dbfsToDbmOffset: levelCalibrationAssessment.dbfsToDbmOffset,
+                dbfsToDbuvOffset: levelCalibrationAssessment.dbfsToDbuvOffset,
+                uncertaintyDb: levelCalibrationAssessment.uncertaintyDb,
+                baselineNoiseDbfs: levelCalibrationAssessment.baselineNoiseDbfs,
+                gainDbByStage: gains,
+                rfChainProfileId: selectedRfChainProfileId || null,
+                notes: [
+                  `source=${calibrationWizardSourceId}`,
+                  `confidence=${levelCalibrationAssessment.confidence01.toFixed(3)}`
+                ]
+              });
+              setCalibrationStoreRevision((prev) => prev + 1);
+              setStatusMessage(`Saved ${activeCalibrationBandId.toUpperCase()} amplitude calibration for ${activeDeviceProfileKey}.`);
+            }}
+          >
+            Save Amplitude Calibration For Active Band
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const nextProfile = upsertBandCalibrationProfile(activeDeviceProfileKey, {
+                ...activeBandCalibrationProfile,
+                bandId: activeCalibrationBandId,
+                preferredSourceId: calibrationWizardSourceId,
+                targetUncertaintyDb: levelCalibrationAssessment.uncertaintyDb,
+                autoApply: true
+              });
+              setCalibrationStoreRevision((prev) => prev + 1);
+              setStatusMessage(`Saved ${nextProfile.label} calibration profile (target +/-${nextProfile.targetUncertaintyDb.toFixed(1)} dB).`);
+            }}
+          >
+            Save Band Calibration Profile
+          </Button>
+          {activeAmplitudeCalibration && (
+            <div className="control-note">
+              Active band calibration: {activeAmplitudeCalibration.bandId.toUpperCase()} | offset {activeAmplitudeCalibration.dbfsToDbmOffset.toFixed(2)} dB | +/-{activeAmplitudeCalibration.uncertaintyDb.toFixed(1)} dB
+            </div>
+          )}
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const bundle = exportCalibrationBundle(activeDeviceProfileKey);
+              const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const anchor = document.createElement('a');
+              anchor.href = url;
+              anchor.download = `rad-io-calibration-${activeDeviceProfileKey.replace(/[^a-zA-Z0-9-_]/g, '_')}.json`;
+              anchor.click();
+              URL.revokeObjectURL(url);
+              setStatusMessage('Exported band calibration profile bundle.');
+            }}
+          >
+            Export Calibration Bundle
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const entries = buildCatalogEntriesFromAnnotations({
+                sampleRateHz: streamSampleRateHz,
+                gainSignature: serializeGainProfile(gains),
+                annotations: spurAnnotations.map((annotation) => ({
+                  frequencyHz: annotation.frequencyHz,
+                  label: annotation.label,
+                  kind: annotation.kind === 'external'
+                    ? 'image'
+                    : annotation.kind === 'internal'
+                      ? 'spur'
+                      : 'lo-leakage'
+                }))
+              });
+
+              upsertSpurArtifactEntries(activeDeviceProfileKey, entries);
+              setSpurCatalogRevision((prev) => prev + 1);
+              setStatusMessage(`Saved ${entries.length} spur/LO annotations to the per-device artifact catalog.`);
+            }}
+            disabled={spurAnnotations.length === 0}
+          >
+            Save Spur/LO Artifacts To Catalog
           </Button>
         </Card>
 
@@ -7379,11 +7858,51 @@ export default function App() {
             />
           </div>
           <div className="control-group">
-            <label className="control-label">Bias-Tee Enabled</label>
+            <label className="control-label">Bias-Tee Power Safety</label>
+            <div className="control-note">
+              {activeCapabilityModel?.rfPower.biasTee === 'supported'
+                ? 'Arm a timed safety window before enabling antenna power.'
+                : 'Active device does not expose bias-tee control in current path.'}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Button variant="secondary" onClick={armBiasTeeSafetyWindow}>
+                {biasTeeArmedUntilMs === null ? 'Arm Bias-Tee Safety' : 'Re-Arm Safety Window'}
+              </Button>
+              <span className="control-note">
+                {biasTeeArmedUntilMs === null
+                  ? 'Not armed'
+                  : `Armed ${biasTeeSecondsRemaining}s remaining`}
+              </span>
+            </div>
+            <label className="control-label">Auto-Off ({biasTeeAutoOffSeconds}s)</label>
+            <input
+              type="range"
+              min={BIAS_TEE_MIN_AUTO_OFF_SECONDS}
+              max={BIAS_TEE_MAX_AUTO_OFF_SECONDS}
+              step={5}
+              value={biasTeeAutoOffSeconds}
+              onChange={(e) => setBiasTeeAutoOffSeconds(parseInt(e.target.value, 10))}
+              className="control-range"
+            />
             <input
               type="checkbox"
               checked={rfEnvironmentContext.biasTeeEnabled}
-              onChange={(e) => setRfEnvironmentContext((prev) => ({ ...prev, biasTeeEnabled: e.target.checked }))}
+              disabled={activeCapabilityModel?.rfPower.biasTee !== 'supported'}
+              onChange={(e) => {
+                const nextEnabled = e.target.checked;
+                if (nextEnabled && biasTeeArmedUntilMs === null) {
+                  setStatusMessage('Arm bias-tee safety before enabling antenna power.');
+                  return;
+                }
+
+                setRfEnvironmentContext((prev) => ({ ...prev, biasTeeEnabled: nextEnabled }));
+                void applyRfPowerState({ biasTeeEnabled: nextEnabled });
+                if (nextEnabled) {
+                  setStatusMessage('Bias-tee enabled inside safety window.');
+                } else {
+                  setStatusMessage('Bias-tee disabled.');
+                }
+              }}
               className="control-check"
             />
           </div>
@@ -7396,6 +7915,145 @@ export default function App() {
               className="control-input compact"
               placeholder="Optional chain/transverter/IF notes"
             />
+          </div>
+          <div className="control-group">
+            <label className="control-label">External IO / GPIO</label>
+            <div className="control-note">
+              {activeCapabilityModel?.rfPower.gpioControl === 'supported'
+                ? 'Toggle external filter/LNA switch lines.'
+                : 'GPIO control unavailable on current device path.'}
+            </div>
+            {Object.keys(gpioOutputs).map((pinName) => (
+              <label key={pinName} className="control-inline-check">
+                <input
+                  type="checkbox"
+                  className="control-check"
+                  checked={gpioOutputs[pinName]}
+                  disabled={activeCapabilityModel?.rfPower.gpioControl !== 'supported'}
+                  onChange={(event) => {
+                    const next = {
+                      ...gpioOutputs,
+                      [pinName]: event.target.checked
+                    };
+                    setGpioOutputs(next);
+                    void applyGpioOutputs(next);
+                  }}
+                />
+                {pinName}
+              </label>
+            ))}
+          </div>
+
+          <div className="control-group">
+            <label className="control-label">Antenna/Front-End Profiles</label>
+            <input
+              type="text"
+              value={rfContextProfileNameDraft}
+              onChange={(e) => setRfContextProfileNameDraft(e.target.value)}
+              className="control-input compact"
+              placeholder="Profile name"
+            />
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const id = rfContextProfileNameDraft.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `context-${Date.now()}`;
+                const profile = upsertAntennaFrontEndProfile({
+                  id,
+                  name: rfContextProfileNameDraft.trim() || 'RF Context',
+                  deviceProfileKey: activeDeviceProfileKey,
+                  context: rfEnvironmentContext,
+                  rfChainProfileId: selectedRfChainProfileId || null,
+                  updatedAtUtc: new Date().toISOString()
+                });
+                const nextProfiles = listAntennaFrontEndProfiles(activeDeviceProfileKey);
+                setAntennaContextProfiles(nextProfiles);
+                setSelectedAntennaContextProfileId(profile.id);
+                setStatusMessage(`Saved antenna/front-end profile: ${profile.name}.`);
+              }}
+            >
+              Save Context Profile
+            </Button>
+            <select
+              value={selectedAntennaContextProfileId}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                setSelectedAntennaContextProfileId(nextId);
+                const profile = antennaContextProfiles.find((entry) => entry.id === nextId);
+                if (!profile) {
+                  return;
+                }
+
+                setRfEnvironmentContext(profile.context);
+                if (profile.rfChainProfileId) {
+                  setSelectedRfChainProfileId(profile.rfChainProfileId);
+                }
+                setStatusMessage(`Applied context profile: ${profile.name}.`);
+              }}
+              className="control-input compact"
+            >
+              <option value="">No saved profile</option>
+              {antennaContextProfiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>{profile.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="control-group">
+            <label className="control-label">RF Chain Profiles (Typed)</label>
+            <input
+              type="text"
+              value={rfChainProfileNameDraft}
+              onChange={(e) => setRfChainProfileNameDraft(e.target.value)}
+              className="control-input compact"
+              placeholder="RF chain profile name"
+            />
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const profileId = rfChainProfileNameDraft.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `rf-chain-${Date.now()}`;
+                const profile = buildRfChainProfileFromContext({
+                  profileId,
+                  profileName: rfChainProfileNameDraft.trim() || 'RF Chain',
+                  context: rfEnvironmentContext,
+                  frequencyMapping,
+                  netOffsetDb: 0
+                });
+                upsertRfChainProfile(activeDeviceProfileKey, profile);
+                const nextProfiles = listRfChainProfiles(activeDeviceProfileKey);
+                setRfChainProfiles(nextProfiles);
+                setSelectedRfChainProfileId(profile.profileId);
+                setStatusMessage(`Saved RF chain profile: ${profile.profileName}.`);
+              }}
+            >
+              Save RF Chain Profile
+            </Button>
+            <select
+              value={selectedRfChainProfileId}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                setSelectedRfChainProfileId(nextId);
+                const profile = rfChainProfiles.find((entry) => entry.profileId === nextId);
+                if (!profile) {
+                  return;
+                }
+
+                setFrequencyMapping((prev) => applyRfChainProfileToFrequencyMapping(profile, prev));
+                setRfEnvironmentContext((prev) => ({
+                  ...prev,
+                  antennaName: profile.antenna?.descriptor ?? prev.antennaName,
+                  chainNotes: profile.antenna?.notes ?? prev.chainNotes,
+                  filterNote: profile.filters[0]?.label ?? prev.filterNote,
+                  biasTeeEnabled: profile.biasTee.enabled
+                }));
+                setStatusMessage(`Applied RF chain profile: ${profile.profileName}.`);
+              }}
+              className="control-input compact"
+            >
+              <option value="">No saved RF chain</option>
+              {rfChainProfiles.map((profile) => (
+                <option key={profile.profileId} value={profile.profileId}>{profile.profileName}</option>
+              ))}
+            </select>
           </div>
         </div>
       </section>
@@ -7605,6 +8263,18 @@ export default function App() {
             <li className="health-item health-ok">
               <strong>Reference Summary</strong>
               <span>{referenceClockVisibility.summary}</span>
+            </li>
+          )}
+          {referenceClockSupportModel.supported && (
+            <li className={`health-item ${referenceLockProof.status === 'pass' ? 'health-ok' : referenceLockProof.status === 'fail' ? 'health-error' : 'health-warn'}`}>
+              <strong>Reference Lock Proof</strong>
+              <span>{referenceLockProof.summary}</span>
+            </li>
+          )}
+          {spurCatalogMatches.length > 0 && (
+            <li className="health-item health-warn">
+              <strong>Known Spur Match</strong>
+              <span>{spurCatalogMatches.map((entry) => `${entry.kind}:${entry.label}`).join(' | ')}</span>
             </li>
           )}
         </ul>

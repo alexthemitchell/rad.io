@@ -1,8 +1,12 @@
 import {
+  DeviceGpioPatch,
+  DeviceGpioState,
   DeviceFrontEndCorrectionPatch,
   DeviceFrontEndCorrectionState,
   DeviceIqControlPatch,
   DeviceIqControlState,
+  DeviceRfPowerPatch,
+  DeviceRfPowerState,
   DeviceStateMachineSnapshot,
   DeviceStreamContinuityContract,
   ISDRDevice,
@@ -41,6 +45,13 @@ export class FileDevice implements ISDRDevice {
     dcOffsetEnabled: false,
     iqBalanceEnabled: false,
     implementation: 'dsp'
+  };
+  private rfPowerState: DeviceRfPowerState = {
+    biasTeeEnabled: false,
+    ampEnabled: false
+  };
+  private gpioState: DeviceGpioState = {
+    outputPins: {}
   };
   private state: DeviceStateMachineSnapshot = {
     state: 'idle',
@@ -299,6 +310,37 @@ export class FileDevice implements ISDRDevice {
       ...this.frontEndCorrectionState,
       ...(patch.dcOffsetEnabled !== undefined ? { dcOffsetEnabled: patch.dcOffsetEnabled } : {}),
       ...(patch.iqBalanceEnabled !== undefined ? { iqBalanceEnabled: patch.iqBalanceEnabled } : {})
+    };
+  }
+
+  getRfPowerState(): DeviceRfPowerState {
+    return { ...this.rfPowerState };
+  }
+
+  async setRfPowerState(patch: DeviceRfPowerPatch): Promise<void> {
+    this.rfPowerState = {
+      ...this.rfPowerState,
+      ...(patch.biasTeeEnabled !== undefined ? { biasTeeEnabled: patch.biasTeeEnabled } : {}),
+      ...(patch.ampEnabled !== undefined ? { ampEnabled: patch.ampEnabled } : {})
+    };
+  }
+
+  getGpioState(): DeviceGpioState {
+    return {
+      outputPins: { ...this.gpioState.outputPins }
+    };
+  }
+
+  async setGpioState(patch: DeviceGpioPatch): Promise<void> {
+    if (!patch.outputPins) {
+      return;
+    }
+
+    this.gpioState = {
+      outputPins: {
+        ...this.gpioState.outputPins,
+        ...patch.outputPins
+      }
     };
   }
 

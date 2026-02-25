@@ -419,8 +419,38 @@ describe('HackRFDevice', () => {
     expect(capability.supportedSampleRatesHz).toContain(2_000_000);
     expect(capability.gainStages.map((stage) => stage.name)).toEqual(['LNA', 'VGA', 'AMP']);
     expect(capability.basebandFilterControl).toBe('supported');
+    expect(capability.rfPower.biasTee).toBe('supported');
+    expect(capability.rfPower.gpioControl).toBe('unsupported');
     expect(capability.iqControl.swap).toBe('unsupported');
     expect(capability.frontEndCorrection.dcOffset).toBe('unsupported');
+  });
+
+  it('applies RF power state via antenna-enable command and tracks amp mirror state', async () => {
+    const mockDevice = createMockUsbDevice();
+    installMockNavigatorUsb([mockDevice], mockDevice);
+    const device = new HackRFDevice();
+
+    await device.open();
+    await device.setRfPowerState({ biasTeeEnabled: true, ampEnabled: true });
+
+    expect(mockDevice.controlTransferOut.mock.calls.some((args: unknown[]) => {
+      const setup = args[0] as USBControlTransferParameters | undefined;
+      return setup?.request === 23 && setup.value === 1;
+    })).toBe(true);
+
+    expect(mockDevice.controlTransferOut.mock.calls.some((args: unknown[]) => {
+      const setup = args[0] as USBControlTransferParameters | undefined;
+      return setup?.request === 17 && setup.value === 1;
+    })).toBe(true);
+
+    const powerState = device.getRfPowerState();
+    expect(powerState.biasTeeEnabled).toBe(true);
+    expect(powerState.ampEnabled).toBe(true);
+  });
+
+  it('rejects GPIO control patches because HackRF WebUSB GPIO path is not implemented', async () => {
+    const device = new HackRFDevice();
+    await expect(device.setGpioState({ outputPins: { GPIO0: true } })).rejects.toThrow(/does not currently support GPIO/i);
   });
 
   it('reports explicit stream continuity and state machine contracts', () => {

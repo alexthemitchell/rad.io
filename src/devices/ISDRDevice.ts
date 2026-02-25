@@ -35,6 +35,24 @@ export type DeviceFrontEndCorrectionPatch = {
     iqBalanceEnabled?: boolean;
 };
 
+export type DeviceRfPowerState = {
+    biasTeeEnabled: boolean;
+    ampEnabled: boolean;
+};
+
+export type DeviceRfPowerPatch = {
+    biasTeeEnabled?: boolean;
+    ampEnabled?: boolean;
+};
+
+export type DeviceGpioState = {
+    outputPins: Record<string, boolean>;
+};
+
+export type DeviceGpioPatch = {
+    outputPins?: Record<string, boolean>;
+};
+
 export type DeviceDriverState =
     | 'idle'
     | 'opening'
@@ -132,6 +150,8 @@ export type DeviceDebugSnapshot = {
         status: 'known-good' | 'unknown' | 'known-unsupported';
         note?: string;
     };
+    rfPowerState?: DeviceRfPowerState;
+    gpioState?: DeviceGpioState;
     sweep?: {
         hardwareSupported: boolean;
         fallbackMode: 'software-sweep-stitch' | 'none';
@@ -175,6 +195,10 @@ export interface ISDRDevice {
     setIqControlState?(patch: DeviceIqControlPatch): Promise<void>;
     getFrontEndCorrectionState?(): DeviceFrontEndCorrectionState;
     setFrontEndCorrectionState?(patch: DeviceFrontEndCorrectionPatch): Promise<void>;
+    getRfPowerState?(): DeviceRfPowerState;
+    setRfPowerState?(patch: DeviceRfPowerPatch): Promise<void>;
+    getGpioState?(): DeviceGpioState;
+    setGpioState?(patch: DeviceGpioPatch): Promise<void>;
     getStateMachineSnapshot?(): DeviceStateMachineSnapshot;
     getStreamContinuityContract?(): DeviceStreamContinuityContract;
 }

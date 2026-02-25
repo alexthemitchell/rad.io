@@ -41,6 +41,21 @@ describe('ISDRDevice contract conformance (deterministic sources)', () => {
     expect(device.getFrontEndCorrectionState?.().iqBalanceEnabled).toBe(true);
   });
 
+  it.each(makeDeterministicDevices())('%s exposes and applies RF power + GPIO control contracts', async ({ make }) => {
+    const device = make();
+
+    expect(device.getRfPowerState?.().biasTeeEnabled).toBe(false);
+    expect(device.getRfPowerState?.().ampEnabled).toBe(false);
+    expect(device.getGpioState?.().outputPins).toEqual({});
+
+    await device.setRfPowerState?.({ biasTeeEnabled: true, ampEnabled: true });
+    await device.setGpioState?.({ outputPins: { GPIO0: true, GPIO2: false } });
+
+    expect(device.getRfPowerState?.().biasTeeEnabled).toBe(true);
+    expect(device.getRfPowerState?.().ampEnabled).toBe(true);
+    expect(device.getGpioState?.().outputPins).toEqual({ GPIO0: true, GPIO2: false });
+  });
+
   it.each(makeDeterministicDevices())('%s state machine transitions include open -> streaming -> open -> idle', async ({ make }) => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-02-25T00:00:00.000Z'));

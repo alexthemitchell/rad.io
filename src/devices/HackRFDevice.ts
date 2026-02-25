@@ -1,10 +1,14 @@
 import {
+    DeviceGpioPatch,
+    DeviceGpioState,
     DeviceDebugSnapshot,
     DeviceDriverState,
     DeviceFrontEndCorrectionPatch,
     DeviceFrontEndCorrectionState,
     DeviceIqControlPatch,
     DeviceIqControlState,
+    DeviceRfPowerPatch,
+    DeviceRfPowerState,
     DeviceStateMachineSnapshot,
     DeviceStreamContinuityContract,
     DeviceSweepCapability,
@@ -29,6 +33,7 @@ enum HackRFCommand {
     SET_LNA_GAIN = 19,
     SET_VGA_GAIN = 20,
     SET_AMP_ENABLE = 17,
+    SET_ANTENNA_ENABLE = 23,
     BOARD_ID_READ = 14,
     VERSION_STRING_READ = 15,
 }
@@ -198,6 +203,13 @@ export class HackRFDevice implements ISDRDevice {
         dcOffsetEnabled: false,
         iqBalanceEnabled: false,
         implementation: 'none'
+    };
+    private rfPowerState: DeviceRfPowerState = {
+        biasTeeEnabled: false,
+        ampEnabled: false
+    };
+    private gpioState: DeviceGpioState = {
+        outputPins: {}
     };
     private driverState: DeviceDriverState = 'idle';
     private transitionCount = 0;
@@ -679,9 +691,9 @@ export class HackRFDevice implements ISDRDevice {
             loOffsetControl: 'supported',
             basebandFilterControl: 'supported',
             rfPower: {
-                biasTee: 'unsupported',
+                biasTee: 'supported',
                 ampControl: 'supported',
-                gpioControl: 'unknown'
+                gpioControl: 'unsupported'
             },
             sampleFormat: {
                 iqOrder: 'iq',
@@ -734,6 +746,48 @@ export class HackRFDevice implements ISDRDevice {
             ...(patch.dcOffsetEnabled !== undefined ? { dcOffsetEnabled: patch.dcOffsetEnabled } : {}),
             ...(patch.iqBalanceEnabled !== undefined ? { iqBalanceEnabled: patch.iqBalanceEnabled } : {})
         };
+    }
+
+    getRfPowerState(): DeviceRfPowerState {
+        return {
+            ...this.rfPowerState,
+            ampEnabled: this.ampEnable > 0
+        };
+    }
+
+    async setRfPowerState(patch: DeviceRfPowerPatch): Promise<void> {
+        if (patch.biasTeeEnabled !== undefined) {
+            this.rfPowerState = {
+                ...this.rfPowerState,
+                biasTeeEnabled: patch.biasTeeEnabled
+            };
+
+            if (this.device) {
+                await this.vendorOut(HackRFCommand.SET_ANTENNA_ENABLE, patch.biasTeeEnabled ? 1 : 0, 0);
+            }
+        }
+
+        if (patch.ampEnabled !== undefined) {
+            await this.setGain('AMP', patch.ampEnabled ? 1 : 0);
+            this.rfPowerState = {
+                ...this.rfPowerState,
+                ampEnabled: patch.ampEnabled
+            };
+        }
+    }
+
+    getGpioState(): DeviceGpioState {
+        return {
+            outputPins: { ...this.gpioState.outputPins }
+        };
+    }
+
+    async setGpioState(patch: DeviceGpioPatch): Promise<void> {
+        if (!patch.outputPins || Object.keys(patch.outputPins).length === 0) {
+            return;
+        }
+
+        throw new Error('HackRF WebUSB driver does not currently support GPIO pin control commands.');
     }
 
     getStateMachineSnapshot(): DeviceStateMachineSnapshot {
@@ -856,6 +910,12 @@ export class HackRFDevice implements ISDRDevice {
         } catch (error) {
             console.warn("AMP init failed; continuing.", error);
         }
+
+        try {
+            await this.setRfPowerState({ biasTeeEnabled: false });
+        } catch (error) {
+            console.warn('Bias-tee init failed; continuing with previous hardware state.', error);
+        }
         
         console.log("Open Sequence Complete.");
         this.transitionState('open', 'open-complete');
@@ -928,7 +988,13 @@ export class HackRFDevice implements ISDRDevice {
     async setGain(name: string, value: number): Promise<void> {
         if (name === 'LNA') this.lnaGain = value;
         if (name === 'VGA') this.vgaGain = value;
-        if (name === 'AMP') this.ampEnable = value;
+        if (name === 'AMP') {
+            this.ampEnable = value;
+            this.rfPowerState = {
+                ...this.rfPowerState,
+                ampEnabled: value > 0
+            };
+        }
 
         if (!this.device) return;
         
@@ -1211,6 +1277,8 @@ export class HackRFDevice implements ISDRDevice {
             counters: { ...this.debugCounters },
             recentTrace: [...this.usbTrace],
             compatibility: this.getCompatibilityStatus(),
+            rfPowerState: this.getRfPowerState(),
+            gpioState: this.getGpioState(),
             sweep: this.getSweepCapability()
         };
     }

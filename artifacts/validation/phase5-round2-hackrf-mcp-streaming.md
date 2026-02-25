@@ -1,0 +1,763 @@
+# Phase 5 Round 2 HackRF MCP Streaming Snapshot
+
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "rad.io MVP Preview" [level=1] [ref=e5]
+    - generic [ref=e6]: "Connection: streaming"
+  - paragraph [ref=e13]: Streaming from HackRF One.
+  - paragraph [ref=e14]: "Audio: muted | Keyboard: Ctrl+K palette, ?/F1 help, Ctrl+L/Alt+L frequency focus, Left/Right tune, Shift+Left/Right large tune, Alt+Left/Right fine nudge, Up/Down fine step, C center peak, S snap signal, T tune marker, X clear marker, R return lock, M mute, P panic mute"
+  - generic [ref=e15]:
+    - heading "RF Waterfall" [level=2] [ref=e17]
+    - heading "RF Spectrum (FFT)" [level=2] [ref=e22]
+    - heading "Demod Audio (Scope)" [level=2] [ref=e25]
+    - generic [ref=e27]:
+      - heading "I/Q Scope" [level=2] [ref=e28]
+      - generic "I/Q scope view" [ref=e29]
+    - generic [ref=e30]:
+      - heading "Constellation" [level=2] [ref=e31]
+      - generic "Constellation view" [ref=e32]
+  - generic [ref=e33]:
+    - generic [ref=e34]:
+      - generic [ref=e35]: Source
+      - combobox [disabled] [ref=e36]:
+        - option "Mock Source"
+        - option "File Fixture (SigMF)"
+        - option "HackRF One" [selected]
+        - option "RTL-SDR (Exp)"
+    - button "Stop" [ref=e570] [cursor=pointer]
+    - button "Unmute" [ref=e38] [cursor=pointer]
+    - button "Panic Mute" [ref=e39] [cursor=pointer]
+    - button "Export Diagnostics" [ref=e40] [cursor=pointer]
+    - button "Copy Share Link" [ref=e41] [cursor=pointer]
+    - button "Command Palette" [ref=e42] [cursor=pointer]
+    - button "Apply IQ Wizard Fixes" [disabled] [ref=e43]
+    - button "Save IQ Profile" [ref=e44] [cursor=pointer]
+    - button "Forget USB Pairings" [disabled] [ref=e45]
+    - button "Run FM Scan" [ref=e47] [cursor=pointer]
+    - generic [ref=e48]:
+      - generic [ref=e49]: Debug Views
+      - generic [ref=e50]:
+        - checkbox "I/Q Scope" [checked] [ref=e51]
+        - text: I/Q Scope
+      - generic [ref=e52]:
+        - checkbox "Constellation" [checked] [ref=e53]
+        - text: Constellation
+    - generic [ref=e54]:
+      - generic [ref=e55]: Latency Policy
+      - combobox [ref=e56]:
+        - option "Low Latency (60 ms queue target)"
+        - option "Stable (120 ms queue target)" [selected]
+    - generic [ref=e57]:
+      - generic [ref=e58]: USB Streaming Profile
+      - combobox [ref=e59]:
+        - option "Low Latency"
+        - option "Balanced"
+        - option "Stable" [selected]
+      - generic [ref=e60]: "Scheduling recommendation: low-latency"
+    - generic [ref=e61]:
+      - generic [ref=e62]: Adaptive Streaming Policy
+      - checkbox [checked] [ref=e63]
+    - button "Run USB Auto-Tuner" [ref=e64] [cursor=pointer]
+    - button "Run Hardware Self-Test" [ref=e65] [cursor=pointer]
+    - generic [ref=e66]:
+      - generic [ref=e67]: Clock Sync Policy
+      - combobox [ref=e68]:
+        - option "Audio-stable (jitter tolerant)" [selected]
+        - option "RF-accurate (faster correction)"
+      - generic [ref=e69]: "Audio-stable: prioritizes smooth playback and jitter tolerance; small RF timing corrections may converge more slowly."
+    - generic [ref=e70]:
+      - generic [ref=e71]: Scan Progress
+      - generic [ref=e72]: Idle (0%)
+      - generic [ref=e73]: Planned rate 1000 kHz | Decim 20 | Audio 50.0 kHz
+    - generic [ref=e74]:
+      - generic [ref=e75]: Scan Dwell (900 ms)
+      - slider [ref=e76]: "900"
+    - generic [ref=e77]:
+      - generic [ref=e78]: Audio Output Device
+      - combobox [ref=e79]:
+        - option "System default" [selected]
+        - option "Audio output 1"
+      - generic [ref=e80]: "Active output: System default"
+    - generic [ref=e81]:
+      - generic [ref=e82]: Output Level (45%)
+      - slider [ref=e83]: "0.45"
+    - generic [ref=e84]:
+      - generic [ref=e85]: Max Output (75%)
+      - slider [ref=e86]: "0.75"
+    - generic [ref=e87]:
+      - generic [ref=e88]: Auto Mode Audio Defaults
+      - checkbox [checked] [ref=e89]
+    - generic [ref=e90]:
+      - generic [ref=e91]: IQ Integrity Wizard
+      - generic [ref=e92]: IQ integrity checks look healthy for this session.
+    - generic [ref=e95]:
+      - generic [ref=e96]: Zoom (1x)
+      - slider "Zoom (1x)" [ref=e97]: "1"
+    - generic [ref=e99]:
+      - generic [ref=e100]: Reference Level (-20.0 dBFS)
+      - slider "Reference Level (-20.0 dBFS)" [ref=e101]: "-20"
+    - generic [ref=e102]:
+      - generic [ref=e103]: FFT Window
+      - combobox [ref=e104]:
+        - option "Rectangular"
+        - option "Hann" [selected]
+        - option "Blackman-Harris"
+      - generic [ref=e105]: "ENBW: 1.50 bins"
+      - generic [ref=e106]: "RBW: 0.73 kHz | VBW: 0.18 kHz"
+    - generic [ref=e107]:
+      - generic [ref=e108]: Detector
+      - combobox [ref=e109]:
+        - option "Sample" [selected]
+        - option "Peak"
+        - option "RMS"
+        - option "Average"
+        - option "Min Hold"
+        - option "Percentile P95"
+    - generic [ref=e111]:
+      - generic [ref=e112]: VBW Frames (4)
+      - slider "VBW Frames (4)" [ref=e113]: "4"
+    - generic [ref=e114]:
+      - generic [ref=e115]: Trace Math
+      - combobox [ref=e116]:
+        - option "Trace A" [selected]
+        - option "A-B"
+        - option "Max(A,B)"
+      - button "Capture Trace B" [ref=e117] [cursor=pointer]
+      - button "Clear Trace B" [disabled] [ref=e118]
+    - generic [ref=e119]:
+      - generic [ref=e120]: Averaging Mode
+      - combobox [ref=e121]:
+        - option "Off" [selected]
+        - option "Exponential"
+        - option "Linear"
+    - generic [ref=e122]:
+      - generic [ref=e123]: Peak Hold
+      - checkbox [checked] [ref=e124]
+      - combobox [ref=e125]:
+        - option "Decay Hold" [selected]
+        - option "Max Hold"
+      - button "Reset Peak Hold" [ref=e126] [cursor=pointer]
+    - generic [ref=e127]:
+      - heading "Signal Discovery" [level=3] [ref=e128]
+      - button "Center On Peak" [ref=e129] [cursor=pointer]
+      - button "Snap To Signal" [ref=e130] [cursor=pointer]
+      - button "Return To Last Lock" [disabled] [ref=e131]
+      - button "Quick Capture Marker/VFO" [ref=e132] [cursor=pointer]
+      - button "Export Analyzer Snapshot" [ref=e133] [cursor=pointer]
+      - generic [ref=e134]: "OBW 99%: 617.7 kHz"
+      - generic [ref=e135]: Noise floor -66.7 dBFS | Peak SNR 44.3 dB | Occupancy 57.7% | Persistence 59.2%
+      - generic [ref=e571]: "Peaks: #1 90,281,250 Hz (-22.4 dBFS) | #2 90,101,074 Hz (-23.8 dBFS) | #3 90,279,785 Hz (-25.8 dBFS) | #4 90,102,539 Hz (-26.0 dBFS) | #5 90,275,879 Hz (-26.3 dBFS) | #6 90,282,715 Hz (-26.5 dBFS) | #7 90,000,000 Hz (-26.7 dBFS) | #8 90,278,320 Hz (-26.8 dBFS)"
+      - generic [ref=e572]:
+        - generic [ref=e573]:
+          - text: "[warn] DC/LO spur near center: Center bin power is significantly above estimated noise floor."
+          - button "Apply lo-shift" [ref=e574] [cursor=pointer]
+        - generic [ref=e753]:
+          - text: "[info] Mirrored peak pair suggests image response: Symmetric peaks around center can indicate IQ image leakage."
+          - button "Apply notch-preset" [ref=e754] [cursor=pointer]
+    - generic [ref=e136]:
+      - heading "Marker" [level=3] [ref=e137]
+      - button "Place Marker At Peak" [ref=e138] [cursor=pointer]
+      - button "Place Marker B At Peak" [ref=e139] [cursor=pointer]
+      - button "Tune To Marker" [disabled] [ref=e140]
+      - button "Clear Marker" [disabled] [ref=e141]
+      - button "Clear Marker B" [disabled] [ref=e142]
+      - generic [ref=e143]: No active marker A
+      - generic [ref=e144]: No active marker B
+    - generic [ref=e145]:
+      - heading "Marker ↔ VFO Binding" [level=3] [ref=e146]
+      - generic [ref=e147]:
+        - generic [ref=e148]: Active VFO
+        - combobox [ref=e149]:
+          - option "Main VFO" [selected]
+          - option "Aux VFO" [disabled]
+      - button "Bind Marker To Active VFO" [ref=e150] [cursor=pointer]
+      - generic [ref=e151]:
+        - checkbox "Follow Active VFO" [ref=e152]
+        - text: Follow Active VFO
+      - button "Tune Active VFO To Marker" [disabled] [ref=e153]
+      - generic [ref=e154]: "Main: 90,000,000 Hz"
+      - generic [ref=e155]: "Binding: off | Active VFO: MAIN @ 90,000,000 Hz"
+    - generic [ref=e156]:
+      - heading "Marker Table (Pro)" [level=3] [ref=e157]
+      - generic [ref=e158]:
+        - generic [ref=e159]: Sort
+        - combobox [ref=e160]:
+          - option "Power" [selected]
+          - option "SNR"
+          - option "Frequency"
+      - generic [ref=e162]:
+        - generic [ref=e163]: Min SNR (6 dB)
+        - slider "Min SNR (6 dB)" [ref=e164]: "6"
+      - generic [ref=e165]: 8 candidate markers
+      - generic [ref=e755]:
+        - generic [ref=e756]: 90,281,250 Hz | -22.4 dBFS | SNR 44.3 dB
+        - button "Tune" [ref=e757] [cursor=pointer]
+        - button "Set Marker A" [ref=e758] [cursor=pointer]
+      - generic [ref=e759]:
+        - generic [ref=e760]: 90,101,074 Hz | -23.8 dBFS | SNR 42.9 dB
+        - button "Tune" [ref=e761] [cursor=pointer]
+        - button "Set Marker A" [ref=e762] [cursor=pointer]
+      - generic [ref=e763]:
+        - generic [ref=e764]: 90,279,785 Hz | -25.8 dBFS | SNR 40.9 dB
+        - button "Tune" [ref=e765] [cursor=pointer]
+        - button "Set Marker A" [ref=e766] [cursor=pointer]
+      - generic [ref=e767]:
+        - generic [ref=e768]: 90,102,539 Hz | -26.0 dBFS | SNR 40.7 dB
+        - button "Tune" [ref=e769] [cursor=pointer]
+        - button "Set Marker A" [ref=e770] [cursor=pointer]
+      - generic [ref=e771]:
+        - generic [ref=e772]: 90,275,879 Hz | -26.3 dBFS | SNR 40.4 dB
+        - button "Tune" [ref=e773] [cursor=pointer]
+        - button "Set Marker A" [ref=e774] [cursor=pointer]
+      - generic [ref=e775]:
+        - generic [ref=e776]: 90,282,715 Hz | -26.5 dBFS | SNR 40.3 dB
+        - button "Tune" [ref=e777] [cursor=pointer]
+        - button "Set Marker A" [ref=e778] [cursor=pointer]
+      - generic [ref=e779]:
+        - generic [ref=e780]: 90,000,000 Hz | -26.7 dBFS | SNR 40.0 dB
+        - button "Tune" [ref=e781] [cursor=pointer]
+        - button "Set Marker A" [ref=e782] [cursor=pointer]
+      - generic [ref=e783]:
+        - generic [ref=e784]: 90,278,320 Hz | -26.8 dBFS | SNR 39.9 dB
+        - button "Tune" [ref=e785] [cursor=pointer]
+        - button "Set Marker A" [ref=e786] [cursor=pointer]
+    - generic [ref=e166]:
+      - heading "Sweep / Stitch Analyzer" [level=3] [ref=e167]
+      - button "Run Software Sweep/Stitch" [ref=e609] [cursor=pointer]
+      - generic [ref=e169]: hackrf_sweep requires host-native execution; WebUSB path falls back to software tune/settle/stitch.
+      - generic [ref=e170]: No sweep run yet.
+      - generic [ref=e171]: "Stitched points: 0"
+      - generic [ref=e610]: "Blockers: WebUSB cannot launch the host-native `hackrf_sweep` process required by libhackrf sweep mode. | Current WebUSB HackRF driver only exposes vendor control + bulk IQ streaming operations and has no sweep transfer command path. | The app only executes software tune/settle/stitch in-browser for sweep today."
+    - generic [ref=e172]:
+      - heading "Spur / Artifact Layer" [level=3] [ref=e173]
+      - button "Add Annotation From Marker A" [disabled] [ref=e174]
+      - generic [ref=e175]:
+        - checkbox "Mask annotated spur bins in marker table" [ref=e176]
+        - text: Mask annotated spur bins in marker table
+      - generic [ref=e177]: No artifact annotations yet.
+    - generic [ref=e178]:
+      - heading "Band Plans & Stepping" [level=3] [ref=e179]
+      - generic [ref=e180]:
+        - generic [ref=e181]: Region Preset
+        - combobox [ref=e182]:
+          - option "North America" [selected]
+          - option "Europe"
+          - option "Japan"
+      - generic [ref=e183]:
+        - generic [ref=e184]: Band
+        - combobox [ref=e185]:
+          - option "FM Broadcast" [selected]
+          - option "Airband VHF"
+          - option "VHF Land Mobile"
+      - generic [ref=e186]:
+        - checkbox "Snap To Channel Raster" [ref=e187]
+        - text: Snap To Channel Raster
+      - generic [ref=e188]:
+        - checkbox "Enforce Band Limits" [ref=e189]
+        - text: Enforce Band Limits
+      - generic [ref=e190]:
+        - checkbox "Auto-Apply Band Defaults" [ref=e191]
+        - text: Auto-Apply Band Defaults
+      - button "Snap Now" [ref=e192] [cursor=pointer]
+      - generic [ref=e193]: "FM Broadcast: 87.500-108.000 MHz | raster 200,000 Hz | default WFM"
+      - generic [ref=e194]: "Active band at tuned frequency: FM Broadcast"
+    - generic [ref=e195]:
+      - heading "Frequency Mapping / Transverter" [level=3] [ref=e196]
+      - generic [ref=e197]:
+        - checkbox "Enable Transverter Offset" [ref=e198]
+        - text: Enable Transverter Offset
+      - generic [ref=e199]:
+        - generic [ref=e200]: Direction
+        - combobox [ref=e201]:
+          - option "Upconverter (add LO)" [selected]
+          - option "Downconverter (subtract LO)"
+      - generic [ref=e202]:
+        - generic [ref=e203]: Transverter LO (125,000,000 Hz)
+        - slider [ref=e204]: "125000000"
+      - generic [ref=e205]:
+        - generic [ref=e206]: IF Offset (0 Hz)
+        - slider [ref=e207]: "0"
+      - generic [ref=e208]:
+        - button "IF Shift -12.5 kHz" [ref=e209] [cursor=pointer]
+        - button "IF Shift +12.5 kHz" [ref=e210] [cursor=pointer]
+        - button "Zero IF Shift" [ref=e211] [cursor=pointer]
+      - generic [ref=e212]: Use IF shift to move a wanted signal away from center-frequency DC/LO artifacts.
+      - generic [ref=e213]: Display 90,000,000 Hz | Tuner 90,000,000 Hz | IF 0 Hz | Transverter off
+    - generic [ref=e214]:
+      - heading "History & Recall" [level=3] [ref=e215]
+      - button "Store A" [ref=e216] [cursor=pointer]
+      - button "Store B" [ref=e217] [cursor=pointer]
+      - button "Recall A" [disabled] [ref=e218]
+      - button "Recall B" [disabled] [ref=e219]
+      - button "Swap A/B" [disabled] [ref=e220]
+      - generic [ref=e221]: "A: empty | B: empty"
+      - generic [ref=e222]: "Last tuned: 1 entries"
+      - button "90.000 MHz (WFM)" [ref=e611] [cursor=pointer]
+      - generic [ref=e223]: "Last heard: 1 entries"
+      - button "90.000 MHz (WFM) SNR 4.5 dB [locked]" [ref=e787] [cursor=pointer]
+    - generic [ref=e224]:
+      - generic [ref=e225]: Fine Tune (0 Hz)
+      - slider [ref=e226]: "0"
+      - generic [ref=e227]: "Alias-safe fine tune limit: +/-466,000 Hz"
+    - generic [ref=e228]:
+      - generic [ref=e229]: Tune Step (1,000 Hz)
+      - combobox [ref=e230]:
+        - option "50 Hz"
+        - option "100 Hz"
+        - option "500 Hz"
+        - option "1 kHz" [selected]
+        - option "2.5 kHz"
+        - option "5 kHz"
+        - option "8.333 kHz"
+        - option "10 kHz"
+        - option "12.5 kHz"
+        - option "25 kHz"
+        - option "100 kHz"
+        - option "200 kHz"
+    - generic [ref=e231]:
+      - generic [ref=e232]: Fine Step (1,000 Hz)
+      - combobox [ref=e233]:
+        - option "50 Hz"
+        - option "100 Hz"
+        - option "250 Hz"
+        - option "500 Hz"
+        - option "833 Hz"
+        - option "1 kHz" [selected]
+        - option "2.5 kHz"
+        - option "5 kHz"
+    - generic [ref=e234]:
+      - generic [ref=e235]: PPM Correction (0.0 ppm)
+      - slider [ref=e236]: "0"
+    - generic [ref=e237]:
+      - heading "Per-Device Profile" [level=3] [ref=e238]
+      - generic [ref=e239]:
+        - checkbox "Apply profile on connect" [ref=e240]
+        - text: Apply profile on connect
+      - button "Save Current As Connect Profile" [ref=e241] [cursor=pointer]
+      - generic [ref=e242]: No auto-apply profile enabled for this device identity.
+    - generic [ref=e243]:
+      - heading "Frequency Calibration Wizard (Foundation)" [level=3] [ref=e244]
+      - generic [ref=e245]:
+        - generic [ref=e246]: Known Signal Source
+        - combobox [ref=e247]:
+          - option "WFM stereo pilot (19 kHz)" [selected]
+          - option "NOAA weather carrier"
+          - option "WWV/CHU time beacon"
+          - option "Lab signal generator"
+      - generic [ref=e248]: Calibration needs more evidence (12% confidence).
+      - generic [ref=e249]: Confidence 12% | Suggested PPM 0.00
+      - generic [ref=e250]: "Prerequisites: Tune a stable local FM broadcast station with stereo pilot visible | Keep AFC disabled during measurement window"
+      - generic [ref=e251]: "Actions: Increase SNR before calibration (gain, antenna, or narrower bandwidth). | Collect at least 30 s for this source. | Wait for lock state to stabilize before storing correction."
+      - button "Apply Suggested PPM Safely" [ref=e252] [cursor=pointer]
+      - button "Save Calibration Seed To Device Profile" [ref=e253] [cursor=pointer]
+      - generic [ref=e254]:
+        - generic [ref=e255]: Level Reference (-67.0 dBm)
+        - slider [ref=e256]: "-67"
+      - generic [ref=e257]: Level calibration needs more evidence (30% confidence).
+      - generic [ref=e258]: Band VHF | Offset -44.60 dB | Uncertainty +/-4.7 dB
+      - generic [ref=e259]: "Level actions: Wait for lock stability before accepting quasi-absolute level mapping. | Collect at least 30 s of stable samples for stronger uncertainty bounds."
+      - button "Save Amplitude Calibration For Active Band" [ref=e260] [cursor=pointer]
+      - button "Save Band Calibration Profile" [ref=e261] [cursor=pointer]
+      - button "Export Calibration Bundle" [ref=e262] [cursor=pointer]
+      - button "Save Spur/LO Artifacts To Catalog" [disabled] [ref=e263]
+    - generic [ref=e264]:
+      - generic [ref=e265]: Mode
+      - combobox [ref=e266]:
+        - option "WFM" [selected]
+        - option "NFM"
+        - option "AM"
+        - option "SAM"
+        - option "USB"
+        - option "LSB"
+        - option "CW"
+    - generic [ref=e267]:
+      - generic [ref=e268]: Filter Shape
+      - combobox [ref=e269]:
+        - option "Sharp" [selected]
+        - option "Low Ringing"
+        - option "Low Latency"
+    - generic [ref=e270]:
+      - generic [ref=e271]: Interference Helper
+      - generic [ref=e272]:
+        - generic [ref=e273]: IQ Correction
+        - checkbox [checked] [ref=e274]
+      - generic [ref=e275]:
+        - generic [ref=e276]: Noise Squelch
+        - checkbox [ref=e277]
+        - generic [ref=e278]: Open | Gate 100% | SNR 4.4 dB | Hang 0 ms
+      - generic [ref=e279]:
+        - generic [ref=e280]: Squelch Threshold (10.0 dB)
+        - slider [ref=e281]: "10"
+      - generic [ref=e282]:
+        - generic [ref=e283]: Audio Leveler
+        - checkbox [ref=e284]
+        - generic [ref=e285]: Gain 0.0 dB (1.00x)
+      - generic [ref=e286]:
+        - generic [ref=e287]: Audio AGC
+        - checkbox [ref=e288]
+        - generic [ref=e289]: idle | Target -18.0 dBFS | Gain 0.0 dB
+      - generic [ref=e290]:
+        - generic [ref=e291]: Impulse Blanker
+        - checkbox [ref=e292]
+        - generic [ref=e293]: Blanked 0% (0 samples)
+      - generic [ref=e294]:
+        - generic [ref=e295]: Carrier Tracking (AFC)
+        - checkbox [ref=e296]
+        - generic [ref=e297]: AFC disabled | Correction 0.0 Hz
+      - generic [ref=e298]:
+        - generic [ref=e299]: Stability Characterization
+        - checkbox [ref=e300]
+        - generic [ref=e301]: Drift 0.00 Hz/s | Confidence 0%
+      - generic [ref=e302]:
+        - generic [ref=e303]: Secondary VFO
+        - checkbox [ref=e304]
+        - generic [ref=e305]: Disabled
+      - generic [ref=e306]:
+        - generic [ref=e307]: Squelch Hang (120 ms)
+        - slider [ref=e308]: "120"
+      - generic [ref=e309]:
+        - generic [ref=e310]: Squelch Tail (140 ms)
+        - slider [ref=e311]: "140"
+      - combobox [ref=e312]:
+        - option "Off" [selected]
+        - option "DC Spike Reduction"
+        - option "Heterodyne Notch"
+        - option "Hum Notch"
+      - generic [ref=e313]:
+        - generic [ref=e314]: Notch Frequency (off)
+        - slider [ref=e315]: "0"
+      - generic [ref=e316]:
+        - generic [ref=e317]: Notch Q (8.0)
+        - slider [ref=e318]: "8"
+    - generic [ref=e319]:
+      - generic [ref=e320]: Bandwidth (13920 Hz)
+      - slider [ref=e321]: "13900"
+    - generic [ref=e322]:
+      - generic [ref=e323]: Low Cut (80 Hz)
+      - slider [ref=e324]: "80"
+    - generic [ref=e325]:
+      - generic [ref=e326]: High Cut (14000 Hz)
+      - slider [ref=e327]: "14000"
+      - generic [ref=e328]: "Alias-safe high cut at current rate: 480,000 Hz"
+    - generic [ref=e329]:
+      - generic [ref=e330]: Waterfall Palette
+      - combobox [ref=e331]:
+        - option "Cividis" [selected]
+        - option "Inferno"
+    - generic [ref=e332]:
+      - generic [ref=e333]: Waterfall Autoscale
+      - checkbox [checked] [ref=e334]
+    - generic [ref=e335]:
+      - generic [ref=e336]: Waterfall Freeze
+      - checkbox [ref=e337]
+      - generic [ref=e338]: Live updating
+      - generic [ref=e339]: Move cursor over waterfall for readout
+    - generic [ref=e340]:
+      - generic [ref=e341]: Display Frequency (MHz)
+      - textbox "Display frequency in MHz" [ref=e342]: "90.000"
+    - generic [ref=e613]:
+      - generic [ref=e614]: "LNA Gain: 32 dB"
+      - slider [ref=e615]: "32"
+    - generic [ref=e616]:
+      - generic [ref=e617]: "VGA Gain: 20 dB"
+      - slider [ref=e618]: "20"
+    - generic [ref=e619]:
+      - generic [ref=e620]: "RF Amp (+14dB): 0 dB"
+      - slider [ref=e621]: "0"
+    - generic [ref=e622]:
+      - heading "Gain Staging Assistant (Scaffold)" [level=3] [ref=e623]
+      - generic [ref=e624]: "VHF balanced preset: no hard overload indicators, keeping moderate headroom."
+      - generic [ref=e625]: "Band preset: VHF balanced preset"
+      - generic [ref=e626]: "Actions: Use this preset as a baseline, then increase one stage at a time while preserving headroom. | VHF preset balances sensitivity and overload resilience for mixed urban band conditions."
+      - button "Apply Recommended Gain Preset" [ref=e627] [cursor=pointer]
+  - generic [ref=e343]:
+    - heading "RF Environment Context" [level=2] [ref=e344]
+    - generic [ref=e345]:
+      - generic [ref=e346]:
+        - generic [ref=e347]: Antenna
+        - textbox "e.g. VHF whip, discone" [ref=e348]
+      - generic [ref=e349]:
+        - generic [ref=e350]: Preamp Note
+        - textbox "e.g. +20 dB masthead LNA" [ref=e351]
+      - generic [ref=e352]:
+        - generic [ref=e353]: Attenuator Note
+        - textbox "e.g. 10 dB inline pad" [ref=e354]
+      - generic [ref=e355]:
+        - generic [ref=e356]: Filter Note
+        - textbox "e.g. FM broadcast notch" [ref=e357]
+      - generic [ref=e358]:
+        - generic [ref=e359]: Bias-Tee Power Safety
+        - generic [ref=e360]: Arm a timed safety window before enabling antenna power.
+        - generic [ref=e361]:
+          - button "Arm Bias-Tee Safety" [ref=e362] [cursor=pointer]
+          - generic [ref=e363]: Not armed
+        - generic [ref=e364]: Auto-Off (90s)
+        - slider [ref=e365]: "90"
+        - checkbox [ref=e366]
+      - generic [ref=e367]:
+        - generic [ref=e368]: RF Chain Notes
+        - textbox "Optional chain/transverter/IF notes" [ref=e369]
+      - generic [ref=e370]:
+        - generic [ref=e371]: External IO / GPIO
+        - generic [ref=e372]: GPIO control unavailable on current device path.
+        - generic [ref=e373]:
+          - checkbox "GPIO0" [disabled] [ref=e374]
+          - text: GPIO0
+        - generic [ref=e375]:
+          - checkbox "GPIO1" [disabled] [ref=e376]
+          - text: GPIO1
+      - generic [ref=e377]:
+        - generic [ref=e378]: Antenna/Front-End Profiles
+        - textbox "Profile name" [ref=e379]: Default Context
+        - button "Save Context Profile" [ref=e380] [cursor=pointer]
+        - combobox [ref=e381]:
+          - option "No saved profile" [selected]
+      - generic [ref=e382]:
+        - generic [ref=e383]: RF Chain Profiles (Typed)
+        - textbox "RF chain profile name" [ref=e384]: Default RF Chain
+        - button "Save RF Chain Profile" [ref=e385] [cursor=pointer]
+        - combobox [ref=e386]:
+          - option "No saved RF chain" [selected]
+  - group [ref=e387]:
+    - generic "Recent Diagnostic Events (13)" [ref=e628] [cursor=pointer]
+  - generic [ref=e389]:
+    - heading "Health Checks" [level=2] [ref=e390]
+    - list [ref=e391]:
+      - listitem [ref=e629]:
+        - strong [ref=e630]: Connection healthy
+        - generic [ref=e631]: No action required.
+      - listitem [ref=e632]:
+        - strong [ref=e633]: "Dynamic range/linearity check: degraded"
+        - generic [ref=e634]: "Dynamic range degraded: noise-floor spread 35.0 dB, SNR 4.4 dB, spur density 7.1%. watch Diagnostics -> Runtime metrics while applying one change at a time; if spur density stays high, narrow bandwidth and shift LO to move image/DC artifacts."
+      - listitem [ref=e635]:
+        - strong [ref=e636]: Signal energy detected
+        - generic [ref=e637]: Use click-to-tune for best channel alignment.
+      - listitem [ref=e638]:
+        - strong [ref=e639]: Timebase and drift telemetry stable
+        - generic [ref=e640]: "Timebase stable: ratio error 0.0 ppm, drift 0.00 ppm/s. monitor Diagnostics -> Runtime metrics for queue jitter and ratio drift over a 30s window; treat long-run frequency claims as approximate unless reference discipline is active."
+      - listitem [ref=e641]:
+        - strong [ref=e642]: Sample-rate mismatch strategy stable
+        - generic [ref=e643]: Audio output estimate 50000.0 Hz (ratio 1.000000), mismatch 0.0 ppm. Device IQ 1000 kHz -> DSP in 1000 kHz -> DSP out 50 kHz. Current resampler ratio is bounded; forced-48 kHz hosts should remain stable.
+      - listitem [ref=e644]:
+        - strong [ref=e645]: "Clock sync policy: Audio-stable"
+        - generic [ref=e646]: "Audio-stable: prioritizes smooth playback and jitter tolerance; small RF timing corrections may converge more slowly."
+      - listitem [ref=e647]:
+        - strong [ref=e648]: Background audio guard unavailable
+        - generic [ref=e649]: Wake lock unavailable; keep the tab foregrounded for best long-run audio stability.
+      - listitem [ref=e650]:
+        - strong [ref=e651]: RF impurity indicators stable
+        - generic [ref=e652]: DC -180.0 dBFS, IRR 169.3 dB.
+      - listitem [ref=e653]:
+        - strong [ref=e654]: Signal ID & tuning advisor
+        - generic [ref=e655]: "Hint unknown (25%): try WFM @ 14 kHz."
+      - listitem [ref=e656]:
+        - strong [ref=e657]: Buffer telemetry
+        - generic [ref=e658]: USB 100% / DSP 10% / Audio 0%, issues usb=0 dsp=21 audio=0.
+      - listitem [ref=e788]:
+        - strong [ref=e789]: WFM lock degraded
+        - generic [ref=e790]: Adjust fine tune, bandwidth profile, or gain staging to improve lock quality.
+      - listitem [ref=e662]:
+        - strong [ref=e663]: Dropped samples detected (442368)
+        - generic [ref=e664]: Investigate host load and source backpressure; exported diagnostics include drop counters and timeline.
+      - listitem [ref=e791]:
+        - strong [ref=e792]: Render cadence low (1.0 FPS)
+        - generic [ref=e793]: Reduce zoom and keep only one heavy app active while monitoring.
+  - generic [ref=e395]:
+    - heading "Runtime Metrics" [level=2] [ref=e396]
+    - list [ref=e397]:
+      - listitem [ref=e398]:
+        - strong [ref=e399]: Render FPS
+        - generic [ref=e400]: "1.0"
+      - listitem [ref=e401]:
+        - strong [ref=e402]: Pipeline Timing
+        - generic [ref=e403]: total 1.97 ms | ddc 0.60 | fft 0.80 | demod 0.52
+      - listitem [ref=e404]:
+        - strong [ref=e405]: Audio Underruns
+        - generic [ref=e406]: "0"
+      - listitem [ref=e407]:
+        - strong [ref=e408]: Audio Queue Ahead
+        - generic [ref=e409]: 0.0 ms
+      - listitem [ref=e410]:
+        - strong [ref=e411]: Audio Clock Drift
+        - generic [ref=e412]: jitter 0.00 ms | ratio 1.000000 | delta 0.0 ppm
+      - listitem [ref=e413]:
+        - strong [ref=e414]: Sample-Rate Mismatch
+        - generic [ref=e415]: DSP out 50000 Hz | est OS 50000.0 Hz | mismatch 0.0 ppm
+      - listitem [ref=e416]:
+        - strong [ref=e417]: Buffer Occupancy
+        - generic [ref=e418]: USB 100% | DSP 10% | Audio 0% | trend n/a
+      - listitem [ref=e419]:
+        - strong [ref=e420]: Concealment Events
+        - generic [ref=e421]: "0"
+      - listitem [ref=e422]:
+        - strong [ref=e423]: Pop Suppression Events
+        - generic [ref=e424]: "0"
+      - listitem [ref=e425]:
+        - strong [ref=e426]: Limiter Events
+        - generic [ref=e427]: "0"
+      - listitem [ref=e428]:
+        - strong [ref=e429]: Safety Mute Events
+        - generic [ref=e430]: "0"
+      - listitem [ref=e431]:
+        - strong [ref=e432]: Dropped Samples
+        - generic [ref=e433]: 442368 (21 events)
+      - listitem [ref=e434]:
+        - strong [ref=e435]: Worker Transport
+        - generic [ref=e436]: direct
+      - listitem [ref=e437]:
+        - strong [ref=e438]: Last Clock Truth Mode
+        - generic [ref=e439]: unknown
+      - listitem [ref=e440]:
+        - strong [ref=e441]: Audio PLL Ratio
+        - generic [ref=e442]: 1.04000 (error 120.0 ms)
+      - listitem [ref=e443]:
+        - strong [ref=e444]: Session Trust
+        - generic [ref=e445]: degraded (dropped-samples)
+      - listitem [ref=e446]:
+        - strong [ref=e447]: Freq Model
+        - generic [ref=e448]: Drift 0.00 Hz/s | Total 0.0 Hz
+      - listitem [ref=e449]:
+        - strong [ref=e450]: Front-End Health
+        - generic [ref=e451]: clip-risk 0% | SNR 4.4 dB | ENOB 0.44 bits
+      - listitem [ref=e452]:
+        - strong [ref=e453]: Overload/Clipping Telemetry
+        - generic [ref=e454]: IQ peak 0.677 | audio clip 0.0% | within margin
+      - listitem [ref=e455]:
+        - strong [ref=e456]: RF Impurity
+        - generic [ref=e457]: DC -180.0 dBFS | IRR 169.3 dB | LO 0% | spur 0.0%
+      - listitem [ref=e458]:
+        - strong [ref=e459]: Active VFOs
+        - generic [ref=e460]: "1"
+      - listitem [ref=e461]:
+        - strong [ref=e462]: WebUSB Contention
+        - generic [ref=e463]: clear
+      - listitem [ref=e665]:
+        - strong [ref=e666]: USB Interface
+        - generic [ref=e667]: if 0 alt 0 ep 1
+      - listitem [ref=e668]:
+        - strong [ref=e669]: USB Profile
+        - generic [ref=e670]: 32768 B | retry 30 ms | max fails 12
+      - listitem [ref=e671]:
+        - strong [ref=e672]: USB Errors
+        - generic [ref=e673]: bulk err 0 | retries 0 | short 0
+      - listitem [ref=e674]:
+        - strong [ref=e675]: USB Throughput/Jitter
+        - generic [ref=e676]: 0.00 MB/s | avg 0.00 ms | jitter 0.00 ms
+      - listitem [ref=e677]:
+        - strong [ref=e678]: Firmware Compatibility
+        - generic [ref=e679]: board 2 | fw 2021.03.1 | known-good (Validated against current WebUSB profile defaults.)
+      - listitem [ref=e680]:
+        - strong [ref=e681]: Firmware Recovery Flow
+        - generic [ref=e682]: Firmware is known-good for current WebUSB profile defaults. If stalls continue, run USB auto-tuner and keep diagnostics traces for support. Keep power and USB path stable (direct port or known-good powered hub).
+      - listitem [ref=e464]:
+        - strong [ref=e465]: Reference Clock
+        - generic [ref=e466]: unknown (20%)
+      - listitem [ref=e683]:
+        - strong [ref=e684]: Reference Summary
+        - generic [ref=e685]: No disciplined reference metadata observed in stream frames.
+      - listitem [ref=e686]:
+        - strong [ref=e687]: Reference Lock Proof
+        - generic [ref=e688]: Reference lock proof requires disciplined reference telemetry.
+  - generic [ref=e467]:
+    - heading "Session Grade Upgrade" [level=2] [ref=e468]
+    - list [ref=e469]:
+      - listitem [ref=e470]:
+        - strong [ref=e471]: Status
+        - generic [ref=e472]: upgrade-needed
+      - listitem [ref=e473]:
+        - strong [ref=e474]: Stability Window
+        - generic [ref=e475]: 0.0 s / 30 s required
+      - listitem [ref=e476]:
+        - strong [ref=e477]: Stability window >= 30 s with zero drops
+        - generic [ref=e478]: 0.0 s observed
+      - listitem [ref=e479]:
+        - strong [ref=e480]: Calibration disclosure available
+        - generic [ref=e481]: calibration missing
+      - listitem [ref=e482]:
+        - strong [ref=e483]: Cross-origin isolation enabled
+        - generic [ref=e484]: isolation ready
+      - listitem [ref=e485]:
+        - strong [ref=e486]: Known-good device profile available
+        - generic [ref=e487]: profile missing
+    - generic [ref=e488]:
+      - button "Lock Session Grade" [disabled] [ref=e489]
+      - generic [ref=e490]: Complete all session grade checks before locking.
+  - generic [ref=e491]:
+    - heading "Demod Lock & Quality" [level=2] [ref=e492]
+    - list [ref=e493]:
+      - listitem [ref=e494]:
+        - strong [ref=e495]: Lock State
+        - generic [ref=e496]: WFM degraded (pilot degraded)
+      - listitem [ref=e497]:
+        - strong [ref=e498]: Quality
+        - generic [ref=e499]: 54%
+      - listitem [ref=e500]:
+        - strong [ref=e501]: SNR Estimate
+        - generic [ref=e502]: 4.4 dB
+      - listitem [ref=e503]:
+        - strong [ref=e504]: Pilot / Carrier
+        - generic [ref=e505]: 0.49 / 0.00
+      - listitem [ref=e506]:
+        - strong [ref=e507]: Deviation Estimate
+        - generic [ref=e508]: "0.157"
+      - listitem [ref=e509]:
+        - strong [ref=e510]: Stereo
+        - generic [ref=e511]: locked | Pilot 100% | Sep -10.2 dB
+  - generic [ref=e512]:
+    - heading "Measurement Disclosure" [level=2] [ref=e513]
+    - list [ref=e514]:
+      - listitem [ref=e515]:
+        - strong [ref=e516]: Calibration Confidence
+        - generic [ref=e517]: Uncalibrated
+      - listitem [ref=e518]:
+        - strong [ref=e519]: Frequency Confidence
+        - generic [ref=e520]: uncalibrated
+      - listitem [ref=e521]:
+        - strong [ref=e522]: Level Confidence
+        - generic [ref=e523]: uncalibrated (relative dBFS)
+      - listitem [ref=e524]:
+        - strong [ref=e525]: Export Integrity
+        - generic [ref=e526]: degraded (5 warnings)
+  - generic [ref=e527]:
+    - heading "Runtime Prerequisites" [level=2] [ref=e528]
+    - list [ref=e529]:
+      - listitem [ref=e530]:
+        - strong [ref=e531]: Secure Context
+        - generic [ref=e532]: ready
+      - listitem [ref=e533]:
+        - strong [ref=e534]: WebUSB API
+        - generic [ref=e535]: available
+      - listitem [ref=e536]:
+        - strong [ref=e537]: Cross-Origin Isolation
+        - generic [ref=e538]: enabled
+      - listitem [ref=e539]:
+        - strong [ref=e540]: USB Permission
+        - generic [ref=e541]: unknown
+      - listitem [ref=e542]:
+        - strong [ref=e543]: Microphone Permission
+        - generic [ref=e544]: prompt
+  - generic [ref=e545]:
+    - heading "RDS Metadata" [level=2] [ref=e546]
+    - list [ref=e547]:
+      - listitem [ref=e548]:
+        - strong [ref=e549]: Sync
+        - generic [ref=e550]: searching
+      - listitem [ref=e551]:
+        - strong [ref=e552]: Program Service
+        - generic [ref=e553]: n/a
+      - listitem [ref=e554]:
+        - strong [ref=e555]: Callsign Candidate
+        - generic [ref=e556]: n/a
+      - listitem [ref=e557]:
+        - strong [ref=e558]: PI / PTY
+        - generic [ref=e559]: n/a / n/a
+      - listitem [ref=e560]:
+        - strong [ref=e561]: Traffic Flags
+        - generic [ref=e562]: TP 0 | TA 0
+      - listitem [ref=e563]:
+        - strong [ref=e564]: Radiotext
+        - generic [ref=e565]: n/a
+  - generic [ref=e566]:
+    - heading "FM Scan Results" [level=2] [ref=e567]
+    - list [ref=e568]:
+      - listitem [ref=e569]: No scan candidates yet. Start streaming, then run FM Scan.
