@@ -7108,6 +7108,15 @@ export default function App() {
                   {((deviceDebugSnapshot.counters?.transferRateBps ?? 0) / 1_000_000).toFixed(2)} MB/s | avg {(deviceDebugSnapshot.counters?.transferIntervalMsAvg ?? 0).toFixed(2)} ms | jitter {(deviceDebugSnapshot.counters?.transferIntervalMsJitter ?? 0).toFixed(2)} ms
                 </span>
               </li>
+              {deviceDebugSnapshot.compatibility && (
+                <li className={`health-item ${deviceDebugSnapshot.compatibility.status === 'known-unsupported' ? 'health-error' : deviceDebugSnapshot.compatibility.status === 'unknown' ? 'health-warn' : 'health-ok'}`}>
+                  <strong>Firmware Compatibility</strong>
+                  <span>
+                    board {deviceDebugSnapshot.compatibility.boardId ?? 'n/a'} | fw {deviceDebugSnapshot.compatibility.firmwareVersion ?? 'unknown'} | {deviceDebugSnapshot.compatibility.status}
+                    {deviceDebugSnapshot.compatibility.note ? ` (${deviceDebugSnapshot.compatibility.note})` : ''}
+                  </span>
+                </li>
+              )}
             </>
           )}
         </ul>

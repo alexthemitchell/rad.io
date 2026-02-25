@@ -71,6 +71,8 @@ export class HackRFDevice implements ISDRDevice {
     private streamRetryDelayMs = HackRFDevice.STREAM_RETRY_DELAY_MS;
     private streamMaxConsecutiveFailures = HackRFDevice.STREAM_MAX_CONSECUTIVE_FAILURES;
     private streamProfileName: 'low-latency' | 'balanced' | 'stable' | 'custom' = 'balanced';
+    private boardId: number | null = null;
+    private firmwareVersion = 'unknown';
 
     private updateTransferTelemetry(bytes: number, transferSize: number): void {
         const nowMs = performance.now();
@@ -325,7 +327,29 @@ export class HackRFDevice implements ISDRDevice {
             ? new TextDecoder().decode(rawVersion.buffer).replace(/\0+$/, '')
             : 'unknown';
 
+        this.boardId = board ?? null;
+        this.firmwareVersion = version;
+
         console.log(`HackRF probe: board=${board ?? 'n/a'} version=${version}`);
+    }
+
+    private getCompatibilityStatus(): NonNullable<DeviceDebugSnapshot['compatibility']> {
+        const knownGoodPrefix = ['2021.03.1'];
+        const version = this.firmwareVersion;
+        const status = knownGoodPrefix.some((prefix) => version.startsWith(prefix))
+            ? 'known-good'
+            : version === 'unknown'
+                ? 'unknown'
+                : 'unknown';
+
+        return {
+            boardId: this.boardId ?? undefined,
+            firmwareVersion: version,
+            status,
+            note: status === 'known-good'
+                ? 'Validated against current WebUSB profile defaults.'
+                : 'Firmware not in known-good list; continue with conservative defaults and diagnostics.'
+        };
     }
 
     private async openAndClaim(device: USBDevice): Promise<void> {
@@ -770,7 +794,8 @@ export class HackRFDevice implements ISDRDevice {
                 })
             },
             counters: { ...this.debugCounters },
-            recentTrace: [...this.usbTrace]
+            recentTrace: [...this.usbTrace],
+            compatibility: this.getCompatibilityStatus()
         };
     }
 }

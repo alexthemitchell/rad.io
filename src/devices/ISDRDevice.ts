@@ -59,6 +59,12 @@ export type DeviceDebugSnapshot = {
         durationMs?: number;
         detail?: string;
     }>;
+    compatibility?: {
+        boardId?: number;
+        firmwareVersion?: string;
+        status: 'known-good' | 'unknown' | 'known-unsupported';
+        note?: string;
+    };
 };
 
 export interface ISDRDevice {
