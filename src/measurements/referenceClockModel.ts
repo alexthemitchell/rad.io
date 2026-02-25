@@ -2,7 +2,7 @@ import type { DeviceCapabilityModel } from '../devices/CapabilityModel';
 import type { SDRSampleClockTruthMode } from '../devices/streamFrame';
 
 export type ReferenceClockSupportModelInput = {
-  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE';
   capabilityModel: DeviceCapabilityModel | null;
   sampleClockTruthMode: SDRSampleClockTruthMode | null;
 };

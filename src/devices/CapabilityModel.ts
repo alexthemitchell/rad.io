@@ -1,4 +1,4 @@
-export type SdrSourceType = 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+export type SdrSourceType = 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE';
 
 export type DeviceCapabilityState = 'supported' | 'unsupported' | 'unknown';
 

@@ -9,7 +9,11 @@ describe('buildSweepExecutionPlan', () => {
     const plan = buildSweepExecutionPlan({
       sourceType: 'HACKRF',
       isStreaming: false,
-      capability: null
+      capability: null,
+      hostBridge: {
+        available: false,
+        reason: 'bridge unavailable'
+      }
     });
 
     expect(plan.canRun).toBe(false);
@@ -24,6 +28,10 @@ describe('buildSweepExecutionPlan', () => {
       capability: {
         hardwareSupported: true,
         fallbackMode: 'none'
+      },
+      hostBridge: {
+        available: false,
+        reason: 'bridge unavailable'
       }
     });
 
@@ -41,11 +49,55 @@ describe('buildSweepExecutionPlan', () => {
         fallbackMode: 'software-sweep-stitch',
         command: 'hackrf_sweep',
         note: 'fallback'
+      },
+      hostBridge: {
+        available: false,
+        reason: 'bridge unavailable'
       }
     });
 
     expect(plan.mode).toBe('software-fallback');
     expect(plan.canRun).toBe(true);
-    expect(plan.blockers).toEqual(HACKRF_SWEEP_WEBUSB_BLOCKERS);
+    expect(plan.blockers).toEqual(expect.arrayContaining(HACKRF_SWEEP_WEBUSB_BLOCKERS));
+    expect(plan.blockers.join(' ')).toContain('bridge unavailable');
+  });
+
+  it('uses host-assisted hardware mode when bridge capability is available', () => {
+    const plan = buildSweepExecutionPlan({
+      sourceType: 'HACKRF',
+      isStreaming: true,
+      capability: {
+        hardwareSupported: false,
+        fallbackMode: 'software-sweep-stitch',
+        command: 'hackrf_sweep',
+        note: 'fallback'
+      },
+      hostBridge: {
+        available: true,
+        providerLabel: 'rad.io bridge daemon'
+      }
+    });
+
+    expect(plan.mode).toBe('hardware-host-assisted');
+    expect(plan.canRun).toBe(true);
+    expect(plan.buttonLabel).toContain('Host Bridge');
+    expect(plan.status).toContain('rad.io bridge daemon');
+    expect(plan.blockers).toEqual([]);
+  });
+
+  it('defaults to software fallback when host bridge metadata is omitted', () => {
+    const plan = buildSweepExecutionPlan({
+      sourceType: 'HACKRF',
+      isStreaming: true,
+      capability: {
+        hardwareSupported: false,
+        fallbackMode: 'software-sweep-stitch',
+        command: 'hackrf_sweep',
+        note: 'fallback'
+      }
+    });
+
+    expect(plan.mode).toBe('software-fallback');
+    expect(plan.blockers.join(' ')).toContain('host bridge availability not provided');
   });
 });

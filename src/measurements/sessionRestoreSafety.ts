@@ -1,5 +1,5 @@
 export type RestoreSafetySnapshot = {
-  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE';
   demodMode: 'WFM' | 'NFM' | 'AM' | 'SAM' | 'USB' | 'LSB' | 'CW';
   frequencyHz: number;
   fineFreqHz: number;

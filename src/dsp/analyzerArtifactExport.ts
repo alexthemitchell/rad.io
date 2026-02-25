@@ -31,7 +31,7 @@ export type AnalyzerArtifactExportV1 = {
     };
   };
   pipeline: {
-    sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+    sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE';
     demodMode: 'WFM' | 'AM' | 'NFM' | 'SAM' | 'USB' | 'LSB' | 'CW';
     tunedFrequencyHz: number;
     fineTuneHz: number;

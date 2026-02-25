@@ -2,7 +2,7 @@ export type FrontEndBand = 'hf' | 'vhf' | 'uhf' | 'shf';
 
 export type FrontEndHealthInput = {
   frequencyHz: number;
-  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE';
   rfChainNotes: string;
   hasAttenuatorHint: boolean;
   hasPreampHint: boolean;

@@ -8,7 +8,7 @@ export type StableDeviceIdentity = {
 const normalize = (value: string): string => value.toLowerCase().replace(/\s+/g, '-');
 
 export const deriveStableDeviceIdentity = (
-  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE',
+  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE',
   deviceName: string,
   snapshot: DeviceDebugSnapshot | null
 ): StableDeviceIdentity => {

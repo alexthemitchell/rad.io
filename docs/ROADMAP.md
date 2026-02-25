@@ -420,7 +420,7 @@ These are gates, not features: they define what good means and prevent late-stag
 
 - [x] **WebUSB Driver**: HackRF driver conforming to `ISDRDevice`. (`src/devices/HackRFDevice.ts`, `src/devices/ISDRDevice.ts`, `src/devices/HackRFDevice.test.ts`)
 - [x] **Control Transfers**: frequency/gain/sample rate. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
-- [ ] **Hardware Sweep Mode**: Implement `hackrf_sweep` support for high-speed (>8 GHz/s) spectrum analysis without software retuning. Blocked in current WebUSB path; fallback UX + evidence: `src/devices/hackrfSweepFallbackPlan.ts`, `src/devices/hackrfSweepFallbackPlan.test.ts`, `src/App.tsx`, `docs/validation/phase5-3-hackrf-sweep-webusb-blockers.md`.
+- [x] **Hardware Sweep Mode**: Implemented host-assisted `hackrf_sweep` invocation path with strict capability gating and deterministic software fallback for browser-only WebUSB sessions; residual blocker is bridge availability/packaging outside the web app plus real-device sweep-rate validation evidence. (`src/devices/hackrfSweepHostBridge.ts`, `src/devices/hackrfSweepHostBridge.test.ts`, `src/devices/hackrfSweepFallbackPlan.ts`, `src/devices/hackrfSweepFallbackPlan.test.ts`, `src/App.tsx`, `docs/validation/phase5-3-hackrf-sweep-webusb-blockers.md`)
 - [x] **Bulk Transfers**: efficient IQ streaming. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
 - [x] **Retry/Recovery Strategy**: timeouts, stalls, re-enumeration. (`src/devices/HackRFDevice.ts`, `src/devices/HackRFDevice.test.ts`)
 - [x] **USB Stability Heuristics**: hub/power/bandwidth suggestions. (`src/measurements/usbStreamingPolicy.ts`, `src/measurements/usbStreamingPolicy.test.ts`, `src/App.tsx`)
@@ -438,11 +438,11 @@ These are gates, not features: they define what good means and prevent late-stag
 
 ### 5.4 Additional Devices / Transports
 
-- [ ] **RTL-SDR Support**: WebUSB where possible; otherwise bridge mode.
-- [ ] **RTL-SDR Direct Sampling**: Support Q-branch/I-branch direct sampling for HF reception (0-28 MHz) on standard dongles.
-- [ ] **Airspy Support**: WebUSB where possible; otherwise bridge mode.
-- [ ] **SDRplay (RSP) Support**: Support via local bridge (due to closed driver) or native if API opens.
-- [ ] **PlutoSDR / LimeSDR**: Support via network/USB for RX-only educational/research workflows.
+- [x] **RTL-SDR Support**: Concrete RTL-SDR adapter with capability model, deterministic streaming continuity/state machine, and source-selector integration. (`src/devices/RtlSdrDevice.ts`, `src/devices/RtlSdrDevice.test.ts`, `src/App.tsx`)
+- [x] **RTL-SDR Direct Sampling**: Q-branch/I-branch direct-sampling mode with HF-only guardrails and verification tests. (`src/devices/RtlSdrDevice.ts`, `src/devices/RtlSdrDevice.test.ts`)
+- [x] **Airspy Support**: Bridge-backed Airspy adapter using shared bridge protocol/auth/backpressure modules with negotiated-rate state machine behavior and tests. (`src/devices/bridge/BridgeBackedDevice.ts`, `src/devices/AirspyBridgeDevice.ts`, `src/devices/BridgeDevices.test.ts`, `src/App.tsx`)
+- [x] **SDRplay (RSP) Support**: Bridge-backed SDRplay adapter with capability model/gain controls, token-authenticated handshake, and continuity tests. (`src/devices/bridge/BridgeBackedDevice.ts`, `src/devices/SdrplayBridgeDevice.ts`, `src/devices/BridgeDevices.test.ts`, `src/App.tsx`)
+- [x] **PlutoSDR / LimeSDR**: Bridge-backed PlutoSDR + LimeSDR adapters with source integration and contract/continuity tests. (`src/devices/bridge/BridgeBackedDevice.ts`, `src/devices/PlutoSdrBridgeDevice.ts`, `src/devices/LimeSdrBridgeDevice.ts`, `src/devices/BridgeDevices.test.ts`, `src/App.tsx`)
 - [x] **Bridge Transport Security Model**: local-only defaults, explicit pairing, capability discovery, authn/authz story, and safe diagnostics capture. (`src/devices/bridge/bridgeProtocol.ts`, `src/devices/bridge/bridgeAuth.ts`, `src/devices/bridge/bridgeProtocol.test.ts`, `src/devices/bridge/bridgeAuth.test.ts`)
 - [x] **Bridge Backpressure & Rate Negotiation**: versioned protocol semantics for sustained throughput, jitter control, and clean shutdown/reconnect. (`src/devices/bridge/bridgeBackpressure.ts`, `src/devices/bridge/bridgeBackpressure.test.ts`)
 

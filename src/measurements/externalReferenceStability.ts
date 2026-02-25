@@ -1,5 +1,5 @@
 export type ExternalReferenceStabilityInput = {
-  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE';
   isStreaming: boolean;
   lastClockTruthMode: 'unknown' | 'corrected_ppm' | 'disciplined_ref' | null;
   driftConfidence: number;

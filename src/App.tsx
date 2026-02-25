@@ -17,12 +17,21 @@ import {
 import { HackRFDevice } from './devices/HackRFDevice';
 import { MockDevice } from './devices/MockDevice';
 import { RtlSdrDevice } from './devices/RtlSdrDevice';
+import { AirspyBridgeDevice } from './devices/AirspyBridgeDevice';
+import { SdrplayBridgeDevice } from './devices/SdrplayBridgeDevice';
+import { PlutoSdrBridgeDevice } from './devices/PlutoSdrBridgeDevice';
+import { LimeSdrBridgeDevice } from './devices/LimeSdrBridgeDevice';
 import { FileDevice } from './devices/FileDevice';
 import { DeviceDebugSnapshot, ISDRDevice, SDRGainStage } from './devices/ISDRDevice';
 import { getStabilityProfile, profileKeyFor, upsertStabilityProfile, type StabilityProfile } from './devices/deviceProfileStore';
 import { deriveStableDeviceIdentity } from './devices/deviceIdentity';
 import { buildHackrfFirmwareRecoveryPlan } from './devices/hackrfFirmwareRecovery';
 import { buildSweepExecutionPlan } from './devices/hackrfSweepFallbackPlan';
+import {
+  probeHackrfSweepHostBridge,
+  runHackrfSweepViaHostBridge,
+  type HackrfSweepHostResponse
+} from './devices/hackrfSweepHostBridge';
 import { normalizeDeviceError } from './devices/errors';
 import type { SDRStreamFrame } from './devices/streamFrame';
 import { goldenToneFixtureBundle } from './fixtures/sigmf/goldenToneFixture';
@@ -295,7 +304,7 @@ type DemodQualityState = {
   deviationEstimate: number;
 };
 
-type SourceType = 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+type SourceType = 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE';
 
 type AnalyzerMarkerState = {
   frequencyHz: number;
@@ -310,6 +319,18 @@ type MarkerBindingState = {
 
 type MarkerTableSortMode = 'power' | 'frequency' | 'snr';
 type AnalyzerSweepState = 'idle' | 'running' | 'completed' | 'error';
+type SweepRunExecutor = 'software-stitch' | 'host-bridge-hackrf-sweep';
+
+type SweepRunEvidence = {
+  executor: SweepRunExecutor;
+  startedAtIso: string;
+  completedAtIso: string;
+  segmentCount: number;
+  stitchedPointCount: number;
+  providerLabel?: string;
+  elapsedMs?: number;
+  diagnostics: string[];
+};
 
 type RuntimePrerequisites = {
   secureContext: boolean;
@@ -674,6 +695,7 @@ const queryPermissionState = async (name: 'usb' | 'microphone'): Promise<Permiss
 declare global {
   interface Window {
     __RADIO_FORCE_NO_SAB?: boolean;
+    __RADIO_HOST_BRIDGE__?: unknown;
     __radIoDebug?: {
       getSnapshot: () => RadioDebugSnapshot;
     };
@@ -728,6 +750,7 @@ export default function App() {
   const [sweepState, setSweepState] = useState<AnalyzerSweepState>('idle');
   const [sweepStatus, setSweepStatus] = useState('No sweep run yet.');
   const [sweepStitchedPoints, setSweepStitchedPoints] = useState<SweptPoint[]>([]);
+  const [sweepRunEvidence, setSweepRunEvidence] = useState<SweepRunEvidence | null>(null);
   const [showIqScopeView, setShowIqScopeView] = useState(true);
   const [showConstellationView, setShowConstellationView] = useState(true);
   const [analyzerMarker, setAnalyzerMarker] = useState<AnalyzerMarkerState | null>(null);
@@ -988,13 +1011,27 @@ export default function App() {
     }
   }, [activeDeviceProfileKey, selectedAntennaContextProfileId.length, selectedRfChainProfileId.length]);
 
+  const sweepHostBridgeProbe = probeHackrfSweepHostBridge();
+
   const sweepExecutionPlan = useMemo(() => {
     return buildSweepExecutionPlan({
       sourceType,
       isStreaming: isRunning,
-      capability: deviceDebugSnapshot?.sweep ?? null
+      capability: deviceDebugSnapshot?.sweep ?? null,
+      hostBridge: {
+        available: sweepHostBridgeProbe.available,
+        providerLabel: sweepHostBridgeProbe.providerLabel,
+        reason: sweepHostBridgeProbe.reason
+      }
     });
-  }, [deviceDebugSnapshot?.sweep, isRunning, sourceType]);
+  }, [
+    deviceDebugSnapshot?.sweep,
+    isRunning,
+    sourceType,
+    sweepHostBridgeProbe.available,
+    sweepHostBridgeProbe.providerLabel,
+    sweepHostBridgeProbe.reason
+  ]);
 
     const pushDiagnosticEvent = useCallback((
       message: string,
@@ -3245,6 +3282,10 @@ export default function App() {
             switch (sourceType) {
                 case 'HACKRF': dev = new HackRFDevice(); break;
                 case 'RTLSDR': dev = new RtlSdrDevice(); break;
+                case 'AIRSPY': dev = new AirspyBridgeDevice(); break;
+                case 'SDRPLAY': dev = new SdrplayBridgeDevice(); break;
+                case 'PLUTO': dev = new PlutoSdrBridgeDevice(); break;
+                case 'LIMESDR': dev = new LimeSdrBridgeDevice(); break;
               case 'FILE': dev = new FileDevice(goldenToneFixtureBundle); break;
                 case 'MOCK': default: dev = new MockDevice(); break;
             }
@@ -3854,6 +3895,15 @@ export default function App() {
             },
             sourceType,
             rfEnvironmentContext,
+            sweep: {
+              plan: sweepExecutionPlan,
+              hostBridge: {
+                available: sweepHostBridgeProbe.available,
+                providerLabel: sweepHostBridgeProbe.providerLabel ?? null,
+                reason: sweepHostBridgeProbe.reason ?? null
+              },
+              lastRun: sweepRunEvidence
+            },
             device: {
               selectedSource: sourceType,
               activeName: deviceRef.current?.name ?? null,
@@ -3894,7 +3944,11 @@ export default function App() {
                 streamingProfile: deviceDebugSnapshot?.streamingProfile ?? null
               },
               discontinuityTimeline: discontinuityTimelineRef.current,
-              usbTraceSlice: (deviceDebugSnapshot?.recentTrace ?? []).slice(-60)
+              usbTraceSlice: (deviceDebugSnapshot?.recentTrace ?? []).slice(-60),
+              sweepExecution: {
+                plan: sweepExecutionPlan,
+                lastRun: sweepRunEvidence
+              }
             },
             shareableSessionState: {
               queryParam: SHAREABLE_SESSION_QUERY_PARAM,
@@ -4860,9 +4914,10 @@ export default function App() {
       return;
     }
 
+    const hostBridgeProbe = sweepHostBridgeProbe;
     setSweepState('running');
     setSweepStatus(
-      sweepExecutionPlan.mode === 'hardware'
+      sweepExecutionPlan.mode === 'hardware' || sweepExecutionPlan.mode === 'hardware-host-assisted'
         ? 'Running hardware sweep...'
         : 'Running software sweep/stitch...'
     );
@@ -4872,8 +4927,48 @@ export default function App() {
     const startHz = Math.round(originalHz - spanHz / 2);
     const stopHz = Math.round(originalHz + spanHz / 2);
     const segments: SweepSegment[] = [];
+    const startedAtIso = new Date().toISOString();
 
     try {
+      if (sweepExecutionPlan.mode === 'hardware-host-assisted') {
+        if (!hostBridgeProbe.available || !hostBridgeProbe.bridge) {
+          throw new Error(hostBridgeProbe.reason ?? 'Host bridge is not available for hackrf_sweep.');
+        }
+
+        const hostResponse: HackrfSweepHostResponse = await runHackrfSweepViaHostBridge({
+          bridge: hostBridgeProbe.bridge,
+          request: {
+            startFrequencyHz: startHz,
+            stopFrequencyHz: stopHz,
+            stepHz,
+            sampleRateHz: streamSampleRateHz,
+            timeoutMs: 20_000
+          }
+        });
+
+        setSweepStitchedPoints(hostResponse.points);
+        setSweepState('completed');
+        setSweepStatus(
+          `Hardware sweep complete (${hostResponse.points.length} points via ${hostBridgeProbe.providerLabel ?? 'host bridge'}).`
+        );
+        setSweepRunEvidence({
+          executor: 'host-bridge-hackrf-sweep',
+          startedAtIso,
+          completedAtIso: new Date().toISOString(),
+          segmentCount: 0,
+          stitchedPointCount: hostResponse.points.length,
+          providerLabel: hostBridgeProbe.providerLabel,
+          elapsedMs: hostResponse.elapsedMs,
+          diagnostics: hostResponse.diagnostics ?? []
+        });
+        pushDiagnosticEvent(
+          `Host hardware sweep completed (${hostResponse.points.length} points, ${Math.round(hostResponse.elapsedMs)} ms).`,
+          'info',
+          'analyzer'
+        );
+        return;
+      }
+
       for (let freqHz = startHz; freqHz <= stopHz; freqHz += stepHz) {
         tuneToDisplayFrequency(freqHz);
         setSweepStatus(`Sweep capture at ${(freqHz / 1_000_000).toFixed(3)} MHz`);
@@ -4893,12 +4988,46 @@ export default function App() {
       setSweepStitchedPoints(stitched);
       setSweepState('completed');
       setSweepStatus(`Sweep complete (${segments.length} segments, ${stitched.length} stitched points).`);
+      setSweepRunEvidence({
+        executor: 'software-stitch',
+        startedAtIso,
+        completedAtIso: new Date().toISOString(),
+        segmentCount: segments.length,
+        stitchedPointCount: stitched.length,
+        diagnostics: ['Executed software tune/settle/stitch sweep in browser WebUSB path.']
+      });
+      pushDiagnosticEvent(
+        `Software sweep/stitch completed (${segments.length} segments, ${stitched.length} points).`,
+        'info',
+        'analyzer'
+      );
     } catch (error) {
       tuneToDisplayFrequency(originalHz);
       setSweepState('error');
-      setSweepStatus(`Sweep failed: ${error instanceof Error ? error.message : String(error)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      setSweepStatus(`Sweep failed: ${message}`);
+      setSweepRunEvidence({
+        executor: sweepExecutionPlan.mode === 'hardware-host-assisted' ? 'host-bridge-hackrf-sweep' : 'software-stitch',
+        startedAtIso,
+        completedAtIso: new Date().toISOString(),
+        segmentCount: segments.length,
+        stitchedPointCount: 0,
+        providerLabel: hostBridgeProbe.providerLabel,
+        diagnostics: [message]
+      });
+      pushDiagnosticEvent(`Sweep failed: ${message}`, 'warn', 'analyzer');
     }
-  }, [streamSampleRateHz, sweepExecutionPlan.canRun, sweepExecutionPlan.mode, sweepExecutionPlan.status, sweepState, tuneToDisplayFrequency, tunedDisplayFrequencyHz]);
+  }, [
+    pushDiagnosticEvent,
+    streamSampleRateHz,
+    sweepHostBridgeProbe,
+    sweepExecutionPlan.canRun,
+    sweepExecutionPlan.mode,
+    sweepExecutionPlan.status,
+    sweepState,
+    tuneToDisplayFrequency,
+    tunedDisplayFrequencyHz
+  ]);
 
   const recallDisplayFrequency = useCallback((slot: 'A' | 'B') => {
     const target = slot === 'A' ? recallSlotAHz : recallSlotBHz;
@@ -6092,6 +6221,10 @@ export default function App() {
                 <option value="FILE">File Fixture (SigMF)</option>
                 <option value="HACKRF">HackRF One</option>
                 <option value="RTLSDR">RTL-SDR (Exp)</option>
+                <option value="AIRSPY">Airspy (Bridge)</option>
+                <option value="SDRPLAY">SDRplay RSP (Bridge)</option>
+                <option value="PLUTO">PlutoSDR (Bridge)</option>
+                <option value="LIMESDR">LimeSDR (Bridge)</option>
             </select>
         </div>
 
@@ -6679,6 +6812,18 @@ export default function App() {
           <div className="control-note">{sweepExecutionPlan.status}</div>
           <div className="control-note">{sweepStatus}</div>
           <div className="control-note">Stitched points: {sweepStitchedPoints.length}</div>
+          {sourceType === 'HACKRF' && (
+            <div className="control-note">
+              Host bridge: {sweepHostBridgeProbe.available
+                ? `available (${sweepHostBridgeProbe.providerLabel ?? 'unnamed provider'})`
+                : `unavailable${sweepHostBridgeProbe.reason ? ` (${sweepHostBridgeProbe.reason})` : ''}`}
+            </div>
+          )}
+          {sweepRunEvidence && (
+            <div className="control-note">
+              Last run: {sweepRunEvidence.executor} | points {sweepRunEvidence.stitchedPointCount} | completed {sweepRunEvidence.completedAtIso}
+            </div>
+          )}
           {sweepExecutionPlan.blockers.length > 0 && (
             <div className="control-note">
               Blockers: {sweepExecutionPlan.blockers.join(' | ')}

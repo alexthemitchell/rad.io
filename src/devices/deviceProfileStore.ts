@@ -1,5 +1,5 @@
 export type StabilityProfile = {
-  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE';
   profileKey: string;
   updatedAtUtc: string;
   driftEstimateHzPerSec: number;

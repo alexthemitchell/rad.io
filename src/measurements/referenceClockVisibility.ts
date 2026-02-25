@@ -9,7 +9,7 @@ export type ReferenceClockVisibilityInput = {
     confidence01: number;
     summary: string;
   };
-  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'FILE';
+  sourceType: 'MOCK' | 'HACKRF' | 'RTLSDR' | 'AIRSPY' | 'SDRPLAY' | 'PLUTO' | 'LIMESDR' | 'FILE';
 };
 
 export type ReferenceClockVisibility = {
