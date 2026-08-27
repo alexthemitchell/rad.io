@@ -5,13 +5,14 @@ import { FrameHub } from './FrameHub'
 function frame(sequence: number): AnalysisFrameEvent {
   return {
     type: 'analysis-frame',
-    protocolVersion: 2,
+    protocolVersion: 3,
     sequence,
     waveform: new Float32Array([1, 0]),
     spectrumDb: new Float32Array([-120, -12]),
     noiseFloorDbfs: -90,
     detections: [],
     trackedSignals: [],
+    rdsTargets: [],
     sampleRateHz: 1_000_000,
     centerFrequencyHz: 0,
     peakFrequencyHz: 100_000,

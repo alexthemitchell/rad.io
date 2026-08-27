@@ -1,4 +1,5 @@
-import type { AnalyzerSource, SampleSink } from './types'
+import type { AnalyzerSource, RdsSink, SampleSink } from './types'
+import { RdsWasmDecoder } from '../rds/RdsWasmDecoder'
 import { HackRfDeviceSession, type HackRfSampleBlock } from './HackRfDeviceSession'
 import {
   HACKRF_ONE_USB_PRODUCT_ID,
@@ -7,6 +8,7 @@ import {
   type HackRfConfig,
 } from './hackrfProtocol'
 import type { HackRfWorkerEvent, HackRfWorkerRequest } from './hackrfWorkerProtocol'
+import type { RdsDecodeTarget } from '../workers/protocol'
 import { webUsbFromNavigator, type Usb, type UsbDevice } from './webUsb'
 
 type HackRfWorker = {
@@ -31,6 +33,10 @@ export class HackRFSource implements AnalyzerSource {
   #selectedDevice: UsbDevice | undefined
   #worker: HackRfWorker | undefined
   #fallbackSession: HackRfDeviceSession | undefined
+  #fallbackRdsDecoder: RdsWasmDecoder | undefined
+  #rdsTargets: RdsDecodeTarget[] = []
+  #rdsSink: RdsSink | undefined
+  #lastRdsEmissionUs: bigint | undefined
   #completion: Promise<void> | undefined
   #resolveCompletion: (() => void) | undefined
   #rejectCompletion: ((error: Error) => void) | undefined
@@ -45,7 +51,7 @@ export class HackRFSource implements AnalyzerSource {
     this.#dependencies = dependencies
   }
 
-  start(sink: SampleSink): Promise<void> {
+  start(sink: SampleSink, rdsSink?: RdsSink): Promise<void> {
     if (this.#completion) throw new Error('HackRF source is already active.')
     const usb = this.#dependencies.usb ?? webUsbFromNavigator(navigator)
     if (!usb) {
@@ -53,6 +59,7 @@ export class HackRFSource implements AnalyzerSource {
     }
 
     this.#sink = sink
+    this.#rdsSink = rdsSink
     this.#intentionalStop = false
     this.#settled = false
     this.#terminalError = undefined
@@ -62,6 +69,16 @@ export class HackRFSource implements AnalyzerSource {
     })
     void this.#requestAndStart(usb)
     return this.#completion
+  }
+
+  setRdsTargets(targets: readonly RdsDecodeTarget[]): void {
+    this.#rdsTargets = [...targets]
+    this.#worker?.postMessage({ type: 'set-rds-targets', targets: this.#rdsTargets })
+    try {
+      this.#fallbackRdsDecoder?.setTargets(this.#rdsTargets)
+    } catch (error) {
+      this.#fail(error)
+    }
   }
 
   async stop(): Promise<void> {
@@ -113,6 +130,7 @@ export class HackRFSource implements AnalyzerSource {
         },
         config: this.#config,
       })
+      worker.postMessage({ type: 'set-rds-targets', targets: this.#rdsTargets })
     } catch (error) {
       this.#fail(error)
     }
@@ -133,6 +151,8 @@ export class HackRFSource implements AnalyzerSource {
         sourceSequence: message.sourceSequence,
         timestampUs: message.timestampUs,
       })
+    } else if (message.type === 'rds-update') {
+      this.#rdsSink?.(message.receptions)
     } else if (message.type === 'error') {
       if (
         (message.code === 'DEVICE_NOT_FOUND' ||
@@ -168,7 +188,27 @@ export class HackRFSource implements AnalyzerSource {
     }
     this.#fallbackStarted = true
     this.#disposeWorker()
+    const rdsDecoder = await RdsWasmDecoder.create(this.#config.sampleRateHz)
+    if (this.#intentionalStop) {
+      rdsDecoder.dispose()
+      this.#settle()
+      return
+    }
+    rdsDecoder.setTargets(this.#rdsTargets)
+    this.#fallbackRdsDecoder = rdsDecoder
     const session = new HackRfDeviceSession(device, this.#config, {
+      onRawSamples: ({ iq, timestampUs }) => {
+        const receptions = rdsDecoder.process(iq, timestampUs)
+        if (
+          receptions &&
+          (this.#lastRdsEmissionUs === undefined ||
+            timestampUs - this.#lastRdsEmissionUs >= 250_000n)
+        ) {
+          this.#lastRdsEmissionUs = timestampUs
+          this.#rdsSink?.(receptions)
+        }
+      },
+      onDiscontinuity: () => rdsDecoder.reset(),
       onSamples: (block) => void this.#deliver(block),
     })
     this.#fallbackSession = session
@@ -240,6 +280,8 @@ export class HackRFSource implements AnalyzerSource {
     this.#resolveCompletion = undefined
     this.#rejectCompletion = undefined
     this.#terminalError = undefined
+    this.#rdsSink = undefined
+    this.#lastRdsEmissionUs = undefined
   }
 
   #disposeWorker(): void {
@@ -247,5 +289,7 @@ export class HackRFSource implements AnalyzerSource {
     this.#worker?.removeEventListener('error', this.#handleWorkerError)
     this.#worker?.terminate()
     this.#worker = undefined
+    this.#fallbackRdsDecoder?.dispose()
+    this.#fallbackRdsDecoder = undefined
   }
 }

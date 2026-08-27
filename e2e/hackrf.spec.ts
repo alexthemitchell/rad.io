@@ -13,10 +13,11 @@ type HackRfUsbLog = {
 declare global {
   interface Window {
     __hackRfUsbLog?: HackRfUsbLog
+    __hackRfShake?: boolean
   }
 }
 
-test('streams HackRF IQ through the real analyzer and cleans up', async ({ page }) => {
+test('streams HackRF IQ through the real analyzer and cleans up', async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     const log: HackRfUsbLog = {
       controlIn: [],
@@ -46,6 +47,10 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
       configuration: null as typeof configuration | null,
       paired: false,
       sampleIndex: 0,
+      phase: 0,
+      lowerSidePhase: 0,
+      upperSidePhase: 0,
+      noiseState: 0x52414449,
     }
     const device = {
       vendorId: 0x1d50,
@@ -102,11 +107,44 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
         await new Promise<void>((resolve) => setTimeout(resolve, 4))
         const iq = new Int8Array(length)
         const sampleCount = length / 2
+        const shakePatternHz = [-24_000, 0, 24_000, 0]
+        const shakeHz = window.__hackRfShake
+          ? shakePatternHz[Math.floor(log.transferCount / 10) % shakePatternHz.length]
+          : 0
         for (let index = 0; index < sampleCount; index += 1) {
-          const phase =
-            (Math.PI * 2 * 100_000 * (state.sampleIndex + index)) / 2_000_000
-          iq[index * 2] = Math.round(Math.cos(phase) * 64)
-          iq[index * 2 + 1] = Math.round(Math.sin(phase) * 64)
+          state.noiseState = (Math.imul(state.noiseState, 1_664_525) + 1_013_904_223) >>> 0
+          const noiseI = ((state.noiseState >>> 24) - 127.5) / 64
+          state.noiseState = (Math.imul(state.noiseState, 1_664_525) + 1_013_904_223) >>> 0
+          const noiseQ = ((state.noiseState >>> 24) - 127.5) / 64
+          const lowerSideI = window.__hackRfShake
+            ? Math.cos(state.lowerSidePhase) * 24
+            : 0
+          const lowerSideQ = window.__hackRfShake
+            ? Math.sin(state.lowerSidePhase) * 24
+            : 0
+          const upperSideI = window.__hackRfShake
+            ? Math.cos(state.upperSidePhase) * 20
+            : 0
+          const upperSideQ = window.__hackRfShake
+            ? Math.sin(state.upperSidePhase) * 20
+            : 0
+          iq[index * 2] = Math.round(
+            Math.cos(state.phase) * 48 + lowerSideI + upperSideI + noiseI,
+          )
+          iq[index * 2 + 1] = Math.round(
+            Math.sin(state.phase) * 48 + lowerSideQ + upperSideQ + noiseQ,
+          )
+          state.phase =
+            (state.phase + (Math.PI * 2 * (100_000 + shakeHz)) / 2_000_000) %
+            (Math.PI * 2)
+          state.lowerSidePhase =
+            (state.lowerSidePhase +
+              (Math.PI * 2 * (70_000 + shakeHz)) / 2_000_000) %
+            (Math.PI * 2)
+          state.upperSidePhase =
+            (state.upperSidePhase +
+              (Math.PI * 2 * (130_000 + shakeHz)) / 2_000_000) %
+            (Math.PI * 2)
         }
         state.sampleIndex += sampleCount
         log.transferCount += 1
@@ -135,6 +173,7 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
   await page.goto('/')
   await expect(page.getByText('DSP online')).toBeVisible()
   await page.getByRole('button', { name: 'HackRF' }).click()
+  await expect(page.getByRole('slider', { name: 'Minimum SNR' })).toHaveValue('25')
   await page.getByRole('button', { name: 'Connect HackRF One' }).click()
 
   await expect(page.getByText('Analyzing')).toBeVisible()
@@ -182,6 +221,16 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
   expect(runningLog?.transferCount).toBeGreaterThan(1)
   expect(runningLog?.claimed).toEqual([0])
   expect(runningLog?.requestCount).toBe(1)
+
+  await page.evaluate(() => {
+    window.__hackRfShake = true
+  })
+  await page.waitForTimeout(1_000)
+  await page.screenshot({
+    path: testInfo.outputPath('hackrf-rf-shake.png'),
+    fullPage: true,
+  })
+  await expect(page.locator('.detection-table tbody tr')).toHaveCount(1)
 
   await page.getByRole('button', { name: 'Stop HackRF reception' }).click()
   await expect(page.getByText('DSP online')).toBeVisible()

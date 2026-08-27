@@ -64,6 +64,75 @@ describe('SignalTracker', () => {
     expect(signals[0].absoluteFrequencyHz).toBeCloseTo(100_100_000, -2)
   })
 
+  it('keeps one track when a narrow signal shakes across nearby bins', () => {
+    const tracker = new SignalTracker()
+    const shifted = (offsetHz: number): SpectralDetection => ({
+      ...DETECTION,
+      peakFrequencyHz: offsetHz,
+      lowerFrequencyHz: offsetHz - 5_000,
+      upperFrequencyHz: offsetHz + 5_000,
+    })
+    const offsetsHz = [100_000, 100_500, 99_500, 124_000, 123_500, 124_500]
+    let signals = [] as ReturnType<SignalTracker['update']>
+
+    for (const [index, offsetHz] of offsetsHz.entries()) {
+      signals = tracker.update([shifted(offsetHz)], frame(BigInt(index * 1_000)))
+    }
+
+    expect(signals).toHaveLength(1)
+    expect(signals[0].id).toBe('signal-1')
+    expect(signals[0].state).toBe('active')
+    expect(signals[0].hitCount).toBe(6)
+  })
+
+  it('preserves two nearby tracks when both signals shift together', () => {
+    const tracker = new SignalTracker()
+    const shifted = (offsetHz: number): SpectralDetection => ({
+      ...DETECTION,
+      peakFrequencyHz: offsetHz,
+      lowerFrequencyHz: offsetHz - 4_000,
+      upperFrequencyHz: offsetHz + 4_000,
+      bandwidthHz: 8_000,
+    })
+
+    for (let index = 0; index < 3; index += 1) {
+      tracker.update(
+        [shifted(100_000), shifted(130_000)],
+        frame(BigInt(index * 1_000)),
+      )
+    }
+    const signals = tracker.update(
+      [shifted(124_000), shifted(154_000)],
+      frame(3_000n),
+    )
+
+    expect(signals).toHaveLength(2)
+    expect(signals.map((signal) => signal.id).sort()).toEqual([
+      'signal-1',
+      'signal-2',
+    ])
+    expect(signals.every((signal) => signal.state === 'active')).toBe(true)
+  })
+
+  it('does not merge a distant replacement into an existing track', () => {
+    const tracker = new SignalTracker()
+    for (let index = 0; index < 3; index += 1) {
+      tracker.update([DETECTION], frame(BigInt(index * 1_000)))
+    }
+    const distant = {
+      ...DETECTION,
+      peakFrequencyHz: 180_000,
+      lowerFrequencyHz: 175_000,
+      upperFrequencyHz: 185_000,
+    }
+
+    const signals = tracker.update([distant], frame(3_000n))
+
+    expect(signals).toHaveLength(1)
+    expect(signals[0].id).toBe('signal-1')
+    expect(signals[0].state).toBe('recent')
+  })
+
   it('reports confirmed missing signals as recent and then expires them', () => {
     const tracker = new SignalTracker()
     tracker.update([DETECTION], frame(0n))

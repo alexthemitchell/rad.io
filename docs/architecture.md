@@ -5,6 +5,7 @@
 ```text
 Generated mode
 React controls -> AnalyzerController -> dedicated worker -> Rust/WASM generator
+                                                     -> streaming RDS decoder
                                                      -> Rust/WASM FFT
                                                      -> spectral detector
                                                      -> signal tracker + classifier
@@ -14,6 +15,7 @@ React controls -> AnalyzerController -> dedicated worker -> Rust/WASM generator
 
 External mode
 Window permission -> acquisition worker -> signed int8 HackRF IQ
+                           -> continuous Rust/WASM RDS decoder -> metadata events
                            -> latest complete FFT block -> interleaved Float32 IQ
                            -> AnalyzerSource -> DSP worker -> same Rust/WASM FFT
                                   ^       buffer returned <- input-released <---+
@@ -23,8 +25,8 @@ Window permission -> acquisition worker -> signed int8 HackRF IQ
 
 ## Rust Crates
 
-- `crates/dsp-core` is browser-independent DSP. It contains configuration validation, the continuous-phase complex tone generator, seeded Gaussian noise, Hann windowing, shifted FFT analysis, dBFS normalization, multi-signal spectral detection, and waveform decimation.
-- `crates/dsp-wasm` is a thin `wasm-bindgen` boundary. It exposes a stateful `DspEngine` and typed-array frame getters.
+- `crates/dsp-core` is browser-independent DSP. It contains configuration validation, deterministic tone and FM+RDS generation, Hann windowing, shifted FFT analysis, spectral detection, and stateful RDS block/group decoding.
+- `crates/dsp-wasm` is a thin `wasm-bindgen` boundary. It exposes the analyzer `DspEngine`, a standalone `RdsDecoderBank`, typed-array frame getters, and structured metadata snapshots.
 
 `rustfft` plans and Hann coefficients are created when the analyzer configuration changes, not for every frame.
 
@@ -59,13 +61,13 @@ Output bins are shifted into `[-sampleRate/2, +sampleRate/2)`. Values below -120
 
 ## Protocol And Backpressure
 
-Worker messages carry `protocolVersion: 2`. The main request types are:
+Worker messages carry `protocolVersion: 3`. The main request types are:
 
 - `init`, `configure`, `configure-detection`, `start-generated`, `stop`, and `reset`
 - `frame-consumed` for display delivery acknowledgment
 - `process-samples` for externally acquired IQ
 
-The worker emits `ready`, `configured`, `detection-configured`, `status`, `analysis-frame`, `input-released`, and structured `error` messages. It verifies that the loaded WASM engine reports the same protocol version before accepting work. Analysis frames preserve the external source sequence, timestamp, and sample-format version for discontinuity detection. External IQ remains sample format version 1 because its interleaved layout did not change.
+The worker emits `ready`, `configured`, `detection-configured`, `status`, `analysis-frame`, `input-released`, and structured `error` messages. It verifies that the loaded WASM engine reports the same protocol version before accepting work. Analysis frames include up to four RDS targets selected by stable FM channel center and preserve the external source sequence, timestamp, and sample-format version. External IQ remains sample format version 1 because its interleaved layout did not change.
 
 Generated mode permits one analysis frame awaiting `frame-consumed`. The next frame is scheduled only after render delivery, so a slow tab cannot build an unbounded queue. External input is rejected with `dropped: true` while generated mode or an unconsumed frame owns the processor. All large arrays use transfer lists instead of structured-clone copies.
 
@@ -93,6 +95,8 @@ The source opens HackRF One `1d50:6089`, discovers its vendor-specific bulk-IN e
 
 Each value is divided by 128 into the analyzer's interleaved `Float32` contract. The source continuously drains sequential 16 KiB bulk transfers so browser rendering cannot back up the radio. It assembles exact FFT blocks, retains only the newest eligible block, and submits at most one block every `sampleRate / frameRate` samples. While DSP owns the sole transferable output buffer, USB reads continue and older display blocks are discarded by advancing the source sequence.
 
+RDS decoding branches before that display throttle. Every successful signed 8-bit transfer is synchronously fed to a standalone WASM decoder bank in the acquisition worker. The main DSP worker sends target changes only when the selected FM channel set changes, and the acquisition worker coalesces metadata updates to at most four per second. Chromium configurations that require the page-thread WebUSB fallback use the same decoder and update contract. A transfer stall or retry resets symbol synchronization instead of joining discontinuous samples.
+
 The returned `input-released` buffer is transferred back to the acquisition worker and reused. A stalled bulk endpoint receives bounded `clearHalt` recovery. Stop switches the transceiver off, aborts the pending read by closing when necessary, releases the claimed interface, and closes the device.
 
 WebUSB requires a secure context in production. SharedArrayBuffer and cross-origin isolation are deliberately deferred; transferable buffers are the measured baseline.
@@ -103,6 +107,8 @@ The implementation is OS-neutral and has no dependency on `libhackrf`, Node `usb
 
 - No React state update occurs per IQ packet or rendered frame.
 - HackRF USB reads run independently of React and retain at most one pending display block.
+- Full-rate RDS IQ stays in the acquisition owner; only low-rate metadata crosses worker boundaries.
+- RDS state is bounded to four channel-centered decoders and bounded raw-group histories.
 - Only one generated analysis frame can be in flight.
 - Canvas dimensions are stable and responsive.
 - Worker creation is isolated from live control dependencies.

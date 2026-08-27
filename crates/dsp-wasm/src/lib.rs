@@ -1,7 +1,75 @@
+use dsp_core::rds::{RdsDecodeTarget, RdsDecoderBank as CoreRdsDecoderBank};
 use dsp_core::types::{
     AnalysisFrame as CoreAnalysisFrame, AnalyzerConfig, DetectionConfig, GeneratorConfig,
+    GeneratorMode,
 };
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub struct RdsDecoderBank {
+    inner: CoreRdsDecoderBank,
+}
+
+#[wasm_bindgen]
+impl RdsDecoderBank {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            inner: CoreRdsDecoderBank::new(),
+        }
+    }
+
+    pub fn set_targets(
+        &mut self,
+        sample_rate_hz: u32,
+        channel_centers_hz: &[f64],
+        frequency_offsets_hz: &[f32],
+    ) -> Result<(), JsError> {
+        if channel_centers_hz.len() != frequency_offsets_hz.len() {
+            return Err(JsError::new(
+                "RDS channel-center and frequency-offset arrays must have equal lengths.",
+            ));
+        }
+        let targets: Vec<_> = channel_centers_hz
+            .iter()
+            .zip(frequency_offsets_hz)
+            .map(|(channel_center_hz, frequency_offset_hz)| RdsDecodeTarget {
+                channel_center_hz: *channel_center_hz,
+                frequency_offset_hz: *frequency_offset_hz,
+            })
+            .collect();
+        self.inner
+            .set_targets(sample_rate_hz, &targets)
+            .map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    pub fn process_i8(&mut self, iq: &[i8], timestamp_us: u64) -> Result<bool, JsError> {
+        self.inner
+            .process_i8(iq, timestamp_us)
+            .map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    pub fn process_f32(&mut self, iq: &[f32], timestamp_us: u64) -> Result<bool, JsError> {
+        self.inner
+            .process_f32(iq, timestamp_us)
+            .map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    pub fn snapshots(&self) -> Result<JsValue, JsError> {
+        serde_wasm_bindgen::to_value(&self.inner.snapshots())
+            .map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    pub fn reset(&mut self) {
+        self.inner.reset();
+    }
+}
+
+impl Default for RdsDecoderBank {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[wasm_bindgen]
 pub struct DspEngine {
@@ -30,7 +98,9 @@ impl DspEngine {
     #[allow(clippy::too_many_arguments)]
     pub fn configure(
         &mut self,
+        fm_rds_enabled: bool,
         sample_rate_hz: f32,
+        frame_rate_hz: f32,
         center_frequency_hz: f64,
         tone_frequency_hz: f32,
         tone_level_dbfs: f32,
@@ -42,7 +112,13 @@ impl DspEngine {
         self.inner
             .configure(
                 GeneratorConfig {
+                    mode: if fm_rds_enabled {
+                        GeneratorMode::FmRds
+                    } else {
+                        GeneratorMode::Tone
+                    },
                     sample_rate_hz,
+                    frame_rate_hz,
                     center_frequency_hz,
                     tone_frequency_hz,
                     tone_level_dbfs,
@@ -94,6 +170,10 @@ impl DspEngine {
 
     pub fn reset(&mut self) {
         self.inner.reset();
+    }
+
+    pub fn reset_rds(&mut self) {
+        self.inner.reset_rds();
     }
 }
 
@@ -222,5 +302,11 @@ impl AnalysisFrame {
     #[wasm_bindgen(getter)]
     pub fn elapsed_samples(&self) -> u64 {
         self.inner.elapsed_samples
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn rds_snapshots(&self) -> Result<JsValue, JsError> {
+        serde_wasm_bindgen::to_value(&self.inner.rds_snapshots)
+            .map_err(|error| JsError::new(&error.to_string()))
     }
 }

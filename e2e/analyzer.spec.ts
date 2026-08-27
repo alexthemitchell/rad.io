@@ -144,7 +144,7 @@ test('processes and releases transferable external IQ', async ({ page }) => {
   expect(result.sourceSequence).toBe(73)
   expect(result.timestampUs).toBe(123_456n)
   expect(result.formatVersion).toBe(1)
-  expect(result.protocolVersion).toBe(2)
+  expect(result.protocolVersion).toBe(3)
   expect(result.noiseFloorDbfs).toBeLessThan(-100)
   expect(result.detectionCount).toBeGreaterThanOrEqual(1)
   expect(result.invalidDetachedByteLength).toBe(0)

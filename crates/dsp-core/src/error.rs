@@ -1,15 +1,21 @@
 use thiserror::Error;
 
+use crate::rds::RdsBankError;
+
 #[derive(Debug, Error, PartialEq)]
 pub enum DspError {
     #[error("sample rate must be finite and greater than zero")]
     InvalidSampleRate,
+    #[error("frame rate must be finite and between 1 and 60 frames per second")]
+    InvalidFrameRate,
     #[error("FFT size must be a power of two between 256 and 16384")]
     InvalidFftSize,
     #[error("waveform preview must contain at least one point")]
     InvalidWaveformPoints,
     #[error("tone frequency must be finite and within the Nyquist interval")]
     ToneOutsideNyquist,
+    #[error("FM+RDS generation requires at least 500 kS/s and 150 kHz of channel-edge headroom")]
+    FmRdsOutsideNyquist,
     #[error("center frequency must be finite and non-negative")]
     InvalidCenterFrequency,
     #[error("minimum detection SNR must be finite and between 0 and 120 dB, got {0}")]
@@ -22,4 +28,6 @@ pub enum DspError {
     InvalidIqLength { expected: usize, actual: usize },
     #[error("IQ sample at index {index} contains a non-finite component")]
     InvalidIqSample { index: usize },
+    #[error(transparent)]
+    Rds(#[from] RdsBankError),
 }

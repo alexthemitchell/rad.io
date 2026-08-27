@@ -124,6 +124,7 @@ function scoreEntry(
 
   return {
     allocationId: entry.id,
+    channelCenterHz: entry.channelCenterHz ?? null,
     label: entry.label,
     category: entry.category,
     score: clampScore(score),
@@ -142,6 +143,7 @@ function unknownClassification(
     spectralShape,
     primary: {
       allocationId: null,
+      channelCenterHz: null,
       label: 'Unknown service',
       category: 'unknown',
       score: 0,

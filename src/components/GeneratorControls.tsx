@@ -1,5 +1,12 @@
+import { useRef } from 'react'
 import { Pause, Play, RotateCcw } from 'lucide-react'
-import type { GeneratorConfig } from '../workers/protocol'
+import {
+  DEFAULT_GENERATOR_CONFIG,
+  FM_RDS_GENERATOR_CONFIG,
+  FM_RDS_PRESET,
+  type GeneratorConfig,
+  type GeneratorMode,
+} from '../workers/protocol'
 
 type GeneratorControlsProps = {
   config: GeneratorConfig
@@ -18,8 +25,23 @@ export function GeneratorControls({
   onToggle,
   onReset,
 }: GeneratorControlsProps) {
-  const update = (change: Partial<GeneratorConfig>) =>
-    onChange({ ...config, ...change })
+  const toneConfig = useRef<GeneratorConfig>(
+    config.mode === 'tone' ? config : DEFAULT_GENERATOR_CONFIG,
+  )
+  const update = (change: Partial<GeneratorConfig>) => {
+    const next = { ...config, ...change }
+    if (next.mode === 'tone') toneConfig.current = next
+    onChange(next)
+  }
+  const selectMode = (mode: GeneratorMode) => {
+    if (mode === config.mode) return
+    if (mode === 'fm-rds') {
+      toneConfig.current = config
+      onChange(FM_RDS_GENERATOR_CONFIG)
+    } else {
+      onChange(toneConfig.current)
+    }
+  }
   const nyquistKhz = config.sampleRateHz / 2000
   const toneLimitHz = config.sampleRateHz / 2 - 1000
 
@@ -28,7 +50,24 @@ export function GeneratorControls({
       <div className="control-heading">
         <span>01 / SOURCE</span>
         <h2>Generator</h2>
-        <p>Complex IQ tone</p>
+        <p>{config.mode === 'tone' ? 'Complex IQ tone' : 'Synthetic FM stereo + RBDS'}</p>
+      </div>
+
+      <div className="generator-mode" role="group" aria-label="Generator mode">
+        <button
+          type="button"
+          aria-pressed={config.mode === 'tone'}
+          onClick={() => selectMode('tone')}
+        >
+          Tone
+        </button>
+        <button
+          type="button"
+          aria-pressed={config.mode === 'fm-rds'}
+          onClick={() => selectMode('fm-rds')}
+        >
+          FM + RDS
+        </button>
       </div>
 
       <div className="transport-row">
@@ -54,67 +93,93 @@ export function GeneratorControls({
         </button>
       </div>
 
-      <div className="control-group">
-        <label htmlFor="center-frequency">RF center</label>
-        <div className="input-unit">
-          <input
-            id="center-frequency"
-            type="number"
-            min="0"
-            step="0.001"
-            value={config.centerFrequencyHz / 1_000_000}
-            onChange={(event) => {
-              const value = Number(event.target.value) * 1_000_000
-              if (Number.isFinite(value)) {
-                update({ centerFrequencyHz: Math.max(0, value) })
-              }
-            }}
-          />
-          <span>MHz</span>
-        </div>
-      </div>
+      {config.mode === 'tone' ? (
+        <>
+          <div className="control-group">
+            <label htmlFor="center-frequency">RF center</label>
+            <div className="input-unit">
+              <input
+                id="center-frequency"
+                type="number"
+                min="0"
+                step="0.001"
+                value={config.centerFrequencyHz / 1_000_000}
+                onChange={(event) => {
+                  const value = Number(event.target.value) * 1_000_000
+                  if (Number.isFinite(value)) {
+                    update({ centerFrequencyHz: Math.max(0, value) })
+                  }
+                }}
+              />
+              <span>MHz</span>
+            </div>
+          </div>
 
-      <div className="control-group">
-        <label htmlFor="tone-frequency">Tone offset</label>
-        <div className="input-unit">
-          <input
-            id="tone-frequency"
-            type="number"
-            min={-nyquistKhz + 1}
-            max={nyquistKhz - 1}
-            step="1"
-            value={config.toneFrequencyHz / 1000}
-            onChange={(event) => {
-              const value = Number(event.target.value) * 1000
-              if (Number.isFinite(value)) {
-                update({
-                  toneFrequencyHz: Math.max(
-                    -toneLimitHz,
-                    Math.min(toneLimitHz, value),
-                  ),
-                })
-              }
-            }}
-          />
-          <span>kHz</span>
-        </div>
-      </div>
+          <div className="control-group">
+            <label htmlFor="tone-frequency">Tone offset</label>
+            <div className="input-unit">
+              <input
+                id="tone-frequency"
+                type="number"
+                min={-nyquistKhz + 1}
+                max={nyquistKhz - 1}
+                step="1"
+                value={config.toneFrequencyHz / 1000}
+                onChange={(event) => {
+                  const value = Number(event.target.value) * 1000
+                  if (Number.isFinite(value)) {
+                    update({
+                      toneFrequencyHz: Math.max(
+                        -toneLimitHz,
+                        Math.min(toneLimitHz, value),
+                      ),
+                    })
+                  }
+                }}
+              />
+              <span>kHz</span>
+            </div>
+          </div>
 
-      <div className="control-group">
-        <div className="label-output">
-          <label htmlFor="tone-level">Tone level</label>
-          <output htmlFor="tone-level">{config.toneLevelDbfs} dBFS</output>
-        </div>
-        <input
-          id="tone-level"
-          type="range"
-          min="-80"
-          max="0"
-          step="1"
-          value={config.toneLevelDbfs}
-          onChange={(event) => update({ toneLevelDbfs: Number(event.target.value) })}
-        />
-      </div>
+          <div className="control-group">
+            <div className="label-output">
+              <label htmlFor="tone-level">Tone level</label>
+              <output htmlFor="tone-level">{config.toneLevelDbfs} dBFS</output>
+            </div>
+            <input
+              id="tone-level"
+              type="range"
+              min="-80"
+              max="0"
+              step="1"
+              value={config.toneLevelDbfs}
+              onChange={(event) => update({ toneLevelDbfs: Number(event.target.value) })}
+            />
+          </div>
+        </>
+      ) : (
+        <dl className="generator-preset" aria-label="Synthetic RBDS preset">
+          <div>
+            <dt>Station</dt>
+            <dd>{FM_RDS_PRESET.name}</dd>
+          </div>
+          <div>
+            <dt>Channel</dt>
+            <dd>{(FM_RDS_PRESET.channelFrequencyHz / 1_000_000).toFixed(1)} MHz</dd>
+          </div>
+          <div>
+            <dt>PI / PTY</dt>
+            <dd>
+              {FM_RDS_PRESET.pi.toString(16).toUpperCase().padStart(4, '0')} /{' '}
+              {FM_RDS_PRESET.pty}
+            </dd>
+          </div>
+          <div className="generator-preset-text">
+            <dt>RadioText</dt>
+            <dd>{FM_RDS_PRESET.radioText}</dd>
+          </div>
+        </dl>
+      )}
 
       <div className="control-group">
         <label className="toggle-label" htmlFor="noise-enabled">
@@ -142,7 +207,7 @@ export function GeneratorControls({
         />
       </div>
 
-      <div className="control-grid">
+      {config.mode === 'tone' && <div className="control-grid">
         <div className="control-group">
           <label htmlFor="sample-rate">Sample rate</label>
           <select
@@ -176,7 +241,7 @@ export function GeneratorControls({
             <option value="4096">4,096</option>
           </select>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }

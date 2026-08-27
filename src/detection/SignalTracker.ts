@@ -4,6 +4,9 @@ const CONFIRMATION_HITS = 3
 const RECENT_FRAME_LIMIT = 15
 const MAX_TRACKS = 64
 const SMOOTHING = 0.35
+const MAX_RF_SHAKE_HZ = 50_000
+const RF_SHAKE_CAPTURE_FRACTION = 0.025
+const MIN_RF_SHAKE_BINS = 8
 
 export type SignalTrackerFrame = {
   centerFrequencyHz: number
@@ -51,11 +54,12 @@ export class SignalTracker {
     detections: readonly SpectralDetection[],
     frame: SignalTrackerFrame,
   ): TrackedSignalMeasurement[] {
+    const candidates = detections.map((detection) => toCandidate(detection, frame))
+    const matches = this.#matchCandidates(candidates, frame)
     const unmatchedTrackIds = new Set(this.#tracks.keys())
 
-    for (const detection of detections) {
-      const candidate = toCandidate(detection, frame)
-      const match = this.#findMatch(candidate, frame.binWidthHz, unmatchedTrackIds)
+    for (const [index, candidate] of candidates.entries()) {
+      const match = matches.get(index)
       if (match) {
         updateTrack(match, candidate, frame)
         unmatchedTrackIds.delete(match.id)
@@ -93,35 +97,39 @@ export class SignalTracker {
     this.#nextId = 1
   }
 
-  #findMatch(
-    candidate: Candidate,
-    binWidthHz: number,
-    availableTrackIds: ReadonlySet<string>,
-  ): MutableTrack | undefined {
-    let best: MutableTrack | undefined
-    let bestDistance = Number.POSITIVE_INFINITY
-    for (const trackId of availableTrackIds) {
-      const track = this.#tracks.get(trackId)
-      if (!track || (track.absoluteFrequencyHz === null) !== (candidate.absoluteFrequencyHz === null)) {
-        continue
+  #matchCandidates(
+    candidates: readonly Candidate[],
+    frame: SignalTrackerFrame,
+  ): Map<number, MutableTrack> {
+    const tracks = [...this.#tracks.values()]
+    const candidatesByTrack = new Map<string, number>()
+    const tracksByCandidate = new Map<number, MutableTrack>()
+    const options = candidates.map((candidate) =>
+      tracks
+        .filter((track) => canAssociate(track, candidate, frame))
+        .sort(
+          (left, right) =>
+            associationDistance(left, candidate) - associationDistance(right, candidate),
+        ),
+    )
+
+    const assign = (candidateIndex: number, visitedTrackIds: Set<string>): boolean => {
+      for (const track of options[candidateIndex]) {
+        if (visitedTrackIds.has(track.id)) continue
+        visitedTrackIds.add(track.id)
+        const incumbent = candidatesByTrack.get(track.id)
+        if (incumbent !== undefined && !assign(incumbent, visitedTrackIds)) continue
+        candidatesByTrack.set(track.id, candidateIndex)
+        tracksByCandidate.set(candidateIndex, track)
+        return true
       }
-      const trackPeak = track.absoluteFrequencyHz ?? track.peakOffsetHz
-      const candidatePeak = candidate.absoluteFrequencyHz ?? candidate.peakOffsetHz
-      const trackLower = track.lowerFrequencyHz ?? track.lowerOffsetHz
-      const trackUpper = track.upperFrequencyHz ?? track.upperOffsetHz
-      const candidateLower = candidate.lowerFrequencyHz ?? candidate.lowerOffsetHz
-      const candidateUpper = candidate.upperFrequencyHz ?? candidate.upperOffsetHz
-      const toleranceHz = Math.max(binWidthHz, track.binWidthHz)
-      const overlaps =
-        candidateLower <= trackUpper + toleranceHz &&
-        candidateUpper >= trackLower - toleranceHz
-      const distanceHz = Math.abs(candidatePeak - trackPeak)
-      if (overlaps && distanceHz < bestDistance) {
-        best = track
-        bestDistance = distanceHz
-      }
+      return false
     }
-    return best
+
+    for (const candidateIndex of candidates.keys()) {
+      assign(candidateIndex, new Set())
+    }
+    return tracksByCandidate
   }
 
   #enforceBound(): void {
@@ -247,4 +255,38 @@ function lerp(previous: number, next: number): number {
 
 function stateRank(state: TrackedSignalMeasurement['state']): number {
   return state === 'active' ? 0 : 1
+}
+
+function canAssociate(
+  track: MutableTrack,
+  candidate: Candidate,
+  frame: SignalTrackerFrame,
+): boolean {
+  if ((track.absoluteFrequencyHz === null) !== (candidate.absoluteFrequencyHz === null)) {
+    return false
+  }
+  const trackLower = track.lowerFrequencyHz ?? track.lowerOffsetHz
+  const trackUpper = track.upperFrequencyHz ?? track.upperOffsetHz
+  const candidateLower = candidate.lowerFrequencyHz ?? candidate.lowerOffsetHz
+  const candidateUpper = candidate.upperFrequencyHz ?? candidate.upperOffsetHz
+  const binToleranceHz = Math.max(frame.binWidthHz, track.binWidthHz)
+  const overlaps =
+    candidateLower <= trackUpper + binToleranceHz &&
+    candidateUpper >= trackLower - binToleranceHz
+  if (overlaps) return true
+
+  const shakeToleranceHz = Math.min(
+    MAX_RF_SHAKE_HZ,
+    Math.max(
+      frame.sampleRateHz * RF_SHAKE_CAPTURE_FRACTION,
+      binToleranceHz * MIN_RF_SHAKE_BINS,
+    ),
+  )
+  return associationDistance(track, candidate) <= shakeToleranceHz
+}
+
+function associationDistance(track: MutableTrack, candidate: Candidate): number {
+  const trackPeak = track.absoluteFrequencyHz ?? track.peakOffsetHz
+  const candidatePeak = candidate.absoluteFrequencyHz ?? candidate.peakOffsetHz
+  return Math.abs(candidatePeak - trackPeak)
 }

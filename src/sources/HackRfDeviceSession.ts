@@ -35,8 +35,16 @@ export type HackRfSampleBlock = {
   timestampUs: bigint
 }
 
+export type HackRfRawSampleBlock = {
+  iq: Int8Array
+  sourceSequence: number
+  timestampUs: bigint
+}
+
 type SessionCallbacks = {
   onConfigured?: (info: HackRfDeviceInfo) => void
+  onRawSamples?: (block: HackRfRawSampleBlock) => void
+  onDiscontinuity?: () => void
   onSamples: (block: HackRfSampleBlock) => void
 }
 
@@ -54,6 +62,8 @@ export class HackRfDeviceSession {
   #sourceSequence = 0
   #elapsedSamples = 0n
   #nextEmissionSample = 0n
+  #rawSequence = 0
+  #receivedSamples = 0n
 
   constructor(device: UsbDevice, config: HackRfConfig, callbacks: SessionCallbacks) {
     validateHackRfConfig(config)
@@ -216,6 +226,7 @@ export class HackRfDeviceSession {
         )
         if (!this.#running) return
         if (result.status === 'stall') {
+          this.#callbacks.onDiscontinuity?.()
           await this.#device.clearHalt('in', this.#inEndpointNumber)
           consecutiveFailures += 1
           if (consecutiveFailures >= MAX_CONSECUTIVE_TRANSFER_FAILURES) {
@@ -225,10 +236,28 @@ export class HackRfDeviceSession {
         }
         this.#assertTransferStatus(result.status, 'bulk-IN')
         if (!result.data?.byteLength) throw new Error('HackRF returned an empty IQ transfer.')
+        if (result.data.byteLength % 2 !== 0) {
+          throw new Error('HackRF returned an incomplete interleaved I/Q pair.')
+        }
+        const rawIq = new Int8Array(
+          result.data.buffer,
+          result.data.byteOffset,
+          result.data.byteLength,
+        )
+        const rawStart = this.#receivedSamples
+        this.#receivedSamples += BigInt(rawIq.length / 2)
+        this.#rawSequence = (this.#rawSequence + 1) >>> 0
+        this.#callbacks.onRawSamples?.({
+          iq: rawIq,
+          sourceSequence: this.#rawSequence,
+          timestampUs:
+            (rawStart * 1_000_000n) / BigInt(this.#config.sampleRateHz),
+        })
         this.#assembler.push(result.data, (rawBlock) => this.#handleRawBlock(rawBlock))
         return
       } catch (error) {
         if (this.#stopping || !this.#running) return
+        this.#callbacks.onDiscontinuity?.()
         consecutiveFailures += 1
         if (consecutiveFailures >= MAX_CONSECUTIVE_TRANSFER_FAILURES) throw error
       }

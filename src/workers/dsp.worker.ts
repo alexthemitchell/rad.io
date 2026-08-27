@@ -1,8 +1,18 @@
 /// <reference lib="webworker" />
 
 import initWasm, { DspEngine } from '../../crates/dsp-wasm/pkg/dsp_wasm.js'
+import { BroadcastStationGate } from '../detection/BroadcastStationGate'
 import { classifySignal } from '../detection/classifySignal'
+import { coalesceBroadcastSignals } from '../detection/coalesceBroadcastSignals'
+import { RdsTargetSelector } from '../detection/RdsTargetSelector'
 import { SignalTracker } from '../detection/SignalTracker'
+import {
+  emptyRdsReception,
+  mapRdsReception,
+  pendingRdsReception,
+  type WasmRdsChannelSnapshot,
+} from '../rds/rdsSnapshots'
+import { RdsSearchClock } from '../rds/RdsSearchClock'
 import {
   DEFAULT_DETECTION_CONFIG,
   DEFAULT_GENERATOR_CONFIG,
@@ -24,6 +34,9 @@ let running = false
 let scheduledFrame: number | undefined
 let awaitingSequence: number | undefined
 const signalTracker = new SignalTracker()
+const rdsTargetSelector = new RdsTargetSelector()
+const broadcastStationGate = new BroadcastStationGate()
+const rdsSearchClock = new RdsSearchClock()
 
 function postError(
   code: WorkerErrorEvent['code'],
@@ -107,31 +120,92 @@ function emitFrame(
         (elapsedSamples * 1_000_000n) / BigInt(Math.round(sampleRateHz)),
       formatVersion: 1,
     }
-    const trackedSignals = signalTracker
-      .update(detections, {
-        centerFrequencyHz: frame.center_frequency_hz,
-        sampleRateHz,
-        binWidthHz: sampleRateHz / spectrumDb.length,
-        timestampUs: metadata.timestampUs,
-      })
-      .map((signal) => {
-        const { captureBandwidthHz, binWidthHz, ...trackedSignal } = signal
+    const groupedSignals = coalesceBroadcastSignals(
+      signalTracker
+        .update(detections, {
+          centerFrequencyHz: frame.center_frequency_hz,
+          sampleRateHz,
+          binWidthHz: sampleRateHz / spectrumDb.length,
+          timestampUs: metadata.timestampUs,
+        })
+        .map((signal) => {
+          const { captureBandwidthHz, binWidthHz, ...trackedSignal } = signal
+          return {
+            ...trackedSignal,
+            classification: classifySignal(
+              {
+                absoluteFrequencyHz: signal.absoluteFrequencyHz,
+                bandwidthHz: signal.bandwidthHz,
+                snrDb: signal.snrDb,
+                hitCount: signal.hitCount,
+                edgeClipped: signal.edgeClipped,
+                captureBandwidthHz,
+                binWidthHz,
+              },
+              detectionConfig.bandPlanId,
+            ),
+          }
+        }),
+    )
+    const classifiedSignals = groupedSignals.map((signal) => ({
+      ...signal,
+      classification: classifySignal(
+        {
+          absoluteFrequencyHz: signal.absoluteFrequencyHz,
+          bandwidthHz: signal.bandwidthHz,
+          snrDb: signal.snrDb,
+          hitCount: signal.hitCount,
+          edgeClipped: signal.edgeClipped,
+          captureBandwidthHz: sampleRateHz,
+          binWidthHz: sampleRateHz / spectrumDb.length,
+        },
+        detectionConfig.bandPlanId,
+      ),
+    }))
+    const visibleSignals = sourceMetadata
+      ? broadcastStationGate.filter(classifiedSignals)
+      : classifiedSignals
+    const rdsTargetSelection = rdsTargetSelector.update(visibleSignals, {
+      centerFrequencyHz: frame.center_frequency_hz,
+      sampleRateHz,
+    })
+    rdsSearchClock.update(rdsTargetSelection.targets, metadata.timestampUs)
+    const selectedSignalIds = new Set(rdsTargetSelection.selectedSignalIds)
+    const capacityLimitedSignalIds = new Set(
+      rdsTargetSelection.capacityLimitedSignalIds,
+    )
+    const rdsByChannel = new Map(
+      (frame.rds_snapshots as WasmRdsChannelSnapshot[]).map((snapshot) => [
+        snapshot.channelCenterHz,
+        mapRdsReception(snapshot),
+      ]),
+    )
+    const trackedSignals = visibleSignals.map((signal) => {
+      const channelCenterHz = signal.classification.primary.channelCenterHz
+      const reception =
+        channelCenterHz === null ? undefined : rdsByChannel.get(channelCenterHz)
+      if (reception) return { ...signal, rds: reception }
+      if (selectedSignalIds.has(signal.id) && channelCenterHz !== null) {
         return {
-          ...trackedSignal,
-          classification: classifySignal(
-            {
-              absoluteFrequencyHz: signal.absoluteFrequencyHz,
-              bandwidthHz: signal.bandwidthHz,
-              snrDb: signal.snrDb,
-              hitCount: signal.hitCount,
-              edgeClipped: signal.edgeClipped,
-              captureBandwidthHz,
-              binWidthHz,
-            },
-            detectionConfig.bandPlanId,
+          ...signal,
+          rds: pendingRdsReception(
+            channelCenterHz,
+            rdsSearchClock.elapsedUs(channelCenterHz, metadata.timestampUs),
           ),
         }
-      })
+      }
+      if (capacityLimitedSignalIds.has(signal.id) && channelCenterHz !== null) {
+        return {
+          ...signal,
+          rds: emptyRdsReception(
+            channelCenterHz,
+            'capacity-limited',
+            'RDS decoder capacity is in use at the current sample rate.',
+          ),
+        }
+      }
+      return signal
+    })
     const message: AnalysisFrameEvent = {
       type: 'analysis-frame',
       protocolVersion: PROTOCOL_VERSION,
@@ -141,6 +215,7 @@ function emitFrame(
       noiseFloorDbfs: frame.noise_floor_dbfs,
       detections,
       trackedSignals,
+      rdsTargets: rdsTargetSelection.targets,
       sampleRateHz,
       centerFrequencyHz: frame.center_frequency_hz,
       peakFrequencyHz: frame.peak_frequency_hz,
@@ -237,7 +312,9 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
           throw new Error('Frame rate must be between 1 and 60 frames per second.')
         }
         activeEngine.configure(
+          request.config.mode === 'fm-rds',
           request.config.sampleRateHz,
+          request.config.frameRate,
           request.config.centerFrequencyHz,
           request.config.toneFrequencyHz,
           request.config.toneLevelDbfs,
@@ -248,6 +325,9 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
         )
         config = request.config
         signalTracker.reset()
+        rdsTargetSelector.reset()
+        broadcastStationGate.reset()
+        rdsSearchClock.reset()
         workerScope.postMessage({
           type: 'configured',
           protocolVersion: PROTOCOL_VERSION,
@@ -268,6 +348,9 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
         )
         detectionConfig = request.config
         signalTracker.reset()
+        rdsTargetSelector.reset()
+        broadcastStationGate.reset()
+        rdsSearchClock.reset()
         workerScope.postMessage({
           type: 'detection-configured',
           protocolVersion: PROTOCOL_VERSION,
@@ -283,11 +366,18 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
       case 'stop':
         running = false
         cancelScheduledFrame()
+        activeEngine.reset_rds()
+        rdsTargetSelector.reset()
+        broadcastStationGate.reset()
+        rdsSearchClock.reset()
         postStatus()
         break
       case 'reset':
         activeEngine.reset()
         signalTracker.reset()
+        rdsTargetSelector.reset()
+        broadcastStationGate.reset()
+        rdsSearchClock.reset()
         break
       case 'frame-consumed':
         if (request.sequence === awaitingSequence) {

@@ -4,11 +4,16 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
 
-use crate::{error::DspError, types::GeneratorConfig};
+use crate::{
+    error::DspError,
+    rds::SyntheticFmRdsGenerator,
+    types::{GeneratorConfig, GeneratorMode},
+};
 
 pub struct ComplexToneGenerator {
     config: GeneratorConfig,
     phase: f64,
+    fm_rds: SyntheticFmRdsGenerator,
     rng: ChaCha8Rng,
 }
 
@@ -19,6 +24,7 @@ impl ComplexToneGenerator {
         Ok(Self {
             config,
             phase: 0.0,
+            fm_rds: SyntheticFmRdsGenerator::new(),
             rng: ChaCha8Rng::seed_from_u64(config.seed),
         })
     }
@@ -28,18 +34,35 @@ impl ComplexToneGenerator {
         if config.seed != self.config.seed {
             self.rng = ChaCha8Rng::seed_from_u64(config.seed);
         }
+        if config.mode != self.config.mode {
+            self.phase = 0.0;
+            self.fm_rds.reset();
+        }
         self.config = config;
         Ok(())
     }
 
     pub fn reset(&mut self) {
         self.phase = 0.0;
+        self.fm_rds.reset();
         self.rng = ChaCha8Rng::seed_from_u64(self.config.seed);
     }
 
     #[must_use]
     pub const fn sample_rate_hz(&self) -> f32 {
         self.config.sample_rate_hz
+    }
+
+    #[must_use]
+    pub const fn mode(&self) -> GeneratorMode {
+        self.config.mode
+    }
+
+    #[must_use]
+    pub fn samples_per_frame(&self) -> usize {
+        (self.config.sample_rate_hz / self.config.frame_rate_hz)
+            .round()
+            .max(1.0) as usize
     }
 
     #[must_use]
@@ -50,14 +73,28 @@ impl ComplexToneGenerator {
     #[must_use]
     pub fn generate(&mut self, sample_count: usize) -> Vec<f32> {
         let mut iq = Vec::with_capacity(sample_count * 2);
-        let phase_step =
-            TAU * f64::from(self.config.tone_frequency_hz) / f64::from(self.config.sample_rate_hz);
         let tone_amplitude = f64::from(dbfs_to_amplitude(self.config.tone_level_dbfs));
         let noise_sigma =
             f64::from(dbfs_to_amplitude(self.config.noise_level_dbfs)) / std::f64::consts::SQRT_2;
 
         for _ in 0..sample_count {
-            let (quadrature, in_phase) = self.phase.sin_cos();
+            let (signal_i, signal_q) = match self.config.mode {
+                GeneratorMode::Tone => {
+                    let (quadrature, in_phase) = self.phase.sin_cos();
+                    let phase_step = TAU * f64::from(self.config.tone_frequency_hz)
+                        / f64::from(self.config.sample_rate_hz);
+                    self.phase = (self.phase + phase_step).rem_euclid(TAU);
+                    (in_phase * tone_amplitude, quadrature * tone_amplitude)
+                }
+                GeneratorMode::FmRds => {
+                    let (in_phase, quadrature) = self.fm_rds.sample(
+                        f64::from(self.config.sample_rate_hz),
+                        f64::from(self.config.tone_frequency_hz),
+                        tone_amplitude,
+                    );
+                    (f64::from(in_phase), f64::from(quadrature))
+                }
+            };
             let (noise_i, noise_q) = if self.config.noise_enabled {
                 let noise_i: f64 = StandardNormal.sample(&mut self.rng);
                 let noise_q: f64 = StandardNormal.sample(&mut self.rng);
@@ -66,9 +103,8 @@ impl ComplexToneGenerator {
                 (0.0, 0.0)
             };
 
-            iq.push((in_phase * tone_amplitude + noise_i) as f32);
-            iq.push((quadrature * tone_amplitude + noise_q) as f32);
-            self.phase = (self.phase + phase_step).rem_euclid(TAU);
+            iq.push((signal_i + noise_i) as f32);
+            iq.push((signal_q + noise_q) as f32);
         }
 
         iq
@@ -84,6 +120,9 @@ fn validate_config(config: GeneratorConfig) -> Result<(), DspError> {
     if !config.sample_rate_hz.is_finite() || config.sample_rate_hz <= 0.0 {
         return Err(DspError::InvalidSampleRate);
     }
+    if !config.frame_rate_hz.is_finite() || !(1.0..=60.0).contains(&config.frame_rate_hz) {
+        return Err(DspError::InvalidFrameRate);
+    }
     if !config.center_frequency_hz.is_finite() || config.center_frequency_hz < 0.0 {
         return Err(DspError::InvalidCenterFrequency);
     }
@@ -91,6 +130,12 @@ fn validate_config(config: GeneratorConfig) -> Result<(), DspError> {
         || config.tone_frequency_hz.abs() >= config.sample_rate_hz / 2.0
     {
         return Err(DspError::ToneOutsideNyquist);
+    }
+    if config.mode == GeneratorMode::FmRds
+        && (config.sample_rate_hz < 500_000.0
+            || config.tone_frequency_hz.abs() + 150_000.0 >= config.sample_rate_hz / 2.0)
+    {
+        return Err(DspError::FmRdsOutsideNyquist);
     }
     validate_level("tone level", config.tone_level_dbfs)?;
     validate_level("noise level", config.noise_level_dbfs)?;

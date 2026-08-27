@@ -4,6 +4,7 @@ import type {
   TrackedSignal,
 } from '../workers/protocol'
 import { formatFrequency, formatRfFrequency } from '../renderers/canvas'
+import { RdsStationDetails } from './RdsStationDetails'
 
 type DetectedSignalsPanelProps = {
   config: DetectionConfig
@@ -104,7 +105,12 @@ export function DetectedSignalsPanel({
                       className={`signal-state signal-state--${signal.state}`}
                       aria-hidden="true"
                     />
-                    {signal.classification.primary.label}
+                    <span className="signal-label-copy">
+                      <span>{signal.classification.primary.label}</span>
+                      {signal.rds?.metadata?.ps?.value && (
+                        <span className="signal-rds-name">{signal.rds.metadata.ps.value}</span>
+                      )}
+                    </span>
                   </button>
                 </th>
                 <td className="signal-state-label">{signal.state}</td>
@@ -178,6 +184,7 @@ export function DetectedSignalsPanel({
                 .join(', ')}
             </p>
           )}
+          {selected.rds && <RdsStationDetails reception={selected.rds} />}
         </div>
       )}
 

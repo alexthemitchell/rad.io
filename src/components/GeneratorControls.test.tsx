@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { DEFAULT_GENERATOR_CONFIG } from '../workers/protocol'
+import {
+  DEFAULT_GENERATOR_CONFIG,
+  FM_RDS_GENERATOR_CONFIG,
+} from '../workers/protocol'
 import { GeneratorControls } from './GeneratorControls'
 
 describe('GeneratorControls', () => {
@@ -58,5 +61,44 @@ describe('GeneratorControls', () => {
       ...DEFAULT_GENERATOR_CONFIG,
       toneFrequencyHz: 499_000,
     })
+  })
+
+  it('selects the fixed FM+RDS preset and restores prior tone settings', () => {
+    const onChange = vi.fn()
+    const toneConfig = {
+      ...DEFAULT_GENERATOR_CONFIG,
+      toneFrequencyHz: -125_000,
+    }
+    const { rerender } = render(
+      <GeneratorControls
+        config={toneConfig}
+        ready
+        running={false}
+        onChange={onChange}
+        onToggle={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'FM + RDS' }))
+    expect(onChange).toHaveBeenLastCalledWith(FM_RDS_GENERATOR_CONFIG)
+
+    rerender(
+      <GeneratorControls
+        config={FM_RDS_GENERATOR_CONFIG}
+        ready
+        running={false}
+        onChange={onChange}
+        onToggle={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('RAD.IO')).toBeVisible()
+    expect(screen.getByText('100.1 MHz')).toBeVisible()
+    expect(screen.getByText('3CE7 / Information')).toBeVisible()
+    expect(screen.queryByRole('spinbutton', { name: 'Tone offset' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tone' }))
+    expect(onChange).toHaveBeenLastCalledWith(toneConfig)
   })
 })

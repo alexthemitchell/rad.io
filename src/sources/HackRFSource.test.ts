@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { HackRFSource } from './HackRFSource'
 import { DEFAULT_HACKRF_CONFIG } from './hackrfProtocol'
 import type { HackRfWorkerEvent, HackRfWorkerRequest } from './hackrfWorkerProtocol'
+import type { RdsReception } from '../workers/protocol'
 import type { Usb, UsbDevice } from './webUsb'
 
 class FakeWorker {
@@ -120,6 +121,47 @@ describe('HackRFSource', () => {
     expect(usb.getDevices).toHaveBeenCalledOnce()
     expect(requestDevice).not.toHaveBeenCalled()
 
+    await source.stop()
+    await running
+  })
+
+  it('forwards RDS targets and delivers decoded metadata separately from IQ', async () => {
+    const worker = new FakeWorker()
+    const { usb } = createUsb(worker, true)
+    const source = new HackRFSource(DEFAULT_HACKRF_CONFIG, {
+      usb,
+      createWorker: () => worker,
+    })
+    const rdsSink = vi.fn()
+    source.setRdsTargets([
+      { channelCenterHz: 100_100_000, frequencyOffsetHz: 100_000 },
+    ])
+
+    const running = source.start(vi.fn(), rdsSink)
+    await vi.waitFor(() =>
+      expect(worker.messages).toContainEqual({
+        type: 'set-rds-targets',
+        targets: [{ channelCenterHz: 100_100_000, frequencyOffsetHz: 100_000 }],
+      }),
+    )
+    const reception: RdsReception = {
+      channelCenterHz: 100_100_000,
+      state: 'locked',
+      reason: null,
+      metadata: null,
+      diagnostics: {
+        synchronized: true,
+        validGroups: 2,
+        correctedBlocks: 0,
+        rejectedGroups: 0,
+        lostSyncCount: 0,
+        lastValidGroupAtUs: 500_000n,
+      },
+    }
+
+    worker.emit({ type: 'rds-update', receptions: [reception] })
+
+    expect(rdsSink).toHaveBeenCalledWith([reception])
     await source.stop()
     await running
   })

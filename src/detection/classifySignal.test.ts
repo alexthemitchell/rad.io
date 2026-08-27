@@ -51,6 +51,13 @@ describe('classifySignal', () => {
     },
   )
 
+  it('preserves the FM channel center as a stable downstream tuning key', () => {
+    const result = classifySignal(BASE_INPUT, 'fcc-us')
+
+    expect(result.primary.category).toBe('fm-broadcast')
+    expect(result.primary.channelCenterHz).toBe(100_100_000)
+  })
+
   it('returns unknown outside curated allocations', () => {
     const result = classifySignal(
       { ...BASE_INPUT, absoluteFrequencyHz: 40_000_000 },

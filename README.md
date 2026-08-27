@@ -4,7 +4,7 @@ A browser-based signal analyzer with DSP implemented in Rust, compiled to WebAss
 
 The analyzer accepts a deterministic complex IQ generator or live RF from a HackRF One connected directly through WebUSB. Both sources drive the same spectrum, scrolling waterfall, dual I/Q waveform, and automatic signal inventory. HackRF support runs entirely in the browser without `libhackrf`, a native helper, a browser extension, or an application-supplied driver package.
 
-The detector estimates the noise floor, extracts multiple occupied spectral regions, tracks them across frames, and attaches evidence-based service candidates from a selectable FCC/United States allocation profile. These labels are frequency-allocation matches, not decoded station identities or verified modulation types.
+The detector estimates the noise floor, extracts multiple occupied spectral regions, tracks them across frames, and attaches evidence-based service candidates from a selectable FCC/United States allocation profile. Confirmed FM broadcast stations are additionally eligible for RDS/RBDS decoding, which adds transmitted station identity and program metadata when the subcarrier can be synchronized.
 
 ## Prerequisites
 
@@ -40,7 +40,9 @@ The initial analyzer defaults are:
 - -12 dBFS tone level
 - -72 dBFS deterministic Gaussian noise
 - 30 analysis frames per second
-- 15 dB minimum detection SNR
+- 15 dB minimum detection SNR for generated IQ
+
+The generator also includes a fixed **FM + RDS** preset at 100.1 MHz. It emits a deterministic stereo multiplex and RBDS group cycle for exercising station identification without radio hardware.
 
 The HackRF One source starts with conservative receive-only settings:
 
@@ -50,6 +52,7 @@ The HackRF One source starts with conservative receive-only settings:
 - 2,048-point FFT at up to 30 analysis frames per second
 - 16 dB LNA gain and 20 dB VGA gain
 - RF amplifier and antenna bias power off
+- 25 dB minimum detection SNR, with independent adjustment from generated IQ
 
 ## HackRF One
 
@@ -82,11 +85,12 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## Architecture
 
-The main thread owns permission selection, controls, low-rate status, and Canvas2D rendering. A browser acquisition worker owns HackRF USB transfers, while the DSP worker owns signal generation, FFT state, signal tracking/classification, and frame pacing. Numeric arrays move through transferable `ArrayBuffer` objects and are published to renderers on `requestAnimationFrame`; live packets are never stored in React state.
+The main thread owns permission selection, controls, low-rate status, and Canvas2D rendering. A browser acquisition worker owns HackRF USB transfers and continuous live RDS decoding, while the DSP worker owns signal generation, generated RDS decoding, FFT state, signal tracking/classification, and frame pacing. Numeric arrays move through transferable `ArrayBuffer` objects and are published to renderers on `requestAnimationFrame`; live packets are never stored in React state.
 
 See [docs/architecture.md](docs/architecture.md) for protocol, ownership, scaling, and WebUSB integration details.
 See [docs/signal-detection.md](docs/signal-detection.md) for detection behavior, metadata semantics, profile provenance, and limitations.
+See [docs/rds.md](docs/rds.md) for RDS/RBDS decoding, supported groups, target selection, and data-quality semantics.
 
 ## Scope
 
-HackRF support is receive-only. This milestone intentionally excludes transmit, hardware sweep mode, antenna bias enablement, firmware flashing/reset, calibrated dBm measurements, demodulation/audio, payload decoding, recording, SharedArrayBuffer, and WebGL. Those can be added behind the existing source, worker, detector, and renderer contracts after measured need.
+HackRF support is receive-only. This milestone intentionally excludes transmit, hardware sweep mode, antenna bias enablement, firmware flashing/reset, calibrated dBm measurements, audio playback, recording, SharedArrayBuffer, and WebGL. RDS application groups are retained, but external TMC location/event databases and application-specific ODA semantic plugins are not bundled.

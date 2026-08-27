@@ -1,6 +1,9 @@
-export const PROTOCOL_VERSION = 2 as const
+export const PROTOCOL_VERSION = 3 as const
+
+export type GeneratorMode = 'tone' | 'fm-rds'
 
 export type GeneratorConfig = {
+  mode: GeneratorMode
   sampleRateHz: number
   centerFrequencyHz: number
   toneFrequencyHz: number
@@ -13,6 +16,7 @@ export type GeneratorConfig = {
 }
 
 export const DEFAULT_GENERATOR_CONFIG: GeneratorConfig = {
+  mode: 'tone',
   sampleRateHz: 1_000_000,
   centerFrequencyHz: 0,
   toneFrequencyHz: 100_000,
@@ -23,6 +27,24 @@ export const DEFAULT_GENERATOR_CONFIG: GeneratorConfig = {
   frameRate: 30,
   seed: 0x52414449,
 }
+
+export const FM_RDS_GENERATOR_CONFIG: GeneratorConfig = {
+  ...DEFAULT_GENERATOR_CONFIG,
+  mode: 'fm-rds',
+  sampleRateHz: 1_000_000,
+  centerFrequencyHz: 100_000_000,
+  toneFrequencyHz: 100_000,
+  toneLevelDbfs: -12,
+  fftSize: 4096,
+}
+
+export const FM_RDS_PRESET = {
+  name: 'RAD.IO',
+  channelFrequencyHz: 100_100_000,
+  pi: 0x3ce7,
+  pty: 'Information',
+  radioText: 'RAD.IO synthetic RBDS test station',
+} as const
 
 export type BandPlanId = 'fcc-us' | 'none'
 
@@ -68,6 +90,7 @@ export type SpectralShape =
 
 export type ClassificationCandidate = {
   allocationId: string | null
+  channelCenterHz: number | null
   label: string
   category: SignalServiceCategory
   score: number
@@ -80,6 +103,113 @@ export type SignalClassification = {
   spectralShape: SpectralShape
   primary: ClassificationCandidate
   alternatives: ClassificationCandidate[]
+}
+
+export type RdsDecoderState =
+  | 'searching'
+  | 'locked'
+  | 'stale'
+  | 'capacity-limited'
+  | 'unavailable'
+
+export type RdsTimedValue<T> = {
+  value: T
+  updatedAtUs: bigint
+}
+
+export type RdsTextValue = RdsTimedValue<string> & {
+  complete: boolean
+}
+
+export type RdsDecoderInfo = {
+  stereo: boolean
+  artificialHead: boolean
+  compressed: boolean
+  dynamicPty: boolean
+}
+
+export type RdsRawGroup = {
+  groupType: number
+  version: 'A' | 'B'
+  blocks: readonly [number, number, number, number]
+  correctedBlocks: number
+  receivedAtUs: bigint
+  applicationId: number | null
+}
+
+export type RdsOdaRegistration = {
+  applicationGroupType: number
+  applicationGroupVersion: 'A' | 'B'
+  applicationId: number
+  messageBits: number
+}
+
+export type RdsTmcEnvelope = {
+  variantCode: number
+  blockC: number
+  blockD: number
+  receivedAtUs: bigint
+}
+
+export type RdsEonEnvelope = {
+  groupType: number
+  version: 'A' | 'B'
+  variantCode: number
+  information: number
+  otherNetworkPi: number
+  receivedAtUs: bigint
+}
+
+export type RdsAlternativeFrequencies = {
+  frequenciesHz: number[]
+  expectedCount: number | null
+  complete: boolean
+}
+
+export type RdsStationMetadata = {
+  pi: RdsTimedValue<number> | null
+  callSign: RdsTimedValue<string> | null
+  ps: RdsTextValue | null
+  pty: RdsTimedValue<number> | null
+  ptyName: RdsTimedValue<string> | null
+  ptyn: RdsTextValue | null
+  trafficProgram: RdsTimedValue<boolean> | null
+  trafficAnnouncement: RdsTimedValue<boolean> | null
+  musicSpeech: RdsTimedValue<boolean> | null
+  decoderInfo: RdsTimedValue<RdsDecoderInfo> | null
+  alternativeFrequencies: RdsTimedValue<RdsAlternativeFrequencies> | null
+  extendedCountryCode: RdsTimedValue<number> | null
+  programItemNumber: RdsTimedValue<number> | null
+  radioText: RdsTextValue | null
+  clockTime: RdsTimedValue<{ isoUtc: string; localOffsetMinutes: number }> | null
+  odaRegistrations: Array<RdsTimedValue<RdsOdaRegistration>>
+  tmcMessages: RdsTmcEnvelope[]
+  eonRecords: RdsEonEnvelope[]
+  rawGroups: RdsRawGroup[]
+  groupsByType: number[]
+  lastValidGroupAtUs: bigint | null
+}
+
+export type RdsDecoderDiagnostics = {
+  synchronized: boolean
+  validGroups: number
+  correctedBlocks: number
+  rejectedGroups: number
+  lostSyncCount: number
+  lastValidGroupAtUs: bigint | null
+}
+
+export type RdsReception = {
+  channelCenterHz: number
+  state: RdsDecoderState
+  reason: string | null
+  metadata: RdsStationMetadata | null
+  diagnostics: RdsDecoderDiagnostics
+}
+
+export type RdsDecodeTarget = {
+  channelCenterHz: number
+  frequencyOffsetHz: number
 }
 
 export type TrackedSignal = {
@@ -100,6 +230,7 @@ export type TrackedSignal = {
   hitCount: number
   state: 'active' | 'recent'
   classification: SignalClassification
+  rds?: RdsReception
 }
 
 export type SampleMetadata = {
@@ -172,6 +303,7 @@ export type AnalysisFrameEvent = {
   noiseFloorDbfs: number
   detections: SpectralDetection[]
   trackedSignals: TrackedSignal[]
+  rdsTargets: RdsDecodeTarget[]
   sampleRateHz: number
   centerFrequencyHz: number
   peakFrequencyHz: number

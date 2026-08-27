@@ -8,11 +8,14 @@ Each FFT frame passes through these stages:
 
 1. `dsp-core` applies the existing Hann window, shifted FFT, and dBFS normalization.
 2. The detector estimates the noise floor from the lower 20th percentile of finite spectrum bins while excluding two bins on either side of DC.
-3. Bins at least 15 dB above that floor are considered occupied by default. The threshold is adjustable in the UI.
+3. Bins at least 15 dB above that floor are considered occupied for generated IQ. HackRF starts at 25 dB to reject persistent low-level converter and receiver artifacts; each source retains its own adjustable UI threshold.
 4. Adjacent occupied bins are grouped, with a one-bin gap merged to tolerate spectral nulls. An isolated center spike is suppressed, while a wide occupied region spanning the DC guard remains intact. Each frame returns at most 16 strongest regions.
 5. A candidate at least 20 dB below a stronger occupied region and within 24 FFT bins of it is treated as unresolved window leakage rather than a separate signal.
-6. The worker associates regions across frames by occupied-range overlap and FFT-bin tolerance. A track becomes visible after three matching frames, remains `recent` for up to 15 missed frames, and is then removed.
+6. The worker associates regions across frames with maximum-cardinality matching. Occupied-range overlap remains the strongest evidence, while a bounded drift gate tolerates receiver shake of up to 2.5% of capture bandwidth (capped at 50 kHz). Augmenting-path assignment keeps nearby signals distinct when they move together instead of greedily consuming the nearest track. A track becomes visible after three matching frames, remains `recent` for up to 15 missed frames, and is then removed.
 7. Confirmed tracks are compared with the selected local allocation profile. The default is `FCC / United States`; selecting `None` leaves measured metadata intact and disables service matching.
+8. Up to four active FM-broadcast tracks with sufficient capture headroom become sticky RDS targets. Existing targets retain their slots while active; vacancies are filled by signal-to-noise ratio, classification evidence, and track tenure.
+
+For external IQ, an FM allocation match enters the station inventory only after its consolidated channel has shown more than 25 kHz of occupied span. That qualification is retained through narrower modulation moments and the track's `recent` lifetime. This hysteresis prevents persistent narrow receiver or converter spurs inside the FM band from being presented as additional broadcast stations.
 
 The tracker holds no unbounded history. Active and provisional state is capped at 64 tracks, and React samples only the compact latest snapshot every 250 ms.
 
@@ -33,6 +36,9 @@ Confirmed tracks additionally include:
 - first-seen, last-seen, duration, and observation count
 - broad spectral shape: `carrier-like`, `narrowband`, `medium-band`, `wideband`, or `partial`
 - primary service candidate, up to two alternatives, evidence reasons, caveats, and an evidence score
+- the matched allocation channel center, used as the stable key for optional RDS metadata
+
+When RDS synchronizes, the track can additionally include PI/call sign, PS, PTY/PTYN, traffic and decoder flags, alternative frequencies, RadioText, clock time, ODA registrations, EON/TMC envelopes, decoder quality, and recent raw groups. These values are decoded evidence rather than allocation guesses. See [rds.md](rds.md) for field and freshness semantics.
 
 `centerFrequencyHz = 0` explicitly means baseband-only analysis. Detection still works, but the service candidate is `Unknown service` because an RF allocation cannot be matched from an offset alone.
 
@@ -68,7 +74,7 @@ The displayed percentage is a deterministic evidence score, not a calibrated pro
 - persistence across analyzed frames
 - whether the full expected channel fits in the capture
 
-Allocation match and modulation identification are deliberately separate. For example, a signal inside an FM broadcast channel receives an FM broadcast service candidate, but rad.io does not claim that the waveform has been FM-demodulated. Amateur allocations permit many modes, so their profile does not impose one expected bandwidth.
+Allocation match and modulation identification remain separate. An FM allocation match makes a track eligible for RDS decoding, but the UI reports station identity only after valid RDS blocks synchronize. Amateur allocations permit many modes, so their profile does not impose one expected bandwidth.
 
 Signals that touch a capture edge are marked `partial`; their bandwidth is a lower bound and their evidence score is capped. Television channels are wider than the current generated sample-rate choices, so a TV candidate will normally carry this partial-capture caveat unless wider external IQ is supplied.
 
@@ -78,7 +84,8 @@ Signals that touch a capture edge are marked `partial`; their bandwidth is a low
 - The noise estimate is frame-local and is not a hardware noise calibration.
 - The DC guard can suppress a narrow signal exactly at zero offset along with receiver DC leakage.
 - A strong off-bin carrier can produce window sidelobes; the 15 dB default threshold reduces these false candidates and can be adjusted for a source.
-- There is no AM/FM/SSB demodulation, Morse or time-code decoding, speech analysis, callsign lookup, station directory, or digital protocol decoder.
+- There is no audio playback, AM/SSB demodulation, Morse or time-code decoding, speech analysis, or external station directory.
+- RDS supports the complete group transport envelope, but application-specific ODA semantics and TMC event/location text require external specifications or regional databases and remain raw numeric data.
 - Service candidates depend on the accuracy and revision of the selected allocation profile. Actual authorization and usage can vary by location, license, channel, and time.
 
 Future demodulators or directory lookups should consume confirmed tracks as additional evidence and publish their own provenance. They should not replace measured spectral fields or reinterpret the current evidence score as decoded certainty.

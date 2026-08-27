@@ -104,7 +104,9 @@ describe('HackRfDeviceSession', () => {
   it('configures the receiver in order and emits normalized IQ', async () => {
     const device = createDevice()
     const samples: number[] = []
+    const rawSamples: number[] = []
     const session = new HackRfDeviceSession(device, DEFAULT_HACKRF_CONFIG, {
+      onRawSamples: ({ iq }) => rawSamples.push(iq[0]),
       onSamples: ({ iq }) => {
         samples.push(iq[0])
         void session.stop()
@@ -127,6 +129,7 @@ describe('HackRfDeviceSession', () => {
       HACKRF_REQUEST.setTransceiverMode,
     ])
     expect(samples).toEqual([0.5])
+    expect(rawSamples).toEqual([64])
     expect(device.releaseInterface).toHaveBeenCalledWith(0)
     expect(device.close).toHaveBeenCalledOnce()
   })
@@ -161,7 +164,9 @@ describe('HackRfDeviceSession', () => {
       }
     }, 5)
     let sample = 0
+    const onDiscontinuity = vi.fn()
     const session = new HackRfDeviceSession(device, DEFAULT_HACKRF_CONFIG, {
+      onDiscontinuity,
       onSamples: ({ iq }) => {
         sample = iq[0]
         void session.stop()
@@ -172,6 +177,7 @@ describe('HackRfDeviceSession', () => {
 
     expect(device.transferIn).toHaveBeenCalledWith(5, 16 * 1024)
     expect(device.clearHalt).toHaveBeenCalledWith('in', 5)
+    expect(onDiscontinuity).toHaveBeenCalledOnce()
     expect(sample).toBe(-1)
   })
 

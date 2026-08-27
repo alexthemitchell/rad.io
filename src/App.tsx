@@ -25,17 +25,28 @@ import {
   type GeneratorConfig,
 } from './workers/protocol'
 
+const DEFAULT_DETECTION_CONFIGS: Record<SourceMode, DetectionConfig> = {
+  generator: DEFAULT_DETECTION_CONFIG,
+  hackrf: {
+    ...DEFAULT_DETECTION_CONFIG,
+    minimumSnrDb: 25,
+  },
+}
+
 function App() {
   const [controller] = useState(() => new AnalyzerController())
   const [sourceMode, setSourceMode] = useState<SourceMode>('generator')
   const [config, setConfig] = useState<GeneratorConfig>(DEFAULT_GENERATOR_CONFIG)
   const [hackRfConfig, setHackRfConfig] = useState<HackRfConfig>(DEFAULT_HACKRF_CONFIG)
-  const [detectionConfig, setDetectionConfig] = useState<DetectionConfig>(
-    DEFAULT_DETECTION_CONFIG,
+  const [detectionConfigs, setDetectionConfigs] = useState<
+    Record<SourceMode, DetectionConfig>
+  >(
+    DEFAULT_DETECTION_CONFIGS,
   )
   const [snapshot, setSnapshot] = useState<AnalyzerSnapshot>(controller.snapshot)
   const [ready, setReady] = useState(false)
   const [viewRevision, setViewRevision] = useState(0)
+  const detectionConfig = detectionConfigs[sourceMode]
 
   useEffect(() => {
     let active = true
@@ -222,7 +233,12 @@ function App() {
             config={detectionConfig}
             signals={snapshot.trackedSignals}
             centerFrequencyHz={snapshot.centerFrequencyHz}
-            onConfigChange={setDetectionConfig}
+            onConfigChange={(nextConfig) =>
+              setDetectionConfigs((current) => ({
+                ...current,
+                [sourceMode]: nextConfig,
+              }))
+            }
           />
         </section>
       </div>
