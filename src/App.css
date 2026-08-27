@@ -1,0 +1,479 @@
+.app-shell {
+  min-height: 100svh;
+  background: var(--chrome);
+}
+
+.topbar {
+  min-height: 76px;
+  padding: 13px clamp(18px, 3vw, 38px);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 28px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--ink);
+  background:
+    linear-gradient(135deg, transparent 43%, var(--cyan) 44% 52%, transparent 53%)
+      3px 4px / 12px 22px,
+    linear-gradient(45deg, transparent 43%, var(--amber) 44% 52%, transparent 53%)
+      15px 4px / 12px 22px;
+}
+
+.topbar h1,
+.topbar p,
+.control-heading h2,
+.control-heading p,
+.workspace-header h2,
+.workspace-header p,
+.plot-panel figcaption,
+.metrics span,
+.metrics strong {
+  margin: 0;
+}
+
+.topbar h1 {
+  font: 700 24px/1 var(--sans);
+}
+
+.eyebrow,
+.section-label,
+.control-heading > span {
+  display: block;
+  margin-bottom: 5px !important;
+  color: var(--muted);
+  font: 600 10px/1 var(--mono);
+}
+
+.topbar-context {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font: 11px/1 var(--mono);
+}
+
+.topbar-context strong {
+  padding: 7px 10px;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.engine-status {
+  min-width: 205px;
+  padding-left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-left: 1px solid var(--line);
+}
+
+.engine-status > div {
+  display: grid;
+  gap: 3px;
+}
+
+.engine-status strong {
+  font-size: 12px;
+}
+
+.engine-status span:not(.status-light) {
+  color: var(--muted);
+  font: 10px/1.3 var(--mono);
+}
+
+.status-light {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--amber) 16%, transparent);
+}
+
+.engine-status--idle .status-light,
+.engine-status--running .status-light {
+  background: var(--green);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 16%, transparent);
+}
+
+.engine-status--error .status-light {
+  background: var(--red);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--red) 16%, transparent);
+}
+
+.analyzer-layout {
+  min-height: calc(100svh - 76px);
+  display: grid;
+  grid-template-columns: 282px minmax(0, 1fr);
+}
+
+.control-rail {
+  padding: 26px 22px 36px;
+  border-right: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 62%, var(--chrome));
+}
+
+.control-heading {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.control-heading h2 {
+  font-size: 23px;
+  line-height: 1.1;
+}
+
+.control-heading p {
+  margin-top: 5px;
+  color: var(--muted);
+  font: 11px/1.3 var(--mono);
+}
+
+.transport-row {
+  margin-bottom: 26px;
+  display: grid;
+  grid-template-columns: 1fr 42px;
+  gap: 8px;
+}
+
+.transport-button,
+.icon-button {
+  min-height: 42px;
+  border: 1px solid var(--ink);
+  color: var(--paper);
+  background: var(--ink);
+  cursor: pointer;
+}
+
+.transport-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.icon-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: transparent;
+}
+
+.icon-button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 7px);
+  right: 0;
+  width: max-content;
+  padding: 5px 7px;
+  border-radius: 3px;
+  color: white;
+  background: var(--ink);
+  font: 10px/1 var(--mono);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.icon-button:hover::after,
+.icon-button:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.control-group {
+  margin-bottom: 21px;
+  display: grid;
+  gap: 9px;
+}
+
+.control-group label,
+.label-output output {
+  color: var(--muted);
+  font: 11px/1.2 var(--mono);
+}
+
+.label-output,
+.toggle-label {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.label-output output {
+  color: var(--ink);
+}
+
+.input-unit {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper);
+}
+
+.input-unit input {
+  min-width: 0;
+  padding: 9px 4px 9px 10px;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+  font: 13px/1 var(--mono);
+}
+
+.input-unit:focus-within {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.input-unit span {
+  padding: 0 9px;
+  color: var(--muted);
+  font: 10px/1 var(--mono);
+}
+
+.control-group select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 28px 0 9px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--paper);
+  font: 11px/1 var(--mono);
+}
+
+.control-group input[type='range'] {
+  width: 100%;
+  height: 4px;
+  margin: 5px 0;
+  accent-color: var(--cyan);
+  cursor: pointer;
+}
+
+.toggle-label input {
+  width: 34px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--cyan);
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.plot-workspace {
+  min-width: 0;
+  padding: 23px clamp(18px, 2.5vw, 34px) 32px;
+}
+
+.workspace-header {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.workspace-header h2 {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(78px, auto));
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 52%, transparent);
+}
+
+.metrics > div {
+  min-width: 92px;
+  padding: 8px 11px;
+  display: grid;
+  gap: 3px;
+  border-right: 1px solid var(--line);
+}
+
+.metrics > div:last-child {
+  border-right: 0;
+}
+
+.metrics span {
+  color: var(--muted);
+  font: 9px/1 var(--mono);
+}
+
+.metrics strong {
+  font: 600 11px/1.2 var(--mono);
+  white-space: nowrap;
+}
+
+.plot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.plot-panel {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #2d3a3c;
+  border-radius: 6px;
+  background: var(--scope);
+  box-shadow: 0 10px 24px rgb(28 37 37 / 8%);
+}
+
+.plot-panel figcaption {
+  height: 42px;
+  padding: 7px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #2a393b;
+  color: #dbe6e3;
+  background: #172526;
+}
+
+.plot-panel figcaption span {
+  color: #849b9b;
+  font: 9px/1 var(--mono);
+}
+
+.plot-panel figcaption strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.plot-panel canvas {
+  width: 100%;
+  display: block;
+  background: var(--scope);
+}
+
+.spectrum-panel {
+  grid-column: 1 / -1;
+}
+
+.spectrum-panel canvas {
+  height: clamp(260px, 34vh, 340px);
+}
+
+.waterfall-panel canvas,
+.waveform-panel canvas {
+  height: clamp(210px, 26vh, 270px);
+}
+
+@media (max-width: 1080px) {
+  .topbar-context {
+    display: none;
+  }
+
+  .topbar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .analyzer-layout {
+    grid-template-columns: 250px minmax(0, 1fr);
+  }
+
+  .plot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .spectrum-panel {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    padding: 12px 16px;
+  }
+
+  .engine-status {
+    min-width: 0;
+    padding-left: 14px;
+  }
+
+  .engine-status span:not(.status-light) {
+    max-width: 125px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .analyzer-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .control-rail {
+    padding: 20px 16px 4px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .control-heading {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+  }
+
+  .control-group {
+    margin-bottom: 17px;
+  }
+
+  .plot-workspace {
+    padding: 20px 12px 28px;
+  }
+
+  .workspace-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .metrics > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .metrics > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .spectrum-panel canvas,
+  .waterfall-panel canvas,
+  .waveform-panel canvas {
+    height: 230px;
+  }
+}
