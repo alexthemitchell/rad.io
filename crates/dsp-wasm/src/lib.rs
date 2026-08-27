@@ -1,4 +1,6 @@
-use dsp_core::types::{AnalysisFrame as CoreAnalysisFrame, AnalyzerConfig, GeneratorConfig};
+use dsp_core::types::{
+    AnalysisFrame as CoreAnalysisFrame, AnalyzerConfig, DetectionConfig, GeneratorConfig,
+};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -29,6 +31,7 @@ impl DspEngine {
     pub fn configure(
         &mut self,
         sample_rate_hz: f32,
+        center_frequency_hz: f64,
         tone_frequency_hz: f32,
         tone_level_dbfs: f32,
         noise_enabled: bool,
@@ -40,6 +43,7 @@ impl DspEngine {
             .configure(
                 GeneratorConfig {
                     sample_rate_hz,
+                    center_frequency_hz,
                     tone_frequency_hz,
                     tone_level_dbfs,
                     noise_enabled,
@@ -51,6 +55,21 @@ impl DspEngine {
                     waveform_points: 1024,
                 },
             )
+            .map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    pub fn configure_detection(
+        &mut self,
+        enabled: bool,
+        minimum_snr_db: f32,
+        max_signals: u32,
+    ) -> Result<(), JsError> {
+        self.inner
+            .configure_detection(DetectionConfig {
+                enabled,
+                minimum_snr_db,
+                max_signals: max_signals as usize,
+            })
             .map_err(|error| JsError::new(&error.to_string()))
     }
 
@@ -105,6 +124,74 @@ impl AnalysisFrame {
     #[wasm_bindgen(getter)]
     pub fn spectrum_db(&self) -> Vec<f32> {
         self.inner.spectrum_db.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn noise_floor_dbfs(&self) -> f32 {
+        self.inner.noise_floor_dbfs
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn detection_peak_frequencies_hz(&self) -> Vec<f32> {
+        self.inner
+            .detections
+            .iter()
+            .map(|detection| detection.peak_frequency_hz)
+            .collect()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn detection_lower_frequencies_hz(&self) -> Vec<f32> {
+        self.inner
+            .detections
+            .iter()
+            .map(|detection| detection.lower_frequency_hz)
+            .collect()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn detection_upper_frequencies_hz(&self) -> Vec<f32> {
+        self.inner
+            .detections
+            .iter()
+            .map(|detection| detection.upper_frequency_hz)
+            .collect()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn detection_bandwidths_hz(&self) -> Vec<f32> {
+        self.inner
+            .detections
+            .iter()
+            .map(|detection| detection.bandwidth_hz)
+            .collect()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn detection_peak_powers_dbfs(&self) -> Vec<f32> {
+        self.inner
+            .detections
+            .iter()
+            .map(|detection| detection.peak_power_dbfs)
+            .collect()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn detection_snrs_db(&self) -> Vec<f32> {
+        self.inner
+            .detections
+            .iter()
+            .map(|detection| detection.snr_db)
+            .collect()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn detection_edge_clipped(&self) -> Vec<u8> {
+        self.inner
+            .detections
+            .iter()
+            .map(|detection| u8::from(detection.edge_clipped))
+            .collect()
     }
 
     #[wasm_bindgen(getter)]

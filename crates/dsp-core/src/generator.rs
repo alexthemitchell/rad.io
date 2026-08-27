@@ -43,6 +43,11 @@ impl ComplexToneGenerator {
     }
 
     #[must_use]
+    pub const fn center_frequency_hz(&self) -> f64 {
+        self.config.center_frequency_hz
+    }
+
+    #[must_use]
     pub fn generate(&mut self, sample_count: usize) -> Vec<f32> {
         let mut iq = Vec::with_capacity(sample_count * 2);
         let phase_step =
@@ -78,6 +83,9 @@ fn dbfs_to_amplitude(dbfs: f32) -> f32 {
 fn validate_config(config: GeneratorConfig) -> Result<(), DspError> {
     if !config.sample_rate_hz.is_finite() || config.sample_rate_hz <= 0.0 {
         return Err(DspError::InvalidSampleRate);
+    }
+    if !config.center_frequency_hz.is_finite() || config.center_frequency_hz < 0.0 {
+        return Err(DspError::InvalidCenterFrequency);
     }
     if !config.tone_frequency_hz.is_finite()
         || config.tone_frequency_hz.abs() >= config.sample_rate_hz / 2.0

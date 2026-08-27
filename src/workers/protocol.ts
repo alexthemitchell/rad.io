@@ -1,7 +1,8 @@
-export const PROTOCOL_VERSION = 1 as const
+export const PROTOCOL_VERSION = 2 as const
 
 export type GeneratorConfig = {
   sampleRateHz: number
+  centerFrequencyHz: number
   toneFrequencyHz: number
   toneLevelDbfs: number
   noiseEnabled: boolean
@@ -13,6 +14,7 @@ export type GeneratorConfig = {
 
 export const DEFAULT_GENERATOR_CONFIG: GeneratorConfig = {
   sampleRateHz: 1_000_000,
+  centerFrequencyHz: 0,
   toneFrequencyHz: 100_000,
   toneLevelDbfs: -12,
   noiseEnabled: true,
@@ -20,6 +22,84 @@ export const DEFAULT_GENERATOR_CONFIG: GeneratorConfig = {
   fftSize: 2048,
   frameRate: 30,
   seed: 0x52414449,
+}
+
+export type BandPlanId = 'fcc-us' | 'none'
+
+export type DetectionConfig = {
+  enabled: boolean
+  minimumSnrDb: number
+  maxSignals: number
+  bandPlanId: BandPlanId
+}
+
+export const DEFAULT_DETECTION_CONFIG: DetectionConfig = {
+  enabled: true,
+  minimumSnrDb: 15,
+  maxSignals: 16,
+  bandPlanId: 'fcc-us',
+}
+
+export type SpectralDetection = {
+  peakFrequencyHz: number
+  lowerFrequencyHz: number
+  upperFrequencyHz: number
+  bandwidthHz: number
+  peakPowerDbfs: number
+  snrDb: number
+  edgeClipped: boolean
+}
+
+export type SignalServiceCategory =
+  | 'am-broadcast'
+  | 'fm-broadcast'
+  | 'standard-time-frequency'
+  | 'amateur'
+  | 'aviation'
+  | 'television'
+  | 'unknown'
+
+export type SpectralShape =
+  | 'carrier-like'
+  | 'narrowband'
+  | 'medium-band'
+  | 'wideband'
+  | 'partial'
+
+export type ClassificationCandidate = {
+  allocationId: string | null
+  label: string
+  category: SignalServiceCategory
+  score: number
+  reasons: string[]
+  caveats: string[]
+}
+
+export type SignalClassification = {
+  profileId: BandPlanId
+  spectralShape: SpectralShape
+  primary: ClassificationCandidate
+  alternatives: ClassificationCandidate[]
+}
+
+export type TrackedSignal = {
+  id: string
+  peakOffsetHz: number
+  lowerOffsetHz: number
+  upperOffsetHz: number
+  absoluteFrequencyHz: number | null
+  lowerFrequencyHz: number | null
+  upperFrequencyHz: number | null
+  bandwidthHz: number
+  peakPowerDbfs: number
+  snrDb: number
+  edgeClipped: boolean
+  firstSeenUs: bigint
+  lastSeenUs: bigint
+  durationUs: bigint
+  hitCount: number
+  state: 'active' | 'recent'
+  classification: SignalClassification
 }
 
 export type SampleMetadata = {
@@ -40,6 +120,11 @@ export type WorkerRequest =
       type: 'configure'
       requestId: number
       config: GeneratorConfig
+    })
+  | (VersionedRequest & {
+      type: 'configure-detection'
+      requestId: number
+      config: DetectionConfig
     })
   | (VersionedRequest & { type: 'start-generated' })
   | (VersionedRequest & { type: 'stop' })
@@ -65,6 +150,13 @@ export type WorkerConfiguredEvent = {
   config: GeneratorConfig
 }
 
+export type WorkerDetectionConfiguredEvent = {
+  type: 'detection-configured'
+  protocolVersion: typeof PROTOCOL_VERSION
+  requestId: number
+  config: DetectionConfig
+}
+
 export type WorkerStatusEvent = {
   type: 'status'
   protocolVersion: typeof PROTOCOL_VERSION
@@ -77,6 +169,9 @@ export type AnalysisFrameEvent = {
   sequence: number
   waveform: Float32Array
   spectrumDb: Float32Array
+  noiseFloorDbfs: number
+  detections: SpectralDetection[]
+  trackedSignals: TrackedSignal[]
   sampleRateHz: number
   centerFrequencyHz: number
   peakFrequencyHz: number
@@ -111,6 +206,7 @@ export type WorkerErrorEvent = {
 export type WorkerEvent =
   | WorkerReadyEvent
   | WorkerConfiguredEvent
+  | WorkerDetectionConfiguredEvent
   | WorkerStatusEvent
   | AnalysisFrameEvent
   | InputReleasedEvent

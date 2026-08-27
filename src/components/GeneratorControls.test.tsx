@@ -27,6 +27,14 @@ describe('GeneratorControls', () => {
       ...DEFAULT_GENERATOR_CONFIG,
       toneFrequencyHz: -125_000,
     })
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'RF center' }), {
+      target: { value: '100.1' },
+    })
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_GENERATOR_CONFIG,
+      centerFrequencyHz: 100_100_000,
+    })
   })
 
   it('clamps manually entered frequencies inside Nyquist', () => {

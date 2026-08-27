@@ -17,6 +17,14 @@ export function AnalyzerStatus({ snapshot }: AnalyzerStatusProps) {
         <strong>{snapshot.peakPowerDbfs.toFixed(1)} dBFS</strong>
       </div>
       <div>
+        <span>Noise</span>
+        <strong>{snapshot.noiseFloorDbfs.toFixed(1)} dBFS</strong>
+      </div>
+      <div>
+        <span>Signals</span>
+        <strong>{snapshot.trackedSignals.filter((signal) => signal.state === 'active').length}</strong>
+      </div>
+      <div>
         <span>DSP</span>
         <strong>{snapshot.processingTimeMs.toFixed(2)} ms</strong>
       </div>

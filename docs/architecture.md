@@ -6,6 +6,8 @@
 Generated mode
 React controls -> AnalyzerController -> dedicated worker -> Rust/WASM generator
                                                      -> Rust/WASM FFT
+                                                     -> spectral detector
+                                                     -> signal tracker + classifier
                                                      -> transferable frame
                                                      -> FrameHub (rAF)
                                                      -> Canvas2D renderers
@@ -19,7 +21,7 @@ AnalyzerSource -> interleaved Float32 IQ -> dedicated worker -> same Rust/WASM F
 
 ## Rust Crates
 
-- `crates/dsp-core` is browser-independent DSP. It contains configuration validation, the continuous-phase complex tone generator, seeded Gaussian noise, Hann windowing, shifted FFT analysis, dBFS normalization, peak detection, and waveform decimation.
+- `crates/dsp-core` is browser-independent DSP. It contains configuration validation, the continuous-phase complex tone generator, seeded Gaussian noise, Hann windowing, shifted FFT analysis, dBFS normalization, multi-signal spectral detection, and waveform decimation.
 - `crates/dsp-wasm` is a thin `wasm-bindgen` boundary. It exposes a stateful `DspEngine` and typed-array frame getters.
 
 `rustfft` plans and Hann coefficients are created when the analyzer configuration changes, not for every frame.
@@ -55,13 +57,13 @@ Output bins are shifted into `[-sampleRate/2, +sampleRate/2)`. Values below -120
 
 ## Protocol And Backpressure
 
-Worker messages carry `protocolVersion: 1`. The main request types are:
+Worker messages carry `protocolVersion: 2`. The main request types are:
 
-- `init`, `configure`, `start-generated`, `stop`, and `reset`
+- `init`, `configure`, `configure-detection`, `start-generated`, `stop`, and `reset`
 - `frame-consumed` for display delivery acknowledgment
 - `process-samples` for externally acquired IQ
 
-The worker emits `ready`, `configured`, `status`, `analysis-frame`, `input-released`, and structured `error` messages. Analysis frames preserve the external source sequence, timestamp, and sample-format version for discontinuity detection.
+The worker emits `ready`, `configured`, `detection-configured`, `status`, `analysis-frame`, `input-released`, and structured `error` messages. It verifies that the loaded WASM engine reports the same protocol version before accepting work. Analysis frames preserve the external source sequence, timestamp, and sample-format version for discontinuity detection. External IQ remains sample format version 1 because its interleaved layout did not change.
 
 Generated mode permits one analysis frame awaiting `frame-consumed`. The next frame is scheduled only after render delivery, so a slow tab cannot build an unbounded queue. External input is rejected with `dropped: true` while generated mode or an unconsumed frame owns the processor. All large arrays use transfer lists instead of structured-clone copies.
 

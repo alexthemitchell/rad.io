@@ -1,6 +1,7 @@
 import {
   PROTOCOL_VERSION,
   type AnalysisFrameEvent,
+  type DetectionConfig,
   type GeneratorConfig,
   type InputReleasedEvent,
   type SampleMetadata,
@@ -49,6 +50,17 @@ export class DspWorkerClient {
     const requestId = ++this.#requestId
     this.#worker.postMessage({
       type: 'configure',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      config,
+    })
+    return requestId
+  }
+
+  configureDetection(config: DetectionConfig): number {
+    const requestId = ++this.#requestId
+    this.#worker.postMessage({
+      type: 'configure-detection',
       protocolVersion: PROTOCOL_VERSION,
       requestId,
       config,

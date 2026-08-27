@@ -6,18 +6,24 @@ import {
 } from './analyzer/AnalyzerController'
 import { AnalyzerCanvas } from './components/AnalyzerCanvas'
 import { AnalyzerStatus } from './components/AnalyzerStatus'
+import { DetectedSignalsPanel } from './components/DetectedSignalsPanel'
 import { GeneratorControls } from './components/GeneratorControls'
 import { SpectrumRenderer } from './renderers/SpectrumRenderer'
 import { WaterfallRenderer } from './renderers/WaterfallRenderer'
 import { WaveformRenderer } from './renderers/WaveformRenderer'
 import {
+  DEFAULT_DETECTION_CONFIG,
   DEFAULT_GENERATOR_CONFIG,
+  type DetectionConfig,
   type GeneratorConfig,
 } from './workers/protocol'
 
 function App() {
   const [controller] = useState(() => new AnalyzerController())
   const [config, setConfig] = useState<GeneratorConfig>(DEFAULT_GENERATOR_CONFIG)
+  const [detectionConfig, setDetectionConfig] = useState<DetectionConfig>(
+    DEFAULT_DETECTION_CONFIG,
+  )
   const [snapshot, setSnapshot] = useState<AnalyzerSnapshot>(controller.snapshot)
   const [ready, setReady] = useState(false)
   const [viewRevision, setViewRevision] = useState(0)
@@ -57,9 +63,14 @@ function App() {
     if (ready) controller.configure(config)
   }, [config, controller, ready])
 
+  useEffect(() => {
+    if (ready) controller.configureDetection(detectionConfig)
+  }, [controller, detectionConfig, ready])
+
   const running = snapshot.state === 'running'
   const handleReset = () => {
     controller.reset()
+    setSnapshot({ ...controller.snapshot })
     setViewRevision((revision) => revision + 1)
   }
 
@@ -75,7 +86,12 @@ function App() {
         </div>
         <div className="topbar-context" aria-label="Analyzer configuration">
           <span>GENERATED IQ</span>
-          <strong>{(config.sampleRateHz / 1_000_000).toFixed(2)} MS/s</strong>
+          <strong>
+            {config.centerFrequencyHz > 0
+              ? `${(config.centerFrequencyHz / 1_000_000).toFixed(3)} MHz`
+              : 'BASEBAND'}
+          </strong>
+          <span>{(config.sampleRateHz / 1_000_000).toFixed(2)} MS/s</span>
           <span>FFT {config.fftSize.toLocaleString()}</span>
         </div>
         <div className={`engine-status engine-status--${snapshot.state}`}>
@@ -140,6 +156,13 @@ function App() {
               renderer={WaveformRenderer}
             />
           </div>
+
+          <DetectedSignalsPanel
+            config={detectionConfig}
+            signals={snapshot.trackedSignals}
+            centerFrequencyHz={snapshot.centerFrequencyHz}
+            onConfigChange={setDetectionConfig}
+          />
         </section>
       </div>
     </main>

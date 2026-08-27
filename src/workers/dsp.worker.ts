@@ -1,10 +1,14 @@
 /// <reference lib="webworker" />
 
 import initWasm, { DspEngine } from '../../crates/dsp-wasm/pkg/dsp_wasm.js'
+import { classifySignal } from '../detection/classifySignal'
+import { SignalTracker } from '../detection/SignalTracker'
 import {
+  DEFAULT_DETECTION_CONFIG,
   DEFAULT_GENERATOR_CONFIG,
   PROTOCOL_VERSION,
   type AnalysisFrameEvent,
+  type DetectionConfig,
   type GeneratorConfig,
   type SampleMetadata,
   type WorkerErrorEvent,
@@ -15,9 +19,11 @@ import {
 const workerScope: DedicatedWorkerGlobalScope = self as DedicatedWorkerGlobalScope
 let engine: DspEngine | undefined
 let config: GeneratorConfig = DEFAULT_GENERATOR_CONFIG
+let detectionConfig: DetectionConfig = DEFAULT_DETECTION_CONFIG
 let running = false
 let scheduledFrame: number | undefined
 let awaitingSequence: number | undefined
+const signalTracker = new SignalTracker()
 
 function postError(
   code: WorkerErrorEvent['code'],
@@ -60,37 +66,96 @@ function emitFrame(
   startedAt: number,
   sourceMetadata?: SampleMetadata,
 ): void {
-  const waveform = frame.waveform
-  const spectrumDb = frame.spectrum_db
-  const sampleRateHz = frame.sample_rate_hz
-  const elapsedSamples = frame.elapsed_samples
-  const metadata = sourceMetadata ?? {
-    sampleRateHz,
-    centerFrequencyHz: frame.center_frequency_hz,
-    sourceSequence: frame.sequence,
-    timestampUs:
-      (elapsedSamples * 1_000_000n) / BigInt(Math.round(sampleRateHz)),
-    formatVersion: 1,
+  try {
+    const waveform = frame.waveform
+    const spectrumDb = frame.spectrum_db
+    const detectionPeakFrequenciesHz = frame.detection_peak_frequencies_hz
+    const detectionLowerFrequenciesHz = frame.detection_lower_frequencies_hz
+    const detectionUpperFrequenciesHz = frame.detection_upper_frequencies_hz
+    const detectionBandwidthsHz = frame.detection_bandwidths_hz
+    const detectionPeakPowersDbfs = frame.detection_peak_powers_dbfs
+    const detectionSnrsDb = frame.detection_snrs_db
+    const detectionEdgeClipped = frame.detection_edge_clipped
+    const detectionCount = detectionPeakFrequenciesHz.length
+    const detectionArrays = [
+      detectionLowerFrequenciesHz,
+      detectionUpperFrequenciesHz,
+      detectionBandwidthsHz,
+      detectionPeakPowersDbfs,
+      detectionSnrsDb,
+      detectionEdgeClipped,
+    ]
+    if (detectionArrays.some((values) => values.length !== detectionCount)) {
+      throw new Error('DSP returned misaligned detection arrays.')
+    }
+    const detections = Array.from({ length: detectionCount }, (_, index) => ({
+      peakFrequencyHz: detectionPeakFrequenciesHz[index],
+      lowerFrequencyHz: detectionLowerFrequenciesHz[index],
+      upperFrequencyHz: detectionUpperFrequenciesHz[index],
+      bandwidthHz: detectionBandwidthsHz[index],
+      peakPowerDbfs: detectionPeakPowersDbfs[index],
+      snrDb: detectionSnrsDb[index],
+      edgeClipped: detectionEdgeClipped[index] !== 0,
+    }))
+    const sampleRateHz = frame.sample_rate_hz
+    const elapsedSamples = frame.elapsed_samples
+    const metadata = sourceMetadata ?? {
+      sampleRateHz,
+      centerFrequencyHz: frame.center_frequency_hz,
+      sourceSequence: frame.sequence,
+      timestampUs:
+        (elapsedSamples * 1_000_000n) / BigInt(Math.round(sampleRateHz)),
+      formatVersion: 1,
+    }
+    const trackedSignals = signalTracker
+      .update(detections, {
+        centerFrequencyHz: frame.center_frequency_hz,
+        sampleRateHz,
+        binWidthHz: sampleRateHz / spectrumDb.length,
+        timestampUs: metadata.timestampUs,
+      })
+      .map((signal) => {
+        const { captureBandwidthHz, binWidthHz, ...trackedSignal } = signal
+        return {
+          ...trackedSignal,
+          classification: classifySignal(
+            {
+              absoluteFrequencyHz: signal.absoluteFrequencyHz,
+              bandwidthHz: signal.bandwidthHz,
+              snrDb: signal.snrDb,
+              hitCount: signal.hitCount,
+              edgeClipped: signal.edgeClipped,
+              captureBandwidthHz,
+              binWidthHz,
+            },
+            detectionConfig.bandPlanId,
+          ),
+        }
+      })
+    const message: AnalysisFrameEvent = {
+      type: 'analysis-frame',
+      protocolVersion: PROTOCOL_VERSION,
+      sequence: frame.sequence,
+      waveform,
+      spectrumDb,
+      noiseFloorDbfs: frame.noise_floor_dbfs,
+      detections,
+      trackedSignals,
+      sampleRateHz,
+      centerFrequencyHz: frame.center_frequency_hz,
+      peakFrequencyHz: frame.peak_frequency_hz,
+      peakPowerDbfs: frame.peak_power_dbfs,
+      elapsedSamples,
+      processingTimeMs: performance.now() - startedAt,
+      sourceSequence: metadata.sourceSequence,
+      timestampUs: metadata.timestampUs,
+      formatVersion: metadata.formatVersion,
+    }
+    workerScope.postMessage(message, [waveform.buffer, spectrumDb.buffer])
+    awaitingSequence = message.sequence
+  } finally {
+    frame.free()
   }
-  const message: AnalysisFrameEvent = {
-    type: 'analysis-frame',
-    protocolVersion: PROTOCOL_VERSION,
-    sequence: frame.sequence,
-    waveform,
-    spectrumDb,
-    sampleRateHz,
-    centerFrequencyHz: frame.center_frequency_hz,
-    peakFrequencyHz: frame.peak_frequency_hz,
-    peakPowerDbfs: frame.peak_power_dbfs,
-    elapsedSamples,
-    processingTimeMs: performance.now() - startedAt,
-    sourceSequence: metadata.sourceSequence,
-    timestampUs: metadata.timestampUs,
-    formatVersion: metadata.formatVersion,
-  }
-  frame.free()
-  awaitingSequence = message.sequence
-  workerScope.postMessage(message, [waveform.buffer, spectrumDb.buffer])
 }
 
 function produceGeneratedFrame(): void {
@@ -116,6 +181,19 @@ async function initialize(): Promise<void> {
   try {
     await initWasm()
     engine ??= new DspEngine()
+    if (engine.protocol_version !== PROTOCOL_VERSION) {
+      postError(
+        'PROTOCOL_MISMATCH',
+        `DSP protocol ${engine.protocol_version} does not match worker protocol ${PROTOCOL_VERSION}.`,
+        false,
+      )
+      return
+    }
+    engine.configure_detection(
+      detectionConfig.enabled,
+      detectionConfig.minimumSnrDb,
+      detectionConfig.maxSignals,
+    )
 
     const ready: WorkerReadyEvent = {
       type: 'ready',
@@ -160,6 +238,7 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
         }
         activeEngine.configure(
           request.config.sampleRateHz,
+          request.config.centerFrequencyHz,
           request.config.toneFrequencyHz,
           request.config.toneLevelDbfs,
           request.config.noiseEnabled,
@@ -168,6 +247,7 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
           BigInt(request.config.seed),
         )
         config = request.config
+        signalTracker.reset()
         workerScope.postMessage({
           type: 'configured',
           protocolVersion: PROTOCOL_VERSION,
@@ -176,6 +256,24 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
         })
         postStatus()
         scheduleGeneratedFrame(0)
+        break
+      case 'configure-detection':
+        if (request.config.bandPlanId !== 'fcc-us' && request.config.bandPlanId !== 'none') {
+          throw new Error(`Unsupported band plan ${String(request.config.bandPlanId)}.`)
+        }
+        activeEngine.configure_detection(
+          request.config.enabled,
+          request.config.minimumSnrDb,
+          request.config.maxSignals,
+        )
+        detectionConfig = request.config
+        signalTracker.reset()
+        workerScope.postMessage({
+          type: 'detection-configured',
+          protocolVersion: PROTOCOL_VERSION,
+          requestId: request.requestId,
+          config: detectionConfig,
+        })
         break
       case 'start-generated':
         running = true
@@ -189,6 +287,7 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
         break
       case 'reset':
         activeEngine.reset()
+        signalTracker.reset()
         break
       case 'frame-consumed':
         if (request.sequence === awaitingSequence) {

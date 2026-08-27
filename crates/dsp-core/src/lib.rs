@@ -1,4 +1,5 @@
 pub mod analyzer;
+pub mod detector;
 pub mod error;
 pub mod generator;
 pub mod types;
@@ -6,13 +7,14 @@ pub mod types;
 use analyzer::SpectrumAnalyzer;
 use error::DspError;
 use generator::ComplexToneGenerator;
-use types::{AnalysisFrame, AnalyzerConfig, GeneratorConfig};
+use types::{AnalysisFrame, AnalyzerConfig, DetectionConfig, GeneratorConfig};
 
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
 
 pub struct DspEngine {
     generator: ComplexToneGenerator,
     analyzer: SpectrumAnalyzer,
+    detection_config: DetectionConfig,
     sequence: u32,
     elapsed_samples: u64,
 }
@@ -25,6 +27,7 @@ impl DspEngine {
                 .expect("default generator config is valid"),
             analyzer: SpectrumAnalyzer::new(AnalyzerConfig::default())
                 .expect("default analyzer config is valid"),
+            detection_config: DetectionConfig::default(),
             sequence: 0,
             elapsed_samples: 0,
         }
@@ -45,17 +48,25 @@ impl DspEngine {
         generator_config: GeneratorConfig,
         analyzer_config: AnalyzerConfig,
     ) -> Result<(), DspError> {
-        let analyzer = SpectrumAnalyzer::new(analyzer_config)?;
+        let mut analyzer = SpectrumAnalyzer::new(analyzer_config)?;
+        analyzer.configure_detection(self.detection_config)?;
         self.generator.configure(generator_config)?;
         self.analyzer = analyzer;
+        Ok(())
+    }
+
+    pub fn configure_detection(&mut self, config: DetectionConfig) -> Result<(), DspError> {
+        self.analyzer.configure_detection(config)?;
+        self.detection_config = config;
         Ok(())
     }
 
     pub fn generate_and_analyze(&mut self) -> Result<AnalysisFrame, DspError> {
         let fft_size = self.analyzer.fft_size();
         let sample_rate_hz = self.generator.sample_rate_hz();
+        let center_frequency_hz = self.generator.center_frequency_hz();
         let iq = self.generator.generate(fft_size);
-        self.analyze(&iq, sample_rate_hz, 0.0)
+        self.analyze(&iq, sample_rate_hz, center_frequency_hz)
     }
 
     pub fn analyze_external(
@@ -79,7 +90,7 @@ impl DspEngine {
         sample_rate_hz: f32,
         center_frequency_hz: f64,
     ) -> Result<AnalysisFrame, DspError> {
-        if !center_frequency_hz.is_finite() {
+        if !center_frequency_hz.is_finite() || center_frequency_hz < 0.0 {
             return Err(DspError::InvalidCenterFrequency);
         }
         let result = self.analyzer.analyze(iq, sample_rate_hz)?;
@@ -89,6 +100,8 @@ impl DspEngine {
         Ok(AnalysisFrame {
             waveform: result.waveform,
             spectrum_db: result.spectrum_db,
+            noise_floor_dbfs: result.noise_floor_dbfs,
+            detections: result.detections,
             sequence: self.sequence,
             sample_rate_hz,
             center_frequency_hz,
@@ -132,6 +145,26 @@ mod tests {
         assert_eq!(first.sequence, 1);
         assert_eq!(second.sequence, 2);
         assert_eq!(second.elapsed_samples, first.elapsed_samples * 2);
+        assert_eq!(second.center_frequency_hz, 0.0);
+    }
+
+    #[test]
+    fn generated_frames_preserve_configured_center_frequency() {
+        let mut engine = DspEngine::new();
+        engine
+            .configure(
+                GeneratorConfig {
+                    center_frequency_hz: 100_000_000.0,
+                    ..GeneratorConfig::default()
+                },
+                AnalyzerConfig::default(),
+            )
+            .unwrap();
+
+        let frame = engine.generate_and_analyze().unwrap();
+
+        assert_eq!(frame.center_frequency_hz, 100_000_000.0);
+        assert!(!frame.detections.is_empty());
     }
 
     #[test]

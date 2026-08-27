@@ -2,7 +2,9 @@ import { DspWorkerClient } from '../workers/DspWorkerClient'
 import type { SampleChunk, SampleRelease } from '../sources/types'
 import type {
   AnalysisFrameEvent,
+  DetectionConfig,
   GeneratorConfig,
+  TrackedSignal,
   WorkerEvent,
 } from '../workers/protocol'
 import { FrameHub } from './FrameHub'
@@ -15,6 +17,9 @@ export type AnalyzerSnapshot = {
   sequence: number
   peakFrequencyHz: number
   peakPowerDbfs: number
+  centerFrequencyHz: number
+  noiseFloorDbfs: number
+  trackedSignals: TrackedSignal[]
   processingTimeMs: number
 }
 
@@ -30,6 +35,9 @@ export class AnalyzerController {
     sequence: 0,
     peakFrequencyHz: 0,
     peakPowerDbfs: -120,
+    centerFrequencyHz: 0,
+    noiseFloorDbfs: -120,
+    trackedSignals: [],
     processingTimeMs: 0,
   }
 
@@ -54,6 +62,10 @@ export class AnalyzerController {
     this.#client?.configure(config)
   }
 
+  configureDetection(config: DetectionConfig): void {
+    this.#client?.configureDetection(config)
+  }
+
   start(): void {
     this.#client?.startGenerated()
   }
@@ -69,6 +81,9 @@ export class AnalyzerController {
       sequence: 0,
       peakFrequencyHz: 0,
       peakPowerDbfs: -120,
+      centerFrequencyHz: 0,
+      noiseFloorDbfs: -120,
+      trackedSignals: [],
       processingTimeMs: 0,
     })
   }
@@ -111,6 +126,9 @@ export class AnalyzerController {
       sequence: frame.sequence,
       peakFrequencyHz: frame.peakFrequencyHz,
       peakPowerDbfs: frame.peakPowerDbfs,
+      centerFrequencyHz: frame.centerFrequencyHz,
+      noiseFloorDbfs: frame.noiseFloorDbfs,
+      trackedSignals: frame.trackedSignals,
       processingTimeMs: frame.processingTimeMs,
     }
     this.frames.publish(frame, () => this.#client?.frameConsumed(frame.sequence))
@@ -122,6 +140,17 @@ export class AnalyzerController {
         state: event.state,
         detail: event.state === 'running' ? 'Generated IQ active' : 'Analyzer idle',
       })
+    } else if (event.type === 'configured') {
+      this.#update({
+        centerFrequencyHz: event.config.centerFrequencyHz,
+        peakFrequencyHz: 0,
+        peakPowerDbfs: -120,
+        noiseFloorDbfs: -120,
+        trackedSignals: [],
+        processingTimeMs: 0,
+      })
+    } else if (event.type === 'detection-configured') {
+      this.#update({ trackedSignals: [] })
     } else if (event.type === 'error') {
       this.#update({ state: 'error', detail: event.message })
     }

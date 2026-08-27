@@ -4,13 +4,16 @@ use num_complex::Complex32;
 use rustfft::{Fft, FftPlanner};
 
 use crate::{
+    detector::{detect_signals, validate_detection_config},
     error::DspError,
-    types::{AnalyzerConfig, SPECTRUM_FLOOR_DBFS},
+    types::{AnalyzerConfig, DetectionConfig, SPECTRUM_FLOOR_DBFS, SpectralDetection},
 };
 
 pub struct SpectrumResult {
     pub waveform: Vec<f32>,
     pub spectrum_db: Vec<f32>,
+    pub noise_floor_dbfs: f32,
+    pub detections: Vec<SpectralDetection>,
     pub peak_frequency_hz: f32,
     pub peak_power_dbfs: f32,
 }
@@ -21,6 +24,7 @@ pub struct SpectrumAnalyzer {
     fft_buffer: Vec<Complex32>,
     window: Vec<f32>,
     window_sum: f32,
+    detection_config: DetectionConfig,
 }
 
 impl SpectrumAnalyzer {
@@ -43,12 +47,19 @@ impl SpectrumAnalyzer {
             fft_buffer: vec![Complex32::default(); config.fft_size],
             window,
             window_sum,
+            detection_config: DetectionConfig::default(),
         })
     }
 
     #[must_use]
     pub const fn fft_size(&self) -> usize {
         self.config.fft_size
+    }
+
+    pub fn configure_detection(&mut self, config: DetectionConfig) -> Result<(), DspError> {
+        validate_detection_config(config)?;
+        self.detection_config = config;
+        Ok(())
     }
 
     pub fn analyze(&mut self, iq: &[f32], sample_rate_hz: f32) -> Result<SpectrumResult, DspError> {
@@ -88,10 +99,13 @@ impl SpectrumAnalyzer {
 
         let bin_width_hz = sample_rate_hz / self.config.fft_size as f32;
         let peak_frequency_hz = (peak_index as f32 - half as f32) * bin_width_hz;
+        let detection_result = detect_signals(&spectrum_db, sample_rate_hz, self.detection_config);
 
         Ok(SpectrumResult {
             waveform: preview_iq(iq, self.config.waveform_points),
             spectrum_db,
+            noise_floor_dbfs: detection_result.noise_floor_dbfs,
+            detections: detection_result.detections,
             peak_frequency_hz,
             peak_power_dbfs,
         })
@@ -156,6 +170,8 @@ mod tests {
 
         assert!((result.peak_frequency_hz - tone_frequency_hz).abs() < 0.1);
         assert!((result.peak_power_dbfs - -12.0).abs() < 0.05);
+        assert_eq!(result.detections.len(), 1);
+        assert!((result.detections[0].peak_frequency_hz - tone_frequency_hz).abs() < 0.1);
     }
 
     #[test]

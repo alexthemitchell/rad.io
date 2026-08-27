@@ -2,7 +2,9 @@
 
 A browser-based baseband signal analyzer with DSP implemented in Rust, compiled to WebAssembly, and isolated in a dedicated web worker.
 
-The current signal source is a deterministic complex IQ tone with optional Gaussian noise. It drives a live spectrum, scrolling waterfall, and dual I/Q waveform. The worker also accepts externally supplied interleaved IQ buffers through the same analysis path for future WebUSB SDR input.
+The current signal source is a deterministic complex IQ tone with optional Gaussian noise. It drives a live spectrum, scrolling waterfall, dual I/Q waveform, and an automatic signal inventory. The worker also accepts externally supplied interleaved IQ buffers through the same analysis path for future WebUSB SDR input.
+
+The detector estimates the noise floor, extracts multiple occupied spectral regions, tracks them across frames, and attaches evidence-based service candidates from a selectable FCC/United States allocation profile. These labels are frequency-allocation matches, not decoded station identities or verified modulation types.
 
 ## Prerequisites
 
@@ -32,11 +34,13 @@ The `predev` script builds the development WASM package before Vite starts. Open
 The initial analyzer defaults are:
 
 - 1 MS/s complex sample rate
+- 0 Hz RF center (baseband-only classification)
 - 2,048-point Hann-window FFT
 - +100 kHz tone offset
 - -12 dBFS tone level
 - -72 dBFS deterministic Gaussian noise
 - 30 analysis frames per second
+- 15 dB minimum detection SNR
 
 ## Commands
 
@@ -61,10 +65,11 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## Architecture
 
-The main thread owns controls, low-rate status, and Canvas2D rendering. The dedicated worker owns signal generation, FFT state, and frame pacing. Numeric arrays move through transferable `ArrayBuffer` objects and are published to renderers on `requestAnimationFrame`; live packets are never stored in React state.
+The main thread owns controls, low-rate status, and Canvas2D rendering. The dedicated worker owns signal generation, FFT state, signal tracking/classification, and frame pacing. Numeric arrays move through transferable `ArrayBuffer` objects and are published to renderers on `requestAnimationFrame`; live packets are never stored in React state.
 
 See [docs/architecture.md](docs/architecture.md) for protocol, ownership, scaling, and WebUSB integration details.
+See [docs/signal-detection.md](docs/signal-detection.md) for detection behavior, metadata semantics, profile provenance, and limitations.
 
 ## Scope
 
-This milestone intentionally excludes device permission UI, hardware-specific SDR drivers, demodulation/audio, recording, SharedArrayBuffer, and WebGL. Those can be added behind the existing source, worker, and renderer contracts after measured need.
+This milestone intentionally excludes device permission UI, hardware-specific SDR drivers, wideband scan scheduling, demodulation/audio, station-directory lookup, payload decoding, recording, SharedArrayBuffer, and WebGL. Those can be added behind the existing source, worker, detector, and renderer contracts after measured need.

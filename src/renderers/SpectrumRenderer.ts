@@ -1,6 +1,7 @@
 import type { AnalysisFrameEvent } from '../workers/protocol'
 import {
   formatFrequency,
+  frequencyOffsetToX,
   prepareCanvas,
   type CanvasRenderer,
 } from './canvas'
@@ -74,10 +75,46 @@ export class SpectrumRenderer implements CanvasRenderer {
     context.lineWidth = 1.5
     context.stroke()
 
-    const peakX =
-      MARGIN.left +
-      ((frame.peakFrequencyHz + frame.sampleRateHz / 2) / frame.sampleRateHz) *
-        plotWidth
+    for (const signal of frame.trackedSignals) {
+      const lowerX = frequencyOffsetToX(
+        signal.lowerOffsetHz,
+        frame.sampleRateHz,
+        MARGIN.left,
+        plotWidth,
+      )
+      const upperX = frequencyOffsetToX(
+        signal.upperOffsetHz,
+        frame.sampleRateHz,
+        MARGIN.left,
+        plotWidth,
+      )
+      const peakX = frequencyOffsetToX(
+        signal.peakOffsetHz,
+        frame.sampleRateHz,
+        MARGIN.left,
+        plotWidth,
+      )
+      context.fillStyle =
+        signal.state === 'active' ? 'rgba(240, 189, 86, 0.12)' : 'rgba(131, 149, 150, 0.08)'
+      context.fillRect(lowerX, MARGIN.top, Math.max(1, upperX - lowerX), plotHeight)
+      context.beginPath()
+      context.moveTo(peakX, MARGIN.top)
+      context.lineTo(peakX, MARGIN.top + plotHeight)
+      context.strokeStyle = signal.state === 'active' ? '#f0bd56' : '#839596'
+      context.lineWidth = 1
+      context.stroke()
+      context.fillStyle = signal.state === 'active' ? '#f0bd56' : '#839596'
+      context.font = '9px "IBM Plex Mono"'
+      context.textAlign = 'left'
+      context.fillText(signal.id.replace('signal-', '#'), peakX + 4, MARGIN.top + 11)
+    }
+
+    const peakX = frequencyOffsetToX(
+      frame.peakFrequencyHz,
+      frame.sampleRateHz,
+      MARGIN.left,
+      plotWidth,
+    )
     context.beginPath()
     context.moveTo(peakX, MARGIN.top)
     context.lineTo(peakX, MARGIN.top + plotHeight)

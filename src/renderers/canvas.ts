@@ -47,3 +47,23 @@ export function prepareCanvas(
   canvas.height = Math.max(1, Math.round(height * pixelRatio))
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
 }
+
+export function formatRfFrequency(frequencyHz: number): string {
+  if (Math.abs(frequencyHz) >= 1_000_000_000) {
+    return `${(frequencyHz / 1_000_000_000).toFixed(6)} GHz`
+  }
+  if (Math.abs(frequencyHz) >= 1_000_000) {
+    return `${(frequencyHz / 1_000_000).toFixed(4)} MHz`
+  }
+  return formatFrequency(frequencyHz)
+}
+
+export function frequencyOffsetToX(
+  frequencyHz: number,
+  sampleRateHz: number,
+  plotLeft: number,
+  plotWidth: number,
+): number {
+  const normalized = (frequencyHz + sampleRateHz / 2) / sampleRateHz
+  return plotLeft + Math.max(0, Math.min(1, normalized)) * plotWidth
+}

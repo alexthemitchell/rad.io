@@ -55,6 +55,26 @@ export function GeneratorControls({
       </div>
 
       <div className="control-group">
+        <label htmlFor="center-frequency">RF center</label>
+        <div className="input-unit">
+          <input
+            id="center-frequency"
+            type="number"
+            min="0"
+            step="0.001"
+            value={config.centerFrequencyHz / 1_000_000}
+            onChange={(event) => {
+              const value = Number(event.target.value) * 1_000_000
+              if (Number.isFinite(value)) {
+                update({ centerFrequencyHz: Math.max(0, value) })
+              }
+            }}
+          />
+          <span>MHz</span>
+        </div>
+      </div>
+
+      <div className="control-group">
         <label htmlFor="tone-frequency">Tone offset</label>
         <div className="input-unit">
           <input

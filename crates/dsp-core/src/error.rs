@@ -10,8 +10,12 @@ pub enum DspError {
     InvalidWaveformPoints,
     #[error("tone frequency must be finite and within the Nyquist interval")]
     ToneOutsideNyquist,
-    #[error("center frequency must be finite")]
+    #[error("center frequency must be finite and non-negative")]
     InvalidCenterFrequency,
+    #[error("minimum detection SNR must be finite and between 0 and 120 dB, got {0}")]
+    InvalidDetectionSnr(f32),
+    #[error("maximum detected signals must be between 1 and 64, got {0}")]
+    InvalidDetectionLimit(usize),
     #[error("{field} must be finite and between -160 and 0 dBFS, got {value}")]
     InvalidLevel { field: &'static str, value: f32 },
     #[error("IQ buffer length must be {expected} interleaved values, got {actual}")]
