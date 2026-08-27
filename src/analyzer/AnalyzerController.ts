@@ -1,5 +1,5 @@
 import { DspWorkerClient } from '../workers/DspWorkerClient'
-import type { SampleChunk, SampleRelease } from '../sources/types'
+import type { AnalyzerSource, SampleChunk, SampleRelease } from '../sources/types'
 import type {
   AnalysisFrameEvent,
   DetectionConfig,
@@ -9,7 +9,7 @@ import type {
 } from '../workers/protocol'
 import { FrameHub } from './FrameHub'
 
-export type AnalyzerState = 'booting' | 'idle' | 'running' | 'error'
+export type AnalyzerState = 'booting' | 'idle' | 'connecting' | 'running' | 'error'
 
 export type AnalyzerSnapshot = {
   state: AnalyzerState
@@ -27,6 +27,10 @@ export class AnalyzerController {
   readonly frames = new FrameHub()
   readonly #statusListeners = new Set<(snapshot: AnalyzerSnapshot) => void>()
   #client: DspWorkerClient | undefined
+  #activeMode: 'idle' | 'generated' | 'external' = 'idle'
+  #activeSource: AnalyzerSource | undefined
+  #sourceTask: Promise<void> | undefined
+  #sourceGeneration = 0
   #unsubscribeFrame: (() => void) | undefined
   #unsubscribeStatus: (() => void) | undefined
   #snapshot: AnalyzerSnapshot = {
@@ -66,15 +70,74 @@ export class AnalyzerController {
     this.#client?.configureDetection(config)
   }
 
-  start(): void {
+  startGenerated(): void {
+    if (this.#activeSource) throw new Error('Stop the external source before starting the generator.')
+    this.#activeMode = 'generated'
     this.#client?.startGenerated()
   }
 
-  stop(): void {
-    this.#client?.stop()
+  async startExternal(source: AnalyzerSource): Promise<void> {
+    if (!this.#client) throw new Error('Analyzer is not initialized.')
+    if (this.#activeMode !== 'idle') {
+      throw new Error('Stop the active source before connecting HackRF One.')
+    }
+    this.#client.stop()
+    const generation = ++this.#sourceGeneration
+    this.#activeMode = 'external'
+    this.#activeSource = source
+    this.#update({ state: 'connecting', detail: 'Waiting for HackRF One' })
+
+    const sink = async (chunk: SampleChunk): Promise<SampleRelease> => {
+        if (generation !== this.#sourceGeneration || this.#activeSource !== source) {
+          return { buffer: chunk.iq.buffer as ArrayBuffer, dropped: true }
+        }
+        if (this.#snapshot.state === 'connecting') {
+          this.#update({ state: 'running', detail: 'HackRF One · live IQ' })
+        }
+        return this.ingest(chunk)
+      }
+    let task: Promise<void>
+    try {
+      task = source.start(sink)
+    } catch (error) {
+      this.#handleExternalFailure(source, generation, error)
+      return
+    }
+    this.#sourceTask = task
+    try {
+      await task
+      if (generation === this.#sourceGeneration && this.#activeMode === 'external') {
+        this.#activeMode = 'idle'
+        this.#activeSource = undefined
+        this.#sourceTask = undefined
+        this.#update({ state: 'idle', detail: 'Analyzer idle' })
+      }
+    } catch (error) {
+      this.#handleExternalFailure(source, generation, error)
+    }
   }
 
-  reset(): void {
+  async stop(): Promise<void> {
+    const source = this.#activeSource
+    const task = this.#sourceTask
+    this.#sourceGeneration += 1
+    this.#activeMode = 'idle'
+    this.#activeSource = undefined
+    this.#sourceTask = undefined
+    this.#client?.stop()
+    if (source) {
+      try {
+        await source.stop()
+        await task
+      } catch {
+        // Intentional stop owns the final state even if the device disappeared.
+      }
+    }
+    this.#update({ state: 'idle', detail: 'Analyzer idle' })
+  }
+
+  async reset(): Promise<void> {
+    if (this.#activeMode === 'external') await this.stop()
     this.#client?.reset()
     this.frames.clear()
     this.#update({
@@ -113,6 +176,11 @@ export class AnalyzerController {
   }
 
   dispose(): void {
+    this.#sourceGeneration += 1
+    void this.#activeSource?.stop()
+    this.#activeSource = undefined
+    this.#sourceTask = undefined
+    this.#activeMode = 'idle'
     this.#unsubscribeFrame?.()
     this.#unsubscribeStatus?.()
     this.frames.clear()
@@ -136,6 +204,8 @@ export class AnalyzerController {
 
   readonly #handleStatus = (event: WorkerEvent): void => {
     if (event.type === 'status') {
+      if (this.#activeMode === 'external') return
+      if (event.state === 'idle' && this.#snapshot.state === 'error') return
       this.#update({
         state: event.state,
         detail: event.state === 'running' ? 'Generated IQ active' : 'Analyzer idle',
@@ -154,6 +224,27 @@ export class AnalyzerController {
     } else if (event.type === 'error') {
       this.#update({ state: 'error', detail: event.message })
     }
+  }
+
+  #handleExternalFailure(
+    source: AnalyzerSource,
+    generation: number,
+    error: unknown,
+  ): void {
+    if (
+      generation !== this.#sourceGeneration ||
+      this.#activeMode !== 'external' ||
+      this.#activeSource !== source
+    ) {
+      return
+    }
+    this.#activeMode = 'idle'
+    this.#activeSource = undefined
+    this.#sourceTask = undefined
+    this.#update({
+      state: 'error',
+      detail: error instanceof Error ? error.message : String(error),
+    })
   }
 
   #update(update: Partial<AnalyzerSnapshot>): void {

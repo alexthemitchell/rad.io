@@ -8,7 +8,14 @@ import { AnalyzerCanvas } from './components/AnalyzerCanvas'
 import { AnalyzerStatus } from './components/AnalyzerStatus'
 import { DetectedSignalsPanel } from './components/DetectedSignalsPanel'
 import { GeneratorControls } from './components/GeneratorControls'
+import { HackRFControls } from './components/HackRFControls'
+import { SourceControls, type SourceMode } from './components/SourceControls'
 import { SpectrumRenderer } from './renderers/SpectrumRenderer'
+import { HackRFSource } from './sources/HackRFSource'
+import {
+  DEFAULT_HACKRF_CONFIG,
+  type HackRfConfig,
+} from './sources/hackrfProtocol'
 import { WaterfallRenderer } from './renderers/WaterfallRenderer'
 import { WaveformRenderer } from './renderers/WaveformRenderer'
 import {
@@ -20,7 +27,9 @@ import {
 
 function App() {
   const [controller] = useState(() => new AnalyzerController())
+  const [sourceMode, setSourceMode] = useState<SourceMode>('generator')
   const [config, setConfig] = useState<GeneratorConfig>(DEFAULT_GENERATOR_CONFIG)
+  const [hackRfConfig, setHackRfConfig] = useState<HackRfConfig>(DEFAULT_HACKRF_CONFIG)
   const [detectionConfig, setDetectionConfig] = useState<DetectionConfig>(
     DEFAULT_DETECTION_CONFIG,
   )
@@ -60,18 +69,47 @@ function App() {
   }, [controller])
 
   useEffect(() => {
-    if (ready) controller.configure(config)
-  }, [config, controller, ready])
+    if (!ready) return
+    controller.configure(
+      sourceMode === 'generator'
+        ? config
+        : {
+            ...config,
+            sampleRateHz: hackRfConfig.sampleRateHz,
+            centerFrequencyHz: hackRfConfig.centerFrequencyHz,
+            fftSize: hackRfConfig.fftSize,
+            frameRate: hackRfConfig.frameRate,
+          },
+    )
+  }, [config, controller, hackRfConfig, ready, sourceMode])
 
   useEffect(() => {
     if (ready) controller.configureDetection(detectionConfig)
   }, [controller, detectionConfig, ready])
 
   const running = snapshot.state === 'running'
-  const handleReset = () => {
-    controller.reset()
+  const sourceBusy = snapshot.state === 'connecting' || running
+  const activeConfig = sourceMode === 'generator' ? config : hackRfConfig
+  const handleReset = async () => {
+    await controller.reset()
     setSnapshot({ ...controller.snapshot })
     setViewRevision((revision) => revision + 1)
+  }
+
+  const handleSourceChange = (mode: SourceMode) => {
+    void controller.stop()
+    setSourceMode(mode)
+  }
+
+  const startHackRf = () => {
+    controller.configure({
+      ...config,
+      sampleRateHz: hackRfConfig.sampleRateHz,
+      centerFrequencyHz: hackRfConfig.centerFrequencyHz,
+      fftSize: hackRfConfig.fftSize,
+      frameRate: hackRfConfig.frameRate,
+    })
+    void controller.startExternal(new HackRFSource(hackRfConfig))
   }
 
   return (
@@ -85,14 +123,14 @@ function App() {
           </div>
         </div>
         <div className="topbar-context" aria-label="Analyzer configuration">
-          <span>GENERATED IQ</span>
+          <span>{sourceMode === 'generator' ? 'GENERATED IQ' : 'HACKRF ONE'}</span>
           <strong>
-            {config.centerFrequencyHz > 0
-              ? `${(config.centerFrequencyHz / 1_000_000).toFixed(3)} MHz`
+            {activeConfig.centerFrequencyHz > 0
+              ? `${(activeConfig.centerFrequencyHz / 1_000_000).toFixed(3)} MHz`
               : 'BASEBAND'}
           </strong>
-          <span>{(config.sampleRateHz / 1_000_000).toFixed(2)} MS/s</span>
-          <span>FFT {config.fftSize.toLocaleString()}</span>
+          <span>{(activeConfig.sampleRateHz / 1_000_000).toFixed(2)} MS/s</span>
+          <span>FFT {activeConfig.fftSize.toLocaleString()}</span>
         </div>
         <div className={`engine-status engine-status--${snapshot.state}`}>
           <span className="status-light" aria-hidden="true" />
@@ -100,6 +138,8 @@ function App() {
             <strong>
               {snapshot.state === 'running'
                 ? 'Analyzing'
+                : snapshot.state === 'connecting'
+                  ? 'Connecting'
                 : snapshot.state === 'error'
                   ? 'DSP error'
                   : ready
@@ -112,14 +152,35 @@ function App() {
       </header>
 
       <div className="analyzer-layout">
-        <GeneratorControls
-          config={config}
-          ready={ready}
-          running={running}
-          onChange={setConfig}
-          onToggle={() => (running ? controller.stop() : controller.start())}
-          onReset={handleReset}
-        />
+        <aside className="control-rail" aria-label="Signal source controls">
+          <SourceControls
+            mode={sourceMode}
+            disabled={sourceBusy}
+            onChange={handleSourceChange}
+          />
+          {sourceMode === 'generator' ? (
+            <GeneratorControls
+              config={config}
+              ready={ready}
+              running={running}
+              onChange={setConfig}
+              onToggle={() =>
+                running ? void controller.stop() : controller.startGenerated()
+              }
+              onReset={() => void handleReset()}
+            />
+          ) : (
+            <HackRFControls
+              config={hackRfConfig}
+              ready={ready}
+              state={snapshot.state}
+              onChange={setHackRfConfig}
+              onStart={startHackRf}
+              onStop={() => void controller.stop()}
+              onReset={() => void handleReset()}
+            />
+          )}
+        </aside>
 
         <section className="plot-workspace" aria-labelledby="workspace-heading">
           <header className="workspace-header">

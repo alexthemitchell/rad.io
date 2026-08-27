@@ -13,8 +13,10 @@ React controls -> AnalyzerController -> dedicated worker -> Rust/WASM generator
                                                      -> Canvas2D renderers
 
 External mode
-AnalyzerSource -> interleaved Float32 IQ -> dedicated worker -> same Rust/WASM FFT
-       ^                buffer returned <- input-released <---+
+Window permission -> acquisition worker -> signed int8 HackRF IQ
+                           -> latest complete FFT block -> interleaved Float32 IQ
+                           -> AnalyzerSource -> DSP worker -> same Rust/WASM FFT
+                                  ^       buffer returned <- input-released <---+
 ```
 
 `AnalyzerController` initializes one `DspWorkerClient` for its lifetime. React receives worker state changes immediately and samples numeric status every 250 ms. Spectrum, waterfall, and waveform arrays go directly from `FrameHub` to renderer objects without a React render.
@@ -79,22 +81,28 @@ Each visualization implements the same `CanvasRenderer` contract:
 
 This contract leaves room for WebGL or OffscreenCanvas renderers without changing the React controls or worker protocol.
 
-## Future WebUSB Source
+## HackRF WebUSB Source
 
-A WebUSB adapter should implement `AnalyzerSource` from `src/sources/types.ts` and remain on the main thread, where browser device APIs and user permission gestures are available. Its responsibilities are:
+`HackRFSource` implements `AnalyzerSource` from `src/sources/types.ts`. The window first checks `navigator.usb.getDevices()` for an origin-authorized HackRF. Only an initial or revoked pairing calls `navigator.usb.requestDevice()` from the Connect action, where transient user activation is available. The acquisition worker finds that authorized device with its own `navigator.usb.getDevices()`, claims the vendor interface, and owns the receive loop. Chromium versions that expose WebUSB only on the window use the same browser transport on the main thread; there is no native fallback.
 
-1. Feature-detect WebUSB and request a device only from an explicit user action.
-2. Open and configure the selected SDR using hardware-specific vendor/product logic.
-3. Convert or unpack device transfers into interleaved normalized `Float32` IQ.
-4. Assemble complete configured FFT blocks and pass each `SampleChunk` to `AnalyzerController.ingest`.
-5. Recycle the returned buffer and report dropped source sequences.
-6. Stop transfers, release interfaces, and close the device on disconnect.
+The source opens HackRF One `1d50:6089`, discovers its vendor-specific bulk-IN endpoint from USB descriptors, and configures receive mode with device-recipient vendor requests. Startup forces transceiver, antenna bias, and RF amplifier off before applying sample rate, baseband filter, center frequency, LNA/VGA gains, and RX mode. Samples arrive as signed interleaved bytes:
+
+```text
+[I0_i8, Q0_i8, I1_i8, Q1_i8, ...]
+```
+
+Each value is divided by 128 into the analyzer's interleaved `Float32` contract. The source continuously drains sequential 16 KiB bulk transfers so browser rendering cannot back up the radio. It assembles exact FFT blocks, retains only the newest eligible block, and submits at most one block every `sampleRate / frameRate` samples. While DSP owns the sole transferable output buffer, USB reads continue and older display blocks are discarded by advancing the source sequence.
+
+The returned `input-released` buffer is transferred back to the acquisition worker and reused. A stalled bulk endpoint receives bounded `clearHalt` recovery. Stop switches the transceiver off, aborts the pending read by closing when necessary, releases the claimed interface, and closes the device.
 
 WebUSB requires a secure context in production. SharedArrayBuffer and cross-origin isolation are deliberately deferred; transferable buffers are the measured baseline.
+
+The implementation is OS-neutral and has no dependency on `libhackrf`, Node `usb`, native bridges, browser extensions, custom driver installers, or firmware changes. The host still controls whether Chromium can claim a USB interface. Windows can use its inbox WinUSB service through HackRF's Microsoft compatible-ID descriptor; some Linux installations deny raw USB device-node access through host policy. The page detects and reports those failures but cannot bypass them from the browser sandbox.
 
 ## Performance Invariants
 
 - No React state update occurs per IQ packet or rendered frame.
+- HackRF USB reads run independently of React and retain at most one pending display block.
 - Only one generated analysis frame can be in flight.
 - Canvas dimensions are stable and responsive.
 - Worker creation is isolated from live control dependencies.

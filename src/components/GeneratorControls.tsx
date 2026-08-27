@@ -24,7 +24,7 @@ export function GeneratorControls({
   const toneLimitHz = config.sampleRateHz / 2 - 1000
 
   return (
-    <aside className="control-rail" aria-label="Signal generator controls">
+    <div className="source-control-body" aria-label="Signal generator controls">
       <div className="control-heading">
         <span>01 / SOURCE</span>
         <h2>Generator</h2>
@@ -177,6 +177,6 @@ export function GeneratorControls({
           </select>
         </div>
       </div>
-    </aside>
+    </div>
   )
 }

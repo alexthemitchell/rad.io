@@ -128,6 +128,55 @@
   background: color-mix(in srgb, var(--paper) 62%, var(--chrome));
 }
 
+.source-picker {
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.source-picker button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--paper);
+  font: 600 10px/1 var(--mono);
+  cursor: pointer;
+}
+
+.source-picker button + button {
+  border-left: 0;
+}
+
+.source-picker button[aria-pressed='true'] {
+  border-color: var(--ink);
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.source-picker button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.source-picker button:disabled,
+.transport-button:disabled,
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.source-control-body {
+  min-width: 0;
+}
+
 .control-heading {
   margin-bottom: 24px;
   padding-bottom: 20px;
@@ -772,4 +821,10 @@
   .waveform-panel canvas {
     height: 230px;
   }
+}
+
+.source-note {
+  margin: 0;
+  color: var(--muted);
+  font: 10px/1.35 var(--mono);
 }

@@ -1,8 +1,8 @@
 # rad.io
 
-A browser-based baseband signal analyzer with DSP implemented in Rust, compiled to WebAssembly, and isolated in a dedicated web worker.
+A browser-based signal analyzer with DSP implemented in Rust, compiled to WebAssembly, and isolated in dedicated web workers.
 
-The current signal source is a deterministic complex IQ tone with optional Gaussian noise. It drives a live spectrum, scrolling waterfall, dual I/Q waveform, and an automatic signal inventory. The worker also accepts externally supplied interleaved IQ buffers through the same analysis path for future WebUSB SDR input.
+The analyzer accepts a deterministic complex IQ generator or live RF from a HackRF One connected directly through WebUSB. Both sources drive the same spectrum, scrolling waterfall, dual I/Q waveform, and automatic signal inventory. HackRF support runs entirely in the browser without `libhackrf`, a native helper, a browser extension, or an application-supplied driver package.
 
 The detector estimates the noise floor, extracts multiple occupied spectral regions, tracks them across frames, and attaches evidence-based service candidates from a selectable FCC/United States allocation profile. These labels are frequency-allocation matches, not decoded station identities or verified modulation types.
 
@@ -12,7 +12,7 @@ The detector estimates the noise floor, extracts multiple occupied spectral regi
 - Rust stable through [rustup](https://rustup.rs/)
 - The `wasm32-unknown-unknown` Rust target
 - `wasm-pack`
-- Chromium or Microsoft Edge for the current browser target
+- Desktop Chromium or Microsoft Edge; WebUSB hardware access requires a secure context
 
 On Windows PowerShell:
 
@@ -42,6 +42,23 @@ The initial analyzer defaults are:
 - 30 analysis frames per second
 - 15 dB minimum detection SNR
 
+The HackRF One source starts with conservative receive-only settings:
+
+- 100 MHz center frequency
+- 2 MS/s complex sample rate
+- 1.75 MHz baseband filter
+- 2,048-point FFT at up to 30 analysis frames per second
+- 16 dB LNA gain and 20 dB VGA gain
+- RF amplifier and antenna bias power off
+
+## HackRF One
+
+Select **HackRF**, then **Connect**. On first use, choose the radio in Chromium's USB picker; later connections reuse the origin's retained device permission without reopening the picker while that authorized HackRF is available. The browser opens the vendor interface, configures receive mode, and streams signed 8-bit interleaved IQ into the existing Rust/WASM analyzer. Stop returns the radio to transceiver-off mode and closes the browser USB session without revoking permission.
+
+The implementation is platform-neutral and contains no OS detection or native fallback. Windows can bind HackRF firmware's `USB\MS_COMP_WINUSB` identity to the inbox WinUSB service; macOS exposes the device through its USB stack. Some Linux host policies deny browser access to raw USB device nodes. A sandboxed page cannot alter that policy, so rad.io reports the host denial rather than installing or invoking system software.
+
+WebUSB is not implemented by Firefox or Safari. Production hosting must use HTTPS; loopback development URLs are treated as secure contexts by Chromium.
+
 ## Commands
 
 | Command | Purpose |
@@ -65,11 +82,11 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## Architecture
 
-The main thread owns controls, low-rate status, and Canvas2D rendering. The dedicated worker owns signal generation, FFT state, signal tracking/classification, and frame pacing. Numeric arrays move through transferable `ArrayBuffer` objects and are published to renderers on `requestAnimationFrame`; live packets are never stored in React state.
+The main thread owns permission selection, controls, low-rate status, and Canvas2D rendering. A browser acquisition worker owns HackRF USB transfers, while the DSP worker owns signal generation, FFT state, signal tracking/classification, and frame pacing. Numeric arrays move through transferable `ArrayBuffer` objects and are published to renderers on `requestAnimationFrame`; live packets are never stored in React state.
 
 See [docs/architecture.md](docs/architecture.md) for protocol, ownership, scaling, and WebUSB integration details.
 See [docs/signal-detection.md](docs/signal-detection.md) for detection behavior, metadata semantics, profile provenance, and limitations.
 
 ## Scope
 
-This milestone intentionally excludes device permission UI, hardware-specific SDR drivers, wideband scan scheduling, demodulation/audio, station-directory lookup, payload decoding, recording, SharedArrayBuffer, and WebGL. Those can be added behind the existing source, worker, detector, and renderer contracts after measured need.
+HackRF support is receive-only. This milestone intentionally excludes transmit, hardware sweep mode, antenna bias enablement, firmware flashing/reset, calibrated dBm measurements, demodulation/audio, payload decoding, recording, SharedArrayBuffer, and WebGL. Those can be added behind the existing source, worker, detector, and renderer contracts after measured need.
