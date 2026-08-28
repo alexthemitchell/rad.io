@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test('decodes the synthetic FM+RDS station and renders its metadata', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByText('DSP online')).toBeVisible()
 
   await page.getByRole('button', { name: 'FM + RDS' }).click()

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
 
 type TimingSummary = {
   meanMs: number
@@ -313,6 +314,15 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
     }
   })
 
+  const serializedReport = `${JSON.stringify(report, null, 2)}\n`
+  const reportPath = testInfo.outputPath('browser-performance.json')
+  await writeFile(reportPath, serializedReport, 'utf8')
+  await testInfo.attach('browser-performance.json', {
+    path: reportPath,
+    contentType: 'application/json',
+  })
+  console.log(`Browser performance baseline:\n${serializedReport}`)
+
   expect(report.worker).toHaveLength(9)
   for (const measurement of report.worker) {
     expect(measurement.processing.meanMs).toBeGreaterThan(0)
@@ -333,10 +343,4 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
     expect(measurement.realTimeHeadroom).toBeGreaterThan(1)
     expect(measurement.emittedSamples).toBeGreaterThan(0)
   }
-
-  await testInfo.attach('browser-performance.json', {
-    body: JSON.stringify(report, null, 2),
-    contentType: 'application/json',
-  })
-  console.log(`Browser performance baseline:\n${JSON.stringify(report, null, 2)}`)
 })

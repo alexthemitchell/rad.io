@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByText('DSP online')).toBeVisible()
 })
 
@@ -60,7 +60,7 @@ test('continues generating after reset clears a pending frame', async ({ page })
   )
 })
 
-test('processes and releases transferable external IQ', async ({ page }) => {
+test('@source processes and releases transferable external IQ', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const modulePath = '/src/workers/DspWorkerClient.ts'
     const { DspWorkerClient } = await import(modulePath)
@@ -156,7 +156,7 @@ test('processes and releases transferable external IQ', async ({ page }) => {
   expect(result.invalidDropped).toBe(true)
 })
 
-test('tracks and classifies multiple external IQ signals', async ({ page }) => {
+test('@source tracks and classifies multiple external IQ signals', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const modulePath = '/src/workers/DspWorkerClient.ts'
     const { DspWorkerClient } = await import(modulePath)

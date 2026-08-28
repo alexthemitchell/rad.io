@@ -10,7 +10,7 @@ for (const preset of GENERATED_AUDIO_MODES) {
   test(`plays ${preset.mode} through the VFO AudioWorklet`, async ({ page }, testInfo) => {
     const pageErrors: string[] = []
     page.on('pageerror', (error) => pageErrors.push(error.message))
-    await page.goto('/')
+    await page.goto('./')
     await expect(page.getByText('DSP online')).toBeVisible()
 
     await page.getByRole('button', { name: preset.button, exact: true }).click()
@@ -46,7 +46,7 @@ for (const preset of GENERATED_AUDIO_MODES) {
 test('attaches audio to an already-running generated source', async ({ page }) => {
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByText('DSP online')).toBeVisible()
 
   await page.getByRole('button', { name: 'NBFM', exact: true }).click()
@@ -64,7 +64,7 @@ test('attaches audio to an already-running generated source', async ({ page }) =
 })
 
 test('reactivates an out-of-band VFO when source coverage moves', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByText('DSP online')).toBeVisible()
   await page.getByRole('button', { name: 'Add VFO' }).click()
 
@@ -76,7 +76,7 @@ test('reactivates an out-of-band VFO when source coverage moves', async ({ page 
 
 test('enforces four VFOs and keeps the mixer within a mobile viewport', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByText('DSP online')).toBeVisible()
 
   const add = page.getByRole('button', { name: 'Add VFO' })

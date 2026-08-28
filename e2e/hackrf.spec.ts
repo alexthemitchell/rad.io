@@ -186,7 +186,7 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
     })
   })
 
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByText('DSP online')).toBeVisible()
   await page.getByRole('button', { name: 'HackRF' }).click()
   await expect(page.getByRole('slider', { name: 'Minimum SNR' })).toHaveValue('25')
@@ -310,7 +310,7 @@ test('reports unavailable WebUSB without remaining in connecting state', async (
       value: undefined,
     })
   })
-  await page.goto('/')
+  await page.goto('./')
   await expect(page.getByText('DSP online')).toBeVisible()
   await page.getByRole('button', { name: 'HackRF' }).click()
   await page.getByRole('button', { name: 'Connect HackRF One' }).click()
