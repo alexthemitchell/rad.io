@@ -4,8 +4,6 @@ import type {
   AnalysisFrameEvent,
   DetectionConfig,
   GeneratorConfig,
-  RdsDecodeTarget,
-  RdsReception,
   TrackedSignal,
   WorkerEvent,
 } from '../workers/protocol'
@@ -33,8 +31,6 @@ export class AnalyzerController {
   #activeSource: AnalyzerSource | undefined
   #sourceTask: Promise<void> | undefined
   #sourceGeneration = 0
-  readonly #rdsByChannel = new Map<number, RdsReception>()
-  #rdsTargetKey = ''
   #unsubscribeFrame: (() => void) | undefined
   #unsubscribeStatus: (() => void) | undefined
   #snapshot: AnalyzerSnapshot = {
@@ -67,18 +63,15 @@ export class AnalyzerController {
   }
 
   configure(config: GeneratorConfig): void {
-    this.#clearRdsState()
     this.#client?.configure(config)
   }
 
   configureDetection(config: DetectionConfig): void {
-    this.#clearRdsState()
     this.#client?.configureDetection(config)
   }
 
   startGenerated(): void {
     if (this.#activeSource) throw new Error('Stop the external source before starting the generator.')
-    this.#clearRdsState()
     this.#activeMode = 'generated'
     this.#client?.startGenerated()
   }
@@ -94,27 +87,15 @@ export class AnalyzerController {
     this.#activeSource = source
     this.#update({ state: 'connecting', detail: 'Waiting for HackRF One' })
 
-    const sink = async (chunk: SampleChunk): Promise<SampleRelease> => {
-      if (generation !== this.#sourceGeneration || this.#activeSource !== source) {
-        return { buffer: chunk.iq.buffer as ArrayBuffer, dropped: true }
-      }
-      if (this.#snapshot.state === 'connecting') {
-        this.#update({ state: 'running', detail: 'HackRF One · live IQ' })
-      }
-      return this.ingest(chunk)
-    }
-    let task: Promise<void>
-    try {
-      this.#clearRdsState()
-      task = source.start(sink, (receptions) => {
-        if (generation === this.#sourceGeneration && this.#activeSource === source) {
-          this.#handleRdsUpdate(receptions)
+    const task = source.start(async (chunk) => {
+        if (generation !== this.#sourceGeneration || this.#activeSource !== source) {
+          return { buffer: chunk.iq.buffer as ArrayBuffer, dropped: true }
         }
+        if (this.#snapshot.state === 'connecting') {
+          this.#update({ state: 'running', detail: 'HackRF One · live IQ' })
+        }
+        return this.ingest(chunk)
       })
-    } catch (error) {
-      this.#handleExternalFailure(source, generation, error)
-      return
-    }
     this.#sourceTask = task
     try {
       await task
@@ -125,7 +106,15 @@ export class AnalyzerController {
         this.#update({ state: 'idle', detail: 'Analyzer idle' })
       }
     } catch (error) {
-      this.#handleExternalFailure(source, generation, error)
+      if (generation === this.#sourceGeneration && this.#activeMode === 'external') {
+        this.#activeMode = 'idle'
+        this.#activeSource = undefined
+        this.#sourceTask = undefined
+        this.#update({
+          state: 'error',
+          detail: error instanceof Error ? error.message : String(error),
+        })
+      }
     }
   }
 
@@ -133,7 +122,6 @@ export class AnalyzerController {
     const source = this.#activeSource
     const task = this.#sourceTask
     this.#sourceGeneration += 1
-    this.#clearRdsState()
     this.#activeMode = 'idle'
     this.#activeSource = undefined
     this.#sourceTask = undefined
@@ -150,9 +138,8 @@ export class AnalyzerController {
   }
 
   async reset(): Promise<void> {
-    if (this.#activeMode === 'external') await this.stop()
+    await this.stop()
     this.#client?.reset()
-    this.#clearRdsState()
     this.frames.clear()
     this.#update({
       sequence: 0,
@@ -183,59 +170,6 @@ export class AnalyzerController {
     return { buffer: released.buffer, dropped: released.dropped }
   }
 
-  #handleRdsUpdate(receptions: readonly RdsReception[]): void {
-    for (const reception of receptions) {
-      this.#rdsByChannel.set(reception.channelCenterHz, reception)
-    }
-    const trackedSignals = this.#mergeRdsReceptions(
-      this.#snapshot.trackedSignals,
-      latestRdsTimestamp(receptions),
-    )
-    this.#update({ trackedSignals })
-  }
-
-  #updateRdsTargets(targets: readonly RdsDecodeTarget[]): void {
-    const key = targets
-      .map((target) => `${target.channelCenterHz}:${target.frequencyOffsetHz}`)
-      .join('|')
-    if (key === this.#rdsTargetKey) return
-    this.#rdsTargetKey = key
-    this.#activeSource?.setRdsTargets?.(targets)
-  }
-
-  #mergeRdsReceptions(
-    signals: readonly TrackedSignal[],
-    timestampUs: bigint,
-  ): TrackedSignal[] {
-    return signals.map((signal) => {
-      const channelCenterHz = signal.classification.primary.channelCenterHz
-      if (channelCenterHz === null) return signal
-      const cached = this.#rdsByChannel.get(channelCenterHz)
-      if (!cached) return signal
-      const lastValidGroupAtUs = cached.diagnostics.lastValidGroupAtUs
-      const stale =
-        (lastValidGroupAtUs !== null && timestampUs - lastValidGroupAtUs > 2_000_000n)
-      return {
-        ...signal,
-        rds: stale ? { ...cached, state: 'stale' } : cached,
-      }
-    })
-  }
-
-  #clearRdsState(): void {
-    this.#rdsByChannel.clear()
-    this.#rdsTargetKey = ''
-    this.#activeSource?.setRdsTargets?.([])
-    this.#snapshot = {
-      ...this.#snapshot,
-      trackedSignals: this.#snapshot.trackedSignals.map((signal) => {
-        const withoutRds = { ...signal }
-        delete withoutRds.rds
-        return withoutRds
-      }),
-    }
-  }
-
   subscribeStatus(listener: (snapshot: AnalyzerSnapshot) => void): () => void {
     this.#statusListeners.add(listener)
     listener(this.#snapshot)
@@ -244,7 +178,6 @@ export class AnalyzerController {
 
   dispose(): void {
     this.#sourceGeneration += 1
-    this.#clearRdsState()
     void this.#activeSource?.stop()
     this.#activeSource = undefined
     this.#sourceTask = undefined
@@ -257,24 +190,6 @@ export class AnalyzerController {
   }
 
   readonly #handleFrame = (frame: AnalysisFrameEvent): void => {
-    let trackedSignals = frame.trackedSignals
-    if (this.#activeMode === 'external') {
-      this.#updateRdsTargets(frame.rdsTargets)
-      trackedSignals = this.#mergeRdsReceptions(trackedSignals, frame.timestampUs)
-      const retainedChannels = new Set(
-        trackedSignals.flatMap((signal) => {
-          const channelCenterHz = signal.classification.primary.channelCenterHz
-          return channelCenterHz === null ? [] : [channelCenterHz]
-        }),
-      )
-      for (const channelCenterHz of this.#rdsByChannel.keys()) {
-        if (!retainedChannels.has(channelCenterHz)) {
-          this.#rdsByChannel.delete(channelCenterHz)
-        }
-      }
-    }
-    const deliveredFrame =
-      trackedSignals === frame.trackedSignals ? frame : { ...frame, trackedSignals }
     this.#snapshot = {
       ...this.#snapshot,
       sequence: frame.sequence,
@@ -282,16 +197,15 @@ export class AnalyzerController {
       peakPowerDbfs: frame.peakPowerDbfs,
       centerFrequencyHz: frame.centerFrequencyHz,
       noiseFloorDbfs: frame.noiseFloorDbfs,
-      trackedSignals,
+      trackedSignals: frame.trackedSignals,
       processingTimeMs: frame.processingTimeMs,
     }
-    this.frames.publish(deliveredFrame, () => this.#client?.frameConsumed(frame.sequence))
+    this.frames.publish(frame, () => this.#client?.frameConsumed(frame.sequence))
   }
 
   readonly #handleStatus = (event: WorkerEvent): void => {
     if (event.type === 'status') {
       if (this.#activeMode === 'external') return
-      if (event.state === 'idle' && this.#snapshot.state === 'error') return
       this.#update({
         state: event.state,
         detail: event.state === 'running' ? 'Generated IQ active' : 'Analyzer idle',
@@ -312,37 +226,8 @@ export class AnalyzerController {
     }
   }
 
-  #handleExternalFailure(
-    source: AnalyzerSource,
-    generation: number,
-    error: unknown,
-  ): void {
-    if (
-      generation !== this.#sourceGeneration ||
-      this.#activeMode !== 'external' ||
-      this.#activeSource !== source
-    ) {
-      return
-    }
-    this.#clearRdsState()
-    this.#activeMode = 'idle'
-    this.#activeSource = undefined
-    this.#sourceTask = undefined
-    this.#update({
-      state: 'error',
-      detail: error instanceof Error ? error.message : String(error),
-    })
-  }
-
   #update(update: Partial<AnalyzerSnapshot>): void {
     this.#snapshot = { ...this.#snapshot, ...update }
     for (const listener of this.#statusListeners) listener(this.#snapshot)
   }
-}
-
-function latestRdsTimestamp(receptions: readonly RdsReception[]): bigint {
-  return receptions.reduce((latest, reception) => {
-    const timestamp = reception.diagnostics.lastValidGroupAtUs
-    return timestamp !== null && timestamp > latest ? timestamp : latest
-  }, 0n)
 }

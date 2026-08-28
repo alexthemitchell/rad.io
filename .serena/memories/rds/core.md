@@ -1,0 +1,10 @@
+# RDS/RBDS Core
+
+- Only confirmed active `fm-broadcast` tracks with an allocation channel center, no edge clipping, and 120 kHz capture headroom are eligible. Targets are sticky; capacity is up to 4 at 2/5 MS/s, 2 at 10 MS/s, and 1 at 20 MS/s.
+- Metadata is keyed by channel center, not transient track ID. It survives a track's `recent` period, becomes stale after 2 seconds of source time without a valid group, and is removed with the track. Retune, sample-rate/profile change, reset/stop, and acquisition discontinuity clear decoder state.
+- Decoder path: channel shift/decimate to 250 kS/s, FM phase discriminator, 57 kHz subcarrier extraction, 19 kS/s resampling, parallel symbol phase/differential biphase decode, 26-bit block alignment/correction, 104-bit group assembly.
+- Generated and live modes must process continuous IQ. Live HackRF feeds every successful USB transfer into `RdsDecoderBank` before display throttling; metadata updates are coalesced to at most 4 Hz.
+- Supports every group variant as bounded raw history and promotes PI/call sign, stable PS, PTY/PTYN, traffic/decoder flags, AF, RadioText, clock, ODA, and numeric TMC/EON data. Do not invent semantics requiring external TMC/ODA databases.
+- Synthetic FM+RDS regression station: 100.1 MHz, PS `RAD.IO`, PI `0x3CE7`, call sign `KRAD`, PTY Information, PTYN Public, RadioText `RAD.IO synthetic RBDS test station`.
+- Independent 2026-08-27 HackRF/GNU Radio proof matched PI `0x187F`, call sign `KDFR`, PTY Religious Music, and RadioText on 91.3 MHz. Repeat independent hardware cross-checks for claims that exceed deterministic regression coverage.
+- Read `mem:hardware/core` for live ownership/backpressure, `mem:dsp/core` for decoder implementation boundaries, and use the `sdr-hardware-verification` skill for correctness work.
