@@ -1,6 +1,7 @@
 import type { HackRfConfig, HackRfRuntimeCommand } from './hackrfProtocol'
 import type { HackRfDeviceInfo } from './HackRfDeviceSession'
 import type { RdsDecodeTarget, RdsReception } from '../workers/protocol'
+import type { VfoDspConfig } from '../vfo/types'
 
 export type HackRfDeviceIdentity = {
   vendorId: number
@@ -12,6 +13,8 @@ export type HackRfWorkerRequest =
   | { type: 'start'; identity: HackRfDeviceIdentity; config: HackRfConfig }
   | { type: 'apply-runtime-command'; requestId: number; command: HackRfRuntimeCommand }
   | { type: 'set-rds-targets'; targets: RdsDecodeTarget[] }
+  | { type: 'set-vfos'; outputSampleRateHz: number; vfos: VfoDspConfig[] }
+  | { type: 'attach-vfo-audio-port'; port: MessagePort }
   | { type: 'return-buffer'; buffer: ArrayBuffer }
   | { type: 'stop' }
 

@@ -1,6 +1,8 @@
-export const PROTOCOL_VERSION = 3 as const
+import type { VfoDspConfig } from '../vfo/types'
 
-export type GeneratorMode = 'tone' | 'fm-rds'
+export const PROTOCOL_VERSION = 4 as const
+
+export type GeneratorMode = 'tone' | 'fm-rds' | 'am' | 'nbfm'
 
 export type GeneratorConfig = {
   mode: GeneratorMode
@@ -44,6 +46,38 @@ export const FM_RDS_PRESET = {
   pi: 0x3ce7,
   pty: 'Information',
   radioText: 'RAD.IO synthetic RBDS test station',
+} as const
+
+export const AM_GENERATOR_CONFIG: GeneratorConfig = {
+  ...DEFAULT_GENERATOR_CONFIG,
+  mode: 'am',
+  sampleRateHz: 250_000,
+  centerFrequencyHz: 1_000_000,
+  toneFrequencyHz: 100_000,
+  toneLevelDbfs: -12,
+  fftSize: 4096,
+}
+
+export const AM_GENERATOR_PRESET = {
+  name: '1 kHz AM test',
+  channelFrequencyHz: 1_100_000,
+  modulation: '50% AM',
+} as const
+
+export const NBFM_GENERATOR_CONFIG: GeneratorConfig = {
+  ...DEFAULT_GENERATOR_CONFIG,
+  mode: 'nbfm',
+  sampleRateHz: 250_000,
+  centerFrequencyHz: 162_500_000,
+  toneFrequencyHz: 50_000,
+  toneLevelDbfs: -12,
+  fftSize: 4096,
+}
+
+export const NBFM_GENERATOR_PRESET = {
+  name: '1 kHz NBFM test',
+  channelFrequencyHz: 162_550_000,
+  modulation: '2.5 kHz deviation',
 } as const
 
 export type BandPlanId = 'fcc-us' | 'none'
@@ -257,6 +291,13 @@ export type WorkerRequest =
       requestId: number
       config: DetectionConfig
     })
+  | (VersionedRequest & {
+      type: 'configure-vfos'
+      requestId: number
+      outputSampleRateHz: number
+      vfos: VfoDspConfig[]
+    })
+  | (VersionedRequest & { type: 'attach-vfo-audio-port'; port: MessagePort })
   | (VersionedRequest & { type: 'start-generated' })
   | (VersionedRequest & { type: 'stop' })
   | (VersionedRequest & { type: 'reset' })
@@ -286,6 +327,14 @@ export type WorkerDetectionConfiguredEvent = {
   protocolVersion: typeof PROTOCOL_VERSION
   requestId: number
   config: DetectionConfig
+}
+
+export type WorkerVfosConfiguredEvent = {
+  type: 'vfos-configured'
+  protocolVersion: typeof PROTOCOL_VERSION
+  requestId: number
+  outputSampleRateHz: number
+  vfos: VfoDspConfig[]
 }
 
 export type WorkerStatusEvent = {
@@ -339,6 +388,7 @@ export type WorkerEvent =
   | WorkerReadyEvent
   | WorkerConfiguredEvent
   | WorkerDetectionConfiguredEvent
+  | WorkerVfosConfiguredEvent
   | WorkerStatusEvent
   | AnalysisFrameEvent
   | InputReleasedEvent

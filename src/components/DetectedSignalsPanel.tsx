@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Crosshair } from 'lucide-react'
+import { Crosshair, Plus } from 'lucide-react'
 import type {
   DetectionConfig,
   TrackedSignal,
@@ -14,6 +14,9 @@ type DetectedSignalsPanelProps = {
   onConfigChange: (config: DetectionConfig) => void
   optimizationTargetFrequencyHz?: number | null
   onSignalSelect?: (signal: TrackedSignal) => void
+  onAddVfo?: (signal: TrackedSignal) => void
+  vfoFrequenciesHz?: readonly number[]
+  vfoCapacityAvailable?: boolean
 }
 
 export function DetectedSignalsPanel({
@@ -23,9 +26,16 @@ export function DetectedSignalsPanel({
   onConfigChange,
   optimizationTargetFrequencyHz = null,
   onSignalSelect,
+  onAddVfo,
+  vfoFrequenciesHz = [],
+  vfoCapacityAvailable = true,
 }: DetectedSignalsPanelProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = signals.find((signal) => signal.id === selectedId) ?? signals[0]
+  const selectedFrequencyHz = selected
+    ? selected.classification.primary.channelCenterHz ?? selected.absoluteFrequencyHz
+    : null
+  const selectedHasVfo = selectedFrequencyHz !== null && vfoFrequenciesHz.includes(selectedFrequencyHz)
 
   const update = (change: Partial<DetectionConfig>) =>
     onConfigChange({ ...config, ...change })
@@ -34,7 +44,7 @@ export function DetectedSignalsPanel({
     <section className="detection-panel" aria-labelledby="detections-heading">
       <header className="detection-header">
         <div>
-          <p className="section-label">03 / DETECTIONS</p>
+          <p className="section-label">04 / DETECTIONS</p>
           <h2 id="detections-heading">Signal inventory</h2>
         </div>
         <div className="detection-settings" aria-label="Signal detection settings">
@@ -157,6 +167,17 @@ export function DetectedSignalsPanel({
             <span className="candidate-label">Service candidate</span>
             <strong>{selected.classification.primary.label}</strong>
             <span>{Math.round(selected.classification.primary.score * 100)}% evidence</span>
+            {onAddVfo && (
+              <button
+                className="detection-add-vfo"
+                type="button"
+                onClick={() => onAddVfo(selected)}
+                disabled={selectedFrequencyHz === null || selectedHasVfo || !vfoCapacityAvailable}
+              >
+                <Plus size={14} aria-hidden="true" />
+                {selectedHasVfo ? 'Receiver added' : 'Add receiver'}
+              </button>
+            )}
           </div>
           <dl>
             <div>

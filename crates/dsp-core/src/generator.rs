@@ -13,6 +13,7 @@ use crate::{
 pub struct ComplexToneGenerator {
     config: GeneratorConfig,
     phase: f64,
+    modulation_phase: f64,
     fm_rds: SyntheticFmRdsGenerator,
     rng: ChaCha8Rng,
 }
@@ -24,6 +25,7 @@ impl ComplexToneGenerator {
         Ok(Self {
             config,
             phase: 0.0,
+            modulation_phase: 0.0,
             fm_rds: SyntheticFmRdsGenerator::new(),
             rng: ChaCha8Rng::seed_from_u64(config.seed),
         })
@@ -36,6 +38,7 @@ impl ComplexToneGenerator {
         }
         if config.mode != self.config.mode {
             self.phase = 0.0;
+            self.modulation_phase = 0.0;
             self.fm_rds.reset();
         }
         self.config = config;
@@ -44,6 +47,7 @@ impl ComplexToneGenerator {
 
     pub fn reset(&mut self) {
         self.phase = 0.0;
+        self.modulation_phase = 0.0;
         self.fm_rds.reset();
         self.rng = ChaCha8Rng::seed_from_u64(self.config.seed);
     }
@@ -94,6 +98,29 @@ impl ComplexToneGenerator {
                     );
                     (f64::from(in_phase), f64::from(quadrature))
                 }
+                GeneratorMode::Am => {
+                    let modulation = self.modulation_phase.sin();
+                    let envelope = tone_amplitude * (1.0 + 0.5 * modulation);
+                    let (quadrature, in_phase) = self.phase.sin_cos();
+                    let phase_step = TAU * f64::from(self.config.tone_frequency_hz)
+                        / f64::from(self.config.sample_rate_hz);
+                    self.phase = (self.phase + phase_step).rem_euclid(TAU);
+                    self.modulation_phase =
+                        advance_audio_phase(self.modulation_phase, self.config.sample_rate_hz);
+                    (in_phase * envelope, quadrature * envelope)
+                }
+                GeneratorMode::Nbfm => {
+                    let deviation_hz = 2_500.0 * self.modulation_phase.sin();
+                    let instantaneous_frequency_hz =
+                        f64::from(self.config.tone_frequency_hz) + deviation_hz;
+                    self.phase = (self.phase
+                        + TAU * instantaneous_frequency_hz / f64::from(self.config.sample_rate_hz))
+                    .rem_euclid(TAU);
+                    self.modulation_phase =
+                        advance_audio_phase(self.modulation_phase, self.config.sample_rate_hz);
+                    let (quadrature, in_phase) = self.phase.sin_cos();
+                    (in_phase * tone_amplitude, quadrature * tone_amplitude)
+                }
             };
             let (noise_i, noise_q) = if self.config.noise_enabled {
                 let noise_i: f64 = StandardNormal.sample(&mut self.rng);
@@ -137,9 +164,25 @@ fn validate_config(config: GeneratorConfig) -> Result<(), DspError> {
     {
         return Err(DspError::FmRdsOutsideNyquist);
     }
+    if config.mode == GeneratorMode::Am
+        && (config.sample_rate_hz < 50_000.0
+            || config.tone_frequency_hz.abs() + 15_000.0 >= config.sample_rate_hz / 2.0)
+    {
+        return Err(DspError::AmOutsideNyquist);
+    }
+    if config.mode == GeneratorMode::Nbfm
+        && (config.sample_rate_hz < 100_000.0
+            || config.tone_frequency_hz.abs() + 25_000.0 >= config.sample_rate_hz / 2.0)
+    {
+        return Err(DspError::NbfmOutsideNyquist);
+    }
     validate_level("tone level", config.tone_level_dbfs)?;
     validate_level("noise level", config.noise_level_dbfs)?;
     Ok(())
+}
+
+fn advance_audio_phase(phase: f64, sample_rate_hz: f32) -> f64 {
+    (phase + TAU * 1_000.0 / f64::from(sample_rate_hz)).rem_euclid(TAU)
 }
 
 fn validate_level(field: &'static str, value: f32) -> Result<(), DspError> {
@@ -152,7 +195,7 @@ fn validate_level(field: &'static str, value: f32) -> Result<(), DspError> {
 #[cfg(test)]
 mod tests {
     use super::ComplexToneGenerator;
-    use crate::types::GeneratorConfig;
+    use crate::types::{GeneratorConfig, GeneratorMode};
 
     #[test]
     fn phase_is_continuous_across_blocks() {
@@ -176,5 +219,21 @@ mod tests {
         let mut second = ComplexToneGenerator::new(config).unwrap();
 
         assert_eq!(first.generate(128), second.generate(128));
+    }
+
+    #[test]
+    fn am_and_nbfm_are_continuous_across_blocks() {
+        for mode in [GeneratorMode::Am, GeneratorMode::Nbfm] {
+            let config = GeneratorConfig {
+                mode,
+                noise_enabled: false,
+                ..GeneratorConfig::default()
+            };
+            let mut blocked = ComplexToneGenerator::new(config).unwrap();
+            let mut continuous = ComplexToneGenerator::new(config).unwrap();
+            let mut chunks = blocked.generate(997);
+            chunks.extend(blocked.generate(3_001));
+            assert_eq!(chunks, continuous.generate(3_998));
+        }
     }
 }

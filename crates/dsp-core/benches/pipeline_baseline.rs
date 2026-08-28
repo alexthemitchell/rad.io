@@ -8,6 +8,7 @@ use dsp_core::{
     analyzer::SpectrumAnalyzer,
     rds::{RdsDecodeTarget, RdsDecoder, RdsDecoderBank},
     types::{AnalyzerConfig, DEFAULT_WAVEFORM_POINTS},
+    vfo::{VfoBank, VfoConfig, VfoMode},
 };
 
 const MEASUREMENT_DURATION: Duration = Duration::from_millis(350);
@@ -171,9 +172,68 @@ fn benchmark_rds_bank() {
     }
 }
 
+fn benchmark_vfo_bank() {
+    println!("\nShared-input VFO audio bank");
+    println!("| Sample rate | Workload | Throughput | Real-time headroom | Time / input sample |");
+    println!("| ---: | --- | ---: | ---: | ---: |");
+
+    let workloads = [
+        ("1 WBFM", vec![VfoMode::Wbfm]),
+        ("4 WBFM", vec![VfoMode::Wbfm; 4]),
+        (
+            "4 mixed",
+            vec![VfoMode::Wbfm, VfoMode::Am, VfoMode::Nbfm, VfoMode::Nbfm],
+        ),
+    ];
+    for sample_rate_hz in [2_400_000_u32, 10_000_000, 20_000_000] {
+        let iq = rds_iq(sample_rate_hz);
+        for (name, modes) in &workloads {
+            let offsets_hz = [-300_000.0_f64, -100_000.0, 100_000.0, 300_000.0];
+            let configs = modes
+                .iter()
+                .enumerate()
+                .map(|(index, mode)| VfoConfig {
+                    id: format!("vfo-{}", index + 1),
+                    frequency_hz: 100_000_000.0 + offsets_hz[index],
+                    mode: *mode,
+                    bandwidth_hz: match mode {
+                        VfoMode::Wbfm => 200_000.0,
+                        VfoMode::Am => 10_000.0,
+                        VfoMode::Nbfm => 12_500.0,
+                    },
+                    squelch_dbfs: -120.0,
+                    revision: 1,
+                })
+                .collect::<Vec<_>>();
+            let mut bank = VfoBank::new();
+            bank.set_vfos(sample_rate_hz, 100_000_000.0, 48_000, &configs)
+                .expect("valid VFO set");
+            let mut timestamp_us = 0_u64;
+            let block_duration_us =
+                RDS_BLOCK_SAMPLES as u64 * 1_000_000 / u64::from(sample_rate_hz);
+            let measurement = measure(|| {
+                bank.process_i8(black_box(&iq), timestamp_us)
+                    .expect("valid VFO input");
+                black_box(bank.drain_audio());
+                timestamp_us = timestamp_us.saturating_add(block_duration_us);
+            });
+            let samples_per_second = RDS_BLOCK_SAMPLES as f64 * measurement.iterations as f64
+                / measurement.elapsed.as_secs_f64();
+            println!(
+                "| {:.1} MS/s | {name} | {:.2} MS/s | {:.2}x | {:.1} ns |",
+                sample_rate_hz as f64 / 1_000_000.0,
+                samples_per_second / 1_000_000.0,
+                samples_per_second / sample_rate_hz as f64,
+                1_000_000_000.0 / samples_per_second,
+            );
+        }
+    }
+}
+
 fn main() {
     println!("rad.io native DSP pipeline baseline (release profile)");
     benchmark_analyzer();
     benchmark_rds_channels();
     benchmark_rds_bank();
+    benchmark_vfo_bank();
 }

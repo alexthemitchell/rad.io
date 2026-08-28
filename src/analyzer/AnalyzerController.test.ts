@@ -7,7 +7,8 @@ import type {
   WorkerEvent,
   WorkerRequest,
 } from '../workers/protocol'
-import { DEFAULT_GENERATOR_CONFIG } from '../workers/protocol'
+import { DEFAULT_GENERATOR_CONFIG, PROTOCOL_VERSION } from '../workers/protocol'
+import type { VfoConfig, VfoDspConfig } from '../vfo/types'
 import { AnalyzerController } from './AnalyzerController'
 
 class FakeWorker {
@@ -23,7 +24,7 @@ class FakeWorker {
     this.requests.push(request)
     if (request.type === 'init') {
       queueMicrotask(() => {
-        this.emit({ type: 'ready', protocolVersion: 3, engineSequence: 0 })
+        this.emit({ type: 'ready', protocolVersion: PROTOCOL_VERSION, engineSequence: 0 })
       })
     }
   }
@@ -51,6 +52,11 @@ class FakeWorker {
 class FakeSource implements AnalyzerSource {
   readonly id = 'fake-source'
   readonly targets: RdsDecodeTarget[][] = []
+  readonly vfoConfigurations: Array<{
+    outputSampleRateHz: number
+    vfos: VfoDspConfig[]
+  }> = []
+  readonly audioPorts: MessagePort[] = []
   #rdsSink: RdsSink | undefined
   #resolve: (() => void) | undefined
 
@@ -63,6 +69,14 @@ class FakeSource implements AnalyzerSource {
 
   setRdsTargets(targets: readonly RdsDecodeTarget[]): void {
     this.targets.push([...targets])
+  }
+
+  setVfos(outputSampleRateHz: number, vfos: readonly VfoDspConfig[]): void {
+    this.vfoConfigurations.push({ outputSampleRateHz, vfos: [...vfos] })
+  }
+
+  attachVfoAudioPort(port: MessagePort): void {
+    this.audioPorts.push(port)
   }
 
   async stop(): Promise<void> {
@@ -83,7 +97,7 @@ function frame(
   const peakOffsetHz = channelCenterHz - centerFrequencyHz
   return {
     type: 'analysis-frame',
-    protocolVersion: 3,
+    protocolVersion: PROTOCOL_VERSION,
     sequence: Number(timestampUs / 1_000n) + 1,
     waveform: new Float32Array(2),
     spectrumDb: new Float32Array(2048),
@@ -165,6 +179,19 @@ const RECEPTION: RdsReception = {
   },
 }
 
+const VFO: VfoConfig = {
+  id: 'vfo-1',
+  label: 'Test station',
+  frequencyHz: 100_100_000,
+  mode: 'wbfm',
+  bandwidthHz: 200_000,
+  squelchDbfs: -85,
+  revision: 1,
+  gainDb: -6,
+  muted: false,
+  solo: false,
+}
+
 describe('AnalyzerController RDS integration', () => {
   beforeEach(() => {
     vi.stubGlobal('Worker', FakeWorker)
@@ -202,23 +229,25 @@ describe('AnalyzerController RDS integration', () => {
   it('reports a synchronous external source startup failure', async () => {
     const controller = new AnalyzerController()
     await controller.initialize()
+    const stop = vi.fn(async () => undefined)
     const source: AnalyzerSource = {
       id: 'failing-source',
       start: () => {
         throw new Error('WebUSB is unavailable.')
       },
-      stop: async () => undefined,
+      stop,
     }
 
     await controller.startExternal(source)
     FakeWorker.instance.emit({
       type: 'status',
-      protocolVersion: 3,
+      protocolVersion: PROTOCOL_VERSION,
       state: 'idle',
     })
 
     expect(controller.snapshot.state).toBe('error')
     expect(controller.snapshot.detail).toBe('WebUSB is unavailable.')
+    expect(stop).toHaveBeenCalledOnce()
     controller.dispose()
   })
 
@@ -269,6 +298,92 @@ describe('AnalyzerController RDS integration', () => {
       'reset',
       'start-generated',
     ])
+    controller.dispose()
+  })
+
+  it('routes only in-passband DSP fields to generated processing', async () => {
+    const controller = new AnalyzerController()
+    await controller.initialize()
+    controller.configure({
+      ...DEFAULT_GENERATOR_CONFIG,
+      centerFrequencyHz: 100_000_000,
+      sampleRateHz: 1_000_000,
+    })
+    controller.configureVfos([
+      VFO,
+      { ...VFO, id: 'vfo-2', frequencyHz: 101_000_000 },
+    ])
+    const port = {} as MessagePort
+    controller.startVfoAudio(48_000, () => port)
+
+    const configure = FakeWorker.instance.requests.findLast(
+      (request) => request.type === 'configure-vfos',
+    )
+    expect(configure).toEqual({
+      type: 'configure-vfos',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId: expect.any(Number),
+      outputSampleRateHz: 48_000,
+      vfos: [{
+        id: 'vfo-1',
+        frequencyHz: 100_100_000,
+        mode: 'wbfm',
+        bandwidthHz: 200_000,
+        squelchDbfs: -85,
+        revision: 1,
+      }],
+    })
+    expect(FakeWorker.instance.requests.at(-1)).toMatchObject({
+      type: 'attach-vfo-audio-port',
+      port,
+    })
+
+    controller.configure({
+      ...DEFAULT_GENERATOR_CONFIG,
+      centerFrequencyHz: 101_000_000,
+      sampleRateHz: 1_000_000,
+    })
+    expect(FakeWorker.instance.requests.findLast(
+      (request) => request.type === 'configure-vfos',
+    )).toMatchObject({
+      type: 'configure-vfos',
+      vfos: [{ id: 'vfo-2', frequencyHz: 101_000_000 }],
+    })
+
+    controller.stopVfoAudio()
+    expect(FakeWorker.instance.requests.findLast(
+      (request) => request.type === 'configure-vfos',
+    )).toMatchObject({
+      type: 'configure-vfos',
+      outputSampleRateHz: 48_000,
+      vfos: [],
+    })
+    controller.dispose()
+  })
+
+  it('moves VFO processing to an external source and clears it on stop', async () => {
+    const controller = new AnalyzerController()
+    const source = new FakeSource()
+    await controller.initialize()
+    controller.configure({
+      ...DEFAULT_GENERATOR_CONFIG,
+      centerFrequencyHz: 100_000_000,
+      sampleRateHz: 2_000_000,
+    })
+    controller.configureVfos([VFO])
+    const port = {} as MessagePort
+    controller.startVfoAudio(44_100, () => port)
+
+    const running = controller.startExternal(source)
+    expect(source.vfoConfigurations.at(-1)).toMatchObject({
+      outputSampleRateHz: 44_100,
+      vfos: [{ id: 'vfo-1', revision: 1 }],
+    })
+    expect(source.audioPorts).toEqual([port])
+
+    await controller.stop()
+    await running
+    expect(source.vfoConfigurations.at(-1)?.vfos).toEqual([])
     controller.dispose()
   })
 })

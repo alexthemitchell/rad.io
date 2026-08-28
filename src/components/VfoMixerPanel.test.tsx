@@ -1,0 +1,81 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import type { AudioPlaybackSnapshot } from '../audio/AudioPlaybackController'
+import type { VfoConfig } from '../vfo/types'
+import { VfoMixerPanel } from './VfoMixerPanel'
+
+const VFO: VfoConfig = {
+  id: 'vfo-1',
+  label: 'RAD.IO',
+  frequencyHz: 100_100_000,
+  mode: 'wbfm',
+  bandwidthHz: 200_000,
+  squelchDbfs: -85,
+  revision: 1,
+  gainDb: -6,
+  muted: false,
+  solo: false,
+}
+
+const AUDIO: AudioPlaybackSnapshot = {
+  state: 'idle',
+  sampleRateHz: null,
+  detail: 'Audio idle',
+  diagnostics: null,
+}
+
+function renderPanel(change: Partial<Parameters<typeof VfoMixerPanel>[0]> = {}) {
+  const props = {
+    vfos: [VFO],
+    sourceCenterFrequencyHz: 100_000_000,
+    sourceSampleRateHz: 1_000_000,
+    audio: AUDIO,
+    masterGainDb: -6,
+    masterMuted: false,
+    onAdd: vi.fn(),
+    onUpdateDsp: vi.fn(),
+    onUpdateMixer: vi.fn(),
+    onRemove: vi.fn(),
+    onTogglePlayback: vi.fn(),
+    onMasterGainChange: vi.fn(),
+    onMasterMutedChange: vi.fn(),
+    ...change,
+  }
+  render(<VfoMixerPanel {...props} />)
+  return props
+}
+
+describe('VfoMixerPanel', () => {
+  it('exposes playback and mode-safe DSP controls', () => {
+    const props = renderPanel()
+    fireEvent.click(screen.getByRole('button', { name: 'Start audio playback' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Mode' }), {
+      target: { value: 'nbfm' },
+    })
+    fireEvent.change(screen.getByRole('slider', { name: /Squelch/ }), {
+      target: { value: '-92' },
+    })
+
+    expect(props.onTogglePlayback).toHaveBeenCalledOnce()
+    expect(props.onUpdateDsp).toHaveBeenCalledWith('vfo-1', { mode: 'nbfm' })
+    expect(props.onUpdateDsp).toHaveBeenCalledWith('vfo-1', { squelchDbfs: -92 })
+  })
+
+  it('emits mixer-only controls and remove commands', () => {
+    const props = renderPanel()
+    fireEvent.click(screen.getByRole('button', { name: 'Mute RAD.IO' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Solo RAD.IO' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove RAD.IO' }))
+
+    expect(props.onUpdateMixer).toHaveBeenCalledWith('vfo-1', { muted: true })
+    expect(props.onUpdateMixer).toHaveBeenCalledWith('vfo-1', { solo: true })
+    expect(props.onRemove).toHaveBeenCalledWith('vfo-1')
+  })
+
+  it('shows receivers that do not fit the current source passband', () => {
+    renderPanel({
+      vfos: [{ ...VFO, frequencyHz: 102_000_000 }],
+    })
+    expect(screen.getByText('out of band')).toBeVisible()
+  })
+})

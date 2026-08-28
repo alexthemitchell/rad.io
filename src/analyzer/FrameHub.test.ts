@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AnalysisFrameEvent } from '../workers/protocol'
+import { PROTOCOL_VERSION, type AnalysisFrameEvent } from '../workers/protocol'
 import { FrameHub } from './FrameHub'
 
 function frame(sequence: number): AnalysisFrameEvent {
   return {
     type: 'analysis-frame',
-    protocolVersion: 3,
+    protocolVersion: PROTOCOL_VERSION,
     sequence,
     waveform: new Float32Array([1, 0]),
     spectrumDb: new Float32Array([-120, -12]),

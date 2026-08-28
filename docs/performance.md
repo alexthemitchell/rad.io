@@ -28,7 +28,7 @@ The native harness measures one saturated thread. The browser harness uses relea
 
 ## Method
 
-Native analyzer cases run for at least 350 ms after one warmup operation. RDS cases repeatedly process 32,768 complex signed-byte samples. Independent channels instantiate the current decoder directly beyond the production bank's four-target cap; this is a scaling proxy, not a user-facing VFO implementation.
+Native analyzer cases run for at least 350 ms after one warmup operation. RDS and VFO cases repeatedly process 32,768 complex signed-byte samples. Independent RDS channels instantiate the decoder directly beyond the production bank's four-target cap; those larger counts remain a scaling control rather than a user-facing VFO workload.
 
 Browser worker cases reuse the returned external `ArrayBuffer`, warm up for five frames, and record 30 frames. `processing` is worker-reported WASM plus tracking/classification time. `frame round trip` is page-observed post-to-frame time and includes worker scheduling and transferable output delivery.
 
@@ -60,7 +60,7 @@ Real-time headroom is measured input throughput divided by source sample rate. V
 
 Observation: current direct per-target work crosses the deadline near 16 targets at 20 MS/s and near 32 targets at 10 MS/s.
 
-Inference: a shared channelizer may become useful in that region. This is not a measured CPU/GPU or direct/PFB crossover because generic VFO filtering, demodulation, and audio are not implemented in the benchmark.
+Inference: a shared channelizer may become useful in that region. This RDS control is not a measured CPU/GPU or direct/PFB crossover; the implemented four-VFO filter/demodulation measurements are reported separately below.
 
 ### Shared Production RDS Bank
 
@@ -77,6 +77,18 @@ Inference: a shared channelizer may become useful in that region. This is not a 
 | 20 MS/s | 4 | 98.02 MS/s | 4.90x |
 
 Measurement: at 20 MS/s and four targets, shared input traversal measured 98.02 MS/s versus 76.10 MS/s for the same-run independent control, a 28.8% throughput increase. Single-target throughput is about 3.6% lower because sharing has no duplicate work to amortize. Decoder state and metadata output match the independent path in deterministic tests.
+
+### Multi-VFO Audio Bank
+
+The VFO cases process 32,768 signed-byte complex samples and drain completed 20 ms audio blocks. `4 mixed` uses one WBFM, one AM, and two NBFM receivers.
+
+| Source rate | 1 WBFM | 4 WBFM | 4 mixed |
+| ---: | ---: | ---: | ---: |
+| 2.4 MS/s | 17.26x | 4.51x | 7.39x |
+| 10 MS/s | 10.03x | 2.76x | 3.40x |
+| 20 MS/s | 6.19x | 1.75x | 1.95x |
+
+Measurement: direct filtered DDC remains above one real-time unit for all implemented four-VFO cases. Four WBFM receivers at 20 MS/s are the current native worst case at 1.75x, so a PFB or GPU channelizer is not selected for this limit.
 
 ## Browser Results
 
@@ -100,6 +112,18 @@ Observation: source sample rate does not materially change fixed-size display an
 
 Observation: the current 16 KiB wasm-bindgen copy does not threaten the four-target deadline on this machine. A persistent WASM input buffer or SharedArrayBuffer is therefore deferred.
 
+### Multi-VFO Audio Including WASM Boundary
+
+These release-browser cases include each 16 KiB JS-to-WASM input copy, completed audio-batch extraction, and per-VFO `Float32Array` mapping. Empty transfers return without constructing a batch.
+
+| Source rate | 1 WBFM | 4 WBFM | 4 mixed |
+| ---: | ---: | ---: | ---: |
+| 2.4 MS/s | 18.59x | 5.33x | 7.77x |
+| 10 MS/s | 7.84x | 2.54x | 2.88x |
+| 20 MS/s | 4.42x | 1.46x | 1.57x |
+
+Observation: four WBFM receivers at 20 MS/s are the browser worst case and retain 1.46x measured headroom. This is above continuous real time but close enough that live USB, concurrent RDS, background throttling, and long-session behavior remain explicit soak-test concerns. The mixed workload measured 1.57x at the same source rate.
+
 ### Canvas2D
 
 | Renderer | Mean draw time |
@@ -118,12 +142,13 @@ Implemented:
 - representative 2.4 MS/s RDS support
 - 512-point waveform previews
 - reproducible native and release-browser benchmarks
+- direct filtered VFO DDC/demodulation and native/browser one/four-receiver benchmarks
 
 Rejected for now:
 
 - WebGPU FFT/rendering because no implemented CPU path approaches its deadline
 - SharedArrayBuffer because transfer/copy costs are below the useful optimization threshold and the app is not cross-origin isolated
-- a polyphase/FFT channelizer because the current four-target workload has substantial headroom and generic VFO requirements do not yet exist
+- a polyphase/FFT channelizer because the implemented four-VFO workload remains above real time
 - per-VFO wideband FFTs because they duplicate source-wide work by construction
 
 ## Unknowns And Future Measurements
@@ -133,9 +158,9 @@ Not measured:
 - sustained browser CPU utilization, memory growth, and garbage-collection pauses over hours
 - real HackRF dropped USB transfers or display blocks at 10/20 MS/s
 - RTL-SDR WebUSB acquisition, since no RTL source adapter exists
-- VFO filter, demodulator, resampler, squelch, AGC, and audio latency costs
-- AudioWorklet underruns or multi-stream mixing
+- end-to-end source-to-speaker latency and long-session AudioWorklet underrun/overrun rates
+- concurrent live HackRF RDS plus four-WBFM soak behavior at 20 MS/s
 - WebGPU crossover, numerical parity, transfer cost, or device-loss behavior
 - multiple simultaneous SDR source sessions
 
-The next high-information experiment is a block-oriented CPU VFO prototype with one realistic narrowband mode and one wideband FM mode. Measure 1/4/8/16/32 VFOs at 2.4/10/20 MS/s before selecting direct DDC, polyphase CPU channelization, or WebGPU. Add live HackRF soak telemetry only when hardware is available; do not infer dropped-block behavior from synthetic input.
+The next high-information experiment is a bounded live HackRF soak at 20 MS/s with concurrent RDS and four WBFM VFOs, recording USB continuity plus worklet queue/underrun telemetry. Reconsider shared RDS/VFO extraction or a polyphase bank only if that measured workload misses real time; do not infer hardware behavior from synthetic input.

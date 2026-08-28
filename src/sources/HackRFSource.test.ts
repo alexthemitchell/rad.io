@@ -3,6 +3,7 @@ import { HackRFSource } from './HackRFSource'
 import { DEFAULT_HACKRF_CONFIG } from './hackrfProtocol'
 import type { HackRfWorkerEvent, HackRfWorkerRequest } from './hackrfWorkerProtocol'
 import type { RdsReception } from '../workers/protocol'
+import type { VfoDspConfig } from '../vfo/types'
 import type { Usb, UsbDevice } from './webUsb'
 
 class FakeWorker {
@@ -11,8 +12,12 @@ class FakeWorker {
   readonly #messageListeners = new Set<(event: MessageEvent<HackRfWorkerEvent>) => void>()
   readonly #errorListeners = new Set<(event: ErrorEvent) => void>()
   terminated = false
+  failAudioPortTransfer = false
 
   postMessage(message: HackRfWorkerRequest, transfer: Transferable[] = []): void {
+    if (message.type === 'attach-vfo-audio-port' && this.failAudioPortTransfer) {
+      throw new Error('Audio port transfer failed.')
+    }
     this.messages.push(message)
     this.transfers.push(transfer)
     if (message.type === 'stop') queueMicrotask(() => this.emit({ type: 'stopped' }))
@@ -68,6 +73,82 @@ function createUsb(
 }
 
 describe('HackRFSource', () => {
+  it('settles cleanly when the audio port cannot be transferred', async () => {
+    const worker = new FakeWorker()
+    worker.failAudioPortTransfer = true
+    const { usb } = createUsb(worker, true)
+    const source = new HackRFSource(DEFAULT_HACKRF_CONFIG, {
+      usb,
+      createWorker: () => worker,
+    })
+    const audioPort = { close: vi.fn() } as unknown as MessagePort
+    source.attachVfoAudioPort(audioPort)
+    const running = source.start(vi.fn())
+    const rejected = expect(running).rejects.toThrow('Audio port transfer failed.')
+    await vi.waitFor(() => expect(worker.messages[0]?.type).toBe('start'))
+
+    worker.emit({
+      type: 'configured',
+      info: {
+        productName: 'HackRF One',
+        serialNumber: 'test-radio',
+        firmwareVersion: 'test',
+        boardId: 2,
+        usbApiVersion: '2.0',
+      },
+    })
+
+    await rejected
+    expect(worker.terminated).toBe(true)
+    expect(audioPort.close).toHaveBeenCalledOnce()
+  })
+
+  it('queues VFOs and transfers the audio port only after worker configuration', async () => {
+    const worker = new FakeWorker()
+    const { usb } = createUsb(worker, true)
+    const source = new HackRFSource(DEFAULT_HACKRF_CONFIG, {
+      usb,
+      createWorker: () => worker,
+    })
+    const vfos: VfoDspConfig[] = [{
+      id: 'vfo-1',
+      frequencyHz: 100_100_000,
+      mode: 'wbfm',
+      bandwidthHz: 200_000,
+      squelchDbfs: -85,
+      revision: 1,
+    }]
+    const audioPort = { close: vi.fn() } as unknown as MessagePort
+    source.setVfos(48_000, vfos)
+    source.attachVfoAudioPort(audioPort)
+
+    const running = source.start(vi.fn())
+    await vi.waitFor(() =>
+      expect(worker.messages).toContainEqual({
+        type: 'set-vfos',
+        outputSampleRateHz: 48_000,
+        vfos,
+      }),
+    )
+    expect(worker.messages.some((message) => message.type === 'attach-vfo-audio-port')).toBe(false)
+
+    worker.emit({
+      type: 'configured',
+      info: {
+        productName: 'HackRF One',
+        serialNumber: 'test-radio',
+        firmwareVersion: 'test',
+        boardId: 2,
+        usbApiVersion: '2.0',
+      },
+    })
+    expect(worker.messages.at(-1)).toEqual({ type: 'attach-vfo-audio-port', port: audioPort })
+    expect(worker.transfers.at(-1)).toEqual([audioPort])
+
+    await source.stop()
+    await running
+  })
+
   it('requests the device and returns released DSP buffers to the worker', async () => {
     const worker = new FakeWorker()
     const { usb, requestDevice } = createUsb(worker)
@@ -146,6 +227,14 @@ describe('HackRFSource', () => {
     source.setRdsTargets([
       { channelCenterHz: 100_100_000, frequencyOffsetHz: 100_000 },
     ])
+    source.setVfos(48_000, [{
+      id: 'vfo-1',
+      frequencyHz: 100_100_000,
+      mode: 'wbfm',
+      bandwidthHz: 200_000,
+      squelchDbfs: -85,
+      revision: 1,
+    }])
     const running = source.start(sink)
     await vi.waitFor(() => expect(worker.messages[0]?.type).toBe('start'))
 
@@ -160,6 +249,11 @@ describe('HackRFSource', () => {
       (message) => message.type === 'apply-runtime-command',
     )
     expect(worker.messages).toContainEqual({ type: 'set-rds-targets', targets: [] })
+    expect(worker.messages).toContainEqual({
+      type: 'set-vfos',
+      outputSampleRateHz: 48_000,
+      vfos: [],
+    })
     expect(runtimeRequest).toEqual({
       type: 'apply-runtime-command',
       requestId: 1,
@@ -223,7 +317,16 @@ describe('HackRFSource', () => {
       createWorker: () => worker,
     })
     const targets = [{ channelCenterHz: 100_100_000, frequencyOffsetHz: 100_000 }]
+    const vfos: VfoDspConfig[] = [{
+      id: 'vfo-1',
+      frequencyHz: 100_100_000,
+      mode: 'wbfm',
+      bandwidthHz: 200_000,
+      squelchDbfs: -85,
+      revision: 1,
+    }]
     source.setRdsTargets(targets)
+    source.setVfos(48_000, vfos)
     const running = source.start(vi.fn())
     await vi.waitFor(() => expect(worker.messages[0]?.type).toBe('start'))
 
@@ -240,6 +343,8 @@ describe('HackRFSource', () => {
 
     expect(worker.messages.filter((message) => message.type === 'set-rds-targets').at(-1))
       .toEqual({ type: 'set-rds-targets', targets })
+    expect(worker.messages.filter((message) => message.type === 'set-vfos').at(-1))
+      .toEqual({ type: 'set-vfos', outputSampleRateHz: 48_000, vfos })
     await source.stop()
     await running
   })

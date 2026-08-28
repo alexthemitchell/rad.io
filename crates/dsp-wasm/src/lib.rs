@@ -3,7 +3,163 @@ use dsp_core::types::{
     AnalysisFrame as CoreAnalysisFrame, AnalyzerConfig, DEFAULT_WAVEFORM_POINTS, DetectionConfig,
     GeneratorConfig, GeneratorMode,
 };
+use dsp_core::vfo::{VfoAudioBlock as CoreVfoAudioBlock, VfoBank as CoreVfoBank, VfoConfig};
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub struct VfoBank {
+    inner: CoreVfoBank,
+}
+
+#[wasm_bindgen]
+impl VfoBank {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            inner: CoreVfoBank::new(),
+        }
+    }
+
+    pub fn set_vfos(
+        &mut self,
+        sample_rate_hz: u32,
+        center_frequency_hz: f64,
+        output_sample_rate_hz: u32,
+        configs: JsValue,
+    ) -> Result<(), JsError> {
+        let configs: Vec<VfoConfig> = serde_wasm_bindgen::from_value(configs)
+            .map_err(|error| JsError::new(&error.to_string()))?;
+        self.inner
+            .set_vfos(
+                sample_rate_hz,
+                center_frequency_hz,
+                output_sample_rate_hz,
+                &configs,
+            )
+            .map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    pub fn process_i8(&mut self, iq: &[i8], timestamp_us: u64) -> Result<bool, JsError> {
+        self.inner
+            .process_i8(iq, timestamp_us)
+            .map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    pub fn process_f32(&mut self, iq: &[f32], timestamp_us: u64) -> Result<bool, JsError> {
+        self.inner
+            .process_f32(iq, timestamp_us)
+            .map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    pub fn drain_audio(&mut self) -> VfoAudioBatch {
+        VfoAudioBatch::new(self.inner.drain_audio())
+    }
+
+    pub fn reset(&mut self) {
+        self.inner.reset_decoders();
+    }
+}
+
+impl Default for VfoBank {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[wasm_bindgen]
+pub struct VfoAudioBatch {
+    ids: Vec<String>,
+    revisions: Vec<u32>,
+    source_timestamps_us: Vec<u64>,
+    sample_rates_hz: Vec<u32>,
+    channel_counts: Vec<u8>,
+    signal_levels_dbfs: Vec<f32>,
+    squelched: Vec<u8>,
+    sample_offsets: Vec<u32>,
+    samples: Vec<f32>,
+}
+
+impl VfoAudioBatch {
+    fn new(blocks: Vec<CoreVfoAudioBlock>) -> Self {
+        let mut batch = Self {
+            ids: Vec::with_capacity(blocks.len()),
+            revisions: Vec::with_capacity(blocks.len()),
+            source_timestamps_us: Vec::with_capacity(blocks.len()),
+            sample_rates_hz: Vec::with_capacity(blocks.len()),
+            channel_counts: Vec::with_capacity(blocks.len()),
+            signal_levels_dbfs: Vec::with_capacity(blocks.len()),
+            squelched: Vec::with_capacity(blocks.len()),
+            sample_offsets: Vec::with_capacity(blocks.len() + 1),
+            samples: Vec::new(),
+        };
+        batch.sample_offsets.push(0);
+        for block in blocks {
+            batch.ids.push(block.vfo_id);
+            batch.revisions.push(block.revision);
+            batch.source_timestamps_us.push(block.source_timestamp_us);
+            batch.sample_rates_hz.push(block.sample_rate_hz);
+            batch.channel_counts.push(block.channel_count);
+            batch.signal_levels_dbfs.push(block.signal_level_dbfs);
+            batch.squelched.push(u8::from(block.squelched));
+            batch.samples.extend(block.samples);
+            batch.sample_offsets.push(batch.samples.len() as u32);
+        }
+        batch
+    }
+}
+
+#[wasm_bindgen]
+impl VfoAudioBatch {
+    #[wasm_bindgen(getter)]
+    pub fn block_count(&self) -> u32 {
+        self.ids.len() as u32
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn ids(&self) -> Result<JsValue, JsError> {
+        serde_wasm_bindgen::to_value(&self.ids).map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn revisions(&self) -> Vec<u32> {
+        self.revisions.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn source_timestamps_us(&self) -> Vec<u64> {
+        self.source_timestamps_us.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn sample_rates_hz(&self) -> Vec<u32> {
+        self.sample_rates_hz.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn channel_counts(&self) -> Vec<u8> {
+        self.channel_counts.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn signal_levels_dbfs(&self) -> Vec<f32> {
+        self.signal_levels_dbfs.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn squelched(&self) -> Vec<u8> {
+        self.squelched.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn sample_offsets(&self) -> Vec<u32> {
+        self.sample_offsets.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn samples(&self) -> Vec<f32> {
+        self.samples.clone()
+    }
+}
 
 #[wasm_bindgen]
 pub struct RdsDecoderBank {
@@ -98,7 +254,7 @@ impl DspEngine {
     #[allow(clippy::too_many_arguments)]
     pub fn configure(
         &mut self,
-        fm_rds_enabled: bool,
+        generator_mode: u8,
         sample_rate_hz: f32,
         frame_rate_hz: f32,
         center_frequency_hz: f64,
@@ -112,10 +268,12 @@ impl DspEngine {
         self.inner
             .configure(
                 GeneratorConfig {
-                    mode: if fm_rds_enabled {
-                        GeneratorMode::FmRds
-                    } else {
-                        GeneratorMode::Tone
+                    mode: match generator_mode {
+                        0 => GeneratorMode::Tone,
+                        1 => GeneratorMode::FmRds,
+                        2 => GeneratorMode::Am,
+                        3 => GeneratorMode::Nbfm,
+                        _ => return Err(JsError::new("Unsupported generator mode.")),
                     },
                     sample_rate_hz,
                     frame_rate_hz,
@@ -149,6 +307,22 @@ impl DspEngine {
             .map_err(|error| JsError::new(&error.to_string()))
     }
 
+    pub fn configure_vfos(
+        &mut self,
+        output_sample_rate_hz: u32,
+        configs: JsValue,
+    ) -> Result<(), JsError> {
+        let configs: Vec<VfoConfig> = serde_wasm_bindgen::from_value(configs)
+            .map_err(|error| JsError::new(&error.to_string()))?;
+        self.inner
+            .configure_vfos(output_sample_rate_hz, configs)
+            .map_err(|error| JsError::new(&error.to_string()))
+    }
+
+    pub fn drain_vfo_audio(&mut self) -> VfoAudioBatch {
+        VfoAudioBatch::new(self.inner.drain_vfo_audio())
+    }
+
     pub fn generate_and_analyze(&mut self) -> Result<AnalysisFrame, JsError> {
         self.inner
             .generate_and_analyze()
@@ -174,6 +348,10 @@ impl DspEngine {
 
     pub fn reset_rds(&mut self) {
         self.inner.reset_rds();
+    }
+
+    pub fn reset_vfos(&mut self) {
+        self.inner.reset_vfos();
     }
 }
 

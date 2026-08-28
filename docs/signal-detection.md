@@ -95,7 +95,7 @@ Signals that touch a capture edge are marked `partial`; their bandwidth is a low
 - Auto optimization uses spectral dBFS as a headroom proxy, not true ADC-overload telemetry.
 - HackRF display blocks have their complex mean removed, and the detector retains a DC guard. A narrow signal exactly at zero offset is intentionally indistinguishable from receiver offset; tune it away from DC for measurement.
 - A strong off-bin carrier can produce window sidelobes; the 15 dB default threshold reduces these false candidates and can be adjusted for a source.
-- There is no audio playback, AM/SSB demodulation, Morse or time-code decoding, speech analysis, or external station directory.
+- User-created VFOs provide WBFM mono, AM, and NBFM audio playback. There is no SSB, Morse or time-code decoding, speech analysis, or external station directory.
 - RDS supports the complete group transport envelope, but application-specific ODA semantics and TMC event/location text require external specifications or regional databases and remain raw numeric data.
 - Service candidates depend on the accuracy and revision of the selected allocation profile. Actual authorization and usage can vary by location, license, channel, and time.
 

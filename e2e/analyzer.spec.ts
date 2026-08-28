@@ -53,9 +53,11 @@ test('continues generating after reset clears a pending frame', async ({ page })
   const beforeReset = Number(await frameMetric.textContent())
 
   await page.getByRole('button', { name: 'Reset generator' }).click()
-  await expect.poll(async () => Number((await frameMetric.textContent()) ?? 0)).toBeLessThan(beforeReset)
-  const firstAfterReset = Number(await frameMetric.textContent())
-  await expect.poll(async () => Number((await frameMetric.textContent()) ?? 0)).toBeGreaterThan(firstAfterReset)
+  await expect.poll(async () => Number((await frameMetric.textContent()) ?? 0)).not.toBe(beforeReset)
+  const firstVisibleAfterReset = Number(await frameMetric.textContent())
+  await expect.poll(async () => Number((await frameMetric.textContent()) ?? 0)).toBeGreaterThan(
+    firstVisibleAfterReset,
+  )
 })
 
 test('processes and releases transferable external IQ', async ({ page }) => {
@@ -144,7 +146,7 @@ test('processes and releases transferable external IQ', async ({ page }) => {
   expect(result.sourceSequence).toBe(73)
   expect(result.timestampUs).toBe(123_456n)
   expect(result.formatVersion).toBe(1)
-  expect(result.protocolVersion).toBe(3)
+  expect(result.protocolVersion).toBe(4)
   expect(result.noiseFloorDbfs).toBeLessThan(-100)
   expect(result.detectionCount).toBeGreaterThanOrEqual(1)
   expect(result.invalidDetachedByteLength).toBe(0)

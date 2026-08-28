@@ -185,6 +185,14 @@
   border-left: 0;
 }
 
+.generator-mode button:nth-child(odd) {
+  border-left: 1px solid var(--line);
+}
+
+.generator-mode button:nth-child(n + 3) {
+  border-top: 0;
+}
+
 .generator-mode button[aria-pressed='true'] {
   border-color: var(--ink);
   color: var(--paper);
@@ -953,4 +961,351 @@
 .optimization-target-icon {
   flex: 0 0 auto;
   color: var(--cyan-deep);
+}
+
+.vfo-panel {
+  min-width: 0;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+.vfo-header {
+  min-height: 76px;
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.vfo-header h2,
+.vfo-header p,
+.vfo-empty,
+.vfo-footer {
+  margin: 0;
+}
+
+.vfo-header h2 {
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.vfo-master-controls {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vfo-command,
+.vfo-icon-command,
+.vfo-row-actions button,
+.detection-add-vfo {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--paper);
+  font: 600 10px/1 var(--mono);
+  cursor: pointer;
+}
+
+.vfo-command,
+.detection-add-vfo {
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.vfo-command:first-child {
+  border-color: var(--ink);
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.vfo-icon-command,
+.vfo-row-actions button {
+  position: relative;
+  width: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.vfo-icon-command[aria-pressed='true'],
+.vfo-row-actions button[aria-pressed='true'] {
+  border-color: var(--cyan-deep);
+  color: var(--paper);
+  background: var(--cyan-deep);
+}
+
+.vfo-command:disabled,
+.vfo-icon-command:disabled,
+.vfo-row-actions button:disabled,
+.detection-add-vfo:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.vfo-master-gain {
+  width: 180px;
+  display: grid;
+  grid-template-columns: auto minmax(60px, 1fr) 43px;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font: 9px/1 var(--mono);
+}
+
+.vfo-master-gain input,
+.vfo-range-field input {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--cyan);
+}
+
+.vfo-master-gain output,
+.vfo-range-field output {
+  color: var(--ink);
+  font: 10px/1 var(--mono);
+  text-align: right;
+}
+
+.vfo-list {
+  border-top: 1px solid var(--line);
+}
+
+.vfo-row {
+  min-width: 0;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns:
+    minmax(130px, 1.25fr)
+    minmax(128px, 0.9fr)
+    82px
+    94px
+    minmax(126px, 0.9fr)
+    minmax(120px, 0.85fr)
+    112px;
+  align-items: end;
+  gap: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.vfo-row:last-child {
+  border-bottom: 0;
+}
+
+.vfo-identity,
+.vfo-field {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.vfo-identity {
+  position: relative;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: center;
+}
+
+.vfo-identity > label,
+.vfo-state-copy {
+  grid-column: 2;
+}
+
+.vfo-state-dot {
+  width: 7px;
+  height: 7px;
+  grid-row: 1 / 4;
+  border-radius: 50%;
+  background: var(--amber);
+}
+
+.vfo-state-dot.is-ready {
+  background: var(--green);
+}
+
+.vfo-state-dot.is-out-of-band {
+  background: var(--red);
+}
+
+.vfo-field > span:first-child,
+.vfo-identity > label {
+  color: var(--muted);
+  font: 9px/1 var(--mono);
+  text-transform: uppercase;
+}
+
+.vfo-field > span:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vfo-identity > input,
+.vfo-field select,
+.vfo-input-unit {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--paper);
+  font: 11px/1 var(--mono);
+}
+
+.vfo-identity > input,
+.vfo-field select {
+  padding: 0 8px;
+}
+
+.vfo-input-unit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.vfo-input-unit input {
+  min-width: 0;
+  height: 32px;
+  padding: 0 4px 0 8px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: 11px/1 var(--mono);
+}
+
+.vfo-input-unit span {
+  padding: 0 7px;
+  color: var(--muted);
+  font: 9px/1 var(--mono);
+}
+
+.vfo-state-copy {
+  overflow: hidden;
+  color: var(--muted);
+  font: 9px/1 var(--mono);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.vfo-range-field {
+  padding-bottom: 5px;
+}
+
+.vfo-row-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  gap: 5px;
+}
+
+.vfo-icon-command::after,
+.vfo-row-actions button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  z-index: 6;
+  right: 0;
+  bottom: calc(100% + 6px);
+  width: max-content;
+  padding: 5px 7px;
+  border-radius: 3px;
+  color: white;
+  background: var(--ink);
+  font: 10px/1 var(--mono);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vfo-icon-command:hover::after,
+.vfo-icon-command:focus-visible::after,
+.vfo-row-actions button:hover::after,
+.vfo-row-actions button:focus-visible::after {
+  opacity: 1;
+}
+
+.vfo-empty {
+  min-height: 70px;
+  padding: 25px 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font: 11px/1.3 var(--mono);
+  text-align: center;
+}
+
+.vfo-footer {
+  min-height: 30px;
+  padding: 7px 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  background: color-mix(in srgb, var(--chrome) 54%, var(--paper));
+  font: 9px/1.3 var(--mono);
+  text-transform: uppercase;
+}
+
+.detection-add-vfo {
+  width: fit-content;
+  margin-top: 8px;
+}
+
+@media (max-width: 1280px) {
+  .vfo-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .vfo-row {
+    grid-template-columns: minmax(150px, 1.2fr) minmax(150px, 1fr) repeat(2, minmax(100px, 0.7fr));
+  }
+
+  .vfo-range-field {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .vfo-header {
+    padding: 13px 12px;
+  }
+
+  .vfo-master-controls {
+    display: grid;
+    grid-template-columns: 1fr 34px 1fr;
+  }
+
+  .vfo-master-gain {
+    width: auto;
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .vfo-row {
+    padding: 12px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .vfo-identity,
+  .vfo-range-field,
+  .vfo-row-actions {
+    grid-column: 1 / -1;
+  }
+
+  .vfo-row-actions {
+    justify-content: end;
+  }
+
+  .vfo-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
 }

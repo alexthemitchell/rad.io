@@ -111,6 +111,33 @@ const RDS_SIGNAL: TrackedSignal = {
 }
 
 describe('DetectedSignalsPanel', () => {
+  it('adds the selected detected signal as an audio receiver', () => {
+    const onAddVfo = vi.fn()
+    const { rerender } = render(
+      <DetectedSignalsPanel
+        config={DEFAULT_DETECTION_CONFIG}
+        signals={[SIGNAL]}
+        centerFrequencyHz={100_000_000}
+        onConfigChange={vi.fn()}
+        onAddVfo={onAddVfo}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Add receiver' }))
+    expect(onAddVfo).toHaveBeenCalledWith(SIGNAL)
+
+    rerender(
+      <DetectedSignalsPanel
+        config={DEFAULT_DETECTION_CONFIG}
+        signals={[SIGNAL]}
+        centerFrequencyHz={100_000_000}
+        onConfigChange={vi.fn()}
+        onAddVfo={onAddVfo}
+        vfoFrequenciesHz={[100_100_000]}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Receiver added' })).toBeDisabled()
+  })
+
   it('renders measured metadata and classification evidence', () => {
     const onSignalSelect = vi.fn()
     render(

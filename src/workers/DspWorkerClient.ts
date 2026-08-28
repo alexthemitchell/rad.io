@@ -8,6 +8,7 @@ import {
   type WorkerEvent,
   type WorkerReadyEvent,
 } from './protocol'
+import type { VfoDspConfig } from '../vfo/types'
 
 export class DspWorkerClient {
   readonly #worker: Worker
@@ -66,6 +67,30 @@ export class DspWorkerClient {
       config,
     })
     return requestId
+  }
+
+  configureVfos(outputSampleRateHz: number, vfos: readonly VfoDspConfig[]): number {
+    const requestId = ++this.#requestId
+    this.#worker.postMessage({
+      type: 'configure-vfos',
+      protocolVersion: PROTOCOL_VERSION,
+      requestId,
+      outputSampleRateHz,
+      vfos: [...vfos],
+    })
+    return requestId
+  }
+
+  attachVfoAudioPort(port: MessagePort): void {
+    try {
+      this.#worker.postMessage(
+        { type: 'attach-vfo-audio-port', protocolVersion: PROTOCOL_VERSION, port },
+        [port],
+      )
+    } catch (error) {
+      port.close()
+      throw error
+    }
   }
 
   startGenerated(): void {

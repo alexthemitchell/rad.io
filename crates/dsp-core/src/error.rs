@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::rds::RdsBankError;
+use crate::{rds::RdsBankError, vfo::VfoError};
 
 #[derive(Debug, Error, PartialEq)]
 pub enum DspError {
@@ -16,6 +16,10 @@ pub enum DspError {
     ToneOutsideNyquist,
     #[error("FM+RDS generation requires at least 500 kS/s and 150 kHz of channel-edge headroom")]
     FmRdsOutsideNyquist,
+    #[error("AM generation requires at least 50 kS/s and 15 kHz of channel-edge headroom")]
+    AmOutsideNyquist,
+    #[error("NBFM generation requires at least 100 kS/s and 25 kHz of channel-edge headroom")]
+    NbfmOutsideNyquist,
     #[error("center frequency must be finite and non-negative")]
     InvalidCenterFrequency,
     #[error("minimum detection SNR must be finite and between 0 and 120 dB, got {0}")]
@@ -30,4 +34,6 @@ pub enum DspError {
     InvalidIqSample { index: usize },
     #[error(transparent)]
     Rds(#[from] RdsBankError),
+    #[error(transparent)]
+    Vfo(#[from] VfoError),
 }

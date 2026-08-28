@@ -13,6 +13,8 @@ import {
   type WasmRdsChannelSnapshot,
 } from '../rds/rdsSnapshots'
 import { RdsSearchClock } from '../rds/RdsSearchClock'
+import { coreVfoConfig, drainVfoAudioBatch } from '../vfo/VfoWasmProcessor'
+import type { VfoAudioPortMessage, VfoDspConfig } from '../vfo/types'
 import {
   DEFAULT_DETECTION_CONFIG,
   DEFAULT_GENERATOR_CONFIG,
@@ -32,11 +34,21 @@ let config: GeneratorConfig = DEFAULT_GENERATOR_CONFIG
 let detectionConfig: DetectionConfig = DEFAULT_DETECTION_CONFIG
 let running = false
 let scheduledFrame: number | undefined
+let nextGeneratedFrameAt: number | undefined
 let awaitingSequence: number | undefined
+let vfoAudioPort: MessagePort | undefined
+let vfoOutputSampleRateHz = 48_000
+let vfos: VfoDspConfig[] = []
 const signalTracker = new SignalTracker()
 const rdsTargetSelector = new RdsTargetSelector()
 const broadcastStationGate = new BroadcastStationGate()
 const rdsSearchClock = new RdsSearchClock()
+const GENERATOR_MODE_CODE = {
+  tone: 0,
+  'fm-rds': 1,
+  am: 2,
+  nbfm: 3,
+} as const
 
 function postError(
   code: WorkerErrorEvent['code'],
@@ -67,11 +79,26 @@ function cancelScheduledFrame(): void {
   }
 }
 
-function scheduleGeneratedFrame(delayMs = 1000 / config.frameRate): void {
+function scheduleGeneratedFrame(resetDeadline = false): void {
   cancelScheduledFrame()
-  if (!running || awaitingSequence !== undefined) return
+  if (resetDeadline) nextGeneratedFrameAt = undefined
+  if (!running) return
 
-  scheduledFrame = workerScope.setTimeout(produceGeneratedFrame, delayMs)
+  const now = performance.now()
+  nextGeneratedFrameAt ??= now
+  scheduledFrame = workerScope.setTimeout(
+    produceGeneratedFrame,
+    Math.max(0, nextGeneratedFrameAt - now),
+  )
+}
+
+function postVfoAudio(activeEngine: DspEngine): void {
+  const blocks = drainVfoAudioBatch(activeEngine.drain_vfo_audio())
+  if (blocks.length === 0 || !vfoAudioPort) return
+  vfoAudioPort.postMessage(
+    { type: 'vfo-audio', blocks } satisfies VfoAudioPortMessage,
+    blocks.map((block) => block.samples.buffer as ArrayBuffer),
+  )
 }
 
 function emitFrame(
@@ -235,13 +262,22 @@ function emitFrame(
 
 function produceGeneratedFrame(): void {
   scheduledFrame = undefined
-  if (!running || awaitingSequence !== undefined || !engine) return
+  if (!running || !engine) return
 
   try {
     const startedAt = performance.now()
-    emitFrame(engine.generate_and_analyze(), startedAt)
+    const frame = engine.generate_and_analyze()
+    postVfoAudio(engine)
+    if (awaitingSequence === undefined) emitFrame(frame, startedAt)
+    else frame.free()
+    const now = performance.now()
+    const frameDurationMs = 1000 / config.frameRate
+    const nextDeadline = (nextGeneratedFrameAt ?? startedAt) + frameDurationMs
+    nextGeneratedFrameAt = nextDeadline < now - frameDurationMs ? now : nextDeadline
+    scheduleGeneratedFrame()
   } catch (error) {
     running = false
+    nextGeneratedFrameAt = undefined
     postStatus()
     postError('PROCESSING_FAILED', error, true)
   }
@@ -312,7 +348,7 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
           throw new Error('Frame rate must be between 1 and 60 frames per second.')
         }
         activeEngine.configure(
-          request.config.mode === 'fm-rds',
+          GENERATOR_MODE_CODE[request.config.mode],
           request.config.sampleRateHz,
           request.config.frameRate,
           request.config.centerFrequencyHz,
@@ -335,7 +371,7 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
           config,
         })
         postStatus()
-        scheduleGeneratedFrame(0)
+        scheduleGeneratedFrame(true)
         break
       case 'configure-detection':
         if (request.config.bandPlanId !== 'fcc-us' && request.config.bandPlanId !== 'none') {
@@ -358,15 +394,37 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
           config: detectionConfig,
         })
         break
+      case 'configure-vfos':
+        activeEngine.configure_vfos(
+          request.outputSampleRateHz,
+          request.vfos.map(coreVfoConfig),
+        )
+        vfoOutputSampleRateHz = request.outputSampleRateHz
+        vfos = [...request.vfos]
+        workerScope.postMessage({
+          type: 'vfos-configured',
+          protocolVersion: PROTOCOL_VERSION,
+          requestId: request.requestId,
+          outputSampleRateHz: vfoOutputSampleRateHz,
+          vfos,
+        })
+        break
+      case 'attach-vfo-audio-port':
+        vfoAudioPort?.close()
+        vfoAudioPort = request.port
+        vfoAudioPort.start()
+        break
       case 'start-generated':
         running = true
         postStatus()
-        scheduleGeneratedFrame(0)
+        scheduleGeneratedFrame(true)
         break
       case 'stop':
         running = false
         cancelScheduledFrame()
+        nextGeneratedFrameAt = undefined
         activeEngine.reset_rds()
+        activeEngine.reset_vfos()
         rdsTargetSelector.reset()
         broadcastStationGate.reset()
         rdsSearchClock.reset()
@@ -382,7 +440,6 @@ workerScope.onmessage = (event: MessageEvent<WorkerRequest>) => {
       case 'frame-consumed':
         if (request.sequence === awaitingSequence) {
           awaitingSequence = undefined
-          scheduleGeneratedFrame()
         }
         break
       case 'process-samples': {

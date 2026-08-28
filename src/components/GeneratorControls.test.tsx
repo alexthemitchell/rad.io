@@ -1,8 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  AM_GENERATOR_CONFIG,
   DEFAULT_GENERATOR_CONFIG,
   FM_RDS_GENERATOR_CONFIG,
+  NBFM_GENERATOR_CONFIG,
 } from '../workers/protocol'
 import { GeneratorControls } from './GeneratorControls'
 
@@ -100,6 +102,37 @@ describe('GeneratorControls', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Tone' }))
     expect(onChange).toHaveBeenLastCalledWith(toneConfig)
+  })
+
+  it('selects deterministic AM and NBFM audio presets', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(
+      <GeneratorControls
+        config={DEFAULT_GENERATOR_CONFIG}
+        ready
+        running={false}
+        onChange={onChange}
+        onToggle={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'AM' }))
+    expect(onChange).toHaveBeenLastCalledWith(AM_GENERATOR_CONFIG)
+    rerender(
+      <GeneratorControls
+        config={AM_GENERATOR_CONFIG}
+        ready
+        running={false}
+        onChange={onChange}
+        onToggle={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('50% AM')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'NBFM' }))
+    expect(onChange).toHaveBeenLastCalledWith(NBFM_GENERATOR_CONFIG)
   })
 
   it('enables reset only when ready and invokes it once', () => {

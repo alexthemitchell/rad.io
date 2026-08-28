@@ -1,9 +1,13 @@
 import { useRef } from 'react'
 import { Pause, Play, RotateCcw } from 'lucide-react'
 import {
+  AM_GENERATOR_CONFIG,
+  AM_GENERATOR_PRESET,
   DEFAULT_GENERATOR_CONFIG,
   FM_RDS_GENERATOR_CONFIG,
   FM_RDS_PRESET,
+  NBFM_GENERATOR_CONFIG,
+  NBFM_GENERATOR_PRESET,
   type GeneratorConfig,
   type GeneratorMode,
 } from '../workers/protocol'
@@ -35,9 +39,15 @@ export function GeneratorControls({
   }
   const selectMode = (mode: GeneratorMode) => {
     if (mode === config.mode) return
-    if (mode === 'fm-rds') {
+    if (mode !== 'tone') {
       toneConfig.current = config
-      onChange(FM_RDS_GENERATOR_CONFIG)
+      onChange(
+        mode === 'fm-rds'
+          ? FM_RDS_GENERATOR_CONFIG
+          : mode === 'am'
+            ? AM_GENERATOR_CONFIG
+            : NBFM_GENERATOR_CONFIG,
+      )
     } else {
       onChange(toneConfig.current)
     }
@@ -50,7 +60,15 @@ export function GeneratorControls({
       <div className="control-heading">
         <span>01 / SOURCE</span>
         <h2>Generator</h2>
-        <p>{config.mode === 'tone' ? 'Complex IQ tone' : 'Synthetic FM stereo + RBDS'}</p>
+        <p>{
+          config.mode === 'tone'
+            ? 'Complex IQ tone'
+            : config.mode === 'fm-rds'
+              ? 'Synthetic FM stereo + RBDS'
+              : config.mode === 'am'
+                ? 'Synthetic amplitude modulation'
+                : 'Synthetic narrowband FM'
+        }</p>
       </div>
 
       <div className="generator-mode" role="group" aria-label="Generator mode">
@@ -67,6 +85,20 @@ export function GeneratorControls({
           onClick={() => selectMode('fm-rds')}
         >
           FM + RDS
+        </button>
+        <button
+          type="button"
+          aria-pressed={config.mode === 'am'}
+          onClick={() => selectMode('am')}
+        >
+          AM
+        </button>
+        <button
+          type="button"
+          aria-pressed={config.mode === 'nbfm'}
+          onClick={() => selectMode('nbfm')}
+        >
+          NBFM
         </button>
       </div>
 
@@ -158,26 +190,47 @@ export function GeneratorControls({
           </div>
         </>
       ) : (
-        <dl className="generator-preset" aria-label="Synthetic RBDS preset">
+        <dl className="generator-preset" aria-label="Synthetic modulation preset">
           <div>
             <dt>Station</dt>
-            <dd>{FM_RDS_PRESET.name}</dd>
+            <dd>{
+              config.mode === 'fm-rds'
+                ? FM_RDS_PRESET.name
+                : config.mode === 'am'
+                  ? AM_GENERATOR_PRESET.name
+                  : NBFM_GENERATOR_PRESET.name
+            }</dd>
           </div>
           <div>
             <dt>Channel</dt>
-            <dd>{(FM_RDS_PRESET.channelFrequencyHz / 1_000_000).toFixed(1)} MHz</dd>
+            <dd>{(
+              config.mode === 'fm-rds'
+                ? FM_RDS_PRESET.channelFrequencyHz
+                : config.mode === 'am'
+                  ? AM_GENERATOR_PRESET.channelFrequencyHz
+                  : NBFM_GENERATOR_PRESET.channelFrequencyHz
+            ) / 1_000_000} MHz</dd>
           </div>
-          <div>
-            <dt>PI / PTY</dt>
-            <dd>
-              {FM_RDS_PRESET.pi.toString(16).toUpperCase().padStart(4, '0')} /{' '}
-              {FM_RDS_PRESET.pty}
-            </dd>
-          </div>
-          <div className="generator-preset-text">
-            <dt>RadioText</dt>
-            <dd>{FM_RDS_PRESET.radioText}</dd>
-          </div>
+          {config.mode === 'fm-rds' ? (
+            <>
+              <div>
+                <dt>PI / PTY</dt>
+                <dd>
+                  {FM_RDS_PRESET.pi.toString(16).toUpperCase().padStart(4, '0')} /{' '}
+                  {FM_RDS_PRESET.pty}
+                </dd>
+              </div>
+              <div className="generator-preset-text">
+                <dt>RadioText</dt>
+                <dd>{FM_RDS_PRESET.radioText}</dd>
+              </div>
+            </>
+          ) : (
+            <div>
+              <dt>Modulation</dt>
+              <dd>{config.mode === 'am' ? AM_GENERATOR_PRESET.modulation : NBFM_GENERATOR_PRESET.modulation}</dd>
+            </div>
+          )}
         </dl>
       )}
 

@@ -3,6 +3,7 @@ import type {
   RdsReception,
   SampleMetadata,
 } from '../workers/protocol'
+import type { VfoDspConfig } from '../vfo/types'
 
 export type SampleChunk = Omit<SampleMetadata, 'sourceSequence'> & {
   iq: Float32Array
@@ -21,5 +22,7 @@ export interface AnalyzerSource {
   readonly id: string
   start(sink: SampleSink, rdsSink?: RdsSink): Promise<void>
   setRdsTargets?(targets: readonly RdsDecodeTarget[]): void
+  setVfos?(outputSampleRateHz: number, vfos: readonly VfoDspConfig[]): void
+  attachVfoAudioPort?(port: MessagePort): void
   stop(): Promise<void>
 }

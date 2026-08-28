@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import './App.css'
+import {
+  AudioPlaybackController,
+  type AudioPlaybackSnapshot,
+} from './audio/AudioPlaybackController'
 import {
   AnalyzerController,
   type AnalyzerSnapshot,
@@ -11,6 +15,7 @@ import { DetectedSignalsPanel } from './components/DetectedSignalsPanel'
 import { GeneratorControls } from './components/GeneratorControls'
 import { HackRFControls } from './components/HackRFControls'
 import { SourceControls, type SourceMode } from './components/SourceControls'
+import { VfoMixerPanel } from './components/VfoMixerPanel'
 import { SpectrumRenderer } from './renderers/SpectrumRenderer'
 import { HackRFSource } from './sources/HackRFSource'
 import {
@@ -27,6 +32,13 @@ import {
   type GeneratorConfig,
   type TrackedSignal,
 } from './workers/protocol'
+import { suggestVfoFromSignal } from './vfo/suggestVfoFromSignal'
+import {
+  createVfoState,
+  isVfoInPassband,
+  reduceVfoState,
+} from './vfo/vfoState'
+import { MAX_VFOS } from './vfo/types'
 
 function analyzerConfigForHackRf(
   generatorConfig: GeneratorConfig,
@@ -55,6 +67,13 @@ const DEFAULT_DETECTION_CONFIGS: Record<SourceMode, DetectionConfig> = {
 
 function App() {
   const [controller] = useState(() => new AnalyzerController())
+  const [audioController] = useState(() => new AudioPlaybackController())
+  const [audioSnapshot, setAudioSnapshot] = useState<AudioPlaybackSnapshot>(
+    audioController.snapshot,
+  )
+  const [vfoState, dispatchVfo] = useReducer(reduceVfoState, createVfoState())
+  const [masterGainDb, setMasterGainDb] = useState(-6)
+  const [masterMuted, setMasterMuted] = useState(false)
   const [sourceMode, setSourceMode] = useState<SourceMode>('generator')
   const [config, setConfig] = useState<GeneratorConfig>(DEFAULT_GENERATOR_CONFIG)
   const [hackRfConfig, setHackRfConfig] = useState<HackRfConfig>(DEFAULT_HACKRF_CONFIG)
@@ -76,6 +95,12 @@ function App() {
   const hackRfCenterFrequencyHz = hackRfConfig.centerFrequencyHz
   const hackRfFftSize = hackRfConfig.fftSize
   const hackRfFrameRate = hackRfConfig.frameRate
+  const sourceCenterFrequencyHz = sourceMode === 'generator'
+    ? config.centerFrequencyHz
+    : hackRfConfig.centerFrequencyHz
+  const sourceSampleRateHz = sourceMode === 'generator'
+    ? config.sampleRateHz
+    : hackRfConfig.sampleRateHz
 
   useEffect(() => {
     let active = true
@@ -109,6 +134,43 @@ function App() {
   }, [controller])
 
   useEffect(() => {
+    const unsubscribe = audioController.subscribe((next) => {
+      setAudioSnapshot({ ...next })
+    })
+    return () => {
+      unsubscribe()
+      void audioController.dispose()
+    }
+  }, [audioController])
+
+  useEffect(() => {
+    controller.configureVfos(vfoState.vfos)
+    audioController.configureVfos(
+      vfoState.vfos.map((vfo) => ({
+        id: vfo.id,
+        revision: vfo.revision,
+        gainDb: vfo.gainDb,
+        muted: vfo.muted,
+        solo: vfo.solo,
+        active: isVfoInPassband(vfo, {
+          centerFrequencyHz: sourceCenterFrequencyHz,
+          sampleRateHz: sourceSampleRateHz,
+        }),
+      })),
+    )
+  }, [
+    audioController,
+    controller,
+    sourceCenterFrequencyHz,
+    sourceSampleRateHz,
+    vfoState.vfos,
+  ])
+
+  useEffect(() => {
+    audioController.configureMaster(masterGainDb, masterMuted)
+  }, [audioController, masterGainDb, masterMuted])
+
+  useEffect(() => {
     if (!ready) return
     if (
       sourceMode === 'hackrf' &&
@@ -117,6 +179,7 @@ function App() {
       skipConfiguredHackRfCenterHz.current = null
       return
     }
+    audioController.flush()
     controller.configure(
       sourceMode === 'generator'
         ? config
@@ -129,6 +192,7 @@ function App() {
     )
   }, [
     config,
+    audioController,
     controller,
     hackRfCenterFrequencyHz,
     hackRfFftSize,
@@ -154,6 +218,7 @@ function App() {
     onApplied: (appliedConfig: HackRfConfig, command: HackRfRuntimeCommand) => {
       setHackRfConfig(appliedConfig)
       if (command.type === 'set-center-frequency') {
+        audioController.flush()
         skipConfiguredHackRfCenterHz.current = appliedConfig.centerFrequencyHz
         controller.configure(analyzerConfigForHackRf(config, appliedConfig))
       }
@@ -169,6 +234,7 @@ function App() {
     setAutoOptimizeEnabled(false)
     setAutoOptimizeError(null)
     setSelectedTargetFrequencyHz(null)
+    audioController.flush()
     await controller.reset()
     setSnapshot({ ...controller.snapshot })
     setViewRevision((revision) => revision + 1)
@@ -178,6 +244,7 @@ function App() {
     setAutoOptimizeEnabled(false)
     setAutoOptimizeError(null)
     setSelectedTargetFrequencyHz(null)
+    audioController.flush()
     void controller.stop()
     setActiveHackRfSource(null)
     setSourceMode(mode)
@@ -198,6 +265,7 @@ function App() {
     setAutoOptimizeEnabled(false)
     setAutoOptimizeError(null)
     setSelectedTargetFrequencyHz(null)
+    audioController.flush()
     void controller.stop().finally(() => setActiveHackRfSource(null))
   }
 
@@ -209,6 +277,9 @@ function App() {
     ) {
       setAutoOptimizeEnabled(false)
       setAutoOptimizeError(null)
+    }
+    if (next.centerFrequencyHz !== hackRfConfig.centerFrequencyHz) {
+      audioController.flush()
     }
     setHackRfConfig(next)
   }
@@ -228,6 +299,51 @@ function App() {
       : 'off'
   const displayedAutoOptimizeDetail = autoOptimizeError ??
     (autoOptimizeEnabled ? autoOptimize.detail : 'Manual control.')
+
+  const handleAudioToggle = async () => {
+    if (audioSnapshot.state === 'running' || audioSnapshot.state === 'starting') {
+      controller.stopVfoAudio()
+      await audioController.suspend()
+      return
+    }
+    try {
+      const outputSampleRateHz = await audioController.start()
+      controller.startVfoAudio(
+        outputSampleRateHz,
+        () => audioController.createProducerPort(),
+      )
+    } catch {
+      controller.stopVfoAudio()
+    }
+  }
+
+  const addManualVfo = () => {
+    if (vfoState.vfos.length >= MAX_VFOS) return
+    dispatchVfo({
+      type: 'add',
+      input: {
+        frequencyHz: Math.round(
+          sourceMode === 'generator'
+            ? sourceCenterFrequencyHz + config.toneFrequencyHz
+            : sourceCenterFrequencyHz,
+        ),
+        mode:
+          sourceMode === 'generator' && config.mode === 'fm-rds'
+            ? 'wbfm'
+            : sourceMode === 'generator' && config.mode === 'am'
+              ? 'am'
+              : 'nbfm',
+      },
+    })
+  }
+
+  const addSignalVfo = (signal: TrackedSignal) => {
+    if (vfoState.vfos.length >= MAX_VFOS) return
+    const suggestion = suggestVfoFromSignal(signal)
+    if (!suggestion) return
+    if (vfoState.vfos.some((vfo) => vfo.frequencyHz === suggestion.frequencyHz)) return
+    dispatchVfo({ type: 'add', input: suggestion })
+  }
 
   return (
     <main className="app-shell">
@@ -281,9 +397,14 @@ function App() {
               ready={ready}
               running={running}
               onChange={setConfig}
-              onToggle={() =>
-                running ? void controller.stop() : controller.startGenerated()
-              }
+              onToggle={() => {
+                if (running) {
+                  audioController.flush()
+                  void controller.stop()
+                } else {
+                  controller.startGenerated()
+                }
+              }}
               onReset={() => void handleReset()}
             />
           ) : (
@@ -344,6 +465,26 @@ function App() {
             />
           </div>
 
+          <VfoMixerPanel
+            vfos={vfoState.vfos}
+            sourceCenterFrequencyHz={sourceCenterFrequencyHz}
+            sourceSampleRateHz={sourceSampleRateHz}
+            audio={audioSnapshot}
+            masterGainDb={masterGainDb}
+            masterMuted={masterMuted}
+            onAdd={addManualVfo}
+            onUpdateDsp={(id, change) =>
+              dispatchVfo({ type: 'update-dsp', id, change })
+            }
+            onUpdateMixer={(id, change) =>
+              dispatchVfo({ type: 'update-mixer', id, change })
+            }
+            onRemove={(id) => dispatchVfo({ type: 'remove', id })}
+            onTogglePlayback={() => void handleAudioToggle()}
+            onMasterGainChange={setMasterGainDb}
+            onMasterMutedChange={setMasterMuted}
+          />
+
           <DetectedSignalsPanel
             config={detectionConfig}
             signals={snapshot.trackedSignals}
@@ -355,6 +496,9 @@ function App() {
             onSignalSelect={(signal) => {
               setSelectedTargetFrequencyHz(signalTargetFrequencyHz(signal))
             }}
+            onAddVfo={addSignalVfo}
+            vfoFrequenciesHz={vfoState.vfos.map((vfo) => vfo.frequencyHz)}
+            vfoCapacityAvailable={vfoState.vfos.length < MAX_VFOS}
           />
         </section>
       </div>

@@ -9,6 +9,8 @@ import type {
   TrackedSignal,
   WorkerEvent,
 } from '../workers/protocol'
+import { isVfoInPassband } from '../vfo/vfoState'
+import type { VfoConfig, VfoDspConfig } from '../vfo/types'
 import { FrameHub } from './FrameHub'
 
 const RDS_STALE_AFTER_US = 2_000_000n
@@ -38,6 +40,13 @@ export class AnalyzerController {
   #rdsTargets: RdsDecodeTarget[] = []
   readonly #rdsByChannelCenterHz = new Map<number, RdsReception>()
   #sourceTimestampUs = 0n
+  #sourceCenterFrequencyHz = 0
+  #sourceSampleRateHz = 1_000_000
+  #vfos: VfoConfig[] = []
+  #vfoOutputSampleRateHz = 48_000
+  #vfoPlaybackEnabled = false
+  #vfoAudioPortFactory: (() => MessagePort) | undefined
+  #lastVfoRouteKey = ''
   #resetTask: Promise<void> | undefined
   #unsubscribeFrame: (() => void) | undefined
   #unsubscribeStatus: (() => void) | undefined
@@ -72,7 +81,11 @@ export class AnalyzerController {
 
   configure(config: GeneratorConfig): void {
     this.#resetExternalRds()
+    this.#sourceCenterFrequencyHz = config.centerFrequencyHz
+    this.#sourceSampleRateHz = config.sampleRateHz
     this.#client?.configure(config)
+    this.#lastVfoRouteKey = ''
+    this.#routeVfos()
   }
 
   configureDetection(config: DetectionConfig): void {
@@ -80,9 +93,31 @@ export class AnalyzerController {
     this.#client?.configureDetection(config)
   }
 
+  configureVfos(vfos: readonly VfoConfig[]): void {
+    this.#vfos = vfos.map((vfo) => ({ ...vfo }))
+    this.#routeVfos()
+  }
+
+  startVfoAudio(outputSampleRateHz: number, portFactory: () => MessagePort): void {
+    this.#vfoOutputSampleRateHz = outputSampleRateHz
+    this.#vfoAudioPortFactory = portFactory
+    this.#vfoPlaybackEnabled = true
+    this.#lastVfoRouteKey = ''
+    this.#routeVfos()
+    this.#attachVfoAudioPort()
+  }
+
+  stopVfoAudio(): void {
+    this.#vfoPlaybackEnabled = false
+    this.#routeVfos()
+  }
+
   startGenerated(): void {
     if (this.#activeSource) throw new Error('Stop the external source before starting the generator.')
     this.#activeMode = 'generated'
+    this.#lastVfoRouteKey = ''
+    this.#routeVfos()
+    this.#attachVfoAudioPort()
     this.#client?.startGenerated()
   }
 
@@ -96,6 +131,9 @@ export class AnalyzerController {
     this.#resetExternalRds()
     this.#activeMode = 'external'
     this.#activeSource = source
+    this.#lastVfoRouteKey = ''
+    this.#routeVfos()
+    this.#attachVfoAudioPort()
     this.#update({ state: 'connecting', detail: 'Waiting for HackRF One' })
 
     let task: Promise<void>
@@ -126,8 +164,14 @@ export class AnalyzerController {
         })
       })
     } catch (error) {
+      try {
+        await source.stop()
+      } catch {
+        // Preserve the startup error; stop is best-effort cleanup.
+      }
       this.#activeMode = 'idle'
       this.#activeSource = undefined
+      this.#lastVfoRouteKey = ''
       this.#update({
         state: 'error',
         detail: error instanceof Error ? error.message : String(error),
@@ -160,10 +204,12 @@ export class AnalyzerController {
     const source = this.#activeSource
     const task = this.#sourceTask
     this.#resetExternalRds(source)
+    source?.setVfos?.(this.#vfoOutputSampleRateHz, [])
     this.#sourceGeneration += 1
     this.#activeMode = 'idle'
     this.#activeSource = undefined
     this.#sourceTask = undefined
+    this.#lastVfoRouteKey = ''
     this.#client?.stop()
     if (source) {
       try {
@@ -237,6 +283,8 @@ export class AnalyzerController {
     this.#activeSource = undefined
     this.#sourceTask = undefined
     this.#activeMode = 'idle'
+    this.#vfoPlaybackEnabled = false
+    this.#vfoAudioPortFactory = undefined
     this.#unsubscribeFrame?.()
     this.#unsubscribeStatus?.()
     this.frames.clear()
@@ -262,6 +310,9 @@ export class AnalyzerController {
         : frame.trackedSignals,
       processingTimeMs: frame.processingTimeMs,
     }
+    this.#sourceCenterFrequencyHz = frame.centerFrequencyHz
+    this.#sourceSampleRateHz = frame.sampleRateHz
+    this.#routeVfos()
     this.frames.publish(frame, () => this.#client?.frameConsumed(frame.sequence))
   }
 
@@ -276,6 +327,8 @@ export class AnalyzerController {
         detail: event.state === 'running' ? 'Generated IQ active' : 'Analyzer idle',
       })
     } else if (event.type === 'configured') {
+      this.#sourceCenterFrequencyHz = event.config.centerFrequencyHz
+      this.#sourceSampleRateHz = event.config.sampleRateHz
       this.#update({
         centerFrequencyHz: event.config.centerFrequencyHz,
         peakFrequencyHz: 0,
@@ -284,6 +337,8 @@ export class AnalyzerController {
         trackedSignals: [],
         processingTimeMs: 0,
       })
+      this.#lastVfoRouteKey = ''
+      this.#routeVfos()
     } else if (event.type === 'detection-configured') {
       this.#update({ trackedSignals: [] })
     } else if (event.type === 'error') {
@@ -294,6 +349,49 @@ export class AnalyzerController {
   #update(update: Partial<AnalyzerSnapshot>): void {
     this.#snapshot = { ...this.#snapshot, ...update }
     for (const listener of this.#statusListeners) listener(this.#snapshot)
+  }
+
+  #routeVfos(): void {
+    if (!this.#vfoPlaybackEnabled && this.#lastVfoRouteKey === '') return
+    const dspVfos: VfoDspConfig[] = this.#vfoPlaybackEnabled
+      ? this.#vfos
+          .filter((vfo) =>
+            isVfoInPassband(vfo, {
+              centerFrequencyHz: this.#sourceCenterFrequencyHz,
+              sampleRateHz: this.#sourceSampleRateHz,
+            }),
+          )
+          .map((vfo) => ({
+            id: vfo.id,
+            frequencyHz: vfo.frequencyHz,
+            mode: vfo.mode,
+            bandwidthHz: vfo.bandwidthHz,
+            squelchDbfs: vfo.squelchDbfs,
+            revision: vfo.revision,
+          }))
+      : []
+    const owner = this.#activeMode === 'external' ? this.#activeSource?.id : 'generated'
+    const routeKey = JSON.stringify([
+      owner,
+      this.#sourceCenterFrequencyHz,
+      this.#sourceSampleRateHz,
+      this.#vfoOutputSampleRateHz,
+      dspVfos,
+    ])
+    if (routeKey === this.#lastVfoRouteKey) return
+    this.#lastVfoRouteKey = routeKey
+    if (this.#activeMode === 'external') {
+      this.#activeSource?.setVfos?.(this.#vfoOutputSampleRateHz, dspVfos)
+    } else {
+      this.#client?.configureVfos(this.#vfoOutputSampleRateHz, dspVfos)
+    }
+  }
+
+  #attachVfoAudioPort(): void {
+    if (!this.#vfoPlaybackEnabled || !this.#vfoAudioPortFactory) return
+    const port = this.#vfoAudioPortFactory()
+    if (this.#activeMode === 'external') this.#activeSource?.attachVfoAudioPort?.(port)
+    else this.#client?.attachVfoAudioPort(port)
   }
 
   #setRdsTargets(targets: readonly RdsDecodeTarget[]): void {

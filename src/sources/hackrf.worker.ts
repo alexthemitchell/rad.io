@@ -2,6 +2,8 @@
 
 import { HackRfDeviceSession } from './HackRfDeviceSession'
 import { RdsWasmDecoder } from '../rds/RdsWasmDecoder'
+import { VfoWasmProcessor } from '../vfo/VfoWasmProcessor'
+import type { VfoAudioPortMessage, VfoDspConfig } from '../vfo/types'
 import type {
   HackRfDeviceIdentity,
   HackRfWorkerEvent,
@@ -17,9 +19,33 @@ let starting = false
 let rdsDecoder: RdsWasmDecoder | undefined
 let rdsTargets: RdsDecodeTarget[] = []
 let lastRdsEmissionUs: bigint | undefined
+let vfoProcessor: VfoWasmProcessor | undefined
+let vfoAudioPort: MessagePort | undefined
+let vfos: VfoDspConfig[] = []
+let vfoOutputSampleRateHz = 48_000
+let activeConfig: Extract<HackRfWorkerRequest, { type: 'start' }>['config'] | undefined
 
 function postEvent(event: HackRfWorkerEvent, transfer: Transferable[] = []): void {
   workerScope.postMessage(event, transfer)
+}
+
+function postVfoAudio(iq: Int8Array, timestampUs: bigint): void {
+  const blocks = vfoProcessor?.processI8(iq, timestampUs) ?? []
+  if (blocks.length === 0 || !vfoAudioPort) return
+  vfoAudioPort.postMessage(
+    { type: 'vfo-audio', blocks } satisfies VfoAudioPortMessage,
+    blocks.map((block) => block.samples.buffer as ArrayBuffer),
+  )
+}
+
+function configureVfos(): void {
+  if (!vfoProcessor || !activeConfig) return
+  vfoProcessor.configure(
+    activeConfig.sampleRateHz,
+    activeConfig.centerFrequencyHz,
+    vfoOutputSampleRateHz,
+    vfos,
+  )
 }
 
 function matchesIdentity(
@@ -62,12 +88,16 @@ async function start(request: Extract<HackRfWorkerRequest, { type: 'start' }>): 
     }
     if (stopping) return
 
+    activeConfig = { ...request.config }
     rdsDecoder = await RdsWasmDecoder.create(request.config.sampleRateHz)
+    vfoProcessor = await VfoWasmProcessor.create()
     rdsDecoder.setTargets(rdsTargets)
+    configureVfos()
 
     session = new HackRfDeviceSession(device, request.config, {
       onConfigured: (info) => postEvent({ type: 'configured', info }),
       onRawSamples: ({ iq, timestampUs }) => {
+        postVfoAudio(iq, timestampUs)
         const receptions = rdsDecoder?.process(iq, timestampUs)
         if (
           receptions &&
@@ -77,7 +107,10 @@ async function start(request: Extract<HackRfWorkerRequest, { type: 'start' }>): 
           postEvent({ type: 'rds-update', receptions })
         }
       },
-      onDiscontinuity: () => rdsDecoder?.reset(),
+      onDiscontinuity: () => {
+        rdsDecoder?.reset()
+        vfoProcessor?.reset()
+      },
       onSamples: ({ iq, sampleRateHz, centerFrequencyHz, sourceSequence, timestampUs }) => {
         postEvent(
           {
@@ -106,6 +139,11 @@ async function start(request: Extract<HackRfWorkerRequest, { type: 'start' }>): 
     session = undefined
     rdsDecoder?.dispose()
     rdsDecoder = undefined
+    vfoProcessor?.dispose()
+    vfoProcessor = undefined
+    vfoAudioPort?.close()
+    vfoAudioPort = undefined
+    activeConfig = undefined
     lastRdsEmissionUs = undefined
     postEvent({ type: 'stopped' })
   }
@@ -128,9 +166,12 @@ workerScope.onmessage = (event: MessageEvent<HackRfWorkerRequest>) => {
     if (request.command.type === 'set-center-frequency') {
       rdsTargets = []
       rdsDecoder?.setTargets([])
+      vfos = []
+      configureVfos()
     }
     void activeSession.applyRuntimeCommand(request.command).then(
       (config) => {
+        activeConfig = { ...config }
         if (request.command.type === 'set-center-frequency') {
           rdsTargets = []
           rdsDecoder?.setTargets([])
@@ -158,6 +199,22 @@ workerScope.onmessage = (event: MessageEvent<HackRfWorkerRequest>) => {
         message: error instanceof Error ? error.message : String(error),
       })
     }
+  } else if (request.type === 'set-vfos') {
+    vfoOutputSampleRateHz = request.outputSampleRateHz
+    vfos = request.vfos
+    try {
+      configureVfos()
+    } catch (error) {
+      postEvent({
+        type: 'error',
+        code: 'DEVICE_FAILURE',
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
+  } else if (request.type === 'attach-vfo-audio-port') {
+    vfoAudioPort?.close()
+    vfoAudioPort = request.port
+    vfoAudioPort.start()
   } else if (request.type === 'return-buffer') {
     try {
       session?.returnBuffer(request.buffer)

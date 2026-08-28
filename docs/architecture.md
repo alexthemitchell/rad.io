@@ -7,14 +7,15 @@ Implemented today:
 - one active generated or HackRF wideband source
 - one paced wideband spectrum/detection lane
 - up to four continuous, independently tuned FM/RDS decoder targets
+- up to four user-managed WBFM, AM, or NBFM audio VFOs
+- bounded transferable audio queues and an AudioWorklet mixer
 - CPU DSP in browser-independent Rust, compiled to WASM for the browser
 - dedicated acquisition and DSP workers, transferable display buffers, and Canvas2D rendering
 
 Not implemented today:
 
 - an RTL-SDR browser source adapter
-- a generic user-facing VFO bank or audio demodulators
-- AudioWorklet output or multi-VFO audio mixing
+- WBFM stereo recovery, SSB/CW demodulation, recording, or persistent VFO presets
 - WebGPU/WebGL compute or rendering
 - simultaneous independent source sessions in the UI
 
@@ -26,6 +27,7 @@ The architecture decisions below preserve those paths without claiming that road
 Generated mode
 React controls -> AnalyzerController -> dedicated worker -> Rust/WASM generator
                                                      -> streaming RDS decoder
+                                                     -> Rust/WASM VFO bank -> bounded audio blocks
                                                      -> Rust/WASM FFT
                                                      -> spectral detector
                                                      -> signal tracker + classifier
@@ -37,6 +39,8 @@ External mode
 Window permission -> acquisition worker -> signed int8 HackRF IQ
                            -> shared-input Rust/WASM RDS bank -> per-target DDC/demodulation
                                                                   -> metadata events
+                           -> shared-input Rust/WASM VFO bank -> filtered DDC/demodulation
+                                                                  -> bounded audio blocks -> AudioWorklet
                            -> latest complete FFT block -> interleaved Float32 IQ
                            -> AnalyzerSource -> DSP worker -> same Rust/WASM FFT
                                   ^       buffer returned <- input-released <---+
@@ -49,7 +53,7 @@ confirmed tracks -> auto optimizer -> acknowledged center/LNA/VGA command
 
 `AnalyzerController` initializes one `DspWorkerClient` for its lifetime. React receives worker state changes immediately and samples numeric status every 250 ms. Spectrum, waterfall, and waveform arrays go directly from `FrameHub` to renderer objects without a React render.
 
-The display and continuous-decoder lanes intentionally split in the acquisition owner. Display backpressure can discard old FFT blocks without interrupting full-rate RDS continuity. The RDS bank traverses each incoming block once, normalizes and timestamps each sample once, then fans it out to independent target state. Frequency translation and demodulation remain target-specific.
+The display and continuous-decoder lanes intentionally split in the acquisition owner. Display backpressure can discard old FFT blocks without interrupting full-rate RDS or VFO continuity. Each decoder bank traverses its incoming block once, normalizes each sample once within that bank, then fans it out to independent target state. Frequency translation and demodulation remain target-specific. RDS and audio banks are separate in this release, so a live block crosses the WASM input boundary once per active bank.
 
 ## Ownership And Copies
 
@@ -57,20 +61,22 @@ The display and continuous-decoder lanes intentionally split in the acquisition 
 | --- | --- | --- |
 | USB bulk-IN | Browser-owned `ArrayBuffer` in the acquisition owner | Sequential `transferIn`; `Int8Array` is a view |
 | Live RDS input | Acquisition worker JS to acquisition worker WASM | One wasm-bindgen slice copy, then one shared i8-to-complex conversion per 16 KiB transfer |
+| Live VFO input | Acquisition worker JS to acquisition worker WASM | One wasm-bindgen slice copy when playback is enabled, then one shared i8-to-complex conversion per 16 KiB transfer |
 | Display assembly | Persistent signed-byte FFT block in `HackRfIqBlockAssembler` | One bounded `TypedArray.set` copy; old display blocks may be overwritten |
 | Display normalization | Sole reusable `Float32Array` output buffer | One i8-to-f32 conversion pass, then block-local complex mean removal |
 | Acquisition to main to DSP worker | Same transferred `ArrayBuffer` | Two ownership transfers and message scheduling; no payload clone |
 | Analyzer input | DSP worker JS to DSP WASM | One wasm-bindgen f32 slice copy per displayed frame |
 | Analyzer output | WASM `Vec` getters to JS typed arrays | Waveform and spectrum are cloned out of WASM once per displayed frame |
 | DSP worker to renderers | Transferable waveform and spectrum buffers | Ownership transfer, then one pending `requestAnimationFrame` delivery |
+| VFO bank to AudioWorklet | WASM audio vector to transferable `Float32Array` blocks over a dedicated `MessagePort` | Completed blocks are copied out of WASM, split by VFO, then transferred; empty USB transfers do not construct a batch |
 | Canvas2D | Main-thread browser canvas resources | CPU path construction and canvas upload; no GPU-resident DSP data |
 
 There is no sample-by-sample JavaScript callback. All hot paths are block oriented and all queues are bounded. SharedArrayBuffer would remove only some of the listed copies while adding cross-origin isolation and atomic ring-buffer lifecycle requirements; current measurements do not justify it.
 
 ## Rust Crates
 
-- `crates/dsp-core` is browser-independent DSP. It contains configuration validation, deterministic tone and FM+RDS generation, Hann windowing, shifted FFT analysis, spectral detection, and stateful RDS block/group decoding.
-- `crates/dsp-wasm` is a thin `wasm-bindgen` boundary. It exposes the analyzer `DspEngine`, a standalone `RdsDecoderBank`, typed-array frame getters, and structured metadata snapshots.
+- `crates/dsp-core` is browser-independent DSP. It contains configuration validation, deterministic tone/FM+RDS/AM/NBFM generation, Hann windowing, shifted FFT analysis, spectral detection, stateful RDS decoding, and the four-entry filtered VFO audio bank.
+- `crates/dsp-wasm` is a thin `wasm-bindgen` boundary. It exposes the analyzer `DspEngine`, standalone RDS and VFO banks, typed-array frame getters, structured metadata snapshots, and bounded audio batches.
 
 `rustfft` plans and Hann coefficients are created when the analyzer configuration changes, not for every frame.
 
@@ -107,15 +113,16 @@ Output bins are shifted into `[-sampleRate/2, +sampleRate/2)`. Values below -120
 
 ## Protocol And Backpressure
 
-Worker messages carry `protocolVersion: 3`. The main request types are:
+Worker messages carry `protocolVersion: 4`. The main request types are:
 
 - `init`, `configure`, `configure-detection`, `start-generated`, `stop`, and `reset`
 - `frame-consumed` for display delivery acknowledgment
 - `process-samples` for externally acquired IQ
+- `configure-vfos` and `attach-vfo-audio-port` for DSP-only VFO state and direct audio delivery
 
-The worker emits `ready`, `configured`, `detection-configured`, `status`, `analysis-frame`, `input-released`, and structured `error` messages. It verifies that the loaded WASM engine reports the same protocol version before accepting work. Analysis frames include up to four RDS targets selected by stable FM channel center and preserve the external source sequence, timestamp, and sample-format version. External IQ remains sample format version 1 because its interleaved layout did not change.
+The worker emits `ready`, `configured`, `detection-configured`, `vfos-configured`, `status`, `analysis-frame`, `input-released`, and structured `error` messages. Audio blocks use the attached port instead of the status protocol. It verifies that the loaded WASM engine reports the same protocol version before accepting work. Analysis frames include up to four RDS targets selected by stable FM channel center and preserve the external source sequence, timestamp, and sample-format version. External IQ remains sample format version 1 because its interleaved layout did not change.
 
-Generated mode permits one analysis frame awaiting `frame-consumed`. The next frame is scheduled only after render delivery, so a slow tab cannot build an unbounded queue. External input is rejected with `dropped: true` while generated mode or an unconsumed frame owns the processor. All large arrays use transfer lists instead of structured-clone copies.
+Generated mode permits one analysis frame awaiting `frame-consumed`, but its real-time sample clock and continuous RDS/VFO paths continue while that display frame is pending. Additional display frames are discarded rather than queued. External display input is rejected with `dropped: true` while generated mode or an unconsumed frame owns the analyzer. All large arrays use transfer lists instead of structured-clone copies.
 
 ## Rendering
 
@@ -163,18 +170,18 @@ The implementation is OS-neutral and has no dependency on `libhackrf`, Node `usb
 - HackRF USB reads run independently of React and retain at most one pending display block.
 - Full-rate RDS IQ stays in the acquisition owner; only low-rate metadata crosses worker boundaries.
 - RDS state is bounded to four channel-centered decoders and bounded raw-group histories.
+- VFO state is bounded to four receivers; each emits 20 ms blocks and the AudioWorklet caps each queue near 250 ms.
 - Only one generated analysis frame can be in flight.
 - Canvas dimensions are stable and responsive.
 - Worker creation is isolated from live control dependencies.
+- Mixer gain, mute, and solo changes do not rebuild workers, WASM banks, or the AudioContext.
 - Configuration changes rebuild cached FFT state atomically.
 - External sources receive ownership of their input buffer back.
 - Runtime HackRF controls are serialized, acknowledged, and limited to center/LNA/VGA.
 
 ## VFO Evolution
 
-The current RDS targets are the repository's only continuous multi-channel workload. They are useful evidence for VFO scaling, but they are not presented as general VFOs: they have a fixed FM/RDS pipeline, emit metadata rather than audio, and are capped at four targets.
-
-The next user-facing VFO implementation should remain source-owned and branch before display throttling:
+The source-owned VFO bank branches before display throttling:
 
 ```text
 SourceSession
@@ -187,11 +194,11 @@ SourceSession
                 -> AudioWorklet mixer/output
 ```
 
-Start with direct CPU/WASM DDC for a small VFO count. Keep the bank contract block-oriented and backend-neutral so a polyphase or GPU channelizer can replace only the extraction stage. Do not perform one wideband FFT, detector, or source conversion independently per VFO.
+The implemented bank uses direct CPU/WASM DDC for at most four VFOs. Each target has an NCO, bounded CIC coarse decimator, FIR channel filter/decimator, mode-specific demodulator, audio filter/de-emphasis, and streaming output resampler. The bank contract remains block-oriented so a future channelizer can replace extraction without changing demodulators or playback. It does not perform a wideband FFT, detector, or source conversion independently per VFO.
 
-A channelizer is justified only after representative demodulators and bandwidths exist and the VFO benchmark reaches its deadline. The current RDS proxy reaches approximately one real-time unit at 16 targets for 20 MS/s and at 32 targets for 10 MS/s on the measured machine. Those are experiment thresholds, not product limits or proof of a PFB crossover.
+A channelizer is justified only if representative demodulators reach their deadline. Four WBFM VFOs measure 1.75x real-time natively and 1.46x through the release-browser WASM boundary at 20 MS/s on the measured machine. This supports the implemented four-VFO limit but leaves live concurrent RDS/VFO soak behavior as a measurement requirement.
 
-Audio is a separate real-time domain. When added, the AudioWorklet should consume bounded narrowband audio blocks and mix only enabled audio VFOs. UI rendering and React state must not participate in its callback. SharedArrayBuffer can be evaluated for that ring only when cross-origin isolation deployment is acceptable; a transferable `MessagePort` queue is the simpler fallback.
+Audio is a separate real-time domain. The AudioWorklet consumes bounded narrowband blocks over a transferable `MessagePort` and mixes only enabled audio VFOs. UI rendering and React state do not participate in its callback. SharedArrayBuffer remains deferred because the transferable queue is real-time at the implemented four-VFO limit and the app is not cross-origin isolated.
 
 ## Multiple Sources
 
@@ -240,11 +247,11 @@ The first GPU experiment must compare end-to-end latency and transfers against t
 ### CPU/WASM Before WebGPU
 
 - Problem: choose an execution domain for FFT, channel extraction, and visualization.
-- Current cost: approximately 0.15 ms worker processing for a 4096-bin release frame and about 3.8x browser headroom for four RDS targets at 20 MS/s on the measured machine.
+- Current cost: approximately 0.15 ms worker processing for a 4096-bin release frame, about 3.9x browser headroom for four RDS targets, and 1.46x for four WBFM VFOs at 20 MS/s on the measured machine.
 - Alternatives: WASM, WebGPU compute, hybrid compute/rendering.
 - Expected benefit: WebGPU could win for batched FFT filter banks or GPU-resident waterfall data.
 - Complexity cost: shader implementations, upload/dispatch synchronization, numerical parity, device loss, and CPU readback.
-- Evidence: no measured CPU deadline is close in the implemented workload.
+- Evidence: all implemented CPU paths remain above their real-time deadlines; four WBFM VFOs at 20 MS/s are the closest measured case and still avoid GPU upload/readback complexity.
 - Decision: retain CPU/WASM and Canvas2D; keep WebGPU optional and unimplemented.
-- Confidence: high for current workloads, low beyond the measured VFO proxy.
+- Confidence: high for the four-VFO limit, low beyond it or under unmeasured long live-HackRF load.
 - Reversal cost: low if future channel extraction is kept behind the source-owned VFO bank boundary.

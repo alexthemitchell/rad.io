@@ -4,19 +4,23 @@ pub mod error;
 pub mod generator;
 pub mod rds;
 pub mod types;
+pub mod vfo;
 
 use analyzer::SpectrumAnalyzer;
 use error::DspError;
 use generator::ComplexToneGenerator;
 use rds::{RdsChannelSnapshot, RdsDecodeTarget, RdsDecoderBank};
 use types::{AnalysisFrame, AnalyzerConfig, DetectionConfig, GeneratorConfig, GeneratorMode};
+use vfo::{VfoAudioBlock, VfoBank, VfoConfig};
 
-pub const PROTOCOL_VERSION: u32 = 3;
+pub const PROTOCOL_VERSION: u32 = 4;
 
 pub struct DspEngine {
     generator: ComplexToneGenerator,
     analyzer: SpectrumAnalyzer,
     rds_decoder: RdsDecoderBank,
+    vfo_bank: VfoBank,
+    vfo_output_sample_rate_hz: u32,
     detection_config: DetectionConfig,
     sequence: u32,
     elapsed_samples: u64,
@@ -31,6 +35,8 @@ impl DspEngine {
             analyzer: SpectrumAnalyzer::new(AnalyzerConfig::default())
                 .expect("default analyzer config is valid"),
             rds_decoder: RdsDecoderBank::new(),
+            vfo_bank: VfoBank::new(),
+            vfo_output_sample_rate_hz: 48_000,
             detection_config: DetectionConfig::default(),
             sequence: 0,
             elapsed_samples: 0,
@@ -57,6 +63,7 @@ impl DspEngine {
         self.generator.configure(generator_config)?;
         self.analyzer = analyzer;
         self.rds_decoder.reset();
+        self.vfo_bank.reset();
         if generator_config.mode == GeneratorMode::FmRds {
             self.rds_decoder.set_targets(
                 generator_config.sample_rate_hz.round() as u32,
@@ -67,6 +74,21 @@ impl DspEngine {
                 }],
             )?;
         }
+        Ok(())
+    }
+
+    pub fn configure_vfos(
+        &mut self,
+        output_sample_rate_hz: u32,
+        configs: Vec<VfoConfig>,
+    ) -> Result<(), DspError> {
+        self.vfo_bank.set_vfos(
+            self.generator.sample_rate_hz().round() as u32,
+            self.generator.center_frequency_hz(),
+            output_sample_rate_hz,
+            &configs,
+        )?;
+        self.vfo_output_sample_rate_hz = output_sample_rate_hz;
         Ok(())
     }
 
@@ -84,9 +106,10 @@ impl DspEngine {
         let sample_count = self.generator.samples_per_frame().max(fft_size);
         let frame_start_samples = self.elapsed_samples;
         let iq = self.generator.generate(sample_count);
+        let timestamp_us = ((u128::from(frame_start_samples) * 1_000_000)
+            / u128::from(sample_rate_hz.round() as u64)) as u64;
+        self.vfo_bank.process_f32(&iq, timestamp_us)?;
         if self.generator.mode() == GeneratorMode::FmRds {
-            let timestamp_us = ((u128::from(frame_start_samples) * 1_000_000)
-                / u128::from(sample_rate_hz.round() as u64)) as u64;
             self.rds_decoder.process_f32(&iq, timestamp_us)?;
         }
         let analysis_start = (sample_count - fft_size) * 2;
@@ -98,6 +121,11 @@ impl DspEngine {
             sample_count,
             rds_snapshots,
         )
+    }
+
+    #[must_use]
+    pub fn drain_vfo_audio(&mut self) -> Vec<VfoAudioBlock> {
+        self.vfo_bank.drain_audio()
     }
 
     pub fn analyze_external(
@@ -118,12 +146,17 @@ impl DspEngine {
     pub fn reset(&mut self) {
         self.generator.reset();
         self.rds_decoder.reset_decoders();
+        self.vfo_bank.reset_decoders();
         self.sequence = 0;
         self.elapsed_samples = 0;
     }
 
     pub fn reset_rds(&mut self) {
         self.rds_decoder.reset_decoders();
+    }
+
+    pub fn reset_vfos(&mut self) {
+        self.vfo_bank.reset_decoders();
     }
 
     fn analyze(
@@ -172,6 +205,7 @@ mod tests {
         analyzer::SpectrumAnalyzer,
         generator::ComplexToneGenerator,
         types::{AnalyzerConfig, GeneratorConfig},
+        vfo::{VfoConfig, VfoMode},
     };
 
     #[test]
@@ -196,6 +230,55 @@ mod tests {
     }
 
     #[test]
+    fn generated_samples_feed_the_configured_vfo_bank() {
+        let mut engine = DspEngine::new();
+        engine
+            .configure(
+                GeneratorConfig {
+                    mode: super::types::GeneratorMode::Nbfm,
+                    sample_rate_hz: 250_000.0,
+                    center_frequency_hz: 162_500_000.0,
+                    tone_frequency_hz: 50_000.0,
+                    noise_enabled: false,
+                    ..GeneratorConfig::default()
+                },
+                AnalyzerConfig {
+                    fft_size: 4096,
+                    ..AnalyzerConfig::default()
+                },
+            )
+            .unwrap();
+        engine
+            .configure_vfos(
+                48_000,
+                vec![VfoConfig {
+                    id: "vfo-1".to_owned(),
+                    frequency_hz: 162_550_000.0,
+                    mode: VfoMode::Nbfm,
+                    bandwidth_hz: 12_500.0,
+                    squelch_dbfs: -120.0,
+                    revision: 1,
+                }],
+            )
+            .unwrap();
+
+        for _ in 0..4 {
+            engine.generate_and_analyze().unwrap();
+        }
+        let blocks = engine.drain_vfo_audio();
+
+        assert!(!blocks.is_empty());
+        assert!(blocks.iter().all(|block| block.vfo_id == "vfo-1"));
+        assert!(blocks.iter().all(|block| block.sample_rate_hz == 48_000));
+        assert!(
+            blocks
+                .iter()
+                .flat_map(|block| &block.samples)
+                .any(|sample| sample.abs() > 0.05)
+        );
+    }
+
+    #[test]
     fn generated_frames_preserve_configured_center_frequency() {
         let mut engine = DspEngine::new();
         engine
@@ -212,6 +295,31 @@ mod tests {
 
         assert_eq!(frame.center_frequency_hz, 100_000_000.0);
         assert!(!frame.detections.is_empty());
+    }
+
+    #[test]
+    fn analyzer_configuration_does_not_require_a_vfo_sample_rate() {
+        let mut engine = DspEngine::new();
+        engine
+            .configure(
+                GeneratorConfig {
+                    sample_rate_hz: 100_000.0,
+                    tone_frequency_hz: 10_000.0,
+                    noise_enabled: false,
+                    ..GeneratorConfig::default()
+                },
+                AnalyzerConfig {
+                    fft_size: 1024,
+                    ..AnalyzerConfig::default()
+                },
+            )
+            .unwrap();
+
+        let frame = engine.generate_and_analyze().unwrap();
+
+        assert_eq!(frame.sample_rate_hz, 100_000.0);
+        assert!(frame.rds_snapshots.is_empty());
+        assert!(engine.drain_vfo_audio().is_empty());
     }
 
     #[test]

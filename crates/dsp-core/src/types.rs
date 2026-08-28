@@ -15,6 +15,8 @@ pub enum GeneratorMode {
     #[default]
     Tone,
     FmRds,
+    Am,
+    Nbfm,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

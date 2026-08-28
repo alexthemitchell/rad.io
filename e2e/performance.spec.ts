@@ -26,6 +26,14 @@ type RdsMeasurement = {
   realTimeHeadroom: number
 }
 
+type VfoMeasurement = {
+  sampleRateHz: number
+  workload: string
+  throughputMsps: number
+  realTimeHeadroom: number
+  emittedSamples: number
+}
+
 test('records browser DSP worker and Canvas2D baselines', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'performance', 'Run with npm run benchmark:browser.')
   await page.goto('/')
@@ -37,12 +45,14 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
     const waterfallModulePath = '/src/renderers/WaterfallRenderer.ts'
     const waveformModulePath = '/src/renderers/WaveformRenderer.ts'
     const rdsModulePath = '/src/rds/RdsWasmDecoder.ts'
+    const vfoModulePath = '/src/vfo/VfoWasmProcessor.ts'
     const { DspWorkerClient } = await import(clientModulePath)
     const { DEFAULT_GENERATOR_CONFIG } = await import(protocolModulePath)
     const { SpectrumRenderer } = await import(spectrumModulePath)
     const { WaterfallRenderer } = await import(waterfallModulePath)
     const { WaveformRenderer } = await import(waveformModulePath)
     const { RdsWasmDecoder } = await import(rdsModulePath)
+    const { VfoWasmProcessor } = await import(vfoModulePath)
 
     const summarize = (values: number[]) => {
       const sorted = [...values].sort((left, right) => left - right)
@@ -124,9 +134,7 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
         })
       }
     }
-    client.terminate()
 
-    const rds: RdsMeasurement[] = []
     const rdsIq = new Int8Array(16 * 1_024)
     for (let index = 0; index < rdsIq.length; index += 2) {
       const phase = (Math.PI * 2 * 97_000 * (index / 2)) / 20_000_000
@@ -134,6 +142,65 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
       rdsIq[index + 1] = Math.round(Math.sin(phase) * 80)
     }
     const rdsBlockSamples = rdsIq.length / 2
+    const vfo: VfoMeasurement[] = []
+    const vfoWorkloads = [
+      { name: '1 WBFM', modes: ['wbfm'] },
+      { name: '4 WBFM', modes: ['wbfm', 'wbfm', 'wbfm', 'wbfm'] },
+      { name: '4 mixed', modes: ['wbfm', 'am', 'nbfm', 'nbfm'] },
+    ] as const
+    for (const sampleRateHz of [2_400_000, 10_000_000, 20_000_000]) {
+      for (const workload of vfoWorkloads) {
+        const processor = await VfoWasmProcessor.create()
+        const offsetsHz = [-300_000, -100_000, 100_000, 300_000]
+        processor.configure(
+          sampleRateHz,
+          100_000_000,
+          48_000,
+          workload.modes.map((mode, index) => ({
+            id: `vfo-${index + 1}`,
+            frequencyHz: 100_000_000 + offsetsHz[index],
+            mode,
+            bandwidthHz: mode === 'wbfm' ? 200_000 : mode === 'am' ? 10_000 : 12_500,
+            squelchDbfs: -120,
+            revision: 1,
+          })),
+        )
+        let timestampUs = 0n
+        let emittedSamples = 0
+        const blockDurationUs = BigInt(
+          Math.floor((rdsBlockSamples * 1_000_000) / sampleRateHz),
+        )
+        for (let iteration = 0; iteration < 10; iteration += 1) {
+          emittedSamples += processor
+            .processI8(rdsIq, timestampUs)
+            .reduce((sum, block) => sum + block.samples.length, 0)
+          timestampUs += blockDurationUs
+        }
+        const startedAt = performance.now()
+        let iterations = 0
+        while (performance.now() - startedAt < 200) {
+          emittedSamples += processor
+            .processI8(rdsIq, timestampUs)
+            .reduce((sum, block) => sum + block.samples.length, 0)
+          timestampUs += blockDurationUs
+          iterations += 1
+        }
+        const elapsedSeconds = (performance.now() - startedAt) / 1_000
+        const throughputMsps =
+          (rdsBlockSamples * iterations) / elapsedSeconds / 1_000_000
+        vfo.push({
+          sampleRateHz,
+          workload: workload.name,
+          throughputMsps,
+          realTimeHeadroom: (throughputMsps * 1_000_000) / sampleRateHz,
+          emittedSamples,
+        })
+        processor.dispose()
+      }
+    }
+    client.terminate()
+
+    const rds: RdsMeasurement[] = []
     for (const sampleRateHz of [2_400_000, 10_000_000, 20_000_000]) {
       for (const targetCount of [1, 2, 4]) {
         const decoder = await RdsWasmDecoder.create(sampleRateHz)
@@ -241,6 +308,7 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
       },
       worker: measurements,
       rds,
+      vfo,
       renderers,
     }
   })
@@ -259,6 +327,11 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
   for (const measurement of report.rds) {
     expect(measurement.throughputMsps).toBeGreaterThan(0)
     expect(measurement.realTimeHeadroom).toBeGreaterThan(0)
+  }
+  for (const measurement of report.vfo) {
+    expect(measurement.throughputMsps).toBeGreaterThan(0)
+    expect(measurement.realTimeHeadroom).toBeGreaterThan(1)
+    expect(measurement.emittedSamples).toBeGreaterThan(0)
   }
 
   await testInfo.attach('browser-performance.json', {
