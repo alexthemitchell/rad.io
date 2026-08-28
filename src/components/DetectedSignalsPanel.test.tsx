@@ -140,10 +140,15 @@ describe('DetectedSignalsPanel', () => {
 
   it('renders measured metadata and classification evidence', () => {
     const onSignalSelect = vi.fn()
+    const shiftedStationSignal = {
+      ...SIGNAL,
+      peakOffsetHz: 124_000,
+      absoluteFrequencyHz: 100_124_000,
+    }
     render(
       <DetectedSignalsPanel
         config={DEFAULT_DETECTION_CONFIG}
-        signals={[SIGNAL]}
+        signals={[shiftedStationSignal]}
         centerFrequencyHz={100_000_000}
         onConfigChange={vi.fn()}
         optimizationTargetFrequencyHz={100_100_000}
@@ -165,7 +170,7 @@ describe('DetectedSignalsPanel', () => {
       name: 'FM broadcast channel 261 (100.1 MHz), 100.1000 MHz, active, track #1',
     })
     fireEvent.click(rowButton)
-    expect(onSignalSelect).toHaveBeenCalledWith(SIGNAL)
+    expect(onSignalSelect).toHaveBeenCalledWith(shiftedStationSignal)
     expect(rowButton.closest('tr')).toHaveClass('is-optimization-target')
   })
 
@@ -199,10 +204,25 @@ describe('DetectedSignalsPanel', () => {
   })
 
   it('shows a decoded station name in the row and extended RBDS details', () => {
+    const neighboringSignal = {
+      ...SIGNAL,
+      id: 'signal-2',
+      peakOffsetHz: -100_000,
+      absoluteFrequencyHz: 99_900_000,
+      classification: {
+        ...SIGNAL.classification,
+        primary: {
+          ...SIGNAL.classification.primary,
+          allocationId: 'fm-99900000',
+          channelCenterHz: 99_900_000,
+          label: 'FM broadcast channel 260 (99.9 MHz)',
+        },
+      },
+    }
     render(
       <DetectedSignalsPanel
         config={DEFAULT_DETECTION_CONFIG}
-        signals={[RDS_SIGNAL]}
+        signals={[neighboringSignal, RDS_SIGNAL]}
         centerFrequencyHz={100_000_000}
         onConfigChange={vi.fn()}
       />,

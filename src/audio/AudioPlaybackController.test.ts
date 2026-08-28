@@ -105,6 +105,7 @@ describe('AudioPlaybackController', () => {
     await expect(harness.controller.start()).resolves.toBe(48_000)
 
     expect(harness.createContext).toHaveBeenCalledTimes(1)
+    expect(harness.createContext).toHaveBeenCalledWith({ latencyHint: 'playback' })
     expect(harness.createNode).toHaveBeenCalledTimes(1)
     expect(harness.addModule).toHaveBeenCalledWith('/vfo-mixer.js')
     expect(harness.resume).toHaveBeenCalledTimes(1)

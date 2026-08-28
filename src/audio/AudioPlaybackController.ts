@@ -32,7 +32,7 @@ type AudioWorkletNodeLike = {
 }
 
 export type AudioPlaybackDependencies = {
-  createContext?: () => AudioContextLike
+  createContext?: (options: AudioContextOptions) => AudioContextLike
   createNode?: (context: AudioContextLike) => AudioWorkletNodeLike
   createMessageChannel?: () => MessageChannel
   workletUrl?: string
@@ -175,7 +175,8 @@ export class AudioPlaybackController {
   }
 
   #createContext(): AudioContextLike {
-    return this.#dependencies.createContext?.() ?? new AudioContext({ latencyHint: 'interactive' })
+    const options = { latencyHint: 'playback' } satisfies AudioContextOptions
+    return this.#dependencies.createContext?.(options) ?? new AudioContext(options)
   }
 
   #postConfiguration(): void {

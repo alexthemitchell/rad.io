@@ -91,6 +91,24 @@ describe('VfoMixerCore', () => {
     ])
   })
 
+  it('resumes on the next complete block after a brief underrun', () => {
+    const mixer = new VfoMixerCore({ sampleRateHz: 1_000, prebufferMs: 100 })
+    mixer.configure([controls[0]], 0, false)
+    mixer.push(block('vfo-1', Array.from({ length: 100 }, () => 0.25)))
+    mixer.render(new Float32Array(100), new Float32Array(100))
+
+    mixer.render(new Float32Array(2), new Float32Array(2))
+    expect(mixer.diagnostics().underruns['vfo-1']).toBe(1)
+
+    mixer.push(block('vfo-1', [0.25, 0.25]))
+    const left = new Float32Array(2)
+    mixer.render(left, new Float32Array(2))
+    expect([...left]).toEqual([
+      expect.closeTo(0.25, 6),
+      expect.closeTo(0.25, 6),
+    ])
+  })
+
   it('preserves stereo channels and applies a ceiling limiter', () => {
     const mixer = new VfoMixerCore({ sampleRateHz: 1_000, prebufferMs: 0 })
     mixer.configure([controls[0]], 0, false)

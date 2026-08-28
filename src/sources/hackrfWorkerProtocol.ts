@@ -11,6 +11,9 @@ export type HackRfDeviceIdentity = {
 
 export type HackRfWorkerRequest =
   | { type: 'start'; identity: HackRfDeviceIdentity; config: HackRfConfig }
+  | { type: 'start-processing'; config: HackRfConfig }
+  | { type: 'configure-processing'; config: HackRfConfig }
+  | { type: 'process-iq'; iq: Int8Array; timestampUs: bigint }
   | { type: 'apply-runtime-command'; requestId: number; command: HackRfRuntimeCommand }
   | { type: 'set-rds-targets'; targets: RdsDecodeTarget[] }
   | { type: 'set-vfos'; outputSampleRateHz: number; vfos: VfoDspConfig[] }
@@ -20,6 +23,7 @@ export type HackRfWorkerRequest =
 
 export type HackRfWorkerEvent =
   | { type: 'configured'; info: HackRfDeviceInfo }
+  | { type: 'processing-ready' }
   | {
       type: 'samples'
       iq: Float32Array

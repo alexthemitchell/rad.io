@@ -34,6 +34,7 @@ function createDevice(
   transferIn?: () => Promise<UsbInTransferResult>,
   inEndpointNumber = 1,
   openGate?: Promise<void>,
+  onClose?: () => void,
 ): UsbDevice & {
   controlTransferIn: ReturnType<typeof vi.fn>
   controlTransferOut: ReturnType<typeof vi.fn>
@@ -64,6 +65,7 @@ function createDevice(
       state.opened = true
     }),
     close: vi.fn(async () => {
+      onClose?.()
       state.opened = false
     }),
     selectConfiguration: vi.fn(async () => {
@@ -153,6 +155,89 @@ describe('HackRfDeviceSession', () => {
     expect(device.transferIn.mock.calls.length).toBeGreaterThan(1)
   })
 
+  it('starts the next bulk read before processing the current raw block', async () => {
+    const device = createDevice(async () => ({
+      status: 'ok',
+      data: new DataView(new Int8Array(4096).fill(64).buffer),
+    }))
+    let transfersDuringRawCallback = 0
+    const session = new HackRfDeviceSession(device, DEFAULT_HACKRF_CONFIG, {
+      onRawSamples: () => {
+        transfersDuringRawCallback = device.transferIn.mock.calls.length
+        void session.stop()
+      },
+      onSamples: vi.fn(),
+    })
+
+    await session.start()
+
+    expect(transfersDuringRawCallback).toBe(2)
+  })
+
+  it('scales queued bulk reads to keep high-rate acquisition continuous', async () => {
+    const device = createDevice(async () => ({
+      status: 'ok',
+      data: new DataView(new Int8Array(4096).fill(64).buffer),
+    }))
+    const session = new HackRfDeviceSession(
+      device,
+      { ...DEFAULT_HACKRF_CONFIG, sampleRateHz: 20_000_000 },
+      {
+        onRawSamples: () => void session.stop(),
+        onSamples: vi.fn(),
+      },
+    )
+
+    await session.start()
+
+    expect(device.transferIn).toHaveBeenCalledTimes(9)
+    for (const call of device.transferIn.mock.calls) {
+      expect(call).toEqual([1, 256 * 1024])
+    }
+  })
+
+  it('waits for queued bulk reads to settle after closing the device', async () => {
+    const transferResult = {
+      status: 'ok' as const,
+      data: new DataView(new Int8Array(4096).fill(64).buffer),
+    }
+    const pendingTransfers: Array<(result: UsbInTransferResult) => void> = []
+    let transferCount = 0
+    let settledTransfers = 0
+    const device = createDevice(
+      () => {
+        transferCount += 1
+        if (transferCount === 1) return Promise.resolve(transferResult)
+        return new Promise<UsbInTransferResult>((resolve) => {
+          pendingTransfers.push(resolve)
+        }).finally(() => {
+          settledTransfers += 1
+        })
+      },
+      1,
+      undefined,
+      () => {
+        for (const resolve of pendingTransfers.splice(0)) resolve(transferResult)
+      },
+    )
+    let stopping: Promise<void> | undefined
+    const session = new HackRfDeviceSession(
+      device,
+      { ...DEFAULT_HACKRF_CONFIG, sampleRateHz: 20_000_000 },
+      {
+        onRawSamples: () => {
+          stopping = session.stop()
+        },
+        onSamples: vi.fn(),
+      },
+    )
+
+    await session.start()
+    await stopping
+
+    expect(settledTransfers).toBe(8)
+  })
+
   it('clears a stalled endpoint and resumes reception', async () => {
     let attempt = 0
     const device = createDevice(async () => {
@@ -175,7 +260,7 @@ describe('HackRfDeviceSession', () => {
 
     await session.start()
 
-    expect(device.transferIn).toHaveBeenCalledWith(5, 16 * 1024)
+    expect(device.transferIn).toHaveBeenCalledWith(5, 256 * 1024)
     expect(device.clearHalt).toHaveBeenCalledWith('in', 5)
     expect(onDiscontinuity).toHaveBeenCalledOnce()
     expect(sample).toBe(0)

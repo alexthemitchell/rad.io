@@ -119,9 +119,9 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
         return { status: 'ok', bytesWritten: data?.byteLength ?? 0 }
       },
       async transferIn(_endpointNumber: number, length: number) {
-        await new Promise<void>((resolve) => setTimeout(resolve, 4))
-        const iq = new Int8Array(length)
+        const transferStartedAt = performance.now()
         const sampleCount = length / 2
+        const iq = new Int8Array(length)
         const shakePatternHz = [-24_000, 0, 24_000, 0]
         const shakeHz = window.__hackRfShake
           ? shakePatternHz[Math.floor(log.transferCount / 10) % shakePatternHz.length]
@@ -164,6 +164,11 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
         }
         state.sampleIndex += sampleCount
         log.transferCount += 1
+        const transferDurationMs = sampleCount / 2_000
+        const remainingDurationMs = transferDurationMs - (performance.now() - transferStartedAt)
+        if (remainingDurationMs > 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, remainingDurationMs))
+        }
         return { status: 'ok', data: new DataView(iq.buffer) }
       },
       async clearHalt() {},
@@ -247,6 +252,15 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
     fullPage: true,
   })
   await expect(page.locator('.detection-table tbody tr')).toHaveCount(1)
+
+  await page.locator('.detection-table tbody button').click()
+  await page.getByRole('button', { name: 'Add receiver' }).click()
+  await page.getByRole('button', { name: 'Start audio playback' }).click()
+  await expect(page.locator('.vfo-state-copy')).toHaveText('playing', {
+    timeout: 15_000,
+  })
+  await page.waitForTimeout(1_000)
+  await expect(page.locator('.vfo-footer')).toContainText('0 underruns')
 
   const autoOptimize = page.getByRole('checkbox', { name: 'Auto optimize' })
   const gainChangesBeforeOptimization =

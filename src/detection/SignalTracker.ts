@@ -3,7 +3,8 @@ import type { SpectralDetection } from '../workers/protocol'
 const CONFIRMATION_HITS = 3
 const RECENT_FRAME_LIMIT = 15
 const MAX_TRACKS = 64
-const SMOOTHING = 0.35
+const GEOMETRY_SMOOTHING_TIME_CONSTANT_US = 250_000
+const LEVEL_SMOOTHING_TIME_CONSTANT_US = 125_000
 const MAX_RF_SHAKE_HZ = 50_000
 const RF_SHAKE_CAPTURE_FRACTION = 0.025
 const MIN_RF_SHAKE_BINS = 8
@@ -86,7 +87,8 @@ export class SignalTracker {
       .sort(
         (left, right) =>
           stateRank(left.state) - stateRank(right.state) ||
-          right.peakPowerDbfs - left.peakPowerDbfs ||
+          (left.absoluteFrequencyHz ?? left.peakOffsetHz) -
+            (right.absoluteFrequencyHz ?? right.peakOffsetHz) ||
           left.id.localeCompare(right.id),
       )
       .map(copyMeasurement)
@@ -197,24 +199,42 @@ function updateTrack(
   candidate: Candidate,
   frame: SignalTrackerFrame,
 ): void {
-  track.bandwidthHz = lerp(track.bandwidthHz, candidate.bandwidthHz)
-  track.peakPowerDbfs = lerp(track.peakPowerDbfs, candidate.peakPowerDbfs)
-  track.snrDb = lerp(track.snrDb, candidate.snrDb)
+  const elapsedUs = frame.timestampUs - track.lastSeenUs
+  const geometrySmoothing = smoothingFactor(
+    elapsedUs,
+    GEOMETRY_SMOOTHING_TIME_CONSTANT_US,
+  )
+  const levelSmoothing = smoothingFactor(elapsedUs, LEVEL_SMOOTHING_TIME_CONSTANT_US)
+  track.bandwidthHz = lerp(track.bandwidthHz, candidate.bandwidthHz, geometrySmoothing)
+  track.peakPowerDbfs = lerp(track.peakPowerDbfs, candidate.peakPowerDbfs, levelSmoothing)
+  track.snrDb = lerp(track.snrDb, candidate.snrDb, levelSmoothing)
   track.edgeClipped = candidate.edgeClipped
   track.captureBandwidthHz = candidate.captureBandwidthHz
   track.binWidthHz = candidate.binWidthHz
 
   if (candidate.absoluteFrequencyHz !== null && track.absoluteFrequencyHz !== null) {
-    track.absoluteFrequencyHz = lerp(track.absoluteFrequencyHz, candidate.absoluteFrequencyHz)
-    track.lowerFrequencyHz = lerp(track.lowerFrequencyHz!, candidate.lowerFrequencyHz!)
-    track.upperFrequencyHz = lerp(track.upperFrequencyHz!, candidate.upperFrequencyHz!)
+    track.absoluteFrequencyHz = lerp(
+      track.absoluteFrequencyHz,
+      candidate.absoluteFrequencyHz,
+      geometrySmoothing,
+    )
+    track.lowerFrequencyHz = lerp(
+      track.lowerFrequencyHz!,
+      candidate.lowerFrequencyHz!,
+      geometrySmoothing,
+    )
+    track.upperFrequencyHz = lerp(
+      track.upperFrequencyHz!,
+      candidate.upperFrequencyHz!,
+      geometrySmoothing,
+    )
     track.peakOffsetHz = track.absoluteFrequencyHz - frame.centerFrequencyHz
     track.lowerOffsetHz = track.lowerFrequencyHz - frame.centerFrequencyHz
     track.upperOffsetHz = track.upperFrequencyHz - frame.centerFrequencyHz
   } else {
-    track.peakOffsetHz = lerp(track.peakOffsetHz, candidate.peakOffsetHz)
-    track.lowerOffsetHz = lerp(track.lowerOffsetHz, candidate.lowerOffsetHz)
-    track.upperOffsetHz = lerp(track.upperOffsetHz, candidate.upperOffsetHz)
+    track.peakOffsetHz = lerp(track.peakOffsetHz, candidate.peakOffsetHz, geometrySmoothing)
+    track.lowerOffsetHz = lerp(track.lowerOffsetHz, candidate.lowerOffsetHz, geometrySmoothing)
+    track.upperOffsetHz = lerp(track.upperOffsetHz, candidate.upperOffsetHz, geometrySmoothing)
   }
 
   track.lastSeenUs = frame.timestampUs
@@ -249,8 +269,13 @@ function copyMeasurement(track: MutableTrack): TrackedSignalMeasurement {
   }
 }
 
-function lerp(previous: number, next: number): number {
-  return previous + (next - previous) * SMOOTHING
+function lerp(previous: number, next: number, smoothing: number): number {
+  return previous + (next - previous) * smoothing
+}
+
+function smoothingFactor(elapsedUs: bigint, timeConstantUs: number): number {
+  if (elapsedUs <= 0n) return 0
+  return 1 - Math.exp(-Number(elapsedUs) / timeConstantUs)
 }
 
 function stateRank(state: TrackedSignalMeasurement['state']): number {

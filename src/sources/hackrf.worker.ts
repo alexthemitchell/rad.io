@@ -16,6 +16,7 @@ const workerScope: DedicatedWorkerGlobalScope = self as DedicatedWorkerGlobalSco
 let session: HackRfDeviceSession | undefined
 let stopping = false
 let starting = false
+let processingOnly = false
 let rdsDecoder: RdsWasmDecoder | undefined
 let rdsTargets: RdsDecodeTarget[] = []
 let lastRdsEmissionUs: bigint | undefined
@@ -36,6 +37,29 @@ function postVfoAudio(iq: Int8Array, timestampUs: bigint): void {
     { type: 'vfo-audio', blocks } satisfies VfoAudioPortMessage,
     blocks.map((block) => block.samples.buffer as ArrayBuffer),
   )
+}
+
+function processIq(iq: Int8Array, timestampUs: bigint): void {
+  postVfoAudio(iq, timestampUs)
+  const receptions = rdsDecoder?.process(iq, timestampUs)
+  if (
+    receptions &&
+    (lastRdsEmissionUs === undefined || timestampUs - lastRdsEmissionUs >= 250_000n)
+  ) {
+    lastRdsEmissionUs = timestampUs
+    postEvent({ type: 'rds-update', receptions })
+  }
+}
+
+function disposeProcessing(): void {
+  rdsDecoder?.dispose()
+  rdsDecoder = undefined
+  vfoProcessor?.dispose()
+  vfoProcessor = undefined
+  vfoAudioPort?.close()
+  vfoAudioPort = undefined
+  activeConfig = undefined
+  lastRdsEmissionUs = undefined
 }
 
 function configureVfos(): void {
@@ -60,7 +84,7 @@ function matchesIdentity(
 }
 
 async function start(request: Extract<HackRfWorkerRequest, { type: 'start' }>): Promise<void> {
-  if (starting || session) {
+  if (starting || session || processingOnly) {
     postEvent({ type: 'error', code: 'DEVICE_FAILURE', message: 'HackRF worker is already active.' })
     return
   }
@@ -91,22 +115,13 @@ async function start(request: Extract<HackRfWorkerRequest, { type: 'start' }>): 
     activeConfig = { ...request.config }
     rdsDecoder = await RdsWasmDecoder.create(request.config.sampleRateHz)
     vfoProcessor = await VfoWasmProcessor.create()
+    if (stopping) return
     rdsDecoder.setTargets(rdsTargets)
     configureVfos()
 
     session = new HackRfDeviceSession(device, request.config, {
       onConfigured: (info) => postEvent({ type: 'configured', info }),
-      onRawSamples: ({ iq, timestampUs }) => {
-        postVfoAudio(iq, timestampUs)
-        const receptions = rdsDecoder?.process(iq, timestampUs)
-        if (
-          receptions &&
-          (lastRdsEmissionUs === undefined || timestampUs - lastRdsEmissionUs >= 250_000n)
-        ) {
-          lastRdsEmissionUs = timestampUs
-          postEvent({ type: 'rds-update', receptions })
-        }
-      },
+      onRawSamples: ({ iq, timestampUs }) => processIq(iq, timestampUs),
       onDiscontinuity: () => {
         rdsDecoder?.reset()
         vfoProcessor?.reset()
@@ -137,15 +152,42 @@ async function start(request: Extract<HackRfWorkerRequest, { type: 'start' }>): 
   } finally {
     starting = false
     session = undefined
-    rdsDecoder?.dispose()
-    rdsDecoder = undefined
-    vfoProcessor?.dispose()
-    vfoProcessor = undefined
-    vfoAudioPort?.close()
-    vfoAudioPort = undefined
-    activeConfig = undefined
-    lastRdsEmissionUs = undefined
+    disposeProcessing()
     postEvent({ type: 'stopped' })
+  }
+}
+
+async function startProcessing(
+  request: Extract<HackRfWorkerRequest, { type: 'start-processing' }>,
+): Promise<void> {
+  if (starting || session || processingOnly) {
+    postEvent({ type: 'error', code: 'DEVICE_FAILURE', message: 'HackRF worker is already active.' })
+    return
+  }
+  starting = true
+  stopping = false
+  try {
+    activeConfig = { ...request.config }
+    rdsDecoder = await RdsWasmDecoder.create(request.config.sampleRateHz)
+    vfoProcessor = await VfoWasmProcessor.create()
+    if (stopping) return
+    rdsDecoder.setTargets(rdsTargets)
+    configureVfos()
+    processingOnly = true
+    postEvent({ type: 'processing-ready' })
+  } catch (error) {
+    disposeProcessing()
+    postEvent({
+      type: 'error',
+      code: 'DEVICE_FAILURE',
+      message: error instanceof Error ? error.message : String(error),
+    })
+  } finally {
+    starting = false
+    if (!processingOnly && stopping) {
+      disposeProcessing()
+      postEvent({ type: 'stopped' })
+    }
   }
 }
 
@@ -153,6 +195,24 @@ workerScope.onmessage = (event: MessageEvent<HackRfWorkerRequest>) => {
   const request = event.data
   if (request.type === 'start') {
     void start(request)
+  } else if (request.type === 'start-processing') {
+    void startProcessing(request)
+  } else if (request.type === 'configure-processing') {
+    activeConfig = { ...request.config }
+    rdsDecoder?.reset()
+    vfoProcessor?.reset()
+    configureVfos()
+  } else if (request.type === 'process-iq') {
+    if (!processingOnly) return
+    try {
+      processIq(request.iq, request.timestampUs)
+    } catch (error) {
+      postEvent({
+        type: 'error',
+        code: 'DEVICE_FAILURE',
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
   } else if (request.type === 'apply-runtime-command') {
     const activeSession = session
     if (!activeSession) {
@@ -225,9 +285,18 @@ workerScope.onmessage = (event: MessageEvent<HackRfWorkerRequest>) => {
         message: error instanceof Error ? error.message : String(error),
       })
     }
+  } else if (processingOnly) {
+    stopping = true
+    processingOnly = false
+    disposeProcessing()
+    postEvent({ type: 'stopped' })
   } else {
     stopping = true
-    void session?.stop()
+    if (session) void session.stop()
+    else if (!starting) {
+      disposeProcessing()
+      postEvent({ type: 'stopped' })
+    }
   }
 }
 

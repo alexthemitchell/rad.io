@@ -16,6 +16,7 @@ import { GeneratorControls } from './components/GeneratorControls'
 import { HackRFControls } from './components/HackRFControls'
 import { SourceControls, type SourceMode } from './components/SourceControls'
 import { VfoMixerPanel } from './components/VfoMixerPanel'
+import { signalDisplayFrequencyHz } from './detection/signalDisplay'
 import { SpectrumRenderer } from './renderers/SpectrumRenderer'
 import { HackRFSource } from './sources/HackRFSource'
 import {
@@ -54,10 +55,6 @@ function analyzerConfigForHackRf(
     fftSize: hackRfConfig.fftSize,
     frameRate: hackRfConfig.frameRate,
   }
-}
-
-function signalTargetFrequencyHz(signal: TrackedSignal): number | null {
-  return signal.classification.primary.channelCenterHz ?? signal.absoluteFrequencyHz
 }
 
 const DEFAULT_DETECTION_CONFIGS: Record<SourceMode, DetectionConfig> = {
@@ -494,7 +491,7 @@ function App() {
               autoOptimizeEnabled ? autoOptimize.targetFrequencyHz : null
             }
             onSignalSelect={(signal) => {
-              setSelectedTargetFrequencyHz(signalTargetFrequencyHz(signal))
+              setSelectedTargetFrequencyHz(signalDisplayFrequencyHz(signal))
             }}
             onAddVfo={addSignalVfo}
             vfoFrequenciesHz={vfoState.vfos.map((vfo) => vfo.frequencyHz)}

@@ -1,5 +1,4 @@
 import type { AnalyzerSource, RdsSink, SampleSink } from './types'
-import { RdsWasmDecoder } from '../rds/RdsWasmDecoder'
 import { HackRfDeviceSession, type HackRfSampleBlock } from './HackRfDeviceSession'
 import {
   HACKRF_ONE_USB_PRODUCT_ID,
@@ -10,8 +9,7 @@ import {
 } from './hackrfProtocol'
 import type { HackRfWorkerEvent, HackRfWorkerRequest } from './hackrfWorkerProtocol'
 import type { RdsDecodeTarget } from '../workers/protocol'
-import { VfoWasmProcessor } from '../vfo/VfoWasmProcessor'
-import type { VfoAudioPortMessage, VfoDspConfig } from '../vfo/types'
+import type { VfoDspConfig } from '../vfo/types'
 import { webUsbFromNavigator, type Usb, type UsbDevice } from './webUsb'
 
 type HackRfWorker = {
@@ -36,15 +34,14 @@ export class HackRFSource implements AnalyzerSource {
   #selectedDevice: UsbDevice | undefined
   #worker: HackRfWorker | undefined
   #fallbackSession: HackRfDeviceSession | undefined
-  #fallbackRdsDecoder: RdsWasmDecoder | undefined
-  #fallbackVfoProcessor: VfoWasmProcessor | undefined
   #rdsTargets: RdsDecodeTarget[] = []
   #vfos: VfoDspConfig[] = []
   #vfoOutputSampleRateHz = 48_000
   #vfoAudioPort: MessagePort | undefined
   #workerConfigured = false
   #rdsSink: RdsSink | undefined
-  #lastRdsEmissionUs: bigint | undefined
+  #resolveProcessingReady: (() => void) | undefined
+  #rejectProcessingReady: ((error: Error) => void) | undefined
   #completion: Promise<void> | undefined
   #resolveCompletion: (() => void) | undefined
   #rejectCompletion: ((error: Error) => void) | undefined
@@ -87,11 +84,6 @@ export class HackRFSource implements AnalyzerSource {
   setRdsTargets(targets: readonly RdsDecodeTarget[]): void {
     this.#rdsTargets = [...targets]
     this.#worker?.postMessage({ type: 'set-rds-targets', targets: this.#rdsTargets })
-    try {
-      this.#fallbackRdsDecoder?.setTargets(this.#rdsTargets)
-    } catch (error) {
-      this.#fail(error)
-    }
   }
 
   setVfos(outputSampleRateHz: number, vfos: readonly VfoDspConfig[]): void {
@@ -102,16 +94,6 @@ export class HackRFSource implements AnalyzerSource {
       outputSampleRateHz,
       vfos: this.#vfos,
     })
-    try {
-      this.#fallbackVfoProcessor?.configure(
-        this.#config.sampleRateHz,
-        this.#config.centerFrequencyHz,
-        outputSampleRateHz,
-        this.#vfos,
-      )
-    } catch (error) {
-      this.#fail(error)
-    }
   }
 
   attachVfoAudioPort(port: MessagePort): void {
@@ -134,6 +116,9 @@ export class HackRFSource implements AnalyzerSource {
       if (this.#fallbackSession) {
         const config = await this.#fallbackSession.applyRuntimeCommand(command)
         this.#config = { ...config }
+        if (command.type === 'set-center-frequency') {
+          this.#worker?.postMessage({ type: 'configure-processing', config })
+        }
         return { ...config }
       }
       if (!this.#worker) throw new Error('HackRF receiver is not running.')
@@ -233,6 +218,12 @@ export class HackRFSource implements AnalyzerSource {
     if (message.type === 'configured') {
       this.#workerConfigured = true
       this.#attachVfoAudioPortToWorker()
+    } else if (message.type === 'processing-ready') {
+      this.#workerConfigured = true
+      this.#attachVfoAudioPortToWorker()
+      this.#resolveProcessingReady?.()
+      this.#resolveProcessingReady = undefined
+      this.#rejectProcessingReady = undefined
     } else if (message.type === 'samples') {
       void this.#deliver({
         iq: message.iq,
@@ -262,15 +253,21 @@ export class HackRFSource implements AnalyzerSource {
       ) {
         void this.#startPageFallback()
       } else {
-        this.#fail(new Error(message.message))
+        const error = new Error(message.message)
+        this.#rejectProcessingReady?.(error)
+        this.#resolveProcessingReady = undefined
+        this.#rejectProcessingReady = undefined
+        this.#fail(error)
       }
-    } else if (message.type === 'stopped' && !this.#fallbackStarted) {
-      if (this.#intentionalStop) {
+    } else if (message.type === 'stopped') {
+      if (this.#fallbackStarted && this.#fallbackSession) {
+        if (!this.#intentionalStop) {
+          this.#fail(new Error('HackRF processing worker stopped unexpectedly.'))
+        }
+      } else if (this.#intentionalStop) {
         this.#settle()
       } else {
-        this.#settle(
-          this.#terminalError ?? new Error('HackRF acquisition stopped unexpectedly.'),
-        )
+        this.#settle(this.#terminalError ?? new Error('HackRF acquisition stopped unexpectedly.'))
       }
     }
   }
@@ -289,40 +286,40 @@ export class HackRFSource implements AnalyzerSource {
     }
     this.#fallbackStarted = true
     this.#disposeWorker()
-    const rdsDecoder = await RdsWasmDecoder.create(this.#config.sampleRateHz)
-    const vfoProcessor = await VfoWasmProcessor.create()
-    if (this.#intentionalStop) {
-      rdsDecoder.dispose()
-      vfoProcessor.dispose()
-      this.#settle()
+    const worker = this.#dependencies.createWorker?.() ?? this.#createWorker()
+    this.#worker = worker
+    this.#workerConfigured = false
+    worker.addEventListener('message', this.#handleWorkerMessage)
+    worker.addEventListener('error', this.#handleWorkerError)
+    const processingReady = new Promise<void>((resolve, reject) => {
+      this.#resolveProcessingReady = resolve
+      this.#rejectProcessingReady = reject
+    })
+    worker.postMessage({ type: 'start-processing', config: this.#config })
+    worker.postMessage({ type: 'set-rds-targets', targets: this.#rdsTargets })
+    worker.postMessage({
+      type: 'set-vfos',
+      outputSampleRateHz: this.#vfoOutputSampleRateHz,
+      vfos: this.#vfos,
+    })
+    try {
+      await processingReady
+    } catch (error) {
+      this.#fail(error)
       return
     }
-    rdsDecoder.setTargets(this.#rdsTargets)
-    vfoProcessor.configure(
-      this.#config.sampleRateHz,
-      this.#config.centerFrequencyHz,
-      this.#vfoOutputSampleRateHz,
-      this.#vfos,
-    )
-    this.#fallbackRdsDecoder = rdsDecoder
-    this.#fallbackVfoProcessor = vfoProcessor
+    if (this.#intentionalStop) {
+      worker.postMessage({ type: 'stop' })
+      return
+    }
     const session = new HackRfDeviceSession(device, this.#config, {
       onRawSamples: ({ iq, timestampUs }) => {
-        this.#postFallbackVfoAudio(vfoProcessor.processI8(iq, timestampUs))
-        const receptions = rdsDecoder.process(iq, timestampUs)
-        if (
-          receptions &&
-          (this.#lastRdsEmissionUs === undefined ||
-            timestampUs - this.#lastRdsEmissionUs >= 250_000n)
-        ) {
-          this.#lastRdsEmissionUs = timestampUs
-          this.#rdsSink?.(receptions)
-        }
+        worker.postMessage(
+          { type: 'process-iq', iq, timestampUs },
+          [iq.buffer as ArrayBuffer],
+        )
       },
-      onDiscontinuity: () => {
-        rdsDecoder.reset()
-        vfoProcessor.reset()
-      },
+      onDiscontinuity: () => worker.postMessage({ type: 'configure-processing', config: this.#config }),
       onSamples: (block) => void this.#deliver(block),
     })
     this.#fallbackSession = session
@@ -395,7 +392,9 @@ export class HackRFSource implements AnalyzerSource {
     this.#rejectCompletion = undefined
     this.#terminalError = undefined
     this.#rdsSink = undefined
-    this.#lastRdsEmissionUs = undefined
+    this.#rejectProcessingReady?.(error ?? new Error('HackRF source stopped.'))
+    this.#resolveProcessingReady = undefined
+    this.#rejectProcessingReady = undefined
     this.#vfoAudioPort?.close()
     this.#vfoAudioPort = undefined
     for (const pending of this.#pendingRuntimeCommands.values()) {
@@ -410,10 +409,6 @@ export class HackRFSource implements AnalyzerSource {
     this.#worker?.terminate()
     this.#worker = undefined
     this.#workerConfigured = false
-    this.#fallbackRdsDecoder?.dispose()
-    this.#fallbackRdsDecoder = undefined
-    this.#fallbackVfoProcessor?.dispose()
-    this.#fallbackVfoProcessor = undefined
   }
 
   #attachVfoAudioPortToWorker(): void {
@@ -423,18 +418,8 @@ export class HackRFSource implements AnalyzerSource {
       this.#worker.postMessage({ type: 'attach-vfo-audio-port', port }, [port])
       this.#vfoAudioPort = undefined
     } catch (error) {
-      this.#fail(error)
-    }
-  }
-
-  #postFallbackVfoAudio(blocks: ReturnType<VfoWasmProcessor['processI8']>): void {
-    if (blocks.length === 0 || !this.#vfoAudioPort) return
-    try {
-      this.#vfoAudioPort.postMessage(
-        { type: 'vfo-audio', blocks } satisfies VfoAudioPortMessage,
-        blocks.map((block) => block.samples.buffer as ArrayBuffer),
-      )
-    } catch (error) {
+      this.#vfoAudioPort = undefined
+      port.close()
       this.#fail(error)
     }
   }
@@ -445,11 +430,5 @@ export class HackRFSource implements AnalyzerSource {
       outputSampleRateHz: this.#vfoOutputSampleRateHz,
       vfos: [],
     })
-    this.#fallbackVfoProcessor?.configure(
-      this.#config.sampleRateHz,
-      this.#config.centerFrequencyHz,
-      this.#vfoOutputSampleRateHz,
-      [],
-    )
   }
 }

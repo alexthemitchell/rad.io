@@ -4,6 +4,10 @@ import type {
   DetectionConfig,
   TrackedSignal,
 } from '../workers/protocol'
+import {
+  signalDisplayFrequencyHz,
+  signalDisplayOffsetHz,
+} from '../detection/signalDisplay'
 import { formatFrequency, formatRfFrequency } from '../renderers/canvas'
 import { RdsStationDetails } from './RdsStationDetails'
 
@@ -31,10 +35,11 @@ export function DetectedSignalsPanel({
   vfoCapacityAvailable = true,
 }: DetectedSignalsPanelProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const selected = signals.find((signal) => signal.id === selectedId) ?? signals[0]
-  const selectedFrequencyHz = selected
-    ? selected.classification.primary.channelCenterHz ?? selected.absoluteFrequencyHz
-    : null
+  const selected =
+    signals.find((signal) => signal.id === selectedId) ??
+    signals.find((signal) => signal.rds?.metadata !== null && signal.rds?.metadata !== undefined) ??
+    signals[0]
+  const selectedFrequencyHz = selected ? signalDisplayFrequencyHz(selected) : null
   const selectedHasVfo = selectedFrequencyHz !== null && vfoFrequenciesHz.includes(selectedFrequencyHz)
 
   const update = (change: Partial<DetectionConfig>) =>
@@ -145,7 +150,12 @@ export function DetectedSignalsPanel({
                 </th>
                 <td className="signal-state-label">{signal.state}</td>
                 <td>{formatSignalFrequency(signal)}</td>
-                <td>{formatFrequency(signal.peakOffsetHz, true)}</td>
+                <td>
+                  {formatFrequency(
+                    signalDisplayOffsetHz(signal, centerFrequencyHz),
+                    true,
+                  )}
+                </td>
                 <td>{signal.peakPowerDbfs.toFixed(1)} dBFS</td>
                 <td>{signal.snrDb.toFixed(1)} dB</td>
                 <td>{formatFrequency(signal.bandwidthHz)}</td>
@@ -252,9 +262,8 @@ function formatOccupiedRange(signal: TrackedSignal): string {
 }
 
 function formatSignalFrequency(signal: TrackedSignal): string {
-  return signal.absoluteFrequencyHz === null
-    ? 'Baseband'
-    : formatRfFrequency(signal.absoluteFrequencyHz)
+  const frequencyHz = signalDisplayFrequencyHz(signal)
+  return frequencyHz === null ? 'Baseband' : formatRfFrequency(frequencyHz)
 }
 
 function matchesOptimizationTarget(
@@ -262,7 +271,6 @@ function matchesOptimizationTarget(
   targetFrequencyHz: number | null,
 ): boolean {
   if (targetFrequencyHz === null) return false
-  const frequencyHz =
-    signal.classification.primary.channelCenterHz ?? signal.absoluteFrequencyHz
+  const frequencyHz = signalDisplayFrequencyHz(signal)
   return frequencyHz !== null && Math.abs(frequencyHz - targetFrequencyHz) <= 50_000
 }

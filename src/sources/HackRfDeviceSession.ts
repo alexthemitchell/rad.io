@@ -17,10 +17,13 @@ import {
 import type {
   UsbControlTransferParameters,
   UsbDevice,
+  UsbInTransferResult,
   UsbTransferStatus,
 } from './webUsb'
 
-const TRANSFER_SIZE_BYTES = 16 * 1024
+const TRANSFER_SIZE_BYTES = 256 * 1024
+const TRANSFER_PIPELINE_DURATION_MS = 50
+const MAX_TRANSFER_PIPELINE_DEPTH = 8
 const MODE_SETTLE_DELAY_MS = 30
 const MAX_CONSECUTIVE_TRANSFER_FAILURES = 3
 const RETUNE_SETTLE_TIME_MS = 50
@@ -71,6 +74,10 @@ export class HackRfDeviceSession {
   #rawSequence = 0
   #receivedSamples = 0n
   #discardUntilReceivedSample = 0n
+  readonly #transferPipelineDepth: number
+  readonly #pendingTransfers: Promise<UsbInTransferResult>[] = []
+  #activeTransfer: Promise<UsbInTransferResult> | undefined
+  #transferDrain: Promise<void> | undefined
   #runtimeCommandQueue: Promise<void> = Promise.resolve()
 
   constructor(device: UsbDevice, config: HackRfConfig, callbacks: SessionCallbacks) {
@@ -79,6 +86,7 @@ export class HackRfDeviceSession {
     this.#config = { ...config }
     this.#callbacks = callbacks
     this.#assembler = new HackRfIqBlockAssembler(config.fftSize)
+    this.#transferPipelineDepth = hackRfTransferPipelineDepth(config.sampleRateHz)
     this.#outputBuffer = new ArrayBuffer(
       config.fftSize * 2 * Float32Array.BYTES_PER_ELEMENT,
     )
@@ -101,6 +109,7 @@ export class HackRfDeviceSession {
     } finally {
       this.#running = false
       await this.#shutdownDevice()
+      await this.#drainTransfers()
     }
   }
 
@@ -108,6 +117,7 @@ export class HackRfDeviceSession {
     this.#stopping = true
     this.#running = false
     await this.#shutdownDevice()
+    await this.#drainTransfers()
   }
 
   returnBuffer(buffer: ArrayBuffer): void {
@@ -237,14 +247,20 @@ export class HackRfDeviceSession {
     let consecutiveFailures = 0
     while (this.#running && this.#device.opened) {
       try {
-        const result = await this.#device.transferIn(
-          this.#inEndpointNumber,
-          TRANSFER_SIZE_BYTES,
-        )
+        this.#fillTransferPipeline()
+        const transfer = this.#pendingTransfers.shift()!
+        this.#activeTransfer = transfer
+        let result: UsbInTransferResult
+        try {
+          result = await transfer
+        } finally {
+          if (this.#activeTransfer === transfer) this.#activeTransfer = undefined
+        }
         if (!this.#running) return
         if (result.status === 'stall') {
           this.#callbacks.onDiscontinuity?.()
           await this.#device.clearHalt('in', this.#inEndpointNumber)
+          await this.#drainTransfers()
           consecutiveFailures += 1
           if (consecutiveFailures >= MAX_CONSECUTIVE_TRANSFER_FAILURES) {
             throw new Error('HackRF bulk-IN endpoint repeatedly stalled.')
@@ -272,14 +288,15 @@ export class HackRfDeviceSession {
           }
           return
         }
+        this.#fillTransferPipeline()
         this.#rawSequence = (this.#rawSequence + 1) >>> 0
+        this.#assembler.push(result.data, (rawBlock) => this.#handleRawBlock(rawBlock))
         this.#callbacks.onRawSamples?.({
           iq: rawIq,
           sourceSequence: this.#rawSequence,
           timestampUs:
             (rawStart * 1_000_000n) / BigInt(this.#config.sampleRateHz),
         })
-        this.#assembler.push(result.data, (rawBlock) => this.#handleRawBlock(rawBlock))
         return
       } catch (error) {
         if (this.#stopping || !this.#running) return
@@ -288,6 +305,41 @@ export class HackRfDeviceSession {
         if (consecutiveFailures >= MAX_CONSECUTIVE_TRANSFER_FAILURES) throw error
       }
     }
+  }
+
+  #drainTransfers(): Promise<void> {
+    if (!this.#transferDrain) {
+      const transfers = this.#activeTransfer
+        ? [this.#activeTransfer, ...this.#pendingTransfers]
+        : [...this.#pendingTransfers]
+      this.#pendingTransfers.length = 0
+      const drain = Promise.allSettled(transfers).then(() => undefined)
+      this.#transferDrain = drain
+      void drain.finally(() => {
+        if (this.#transferDrain === drain) this.#transferDrain = undefined
+      })
+    }
+    return this.#transferDrain
+  }
+
+  #fillTransferPipeline(): void {
+    while (
+      this.#running &&
+      this.#device.opened &&
+      this.#pendingTransfers.length < this.#transferPipelineDepth
+    ) {
+      this.#pendingTransfers.push(this.#requestTransfer())
+    }
+  }
+
+  #requestTransfer(): Promise<UsbInTransferResult> {
+    const transfer = this.#device.transferIn(
+      this.#inEndpointNumber,
+      TRANSFER_SIZE_BYTES,
+    )
+    // A queued read can reject before it reaches the head of the pipeline.
+    void transfer.catch(() => undefined)
+    return transfer
   }
 
   #handleRawBlock(rawBlock: Int8Array): void {
@@ -329,6 +381,7 @@ export class HackRfDeviceSession {
       this.#nextEmissionSample = this.#elapsedSamples
       this.#discardUntilReceivedSample =
         this.#receivedSamples +
+        BigInt(this.#transferPipelineDepth * TRANSFER_SIZE_BYTES / 2) +
         BigInt(Math.ceil(this.#config.sampleRateHz * RETUNE_SETTLE_TIME_MS / 1_000))
       this.#callbacks.onDiscontinuity?.()
     } else if (command.type === 'set-lna-gain') {
@@ -436,4 +489,16 @@ export class HackRfDeviceSession {
     }
     this.#claimedInterface = undefined
   }
+}
+
+export function hackRfTransferPipelineDepth(sampleRateHz: number): number {
+  const transferDurationMs =
+    (TRANSFER_SIZE_BYTES / 2 / sampleRateHz) * 1_000
+  return Math.max(
+    1,
+    Math.min(
+      MAX_TRANSFER_PIPELINE_DEPTH,
+      Math.ceil(TRANSFER_PIPELINE_DURATION_MS / transferDurationMs),
+    ),
+  )
 }

@@ -85,6 +85,43 @@ describe('SignalTracker', () => {
     expect(signals[0].hitCount).toBe(6)
   })
 
+  it('stabilizes emitted geometry while still following a sustained shift', () => {
+    const tracker = new SignalTracker()
+    const shifted = (offsetHz: number): SpectralDetection => ({
+      ...DETECTION,
+      peakFrequencyHz: offsetHz,
+      lowerFrequencyHz: offsetHz - 5_000,
+      upperFrequencyHz: offsetHz + 5_000,
+    })
+    let timestampUs = 0n
+
+    for (let index = 0; index < 3; index += 1) {
+      tracker.update([shifted(100_000)], frame(timestampUs))
+      timestampUs += 16_667n
+    }
+
+    const jitteredOffsetsHz: number[] = []
+    for (let index = 0; index < 80; index += 1) {
+      const signals = tracker.update(
+        [shifted(index % 2 === 0 ? 124_000 : 100_000)],
+        frame(timestampUs),
+      )
+      timestampUs += 16_667n
+      if (index >= 60) jitteredOffsetsHz.push(signals[0].peakOffsetHz)
+    }
+
+    expect(Math.max(...jitteredOffsetsHz) - Math.min(...jitteredOffsetsHz)).toBeLessThanOrEqual(
+      1_000,
+    )
+
+    let signals = tracker.update([shifted(124_000)], frame(timestampUs))
+    for (let index = 0; index < 60; index += 1) {
+      timestampUs += 16_667n
+      signals = tracker.update([shifted(124_000)], frame(timestampUs))
+    }
+    expect(signals[0].peakOffsetHz).toBeGreaterThan(122_000)
+  })
+
   it('preserves two nearby tracks when both signals shift together', () => {
     const tracker = new SignalTracker()
     const shifted = (offsetHz: number): SpectralDetection => ({
@@ -112,6 +149,37 @@ describe('SignalTracker', () => {
       'signal-2',
     ])
     expect(signals.every((signal) => signal.state === 'active')).toBe(true)
+  })
+
+  it('keeps output frequency-ordered when signal levels cross', () => {
+    const tracker = new SignalTracker()
+    const detected = (offsetHz: number, peakPowerDbfs: number): SpectralDetection => ({
+      ...DETECTION,
+      peakFrequencyHz: offsetHz,
+      lowerFrequencyHz: offsetHz - 5_000,
+      upperFrequencyHz: offsetHz + 5_000,
+      peakPowerDbfs,
+    })
+    let timestampUs = 0n
+
+    for (let index = 0; index < 3; index += 1) {
+      tracker.update(
+        [detected(100_000, -20), detected(200_000, -40)],
+        frame(timestampUs),
+      )
+      timestampUs += 16_667n
+    }
+
+    let signals = [] as ReturnType<SignalTracker['update']>
+    for (let index = 0; index < 30; index += 1) {
+      signals = tracker.update(
+        [detected(100_000, -50), detected(200_000, -10)],
+        frame(timestampUs),
+      )
+      timestampUs += 16_667n
+    }
+
+    expect(signals.map((signal) => signal.id)).toEqual(['signal-1', 'signal-2'])
   })
 
   it('does not merge a distant replacement into an existing track', () => {

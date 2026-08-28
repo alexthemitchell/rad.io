@@ -239,7 +239,15 @@ test('@source tracks and classifies multiple external IQ signals', async ({ page
     ),
   ).toBe(true)
   expect(result?.tracks).toHaveLength(2)
-  expect(result?.tracks.map((track) => track.id)).toEqual(['signal-1', 'signal-2'])
+  expect(result?.tracks.map((track) => track.id).sort()).toEqual([
+    'signal-1',
+    'signal-2',
+  ])
+  const trackFrequenciesHz =
+    result?.tracks.map((track) => track.absoluteFrequencyHz ?? 0) ?? []
+  expect(trackFrequenciesHz).toEqual(
+    [...trackFrequenciesHz].sort((left, right) => left - right),
+  )
   for (const track of result?.tracks ?? []) {
     expect(track.category).toBe('amateur')
     expect(track.score).toBeGreaterThan(0.5)

@@ -1,5 +1,9 @@
 import type { AnalysisFrameEvent } from '../workers/protocol'
 import {
+  signalDisplayOffsetHz,
+  signalDisplayRangeOffsetsHz,
+} from '../detection/signalDisplay'
+import {
   formatFrequency,
   frequencyOffsetToX,
   prepareCanvas,
@@ -76,20 +80,24 @@ export class SpectrumRenderer implements CanvasRenderer {
     context.stroke()
 
     for (const signal of frame.trackedSignals) {
+      const [lowerOffsetHz, upperOffsetHz] = signalDisplayRangeOffsetsHz(
+        signal,
+        frame.centerFrequencyHz,
+      )
       const lowerX = frequencyOffsetToX(
-        signal.lowerOffsetHz,
+        lowerOffsetHz,
         frame.sampleRateHz,
         MARGIN.left,
         plotWidth,
       )
       const upperX = frequencyOffsetToX(
-        signal.upperOffsetHz,
+        upperOffsetHz,
         frame.sampleRateHz,
         MARGIN.left,
         plotWidth,
       )
       const peakX = frequencyOffsetToX(
-        signal.peakOffsetHz,
+        signalDisplayOffsetHz(signal, frame.centerFrequencyHz),
         frame.sampleRateHz,
         MARGIN.left,
         plotWidth,
@@ -109,18 +117,20 @@ export class SpectrumRenderer implements CanvasRenderer {
       context.fillText(signal.id.replace('signal-', '#'), peakX + 4, MARGIN.top + 11)
     }
 
-    const peakX = frequencyOffsetToX(
-      frame.peakFrequencyHz,
-      frame.sampleRateHz,
-      MARGIN.left,
-      plotWidth,
-    )
-    context.beginPath()
-    context.moveTo(peakX, MARGIN.top)
-    context.lineTo(peakX, MARGIN.top + plotHeight)
-    context.strokeStyle = '#f0bd56'
-    context.lineWidth = 1
-    context.stroke()
+    if (frame.trackedSignals.length === 0) {
+      const peakX = frequencyOffsetToX(
+        frame.peakFrequencyHz,
+        frame.sampleRateHz,
+        MARGIN.left,
+        plotWidth,
+      )
+      context.beginPath()
+      context.moveTo(peakX, MARGIN.top)
+      context.lineTo(peakX, MARGIN.top + plotHeight)
+      context.strokeStyle = '#f0bd56'
+      context.lineWidth = 1
+      context.stroke()
+    }
     context.restore()
   }
 

@@ -15,6 +15,7 @@ type VfoQueue = {
   chunks: QueueChunk[]
   queuedFrames: number
   ready: boolean
+  starved: boolean
   underruns: number
   overruns: number
 }
@@ -124,12 +125,13 @@ export class VfoMixerCore {
         continue
       }
       if (!queue?.ready || queue.queuedFrames < left.length) {
-        if (queue?.ready) {
-          queue.ready = false
+        if (queue?.ready && !queue.starved) {
+          queue.starved = true
           queue.underruns += 1
         }
         continue
       }
+      queue.starved = false
       mixQueue(queue, left, right, dbToGain(control.gainDb))
     }
 
@@ -178,6 +180,7 @@ function createQueue(revision: number): VfoQueue {
     chunks: [],
     queuedFrames: 0,
     ready: false,
+    starved: false,
     underruns: 0,
     overruns: 0,
   }
