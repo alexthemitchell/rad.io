@@ -38,6 +38,7 @@ export class AnalyzerController {
   #rdsTargets: RdsDecodeTarget[] = []
   readonly #rdsByChannelCenterHz = new Map<number, RdsReception>()
   #sourceTimestampUs = 0n
+  #resetTask: Promise<void> | undefined
   #unsubscribeFrame: (() => void) | undefined
   #unsubscribeStatus: (() => void) | undefined
   #snapshot: AnalyzerSnapshot = {
@@ -180,18 +181,29 @@ export class AnalyzerController {
   }
 
   async reset(): Promise<void> {
-    await this.stop()
-    this.#client?.reset()
-    this.frames.clear()
-    this.#update({
-      sequence: 0,
-      peakFrequencyHz: 0,
-      peakPowerDbfs: -120,
-      centerFrequencyHz: 0,
-      noiseFloorDbfs: -120,
-      trackedSignals: [],
-      processingTimeMs: 0,
-    })
+    if (this.#resetTask) return this.#resetTask
+    const resumeGenerated = this.#activeMode === 'generated'
+    const task = (async () => {
+      await this.stop()
+      this.#client?.reset()
+      this.frames.clear()
+      this.#update({
+        sequence: 0,
+        peakFrequencyHz: 0,
+        peakPowerDbfs: -120,
+        centerFrequencyHz: 0,
+        noiseFloorDbfs: -120,
+        trackedSignals: [],
+        processingTimeMs: 0,
+      })
+      if (resumeGenerated) this.startGenerated()
+    })()
+    this.#resetTask = task
+    try {
+      await task
+    } finally {
+      if (this.#resetTask === task) this.#resetTask = undefined
+    }
   }
 
   async ingest(chunk: SampleChunk): Promise<SampleRelease> {

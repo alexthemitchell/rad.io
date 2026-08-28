@@ -255,4 +255,20 @@ describe('AnalyzerController RDS integration', () => {
     await running
     controller.dispose()
   })
+
+  it('resumes generated analysis after resetting an active generator', async () => {
+    const controller = new AnalyzerController()
+    await controller.initialize()
+    controller.startGenerated()
+
+    await Promise.all([controller.reset(), controller.reset()])
+
+    expect(FakeWorker.instance.requests.map((request) => request.type).slice(-4)).toEqual([
+      'start-generated',
+      'stop',
+      'reset',
+      'start-generated',
+    ])
+    controller.dispose()
+  })
 })

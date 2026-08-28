@@ -166,6 +166,71 @@
   outline-offset: 2px;
 }
 
+.generator-mode {
+  margin-bottom: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.generator-mode button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--paper);
+  font: 600 10px/1 var(--mono);
+  cursor: pointer;
+}
+
+.generator-mode button + button {
+  border-left: 0;
+}
+
+.generator-mode button[aria-pressed='true'] {
+  border-color: var(--ink);
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.generator-mode button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.generator-preset {
+  margin: 0 0 21px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.generator-preset > div {
+  min-width: 0;
+  padding: 9px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.generator-preset dt {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font: 9px/1.2 var(--mono);
+  text-transform: uppercase;
+}
+
+.generator-preset dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font: 600 11px/1.35 var(--mono);
+}
+
+.generator-preset .generator-preset-text {
+  grid-column: 1 / -1;
+}
+
 .source-picker button:disabled,
 .transport-button:disabled,
 .icon-button:disabled {
@@ -243,6 +308,11 @@
   pointer-events: none;
   transform: translateY(-3px);
   transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
 }
 
 .icon-button:hover::after,

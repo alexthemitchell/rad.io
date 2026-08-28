@@ -101,4 +101,24 @@ describe('GeneratorControls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tone' }))
     expect(onChange).toHaveBeenLastCalledWith(toneConfig)
   })
+
+  it('enables reset only when ready and invokes it once', () => {
+    const onReset = vi.fn()
+    const props = {
+      config: DEFAULT_GENERATOR_CONFIG,
+      running: false,
+      onChange: vi.fn(),
+      onToggle: vi.fn(),
+      onReset,
+    }
+    const { rerender } = render(<GeneratorControls {...props} ready={false} />)
+    const reset = screen.getByRole('button', { name: 'Reset generator' })
+    expect(reset).toBeDisabled()
+    fireEvent.click(reset)
+    expect(onReset).not.toHaveBeenCalled()
+
+    rerender(<GeneratorControls {...props} ready />)
+    fireEvent.click(screen.getByRole('button', { name: 'Reset generator' }))
+    expect(onReset).toHaveBeenCalledOnce()
+  })
 })
