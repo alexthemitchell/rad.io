@@ -1,0 +1,83 @@
+:root {
+  --sans: 'IBM Plex Sans', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+  --paper: #f8faf9;
+  --chrome: #e8edeb;
+  --chrome-strong: #dce3e0;
+  --ink: #172021;
+  --muted: #627070;
+  --line: #c4ceca;
+  --scope: #10191a;
+  --cyan: #168f83;
+  --cyan-bright: #49ddcd;
+  --amber: #d08a25;
+  --green: #188568;
+  --red: #c14f48;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--chrome);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100svh;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+select,
+input[type='number'] {
+  border-radius: 4px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --line: #697573;
+    --muted: #3e4948;
+    --cyan: #006f66;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

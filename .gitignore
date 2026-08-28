@@ -1,52 +1,31 @@
-# Dependencies
-node_modules/
+# Logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Build outputs
-dist/
-build/
-*.js.map
-.tsbuildinfo
+node_modules
+dist
+dist-ssr
+coverage
+playwright-report
+test-results
+*.local
 
-# Webpack cache
-node_modules/.cache/
+# Rust and generated WebAssembly output
+target
+crates/dsp-wasm/pkg
 
-# Testing
-coverage/
-.nyc_output/
-tests/  # AssemblyScript tests (not used)
-test-performance-report.json
-.jest-cache/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-.playwright-mcp/
-playwright-report/
-
-# Environment
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
-
-# Logs
-logs/
-*.log
-
-# Build output
-dist/
-
-test-results/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

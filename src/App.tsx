@@ -1,167 +1,506 @@
-import { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import FrequencyDisplay from "./components/FrequencyDisplay";
-import Navigation from "./components/Navigation";
-import RenderingSettingsModal from "./components/RenderingSettingsModal";
-import ShortcutsOverlay from "./components/ShortcutsOverlay";
-import StatusBar from "./components/StatusBar";
-import ToastProvider from "./components/ToastProvider";
-import TopAppBar from "./components/TopAppBar";
-import { useDeviceIntegration } from "./hooks/useDeviceIntegration";
-import { useDSPInitialization } from "./hooks/useDSPInitialization";
-import { useFrequencySync } from "./hooks/useFrequencySync";
-import { useStatusMetrics } from "./hooks/useStatusMetrics";
-import Analysis from "./pages/Analysis";
-import ATSCPlayer from "./pages/ATSCPlayer";
-import Calibration from "./pages/Calibration";
-import Decode from "./pages/Decode";
-import Help from "./pages/Help";
-import Monitor from "./pages/Monitor";
-import Recordings from "./pages/Recordings";
-import Scanner from "./pages/Scanner";
-import Settings from "./pages/Settings";
-import Bookmarks from "./panels/Bookmarks";
-import Devices from "./panels/Devices";
-import Diagnostics from "./panels/Diagnostics";
-import Measurements from "./panels/Measurements";
-import { useFrequency } from "./store";
-import { preloadWasmModule } from "./utils/dspWasm";
+import { useEffect, useReducer, useRef, useState } from 'react'
+import './App.css'
+import {
+  AudioPlaybackController,
+  type AudioPlaybackSnapshot,
+} from './audio/AudioPlaybackController'
+import {
+  AnalyzerController,
+  type AnalyzerSnapshot,
+} from './analyzer/AnalyzerController'
+import { useHackRfAutoOptimize } from './analyzer/useHackRfAutoOptimize'
+import { AnalyzerCanvas } from './components/AnalyzerCanvas'
+import { AnalyzerStatus } from './components/AnalyzerStatus'
+import { DetectedSignalsPanel } from './components/DetectedSignalsPanel'
+import { GeneratorControls } from './components/GeneratorControls'
+import { HackRFControls } from './components/HackRFControls'
+import { SourceControls, type SourceMode } from './components/SourceControls'
+import { VfoMixerPanel } from './components/VfoMixerPanel'
+import { signalDisplayFrequencyHz } from './detection/signalDisplay'
+import { SpectrumRenderer } from './renderers/SpectrumRenderer'
+import { HackRFSource } from './sources/HackRFSource'
+import {
+  DEFAULT_HACKRF_CONFIG,
+  type HackRfConfig,
+  type HackRfRuntimeCommand,
+} from './sources/hackrfProtocol'
+import { WaterfallRenderer } from './renderers/WaterfallRenderer'
+import { WaveformRenderer } from './renderers/WaveformRenderer'
+import {
+  DEFAULT_DETECTION_CONFIG,
+  DEFAULT_GENERATOR_CONFIG,
+  type DetectionConfig,
+  type GeneratorConfig,
+  type TrackedSignal,
+} from './workers/protocol'
+import { suggestVfoFromSignal } from './vfo/suggestVfoFromSignal'
+import {
+  createVfoState,
+  isVfoInPassband,
+  reduceVfoState,
+} from './vfo/vfoState'
+import { MAX_VFOS } from './vfo/types'
 
-function App(): React.JSX.Element {
-  // Preload WASM module on app initialization for better performance
+function analyzerConfigForHackRf(
+  generatorConfig: GeneratorConfig,
+  hackRfConfig: Pick<
+    HackRfConfig,
+    'sampleRateHz' | 'centerFrequencyHz' | 'fftSize' | 'frameRate'
+  >,
+): GeneratorConfig {
+  return {
+    ...generatorConfig,
+    sampleRateHz: hackRfConfig.sampleRateHz,
+    centerFrequencyHz: hackRfConfig.centerFrequencyHz,
+    fftSize: hackRfConfig.fftSize,
+    frameRate: hackRfConfig.frameRate,
+  }
+}
+
+const DEFAULT_DETECTION_CONFIGS: Record<SourceMode, DetectionConfig> = {
+  generator: DEFAULT_DETECTION_CONFIG,
+  hackrf: { ...DEFAULT_DETECTION_CONFIG, minimumSnrDb: 25 },
+}
+
+function App() {
+  const [controller] = useState(() => new AnalyzerController())
+  const [audioController] = useState(() => new AudioPlaybackController())
+  const [audioSnapshot, setAudioSnapshot] = useState<AudioPlaybackSnapshot>(
+    audioController.snapshot,
+  )
+  const [vfoState, dispatchVfo] = useReducer(reduceVfoState, createVfoState())
+  const [masterGainDb, setMasterGainDb] = useState(-6)
+  const [masterMuted, setMasterMuted] = useState(false)
+  const [sourceMode, setSourceMode] = useState<SourceMode>('generator')
+  const [config, setConfig] = useState<GeneratorConfig>(DEFAULT_GENERATOR_CONFIG)
+  const [hackRfConfig, setHackRfConfig] = useState<HackRfConfig>(DEFAULT_HACKRF_CONFIG)
+  const [detectionConfigs, setDetectionConfigs] = useState(DEFAULT_DETECTION_CONFIGS)
+  const detectionConfig = detectionConfigs[sourceMode]
+  const [snapshot, setSnapshot] = useState<AnalyzerSnapshot>(controller.snapshot)
+  const [ready, setReady] = useState(false)
+  const [viewRevision, setViewRevision] = useState(0)
+  const [activeHackRfSource, setActiveHackRfSource] = useState<HackRFSource | null>(null)
+  const [autoOptimizeEnabled, setAutoOptimizeEnabled] = useState(false)
+  const [autoOptimizeError, setAutoOptimizeError] = useState<string | null>(null)
+  const [selectedTargetFrequencyHz, setSelectedTargetFrequencyHz] = useState<number | null>(
+    null,
+  )
+  const skipConfiguredHackRfCenterHz = useRef<number | null>(null)
+  const running = snapshot.state === 'running'
+  const sourceBusy = snapshot.state === 'connecting' || running
+  const hackRfSampleRateHz = hackRfConfig.sampleRateHz
+  const hackRfCenterFrequencyHz = hackRfConfig.centerFrequencyHz
+  const hackRfFftSize = hackRfConfig.fftSize
+  const hackRfFrameRate = hackRfConfig.frameRate
+  const sourceCenterFrequencyHz = sourceMode === 'generator'
+    ? config.centerFrequencyHz
+    : hackRfConfig.centerFrequencyHz
+  const sourceSampleRateHz = sourceMode === 'generator'
+    ? config.sampleRateHz
+    : hackRfConfig.sampleRateHz
+
   useEffect(() => {
-    preloadWasmModule();
-  }, []);
+    let active = true
+    const unsubscribe = controller.subscribeStatus((next) => {
+      if (active) setSnapshot({ ...next })
+    })
+    const metricsTimer = window.setInterval(() => {
+      if (active) setSnapshot({ ...controller.snapshot })
+    }, 250)
+    controller.initialize().then(
+      () => {
+        if (active) setReady(true)
+      },
+      (error: unknown) => {
+        if (active) {
+          setSnapshot({
+            ...controller.snapshot,
+            state: 'error',
+            detail: error instanceof Error ? error.message : String(error),
+          })
+        }
+      },
+    )
 
-  // Initialize DSP environment detection and capability reporting
-  useDSPInitialization();
+    return () => {
+      active = false
+      window.clearInterval(metricsTimer)
+      unsubscribe()
+      controller.dispose()
+    }
+  }, [controller])
 
-  // Initialize device management integration (bridges React hooks with Zustand store)
-  useDeviceIntegration();
+  useEffect(() => {
+    const unsubscribe = audioController.subscribe((next) => {
+      setAudioSnapshot({ ...next })
+    })
+    return () => {
+      unsubscribe()
+      void audioController.dispose()
+    }
+  }, [audioController])
 
-  // Initialize frequency synchronization (automatically retunes device when frequency changes)
-  useFrequencySync();
+  useEffect(() => {
+    controller.configureVfos(vfoState.vfos)
+    audioController.configureVfos(
+      vfoState.vfos.map((vfo) => ({
+        id: vfo.id,
+        revision: vfo.revision,
+        gainDb: vfo.gainDb,
+        muted: vfo.muted,
+        solo: vfo.solo,
+        active: isVfoInPassband(vfo, {
+          centerFrequencyHz: sourceCenterFrequencyHz,
+          sampleRateHz: sourceSampleRateHz,
+        }),
+      })),
+    )
+  }, [
+    audioController,
+    controller,
+    sourceCenterFrequencyHz,
+    sourceSampleRateHz,
+    vfoState.vfos,
+  ])
 
-  // Initialize status metrics collection (hook manages its own subscriptions)
-  const metrics = useStatusMetrics();
-  const [showRenderingSettings, setShowRenderingSettings] = useState(false);
+  useEffect(() => {
+    audioController.configureMaster(masterGainDb, masterMuted)
+  }, [audioController, masterGainDb, masterMuted])
+
+  useEffect(() => {
+    if (!ready) return
+    if (
+      sourceMode === 'hackrf' &&
+      skipConfiguredHackRfCenterHz.current === hackRfCenterFrequencyHz
+    ) {
+      skipConfiguredHackRfCenterHz.current = null
+      return
+    }
+    audioController.flush()
+    controller.configure(
+      sourceMode === 'generator'
+        ? config
+        : analyzerConfigForHackRf(config, {
+            sampleRateHz: hackRfSampleRateHz,
+            centerFrequencyHz: hackRfCenterFrequencyHz,
+            fftSize: hackRfFftSize,
+            frameRate: hackRfFrameRate,
+          }),
+    )
+  }, [
+    config,
+    audioController,
+    controller,
+    hackRfCenterFrequencyHz,
+    hackRfFftSize,
+    hackRfFrameRate,
+    hackRfSampleRateHz,
+    ready,
+    sourceMode,
+  ])
+
+  useEffect(() => {
+    if (ready) controller.configureDetection(detectionConfig)
+  }, [controller, detectionConfig, ready])
+
+  const autoOptimize = useHackRfAutoOptimize({
+    enabled:
+      autoOptimizeEnabled && sourceMode === 'hackrf' && detectionConfig.enabled,
+    running,
+    source: activeHackRfSource,
+    config: hackRfConfig,
+    signals: snapshot.trackedSignals,
+    selectedTargetFrequencyHz,
+    peakPowerDbfs: snapshot.peakPowerDbfs,
+    onApplied: (appliedConfig: HackRfConfig, command: HackRfRuntimeCommand) => {
+      setHackRfConfig(appliedConfig)
+      if (command.type === 'set-center-frequency') {
+        audioController.flush()
+        skipConfiguredHackRfCenterHz.current = appliedConfig.centerFrequencyHz
+        controller.configure(analyzerConfigForHackRf(config, appliedConfig))
+      }
+    },
+    onFailure: (message: string) => {
+      setAutoOptimizeError(message)
+      setAutoOptimizeEnabled(false)
+    },
+  })
+
+  const activeConfig = sourceMode === 'generator' ? config : hackRfConfig
+  const handleReset = async () => {
+    setAutoOptimizeEnabled(false)
+    setAutoOptimizeError(null)
+    setSelectedTargetFrequencyHz(null)
+    audioController.flush()
+    await controller.reset()
+    setSnapshot({ ...controller.snapshot })
+    setViewRevision((revision) => revision + 1)
+  }
+
+  const handleSourceChange = (mode: SourceMode) => {
+    setAutoOptimizeEnabled(false)
+    setAutoOptimizeError(null)
+    setSelectedTargetFrequencyHz(null)
+    audioController.flush()
+    void controller.stop()
+    setActiveHackRfSource(null)
+    setSourceMode(mode)
+  }
+
+  const startHackRf = () => {
+    setAutoOptimizeError(null)
+    setSelectedTargetFrequencyHz(null)
+    controller.configure(analyzerConfigForHackRf(config, hackRfConfig))
+    const source = new HackRFSource(hackRfConfig)
+    setActiveHackRfSource(source)
+    void controller.startExternal(source).finally(() => {
+      setActiveHackRfSource((active) => active === source ? null : active)
+    })
+  }
+
+  const stopHackRf = () => {
+    setAutoOptimizeEnabled(false)
+    setAutoOptimizeError(null)
+    setSelectedTargetFrequencyHz(null)
+    audioController.flush()
+    void controller.stop().finally(() => setActiveHackRfSource(null))
+  }
+
+  const handleHackRfConfigChange = (next: HackRfConfig) => {
+    if (
+      next.centerFrequencyHz !== hackRfConfig.centerFrequencyHz ||
+      next.lnaGainDb !== hackRfConfig.lnaGainDb ||
+      next.vgaGainDb !== hackRfConfig.vgaGainDb
+    ) {
+      setAutoOptimizeEnabled(false)
+      setAutoOptimizeError(null)
+    }
+    if (next.centerFrequencyHz !== hackRfConfig.centerFrequencyHz) {
+      audioController.flush()
+    }
+    setHackRfConfig(next)
+  }
+
+  const handleDetectionConfigChange = (next: DetectionConfig) => {
+    if (!next.enabled) {
+      setAutoOptimizeEnabled(false)
+      setAutoOptimizeError(null)
+    }
+    setDetectionConfigs((current) => ({ ...current, [sourceMode]: next }))
+  }
+
+  const displayedAutoOptimizeStatus = autoOptimizeError
+    ? 'error'
+    : autoOptimizeEnabled
+      ? autoOptimize.status
+      : 'off'
+  const displayedAutoOptimizeDetail = autoOptimizeError ??
+    (autoOptimizeEnabled ? autoOptimize.detail : 'Manual control.')
+
+  const handleAudioToggle = async () => {
+    if (audioSnapshot.state === 'running' || audioSnapshot.state === 'starting') {
+      controller.stopVfoAudio()
+      await audioController.suspend()
+      return
+    }
+    try {
+      const outputSampleRateHz = await audioController.start()
+      controller.startVfoAudio(
+        outputSampleRateHz,
+        () => audioController.createProducerPort(),
+      )
+    } catch {
+      controller.stopVfoAudio()
+    }
+  }
+
+  const addManualVfo = () => {
+    if (vfoState.vfos.length >= MAX_VFOS) return
+    dispatchVfo({
+      type: 'add',
+      input: {
+        frequencyHz: Math.round(
+          sourceMode === 'generator'
+            ? sourceCenterFrequencyHz + config.toneFrequencyHz
+            : sourceCenterFrequencyHz,
+        ),
+        mode:
+          sourceMode === 'generator' && config.mode === 'fm-rds'
+            ? 'wbfm'
+            : sourceMode === 'generator' && config.mode === 'am'
+              ? 'am'
+              : 'nbfm',
+      },
+    })
+  }
+
+  const addSignalVfo = (signal: TrackedSignal) => {
+    if (vfoState.vfos.length >= MAX_VFOS) return
+    const suggestion = suggestVfoFromSignal(signal)
+    if (!suggestion) return
+    if (vfoState.vfos.some((vfo) => vfo.frequencyHz === suggestion.frequencyHz)) return
+    dispatchVfo({ type: 'add', input: suggestion })
+  }
 
   return (
-    <Router>
-      <ToastProvider>
-        <div className="app-shell">
-          {/* Skip link: first focusable element for keyboard users */}
-          <a href="#main-content" className="skip-link">
-            Skip to main content
-          </a>
+    <main className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true" />
+          <div>
+            <p className="eyebrow">BASEBAND SIGNAL LAB</p>
+            <h1>rad.io</h1>
+          </div>
+        </div>
+        <div className="topbar-context" aria-label="Analyzer configuration">
+          <span>{sourceMode === 'generator' ? 'GENERATED IQ' : 'HACKRF ONE'}</span>
+          <strong>
+            {activeConfig.centerFrequencyHz > 0
+              ? `${(activeConfig.centerFrequencyHz / 1_000_000).toFixed(3)} MHz`
+              : 'BASEBAND'}
+          </strong>
+          <span>{(activeConfig.sampleRateHz / 1_000_000).toFixed(2)} MS/s</span>
+          <span>FFT {activeConfig.fftSize.toLocaleString()}</span>
+        </div>
+        <div className={`engine-status engine-status--${snapshot.state}`}>
+          <span className="status-light" aria-hidden="true" />
+          <div>
+            <strong>
+              {snapshot.state === 'running'
+                ? 'Analyzing'
+                : snapshot.state === 'connecting'
+                  ? 'Connecting'
+                : snapshot.state === 'error'
+                  ? 'DSP error'
+                  : ready
+                    ? 'DSP online'
+                    : 'DSP bootstrap'}
+            </strong>
+            <span role="status">{snapshot.detail}</span>
+          </div>
+        </div>
+      </header>
 
-          {/* Live regions handled within ToastProvider */}
+      <div className="analyzer-layout">
+        <aside className="control-rail" aria-label="Signal source controls">
+          <SourceControls
+            mode={sourceMode}
+            disabled={sourceBusy}
+            onChange={handleSourceChange}
+          />
+          {sourceMode === 'generator' ? (
+            <GeneratorControls
+              config={config}
+              ready={ready}
+              running={running}
+              onChange={setConfig}
+              onToggle={() => {
+                if (running) {
+                  audioController.flush()
+                  void controller.stop()
+                } else {
+                  controller.startGenerated()
+                }
+              }}
+              onReset={() => void handleReset()}
+            />
+          ) : (
+            <HackRFControls
+              config={hackRfConfig}
+              ready={ready}
+              state={snapshot.state}
+              onChange={handleHackRfConfigChange}
+              onStart={startHackRf}
+              onStop={stopHackRf}
+              onReset={() => void handleReset()}
+              autoOptimizeEnabled={autoOptimizeEnabled}
+              autoOptimizeDisabled={!detectionConfig.enabled}
+              autoOptimizeStatus={displayedAutoOptimizeStatus}
+              autoOptimizeDetail={displayedAutoOptimizeDetail}
+              autoOptimizeTargetFrequencyHz={autoOptimize.targetFrequencyHz}
+              onAutoOptimizeChange={(enabled) => {
+                setAutoOptimizeError(null)
+                setAutoOptimizeEnabled(enabled)
+              }}
+            />
+          )}
+        </aside>
 
-          {/* Global top bar with connection status and quick actions */}
-          <TopAppBar asBanner />
-
-          {/* Main header with title and navigation */}
-          <header className="header" role="banner">
-            <div className="header-content">
-              {/* Always-visible frequency display + VFO control (shared state) */}
-              <SharedVFO />
-              {/* Application title & tagline for branding and tests */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <h1 className="app-title" style={{ margin: 0, fontSize: 18 }}>
-                  rad.io
-                </h1>
-                <span
-                  className="app-tagline"
-                  style={{ fontSize: 12, opacity: 0.85 }}
-                >
-                  Software-Defined Radio Visualizer
-                </span>
-              </div>
+        <section className="plot-workspace" aria-labelledby="workspace-heading">
+          <header className="workspace-header">
+            <div>
+              <p className="section-label">02 / ANALYZER</p>
+              <h2 id="workspace-heading">Live baseband</h2>
             </div>
-            <Navigation />
+            <AnalyzerStatus snapshot={snapshot} />
           </header>
 
-          {/* Main content area for pages */}
-          <main id="main-content" tabIndex={-1} style={{ paddingBottom: 56 }}>
-            <Routes>
-              {/* Primary workspaces */}
-              <Route path="/" element={<Monitor />} />
-              <Route path="/monitor" element={<Monitor />} />
-              <Route path="/scanner" element={<Scanner />} />
-              <Route path="/decode" element={<Decode />} />
-              <Route path="/analysis" element={<Analysis />} />
-              <Route path="/recordings" element={<Recordings />} />
-              <Route path="/atsc-player" element={<ATSCPlayer />} />
+          <div className="plot-grid" key={viewRevision}>
+            <AnalyzerCanvas
+              frames={controller.frames}
+              title="Spectrum"
+              eyebrow="POWER · dBFS"
+              ariaLabel="FFT spectrum from negative to positive Nyquist frequency"
+              className="spectrum-panel"
+              renderer={SpectrumRenderer}
+            />
+            <AnalyzerCanvas
+              frames={controller.frames}
+              title="Waterfall"
+              eyebrow="FREQUENCY · HISTORY"
+              ariaLabel="Scrolling frequency waterfall with newest samples at the top"
+              className="waterfall-panel"
+              renderer={WaterfallRenderer}
+            />
+            <AnalyzerCanvas
+              frames={controller.frames}
+              title="I / Q waveform"
+              eyebrow="AMPLITUDE · SAMPLES"
+              ariaLabel="Time-domain in-phase and quadrature waveform"
+              className="waveform-panel"
+              renderer={WaveformRenderer}
+            />
+          </div>
 
-              {/* Supporting panels (also accessible as full pages) */}
-              <Route
-                path="/bookmarks"
-                element={<Bookmarks isPanel={false} />}
-              />
-              <Route path="/devices" element={<Devices isPanel={false} />} />
-              <Route
-                path="/measurements"
-                element={<Measurements isPanel={false} />}
-              />
-              <Route
-                path="/diagnostics"
-                element={<Diagnostics isPanel={false} />}
-              />
-
-              {/* Settings and configuration */}
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/calibration" element={<Calibration />} />
-
-              {/* Help and documentation */}
-              <Route path="/help" element={<Help />} />
-
-              {/* Demo pages removed */}
-            </Routes>
-          </main>
-
-          {/* Global StatusBar pinned to bottom of viewport */}
-          <StatusBar
-            message={undefined}
-            renderTier={metrics.renderTier}
-            fps={metrics.fps}
-            inputFps={metrics.inputFps}
-            droppedFrames={metrics.droppedFrames}
-            renderP95Ms={metrics.renderP95Ms}
-            longTasks={metrics.longTasks}
-            sampleRate={metrics.sampleRate}
-            bufferHealth={metrics.bufferHealth}
-            bufferDetails={metrics.bufferDetails}
-            storageUsed={metrics.storageUsed}
-            storageQuota={metrics.storageQuota}
-            deviceConnected={metrics.deviceConnected}
-            audioState={metrics.audio.state}
-            audioVolume={Math.round((metrics.audio.volume ?? 0) * 100)}
-            audioClipping={metrics.audio.clipping}
-            onOpenRenderingSettings={() => setShowRenderingSettings(true)}
+          <VfoMixerPanel
+            vfos={vfoState.vfos}
+            sourceCenterFrequencyHz={sourceCenterFrequencyHz}
+            sourceSampleRateHz={sourceSampleRateHz}
+            audio={audioSnapshot}
+            masterGainDb={masterGainDb}
+            masterMuted={masterMuted}
+            onAdd={addManualVfo}
+            onUpdateDsp={(id, change) =>
+              dispatchVfo({ type: 'update-dsp', id, change })
+            }
+            onUpdateMixer={(id, change) =>
+              dispatchVfo({ type: 'update-mixer', id, change })
+            }
+            onRemove={(id) => dispatchVfo({ type: 'remove', id })}
+            onTogglePlayback={() => void handleAudioToggle()}
+            onMasterGainChange={setMasterGainDb}
+            onMasterMutedChange={setMasterMuted}
           />
 
-          {/* Global shortcuts help overlay (toggles with '?') */}
-          <ShortcutsOverlay />
-
-          <RenderingSettingsModal
-            isOpen={showRenderingSettings}
-            onClose={() => setShowRenderingSettings(false)}
+          <DetectedSignalsPanel
+            config={detectionConfig}
+            signals={snapshot.trackedSignals}
+            centerFrequencyHz={snapshot.centerFrequencyHz}
+            onConfigChange={handleDetectionConfigChange}
+            optimizationTargetFrequencyHz={
+              autoOptimizeEnabled ? autoOptimize.targetFrequencyHz : null
+            }
+            onSignalSelect={(signal) => {
+              setSelectedTargetFrequencyHz(signalDisplayFrequencyHz(signal))
+            }}
+            onAddVfo={addSignalVfo}
+            vfoFrequenciesHz={vfoState.vfos.map((vfo) => vfo.frequencyHz)}
+            vfoCapacityAvailable={vfoState.vfos.length < MAX_VFOS}
           />
-          {/* Footer intentionally minimal to keep focus on primary tasks */}
-        </div>
-      </ToastProvider>
-    </Router>
-  );
+        </section>
+      </div>
+    </main>
+  )
 }
 
-export default App;
-
-// Small internal component to bridge FrequencyContext into header controls
-function SharedVFO(): React.JSX.Element {
-  const { frequencyHz, setFrequencyHz } = useFrequency();
-  return (
-    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-      <FrequencyDisplay frequency={frequencyHz} onChange={setFrequencyHz} />
-    </div>
-  );
-}
+export default App
