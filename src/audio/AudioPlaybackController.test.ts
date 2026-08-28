@@ -148,16 +148,44 @@ describe('AudioPlaybackController', () => {
           queuedFrames: { 'vfo-1': 960 },
           underruns: {},
           overruns: {},
+          stereoLocked: { 'vfo-1': true },
           staleBlocks: 0,
           limiterReductionDb: -2,
         },
       },
     } as unknown as MessageEvent<VfoMixerEvent>)
     expect(harness.controller.snapshot.diagnostics?.queuedFrames['vfo-1']).toBe(960)
+    expect(harness.controller.snapshot.diagnostics?.stereoLocked['vfo-1']).toBe(true)
 
     await harness.controller.dispose()
     expect(harness.disconnect).toHaveBeenCalledTimes(1)
     expect(harness.close).toHaveBeenCalledTimes(1)
     expect(harness.controller.snapshot.state).toBe('idle')
+  })
+
+  it('clears stale diagnostics when audio queues are flushed or suspended', async () => {
+    const harness = createHarness()
+    await harness.controller.start()
+    const publishLockedDiagnostics = () => harness.port.onmessage?.({
+      data: {
+        type: 'diagnostics',
+        diagnostics: {
+          queuedFrames: { 'vfo-1': 960 },
+          underruns: {},
+          overruns: {},
+          stereoLocked: { 'vfo-1': true },
+          staleBlocks: 0,
+          limiterReductionDb: 0,
+        },
+      },
+    } as unknown as MessageEvent<VfoMixerEvent>)
+
+    publishLockedDiagnostics()
+    harness.controller.flush()
+    expect(harness.controller.snapshot.diagnostics).toBeNull()
+
+    publishLockedDiagnostics()
+    await harness.controller.suspend()
+    expect(harness.controller.snapshot.diagnostics).toBeNull()
   })
 })

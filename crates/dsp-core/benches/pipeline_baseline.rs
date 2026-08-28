@@ -178,8 +178,8 @@ fn benchmark_vfo_bank() {
     println!("| ---: | --- | ---: | ---: | ---: |");
 
     let workloads = [
-        ("1 WBFM", vec![VfoMode::Wbfm]),
-        ("4 WBFM", vec![VfoMode::Wbfm; 4]),
+        ("1 WBFM stereo", vec![VfoMode::Wbfm]),
+        ("4 WBFM stereo", vec![VfoMode::Wbfm; 4]),
         (
             "4 mixed",
             vec![VfoMode::Wbfm, VfoMode::Am, VfoMode::Nbfm, VfoMode::Nbfm],

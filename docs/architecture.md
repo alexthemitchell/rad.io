@@ -7,7 +7,7 @@ Implemented today:
 - one active generated or HackRF wideband source
 - one paced wideband spectrum/detection lane
 - up to four continuous, independently tuned FM/RDS decoder targets
-- up to four user-managed WBFM, AM, or NBFM audio VFOs
+- up to four user-managed automatic-stereo WBFM, AM, or NBFM audio VFOs
 - bounded transferable audio queues and an AudioWorklet mixer
 - CPU DSP in browser-independent Rust, compiled to WASM for the browser
 - dedicated acquisition and DSP workers, transferable display buffers, and Canvas2D rendering
@@ -15,7 +15,7 @@ Implemented today:
 Not implemented today:
 
 - an RTL-SDR browser source adapter
-- WBFM stereo recovery, SSB/CW demodulation, recording, or persistent VFO presets
+- SSB/CW demodulation, recording, or persistent VFO presets
 - WebGPU/WebGL compute or rendering
 - simultaneous independent source sessions in the UI
 
@@ -75,7 +75,7 @@ There is no sample-by-sample JavaScript callback. All hot paths are block orient
 
 ## Rust Crates
 
-- `crates/dsp-core` is browser-independent DSP. It contains configuration validation, deterministic tone/FM+RDS/AM/NBFM generation, Hann windowing, shifted FFT analysis, spectral detection, stateful RDS decoding, and the four-entry filtered VFO audio bank.
+- `crates/dsp-core` is browser-independent DSP. It contains configuration validation, deterministic tone/FM+RDS/AM/NBFM generation, Hann windowing, shifted FFT analysis, spectral detection, stateful RDS decoding, and the four-entry filtered VFO audio bank with automatic WBFM stereo recovery.
 - `crates/dsp-wasm` is a thin `wasm-bindgen` boundary. It exposes the analyzer `DspEngine`, standalone RDS and VFO banks, typed-array frame getters, structured metadata snapshots, and bounded audio batches.
 
 `rustfft` plans and Hann coefficients are created when the analyzer configuration changes, not for every frame.
@@ -113,7 +113,7 @@ Output bins are shifted into `[-sampleRate/2, +sampleRate/2)`. Values below -120
 
 ## Protocol And Backpressure
 
-Worker messages carry `protocolVersion: 4`. The main request types are:
+Worker messages carry `protocolVersion: 5`. The main request types are:
 
 - `init`, `configure`, `configure-detection`, `start-generated`, `stop`, and `reset`
 - `frame-consumed` for display delivery acknowledgment
@@ -194,9 +194,9 @@ SourceSession
                 -> AudioWorklet mixer/output
 ```
 
-The implemented bank uses direct CPU/WASM DDC for at most four VFOs. Each target has an NCO, bounded CIC coarse decimator, FIR channel filter/decimator, mode-specific demodulator, audio filter/de-emphasis, and streaming output resampler. The bank contract remains block-oriented so a future channelizer can replace extraction without changing demodulators or playback. It does not perform a wideband FFT, detector, or source conversion independently per VFO.
+The implemented bank uses direct CPU/WASM DDC for at most four VFOs. Each target has an NCO, bounded CIC coarse decimator, FIR channel filter/decimator, mode-specific demodulator, audio filter/de-emphasis, and streaming output resampler. WBFM additionally tracks the 19 kHz pilot, coherently recovers L-R, and emits interleaved stereo with lock metadata; AM and NBFM remain mono. The bank contract remains block-oriented so a future channelizer can replace extraction without changing demodulators or playback. It does not perform a wideband FFT, detector, or source conversion independently per VFO.
 
-A channelizer is justified only if representative demodulators reach their deadline. Four WBFM VFOs measure 1.75x real-time natively and 1.46x through the release-browser WASM boundary at 20 MS/s on the measured machine. This supports the implemented four-VFO limit but leaves live concurrent RDS/VFO soak behavior as a measurement requirement.
+A channelizer is justified only if representative demodulators reach their deadline. Four automatic-stereo WBFM VFOs measure 1.50x real-time natively and 1.33x through the release-browser WASM boundary at 20 MS/s on the measured machine. This supports the implemented four-VFO limit but leaves live concurrent RDS/VFO soak behavior as a measurement requirement.
 
 Audio is a separate real-time domain. The AudioWorklet consumes bounded narrowband blocks over a transferable `MessagePort` and mixes only enabled audio VFOs. UI rendering and React state do not participate in its callback. SharedArrayBuffer remains deferred because the transferable queue is real-time at the implemented four-VFO limit and the app is not cross-origin isolated.
 
@@ -247,7 +247,7 @@ The first GPU experiment must compare end-to-end latency and transfers against t
 ### CPU/WASM Before WebGPU
 
 - Problem: choose an execution domain for FFT, channel extraction, and visualization.
-- Current cost: approximately 0.15 ms worker processing for a 4096-bin release frame, about 3.9x browser headroom for four RDS targets, and 1.46x for four WBFM VFOs at 20 MS/s on the measured machine.
+- Current cost: approximately 0.15 ms worker processing for a 4096-bin release frame, about 3.9x browser headroom for four RDS targets, and 1.33x for four WBFM stereo VFOs at 20 MS/s on the measured machine.
 - Alternatives: WASM, WebGPU compute, hybrid compute/rendering.
 - Expected benefit: WebGPU could win for batched FFT filter banks or GPU-resident waterfall data.
 - Complexity cost: shader implementations, upload/dispatch synchronization, numerical parity, device loss, and CPU readback.

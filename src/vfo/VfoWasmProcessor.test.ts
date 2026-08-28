@@ -13,6 +13,7 @@ function batch(change: Record<string, unknown> = {}) {
     channel_counts: new Uint8Array([1, 2]),
     signal_levels_dbfs: new Float32Array([-20, -30]),
     squelched: new Uint8Array([0, 1]),
+    stereo_locks: new Uint8Array([0, 1]),
     sample_offsets: new Uint32Array([0, 2, 6]),
     samples: new Float32Array([0.1, 0.2, 0.3, -0.3, 0.4, -0.4]),
     free,
@@ -33,6 +34,7 @@ describe('drainVfoAudioBatch', () => {
       sourceTimestampUs: 100n,
       channelCount: 1,
       squelched: false,
+      stereoLocked: false,
     })
     expect([...blocks[0].samples]).toEqual([
       expect.closeTo(0.1, 6),
@@ -44,6 +46,7 @@ describe('drainVfoAudioBatch', () => {
       sourceTimestampUs: 200n,
       channelCount: 2,
       squelched: true,
+      stereoLocked: true,
     })
     expect(source.free).toHaveBeenCalledOnce()
   })
@@ -56,6 +59,13 @@ describe('drainVfoAudioBatch', () => {
     const source = batch({ sample_offsets: sampleOffsets })
 
     expect(() => drainVfoAudioBatch(source)).toThrow(/offsets|incomplete frames/)
+    expect(source.free).toHaveBeenCalledOnce()
+  })
+
+  it('rejects misaligned stereo-lock metadata and still frees the batch', () => {
+    const source = batch({ stereo_locks: new Uint8Array([1]) })
+
+    expect(() => drainVfoAudioBatch(source)).toThrow('misaligned metadata')
     expect(source.free).toHaveBeenCalledOnce()
   })
 })

@@ -24,6 +24,20 @@ const AUDIO: AudioPlaybackSnapshot = {
   diagnostics: null,
 }
 
+const RUNNING_AUDIO: AudioPlaybackSnapshot = {
+  state: 'running',
+  sampleRateHz: 48_000,
+  detail: '48,000 Hz audio output',
+  diagnostics: {
+    queuedFrames: { 'vfo-1': 960 },
+    underruns: {},
+    overruns: {},
+    stereoLocked: { 'vfo-1': true },
+    staleBlocks: 0,
+    limiterReductionDb: 0,
+  },
+}
+
 function renderPanel(change: Partial<Parameters<typeof VfoMixerPanel>[0]> = {}) {
   const props = {
     vfos: [VFO],
@@ -77,5 +91,44 @@ describe('VfoMixerPanel', () => {
       vfos: [{ ...VFO, frequencyHz: 102_000_000 }],
     })
     expect(screen.getByText('out of band')).toBeVisible()
+  })
+
+  it('shows current WBFM stereo lock', () => {
+    renderPanel({ audio: RUNNING_AUDIO })
+
+    expect(screen.getByRole('status', { name: 'Stereo decoder locked' })).toHaveTextContent('ST')
+  })
+
+  it('shows WBFM mono fallback after an unlocked audio block', () => {
+    renderPanel({
+      audio: {
+        ...RUNNING_AUDIO,
+        diagnostics: {
+          ...RUNNING_AUDIO.diagnostics!,
+          stereoLocked: { 'vfo-1': false },
+        },
+      },
+    })
+
+    expect(
+      screen.getByRole('status', { name: 'Stereo decoder using mono fallback' }),
+    ).toHaveTextContent('MONO')
+  })
+
+  it('shows unavailable WBFM status before playback', () => {
+    renderPanel()
+
+    expect(
+      screen.getByRole('status', { name: 'Stereo decoder unavailable' }),
+    ).toHaveTextContent('--')
+  })
+
+  it('does not show stereo status for non-WBFM modes', () => {
+    renderPanel({
+      vfos: [{ ...VFO, mode: 'nbfm', bandwidthHz: 12_500 }],
+      audio: RUNNING_AUDIO,
+    })
+
+    expect(screen.queryByRole('status', { name: /Stereo decoder/ })).not.toBeInTheDocument()
   })
 })

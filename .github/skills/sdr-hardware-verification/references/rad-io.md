@@ -125,6 +125,36 @@ On 2026-08-27, 91.3 MHz provided a positive RDS control:
 
 By contrast, 100.3 MHz had a strong 19 kHz pilot but no measurable RDS-band excess and zero GNU Radio groups. This is the canonical example of absent service versus decoder failure.
 
+## WBFM Stereo Cross-Check
+
+Decode one bounded signed-byte capture through the production VFO bank:
+
+```powershell
+cargo run --release -p dsp-core --example decode_wbfm_capture -- `
+  test-results/hardware-verification/station.i8 `
+  test-results/hardware-verification/product-stereo.f32 `
+  2000000 91050000 91300000 `
+  test-results/hardware-verification/product-stereo.json
+```
+
+Decode and compare the same capture through the independent GNU Radio/SciPy chain:
+
+```powershell
+& "$HOME\radioconda\python.exe" `
+  .github/skills/sdr-hardware-verification/scripts/decode_stereo_capture.py `
+  test-results/hardware-verification/station.i8 `
+  --sample-rate 2000000 --station-offset 250000 `
+  --product-audio test-results/hardware-verification/product-stereo.f32 `
+  --product-report test-results/hardware-verification/product-stereo.json `
+  --json test-results/hardware-verification/stereo-comparison.json
+```
+
+The reference uses GNU Radio only for signed-byte conversion, channel translation, and normalized FM discrimination. SciPy independently recovers pilot phase with a zero-phase band-pass and Hilbert transform, reconstructs the 38 kHz subcarrier, filters/de-emphasizes L/R, and resamples to 48 kHz. It does not import production recovery code or coefficients.
+
+Treat a comparison as stereo-eligible only when the independent chain finds both a usable pilot and nontrivial L-R content. For eligible settled audio, require product lock for at least 90%, absolute normalized correlation of at least 0.80 on both correctly paired channels, correct pairing no worse than swapped pairing (at least 0.10 better when channel content differs sufficiently), and L-R/L+R power ratios within 3 dB. Pilot presence alone is not proof that the current program material differs between channels.
+
+On 2026-08-28, 97.3 MHz was the best available live stereo-content control. An eight-second capture centered at 97.05 MHz produced 100% product lock, a 19,000.29 Hz/0.0877-amplitude independent pilot, 0.981 left and right product/reference correlations, and a 0.43 dB L-R/L+R ratio difference. Correct pairing scored 0.981 versus 0.970 swapped. Because the program's L-R energy was still 21.6 dB below L+R, treat the channel-order evidence as content-limited. The stronger 91.3 MHz RDS control was effectively mono during its sampled interval at -31.9 dB L-R/L+R.
+
 ## Interpretation Pitfalls
 
 - At 2 MS/s, several real FM stations can be visible simultaneously. Do not call different channel centers duplicate tracks without temporal evidence.

@@ -31,6 +31,10 @@ impl Oscillator {
         mixed
     }
 
+    pub(super) fn phasor(&self) -> Complex32 {
+        self.value
+    }
+
     pub(super) fn reset(&mut self) {
         self.value = Complex32::new(1.0, 0.0);
         self.samples = 0;
@@ -326,6 +330,10 @@ impl Resampled {
     fn push(&mut self, sample: f32) {
         self.samples[self.len] = sample;
         self.len += 1;
+    }
+
+    pub(super) fn len(&self) -> usize {
+        self.len
     }
 
     pub(super) fn iter(&self) -> impl Iterator<Item = f32> + '_ {

@@ -124,6 +124,12 @@ export function VfoMixerPanel({
               sampleRateHz: sourceSampleRateHz,
             })
             const queuedFrames = audio.diagnostics?.queuedFrames[vfo.id] ?? 0
+            const stereoLocked = audio.diagnostics?.stereoLocked[vfo.id]
+            const stereoState = !playing || !inPassband || stereoLocked === undefined
+              ? { copy: '--', label: 'Stereo decoder unavailable', className: '' }
+              : stereoLocked
+                ? { copy: 'ST', label: 'Stereo decoder locked', className: 'is-locked' }
+                : { copy: 'MONO', label: 'Stereo decoder using mono fallback', className: 'is-mono' }
             return (
               <div className="vfo-row" role="listitem" key={vfo.id}>
                 <div className="vfo-identity">
@@ -165,9 +171,22 @@ export function VfoMixerPanel({
                   </span>
                 </label>
                 <label className="vfo-field" htmlFor={`${vfo.id}-mode`}>
-                  <span>Mode</span>
+                  <span>
+                    Mode
+                    {vfo.mode === 'wbfm' && (
+                      <span
+                        className={`vfo-stereo-state ${stereoState.className}`}
+                        role="status"
+                        aria-label={stereoState.label}
+                        title={stereoState.label}
+                      >
+                        {stereoState.copy}
+                      </span>
+                    )}
+                  </span>
                   <select
                     id={`${vfo.id}-mode`}
+                    aria-label="Mode"
                     value={vfo.mode}
                     onChange={(event) => onUpdateDsp(vfo.id, { mode: event.target.value as VfoMode })}
                   >

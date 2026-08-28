@@ -14,6 +14,7 @@ type VfoQueue = {
   revision: number
   chunks: QueueChunk[]
   queuedFrames: number
+  stereoLocked: boolean
   ready: boolean
   starved: boolean
   underruns: number
@@ -101,6 +102,7 @@ export class VfoMixerCore {
       frameOffset: 0,
     })
     queue.queuedFrames += frameCount
+    queue.stereoLocked = block.stereoLocked
     if (queue.queuedFrames > this.#maximumQueueFrames) {
       dropFrames(queue, queue.queuedFrames - this.#maximumQueueFrames)
       queue.overruns += 1
@@ -159,15 +161,18 @@ export class VfoMixerCore {
     const queuedFrames: Record<string, number> = {}
     const underruns: Record<string, number> = {}
     const overruns: Record<string, number> = {}
+    const stereoLocked: Record<string, boolean> = {}
     for (const [id, queue] of this.#queues) {
       queuedFrames[id] = queue.queuedFrames
       underruns[id] = queue.underruns
       overruns[id] = queue.overruns
+      stereoLocked[id] = queue.stereoLocked
     }
     return {
       queuedFrames,
       underruns,
       overruns,
+      stereoLocked,
       staleBlocks: this.#staleBlocks,
       limiterReductionDb: 20 * Math.log10(this.#limiterGain),
     }
@@ -179,6 +184,7 @@ function createQueue(revision: number): VfoQueue {
     revision,
     chunks: [],
     queuedFrames: 0,
+    stereoLocked: false,
     ready: false,
     starved: false,
     underruns: 0,

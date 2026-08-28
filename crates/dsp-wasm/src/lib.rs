@@ -75,6 +75,7 @@ pub struct VfoAudioBatch {
     channel_counts: Vec<u8>,
     signal_levels_dbfs: Vec<f32>,
     squelched: Vec<u8>,
+    stereo_locks: Vec<u8>,
     sample_offsets: Vec<u32>,
     samples: Vec<f32>,
 }
@@ -89,6 +90,7 @@ impl VfoAudioBatch {
             channel_counts: Vec::with_capacity(blocks.len()),
             signal_levels_dbfs: Vec::with_capacity(blocks.len()),
             squelched: Vec::with_capacity(blocks.len()),
+            stereo_locks: Vec::with_capacity(blocks.len()),
             sample_offsets: Vec::with_capacity(blocks.len() + 1),
             samples: Vec::new(),
         };
@@ -101,6 +103,7 @@ impl VfoAudioBatch {
             batch.channel_counts.push(block.channel_count);
             batch.signal_levels_dbfs.push(block.signal_level_dbfs);
             batch.squelched.push(u8::from(block.squelched));
+            batch.stereo_locks.push(u8::from(block.stereo_locked));
             batch.samples.extend(block.samples);
             batch.sample_offsets.push(batch.samples.len() as u32);
         }
@@ -148,6 +151,11 @@ impl VfoAudioBatch {
     #[wasm_bindgen(getter)]
     pub fn squelched(&self) -> Vec<u8> {
         self.squelched.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn stereo_locks(&self) -> Vec<u8> {
+        self.stereo_locks.clone()
     }
 
     #[wasm_bindgen(getter)]

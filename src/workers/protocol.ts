@@ -1,6 +1,6 @@
 import type { VfoDspConfig } from '../vfo/types'
 
-export const PROTOCOL_VERSION = 4 as const
+export const PROTOCOL_VERSION = 5 as const
 
 export type GeneratorMode = 'tone' | 'fm-rds' | 'am' | 'nbfm'
 

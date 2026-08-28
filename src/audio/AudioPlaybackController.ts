@@ -42,6 +42,7 @@ const EMPTY_DIAGNOSTICS: VfoMixerDiagnostics = {
   queuedFrames: {},
   underruns: {},
   overruns: {},
+  stereoLocked: {},
   staleBlocks: 0,
   limiterReductionDb: 0,
 }
@@ -82,13 +83,14 @@ export class AudioPlaybackController {
 
   async suspend(): Promise<void> {
     if (!this.#context || !this.#node) return
-    this.#node.port.postMessage({ type: 'flush' } satisfies VfoMixerCommand)
+    this.flush()
     await this.#context.suspend()
     this.#update({ state: 'suspended', detail: 'Audio paused' })
   }
 
   flush(): void {
     this.#node?.port.postMessage({ type: 'flush' } satisfies VfoMixerCommand)
+    if (this.#snapshot.diagnostics !== null) this.#update({ diagnostics: null })
   }
 
   configureVfos(vfos: readonly VfoMixerControl[]): void {
@@ -139,7 +141,11 @@ export class AudioPlaybackController {
   }
 
   async #start(): Promise<number> {
-    this.#update({ state: 'starting', detail: 'Starting audio output' })
+    this.#update({
+      state: 'starting',
+      detail: 'Starting audio output',
+      diagnostics: null,
+    })
     try {
       const context = this.#context ?? this.#createContext()
       this.#context = context

@@ -13,7 +13,7 @@ use rds::{RdsChannelSnapshot, RdsDecodeTarget, RdsDecoderBank};
 use types::{AnalysisFrame, AnalyzerConfig, DetectionConfig, GeneratorConfig, GeneratorMode};
 use vfo::{VfoAudioBlock, VfoBank, VfoConfig};
 
-pub const PROTOCOL_VERSION: u32 = 4;
+pub const PROTOCOL_VERSION: u32 = 5;
 
 pub struct DspEngine {
     generator: ComplexToneGenerator,

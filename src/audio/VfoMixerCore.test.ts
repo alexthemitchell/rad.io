@@ -20,6 +20,7 @@ function block(
     channelCount: 1,
     signalLevelDbfs: -20,
     squelched: false,
+    stereoLocked: false,
     samples: new Float32Array(samples),
     ...change,
   }
@@ -120,5 +121,18 @@ describe('VfoMixerCore', () => {
     expect(right[0]).toBeLessThan(0)
     expect(Math.max(...left.map(Math.abs), ...right.map(Math.abs))).toBeLessThanOrEqual(1)
     expect(mixer.diagnostics().limiterReductionDb).toBeLessThan(0)
+  })
+
+  it('reports lock only from accepted current-revision blocks', () => {
+    const mixer = new VfoMixerCore({ sampleRateHz: 1_000, prebufferMs: 0 })
+    mixer.configure([controls[0]], 0, false)
+    mixer.push(block('vfo-1', [0.2], { stereoLocked: true }))
+    expect(mixer.diagnostics().stereoLocked['vfo-1']).toBe(true)
+
+    mixer.push(block('vfo-1', [0.2], { revision: 2, stereoLocked: false }))
+    expect(mixer.diagnostics().stereoLocked['vfo-1']).toBe(true)
+
+    mixer.configure([{ ...controls[0], revision: 2 }], 0, false)
+    expect(mixer.diagnostics().stereoLocked['vfo-1']).toBeUndefined()
   })
 })

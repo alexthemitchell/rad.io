@@ -32,7 +32,7 @@ type VfoMeasurement = {
   workload: string
   throughputMsps: number
   realTimeHeadroom: number
-  emittedSamples: number
+  emittedFrames: number
 }
 
 test('records browser DSP worker and Canvas2D baselines', async ({ page }, testInfo) => {
@@ -145,8 +145,8 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
     const rdsBlockSamples = rdsIq.length / 2
     const vfo: VfoMeasurement[] = []
     const vfoWorkloads = [
-      { name: '1 WBFM', modes: ['wbfm'] },
-      { name: '4 WBFM', modes: ['wbfm', 'wbfm', 'wbfm', 'wbfm'] },
+      { name: '1 WBFM stereo', modes: ['wbfm'] },
+      { name: '4 WBFM stereo', modes: ['wbfm', 'wbfm', 'wbfm', 'wbfm'] },
       { name: '4 mixed', modes: ['wbfm', 'am', 'nbfm', 'nbfm'] },
     ] as const
     for (const sampleRateHz of [2_400_000, 10_000_000, 20_000_000]) {
@@ -167,22 +167,34 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
           })),
         )
         let timestampUs = 0n
-        let emittedSamples = 0
+        let emittedFrames = 0
+        const channelCounts = new Map(
+          workload.modes.map((mode, index) => [
+            `vfo-${index + 1}`,
+            mode === 'wbfm' ? 2 : 1,
+          ]),
+        )
+        const countFrames = (blocks: ReturnType<typeof processor.processI8>) =>
+          blocks.reduce((sum, block) => {
+            const expectedChannelCount = channelCounts.get(block.vfoId)
+            if (block.channelCount !== expectedChannelCount) {
+              throw new Error(
+                `${block.vfoId} emitted ${block.channelCount} channels; expected ${expectedChannelCount}.`,
+              )
+            }
+            return sum + block.samples.length / block.channelCount
+          }, 0)
         const blockDurationUs = BigInt(
           Math.floor((rdsBlockSamples * 1_000_000) / sampleRateHz),
         )
         for (let iteration = 0; iteration < 10; iteration += 1) {
-          emittedSamples += processor
-            .processI8(rdsIq, timestampUs)
-            .reduce((sum, block) => sum + block.samples.length, 0)
+          emittedFrames += countFrames(processor.processI8(rdsIq, timestampUs))
           timestampUs += blockDurationUs
         }
         const startedAt = performance.now()
         let iterations = 0
         while (performance.now() - startedAt < 200) {
-          emittedSamples += processor
-            .processI8(rdsIq, timestampUs)
-            .reduce((sum, block) => sum + block.samples.length, 0)
+          emittedFrames += countFrames(processor.processI8(rdsIq, timestampUs))
           timestampUs += blockDurationUs
           iterations += 1
         }
@@ -194,7 +206,7 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
           workload: workload.name,
           throughputMsps,
           realTimeHeadroom: (throughputMsps * 1_000_000) / sampleRateHz,
-          emittedSamples,
+          emittedFrames,
         })
         processor.dispose()
       }
@@ -341,6 +353,6 @@ test('records browser DSP worker and Canvas2D baselines', async ({ page }, testI
   for (const measurement of report.vfo) {
     expect(measurement.throughputMsps).toBeGreaterThan(0)
     expect(measurement.realTimeHeadroom).toBeGreaterThan(1)
-    expect(measurement.emittedSamples).toBeGreaterThan(0)
+    expect(measurement.emittedFrames).toBeGreaterThan(0)
   }
 })

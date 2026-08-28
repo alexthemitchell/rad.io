@@ -74,6 +74,7 @@ export function drainVfoAudioBatch(batch: VfoAudioBatch): VfoAudioBlock[] {
     const channelCounts = batch.channel_counts
     const signalLevelsDbfs = batch.signal_levels_dbfs
     const squelched = batch.squelched
+    const stereoLocks = batch.stereo_locks
     const sampleOffsets = batch.sample_offsets
     const samples = batch.samples
     if (
@@ -84,6 +85,7 @@ export function drainVfoAudioBatch(batch: VfoAudioBatch): VfoAudioBlock[] {
       channelCounts.length !== blockCount ||
       signalLevelsDbfs.length !== blockCount ||
       squelched.length !== blockCount ||
+      stereoLocks.length !== blockCount ||
       sampleOffsets.length !== blockCount + 1
     ) {
       throw new Error('VFO WASM audio batch contains misaligned metadata.')
@@ -115,6 +117,7 @@ export function drainVfoAudioBatch(batch: VfoAudioBatch): VfoAudioBlock[] {
         channelCount,
         signalLevelDbfs: signalLevelsDbfs[index],
         squelched: squelched[index] !== 0,
+        stereoLocked: stereoLocks[index] !== 0,
         samples: samples.slice(sampleOffsets[index], sampleOffsets[index + 1]),
       }
     })

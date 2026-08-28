@@ -29,6 +29,7 @@ export type VfoAudioBlock = {
   channelCount: 1 | 2
   signalLevelDbfs: number
   squelched: boolean
+  stereoLocked: boolean
   samples: Float32Array
 }
 
@@ -48,6 +49,7 @@ export type VfoMixerDiagnostics = {
   queuedFrames: Record<string, number>
   underruns: Record<string, number>
   overruns: Record<string, number>
+  stereoLocked: Record<string, boolean>
   staleBlocks: number
   limiterReductionDb: number
 }

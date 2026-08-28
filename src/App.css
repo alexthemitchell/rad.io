@@ -1148,6 +1148,21 @@
   gap: 8px;
 }
 
+.vfo-stereo-state {
+  width: 34px;
+  color: var(--muted);
+  font: 600 9px/1 var(--mono);
+  text-align: right;
+}
+
+.vfo-stereo-state.is-locked {
+  color: var(--green);
+}
+
+.vfo-stereo-state.is-mono {
+  color: var(--amber);
+}
+
 .vfo-identity > input,
 .vfo-field select,
 .vfo-input-unit {

@@ -20,17 +20,19 @@ for (const preset of GENERATED_AUDIO_MODES) {
     )
     await page.getByRole('button', { name: 'Start audio playback' }).click()
     await expect(page.locator('.vfo-footer')).toContainText(/Hz audio output/)
+    if (preset.mode === 'WBFM') {
+      await expect(page.locator('.vfo-stereo-state')).toHaveText('--')
+    }
     await page.getByRole('button', { name: 'Start generation' }).click()
 
     await expect(page.locator('.vfo-state-copy')).toHaveText('playing', {
       timeout: 15_000,
     })
+    if (preset.mode === 'WBFM') {
+      await expect(page.locator('.vfo-stereo-state')).toHaveText('ST')
+    }
     await page.waitForTimeout(1_500)
     await expect(page.locator('.vfo-footer')).toContainText('0 underruns')
-    await page.getByRole('button', { name: `Mute VFO 1` }).click()
-    await expect(page.getByRole('button', { name: 'Unmute VFO 1' })).toBeVisible()
-    await page.getByRole('button', { name: 'Pause audio playback' }).click()
-    await expect(page.locator('.vfo-footer')).toContainText('Audio paused')
     if (preset.mode === 'WBFM') {
       const screenshotPath = testInfo.outputPath('multi-vfo-desktop.png')
       await page.screenshot({ path: screenshotPath, fullPage: true })
@@ -39,6 +41,10 @@ for (const preset of GENERATED_AUDIO_MODES) {
         contentType: 'image/png',
       })
     }
+    await page.getByRole('button', { name: `Mute VFO 1` }).click()
+    await expect(page.getByRole('button', { name: 'Unmute VFO 1' })).toBeVisible()
+    await page.getByRole('button', { name: 'Pause audio playback' }).click()
+    await expect(page.locator('.vfo-footer')).toContainText('Audio paused')
     expect(pageErrors).toEqual([])
   })
 }

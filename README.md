@@ -6,7 +6,7 @@ The analyzer accepts a deterministic complex IQ generator or live RF from a Hack
 
 The detector estimates the noise floor, extracts multiple occupied spectral regions, tracks them across frames, and attaches evidence-based service candidates from a selectable FCC/United States allocation profile. Confirmed FM broadcast stations are additionally eligible for RDS/RBDS decoding, which adds transmitted station identity and program metadata when the subcarrier can be synchronized.
 
-Up to four session VFOs can independently tune and play WBFM, AM, or NBFM inside the active capture. Audio DSP remains continuous ahead of display throttling, while a bounded AudioWorklet mixer provides per-VFO gain, mute, solo, squelch, and master output control.
+Up to four session VFOs can independently tune and play WBFM, AM, or NBFM inside the active capture. WBFM automatically recovers broadcast stereo and smoothly blends to mono when the 19 kHz pilot is weak. Audio DSP remains continuous ahead of display throttling, while a bounded AudioWorklet mixer provides per-VFO gain, mute, solo, squelch, and master output control.
 
 ## Prerequisites
 
@@ -50,7 +50,7 @@ The generator also includes fixed **FM + RDS**, **AM**, and **NBFM** presets. Th
 
 Choose a generator preset or start HackRF reception, then use **Add VFO** or **Add receiver** on a detected signal. Set the absolute frequency, demodulation mode, bandwidth, squelch, and mixer gain before selecting **Play**. Browser autoplay policy requires that explicit Play gesture before the AudioContext starts.
 
-VFO definitions remain available for the page session when a source stops or changes. A receiver outside the active source passband remains visible and silent until source tuning covers its full channel and filter transition. Audio is currently WBFM mono, AM, or NBFM; the block and mixer contracts retain channel-count metadata for future WBFM stereo.
+VFO definitions remain available for the page session when a source stops or changes. A receiver outside the active source passband remains visible and silent until source tuning covers its full channel and filter transition. WBFM emits interleaved stereo and displays `ST` while pilot-locked or `MONO` while using its smooth fallback. AM and NBFM remain mono and are duplicated across the output pair by the mixer.
 
 The HackRF One source starts with conservative receive-only settings:
 
@@ -116,4 +116,4 @@ See [docs/audio.md](docs/audio.md) for VFO modes, audio ownership, buffering, mi
 
 ## Scope
 
-HackRF support is receive-only. This milestone intentionally excludes transmit, hardware sweep mode, antenna bias enablement, firmware flashing/reset, calibrated dBm measurements, audio recording, WBFM stereo recovery, SSB/CW demodulation, persistent presets, output-device routing, SharedArrayBuffer, and WebGL. RDS application groups are retained, but external TMC location/event databases and application-specific ODA semantic plugins are not bundled.
+HackRF support is receive-only. This milestone intentionally excludes transmit, hardware sweep mode, antenna bias enablement, firmware flashing/reset, calibrated dBm measurements, audio recording, SSB/CW demodulation, persistent presets, output-device routing, SharedArrayBuffer, and WebGL. RDS application groups are retained, but external TMC location/event databases and application-specific ODA semantic plugins are not bundled.

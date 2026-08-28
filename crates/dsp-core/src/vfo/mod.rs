@@ -1,4 +1,5 @@
 mod filter;
+mod fm_stereo;
 
 use std::{collections::VecDeque, f32::consts::TAU};
 
@@ -6,6 +7,7 @@ use filter::{
     BiquadLowPass, CicDecimator, DcBlocker, FirDecimator, LinearResampler, OnePoleLowPass,
     Oscillator,
 };
+use fm_stereo::WbfmStereoDemodulator;
 use num_complex::Complex32;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -44,6 +46,7 @@ pub struct VfoAudioBlock {
     pub channel_count: u8,
     pub signal_level_dbfs: f32,
     pub squelched: bool,
+    pub stereo_locked: bool,
     pub samples: Vec<f32>,
 }
 
@@ -254,7 +257,9 @@ struct VfoProcessor {
     cic: CicDecimator,
     channel_filter: FirDecimator,
     demodulator: Demodulator,
+    channel_count: u8,
     audio_resampler: LinearResampler,
+    right_audio_resampler: Option<LinearResampler>,
     power_alpha: f32,
     signal_power: f32,
     squelch_threshold_dbfs: f32,
@@ -265,6 +270,7 @@ struct VfoProcessor {
     block_start_timestamp_us: Option<u64>,
     block_signal_level_dbfs: f32,
     block_was_squelched: bool,
+    stereo_locked: bool,
     block_samples: Vec<f32>,
 }
 
@@ -288,6 +294,7 @@ impl VfoProcessor {
         let cutoff_hz = (config.bandwidth_hz * 0.475).min(channel_rate_hz * 0.42);
         let demodulator =
             Demodulator::new(config.mode, channel_rate_hz, output_sample_rate_hz as f32);
+        let channel_count = if config.mode == VfoMode::Wbfm { 2 } else { 1 };
         let block_size = (output_sample_rate_hz as usize / 50).max(1);
         Ok(Self {
             id: config.id.clone(),
@@ -302,7 +309,10 @@ impl VfoProcessor {
                 filter_taps,
             ),
             demodulator,
+            channel_count,
             audio_resampler: LinearResampler::new(channel_rate_hz, output_sample_rate_hz),
+            right_audio_resampler: (channel_count == 2)
+                .then(|| LinearResampler::new(channel_rate_hz, output_sample_rate_hz)),
             power_alpha: 1.0 - (-1.0 / (channel_rate_hz * 0.01)).exp(),
             signal_power: 0.0,
             squelch_threshold_dbfs: config.squelch_dbfs,
@@ -313,7 +323,8 @@ impl VfoProcessor {
             block_start_timestamp_us: None,
             block_signal_level_dbfs: -120.0,
             block_was_squelched: false,
-            block_samples: Vec::with_capacity(block_size),
+            stereo_locked: false,
+            block_samples: Vec::with_capacity(block_size * usize::from(channel_count)),
         })
     }
 
@@ -331,27 +342,87 @@ impl VfoProcessor {
         let signal_level_dbfs = 10.0 * self.signal_power.max(1.0e-12).log10();
         self.update_squelch(signal_level_dbfs);
 
-        let audio = self.demodulator.process(channel);
         let mut completed_block = None;
-        for output in self.audio_resampler.process(audio).iter() {
-            if self.block_start_timestamp_us.is_none() {
-                self.block_start_timestamp_us = Some(source_timestamp_us.saturating_add(
-                    source_sample_index as u64 * 1_000_000 / u64::from(source_sample_rate_hz),
-                ));
-                self.block_signal_level_dbfs = signal_level_dbfs;
-                self.block_was_squelched = !self.squelch_open;
-            } else {
-                self.block_signal_level_dbfs = self.block_signal_level_dbfs.max(signal_level_dbfs);
-                self.block_was_squelched |= !self.squelch_open;
+        match self.demodulator.process(channel) {
+            DemodulatedAudio::Mono(audio) => {
+                let outputs = self.audio_resampler.process(audio);
+                for output in outputs.iter() {
+                    if let Some(block) = self.push_audio_frame(
+                        output,
+                        None,
+                        signal_level_dbfs,
+                        source_sample_index,
+                        source_timestamp_us,
+                        source_sample_rate_hz,
+                    ) {
+                        debug_assert!(completed_block.is_none());
+                        completed_block = Some(block);
+                    }
+                }
             }
-            self.block_samples
-                .push(if self.squelch_open { output } else { 0.0 });
-            if self.block_samples.len() == self.block_size {
-                debug_assert!(completed_block.is_none());
-                completed_block = Some(self.take_block());
+            DemodulatedAudio::Stereo {
+                left,
+                right,
+                stereo_locked,
+            } => {
+                self.stereo_locked = stereo_locked;
+                let left_outputs = self.audio_resampler.process(left);
+                let right_outputs = self
+                    .right_audio_resampler
+                    .as_mut()
+                    .expect("stereo VFO has a right-channel resampler")
+                    .process(right);
+                assert_eq!(
+                    left_outputs.len(),
+                    right_outputs.len(),
+                    "stereo resamplers lost frame synchronization"
+                );
+                for (left_output, right_output) in left_outputs.iter().zip(right_outputs.iter()) {
+                    if let Some(block) = self.push_audio_frame(
+                        left_output,
+                        Some(right_output),
+                        signal_level_dbfs,
+                        source_sample_index,
+                        source_timestamp_us,
+                        source_sample_rate_hz,
+                    ) {
+                        debug_assert!(completed_block.is_none());
+                        completed_block = Some(block);
+                    }
+                }
             }
         }
         completed_block
+    }
+
+    fn push_audio_frame(
+        &mut self,
+        left: f32,
+        right: Option<f32>,
+        signal_level_dbfs: f32,
+        source_sample_index: usize,
+        source_timestamp_us: u64,
+        source_sample_rate_hz: u32,
+    ) -> Option<VfoAudioBlock> {
+        debug_assert_eq!(right.is_some(), self.channel_count == 2);
+        if self.block_start_timestamp_us.is_none() {
+            self.block_start_timestamp_us = Some(source_timestamp_us.saturating_add(
+                source_sample_index as u64 * 1_000_000 / u64::from(source_sample_rate_hz),
+            ));
+            self.block_signal_level_dbfs = signal_level_dbfs;
+            self.block_was_squelched = !self.squelch_open;
+        } else {
+            self.block_signal_level_dbfs = self.block_signal_level_dbfs.max(signal_level_dbfs);
+            self.block_was_squelched |= !self.squelch_open;
+        }
+        self.block_samples
+            .push(if self.squelch_open { left } else { 0.0 });
+        if let Some(right) = right {
+            self.block_samples
+                .push(if self.squelch_open { right } else { 0.0 });
+        }
+        (self.block_samples.len() == self.block_size * usize::from(self.channel_count))
+            .then(|| self.take_block())
     }
 
     fn update_squelch(&mut self, level_dbfs: f32) {
@@ -370,16 +441,19 @@ impl VfoProcessor {
     }
 
     fn take_block(&mut self) -> VfoAudioBlock {
-        let samples =
-            std::mem::replace(&mut self.block_samples, Vec::with_capacity(self.block_size));
+        let samples = std::mem::replace(
+            &mut self.block_samples,
+            Vec::with_capacity(self.block_size * usize::from(self.channel_count)),
+        );
         let block = VfoAudioBlock {
             vfo_id: self.id.clone(),
             revision: self.revision,
             source_timestamp_us: self.block_start_timestamp_us.take().unwrap_or(0),
             sample_rate_hz: self.output_sample_rate_hz,
-            channel_count: 1,
+            channel_count: self.channel_count,
             signal_level_dbfs: self.block_signal_level_dbfs,
             squelched: self.block_was_squelched,
+            stereo_locked: self.stereo_locked,
             samples,
         };
         self.block_signal_level_dbfs = -120.0;
@@ -393,18 +467,22 @@ impl VfoProcessor {
         self.channel_filter.reset();
         self.demodulator.reset();
         self.audio_resampler.reset();
+        if let Some(resampler) = &mut self.right_audio_resampler {
+            resampler.reset();
+        }
         self.signal_power = 0.0;
         self.squelch_open = self.squelch_threshold_dbfs <= -120.0;
         self.squelch_hang_remaining = 0;
         self.block_start_timestamp_us = None;
         self.block_signal_level_dbfs = -120.0;
         self.block_was_squelched = false;
+        self.stereo_locked = false;
         self.block_samples.clear();
     }
 }
 
 enum Demodulator {
-    Wbfm(FmDemodulator),
+    Wbfm(WbfmStereoDemodulator),
     Am(AmDemodulator),
     Nbfm(FmDemodulator),
 }
@@ -413,11 +491,9 @@ impl Demodulator {
     fn new(mode: VfoMode, sample_rate_hz: f32, output_sample_rate_hz: f32) -> Self {
         let output_cutoff_hz = output_sample_rate_hz * 0.45;
         match mode {
-            VfoMode::Wbfm => Self::Wbfm(FmDemodulator::new(
+            VfoMode::Wbfm => Self::Wbfm(WbfmStereoDemodulator::new(
                 sample_rate_hz,
-                75_000.0,
                 15_000.0_f32.min(output_cutoff_hz),
-                75.0e-6,
             )),
             VfoMode::Am => Self::Am(AmDemodulator::new(
                 sample_rate_hz,
@@ -432,19 +508,37 @@ impl Demodulator {
         }
     }
 
-    fn process(&mut self, sample: Complex32) -> f32 {
+    fn process(&mut self, sample: Complex32) -> DemodulatedAudio {
         match self {
-            Self::Wbfm(demodulator) | Self::Nbfm(demodulator) => demodulator.process(sample),
-            Self::Am(demodulator) => demodulator.process(sample),
+            Self::Wbfm(demodulator) => {
+                let output = demodulator.process(sample);
+                DemodulatedAudio::Stereo {
+                    left: output.left,
+                    right: output.right,
+                    stereo_locked: output.stereo_locked,
+                }
+            }
+            Self::Nbfm(demodulator) => DemodulatedAudio::Mono(demodulator.process(sample)),
+            Self::Am(demodulator) => DemodulatedAudio::Mono(demodulator.process(sample)),
         }
     }
 
     fn reset(&mut self) {
         match self {
-            Self::Wbfm(demodulator) | Self::Nbfm(demodulator) => demodulator.reset(),
+            Self::Wbfm(demodulator) => demodulator.reset(),
+            Self::Nbfm(demodulator) => demodulator.reset(),
             Self::Am(demodulator) => demodulator.reset(),
         }
     }
+}
+
+enum DemodulatedAudio {
+    Mono(f32),
+    Stereo {
+        left: f32,
+        right: f32,
+        stereo_locked: bool,
+    },
 }
 
 struct FmDemodulator {
@@ -639,7 +733,7 @@ mod tests {
     }
 
     #[test]
-    fn recovers_wbfm_mono_tones_across_irregular_chunks() {
+    fn recovers_wbfm_stereo_tones_across_irregular_chunks() {
         let sample_rate_hz = 1_000_000_u32;
         let center_frequency_hz = 100_000_000.0;
         let station_frequency_hz = 100_100_000.0;
@@ -662,7 +756,9 @@ mod tests {
         )
         .unwrap();
 
-        let mut audio = Vec::new();
+        let mut left_audio = Vec::new();
+        let mut right_audio = Vec::new();
+        let mut stereo_locked = false;
         let mut elapsed_samples = 0_u64;
         while elapsed_samples < u64::from(sample_rate_hz) {
             let sample_count = if elapsed_samples.is_multiple_of(2) {
@@ -674,24 +770,103 @@ mod tests {
             bank.process_f32(&iq, elapsed_samples * 1_000_000 / u64::from(sample_rate_hz))
                 .unwrap();
             elapsed_samples += sample_count as u64;
-            audio.extend(
-                bank.drain_audio()
-                    .into_iter()
-                    .flat_map(|block| block.samples),
-            );
+            for block in bank.drain_audio() {
+                assert_eq!(block.channel_count, 2);
+                stereo_locked |= block.stereo_locked;
+                for frame in block.samples.as_chunks::<2>().0 {
+                    left_audio.push(frame[0]);
+                    right_audio.push(frame[1]);
+                }
+            }
         }
 
-        assert!((46_000..=48_000).contains(&audio.len()));
-        let settled = &audio[8_000..];
-        let tone_700 = tone_amplitude(settled, 48_000.0, 700.0);
-        let tone_1_900 = tone_amplitude(settled, 48_000.0, 1_900.0);
-        let pilot_19_000 = tone_amplitude(settled, 48_000.0, 19_000.0);
-        assert!(tone_700 > 0.02, "700 Hz level was {tone_700}");
-        assert!(tone_1_900 > 0.01, "1.9 kHz level was {tone_1_900}");
+        assert!((46_000..=48_000).contains(&left_audio.len()));
+        assert_eq!(left_audio.len(), right_audio.len());
+        assert!(stereo_locked, "synthetic pilot did not acquire stereo lock");
+        let left = &left_audio[8_000..];
+        let right = &right_audio[8_000..];
+        let left_700 = tone_amplitude(left, 48_000.0, 700.0);
+        let left_1_900 = tone_amplitude(left, 48_000.0, 1_900.0);
+        let right_700 = tone_amplitude(right, 48_000.0, 700.0);
+        let right_1_900 = tone_amplitude(right, 48_000.0, 1_900.0);
+        let pilot_19_000 =
+            tone_amplitude(left, 48_000.0, 19_000.0).max(tone_amplitude(right, 48_000.0, 19_000.0));
+        assert!(left_700 > 0.02, "left 700 Hz level was {left_700}");
+        assert!(right_1_900 > 0.01, "right 1.9 kHz level was {right_1_900}");
         assert!(
-            pilot_19_000 < tone_700 * 0.1,
-            "pilot leaked into mono audio"
+            left_1_900 < left_700 * 0.1,
+            "right tone leaked into left channel: {left_1_900} vs {left_700}"
         );
+        assert!(
+            right_700 < right_1_900 * 0.1,
+            "left tone leaked into right channel: {right_700} vs {right_1_900}"
+        );
+        assert!(
+            pilot_19_000 < left_700 * 0.1,
+            "pilot leaked into stereo audio"
+        );
+    }
+
+    #[test]
+    fn recovers_wbfm_stereo_from_the_2_4_msps_source_rate() {
+        let sample_rate_hz = 2_400_000_u32;
+        let center_frequency_hz = 100_000_000.0;
+        let station_frequency_hz = 100_100_000.0;
+        let mut generator = ComplexToneGenerator::new(GeneratorConfig {
+            mode: GeneratorMode::FmRds,
+            sample_rate_hz: sample_rate_hz as f32,
+            center_frequency_hz,
+            tone_frequency_hz: 100_000.0,
+            tone_level_dbfs: -6.0,
+            noise_enabled: false,
+            ..GeneratorConfig::default()
+        })
+        .unwrap();
+        let mut bank = VfoBank::new();
+        bank.set_vfos(
+            sample_rate_hz,
+            center_frequency_hz,
+            48_000,
+            &[config("vfo-1", station_frequency_hz, VfoMode::Wbfm)],
+        )
+        .unwrap();
+
+        let mut left_audio = Vec::new();
+        let mut right_audio = Vec::new();
+        let mut stereo_locked = false;
+        let maximum_samples = u64::from(sample_rate_hz) / 4;
+        let mut elapsed_samples = 0_u64;
+        while elapsed_samples < maximum_samples {
+            let sample_count =
+                usize::try_from((maximum_samples - elapsed_samples).min(8_192)).unwrap();
+            bank.process_f32(
+                &generator.generate(sample_count),
+                elapsed_samples * 1_000_000 / u64::from(sample_rate_hz),
+            )
+            .unwrap();
+            elapsed_samples += sample_count as u64;
+            for block in bank.drain_audio() {
+                assert_eq!(block.channel_count, 2);
+                stereo_locked = block.stereo_locked;
+                for frame in block.samples.as_chunks::<2>().0 {
+                    left_audio.push(frame[0]);
+                    right_audio.push(frame[1]);
+                }
+            }
+        }
+
+        assert!(stereo_locked, "2.4 MS/s source did not acquire stereo lock");
+        let settled_start = left_audio.len() / 2;
+        let left = &left_audio[settled_start..];
+        let right = &right_audio[settled_start..];
+        let left_700 = tone_amplitude(left, 48_000.0, 700.0);
+        let left_1_900 = tone_amplitude(left, 48_000.0, 1_900.0);
+        let right_700 = tone_amplitude(right, 48_000.0, 700.0);
+        let right_1_900 = tone_amplitude(right, 48_000.0, 1_900.0);
+        assert!(left_700 > 0.02, "left 700 Hz level was {left_700}");
+        assert!(right_1_900 > 0.01, "right 1.9 kHz level was {right_1_900}");
+        assert!(left_1_900 < left_700 * 0.1);
+        assert!(right_700 < right_1_900 * 0.1);
     }
 
     #[test]
@@ -715,7 +890,8 @@ mod tests {
             &[config("vfo-1", 100_100_000.0, VfoMode::Wbfm)],
         )
         .unwrap();
-        let mut audio = Vec::new();
+        let mut left_audio = Vec::new();
+        let mut right_audio = Vec::new();
         let mut elapsed_samples = 0_u64;
         while elapsed_samples < u64::from(sample_rate_hz) {
             let sample_count = 4_093;
@@ -725,21 +901,25 @@ mod tests {
             )
             .unwrap();
             elapsed_samples += sample_count as u64;
-            audio.extend(
-                bank.drain_audio()
-                    .into_iter()
-                    .flat_map(|block| block.samples),
-            );
+            for block in bank.drain_audio() {
+                assert_eq!(block.channel_count, 2);
+                for frame in block.samples.as_chunks::<2>().0 {
+                    left_audio.push(frame[0]);
+                    right_audio.push(frame[1]);
+                }
+            }
         }
 
-        let settled = &audio[1_600..];
-        let tone_700 = tone_amplitude(settled, 8_000.0, 700.0);
-        let tone_1_900 = tone_amplitude(settled, 8_000.0, 1_900.0);
-        let aliased_pilot = tone_amplitude(settled, 8_000.0, 3_000.0);
-        assert!(tone_700 > 0.02, "700 Hz level was {tone_700}");
-        assert!(tone_1_900 > 0.005, "1.9 kHz level was {tone_1_900}");
+        let left = &left_audio[1_600..];
+        let right = &right_audio[1_600..];
+        let left_700 = tone_amplitude(left, 8_000.0, 700.0);
+        let right_1_900 = tone_amplitude(right, 8_000.0, 1_900.0);
+        let aliased_pilot =
+            tone_amplitude(left, 8_000.0, 3_000.0).max(tone_amplitude(right, 8_000.0, 3_000.0));
+        assert!(left_700 > 0.02, "left 700 Hz level was {left_700}");
+        assert!(right_1_900 > 0.005, "right 1.9 kHz level was {right_1_900}");
         assert!(
-            aliased_pilot < tone_700 * 0.1,
+            aliased_pilot < left_700 * 0.1,
             "19 kHz pilot aliased into 3 kHz audio"
         );
     }
@@ -898,7 +1078,8 @@ mod tests {
             &[config("vfo-1", 100_100_000.0, VfoMode::Wbfm)],
         )
         .unwrap();
-        let mut audio = Vec::new();
+        let mut left_audio = Vec::new();
+        let mut right_audio = Vec::new();
         let mut elapsed_samples = 0_u64;
         while elapsed_samples < u64::from(sample_rate_hz) / 2 {
             let iq = generator.generate(4_093);
@@ -912,16 +1093,25 @@ mod tests {
             )
             .unwrap();
             elapsed_samples += 4_093;
-            audio.extend(
-                bank.drain_audio()
-                    .into_iter()
-                    .flat_map(|block| block.samples),
-            );
+            for block in bank.drain_audio() {
+                assert_eq!(block.channel_count, 2);
+                for frame in block.samples.as_chunks::<2>().0 {
+                    left_audio.push(frame[0]);
+                    right_audio.push(frame[1]);
+                }
+            }
         }
 
-        let settled = &audio[8_000..];
-        assert!(tone_amplitude(settled, 48_000.0, 700.0) > 0.02);
-        assert!(tone_amplitude(settled, 48_000.0, 1_900.0) > 0.01);
+        let left = &left_audio[8_000..];
+        let right = &right_audio[8_000..];
+        let left_700 = tone_amplitude(left, 48_000.0, 700.0);
+        let left_1_900 = tone_amplitude(left, 48_000.0, 1_900.0);
+        let right_700 = tone_amplitude(right, 48_000.0, 700.0);
+        let right_1_900 = tone_amplitude(right, 48_000.0, 1_900.0);
+        assert!(left_700 > 0.02);
+        assert!(right_1_900 > 0.01);
+        assert!(left_1_900 < left_700 * 0.2);
+        assert!(right_700 < right_1_900 * 0.2);
     }
 
     #[test]

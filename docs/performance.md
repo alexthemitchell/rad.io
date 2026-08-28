@@ -80,15 +80,15 @@ Measurement: at 20 MS/s and four targets, shared input traversal measured 98.02 
 
 ### Multi-VFO Audio Bank
 
-The VFO cases process 32,768 signed-byte complex samples and drain completed 20 ms audio blocks. `4 mixed` uses one WBFM, one AM, and two NBFM receivers.
+The VFO cases process 32,768 signed-byte complex samples and drain completed 20 ms audio blocks. WBFM automatically emits interleaved stereo; `4 mixed` uses one WBFM, one AM, and two NBFM receivers.
 
-| Source rate | 1 WBFM | 4 WBFM | 4 mixed |
+| Source rate | 1 WBFM stereo | 4 WBFM stereo | 4 mixed |
 | ---: | ---: | ---: | ---: |
-| 2.4 MS/s | 17.26x | 4.51x | 7.39x |
-| 10 MS/s | 10.03x | 2.76x | 3.40x |
-| 20 MS/s | 6.19x | 1.75x | 1.95x |
+| 2.4 MS/s | 14.13x | 3.83x | 6.54x |
+| 10 MS/s | 8.53x | 2.22x | 2.95x |
+| 20 MS/s | 5.23x | 1.50x | 1.70x |
 
-Measurement: direct filtered DDC remains above one real-time unit for all implemented four-VFO cases. Four WBFM receivers at 20 MS/s are the current native worst case at 1.75x, so a PFB or GPU channelizer is not selected for this limit.
+Measurement: direct filtered DDC remains above one real-time unit for all implemented four-VFO cases. Four WBFM stereo receivers at 20 MS/s are the current native worst case at 1.50x, so a PFB or GPU channelizer is not selected for this limit.
 
 ## Browser Results
 
@@ -114,15 +114,15 @@ Observation: the current 16 KiB wasm-bindgen copy does not threaten the four-tar
 
 ### Multi-VFO Audio Including WASM Boundary
 
-These release-browser cases include each 16 KiB JS-to-WASM input copy, completed audio-batch extraction, and per-VFO `Float32Array` mapping. Empty transfers return without constructing a batch.
+These release-browser cases include each 16 KiB JS-to-WASM input copy, completed audio-batch extraction, and per-VFO `Float32Array` mapping. Output accounting uses frames rather than scalar samples so stereo payloads are not double-counted. Empty transfers return without constructing a batch.
 
-| Source rate | 1 WBFM | 4 WBFM | 4 mixed |
+| Source rate | 1 WBFM stereo | 4 WBFM stereo | 4 mixed |
 | ---: | ---: | ---: | ---: |
-| 2.4 MS/s | 18.59x | 5.33x | 7.77x |
-| 10 MS/s | 7.84x | 2.54x | 2.88x |
-| 20 MS/s | 4.42x | 1.46x | 1.57x |
+| 2.4 MS/s | 15.85x | 4.34x | 7.04x |
+| 10 MS/s | 7.32x | 2.27x | 2.69x |
+| 20 MS/s | 4.26x | 1.33x | 1.49x |
 
-Observation: four WBFM receivers at 20 MS/s are the browser worst case and retain 1.46x measured headroom. This is above continuous real time but close enough that live USB, concurrent RDS, background throttling, and long-session behavior remain explicit soak-test concerns. The mixed workload measured 1.57x at the same source rate.
+Observation: four WBFM stereo receivers at 20 MS/s are the browser worst case and retain 1.33x measured headroom. This is above continuous real time but close enough that live USB, concurrent RDS, background throttling, and long-session behavior remain explicit soak-test concerns. The mixed workload measured 1.49x at the same source rate.
 
 ### Canvas2D
 
