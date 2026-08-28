@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  configWithHackRfRuntimeCommand,
   DEFAULT_HACKRF_CONFIG,
   HackRfIqBlockAssembler,
   normalizeHackRfIq,
+  removeHackRfDcOffset,
   packHackRfFrequency,
   packHackRfSampleRate,
   resolveHackRfStreamingInterface,
@@ -31,6 +33,21 @@ describe('HackRF protocol', () => {
     expect(() =>
       validateHackRfConfig({ ...DEFAULT_HACKRF_CONFIG, centerFrequencyHz: 0 }),
     ).toThrow(/center frequency/)
+  })
+
+  it('validates runtime changes without altering unrelated settings', () => {
+    expect(
+      configWithHackRfRuntimeCommand(DEFAULT_HACKRF_CONFIG, {
+        type: 'set-center-frequency',
+        centerFrequencyHz: 100_250_000,
+      }),
+    ).toEqual({ ...DEFAULT_HACKRF_CONFIG, centerFrequencyHz: 100_250_000 })
+    expect(() =>
+      configWithHackRfRuntimeCommand(DEFAULT_HACKRF_CONFIG, {
+        type: 'set-vga-gain',
+        vgaGainDb: 21,
+      }),
+    ).toThrow(/VGA gain/)
   })
 
   it('selects the vendor-specific bulk-IN endpoint from USB descriptors', () => {
@@ -99,5 +116,31 @@ describe('HackRF protocol', () => {
     expect(blocks[0][999]).toBeCloseTo(127 / 128)
     expect(blocks[0][1000]).toBe(-1)
     expect(blocks[1][0]).toBeCloseTo(0.5)
+  })
+
+  it('removes independent I/Q DC offsets without attenuating an AC tone', () => {
+    const sampleCount = 1024
+    const iq = new Float32Array(sampleCount * 2)
+    for (let index = 0; index < sampleCount; index += 1) {
+      const phase = Math.PI * 2 * 32 * index / sampleCount
+      iq[index * 2] = 0.2 + 0.4 * Math.cos(phase)
+      iq[index * 2 + 1] = -0.1 + 0.4 * Math.sin(phase)
+    }
+
+    removeHackRfDcOffset(iq)
+
+    let meanI = 0
+    let meanQ = 0
+    let meanMagnitude = 0
+    for (let index = 0; index < sampleCount; index += 1) {
+      const i = iq[index * 2]
+      const q = iq[index * 2 + 1]
+      meanI += i
+      meanQ += q
+      meanMagnitude += Math.hypot(i, q)
+    }
+    expect(meanI / sampleCount).toBeCloseTo(0, 6)
+    expect(meanQ / sampleCount).toBeCloseTo(0, 6)
+    expect(meanMagnitude / sampleCount).toBeCloseTo(0.4, 6)
   })
 })

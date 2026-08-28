@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Crosshair } from 'lucide-react'
 import type {
   DetectionConfig,
   TrackedSignal,
@@ -11,6 +12,8 @@ type DetectedSignalsPanelProps = {
   signals: readonly TrackedSignal[]
   centerFrequencyHz: number
   onConfigChange: (config: DetectionConfig) => void
+  optimizationTargetFrequencyHz?: number | null
+  onSignalSelect?: (signal: TrackedSignal) => void
 }
 
 export function DetectedSignalsPanel({
@@ -18,6 +21,8 @@ export function DetectedSignalsPanel({
   signals,
   centerFrequencyHz,
   onConfigChange,
+  optimizationTargetFrequencyHz = null,
+  onSignalSelect,
 }: DetectedSignalsPanelProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = signals.find((signal) => signal.id === selectedId) ?? signals[0]
@@ -93,13 +98,21 @@ export function DetectedSignalsPanel({
             {signals.map((signal) => (
               <tr
                 key={signal.id}
-                className={signal.id === selected?.id ? 'is-selected' : undefined}
+                className={[
+                  signal.id === selected?.id ? 'is-selected' : '',
+                  matchesOptimizationTarget(signal, optimizationTargetFrequencyHz)
+                    ? 'is-optimization-target'
+                    : '',
+                ].filter(Boolean).join(' ') || undefined}
               >
                 <th scope="row">
                   <button
                     type="button"
                     aria-label={`${signal.classification.primary.label}, ${formatSignalFrequency(signal)}, ${signal.state}, track ${signal.id.replace('signal-', '#')}`}
-                    onClick={() => setSelectedId(signal.id)}
+                    onClick={() => {
+                      setSelectedId(signal.id)
+                      onSignalSelect?.(signal)
+                    }}
                   >
                     <span
                       className={`signal-state signal-state--${signal.state}`}
@@ -111,6 +124,13 @@ export function DetectedSignalsPanel({
                         <span className="signal-rds-name">{signal.rds.metadata.ps.value}</span>
                       )}
                     </span>
+                    {matchesOptimizationTarget(signal, optimizationTargetFrequencyHz) && (
+                      <Crosshair
+                        className="optimization-target-icon"
+                        size={13}
+                        aria-hidden="true"
+                      />
+                    )}
                   </button>
                 </th>
                 <td className="signal-state-label">{signal.state}</td>
@@ -214,4 +234,14 @@ function formatSignalFrequency(signal: TrackedSignal): string {
   return signal.absoluteFrequencyHz === null
     ? 'Baseband'
     : formatRfFrequency(signal.absoluteFrequencyHz)
+}
+
+function matchesOptimizationTarget(
+  signal: TrackedSignal,
+  targetFrequencyHz: number | null,
+): boolean {
+  if (targetFrequencyHz === null) return false
+  const frequencyHz =
+    signal.classification.primary.channelCenterHz ?? signal.absoluteFrequencyHz
+  return frequencyHz !== null && Math.abs(frequencyHz - targetFrequencyHz) <= 50_000
 }

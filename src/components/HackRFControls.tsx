@@ -1,4 +1,4 @@
-import { Radio, RotateCcw, Square } from 'lucide-react'
+import { Crosshair, Radio, RotateCcw, Square } from 'lucide-react'
 import {
   HACKRF_SAMPLE_RATES_HZ,
   type HackRfConfig,
@@ -6,6 +6,7 @@ import {
   type HackRfSampleRateHz,
 } from '../sources/hackrfProtocol'
 import type { AnalyzerState } from '../analyzer/AnalyzerController'
+import type { HackRfAutoOptimizeStatus } from '../sources/HackRfAutoOptimizer'
 
 type HackRFControlsProps = {
   config: HackRfConfig
@@ -15,6 +16,12 @@ type HackRFControlsProps = {
   onStart: () => void
   onStop: () => void
   onReset: () => void
+  autoOptimizeEnabled?: boolean
+  autoOptimizeDisabled?: boolean
+  autoOptimizeStatus?: HackRfAutoOptimizeStatus
+  autoOptimizeDetail?: string
+  autoOptimizeTargetFrequencyHz?: number | null
+  onAutoOptimizeChange?: (enabled: boolean) => void
 }
 
 export function HackRFControls({
@@ -25,6 +32,12 @@ export function HackRFControls({
   onStart,
   onStop,
   onReset,
+  autoOptimizeEnabled = false,
+  autoOptimizeDisabled = false,
+  autoOptimizeStatus = 'off',
+  autoOptimizeDetail = 'Manual control.',
+  autoOptimizeTargetFrequencyHz = null,
+  onAutoOptimizeChange,
 }: HackRFControlsProps) {
   const active = state === 'connecting' || state === 'running'
   const update = (change: Partial<HackRfConfig>) => onChange({ ...config, ...change })
@@ -64,6 +77,29 @@ export function HackRFControls({
         >
           <RotateCcw size={17} aria-hidden="true" />
         </button>
+      </div>
+
+      <div className="control-group auto-optimize-control">
+        <label className="toggle-label" htmlFor="hackrf-auto-optimize">
+          <span>Auto optimize</span>
+          <input
+            id="hackrf-auto-optimize"
+            type="checkbox"
+            checked={autoOptimizeEnabled}
+            disabled={!ready || autoOptimizeDisabled}
+            onChange={(event) => onAutoOptimizeChange?.(event.target.checked)}
+          />
+        </label>
+        <div className={`auto-optimize-status auto-optimize-status--${autoOptimizeStatus}`}>
+          <Crosshair size={15} strokeWidth={1.8} aria-hidden="true" />
+          <div>
+            <strong>{autoOptimizeStatus.replaceAll('-', ' ')}</strong>
+            {autoOptimizeTargetFrequencyHz !== null && (
+              <span>{(autoOptimizeTargetFrequencyHz / 1_000_000).toFixed(4)} MHz</span>
+            )}
+          </div>
+        </div>
+        <p className="source-note" role="status">{autoOptimizeDetail}</p>
       </div>
 
       <div className="control-group">

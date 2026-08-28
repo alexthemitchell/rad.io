@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test'
 type HackRfUsbLog = {
   controlIn: number[]
   controlOut: number[]
+  centerFrequenciesHz: number[]
+  gainChanges: Array<{ request: number; gainDb: number }>
   requestCount: number
   transferCount: number
   claimed: number[]
@@ -22,6 +24,8 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
     const log: HackRfUsbLog = {
       controlIn: [],
       controlOut: [],
+      centerFrequenciesHz: [],
+      gainChanges: [],
       requestCount: 0,
       transferCount: 0,
       claimed: [],
@@ -51,6 +55,8 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
       lowerSidePhase: 0,
       upperSidePhase: 0,
       noiseState: 0x52414449,
+      centerFrequencyHz: 100_000_000,
+      stationFrequencyHz: 100_100_000,
     }
     const device = {
       vendorId: 0x1d50,
@@ -85,7 +91,7 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
         log.released.push(interfaceNumber)
       },
       async selectAlternateInterface() {},
-      async controlTransferIn(setup: { request: number }) {
+      async controlTransferIn(setup: { request: number; index: number }) {
         log.controlIn.push(setup.request)
         if (setup.request === 0x0e) {
           return { status: 'ok', data: new DataView(Uint8Array.of(2).buffer) }
@@ -94,6 +100,9 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
           const version = new TextEncoder().encode('2024.02.1\0')
           return { status: 'ok', data: new DataView(version.buffer) }
         }
+        if (setup.request === 0x13 || setup.request === 0x14) {
+          log.gainChanges.push({ request: setup.request, gainDb: setup.index })
+        }
         return { status: 'ok', data: new DataView(Uint8Array.of(1).buffer) }
       },
       async controlTransferOut(
@@ -101,6 +110,12 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
         data?: ArrayBuffer,
       ) {
         log.controlOut.push(setup.request)
+        if (setup.request === 0x10 && data) {
+          const payload = new DataView(data)
+          state.centerFrequencyHz =
+            payload.getUint32(0, true) * 1_000_000 + payload.getUint32(4, true)
+          log.centerFrequenciesHz.push(state.centerFrequencyHz)
+        }
         return { status: 'ok', bytesWritten: data?.byteLength ?? 0 }
       },
       async transferIn(_endpointNumber: number, length: number) {
@@ -111,6 +126,7 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
         const shakeHz = window.__hackRfShake
           ? shakePatternHz[Math.floor(log.transferCount / 10) % shakePatternHz.length]
           : 0
+        const stationOffsetHz = state.stationFrequencyHz - state.centerFrequencyHz
         for (let index = 0; index < sampleCount; index += 1) {
           state.noiseState = (Math.imul(state.noiseState, 1_664_525) + 1_013_904_223) >>> 0
           const noiseI = ((state.noiseState >>> 24) - 127.5) / 64
@@ -135,15 +151,15 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
             Math.sin(state.phase) * 48 + lowerSideQ + upperSideQ + noiseQ,
           )
           state.phase =
-            (state.phase + (Math.PI * 2 * (100_000 + shakeHz)) / 2_000_000) %
+            (state.phase + (Math.PI * 2 * (stationOffsetHz + shakeHz)) / 2_000_000) %
             (Math.PI * 2)
           state.lowerSidePhase =
             (state.lowerSidePhase +
-              (Math.PI * 2 * (70_000 + shakeHz)) / 2_000_000) %
+              (Math.PI * 2 * (stationOffsetHz - 30_000 + shakeHz)) / 2_000_000) %
             (Math.PI * 2)
           state.upperSidePhase =
             (state.upperSidePhase +
-              (Math.PI * 2 * (130_000 + shakeHz)) / 2_000_000) %
+              (Math.PI * 2 * (stationOffsetHz + 30_000 + shakeHz)) / 2_000_000) %
             (Math.PI * 2)
         }
         state.sampleIndex += sampleCount
@@ -231,6 +247,38 @@ test('streams HackRF IQ through the real analyzer and cleans up', async ({ page 
     fullPage: true,
   })
   await expect(page.locator('.detection-table tbody tr')).toHaveCount(1)
+
+  const autoOptimize = page.getByRole('checkbox', { name: 'Auto optimize' })
+  const gainChangesBeforeOptimization =
+    (await page.evaluate(() => window.__hackRfUsbLog?.gainChanges.length)) ?? 0
+  await autoOptimize.check()
+  await expect.poll(
+    async () => (await page.evaluate(() => window.__hackRfUsbLog?.centerFrequenciesHz.length)) ?? 0,
+    { timeout: 8_000 },
+  ).toBe(2)
+  const optimizedCenterHz = await page.evaluate(
+    () => window.__hackRfUsbLog?.centerFrequenciesHz.at(-1),
+  )
+  expect(optimizedCenterHz).toBe(99_850_000)
+  await expect(page.getByLabel('Analyzer configuration')).toContainText('99.850 MHz')
+  await expect.poll(
+    async () => (await page.evaluate(() => window.__hackRfUsbLog?.gainChanges.length)) ?? 0,
+    { timeout: 8_000 },
+  ).toBeGreaterThan(gainChangesBeforeOptimization)
+
+  await autoOptimize.uncheck()
+  const commandsAfterDisable = await page.evaluate(() => ({
+    controlIn: window.__hackRfUsbLog?.controlIn.length ?? 0,
+    controlOut: window.__hackRfUsbLog?.controlOut.length ?? 0,
+  }))
+  await page.waitForTimeout(1_250)
+  expect(await page.evaluate(() => ({
+    controlIn: window.__hackRfUsbLog?.controlIn.length ?? 0,
+    controlOut: window.__hackRfUsbLog?.controlOut.length ?? 0,
+  }))).toEqual(commandsAfterDisable)
+  const optimizedLog = await page.evaluate(() => window.__hackRfUsbLog)
+  expect(optimizedLog?.controlOut.filter((request) => request === 0x11)).toHaveLength(1)
+  expect(optimizedLog?.controlOut.filter((request) => request === 0x17)).toHaveLength(1)
 
   await page.getByRole('button', { name: 'Stop HackRF reception' }).click()
   await expect(page.getByText('DSP online')).toBeVisible()

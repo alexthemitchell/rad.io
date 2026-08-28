@@ -6,6 +6,7 @@ import {
   HACKRF_USB_VENDOR_ID,
   validateHackRfConfig,
   type HackRfConfig,
+  type HackRfRuntimeCommand,
 } from './hackrfProtocol'
 import type { HackRfWorkerEvent, HackRfWorkerRequest } from './hackrfWorkerProtocol'
 import type { RdsDecodeTarget } from '../workers/protocol'
@@ -27,7 +28,7 @@ type HackRfSourceDependencies = {
 
 export class HackRFSource implements AnalyzerSource {
   readonly id = 'hackrf-one'
-  readonly #config: HackRfConfig
+  #config: HackRfConfig
   readonly #dependencies: HackRfSourceDependencies
   #sink: SampleSink | undefined
   #selectedDevice: UsbDevice | undefined
@@ -44,10 +45,15 @@ export class HackRFSource implements AnalyzerSource {
   #settled = false
   #fallbackStarted = false
   #terminalError: Error | undefined
+  #runtimeRequestId = 0
+  readonly #pendingRuntimeCommands = new Map<
+    number,
+    { resolve: (config: HackRfConfig) => void; reject: (error: Error) => void }
+  >()
 
   constructor(config: HackRfConfig, dependencies: HackRfSourceDependencies = {}) {
     validateHackRfConfig(config)
-    this.#config = config
+    this.#config = { ...config }
     this.#dependencies = dependencies
   }
 
@@ -78,6 +84,42 @@ export class HackRFSource implements AnalyzerSource {
       this.#fallbackRdsDecoder?.setTargets(this.#rdsTargets)
     } catch (error) {
       this.#fail(error)
+    }
+  }
+
+  async applyRuntimeCommand(command: HackRfRuntimeCommand): Promise<HackRfConfig> {
+    if (this.#intentionalStop || this.#settled || !this.#completion) {
+      throw new Error('HackRF source is not active.')
+    }
+    const previousRdsTargets = command.type === 'set-center-frequency'
+      ? [...this.#rdsTargets]
+      : null
+    if (previousRdsTargets) this.setRdsTargets([])
+
+    try {
+      if (this.#fallbackSession) {
+        const config = await this.#fallbackSession.applyRuntimeCommand(command)
+        this.#config = { ...config }
+        return { ...config }
+      }
+      if (!this.#worker) throw new Error('HackRF receiver is not running.')
+
+      const requestId = ++this.#runtimeRequestId
+      const result = new Promise<HackRfConfig>((resolve, reject) => {
+        this.#pendingRuntimeCommands.set(requestId, { resolve, reject })
+      })
+      try {
+        this.#worker.postMessage({ type: 'apply-runtime-command', requestId, command })
+      } catch (error) {
+        this.#pendingRuntimeCommands.delete(requestId)
+        throw error
+      }
+      return await result
+    } catch (error) {
+      if (previousRdsTargets && !this.#intentionalStop && !this.#settled) {
+        this.setRdsTargets(previousRdsTargets)
+      }
+      throw error
     }
   }
 
@@ -148,9 +190,22 @@ export class HackRFSource implements AnalyzerSource {
     if (message.type === 'samples') {
       void this.#deliver({
         iq: message.iq,
+        sampleRateHz: message.sampleRateHz,
+        centerFrequencyHz: message.centerFrequencyHz,
         sourceSequence: message.sourceSequence,
         timestampUs: message.timestampUs,
       })
+    } else if (message.type === 'runtime-command-applied') {
+      const pending = this.#pendingRuntimeCommands.get(message.requestId)
+      if (!pending) return
+      this.#pendingRuntimeCommands.delete(message.requestId)
+      this.#config = { ...message.config }
+      pending.resolve({ ...message.config })
+    } else if (message.type === 'runtime-command-error') {
+      const pending = this.#pendingRuntimeCommands.get(message.requestId)
+      if (!pending) return
+      this.#pendingRuntimeCommands.delete(message.requestId)
+      pending.reject(new Error(message.message))
     } else if (message.type === 'rds-update') {
       this.#rdsSink?.(message.receptions)
     } else if (message.type === 'error') {
@@ -227,8 +282,8 @@ export class HackRFSource implements AnalyzerSource {
     try {
       const released = await sink({
         iq: block.iq,
-        sampleRateHz: this.#config.sampleRateHz,
-        centerFrequencyHz: this.#config.centerFrequencyHz,
+        sampleRateHz: block.sampleRateHz,
+        centerFrequencyHz: block.centerFrequencyHz,
         sequence: block.sourceSequence,
         timestampUs: block.timestampUs,
         formatVersion: 1,
@@ -282,6 +337,10 @@ export class HackRFSource implements AnalyzerSource {
     this.#terminalError = undefined
     this.#rdsSink = undefined
     this.#lastRdsEmissionUs = undefined
+    for (const pending of this.#pendingRuntimeCommands.values()) {
+      pending.reject(error ?? new Error('HackRF source stopped before applying the setting.'))
+    }
+    this.#pendingRuntimeCommands.clear()
   }
 
   #disposeWorker(): void {

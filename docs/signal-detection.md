@@ -1,6 +1,6 @@
 # Automatic Signal Detection
 
-rad.io detects occupied spectral regions inside the IQ bandwidth currently supplied to the analyzer. It does not tune hardware or scan frequencies outside that capture.
+rad.io detects occupied spectral regions inside the IQ bandwidth currently supplied to the analyzer. Detection itself does not scan outside that capture. An optional HackRF-only **Auto optimize** control can follow one already-detected signal by adjusting center frequency and receive gain; it does not perform a band scan.
 
 ## Processing Pipeline
 
@@ -18,6 +18,16 @@ Each FFT frame passes through these stages:
 For external IQ, an FM allocation match enters the station inventory only after its consolidated channel has shown more than 25 kHz of occupied span. That qualification is retained through narrower modulation moments and the track's `recent` lifetime. This hysteresis prevents persistent narrow receiver or converter spurs inside the FM band from being presented as additional broadcast stations.
 
 The tracker holds no unbounded history. Active and provisional state is capped at 64 tracks, and React samples only the compact latest snapshot every 250 ms.
+
+## HackRF Auto Optimization
+
+Auto optimization is off by default and lasts only for the current receiver session. It uses the explicitly selected signal row when that signal is eligible; without an explicit selection, it acquires the strongest stable signal by SNR, peak level, classification evidence, and tenure. Eligible targets must be active, not edge-clipped, visible for at least six observations and one second, and have an absolute RF frequency. Allocation channel center is the stable identity when available; otherwise the measured absolute peak is used. Matching within 50 kHz preserves intent across tracker-ID replacement, and an automatically acquired target remains sticky through a two-second absence.
+
+If the target is too close to DC or a capture edge, the optimizer places it at a preferred $+250$ kHz or $-250$ kHz offset, choosing the valid center closest to the current tuning. It preserves a 120 kHz DC guard and 120 kHz of capture-edge headroom, rejects signals that do not fit at the current sample rate, and suppresses retunes within a 25 kHz deadband. Sample rate and baseband filter remain manual.
+
+Gain control aggregates four 250 ms UI observations and permits only one acknowledged command at a time, followed by a one-second settling interval. A global spectral peak above -8 dBFS backs off VGA in 2 dB steps before LNA in 8 dB steps. Below the -18 to -10 dBFS operating band, it probes one LNA step and retains that step only when median target SNR improves by at least 0.5 dB; VGA then provides finer adjustment. The RF amplifier and antenna bias are never enabled by this feature.
+
+These thresholds use FFT dBFS as conservative digital headroom evidence. They do not measure calibrated input power, identify the analog stage causing compression, or prove ADC clipping. A manual center-frequency, LNA, or VGA change disables automation immediately. Turning off detection, stopping or changing source, reset, command failure, and explicit disable also stop new optimization commands.
 
 ## Reported Metadata
 
@@ -82,7 +92,8 @@ Signals that touch a capture edge are marked `partial`; their bandwidth is a low
 
 - Levels are relative dBFS, not calibrated RF power or dBm.
 - The noise estimate is frame-local and is not a hardware noise calibration.
-- The DC guard can suppress a narrow signal exactly at zero offset along with receiver DC leakage.
+- Auto optimization uses spectral dBFS as a headroom proxy, not true ADC-overload telemetry.
+- HackRF display blocks have their complex mean removed, and the detector retains a DC guard. A narrow signal exactly at zero offset is intentionally indistinguishable from receiver offset; tune it away from DC for measurement.
 - A strong off-bin carrier can produce window sidelobes; the 15 dB default threshold reduces these false candidates and can be adjusted for a source.
 - There is no audio playback, AM/SSB demodulation, Morse or time-code decoding, speech analysis, or external station directory.
 - RDS supports the complete group transport envelope, but application-specific ODA semantics and TMC event/location text require external specifications or regional databases and remain raw numeric data.

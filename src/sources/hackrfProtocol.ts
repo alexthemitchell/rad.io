@@ -60,6 +60,11 @@ export type HackRfConfig = {
   frameRate: number
 }
 
+export type HackRfRuntimeCommand =
+  | { type: 'set-center-frequency'; centerFrequencyHz: number }
+  | { type: 'set-lna-gain'; lnaGainDb: number }
+  | { type: 'set-vga-gain'; vgaGainDb: number }
+
 export const DEFAULT_HACKRF_CONFIG: HackRfConfig = {
   centerFrequencyHz: 100_000_000,
   sampleRateHz: 2_000_000,
@@ -109,6 +114,19 @@ export function validateHackRfConfig(config: HackRfConfig): void {
   if (!Number.isFinite(config.frameRate) || config.frameRate < 1 || config.frameRate > 60) {
     throw new Error('HackRF analysis rate must be between 1 and 60 frames per second.')
   }
+}
+
+export function configWithHackRfRuntimeCommand(
+  config: HackRfConfig,
+  command: HackRfRuntimeCommand,
+): HackRfConfig {
+  const next = command.type === 'set-center-frequency'
+    ? { ...config, centerFrequencyHz: command.centerFrequencyHz }
+    : command.type === 'set-lna-gain'
+      ? { ...config, lnaGainDb: command.lnaGainDb }
+      : { ...config, vgaGainDb: command.vgaGainDb }
+  validateHackRfConfig(next)
+  return next
 }
 
 export function packHackRfSampleRate(sampleRateHz: number): ArrayBuffer {
@@ -223,5 +241,24 @@ export function normalizeHackRfIq(source: Int8Array, target: Float32Array): void
   }
   for (let index = 0; index < source.length; index += 1) {
     target[index] = source[index] / 128
+  }
+}
+
+export function removeHackRfDcOffset(iq: Float32Array): void {
+  if (iq.length === 0 || iq.length % 2 !== 0) {
+    throw new Error('HackRF DC correction requires complete interleaved I/Q samples.')
+  }
+  const sampleCount = iq.length / 2
+  let sumI = 0
+  let sumQ = 0
+  for (let index = 0; index < iq.length; index += 2) {
+    sumI += iq[index]
+    sumQ += iq[index + 1]
+  }
+  const meanI = sumI / sampleCount
+  const meanQ = sumQ / sampleCount
+  for (let index = 0; index < iq.length; index += 2) {
+    iq[index] -= meanI
+    iq[index + 1] -= meanQ
   }
 }

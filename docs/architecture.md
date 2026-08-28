@@ -40,6 +40,11 @@ Window permission -> acquisition worker -> signed int8 HackRF IQ
                            -> latest complete FFT block -> interleaved Float32 IQ
                            -> AnalyzerSource -> DSP worker -> same Rust/WASM FFT
                                   ^       buffer returned <- input-released <---+
+
+Low-rate control
+confirmed tracks -> auto optimizer -> acknowledged center/LNA/VGA command
+                                         -> acquisition owner -> HackRF vendor request
+                                         <- applied configuration
 ```
 
 `AnalyzerController` initializes one `DspWorkerClient` for its lifetime. React receives worker state changes immediately and samples numeric status every 250 ms. Spectrum, waterfall, and waveform arrays go directly from `FrameHub` to renderer objects without a React render.
@@ -53,7 +58,7 @@ The display and continuous-decoder lanes intentionally split in the acquisition 
 | USB bulk-IN | Browser-owned `ArrayBuffer` in the acquisition owner | Sequential `transferIn`; `Int8Array` is a view |
 | Live RDS input | Acquisition worker JS to acquisition worker WASM | One wasm-bindgen slice copy, then one shared i8-to-complex conversion per 16 KiB transfer |
 | Display assembly | Persistent signed-byte FFT block in `HackRfIqBlockAssembler` | One bounded `TypedArray.set` copy; old display blocks may be overwritten |
-| Display normalization | Sole reusable `Float32Array` output buffer | One i8-to-f32 conversion pass |
+| Display normalization | Sole reusable `Float32Array` output buffer | One i8-to-f32 conversion pass, then block-local complex mean removal |
 | Acquisition to main to DSP worker | Same transferred `ArrayBuffer` | Two ownership transfers and message scheduling; no payload clone |
 | Analyzer input | DSP worker JS to DSP WASM | One wasm-bindgen f32 slice copy per displayed frame |
 | Analyzer output | WASM `Vec` getters to JS typed arrays | Waveform and spectrum are cloned out of WASM once per displayed frame |
@@ -85,6 +90,8 @@ A `SampleChunk` carries:
 - source sequence number
 - monotonic source timestamp in microseconds
 - the transferable IQ array
+
+The acquisition owner stamps each emitted display block with the sample rate and center frequency that produced it. `HackRFSource` forwards those block fields instead of reading mutable UI configuration. This ordering prevents a block queued before or during a retune from being analyzed as though it were captured at the new RF center.
 
 The current analyzer expects exactly one configured FFT block per chunk. A hardware adapter should accumulate USB transfers into complete blocks before calling the sink. `AnalyzerController.ingest` returns the transferred buffer and a dropped flag so the source can maintain a fixed buffer pool.
 
@@ -134,9 +141,15 @@ The source opens HackRF One `1d50:6089`, discovers its vendor-specific bulk-IN e
 [I0_i8, Q0_i8, I1_i8, Q1_i8, ...]
 ```
 
-Each value is divided by 128 into the analyzer's interleaved `Float32` contract. The source continuously drains sequential 16 KiB bulk transfers so browser rendering cannot back up the radio. It assembles exact FFT blocks, retains only the newest eligible block, and submits at most one block every `sampleRate / frameRate` samples. While DSP owns the sole transferable output buffer, USB reads continue and older display blocks are discarded by advancing the source sequence.
+Each value is divided by 128 into the analyzer's interleaved `Float32` contract. Before a paced display block is delivered, the source subtracts its independent I/Q means. This removes HackRF's zero-frequency converter offset from the spectrum, waveform, global peak, and automatic gain evidence without modifying the continuous raw-i8 RDS branch. The source continuously drains sequential 16 KiB bulk transfers so browser rendering cannot back up the radio. It assembles exact FFT blocks, retains only the newest eligible block, and submits at most one block every `sampleRate / frameRate` samples. While DSP owns the sole transferable output buffer, USB reads continue and older display blocks are discarded by advancing the source sequence.
 
 RDS decoding branches before that display throttle. Every successful signed 8-bit transfer is synchronously fed to a standalone WASM decoder bank in the acquisition worker. Input validation, i8 normalization, and timestamp calculation are shared across targets; frequency translation and decoder state remain independent. The main DSP worker sends target changes only when the selected FM channel set changes, and the acquisition worker coalesces metadata updates to at most four per second. Chromium configurations that require the page-thread WebUSB fallback use the same decoder and update contract. A transfer stall or retry resets symbol synchronization instead of joining discontinuous samples.
+
+Rust `u64` timestamps serialized by `serde_wasm_bindgen` are normalized to JavaScript BigInt in `rdsSnapshots` before entering the typed worker/controller contract. This applies to timed metadata values, ODA records, TMC/EON envelopes, raw groups, and decoder freshness timestamps.
+
+While RX remains open, `HackRFSource` can submit one serialized runtime command for center frequency, LNA gain, or VGA gain. The acquisition worker or page fallback validates the proposed configuration, performs the existing vendor control transfer, and acknowledges the complete applied configuration. React updates displayed controls only after that acknowledgement. Sample rate, baseband filter, FFT size, frame rate, RF amplifier, and antenna bias are not part of the runtime command union.
+
+A center-frequency command first clears frequency-relative RDS targets. After the device acknowledges the new center, acquisition resets partial FFT assembly, marks a decoder discontinuity, discards 50 ms of settling IQ, and resumes with self-describing sample blocks. The analyzer configuration and tracker are reset before those blocks are accepted, then fresh detections repopulate RDS targets with offsets relative to the new center. Gain-only commands preserve track and decoder continuity so the optimizer can compare before/after SNR.
 
 The returned `input-released` buffer is transferred back to the acquisition worker and reused. A stalled bulk endpoint receives bounded `clearHalt` recovery. Stop switches the transceiver off, aborts the pending read by closing when necessary, releases the claimed interface, and closes the device.
 
@@ -155,6 +168,7 @@ The implementation is OS-neutral and has no dependency on `libhackrf`, Node `usb
 - Worker creation is isolated from live control dependencies.
 - Configuration changes rebuild cached FFT state atomically.
 - External sources receive ownership of their input buffer back.
+- Runtime HackRF controls are serialized, acknowledged, and limited to center/LNA/VGA.
 
 ## VFO Evolution
 

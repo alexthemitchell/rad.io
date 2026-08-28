@@ -58,6 +58,10 @@ The HackRF One source starts with conservative receive-only settings:
 
 Select **HackRF**, then **Connect**. On first use, choose the radio in Chromium's USB picker; later connections reuse the origin's retained device permission without reopening the picker while that authorized HackRF is available. The browser opens the vendor interface, configures receive mode, and streams signed 8-bit interleaved IQ into the existing Rust/WASM analyzer. Stop returns the radio to transceiver-off mode and closes the browser USB session without revoking permission.
 
+The paced display/DSP lane subtracts the independent I/Q means from each complete FFT block so HackRF's converter offset does not appear as a false zero-frequency spectral peak or drive automatic gain. Continuous raw RDS decoding remains unchanged.
+
+**Auto optimize** is an optional, session-only control for a detected signal. It follows the explicitly selected signal row, or a sticky strongest stable signal when none is selected, and can adjust center frequency plus LNA/VGA gain while reception remains active. Manual center or gain changes disable it. Sample rate, baseband filter, RF amplifier, and antenna bias remain manual; automatic gain decisions use relative spectrum dBFS as a headroom proxy rather than calibrated power or true ADC clipping telemetry.
+
 The implementation is platform-neutral and contains no OS detection or native fallback. Windows can bind HackRF firmware's `USB\MS_COMP_WINUSB` identity to the inbox WinUSB service; macOS exposes the device through its USB stack. Some Linux host policies deny browser access to raw USB device nodes. A sandboxed page cannot alter that policy, so rad.io reports the host denial rather than installing or invoking system software.
 
 WebUSB is not implemented by Firefox or Safari. Production hosting must use HTTPS; loopback development URLs are treated as secure contexts by Chromium.

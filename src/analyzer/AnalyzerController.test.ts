@@ -7,6 +7,7 @@ import type {
   WorkerEvent,
   WorkerRequest,
 } from '../workers/protocol'
+import { DEFAULT_GENERATOR_CONFIG } from '../workers/protocol'
 import { AnalyzerController } from './AnalyzerController'
 
 class FakeWorker {
@@ -73,7 +74,13 @@ class FakeSource implements AnalyzerSource {
   }
 }
 
-function frame(timestampUs: bigint, state: 'active' | 'recent' = 'active'): AnalysisFrameEvent {
+function frame(
+  timestampUs: bigint,
+  state: 'active' | 'recent' = 'active',
+  centerFrequencyHz = 100_000_000,
+): AnalysisFrameEvent {
+  const channelCenterHz = 100_100_000
+  const peakOffsetHz = channelCenterHz - centerFrequencyHz
   return {
     type: 'analysis-frame',
     protocolVersion: 3,
@@ -85,10 +92,10 @@ function frame(timestampUs: bigint, state: 'active' | 'recent' = 'active'): Anal
     trackedSignals: [
       {
         id: 'signal-1',
-        peakOffsetHz: 100_000,
-        lowerOffsetHz: 0,
-        upperOffsetHz: 200_000,
-        absoluteFrequencyHz: 100_100_000,
+        peakOffsetHz,
+        lowerOffsetHz: peakOffsetHz - 100_000,
+        upperOffsetHz: peakOffsetHz + 100_000,
+        absoluteFrequencyHz: channelCenterHz,
         lowerFrequencyHz: 100_000_000,
         upperFrequencyHz: 100_200_000,
         bandwidthHz: 200_000,
@@ -105,7 +112,7 @@ function frame(timestampUs: bigint, state: 'active' | 'recent' = 'active'): Anal
           spectralShape: 'medium-band',
           primary: {
             allocationId: 'fm-100100000',
-            channelCenterHz: 100_100_000,
+            channelCenterHz,
             label: 'FM broadcast channel 261 (100.1 MHz)',
             category: 'fm-broadcast',
             score: 0.9,
@@ -115,7 +122,7 @@ function frame(timestampUs: bigint, state: 'active' | 'recent' = 'active'): Anal
           alternatives: [],
         },
         rds: {
-          channelCenterHz: 100_100_000,
+          channelCenterHz,
           state: 'searching',
           reason: null,
           metadata: null,
@@ -130,10 +137,10 @@ function frame(timestampUs: bigint, state: 'active' | 'recent' = 'active'): Anal
         },
       },
     ],
-    rdsTargets: [{ channelCenterHz: 100_100_000, frequencyOffsetHz: 100_000 }],
+    rdsTargets: [{ channelCenterHz, frequencyOffsetHz: peakOffsetHz }],
     sampleRateHz: 2_000_000,
-    centerFrequencyHz: 100_000_000,
-    peakFrequencyHz: 100_000,
+    centerFrequencyHz,
+    peakFrequencyHz: peakOffsetHz,
     peakPowerDbfs: -30,
     elapsedSamples: timestampUs * 2n,
     processingTimeMs: 1,
@@ -189,6 +196,63 @@ describe('AnalyzerController RDS integration', () => {
     await running
     expect(source.targets.at(-1)).toEqual([])
     expect(controller.snapshot.trackedSignals[0].rds).toBeUndefined()
+    controller.dispose()
+  })
+
+  it('reports a synchronous external source startup failure', async () => {
+    const controller = new AnalyzerController()
+    await controller.initialize()
+    const source: AnalyzerSource = {
+      id: 'failing-source',
+      start: () => {
+        throw new Error('WebUSB is unavailable.')
+      },
+      stop: async () => undefined,
+    }
+
+    await controller.startExternal(source)
+    FakeWorker.instance.emit({
+      type: 'status',
+      protocolVersion: 3,
+      state: 'idle',
+    })
+
+    expect(controller.snapshot.state).toBe('error')
+    expect(controller.snapshot.detail).toBe('WebUSB is unavailable.')
+    controller.dispose()
+  })
+
+  it('clears and reacquires RDS state after the RF center changes', async () => {
+    const controller = new AnalyzerController()
+    const source = new FakeSource()
+    await controller.initialize()
+    const running = controller.startExternal(source)
+
+    FakeWorker.instance.emit(frame(100_000n))
+    source.emitRds([RECEPTION])
+    expect(controller.snapshot.trackedSignals[0].rds?.state).toBe('locked')
+
+    controller.configure({
+      ...DEFAULT_GENERATOR_CONFIG,
+      sampleRateHz: 2_000_000,
+      centerFrequencyHz: 99_850_000,
+    })
+    expect(source.targets.at(-1)).toEqual([])
+
+    FakeWorker.instance.emit(frame(200_000n, 'active', 99_850_000))
+    expect(source.targets.at(-1)).toEqual([
+      { channelCenterHz: 100_100_000, frequencyOffsetHz: 250_000 },
+    ])
+    expect(controller.snapshot.trackedSignals[0].rds?.state).toBe('searching')
+
+    source.emitRds([{
+      ...RECEPTION,
+      diagnostics: { ...RECEPTION.diagnostics, lastValidGroupAtUs: 200_000n },
+    }])
+    expect(controller.snapshot.trackedSignals[0].rds?.state).toBe('locked')
+
+    await controller.stop()
+    await running
     controller.dispose()
   })
 })

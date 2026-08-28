@@ -78,9 +78,16 @@ async function start(request: Extract<HackRfWorkerRequest, { type: 'start' }>): 
         }
       },
       onDiscontinuity: () => rdsDecoder?.reset(),
-      onSamples: ({ iq, sourceSequence, timestampUs }) => {
+      onSamples: ({ iq, sampleRateHz, centerFrequencyHz, sourceSequence, timestampUs }) => {
         postEvent(
-          { type: 'samples', iq, sourceSequence, timestampUs },
+          {
+            type: 'samples',
+            iq,
+            sampleRateHz,
+            centerFrequencyHz,
+            sourceSequence,
+            timestampUs,
+          },
           [iq.buffer as ArrayBuffer],
         )
       },
@@ -108,6 +115,38 @@ workerScope.onmessage = (event: MessageEvent<HackRfWorkerRequest>) => {
   const request = event.data
   if (request.type === 'start') {
     void start(request)
+  } else if (request.type === 'apply-runtime-command') {
+    const activeSession = session
+    if (!activeSession) {
+      postEvent({
+        type: 'runtime-command-error',
+        requestId: request.requestId,
+        message: 'HackRF receiver is not running.',
+      })
+      return
+    }
+    if (request.command.type === 'set-center-frequency') {
+      rdsTargets = []
+      rdsDecoder?.setTargets([])
+    }
+    void activeSession.applyRuntimeCommand(request.command).then(
+      (config) => {
+        if (request.command.type === 'set-center-frequency') {
+          rdsTargets = []
+          rdsDecoder?.setTargets([])
+        }
+        postEvent({
+          type: 'runtime-command-applied',
+          requestId: request.requestId,
+          config,
+        })
+      },
+      (error: unknown) => postEvent({
+        type: 'runtime-command-error',
+        requestId: request.requestId,
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    )
   } else if (request.type === 'set-rds-targets') {
     rdsTargets = request.targets
     try {

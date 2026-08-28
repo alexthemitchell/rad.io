@@ -128,7 +128,7 @@ describe('HackRfDeviceSession', () => {
       HACKRF_REQUEST.setTransceiverMode,
       HACKRF_REQUEST.setTransceiverMode,
     ])
-    expect(samples).toEqual([0.5])
+    expect(samples).toEqual([0])
     expect(rawSamples).toEqual([64])
     expect(device.releaseInterface).toHaveBeenCalledWith(0)
     expect(device.close).toHaveBeenCalledOnce()
@@ -178,7 +178,7 @@ describe('HackRfDeviceSession', () => {
     expect(device.transferIn).toHaveBeenCalledWith(5, 16 * 1024)
     expect(device.clearHalt).toHaveBeenCalledWith('in', 5)
     expect(onDiscontinuity).toHaveBeenCalledOnce()
-    expect(sample).toBe(-1)
+    expect(sample).toBe(0)
   })
 
   it('cleans up when stopped before a pending device open completes', async () => {
@@ -200,5 +200,74 @@ describe('HackRfDeviceSession', () => {
     expect(device.claimInterface).not.toHaveBeenCalled()
     expect(device.transferIn).not.toHaveBeenCalled()
     expect(device.close).toHaveBeenCalledOnce()
+  })
+
+  it('applies runtime tuning and gain commands to the active receiver', async () => {
+    let releaseTransfers: () => void = () => undefined
+    const transferGate = new Promise<void>((resolve) => {
+      releaseTransfers = resolve
+    })
+    const device = createDevice(async () => {
+      await transferGate
+      return {
+        status: 'ok',
+        data: new DataView(new Int8Array(16 * 1024).fill(64).buffer),
+      }
+    })
+    const onDiscontinuity = vi.fn()
+    const sampleMetadata: Array<{ centerFrequencyHz: number; sampleRateHz: number }> = []
+    let commands = Promise.resolve<unknown>(undefined)
+    const session = new HackRfDeviceSession(device, DEFAULT_HACKRF_CONFIG, {
+      onConfigured: () => {
+        commands = Promise.all([
+          session.applyRuntimeCommand({
+            type: 'set-center-frequency',
+            centerFrequencyHz: 100_250_000,
+          }),
+          session.applyRuntimeCommand({ type: 'set-lna-gain', lnaGainDb: 24 }),
+          session.applyRuntimeCommand({ type: 'set-vga-gain', vgaGainDb: 22 }),
+        ]).then((result) => {
+          releaseTransfers()
+          return result
+        })
+      },
+      onDiscontinuity,
+      onSamples: ({ centerFrequencyHz, sampleRateHz }) => {
+        sampleMetadata.push({ centerFrequencyHz, sampleRateHz })
+        void session.stop()
+      },
+    })
+
+    await session.start()
+    const applied = await commands
+
+    expect(applied).toEqual([
+      { ...DEFAULT_HACKRF_CONFIG, centerFrequencyHz: 100_250_000 },
+      { ...DEFAULT_HACKRF_CONFIG, centerFrequencyHz: 100_250_000, lnaGainDb: 24 },
+      {
+        ...DEFAULT_HACKRF_CONFIG,
+        centerFrequencyHz: 100_250_000,
+        lnaGainDb: 24,
+        vgaGainDb: 22,
+      },
+    ])
+    const frequencyCalls = device.controlTransferOut.mock.calls.filter(
+      ([setup]) => (setup as UsbControlTransferParameters).request === HACKRF_REQUEST.setFrequency,
+    )
+    const frequencyPayload = new DataView(frequencyCalls.at(-1)?.[1] as ArrayBuffer)
+    expect(frequencyPayload.getUint32(0, true)).toBe(100)
+    expect(frequencyPayload.getUint32(4, true)).toBe(250_000)
+    expect(device.controlTransferIn).toHaveBeenCalledWith(
+      expect.objectContaining({ request: HACKRF_REQUEST.setLnaGain, index: 24 }),
+      1,
+    )
+    expect(device.controlTransferIn).toHaveBeenCalledWith(
+      expect.objectContaining({ request: HACKRF_REQUEST.setVgaGain, index: 22 }),
+      1,
+    )
+    expect(onDiscontinuity).toHaveBeenCalledOnce()
+    expect(sampleMetadata).toEqual([
+      { centerFrequencyHz: 100_250_000, sampleRateHz: 2_000_000 },
+    ])
   })
 })

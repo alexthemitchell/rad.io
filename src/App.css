@@ -330,6 +330,53 @@
   accent-color: var(--cyan);
 }
 
+.auto-optimize-control {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--chrome) 46%, var(--paper));
+}
+
+.auto-optimize-status {
+  min-height: 28px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.auto-optimize-status > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.auto-optimize-status strong,
+.auto-optimize-status span {
+  overflow: hidden;
+  font: 10px/1.2 var(--mono);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.auto-optimize-status span {
+  color: var(--ink);
+}
+
+.auto-optimize-status--retuning,
+.auto-optimize-status--adjusting-gain,
+.auto-optimize-status--optimized {
+  color: var(--cyan-deep);
+}
+
+.auto-optimize-status--error {
+  color: var(--red);
+}
+
 .control-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -560,6 +607,10 @@
 
 .detection-table tbody tr.is-selected {
   background: color-mix(in srgb, var(--cyan) 8%, transparent);
+}
+
+.detection-table tbody tr.is-optimization-target {
+  box-shadow: inset 3px 0 0 var(--cyan);
 }
 
 .detection-table tbody th {
@@ -827,4 +878,9 @@
   margin: 0;
   color: var(--muted);
   font: 10px/1.35 var(--mono);
+}
+
+.optimization-target-icon {
+  flex: 0 0 auto;
+  color: var(--cyan-deep);
 }

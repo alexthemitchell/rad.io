@@ -1,4 +1,5 @@
 import {
+  configWithHackRfRuntimeCommand,
   HACKRF_MODE,
   HACKRF_REQUEST,
   HackRfIqBlockAssembler,
@@ -7,9 +8,11 @@ import {
   packHackRfFrequency,
   packHackRfSampleRate,
   resolveHackRfStreamingInterface,
+  removeHackRfDcOffset,
   splitUint32,
   validateHackRfConfig,
   type HackRfConfig,
+  type HackRfRuntimeCommand,
 } from './hackrfProtocol'
 import type {
   UsbControlTransferParameters,
@@ -20,6 +23,7 @@ import type {
 const TRANSFER_SIZE_BYTES = 16 * 1024
 const MODE_SETTLE_DELAY_MS = 30
 const MAX_CONSECUTIVE_TRANSFER_FAILURES = 3
+const RETUNE_SETTLE_TIME_MS = 50
 
 export type HackRfDeviceInfo = {
   productName: string
@@ -31,6 +35,8 @@ export type HackRfDeviceInfo = {
 
 export type HackRfSampleBlock = {
   iq: Float32Array
+  sampleRateHz: number
+  centerFrequencyHz: number
   sourceSequence: number
   timestampUs: bigint
 }
@@ -51,7 +57,7 @@ type SessionCallbacks = {
 export class HackRfDeviceSession {
   readonly #assembler: HackRfIqBlockAssembler
   readonly #device: UsbDevice
-  readonly #config: HackRfConfig
+  #config: HackRfConfig
   readonly #callbacks: SessionCallbacks
   #running = false
   #stopping = false
@@ -64,11 +70,13 @@ export class HackRfDeviceSession {
   #nextEmissionSample = 0n
   #rawSequence = 0
   #receivedSamples = 0n
+  #discardUntilReceivedSample = 0n
+  #runtimeCommandQueue: Promise<void> = Promise.resolve()
 
   constructor(device: UsbDevice, config: HackRfConfig, callbacks: SessionCallbacks) {
     validateHackRfConfig(config)
     this.#device = device
-    this.#config = config
+    this.#config = { ...config }
     this.#callbacks = callbacks
     this.#assembler = new HackRfIqBlockAssembler(config.fftSize)
     this.#outputBuffer = new ArrayBuffer(
@@ -111,6 +119,15 @@ export class HackRfDeviceSession {
       throw new Error('HackRF IQ output buffer was returned more than once.')
     }
     this.#outputBuffer = buffer
+  }
+
+  applyRuntimeCommand(command: HackRfRuntimeCommand): Promise<HackRfConfig> {
+    const result = this.#runtimeCommandQueue.then(() => this.#applyRuntimeCommand(command))
+    this.#runtimeCommandQueue = result.then(
+      () => undefined,
+      () => undefined,
+    )
+    return result
   }
 
   async #openAndConfigure(): Promise<void> {
@@ -245,7 +262,16 @@ export class HackRfDeviceSession {
           result.data.byteLength,
         )
         const rawStart = this.#receivedSamples
-        this.#receivedSamples += BigInt(rawIq.length / 2)
+        const sampleCount = BigInt(rawIq.length / 2)
+        this.#receivedSamples += sampleCount
+        if (rawStart < this.#discardUntilReceivedSample) {
+          this.#assembler.reset()
+          this.#elapsedSamples += sampleCount
+          if (this.#receivedSamples >= this.#discardUntilReceivedSample) {
+            this.#discardUntilReceivedSample = 0n
+          }
+          return
+        }
         this.#rawSequence = (this.#rawSequence + 1) >>> 0
         this.#callbacks.onRawSamples?.({
           iq: rawIq,
@@ -272,14 +298,49 @@ export class HackRfDeviceSession {
 
     const output = new Float32Array(this.#outputBuffer)
     normalizeHackRfIq(rawBlock, output)
+    removeHackRfDcOffset(output)
     this.#outputBuffer = undefined
     this.#nextEmissionSample =
       blockStart + BigInt(Math.max(1, Math.round(this.#config.sampleRateHz / this.#config.frameRate)))
     this.#callbacks.onSamples({
       iq: output,
+      sampleRateHz: this.#config.sampleRateHz,
+      centerFrequencyHz: this.#config.centerFrequencyHz,
       sourceSequence: this.#sourceSequence,
       timestampUs: (blockStart * 1_000_000n) / BigInt(this.#config.sampleRateHz),
     })
+  }
+
+  async #applyRuntimeCommand(command: HackRfRuntimeCommand): Promise<HackRfConfig> {
+    if (!this.#running || this.#stopping || !this.#device.opened) {
+      throw new Error('HackRF receiver is not running.')
+    }
+    const next = configWithHackRfRuntimeCommand(this.#config, command)
+    if (command.type === 'set-center-frequency') {
+      if (next.centerFrequencyHz === this.#config.centerFrequencyHz) return { ...this.#config }
+      await this.#controlOut(
+        HACKRF_REQUEST.setFrequency,
+        0,
+        0,
+        packHackRfFrequency(next.centerFrequencyHz),
+      )
+      this.#config = next
+      this.#assembler.reset()
+      this.#nextEmissionSample = this.#elapsedSamples
+      this.#discardUntilReceivedSample =
+        this.#receivedSamples +
+        BigInt(Math.ceil(this.#config.sampleRateHz * RETUNE_SETTLE_TIME_MS / 1_000))
+      this.#callbacks.onDiscontinuity?.()
+    } else if (command.type === 'set-lna-gain') {
+      if (next.lnaGainDb === this.#config.lnaGainDb) return { ...this.#config }
+      await this.#setGain(HACKRF_REQUEST.setLnaGain, next.lnaGainDb, 'LNA')
+      this.#config = next
+    } else {
+      if (next.vgaGainDb === this.#config.vgaGainDb) return { ...this.#config }
+      await this.#setGain(HACKRF_REQUEST.setVgaGain, next.vgaGainDb, 'VGA')
+      this.#config = next
+    }
+    return { ...this.#config }
   }
 
   async #setGain(request: number, gainDb: number, label: string): Promise<void> {

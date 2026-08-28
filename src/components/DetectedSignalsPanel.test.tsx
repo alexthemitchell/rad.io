@@ -112,12 +112,15 @@ const RDS_SIGNAL: TrackedSignal = {
 
 describe('DetectedSignalsPanel', () => {
   it('renders measured metadata and classification evidence', () => {
+    const onSignalSelect = vi.fn()
     render(
       <DetectedSignalsPanel
         config={DEFAULT_DETECTION_CONFIG}
         signals={[SIGNAL]}
         centerFrequencyHz={100_000_000}
         onConfigChange={vi.fn()}
+        optimizationTargetFrequencyHz={100_100_000}
+        onSignalSelect={onSignalSelect}
       />,
     )
 
@@ -131,6 +134,12 @@ describe('DetectedSignalsPanel', () => {
     expect(screen.getByText('35.0 dB')).toBeVisible()
     expect(screen.getByText('94% evidence')).toBeVisible()
     expect(screen.getByText('Frequency is inside the listed channel.')).toBeVisible()
+    const rowButton = screen.getByRole('button', {
+      name: 'FM broadcast channel 261 (100.1 MHz), 100.1000 MHz, active, track #1',
+    })
+    fireEvent.click(rowButton)
+    expect(onSignalSelect).toHaveBeenCalledWith(SIGNAL)
+    expect(rowButton.closest('tr')).toHaveClass('is-optimization-target')
   })
 
   it('emits detector sensitivity and profile changes', () => {
