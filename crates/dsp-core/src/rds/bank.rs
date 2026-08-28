@@ -1,3 +1,4 @@
+use num_complex::Complex32;
 use serde::Serialize;
 use thiserror::Error;
 
@@ -92,17 +93,44 @@ impl RdsDecoderBank {
     }
 
     pub fn process_f32(&mut self, iq: &[f32], timestamp_us: u64) -> Result<bool, RdsBankError> {
+        if self.entries.is_empty() {
+            return Ok(false);
+        }
+        if !iq.len().is_multiple_of(2) {
+            return Err(RdsDecodeError::InvalidIqLength.into());
+        }
+        let sample_rate_hz = u64::from(self.sample_rate_hz.expect("configured decoder bank"));
         let mut changed = false;
-        for entry in &mut self.entries {
-            changed |= entry.decoder.process_f32(iq, timestamp_us)?;
+        for (index, sample) in iq.as_chunks::<2>().0.iter().enumerate() {
+            if !sample[0].is_finite() || !sample[1].is_finite() {
+                return Err(RdsDecodeError::InvalidSample.into());
+            }
+            let sample_timestamp_us =
+                timestamp_us.saturating_add(index as u64 * 1_000_000 / sample_rate_hz);
+            let sample = Complex32::new(sample[0], sample[1]);
+            for entry in &mut self.entries {
+                changed |= entry.decoder.process_sample(sample, sample_timestamp_us);
+            }
         }
         Ok(changed)
     }
 
     pub fn process_i8(&mut self, iq: &[i8], timestamp_us: u64) -> Result<bool, RdsBankError> {
+        if self.entries.is_empty() {
+            return Ok(false);
+        }
+        if !iq.len().is_multiple_of(2) {
+            return Err(RdsDecodeError::InvalidIqLength.into());
+        }
+        let sample_rate_hz = u64::from(self.sample_rate_hz.expect("configured decoder bank"));
         let mut changed = false;
-        for entry in &mut self.entries {
-            changed |= entry.decoder.process_i8(iq, timestamp_us)?;
+        for (index, sample) in iq.as_chunks::<2>().0.iter().enumerate() {
+            let sample_timestamp_us =
+                timestamp_us.saturating_add(index as u64 * 1_000_000 / sample_rate_hz);
+            let sample = Complex32::new(f32::from(sample[0]) / 128.0, f32::from(sample[1]) / 128.0);
+            for entry in &mut self.entries {
+                changed |= entry.decoder.process_sample(sample, sample_timestamp_us);
+            }
         }
         Ok(changed)
     }
@@ -148,7 +176,7 @@ struct DecoderEntry {
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_RDS_TARGETS, RdsBankError, RdsDecodeTarget, RdsDecoderBank};
+    use super::{MAX_RDS_TARGETS, RdsBankError, RdsDecodeTarget, RdsDecoder, RdsDecoderBank};
     use crate::{
         generator::ComplexToneGenerator,
         types::{GeneratorConfig, GeneratorMode},
@@ -221,6 +249,80 @@ mod tests {
             snapshots[0].reception.metadata.ps.as_ref().unwrap().value,
             "RAD.IO"
         );
+    }
+
+    fn assert_shared_traversal_matches_independent_decoders(quantized: bool) {
+        let sample_rate_hz = 2_400_000_u32;
+        let targets = [
+            RdsDecodeTarget {
+                channel_center_hz: 100_100_000.0,
+                frequency_offset_hz: 100_000.0,
+            },
+            RdsDecodeTarget {
+                channel_center_hz: 100_300_000.0,
+                frequency_offset_hz: 100_000.0,
+            },
+        ];
+        let mut bank = RdsDecoderBank::new();
+        bank.set_targets(sample_rate_hz, &targets).unwrap();
+        let mut independent = targets
+            .iter()
+            .map(|target| RdsDecoder::new(sample_rate_hz, target.frequency_offset_hz).unwrap())
+            .collect::<Vec<_>>();
+        let mut generator = ComplexToneGenerator::new(GeneratorConfig {
+            mode: GeneratorMode::FmRds,
+            sample_rate_hz: sample_rate_hz as f32,
+            tone_frequency_hz: targets[0].frequency_offset_hz,
+            tone_level_dbfs: -6.0,
+            noise_enabled: false,
+            ..GeneratorConfig::default()
+        })
+        .unwrap();
+        let mut elapsed_samples = 0_u64;
+
+        for chunk in 0..1_600 {
+            let sample_count = if chunk % 2 == 0 { 997 } else { 3_001 };
+            let iq = generator.generate(sample_count);
+            let timestamp_us = elapsed_samples * 1_000_000 / u64::from(sample_rate_hz);
+            let mut independent_changed = false;
+            let bank_changed = if quantized {
+                let iq = iq
+                    .iter()
+                    .map(|sample| (sample * 128.0).round().clamp(-128.0, 127.0) as i8)
+                    .collect::<Vec<_>>();
+                for decoder in &mut independent {
+                    independent_changed |= decoder.process_i8(&iq, timestamp_us).unwrap();
+                }
+                bank.process_i8(&iq, timestamp_us).unwrap()
+            } else {
+                for decoder in &mut independent {
+                    independent_changed |= decoder.process_f32(&iq, timestamp_us).unwrap();
+                }
+                bank.process_f32(&iq, timestamp_us).unwrap()
+            };
+            assert_eq!(bank_changed, independent_changed);
+            elapsed_samples += sample_count as u64;
+            if bank.snapshots().len() == targets.len() {
+                break;
+            }
+        }
+
+        let bank_snapshots = bank.snapshots();
+        assert_eq!(bank_snapshots.len(), targets.len());
+        for ((snapshot, decoder), target) in bank_snapshots.iter().zip(&independent).zip(&targets) {
+            assert_eq!(snapshot.channel_center_hz, target.channel_center_hz as u64);
+            assert_eq!(Some(&snapshot.reception), decoder.snapshot().as_ref());
+        }
+    }
+
+    #[test]
+    fn shared_f32_traversal_matches_independent_decoders() {
+        assert_shared_traversal_matches_independent_decoders(false);
+    }
+
+    #[test]
+    fn shared_i8_traversal_matches_independent_decoders() {
+        assert_shared_traversal_matches_independent_decoders(true);
     }
 
     #[test]

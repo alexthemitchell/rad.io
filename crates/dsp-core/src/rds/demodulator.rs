@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use super::{MetadataAccumulator, RdsMetadata, RdsSynchronizer, SynchronizerStats};
 
-const CHANNEL_SAMPLE_RATE_HZ: u32 = 250_000;
+const TARGET_CHANNEL_SAMPLE_RATE_HZ: u32 = 250_000;
 const RDS_SAMPLE_RATE_HZ: u32 = 19_000;
 const RDS_SUBCARRIER_HZ: f32 = 57_000.0;
 const SAMPLES_PER_SYMBOL: usize = 16;
@@ -54,9 +54,7 @@ pub struct RdsDecoder {
 
 impl RdsDecoder {
     pub fn new(sample_rate_hz: u32, frequency_offset_hz: f32) -> Result<Self, RdsDecodeError> {
-        if sample_rate_hz < CHANNEL_SAMPLE_RATE_HZ
-            || !sample_rate_hz.is_multiple_of(CHANNEL_SAMPLE_RATE_HZ)
-        {
+        if sample_rate_hz < TARGET_CHANNEL_SAMPLE_RATE_HZ {
             return Err(RdsDecodeError::UnsupportedSampleRate);
         }
         if !frequency_offset_hz.is_finite()
@@ -64,11 +62,13 @@ impl RdsDecoder {
         {
             return Err(RdsDecodeError::TargetOutsideCapture);
         }
+        let decimation = sample_rate_hz / TARGET_CHANNEL_SAMPLE_RATE_HZ;
+        let channel_sample_rate_hz = sample_rate_hz as f32 / decimation as f32;
         let mixer_step = oscillator_step(-frequency_offset_hz, sample_rate_hz as f32);
-        let subcarrier_step = oscillator_step(-RDS_SUBCARRIER_HZ, CHANNEL_SAMPLE_RATE_HZ as f32);
+        let subcarrier_step = oscillator_step(-RDS_SUBCARRIER_HZ, channel_sample_rate_hz);
         Ok(Self {
             sample_rate_hz,
-            decimation: sample_rate_hz / CHANNEL_SAMPLE_RATE_HZ,
+            decimation,
             mixer: Complex32::new(1.0, 0.0),
             mixer_step,
             mixer_samples: 0,
@@ -152,7 +152,7 @@ impl RdsDecoder {
         self.active_hypothesis = None;
     }
 
-    fn process_sample(&mut self, sample: Complex32, timestamp_us: u64) -> bool {
+    pub(super) fn process_sample(&mut self, sample: Complex32, timestamp_us: u64) -> bool {
         self.channel_accumulator += sample * self.mixer;
         self.channel_accumulator_count += 1;
         self.mixer *= self.mixer_step;
@@ -181,11 +181,12 @@ impl RdsDecoder {
         let low_pass_alpha = 0.08;
         self.rds_low_pass_1 += (mixed - self.rds_low_pass_1) * low_pass_alpha;
         self.rds_low_pass_2 += (self.rds_low_pass_1 - self.rds_low_pass_2) * low_pass_alpha;
-        self.resample_phase += RDS_SAMPLE_RATE_HZ;
-        if self.resample_phase < CHANNEL_SAMPLE_RATE_HZ {
+        // Source-rate units preserve an exact 19 kS/s ratio when the intermediate rate is fractional.
+        self.resample_phase += RDS_SAMPLE_RATE_HZ * self.decimation;
+        if self.resample_phase < self.sample_rate_hz {
             return false;
         }
-        self.resample_phase -= CHANNEL_SAMPLE_RATE_HZ;
+        self.resample_phase -= self.sample_rate_hz;
         self.process_rds_sample(self.rds_low_pass_2, timestamp_us)
     }
 
@@ -385,8 +386,8 @@ mod tests {
     }
 
     #[test]
-    fn synchronizes_at_all_supported_hackrf_sample_rates() {
-        for sample_rate_hz in [2_000_000_u32, 5_000_000, 10_000_000, 20_000_000] {
+    fn synchronizes_at_representative_source_sample_rates() {
+        for sample_rate_hz in [2_000_000_u32, 2_400_000, 5_000_000, 10_000_000, 20_000_000] {
             let frequency_offset_hz = 100_000.0;
             let mut generator = ComplexToneGenerator::new(GeneratorConfig {
                 mode: GeneratorMode::FmRds,

@@ -8,6 +8,10 @@ repository.workspace = true
 [lib]
 path = "src/lib.rs"
 
+[[bench]]
+name = "pipeline_baseline"
+harness = false
+
 [dependencies]
 getrandom = { version = "0.4.3", features = ["wasm_js"] }
 num-complex = "0.4.6"

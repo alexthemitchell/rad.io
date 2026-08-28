@@ -1,7 +1,7 @@
 use dsp_core::rds::{RdsDecodeTarget, RdsDecoderBank as CoreRdsDecoderBank};
 use dsp_core::types::{
-    AnalysisFrame as CoreAnalysisFrame, AnalyzerConfig, DetectionConfig, GeneratorConfig,
-    GeneratorMode,
+    AnalysisFrame as CoreAnalysisFrame, AnalyzerConfig, DEFAULT_WAVEFORM_POINTS, DetectionConfig,
+    GeneratorConfig, GeneratorMode,
 };
 use wasm_bindgen::prelude::*;
 
@@ -128,7 +128,7 @@ impl DspEngine {
                 },
                 AnalyzerConfig {
                     fft_size: fft_size as usize,
-                    waveform_points: 1024,
+                    waveform_points: DEFAULT_WAVEFORM_POINTS,
                 },
             )
             .map_err(|error| JsError::new(&error.to_string()))

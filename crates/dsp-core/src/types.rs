@@ -1,5 +1,6 @@
 pub const DEFAULT_SAMPLE_RATE_HZ: f32 = 1_000_000.0;
 pub const DEFAULT_FFT_SIZE: usize = 2048;
+pub const DEFAULT_WAVEFORM_POINTS: usize = 512;
 pub const DEFAULT_TONE_FREQUENCY_HZ: f32 = 100_000.0;
 pub const DEFAULT_TONE_LEVEL_DBFS: f32 = -12.0;
 pub const DEFAULT_NOISE_LEVEL_DBFS: f32 = -72.0;
@@ -83,7 +84,7 @@ impl Default for AnalyzerConfig {
     fn default() -> Self {
         Self {
             fft_size: DEFAULT_FFT_SIZE,
-            waveform_points: 1024,
+            waveform_points: DEFAULT_WAVEFORM_POINTS,
         }
     }
 }
