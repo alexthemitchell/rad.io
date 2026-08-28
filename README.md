@@ -101,7 +101,7 @@ npm run rust:lint
 
 Pull requests, merge-queue commits, and pushes to `main` run the complete validation suite on Ubuntu and Windows. The functional Playwright scenarios load the release build from a nested `/ci/` path, proving that its relative JavaScript, WASM, worker, and AudioWorklet assets remain deployable at either an HTTPS origin root or a subpath. Two `@source` analyzer integrations run separately through Vite because they intentionally import internal TypeScript modules that are not part of the public bundle.
 
-After a successful Ubuntu validation, CI retains the exact `dist/` output as `rad-io-dist-<commit SHA>` for 14 days. A future deployment workflow should wait for the complete operating-system matrix and promote that artifact without rebuilding it. The production host must use HTTPS, serve `.wasm` as `application/wasm`, cache hashed assets immutably, and keep `index.html` refreshable.
+After a successful Ubuntu validation, CI retains the exact `dist/` output as `rad-io-dist-<commit SHA>` for 14 days. Successful pushes to `main` promote that validated artifact to GitHub Pages without rebuilding it. The production host must use HTTPS, serve `.wasm` as `application/wasm`, cache hashed assets immutably, and keep `index.html` refreshable.
 
 Native and browser benchmarks run weekly and on manual dispatch. They remain outside required checks: harness failures and existing real-time sanity assertions can mark a benchmark run red, but historical metric changes do not gate pull requests. Hosted CI does not access physical radio hardware; the required HackRF Playwright scenarios use a deterministic WebUSB device simulation.
 
