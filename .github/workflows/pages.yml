@@ -10,6 +10,7 @@ on:
       - completed
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write
