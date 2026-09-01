@@ -336,8 +336,9 @@ function App() {
     })
   }
 
-  const tuneVfoAtFrequency = (frequencyHz: number) => {
+const tuneVfoAtFrequency = (frequencyHz: number) => {
     if (vfoState.vfos.length >= MAX_VFOS) return
+    if (!Number.isFinite(frequencyHz)) return
     const rounded = Math.round(frequencyHz)
     if (rounded < 0 || rounded > 6_000_000_000) return
     dispatchVfo({
