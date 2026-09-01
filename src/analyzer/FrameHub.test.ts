@@ -55,6 +55,25 @@ describe('FrameHub', () => {
     expect(hub.latest?.sequence).toBe(2)
   })
 
+  it('releases background frames immediately and replays only the latest on subscribe', () => {
+    const hub = new FrameHub()
+    const firstAcknowledged = vi.fn()
+    const secondAcknowledged = vi.fn()
+
+    hub.publish(frame(1), firstAcknowledged)
+    hub.publish(frame(2), secondAcknowledged)
+
+    expect(scheduled).toBeUndefined()
+    expect(firstAcknowledged).toHaveBeenCalledOnce()
+    expect(secondAcknowledged).toHaveBeenCalledOnce()
+    expect(hub.latest?.sequence).toBe(2)
+
+    const listener = vi.fn()
+    hub.subscribe(listener)
+    expect(listener).toHaveBeenCalledOnce()
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ sequence: 2 }))
+  })
+
   it('clears a queued frame without delivery and releases worker backpressure', () => {
     const hub = new FrameHub()
     const listener = vi.fn()

@@ -62,6 +62,48 @@ function createHarness(dependencyChanges: AudioPlaybackDependencies = {}) {
 }
 
 describe('AudioPlaybackController', () => {
+  it('attaches, flushes, and detaches producer ports independently by source', async () => {
+    const producerPorts = [
+      { close: vi.fn() },
+      { close: vi.fn() },
+    ]
+    const consumerPorts = [
+      { close: vi.fn() },
+      { close: vi.fn() },
+    ]
+    let channelIndex = 0
+    const harness = createHarness({
+      createMessageChannel: () => {
+        const index = channelIndex++
+        return {
+          port1: producerPorts[index],
+          port2: consumerPorts[index],
+        } as unknown as MessageChannel
+      },
+    })
+    await harness.controller.start()
+
+    expect(harness.controller.createProducerPort('hackrf-1')).toBe(producerPorts[0])
+    expect(harness.controller.createProducerPort('rtl-sdr-1')).toBe(producerPorts[1])
+    expect(harness.port.messages.slice(-2)).toEqual([
+      { type: 'attach-audio-port', sourceSessionId: 'hackrf-1', port: consumerPorts[0] },
+      { type: 'attach-audio-port', sourceSessionId: 'rtl-sdr-1', port: consumerPorts[1] },
+    ])
+
+    harness.controller.flush('hackrf-1')
+    harness.controller.detachProducerPort('hackrf-1')
+    expect(harness.port.messages.slice(-2)).toEqual([
+      { type: 'flush', sourceSessionId: 'hackrf-1' },
+      { type: 'detach-audio-port', sourceSessionId: 'hackrf-1' },
+    ])
+
+    await harness.controller.dispose()
+    expect(harness.port.messages).toContainEqual({
+      type: 'detach-audio-port',
+      sourceSessionId: 'rtl-sdr-1',
+    })
+  })
+
   it('closes both channel ends when worklet port attachment fails', async () => {
     const producerClose = vi.fn()
     const consumerClose = vi.fn()
@@ -75,7 +117,7 @@ describe('AudioPlaybackController', () => {
       throw new Error('Worklet port attachment failed.')
     }
 
-    expect(() => harness.controller.createProducerPort()).toThrow(
+    expect(() => harness.controller.createProducerPort('hackrf-1')).toThrow(
       'Worklet port attachment failed.',
     )
     expect(producerClose).toHaveBeenCalledOnce()
@@ -119,7 +161,15 @@ describe('AudioPlaybackController', () => {
   it('updates controls without rebuilding the audio graph and flushes before suspend', async () => {
     const harness = createHarness()
     harness.controller.configureVfos([
-      { id: 'vfo-1', revision: 1, gainDb: -6, muted: false, solo: false, active: true },
+      {
+        id: 'vfo-1',
+        sourceSessionId: 'hackrf-1',
+        revision: 1,
+        gainDb: -6,
+        muted: false,
+        solo: false,
+        active: true,
+      },
     ])
     await harness.controller.start()
     harness.controller.configureMaster(-12, true)
@@ -129,12 +179,23 @@ describe('AudioPlaybackController', () => {
     expect(harness.port.messages).toContainEqual({
       type: 'configure',
       vfos: [
-        { id: 'vfo-1', revision: 1, gainDb: -6, muted: false, solo: false, active: true },
+        {
+          id: 'vfo-1',
+          sourceSessionId: 'hackrf-1',
+          revision: 1,
+          gainDb: -6,
+          muted: false,
+          solo: false,
+          active: true,
+        },
       ],
       masterGainDb: -12,
       masterMuted: true,
     })
-    expect(harness.port.messages.at(-1)).toEqual({ type: 'flush' })
+    expect(harness.port.messages.at(-1)).toEqual({
+      type: 'flush',
+      sourceSessionId: undefined,
+    })
     expect(harness.suspend).toHaveBeenCalledTimes(1)
   })
 
@@ -150,6 +211,7 @@ describe('AudioPlaybackController', () => {
           overruns: {},
           stereoLocked: { 'vfo-1': true },
           staleBlocks: 0,
+          staleBlocksBySource: {},
           limiterReductionDb: -2,
         },
       },
@@ -175,6 +237,7 @@ describe('AudioPlaybackController', () => {
           overruns: {},
           stereoLocked: { 'vfo-1': true },
           staleBlocks: 0,
+          staleBlocksBySource: {},
           limiterReductionDb: 0,
         },
       },

@@ -1,9 +1,8 @@
 /// <reference lib="webworker" />
 
 import { HackRfDeviceSession } from './HackRfDeviceSession'
-import { RdsWasmDecoder } from '../rds/RdsWasmDecoder'
-import { VfoWasmProcessor } from '../vfo/VfoWasmProcessor'
-import type { VfoAudioPortMessage, VfoDspConfig } from '../vfo/types'
+import { ExternalIqProcessor } from './ExternalIqProcessor'
+import type { VfoDspConfig } from '../vfo/types'
 import type {
   HackRfDeviceIdentity,
   HackRfWorkerEvent,
@@ -17,59 +16,27 @@ let session: HackRfDeviceSession | undefined
 let stopping = false
 let starting = false
 let processingOnly = false
-let rdsDecoder: RdsWasmDecoder | undefined
+let processor: ExternalIqProcessor | undefined
 let rdsTargets: RdsDecodeTarget[] = []
-let lastRdsEmissionUs: bigint | undefined
-let vfoProcessor: VfoWasmProcessor | undefined
-let vfoAudioPort: MessagePort | undefined
 let vfos: VfoDspConfig[] = []
 let vfoOutputSampleRateHz = 48_000
-let activeConfig: Extract<HackRfWorkerRequest, { type: 'start' }>['config'] | undefined
 
 function postEvent(event: HackRfWorkerEvent, transfer: Transferable[] = []): void {
   workerScope.postMessage(event, transfer)
 }
 
-function postVfoAudio(iq: Int8Array, timestampUs: bigint): void {
-  const blocks = vfoProcessor?.processI8(iq, timestampUs) ?? []
-  if (blocks.length === 0 || !vfoAudioPort) return
-  vfoAudioPort.postMessage(
-    { type: 'vfo-audio', blocks } satisfies VfoAudioPortMessage,
-    blocks.map((block) => block.samples.buffer as ArrayBuffer),
-  )
-}
-
 function processIq(iq: Int8Array, timestampUs: bigint): void {
-  postVfoAudio(iq, timestampUs)
-  const receptions = rdsDecoder?.process(iq, timestampUs)
-  if (
-    receptions &&
-    (lastRdsEmissionUs === undefined || timestampUs - lastRdsEmissionUs >= 250_000n)
-  ) {
-    lastRdsEmissionUs = timestampUs
-    postEvent({ type: 'rds-update', receptions })
-  }
+  processor?.process(iq, timestampUs)
 }
 
 function disposeProcessing(): void {
-  rdsDecoder?.dispose()
-  rdsDecoder = undefined
-  vfoProcessor?.dispose()
-  vfoProcessor = undefined
-  vfoAudioPort?.close()
-  vfoAudioPort = undefined
-  activeConfig = undefined
-  lastRdsEmissionUs = undefined
+  processor?.dispose()
+  processor = undefined
 }
 
 function configureVfos(): void {
-  if (!vfoProcessor || !activeConfig) return
-  vfoProcessor.configure(
-    activeConfig.sampleRateHz,
-    activeConfig.centerFrequencyHz,
-    vfoOutputSampleRateHz,
-    vfos,
-  )
+  if (!processor) return
+  processor.setVfos(vfoOutputSampleRateHz, vfos)
 }
 
 function matchesIdentity(
@@ -112,20 +79,17 @@ async function start(request: Extract<HackRfWorkerRequest, { type: 'start' }>): 
     }
     if (stopping) return
 
-    activeConfig = { ...request.config }
-    rdsDecoder = await RdsWasmDecoder.create(request.config.sampleRateHz)
-    vfoProcessor = await VfoWasmProcessor.create()
+    processor = await ExternalIqProcessor.create(request.config, {
+      onRdsUpdate: (receptions) => postEvent({ type: 'rds-update', receptions: [...receptions] }),
+    })
     if (stopping) return
-    rdsDecoder.setTargets(rdsTargets)
+    processor.setRdsTargets(rdsTargets)
     configureVfos()
 
     session = new HackRfDeviceSession(device, request.config, {
       onConfigured: (info) => postEvent({ type: 'configured', info }),
       onRawSamples: ({ iq, timestampUs }) => processIq(iq, timestampUs),
-      onDiscontinuity: () => {
-        rdsDecoder?.reset()
-        vfoProcessor?.reset()
-      },
+      onDiscontinuity: () => processor?.reset(),
       onSamples: ({ iq, sampleRateHz, centerFrequencyHz, sourceSequence, timestampUs }) => {
         postEvent(
           {
@@ -167,11 +131,11 @@ async function startProcessing(
   starting = true
   stopping = false
   try {
-    activeConfig = { ...request.config }
-    rdsDecoder = await RdsWasmDecoder.create(request.config.sampleRateHz)
-    vfoProcessor = await VfoWasmProcessor.create()
+    processor = await ExternalIqProcessor.create(request.config, {
+      onRdsUpdate: (receptions) => postEvent({ type: 'rds-update', receptions: [...receptions] }),
+    })
     if (stopping) return
-    rdsDecoder.setTargets(rdsTargets)
+    processor.setRdsTargets(rdsTargets)
     configureVfos()
     processingOnly = true
     postEvent({ type: 'processing-ready' })
@@ -198,9 +162,7 @@ workerScope.onmessage = (event: MessageEvent<HackRfWorkerRequest>) => {
   } else if (request.type === 'start-processing') {
     void startProcessing(request)
   } else if (request.type === 'configure-processing') {
-    activeConfig = { ...request.config }
-    rdsDecoder?.reset()
-    vfoProcessor?.reset()
+    processor?.configure(request.config)
     configureVfos()
   } else if (request.type === 'process-iq') {
     if (!processingOnly) return
@@ -225,16 +187,15 @@ workerScope.onmessage = (event: MessageEvent<HackRfWorkerRequest>) => {
     }
     if (request.command.type === 'set-center-frequency') {
       rdsTargets = []
-      rdsDecoder?.setTargets([])
+      processor?.setRdsTargets([])
       vfos = []
       configureVfos()
     }
     void activeSession.applyRuntimeCommand(request.command).then(
       (config) => {
-        activeConfig = { ...config }
         if (request.command.type === 'set-center-frequency') {
           rdsTargets = []
-          rdsDecoder?.setTargets([])
+          processor?.setRdsTargets([])
         }
         postEvent({
           type: 'runtime-command-applied',
@@ -251,7 +212,7 @@ workerScope.onmessage = (event: MessageEvent<HackRfWorkerRequest>) => {
   } else if (request.type === 'set-rds-targets') {
     rdsTargets = request.targets
     try {
-      rdsDecoder?.setTargets(rdsTargets)
+      processor?.setRdsTargets(rdsTargets)
     } catch (error) {
       postEvent({
         type: 'error',
@@ -272,9 +233,7 @@ workerScope.onmessage = (event: MessageEvent<HackRfWorkerRequest>) => {
       })
     }
   } else if (request.type === 'attach-vfo-audio-port') {
-    vfoAudioPort?.close()
-    vfoAudioPort = request.port
-    vfoAudioPort.start()
+    processor?.attachVfoAudioPort(request.port)
   } else if (request.type === 'return-buffer') {
     try {
       session?.returnBuffer(request.buffer)

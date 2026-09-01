@@ -3,6 +3,7 @@ import type {
   VfoMixerControl,
   VfoMixerDiagnostics,
 } from '../vfo/types'
+import type { SourceSessionId } from '../sources/types'
 
 type QueueChunk = {
   samples: Float32Array
@@ -14,6 +15,10 @@ type VfoQueue = {
   revision: number
   chunks: QueueChunk[]
   queuedFrames: number
+  playbackRate: number
+  rateAdjustmentFrames: number
+  scratchLeft: Float32Array
+  scratchRight: Float32Array
   stereoLocked: boolean
   ready: boolean
   starved: boolean
@@ -31,6 +36,7 @@ export type VfoMixerOptions = {
 export class VfoMixerCore {
   readonly #sampleRateHz: number
   readonly #prebufferFrames: number
+  readonly #targetQueueFrames: number
   readonly #maximumQueueFrames: number
   readonly #limiterCeiling: number
   readonly #queues = new Map<string, VfoQueue>()
@@ -39,6 +45,7 @@ export class VfoMixerCore {
   #masterMuted = false
   #limiterGain = 1
   #staleBlocks = 0
+  readonly #staleBlocksBySource = new Map<SourceSessionId, number>()
 
   constructor({
     sampleRateHz,
@@ -55,6 +62,9 @@ export class VfoMixerCore {
     this.#sampleRateHz = sampleRateHz
     this.#prebufferFrames = Math.round(sampleRateHz * prebufferMs / 1000)
     this.#maximumQueueFrames = Math.round(sampleRateHz * maximumQueueMs / 1000)
+    this.#targetQueueFrames = Math.round(
+      (this.#prebufferFrames + this.#maximumQueueFrames) / 2,
+    )
     this.#limiterCeiling = dbToGain(limiterCeilingDb)
   }
 
@@ -75,10 +85,15 @@ export class VfoMixerCore {
     this.#masterMuted = masterMuted
   }
 
-  push(block: VfoAudioBlock): void {
+  push(sourceSessionId: SourceSessionId, block: VfoAudioBlock): void {
     const control = this.#controls.get(block.vfoId)
-    if (!control || !control.active || block.revision !== control.revision) {
-      this.#staleBlocks += 1
+    if (
+      !control ||
+      control.sourceSessionId !== sourceSessionId ||
+      !control.active ||
+      block.revision !== control.revision
+    ) {
+      this.#recordStaleBlock(sourceSessionId)
       return
     }
     if (block.sampleRateHz !== this.#sampleRateHz) {
@@ -123,7 +138,10 @@ export class VfoMixerCore {
     for (const control of this.#controls.values()) {
       const queue = this.#queues.get(control.id)
       if (!control.active || control.muted || (soloActive && !control.solo)) {
-        if (queue) dropFrames(queue, queue.queuedFrames)
+        if (queue) {
+          dropFrames(queue, queue.queuedFrames)
+          resetQueueRate(queue)
+        }
         continue
       }
       if (!queue?.ready || queue.queuedFrames < left.length) {
@@ -134,7 +152,13 @@ export class VfoMixerCore {
         continue
       }
       queue.starved = false
-      mixQueue(queue, left, right, dbToGain(control.gainDb))
+      mixQueue(
+        queue,
+        left,
+        right,
+        dbToGain(control.gainDb),
+        this.#targetQueueFrames,
+      )
     }
 
     const masterGain = this.#masterMuted ? 0 : this.#masterGain
@@ -157,16 +181,26 @@ export class VfoMixerCore {
     this.#limiterGain = 1
   }
 
+  flushSource(sourceSessionId: SourceSessionId): void {
+    for (const control of this.#controls.values()) {
+      if (control.sourceSessionId === sourceSessionId) this.#queues.delete(control.id)
+    }
+  }
+
   diagnostics(): VfoMixerDiagnostics {
     const queuedFrames: Record<string, number> = {}
     const underruns: Record<string, number> = {}
     const overruns: Record<string, number> = {}
     const stereoLocked: Record<string, boolean> = {}
+    const staleBlocksBySource: Record<SourceSessionId, number> = {}
     for (const [id, queue] of this.#queues) {
       queuedFrames[id] = queue.queuedFrames
       underruns[id] = queue.underruns
       overruns[id] = queue.overruns
       stereoLocked[id] = queue.stereoLocked
+    }
+    for (const [sourceSessionId, count] of this.#staleBlocksBySource) {
+      staleBlocksBySource[sourceSessionId] = count
     }
     return {
       queuedFrames,
@@ -174,8 +208,17 @@ export class VfoMixerCore {
       overruns,
       stereoLocked,
       staleBlocks: this.#staleBlocks,
+      staleBlocksBySource,
       limiterReductionDb: 20 * Math.log10(this.#limiterGain),
     }
+  }
+
+  #recordStaleBlock(sourceSessionId: SourceSessionId): void {
+    this.#staleBlocks += 1
+    this.#staleBlocksBySource.set(
+      sourceSessionId,
+      (this.#staleBlocksBySource.get(sourceSessionId) ?? 0) + 1,
+    )
   }
 }
 
@@ -184,6 +227,10 @@ function createQueue(revision: number): VfoQueue {
     revision,
     chunks: [],
     queuedFrames: 0,
+    playbackRate: 1,
+    rateAdjustmentFrames: 0,
+    scratchLeft: new Float32Array(0),
+    scratchRight: new Float32Array(0),
     stereoLocked: false,
     ready: false,
     starved: false,
@@ -210,6 +257,67 @@ function mixQueue(
   left: Float32Array,
   right: Float32Array,
   gain: number,
+  targetQueueFrames: number,
+): void {
+  const sourceFrameCount = correctedSourceFrameCount(
+    queue,
+    left.length,
+    targetQueueFrames,
+  )
+  if (sourceFrameCount === left.length) {
+    mixQueueExact(queue, left, right, gain)
+    return
+  }
+
+  ensureScratchCapacity(queue, left.length + 1)
+  drainQueue(
+    queue,
+    sourceFrameCount,
+    queue.scratchLeft,
+    queue.scratchRight,
+  )
+  const sourceSpan = sourceFrameCount - 1
+  const outputSpan = Math.max(1, left.length - 1)
+  for (let frame = 0; frame < left.length; frame += 1) {
+    const sourcePosition = frame * sourceSpan / outputSpan
+    const lower = Math.floor(sourcePosition)
+    const upper = Math.min(sourceFrameCount - 1, lower + 1)
+    const fraction = sourcePosition - lower
+    const leftSample = queue.scratchLeft[lower] +
+      (queue.scratchLeft[upper] - queue.scratchLeft[lower]) * fraction
+    const rightSample = queue.scratchRight[lower] +
+      (queue.scratchRight[upper] - queue.scratchRight[lower]) * fraction
+    left[frame] += leftSample * gain
+    right[frame] += rightSample * gain
+  }
+}
+
+function correctedSourceFrameCount(
+  queue: VfoQueue,
+  outputFrameCount: number,
+  targetQueueFrames: number,
+): number {
+  if (outputFrameCount <= 1 || targetQueueFrames <= 0) return outputFrameCount
+  const queueError = (queue.queuedFrames - targetQueueFrames) / targetQueueFrames
+  const targetRate = clamp(1 + queueError * 0.02, 0.995, 1.005)
+  queue.playbackRate += (targetRate - queue.playbackRate) * 0.05
+  queue.rateAdjustmentFrames += (queue.playbackRate - 1) * outputFrameCount
+  if (queue.rateAdjustmentFrames >= 1 && queue.queuedFrames > outputFrameCount) {
+    queue.rateAdjustmentFrames -= 1
+    return outputFrameCount + 1
+  }
+  if (queue.rateAdjustmentFrames <= -1) {
+    queue.rateAdjustmentFrames += 1
+    return outputFrameCount - 1
+  }
+  return outputFrameCount
+}
+
+function mixQueueExact(
+  queue: VfoQueue,
+  left: Float32Array,
+  right: Float32Array,
+  gain: number,
 ): void {
   let outputOffset = 0
   while (outputOffset < left.length) {
@@ -229,6 +337,50 @@ function mixQueue(
     outputOffset += consumed
     if (chunk.frameOffset === chunk.samples.length / chunk.channelCount) queue.chunks.shift()
   }
+}
+
+function ensureScratchCapacity(queue: VfoQueue, frameCount: number): void {
+  if (queue.scratchLeft.length >= frameCount) return
+  queue.scratchLeft = new Float32Array(frameCount)
+  queue.scratchRight = new Float32Array(frameCount)
+}
+
+function drainQueue(
+  queue: VfoQueue,
+  frameCount: number,
+  left: Float32Array,
+  right: Float32Array,
+): void {
+  let outputOffset = 0
+  while (outputOffset < frameCount) {
+    const chunk = queue.chunks[0]
+    if (!chunk) break
+    const available = chunk.samples.length / chunk.channelCount - chunk.frameOffset
+    const consumed = Math.min(available, frameCount - outputOffset)
+    for (let frame = 0; frame < consumed; frame += 1) {
+      const sampleOffset = (chunk.frameOffset + frame) * chunk.channelCount
+      const leftSample = chunk.samples[sampleOffset]
+      left[outputOffset + frame] = leftSample
+      right[outputOffset + frame] = chunk.channelCount === 2
+        ? chunk.samples[sampleOffset + 1]
+        : leftSample
+    }
+    chunk.frameOffset += consumed
+    queue.queuedFrames -= consumed
+    outputOffset += consumed
+    if (chunk.frameOffset === chunk.samples.length / chunk.channelCount) queue.chunks.shift()
+  }
+}
+
+function resetQueueRate(queue: VfoQueue): void {
+  queue.playbackRate = 1
+  queue.rateAdjustmentFrames = 0
+  queue.ready = false
+  queue.starved = false
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value))
 }
 
 function dbToGain(db: number): number {

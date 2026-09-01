@@ -2,7 +2,9 @@ import type { TrackedSignal } from '../workers/protocol'
 import type { AddVfoInput } from './vfoState'
 import type { VfoMode } from './types'
 
-export function suggestVfoFromSignal(signal: TrackedSignal): AddVfoInput | null {
+export function suggestVfoFromSignal(
+  signal: TrackedSignal,
+): Omit<AddVfoInput, 'sourceSessionId'> | null {
   const suggestedFrequencyHz =
     signal.classification.primary.channelCenterHz ?? signal.absoluteFrequencyHz
   if (

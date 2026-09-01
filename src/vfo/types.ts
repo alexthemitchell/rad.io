@@ -1,3 +1,5 @@
+import type { SourceSessionId } from '../sources/types'
+
 export const MAX_VFOS = 4
 
 export type VfoMode = 'wbfm' | 'am' | 'nbfm'
@@ -19,6 +21,7 @@ export type VfoMixerConfig = {
 
 export type VfoConfig = VfoDspConfig & VfoMixerConfig & {
   label: string
+  sourceSessionId: SourceSessionId
 }
 
 export type VfoAudioBlock = {
@@ -40,7 +43,7 @@ export type VfoAudioPortMessage = {
 
 export type VfoMixerControl = Pick<
   VfoConfig,
-  'id' | 'revision' | 'gainDb' | 'muted' | 'solo'
+  'id' | 'revision' | 'gainDb' | 'muted' | 'solo' | 'sourceSessionId'
 > & {
   active: boolean
 }
@@ -51,6 +54,7 @@ export type VfoMixerDiagnostics = {
   overruns: Record<string, number>
   stereoLocked: Record<string, boolean>
   staleBlocks: number
+  staleBlocksBySource: Record<SourceSessionId, number>
   limiterReductionDb: number
 }
 
@@ -61,8 +65,9 @@ export type VfoMixerCommand =
       masterGainDb: number
       masterMuted: boolean
     }
-  | { type: 'attach-audio-port'; port: MessagePort }
-  | { type: 'flush' }
+  | { type: 'attach-audio-port'; sourceSessionId: SourceSessionId; port: MessagePort }
+  | { type: 'detach-audio-port'; sourceSessionId: SourceSessionId }
+  | { type: 'flush'; sourceSessionId?: SourceSessionId }
 
 export type VfoMixerEvent = {
   type: 'diagnostics'

@@ -1,5 +1,10 @@
 import { DspWorkerClient } from '../workers/DspWorkerClient'
-import type { AnalyzerSource, SampleChunk, SampleRelease } from '../sources/types'
+import type {
+  AnalyzerSource,
+  SampleChunk,
+  SampleRelease,
+  SourceSessionId,
+} from '../sources/types'
 import type {
   AnalysisFrameEvent,
   DetectionConfig,
@@ -45,7 +50,7 @@ export class AnalyzerController {
   #vfos: VfoConfig[] = []
   #vfoOutputSampleRateHz = 48_000
   #vfoPlaybackEnabled = false
-  #vfoAudioPortFactory: (() => MessagePort) | undefined
+  #vfoAudioPortFactory: ((sourceSessionId: SourceSessionId) => MessagePort) | undefined
   #lastVfoRouteKey = ''
   #resetTask: Promise<void> | undefined
   #unsubscribeFrame: (() => void) | undefined
@@ -98,7 +103,10 @@ export class AnalyzerController {
     this.#routeVfos()
   }
 
-  startVfoAudio(outputSampleRateHz: number, portFactory: () => MessagePort): void {
+  startVfoAudio(
+    outputSampleRateHz: number,
+    portFactory: (sourceSessionId: SourceSessionId) => MessagePort,
+  ): void {
     this.#vfoOutputSampleRateHz = outputSampleRateHz
     this.#vfoAudioPortFactory = portFactory
     this.#vfoPlaybackEnabled = true
@@ -124,7 +132,7 @@ export class AnalyzerController {
   async startExternal(source: AnalyzerSource): Promise<void> {
     if (!this.#client) throw new Error('Analyzer is not initialized.')
     if (this.#activeMode !== 'idle') {
-      throw new Error('Stop the active source before connecting HackRF One.')
+      throw new Error(`Stop the active source before connecting ${source.label}.`)
     }
     this.#client.stop()
     const generation = ++this.#sourceGeneration
@@ -134,7 +142,7 @@ export class AnalyzerController {
     this.#lastVfoRouteKey = ''
     this.#routeVfos()
     this.#attachVfoAudioPort()
-    this.#update({ state: 'connecting', detail: 'Waiting for HackRF One' })
+    this.#update({ state: 'connecting', detail: `Waiting for ${source.label}` })
 
     let task: Promise<void>
     try {
@@ -143,7 +151,7 @@ export class AnalyzerController {
           return { buffer: chunk.iq.buffer as ArrayBuffer, dropped: true }
         }
         if (this.#snapshot.state === 'connecting') {
-          this.#update({ state: 'running', detail: 'HackRF One · live IQ' })
+          this.#update({ state: 'running', detail: `${source.label} · live IQ` })
         }
         return this.ingest(chunk)
       }, (receptions) => {
@@ -370,7 +378,7 @@ export class AnalyzerController {
             revision: vfo.revision,
           }))
       : []
-    const owner = this.#activeMode === 'external' ? this.#activeSource?.id : 'generated'
+    const owner = this.#activeMode === 'external' ? this.#activeSource?.id : 'generator'
     const routeKey = JSON.stringify([
       owner,
       this.#sourceCenterFrequencyHz,
@@ -389,7 +397,11 @@ export class AnalyzerController {
 
   #attachVfoAudioPort(): void {
     if (!this.#vfoPlaybackEnabled || !this.#vfoAudioPortFactory) return
-    const port = this.#vfoAudioPortFactory()
+    const sourceSessionId = this.#activeMode === 'external'
+      ? this.#activeSource?.id
+      : 'generator'
+    if (!sourceSessionId) return
+    const port = this.#vfoAudioPortFactory(sourceSessionId)
     if (this.#activeMode === 'external') this.#activeSource?.attachVfoAudioPort?.(port)
     else this.#client?.attachVfoAudioPort(port)
   }

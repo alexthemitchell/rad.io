@@ -47,11 +47,17 @@ def pmt_text(value: object) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Decode signed interleaved HackRF IQ with GNU Radio's independent RDS chain."
+        description="Decode interleaved 8-bit IQ with GNU Radio's independent RDS chain."
     )
     parser.add_argument("capture", type=Path)
     parser.add_argument("--sample-rate", type=int, required=True)
     parser.add_argument("--station-offset", type=int, required=True)
+    parser.add_argument(
+        "--sample-format",
+        choices=("i8", "u8"),
+        default="i8",
+        help="i8 for signed HackRF captures or u8 for unsigned RTL-SDR captures",
+    )
     parser.add_argument(
         "--pty-locale",
         choices=("europe", "north-america"),
@@ -66,9 +72,9 @@ def main() -> int:
     args = parser.parse_args()
 
     if not args.capture.is_file() or args.capture.stat().st_size % 2 != 0:
-        parser.error("capture must be a non-empty signed interleaved I/Q file")
-    if args.sample_rate < CHANNEL_RATE_HZ or args.sample_rate % CHANNEL_RATE_HZ != 0:
-        parser.error("sample rate must be an integer multiple of 250000")
+        parser.error("capture must be a non-empty interleaved I/Q file")
+    if args.sample_rate < CHANNEL_RATE_HZ:
+        parser.error("sample rate must be at least 250000")
     if abs(args.station_offset) + 150_000 >= args.sample_rate / 2:
         parser.error("station offset must leave at least 150 kHz of capture headroom")
 
@@ -88,11 +94,27 @@ def main() -> int:
     flowgraph = gr.top_block("independent captured RDS decoder")
     source = blocks.file_source(gr.sizeof_char, str(args.capture), False)
     converter = blocks.interleaved_char_to_complex(False, 128.0)
+    if args.sample_format == "u8":
+        sign_converter = blocks.add_const_bb(128)
+        flowgraph.connect(source, sign_converter, converter)
+    else:
+        flowgraph.connect(source, converter)
+    coarse_decimation = max(1, args.sample_rate // 320_000)
+    resample_gcd = math.gcd(
+        args.sample_rate,
+        CHANNEL_RATE_HZ * coarse_decimation,
+    )
     channel = filter.freq_xlating_fir_filter_ccc(
-        args.sample_rate // CHANNEL_RATE_HZ,
+        coarse_decimation,
         firdes.low_pass(1.0, args.sample_rate, 135_000, 20_000),
         args.station_offset,
         args.sample_rate,
+    )
+    channel_rate_converter = filter.rational_resampler_ccc(
+        interpolation=CHANNEL_RATE_HZ * coarse_decimation // resample_gcd,
+        decimation=args.sample_rate // resample_gcd,
+        taps=[],
+        fractional_bw=0,
     )
     demodulator = analog.quadrature_demod_cf(
         CHANNEL_RATE_HZ / (2 * math.pi * 75_000)
@@ -136,7 +158,14 @@ def main() -> int:
     raw_messages = blocks.message_debug()
     parsed_messages = blocks.message_debug()
 
-    flowgraph.connect(source, converter, channel, demodulator, rds_band, resampler)
+    flowgraph.connect(
+        converter,
+        channel,
+        channel_rate_converter,
+        demodulator,
+        rds_band,
+        resampler,
+    )
     flowgraph.connect(
         resampler,
         matched_filter,
@@ -169,6 +198,7 @@ def main() -> int:
             "rdsModule": str(Path(rds.__file__).resolve()),
         },
         "capture": str(args.capture),
+        "sampleFormat": args.sample_format,
         "sampleRateHz": args.sample_rate,
         "stationOffsetHz": args.station_offset,
         "ptyLocale": args.pty_locale,

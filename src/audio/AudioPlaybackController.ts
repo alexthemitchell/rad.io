@@ -5,6 +5,7 @@ import type {
   VfoMixerDiagnostics,
   VfoMixerEvent,
 } from '../vfo/types'
+import type { SourceSessionId } from '../sources/types'
 
 export type AudioPlaybackState = 'idle' | 'starting' | 'running' | 'suspended' | 'error'
 
@@ -44,6 +45,7 @@ const EMPTY_DIAGNOSTICS: VfoMixerDiagnostics = {
   overruns: {},
   stereoLocked: {},
   staleBlocks: 0,
+  staleBlocksBySource: {},
   limiterReductionDb: 0,
 }
 
@@ -53,6 +55,7 @@ export class AudioPlaybackController {
   #context: AudioContextLike | undefined
   #node: AudioWorkletNodeLike | undefined
   #startTask: Promise<number> | undefined
+  readonly #attachedSourceIds = new Set<SourceSessionId>()
   #vfos: VfoMixerControl[] = []
   #masterGainDb = -6
   #masterMuted = false
@@ -83,13 +86,17 @@ export class AudioPlaybackController {
 
   async suspend(): Promise<void> {
     if (!this.#context || !this.#node) return
+    this.detachAllProducerPorts()
     this.flush()
     await this.#context.suspend()
     this.#update({ state: 'suspended', detail: 'Audio paused' })
   }
 
-  flush(): void {
-    this.#node?.port.postMessage({ type: 'flush' } satisfies VfoMixerCommand)
+  flush(sourceSessionId?: SourceSessionId): void {
+    this.#node?.port.postMessage({
+      type: 'flush',
+      sourceSessionId,
+    } satisfies VfoMixerCommand)
     if (this.#snapshot.diagnostics !== null) this.#update({ diagnostics: null })
   }
 
@@ -104,19 +111,39 @@ export class AudioPlaybackController {
     this.#postConfiguration()
   }
 
-  createProducerPort(): MessagePort {
+  createProducerPort(sourceSessionId: SourceSessionId): MessagePort {
     if (!this.#node) throw new Error('Start audio before attaching a sample producer.')
     const channel = this.#dependencies.createMessageChannel?.() ?? new MessageChannel()
     try {
       this.#node.port.postMessage(
-        { type: 'attach-audio-port', port: channel.port2 } satisfies VfoMixerCommand,
+        {
+          type: 'attach-audio-port',
+          sourceSessionId,
+          port: channel.port2,
+        } satisfies VfoMixerCommand,
         [channel.port2],
       )
+      this.#attachedSourceIds.add(sourceSessionId)
       return channel.port1
     } catch (error) {
       channel.port1.close()
       channel.port2.close()
       throw error
+    }
+  }
+
+  detachProducerPort(sourceSessionId: SourceSessionId): void {
+    if (!this.#attachedSourceIds.delete(sourceSessionId)) return
+    this.#node?.port.postMessage({
+      type: 'detach-audio-port',
+      sourceSessionId,
+    } satisfies VfoMixerCommand)
+    if (this.#snapshot.diagnostics !== null) this.#update({ diagnostics: null })
+  }
+
+  detachAllProducerPorts(): void {
+    for (const sourceSessionId of [...this.#attachedSourceIds]) {
+      this.detachProducerPort(sourceSessionId)
     }
   }
 
@@ -127,6 +154,7 @@ export class AudioPlaybackController {
   }
 
   async dispose(): Promise<void> {
+    this.detachAllProducerPorts()
     this.#node?.disconnect()
     this.#node?.port.close()
     this.#node = undefined

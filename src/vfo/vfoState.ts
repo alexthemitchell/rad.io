@@ -6,6 +6,7 @@ import type {
   VfoSourceWindow,
 } from './types'
 import { MAX_VFOS } from './types'
+import type { SourceSessionId } from '../sources/types'
 
 const MAX_FREQUENCY_HZ = 6_000_000_000
 const MIN_SQUELCH_DBFS = -120
@@ -36,6 +37,7 @@ export type VfoState = {
 }
 
 export type AddVfoInput = {
+  sourceSessionId: SourceSessionId
   frequencyHz: number
   mode: VfoMode
   label?: string
@@ -54,6 +56,7 @@ export type VfoAction =
       change: Partial<VfoMixerConfig & Pick<VfoConfig, 'label'>>
     }
   | { type: 'remove'; id: string }
+  | { type: 'remove-source'; sourceSessionId: SourceSessionId }
 
 export function createVfoState(): VfoState {
   return { vfos: [], nextId: 1 }
@@ -68,6 +71,7 @@ export function reduceVfoState(state: VfoState, action: VfoAction): VfoState {
       const defaults = VFO_MODE_DEFAULTS[action.input.mode]
       const vfo = validateVfo({
         id: `vfo-${state.nextId}`,
+        sourceSessionId: action.input.sourceSessionId,
         label: action.input.label?.trim() || `VFO ${state.nextId}`,
         frequencyHz: action.input.frequencyHz,
         mode: action.input.mode,
@@ -103,6 +107,12 @@ export function reduceVfoState(state: VfoState, action: VfoAction): VfoState {
     case 'remove':
       if (!state.vfos.some((vfo) => vfo.id === action.id)) return state
       return { ...state, vfos: state.vfos.filter((vfo) => vfo.id !== action.id) }
+    case 'remove-source':
+      if (!state.vfos.some((vfo) => vfo.sourceSessionId === action.sourceSessionId)) return state
+      return {
+        ...state,
+        vfos: state.vfos.filter((vfo) => vfo.sourceSessionId !== action.sourceSessionId),
+      }
   }
 }
 
@@ -142,6 +152,7 @@ function updateVfo(
 }
 
 function validateVfo(vfo: VfoConfig): VfoConfig {
+  if (!vfo.sourceSessionId.trim()) throw new Error('VFO source session is required.')
   if (
     !Number.isSafeInteger(vfo.frequencyHz) ||
     vfo.frequencyHz < 0 ||

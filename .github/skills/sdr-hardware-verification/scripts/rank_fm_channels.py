@@ -22,17 +22,19 @@ def parse_capture(value: str) -> tuple[int, Path]:
     return center_hz, path
 
 
-def load_iq(path: Path) -> np.ndarray:
-    raw = np.fromfile(path, dtype=np.int8)
+def load_iq(path: Path, sample_format: str) -> np.ndarray:
+    raw = np.fromfile(path, dtype=np.uint8 if sample_format == "u8" else np.int8)
     if raw.size == 0 or raw.size % 2 != 0:
-        raise ValueError(f"{path} must contain complete interleaved signed I/Q pairs")
+        raise ValueError(f"{path} must contain complete interleaved I/Q pairs")
+    if sample_format == "u8":
+        raw = np.bitwise_xor(raw, 0x80).view(np.int8)
     iq = (raw[0::2].astype(np.float32) + 1j * raw[1::2].astype(np.float32)) / 128.0
     return iq - np.mean(iq)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Rank FM broadcast channel energy in signed interleaved HackRF captures."
+        description="Rank FM broadcast channel energy in interleaved 8-bit IQ captures."
     )
     parser.add_argument(
         "--capture",
@@ -43,6 +45,12 @@ def main() -> int:
         help="repeat for each wideband capture",
     )
     parser.add_argument("--sample-rate", type=int, required=True)
+    parser.add_argument(
+        "--sample-format",
+        choices=("i8", "u8"),
+        default="i8",
+        help="i8 for signed HackRF captures or u8 for unsigned RTL-SDR captures",
+    )
     parser.add_argument("--first-channel", type=int, default=88_100_000)
     parser.add_argument("--last-channel", type=int, default=107_900_000)
     parser.add_argument("--spacing", type=int, default=200_000)
@@ -72,7 +80,7 @@ def main() -> int:
     results: dict[int, dict[str, float | int | str]] = {}
 
     for capture_center_hz, path in args.capture:
-        iq = load_iq(path)
+        iq = load_iq(path, args.sample_format)
         segment_size = min(args.fft_size, iq.size)
         frequencies, power = signal.welch(
             iq,

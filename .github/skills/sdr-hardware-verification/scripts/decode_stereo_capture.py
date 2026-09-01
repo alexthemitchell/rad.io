@@ -17,21 +17,42 @@ PILOT_HZ = 19_000.0
 PILOT_BAND_HZ = (18_500.0, 19_500.0)
 
 
-def decode_composite(capture: Path, sample_rate_hz: int, station_offset_hz: int) -> np.ndarray:
+def decode_composite(
+    capture: Path,
+    sample_rate_hz: int,
+    station_offset_hz: int,
+    sample_format: str,
+) -> np.ndarray:
     flowgraph = gr.top_block("independent captured WBFM discriminator")
     source = blocks.file_source(gr.sizeof_char, str(capture), False)
     converter = blocks.interleaved_char_to_complex(False, 128.0)
+    if sample_format == "u8":
+        sign_converter = blocks.add_const_bb(128)
+        flowgraph.connect(source, sign_converter, converter)
+    else:
+        flowgraph.connect(source, converter)
+    coarse_decimation = max(1, sample_rate_hz // CHANNEL_RATE_HZ)
+    resample_gcd = math.gcd(
+        sample_rate_hz,
+        CHANNEL_RATE_HZ * coarse_decimation,
+    )
     channel = filter.freq_xlating_fir_filter_ccc(
-        sample_rate_hz // CHANNEL_RATE_HZ,
+        coarse_decimation,
         firdes.low_pass(1.0, sample_rate_hz, 100_000, 25_000),
         station_offset_hz,
         sample_rate_hz,
+    )
+    channel_rate_converter = filter.rational_resampler_ccc(
+        interpolation=CHANNEL_RATE_HZ * coarse_decimation // resample_gcd,
+        decimation=sample_rate_hz // resample_gcd,
+        taps=[],
+        fractional_bw=0,
     )
     demodulator = analog.quadrature_demod_cf(
         CHANNEL_RATE_HZ / (2 * math.pi * 75_000)
     )
     sink = blocks.vector_sink_f()
-    flowgraph.connect(source, converter, channel, demodulator, sink)
+    flowgraph.connect(converter, channel, channel_rate_converter, demodulator, sink)
     flowgraph.run()
     return np.asarray(sink.data(), dtype=np.float64)
 
@@ -223,11 +244,17 @@ def compare_product(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Independently recover WBFM stereo from signed interleaved HackRF IQ."
+        description="Independently recover WBFM stereo from interleaved 8-bit IQ."
     )
     parser.add_argument("capture", type=Path)
     parser.add_argument("--sample-rate", type=int, required=True)
     parser.add_argument("--station-offset", type=int, required=True)
+    parser.add_argument(
+        "--sample-format",
+        choices=("i8", "u8"),
+        default="i8",
+        help="i8 for signed HackRF captures or u8 for unsigned RTL-SDR captures",
+    )
     parser.add_argument("--reference-audio", type=Path)
     parser.add_argument("--product-audio", type=Path)
     parser.add_argument("--product-report", type=Path)
@@ -238,9 +265,9 @@ def main() -> int:
     if not args.capture.is_file() or args.capture.stat().st_size == 0:
         parser.error("capture must be a non-empty file")
     if args.capture.stat().st_size % 2 != 0:
-        parser.error("capture must contain complete signed interleaved I/Q samples")
-    if args.sample_rate < CHANNEL_RATE_HZ or args.sample_rate % CHANNEL_RATE_HZ != 0:
-        parser.error("sample rate must be an integer multiple of 250000")
+        parser.error("capture must contain complete interleaved I/Q samples")
+    if args.sample_rate < CHANNEL_RATE_HZ:
+        parser.error("sample rate must be at least 250000")
     if abs(args.station_offset) + 125_000 >= args.sample_rate / 2:
         parser.error("station offset must leave more than 125 kHz of capture headroom")
     if not math.isfinite(args.settle_seconds) or args.settle_seconds < 0:
@@ -250,7 +277,12 @@ def main() -> int:
     if args.product_report and not args.product_report.is_file():
         parser.error("product report must be an existing JSON file")
 
-    composite = decode_composite(args.capture, args.sample_rate, args.station_offset)
+    composite = decode_composite(
+        args.capture,
+        args.sample_rate,
+        args.station_offset,
+        args.sample_format,
+    )
     if len(composite) < CHANNEL_RATE_HZ:
         parser.error("capture must contain at least one second of channelized samples")
     reference_left, reference_right, pilot = recover_reference_audio(composite)
@@ -275,6 +307,7 @@ def main() -> int:
             "method": "GNU Radio channel/FM demod plus SciPy Hilbert pilot recovery",
         },
         "capture": str(args.capture),
+        "sampleFormat": args.sample_format,
         "sampleRateHz": args.sample_rate,
         "stationOffsetHz": args.station_offset,
         "channelSampleRateHz": CHANNEL_RATE_HZ,

@@ -131,7 +131,7 @@
 .source-picker {
   margin-bottom: 20px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .source-picker button {
@@ -160,6 +160,140 @@
 }
 
 .source-picker button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.source-sessions {
+  margin-bottom: 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.source-session-list {
+  display: grid;
+  gap: 5px;
+}
+
+.source-session-entry {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+}
+
+.source-session-tab,
+.source-session-add,
+.source-session-remove {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--paper);
+  cursor: pointer;
+}
+
+.source-session-tab,
+.source-session-add {
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  font: 600 10px/1.2 var(--mono);
+}
+
+.source-session-tab > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.source-session-tab strong,
+.source-session-tab small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-session-tab strong {
+  color: inherit;
+  font: inherit;
+}
+
+.source-session-tab small {
+  font: 9px/1.1 var(--mono);
+  opacity: 0.8;
+}
+
+.source-session-tab[aria-selected='true'] {
+  border-color: var(--ink);
+  color: var(--paper);
+  background: var(--ink);
+}
+
+.source-session-remove {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-left: 0;
+}
+
+.source-session-add {
+  justify-content: center;
+}
+
+.source-session-add:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.source-device-menu {
+  display: grid;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.source-device-menu button {
+  min-width: 0;
+  min-height: 38px;
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  background: transparent;
+  font: 600 10px/1.2 var(--mono);
+  text-align: left;
+  cursor: pointer;
+}
+
+.source-device-menu button:last-child {
+  border-bottom: 0;
+}
+
+.source-device-menu button > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.source-device-menu small {
+  color: var(--muted);
+  font: 9px/1.1 var(--mono);
+}
+
+.source-device-menu button:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: -2px;
+}
+
+.source-session-tab:focus-visible,
+.source-session-add:focus-visible,
+.source-session-remove:focus-visible {
   position: relative;
   z-index: 1;
   outline: 2px solid var(--cyan);
@@ -989,6 +1123,13 @@
   font: 10px/1.35 var(--mono);
 }
 
+.rtl-bias-control {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--chrome) 46%, var(--paper));
+}
+
 .optimization-target-icon {
   flex: 0 0 auto;
   color: var(--cyan-deep);
@@ -1148,6 +1289,15 @@
 .vfo-identity > label,
 .vfo-state-copy {
   grid-column: 2;
+}
+
+.vfo-source-badge {
+  max-width: 120px;
+  overflow: hidden;
+  color: var(--muted);
+  font: 9px/1.2 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vfo-state-dot {

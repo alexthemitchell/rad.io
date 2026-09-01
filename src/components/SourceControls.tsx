@@ -1,6 +1,6 @@
 import { Radio, Waves } from 'lucide-react'
 
-export type SourceMode = 'generator' | 'hackrf'
+export type SourceMode = 'generator' | 'hackrf' | 'rtl-sdr'
 
 type SourceControlsProps = {
   mode: SourceMode
@@ -28,6 +28,15 @@ export function SourceControls({ mode, disabled, onChange }: SourceControlsProps
       >
         <Radio size={15} aria-hidden="true" />
         HackRF
+      </button>
+      <button
+        type="button"
+        aria-pressed={mode === 'rtl-sdr'}
+        disabled={disabled}
+        onClick={() => onChange('rtl-sdr')}
+      >
+        <Radio size={15} aria-hidden="true" />
+        RTL-SDR
       </button>
     </div>
   )

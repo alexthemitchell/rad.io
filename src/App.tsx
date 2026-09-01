@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import './App.css'
 import {
   AudioPlaybackController,
@@ -8,24 +8,30 @@ import {
   AnalyzerController,
   type AnalyzerSnapshot,
 } from './analyzer/AnalyzerController'
-import { useHackRfAutoOptimize } from './analyzer/useHackRfAutoOptimize'
+import {
+  SourceSessionManager,
+  type SourceSessionManagerSnapshot,
+} from './analyzer/SourceSessionManager'
 import { AnalyzerCanvas } from './components/AnalyzerCanvas'
 import { AnalyzerStatus } from './components/AnalyzerStatus'
 import { DetectedSignalsPanel } from './components/DetectedSignalsPanel'
 import { GeneratorControls } from './components/GeneratorControls'
 import { HackRFControls } from './components/HackRFControls'
-import { SourceControls, type SourceMode } from './components/SourceControls'
+import { RtlSdrControls } from './components/RtlSdrControls'
+import { SourceSessionsPanel } from './components/SourceSessionsPanel'
 import { VfoMixerPanel } from './components/VfoMixerPanel'
 import { signalDisplayFrequencyHz } from './detection/signalDisplay'
 import { SpectrumRenderer } from './renderers/SpectrumRenderer'
-import { HackRFSource } from './sources/HackRFSource'
-import {
-  DEFAULT_HACKRF_CONFIG,
-  type HackRfConfig,
-  type HackRfRuntimeCommand,
-} from './sources/hackrfProtocol'
 import { WaterfallRenderer } from './renderers/WaterfallRenderer'
 import { WaveformRenderer } from './renderers/WaveformRenderer'
+import type { HackRfConfig } from './sources/hackrfProtocol'
+import type { RtlSdrConfig, RtlSdrRuntimeCommand } from './sources/rtlSdrProtocol'
+import type { SourceSessionId } from './sources/types'
+import {
+  UsbDeviceRegistry,
+  type AuthorizedUsbDevice,
+} from './sources/UsbDeviceRegistry'
+import { webUsbFromNavigator } from './sources/webUsb'
 import {
   DEFAULT_DETECTION_CONFIG,
   DEFAULT_GENERATOR_CONFIG,
@@ -41,94 +47,165 @@ import {
 } from './vfo/vfoState'
 import { MAX_VFOS, type VfoMode } from './vfo/types'
 
-function analyzerConfigForHackRf(
-  generatorConfig: GeneratorConfig,
-  hackRfConfig: Pick<
-    HackRfConfig,
-    'sampleRateHz' | 'centerFrequencyHz' | 'fftSize' | 'frameRate'
-  >,
-): GeneratorConfig {
-  return {
-    ...generatorConfig,
-    sampleRateHz: hackRfConfig.sampleRateHz,
-    centerFrequencyHz: hackRfConfig.centerFrequencyHz,
-    fftSize: hackRfConfig.fftSize,
-    frameRate: hackRfConfig.frameRate,
+const GENERATOR_SESSION_ID = 'generator'
+const EMPTY_MANAGER_SNAPSHOT: SourceSessionManagerSnapshot = {
+  selectedSessionId: null,
+  sessions: [],
+}
+
+class EffectReplayGuard {
+  #generation = 0
+
+  begin(): number {
+    this.#generation += 1
+    return this.#generation
+  }
+
+  isCurrent(generation: number): boolean {
+    return this.#generation === generation
   }
 }
 
-const DEFAULT_DETECTION_CONFIGS: Record<SourceMode, DetectionConfig> = {
-  generator: DEFAULT_DETECTION_CONFIG,
-  hackrf: { ...DEFAULT_DETECTION_CONFIG, minimumSnrDb: 25 },
-}
-
 function App() {
-  const [controller] = useState(() => new AnalyzerController())
+  const [generatorController] = useState(() => new AnalyzerController())
   const [audioController] = useState(() => new AudioPlaybackController())
+  const [sessionManager] = useState(() => {
+    const usb = webUsbFromNavigator(navigator)
+    return usb ? new SourceSessionManager(new UsbDeviceRegistry(usb)) : null
+  })
+  const [managerSnapshot, setManagerSnapshot] = useState(EMPTY_MANAGER_SNAPSHOT)
+  const [generatorSnapshot, setGeneratorSnapshot] = useState<AnalyzerSnapshot>(
+    generatorController.snapshot,
+  )
+  const [generatorReady, setGeneratorReady] = useState(false)
   const [audioSnapshot, setAudioSnapshot] = useState<AudioPlaybackSnapshot>(
     audioController.snapshot,
   )
   const [vfoState, dispatchVfo] = useReducer(reduceVfoState, createVfoState())
   const [masterGainDb, setMasterGainDb] = useState(-6)
   const [masterMuted, setMasterMuted] = useState(false)
-  const [sourceMode, setSourceMode] = useState<SourceMode>('generator')
-  const [config, setConfig] = useState<GeneratorConfig>(DEFAULT_GENERATOR_CONFIG)
-  const [hackRfConfig, setHackRfConfig] = useState<HackRfConfig>(DEFAULT_HACKRF_CONFIG)
-  const [detectionConfigs, setDetectionConfigs] = useState(DEFAULT_DETECTION_CONFIGS)
-  const detectionConfig = detectionConfigs[sourceMode]
-  const [snapshot, setSnapshot] = useState<AnalyzerSnapshot>(controller.snapshot)
-  const [ready, setReady] = useState(false)
-  const [viewRevision, setViewRevision] = useState(0)
-  const [activeHackRfSource, setActiveHackRfSource] = useState<HackRFSource | null>(null)
-  const [autoOptimizeEnabled, setAutoOptimizeEnabled] = useState(false)
-  const [autoOptimizeError, setAutoOptimizeError] = useState<string | null>(null)
-  const [selectedTargetFrequencyHz, setSelectedTargetFrequencyHz] = useState<number | null>(
-    null,
+  const [generatorConfig, setGeneratorConfig] = useState<GeneratorConfig>(
+    DEFAULT_GENERATOR_CONFIG,
   )
-  const skipConfiguredHackRfCenterHz = useRef<number | null>(null)
+  const [generatorDetectionConfig, setGeneratorDetectionConfig] = useState(
+    DEFAULT_DETECTION_CONFIG,
+  )
+  const [addDeviceError, setAddDeviceError] = useState<string | null>(null)
+  const [authorizedDevices, setAuthorizedDevices] = useState<AuthorizedUsbDevice[]>([])
+  const [viewRevision, setViewRevision] = useState(0)
+  const [managerLifecycle] = useState(() => new EffectReplayGuard())
+  const attachedAudioSessions = useRef(new Set<SourceSessionId>())
+  const discontinuityRevisions = useRef(new Map<SourceSessionId, number>())
+
+  const selectedHardwareSnapshot = managerSnapshot.selectedSessionId === null
+    ? undefined
+    : managerSnapshot.sessions.find(
+        (session) => session.id === managerSnapshot.selectedSessionId,
+      )
+  const selectedHardwareSession = selectedHardwareSnapshot
+    ? sessionManager?.getSession(selectedHardwareSnapshot.id)
+    : undefined
+  const sourceSessionId = selectedHardwareSnapshot?.id ?? GENERATOR_SESSION_ID
+  const snapshot = selectedHardwareSnapshot?.analyzer ?? generatorSnapshot
+  const selectedController = selectedHardwareSession?.controller ?? generatorController
+  const selectedFrames = selectedController.frames
+  const activeConfig = selectedHardwareSnapshot?.config ?? generatorConfig
+  const detectionConfig = selectedHardwareSnapshot?.detectionConfig ?? generatorDetectionConfig
+  const sourceCenterFrequencyHz = activeConfig.centerFrequencyHz
   const running = snapshot.state === 'running'
   const sourceBusy = snapshot.state === 'connecting' || running
-  const hackRfSampleRateHz = hackRfConfig.sampleRateHz
-  const hackRfCenterFrequencyHz = hackRfConfig.centerFrequencyHz
-  const hackRfFftSize = hackRfConfig.fftSize
-  const hackRfFrameRate = hackRfConfig.frameRate
-  const sourceCenterFrequencyHz = sourceMode === 'generator'
-    ? config.centerFrequencyHz
-    : hackRfConfig.centerFrequencyHz
-  const sourceSampleRateHz = sourceMode === 'generator'
-    ? config.sampleRateHz
-    : hackRfConfig.sampleRateHz
+  const hardwareBusy = managerSnapshot.sessions.some(
+    (session) => session.analyzer.state === 'connecting' || session.analyzer.state === 'running',
+  )
+  const generatorRunning = generatorSnapshot.state === 'running'
+  const ready = selectedHardwareSnapshot
+    ? selectedHardwareSnapshot.analyzer.state !== 'booting'
+    : generatorReady
+
+  const sourceWindows = useMemo(() => {
+    const windows: Record<SourceSessionId, {
+      label: string
+      available: boolean
+      running: boolean
+      centerFrequencyHz: number
+      sampleRateHz: number
+    }> = {
+      [GENERATOR_SESSION_ID]: {
+        label: 'Generator',
+        available: true,
+        running: generatorRunning,
+        centerFrequencyHz: generatorConfig.centerFrequencyHz,
+        sampleRateHz: generatorConfig.sampleRateHz,
+      },
+    }
+    for (const session of managerSnapshot.sessions) {
+      windows[session.id] = {
+        label: session.label,
+        available: session.deviceConnected,
+        running: session.analyzer.state === 'running',
+        centerFrequencyHz: session.config.centerFrequencyHz,
+        sampleRateHz: session.config.sampleRateHz,
+      }
+    }
+    return windows
+  }, [
+    generatorConfig.centerFrequencyHz,
+    generatorConfig.sampleRateHz,
+    generatorRunning,
+    managerSnapshot.sessions,
+  ])
 
   useEffect(() => {
     let active = true
-    const unsubscribe = controller.subscribeStatus((next) => {
-      if (active) setSnapshot({ ...next })
+    const unsubscribe = generatorController.subscribeStatus((next) => {
+      if (active) setGeneratorSnapshot({ ...next })
     })
     const metricsTimer = window.setInterval(() => {
-      if (active) setSnapshot({ ...controller.snapshot })
+      if (active) setGeneratorSnapshot({ ...generatorController.snapshot })
     }, 250)
-    controller.initialize().then(
+    generatorController.initialize().then(
       () => {
-        if (active) setReady(true)
+        if (active) setGeneratorReady(true)
       },
       (error: unknown) => {
-        if (active) {
-          setSnapshot({
-            ...controller.snapshot,
-            state: 'error',
-            detail: error instanceof Error ? error.message : String(error),
-          })
-        }
+        if (!active) return
+        setGeneratorSnapshot({
+          ...generatorController.snapshot,
+          state: 'error',
+          detail: error instanceof Error ? error.message : String(error),
+        })
       },
     )
-
     return () => {
       active = false
       window.clearInterval(metricsTimer)
       unsubscribe()
-      controller.dispose()
+      generatorController.dispose()
     }
-  }, [controller])
+  }, [generatorController])
+
+  useEffect(() => {
+    if (!sessionManager) return
+    const lifecycleGeneration = managerLifecycle.begin()
+    let active = true
+    const unsubscribe = sessionManager.subscribe((next) => {
+      if (active) setManagerSnapshot({
+        selectedSessionId: next.selectedSessionId,
+        sessions: [...next.sessions],
+      })
+    })
+    sessionManager.startSampling()
+    return () => {
+      active = false
+      unsubscribe()
+      sessionManager.stopSampling()
+      queueMicrotask(() => {
+        if (managerLifecycle.isCurrent(lifecycleGeneration)) {
+          void sessionManager.dispose()
+        }
+      })
+    }
+  }, [managerLifecycle, sessionManager])
 
   useEffect(() => {
     const unsubscribe = audioController.subscribe((next) => {
@@ -141,25 +218,29 @@ function App() {
   }, [audioController])
 
   useEffect(() => {
-    controller.configureVfos(vfoState.vfos)
+    generatorController.configureVfos(
+      vfoState.vfos.filter((vfo) => vfo.sourceSessionId === GENERATOR_SESSION_ID),
+    )
+    sessionManager?.configureVfos(vfoState.vfos)
     audioController.configureVfos(
-      vfoState.vfos.map((vfo) => ({
-        id: vfo.id,
-        revision: vfo.revision,
-        gainDb: vfo.gainDb,
-        muted: vfo.muted,
-        solo: vfo.solo,
-        active: isVfoInPassband(vfo, {
-          centerFrequencyHz: sourceCenterFrequencyHz,
-          sampleRateHz: sourceSampleRateHz,
-        }),
-      })),
+      vfoState.vfos.map((vfo) => {
+        const source = sourceWindows[vfo.sourceSessionId]
+        return {
+          id: vfo.id,
+          sourceSessionId: vfo.sourceSessionId,
+          revision: vfo.revision,
+          gainDb: vfo.gainDb,
+          muted: vfo.muted,
+          solo: vfo.solo,
+          active: Boolean(source?.running && isVfoInPassband(vfo, source)),
+        }
+      }),
     )
   }, [
     audioController,
-    controller,
-    sourceCenterFrequencyHz,
-    sourceSampleRateHz,
+    generatorController,
+    sessionManager,
+    sourceWindows,
     vfoState.vfos,
   ])
 
@@ -168,168 +249,230 @@ function App() {
   }, [audioController, masterGainDb, masterMuted])
 
   useEffect(() => {
-    if (!ready) return
-    if (
-      sourceMode === 'hackrf' &&
-      skipConfiguredHackRfCenterHz.current === hackRfCenterFrequencyHz
-    ) {
-      skipConfiguredHackRfCenterHz.current = null
-      return
+    if (!generatorReady) return
+    audioController.flush(GENERATOR_SESSION_ID)
+    generatorController.configure(generatorConfig)
+  }, [audioController, generatorConfig, generatorController, generatorReady])
+
+  useEffect(() => {
+    if (generatorReady) generatorController.configureDetection(generatorDetectionConfig)
+  }, [generatorController, generatorDetectionConfig, generatorReady])
+
+  useEffect(() => {
+    const playing = audioSnapshot.state === 'running' && audioSnapshot.sampleRateHz !== null
+    const desired = new Set<SourceSessionId>()
+    if (playing) {
+      if (
+        generatorRunning &&
+        vfoState.vfos.some((vfo) => vfo.sourceSessionId === GENERATOR_SESSION_ID)
+      ) desired.add(GENERATOR_SESSION_ID)
+      for (const session of managerSnapshot.sessions) {
+        if (
+          session.analyzer.state === 'running' &&
+          vfoState.vfos.some((vfo) => vfo.sourceSessionId === session.id)
+        ) desired.add(session.id)
+      }
     }
-    audioController.flush()
-    controller.configure(
-      sourceMode === 'generator'
-        ? config
-        : analyzerConfigForHackRf(config, {
-            sampleRateHz: hackRfSampleRateHz,
-            centerFrequencyHz: hackRfCenterFrequencyHz,
-            fftSize: hackRfFftSize,
-            frameRate: hackRfFrameRate,
-          }),
-    )
+
+    for (const id of desired) {
+      if (attachedAudioSessions.current.has(id)) continue
+      const controller = id === GENERATOR_SESSION_ID
+        ? generatorController
+        : sessionManager?.getSession(id)?.controller
+      if (!controller || audioSnapshot.sampleRateHz === null) continue
+      try {
+        controller.startVfoAudio(
+          audioSnapshot.sampleRateHz,
+          (ownerId) => audioController.createProducerPort(ownerId),
+        )
+        attachedAudioSessions.current.add(id)
+      } catch {
+        audioController.detachProducerPort(id)
+      }
+    }
+    for (const id of [...attachedAudioSessions.current]) {
+      if (desired.has(id)) continue
+      const controller = id === GENERATOR_SESSION_ID
+        ? generatorController
+        : sessionManager?.getSession(id)?.controller
+      controller?.stopVfoAudio()
+      audioController.flush(id)
+      audioController.detachProducerPort(id)
+      attachedAudioSessions.current.delete(id)
+    }
   }, [
-    config,
     audioController,
-    controller,
-    hackRfCenterFrequencyHz,
-    hackRfFftSize,
-    hackRfFrameRate,
-    hackRfSampleRateHz,
-    ready,
-    sourceMode,
+    audioSnapshot.sampleRateHz,
+    audioSnapshot.state,
+    generatorController,
+    generatorRunning,
+    managerSnapshot.sessions,
+    sessionManager,
+    vfoState.vfos,
   ])
 
   useEffect(() => {
-    if (ready) controller.configureDetection(detectionConfig)
-  }, [controller, detectionConfig, ready])
-
-  const autoOptimize = useHackRfAutoOptimize({
-    enabled:
-      autoOptimizeEnabled && sourceMode === 'hackrf' && detectionConfig.enabled,
-    running,
-    source: activeHackRfSource,
-    config: hackRfConfig,
-    signals: snapshot.trackedSignals,
-    selectedTargetFrequencyHz,
-    peakPowerDbfs: snapshot.peakPowerDbfs,
-    onApplied: (appliedConfig: HackRfConfig, command: HackRfRuntimeCommand) => {
-      setHackRfConfig(appliedConfig)
-      if (command.type === 'set-center-frequency') {
-        audioController.flush()
-        skipConfiguredHackRfCenterHz.current = appliedConfig.centerFrequencyHz
-        controller.configure(analyzerConfigForHackRf(config, appliedConfig))
+    const liveIds = new Set<SourceSessionId>()
+    for (const session of managerSnapshot.sessions) {
+      liveIds.add(session.id)
+      const previous = discontinuityRevisions.current.get(session.id)
+      if (previous !== undefined && session.discontinuityRevision > previous) {
+        audioController.flush(session.id)
       }
-    },
-    onFailure: (message: string) => {
-      setAutoOptimizeError(message)
-      setAutoOptimizeEnabled(false)
-    },
-  })
+      discontinuityRevisions.current.set(session.id, session.discontinuityRevision)
+    }
+    for (const id of discontinuityRevisions.current.keys()) {
+      if (!liveIds.has(id)) discontinuityRevisions.current.delete(id)
+    }
+  }, [audioController, managerSnapshot.sessions])
 
-  const activeConfig = sourceMode === 'generator' ? config : hackRfConfig
-  const handleReset = async () => {
-    setAutoOptimizeEnabled(false)
-    setAutoOptimizeError(null)
-    setSelectedTargetFrequencyHz(null)
-    audioController.flush()
-    await controller.reset()
-    setSnapshot({ ...controller.snapshot })
+  const addDevice = async (authorizedDevice?: AuthorizedUsbDevice) => {
+    setAuthorizedDevices([])
+    try {
+      await sessionManager!.addDevice(authorizedDevice)
+      setViewRevision((revision) => revision + 1)
+    } catch (error) {
+      setAddDeviceError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const handleAddDevice = async () => {
+    if (!sessionManager) {
+      setAddDeviceError('WebUSB is unavailable. Use a secure-context desktop Chromium browser.')
+      return
+    }
+    if (generatorRunning) {
+      setAddDeviceError('Stop the generator before adding hardware.')
+      return
+    }
+    setAddDeviceError(null)
+    try {
+      const available = await sessionManager.getAuthorizedDevices()
+      if (available.length > 0) {
+        setAuthorizedDevices(available)
+        return
+      }
+      await addDevice()
+    } catch (error) {
+      setAddDeviceError(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const handleRemoveSession = async (id: SourceSessionId) => {
+    const session = sessionManager?.getSession(id)
+    if (!session) return
+    if (!window.confirm(`Remove ${session.snapshot.label} and its receivers?`)) return
+    session.stopVfoAudio()
+    audioController.flush(id)
+    audioController.detachProducerPort(id)
+    attachedAudioSessions.current.delete(id)
+    await sessionManager!.removeSession(id)
+    dispatchVfo({ type: 'remove-source', sourceSessionId: id })
     setViewRevision((revision) => revision + 1)
   }
 
-  const handleSourceChange = (mode: SourceMode) => {
-    setAutoOptimizeEnabled(false)
-    setAutoOptimizeError(null)
-    setSelectedTargetFrequencyHz(null)
-    audioController.flush()
-    void controller.stop()
-    setActiveHackRfSource(null)
-    setSourceMode(mode)
+  const handleSelectSession = (id: SourceSessionId | null) => {
+    sessionManager?.selectSession(id)
+    setAddDeviceError(null)
+    setAuthorizedDevices([])
+    setViewRevision((revision) => revision + 1)
   }
 
-  const startHackRf = () => {
-    setAutoOptimizeError(null)
-    setSelectedTargetFrequencyHz(null)
-    controller.configure(analyzerConfigForHackRf(config, hackRfConfig))
-    const source = new HackRFSource(hackRfConfig)
-    setActiveHackRfSource(source)
-    void controller.startExternal(source).finally(() => {
-      setActiveHackRfSource((active) => active === source ? null : active)
-    })
-  }
-
-  const stopHackRf = () => {
-    setAutoOptimizeEnabled(false)
-    setAutoOptimizeError(null)
-    setSelectedTargetFrequencyHz(null)
-    audioController.flush()
-    void controller.stop().finally(() => setActiveHackRfSource(null))
-  }
-
-  const handleHackRfConfigChange = (next: HackRfConfig) => {
-    if (
-      next.centerFrequencyHz !== hackRfConfig.centerFrequencyHz ||
-      next.lnaGainDb !== hackRfConfig.lnaGainDb ||
-      next.vgaGainDb !== hackRfConfig.vgaGainDb
-    ) {
-      setAutoOptimizeEnabled(false)
-      setAutoOptimizeError(null)
+  const handleReset = async () => {
+    if (selectedHardwareSession) {
+      selectedHardwareSession.setAutoOptimizeEnabled(false)
+      selectedHardwareSession.setAutoOptimizeTarget(null)
+      audioController.flush(selectedHardwareSession.id)
+      await selectedHardwareSession.reset()
+    } else {
+      audioController.flush(GENERATOR_SESSION_ID)
+      await generatorController.reset()
+      setGeneratorSnapshot({ ...generatorController.snapshot })
     }
-    if (next.centerFrequencyHz !== hackRfConfig.centerFrequencyHz) {
-      audioController.flush()
-    }
-    setHackRfConfig(next)
+    setViewRevision((revision) => revision + 1)
   }
 
-  const handleDetectionConfigChange = (next: DetectionConfig) => {
-    if (!next.enabled) {
-      setAutoOptimizeEnabled(false)
-      setAutoOptimizeError(null)
+  const handleHardwareToggle = async () => {
+    if (!selectedHardwareSession || !sessionManager) return
+    setAddDeviceError(null)
+    if (sourceBusy) {
+      selectedHardwareSession.stopVfoAudio()
+      audioController.flush(selectedHardwareSession.id)
+      audioController.detachProducerPort(selectedHardwareSession.id)
+      attachedAudioSessions.current.delete(selectedHardwareSession.id)
+      await sessionManager.stopSession(selectedHardwareSession.id)
+      return
     }
-    setDetectionConfigs((current) => ({ ...current, [sourceMode]: next }))
-  }
-
-  const displayedAutoOptimizeStatus = autoOptimizeError
-    ? 'error'
-    : autoOptimizeEnabled
-      ? autoOptimize.status
-      : 'off'
-  const displayedAutoOptimizeDetail = autoOptimizeError ??
-    (autoOptimizeEnabled ? autoOptimize.detail : 'Manual control.')
-
-  const handleAudioToggle = async () => {
-    if (audioSnapshot.state === 'running' || audioSnapshot.state === 'starting') {
-      controller.stopVfoAudio()
-      await audioController.suspend()
+    if (generatorRunning) {
+      setAddDeviceError('Stop the generator before connecting hardware.')
       return
     }
     try {
-      const outputSampleRateHz = await audioController.start()
-      controller.startVfoAudio(
-        outputSampleRateHz,
-        () => audioController.createProducerPort(),
-      )
-    } catch {
-      controller.stopVfoAudio()
+      sessionManager.connectSession(selectedHardwareSession.id)
+    } catch (error) {
+      setAddDeviceError(error instanceof Error ? error.message : String(error))
     }
   }
 
-  const defaultVfoMode: VfoMode =
-    sourceMode === 'generator' && config.mode === 'fm-rds'
-      ? 'wbfm'
-      : sourceMode === 'generator' && config.mode === 'am'
-        ? 'am'
-        : 'nbfm'
+  const handleGeneratorToggle = () => {
+    if (generatorRunning) {
+      generatorController.stopVfoAudio()
+      audioController.flush(GENERATOR_SESSION_ID)
+      audioController.detachProducerPort(GENERATOR_SESSION_ID)
+      attachedAudioSessions.current.delete(GENERATOR_SESSION_ID)
+      void generatorController.stop()
+      return
+    }
+    if (hardwareBusy) {
+      setAddDeviceError('Stop all hardware sessions before starting the generator.')
+      return
+    }
+    generatorController.startGenerated()
+  }
+
+  const handleDetectionConfigChange = (next: DetectionConfig) => {
+    if (selectedHardwareSession) {
+      if (!next.enabled) selectedHardwareSession.setAutoOptimizeEnabled(false)
+      selectedHardwareSession.setDetectionConfig(next)
+    } else {
+      setGeneratorDetectionConfig(next)
+    }
+  }
+
+  const handleRtlRuntimeCommand = (command: RtlSdrRuntimeCommand) => {
+    if (!selectedHardwareSession || selectedHardwareSession.kind !== 'rtl-sdr') return
+    void selectedHardwareSession.applyRtlSdrRuntimeCommand(command).catch(() => undefined)
+  }
+
+  const handleAudioToggle = async () => {
+    if (audioSnapshot.state === 'running' || audioSnapshot.state === 'starting') {
+      for (const id of attachedAudioSessions.current) {
+        if (id === GENERATOR_SESSION_ID) generatorController.stopVfoAudio()
+        else sessionManager?.getSession(id)?.stopVfoAudio()
+      }
+      attachedAudioSessions.current.clear()
+      await audioController.suspend()
+      return
+    }
+    await audioController.start().catch(() => undefined)
+  }
+
+  const defaultVfoMode: VfoMode = !selectedHardwareSession && generatorConfig.mode === 'fm-rds'
+    ? 'wbfm'
+    : !selectedHardwareSession && generatorConfig.mode === 'am'
+      ? 'am'
+      : 'nbfm'
 
   const addManualVfo = () => {
     if (vfoState.vfos.length >= MAX_VFOS) return
     dispatchVfo({
       type: 'add',
       input: {
+        sourceSessionId,
         frequencyHz: Math.round(
-          sourceMode === 'generator'
-            ? sourceCenterFrequencyHz + config.toneFrequencyHz
-            : sourceCenterFrequencyHz,
+          selectedHardwareSession
+            ? sourceCenterFrequencyHz
+            : sourceCenterFrequencyHz + generatorConfig.toneFrequencyHz,
         ),
         mode: defaultVfoMode,
       },
@@ -337,13 +480,12 @@ function App() {
   }
 
   const addVfoAtFrequency = (frequencyHz: number) => {
-    if (vfoState.vfos.length >= MAX_VFOS) return
-    if (!Number.isFinite(frequencyHz)) return
+    if (vfoState.vfos.length >= MAX_VFOS || !Number.isFinite(frequencyHz)) return
     const rounded = Math.round(frequencyHz)
     if (rounded < 0 || rounded > 6_000_000_000) return
     dispatchVfo({
       type: 'add',
-      input: { frequencyHz: rounded, mode: defaultVfoMode },
+      input: { sourceSessionId, frequencyHz: rounded, mode: defaultVfoMode },
     })
   }
 
@@ -351,9 +493,14 @@ function App() {
     if (vfoState.vfos.length >= MAX_VFOS) return
     const suggestion = suggestVfoFromSignal(signal)
     if (!suggestion) return
-    if (vfoState.vfos.some((vfo) => vfo.frequencyHz === suggestion.frequencyHz)) return
-    dispatchVfo({ type: 'add', input: suggestion })
+    if (vfoState.vfos.some((vfo) =>
+      vfo.sourceSessionId === sourceSessionId &&
+      vfo.frequencyHz === suggestion.frequencyHz
+    )) return
+    dispatchVfo({ type: 'add', input: { sourceSessionId, ...suggestion } })
   }
+
+  const selectedAutoOptimize = selectedHardwareSnapshot?.autoOptimize
 
   return (
     <main className="app-shell">
@@ -366,7 +513,7 @@ function App() {
           </div>
         </div>
         <div className="topbar-context" aria-label="Analyzer configuration">
-          <span>{sourceMode === 'generator' ? 'GENERATED IQ' : 'HACKRF ONE'}</span>
+          <span>{selectedHardwareSnapshot?.label.toUpperCase() ?? 'GENERATED IQ'}</span>
           <strong>
             {activeConfig.centerFrequencyHz > 0
               ? `${(activeConfig.centerFrequencyHz / 1_000_000).toFixed(3)} MHz`
@@ -383,11 +530,11 @@ function App() {
                 ? 'Analyzing'
                 : snapshot.state === 'connecting'
                   ? 'Connecting'
-                : snapshot.state === 'error'
-                  ? 'DSP error'
-                  : ready
-                    ? 'DSP online'
-                    : 'DSP bootstrap'}
+                  : snapshot.state === 'error'
+                    ? 'DSP error'
+                    : ready
+                      ? 'DSP online'
+                      : 'DSP bootstrap'}
             </strong>
             <span role="status">{snapshot.detail}</span>
           </div>
@@ -396,45 +543,79 @@ function App() {
 
       <div className="analyzer-layout">
         <aside className="control-rail" aria-label="Signal source controls">
-          <SourceControls
-            mode={sourceMode}
-            disabled={sourceBusy}
-            onChange={handleSourceChange}
+          <SourceSessionsPanel
+            sessions={managerSnapshot.sessions}
+            selectedSessionId={managerSnapshot.selectedSessionId}
+            addDisabled={!sessionManager || managerSnapshot.sessions.length >= 2 || generatorRunning}
+            addError={addDeviceError ?? (!sessionManager
+              ? 'WebUSB is unavailable. Use a secure-context desktop Chromium browser.'
+              : null)}
+            authorizedDevices={authorizedDevices}
+            onSelect={handleSelectSession}
+            onAdd={() => void handleAddDevice()}
+            onAddAuthorized={(device) => void addDevice(device)}
+            onPairNew={() => void addDevice()}
+            onRemove={(id) => void handleRemoveSession(id)}
           />
-          {sourceMode === 'generator' ? (
+          {!selectedHardwareSnapshot ? (
             <GeneratorControls
-              config={config}
-              ready={ready}
-              running={running}
-              onChange={setConfig}
-              onToggle={() => {
-                if (running) {
-                  audioController.flush()
-                  void controller.stop()
-                } else {
-                  controller.startGenerated()
-                }
-              }}
+              config={generatorConfig}
+              ready={generatorReady && !hardwareBusy}
+              running={generatorRunning}
+              onChange={setGeneratorConfig}
+              onToggle={handleGeneratorToggle}
               onReset={() => void handleReset()}
             />
-          ) : (
+          ) : selectedHardwareSnapshot.kind === 'hackrf' ? (
             <HackRFControls
-              config={hackRfConfig}
-              ready={ready}
+              config={selectedHardwareSnapshot.config as HackRfConfig}
+              ready={ready && !generatorRunning}
               state={snapshot.state}
-              onChange={handleHackRfConfigChange}
-              onStart={startHackRf}
-              onStop={stopHackRf}
-              onReset={() => void handleReset()}
-              autoOptimizeEnabled={autoOptimizeEnabled}
-              autoOptimizeDisabled={!detectionConfig.enabled}
-              autoOptimizeStatus={displayedAutoOptimizeStatus}
-              autoOptimizeDetail={displayedAutoOptimizeDetail}
-              autoOptimizeTargetFrequencyHz={autoOptimize.targetFrequencyHz}
-              onAutoOptimizeChange={(enabled) => {
-                setAutoOptimizeError(null)
-                setAutoOptimizeEnabled(enabled)
+              onChange={(next) => {
+                try {
+                  selectedHardwareSession?.setConfig(next)
+                } catch (error) {
+                  setAddDeviceError(error instanceof Error ? error.message : String(error))
+                }
               }}
+              onStart={() => void handleHardwareToggle()}
+              onStop={() => void handleHardwareToggle()}
+              onReset={() => void handleReset()}
+              autoOptimizeEnabled={selectedAutoOptimize?.enabled}
+              autoOptimizeDisabled={!detectionConfig.enabled}
+              autoOptimizeStatus={selectedAutoOptimize?.status}
+              autoOptimizeDetail={selectedAutoOptimize?.detail}
+              autoOptimizeTargetFrequencyHz={selectedAutoOptimize?.targetFrequencyHz}
+              onAutoOptimizeChange={(enabled) =>
+                selectedHardwareSession?.setAutoOptimizeEnabled(enabled)
+              }
+            />
+          ) : (
+            <RtlSdrControls
+              config={selectedHardwareSnapshot.config as RtlSdrConfig}
+              ready={ready && !generatorRunning}
+              state={snapshot.state}
+              runtimePending={selectedHardwareSnapshot.runtimePending}
+              runtimeError={selectedHardwareSnapshot.runtimeError}
+              autoOptimizeEnabled={selectedAutoOptimize?.enabled}
+              autoOptimizeDisabled={!detectionConfig.enabled}
+              autoOptimizeStatus={selectedAutoOptimize?.status}
+              autoOptimizeDetail={selectedAutoOptimize?.detail}
+              autoOptimizeTargetFrequencyHz={selectedAutoOptimize?.targetFrequencyHz}
+              onChange={(next) => {
+                try {
+                  selectedHardwareSession?.setConfig(next)
+                } catch (error) {
+                  setAddDeviceError(error instanceof Error ? error.message : String(error))
+                }
+              }}
+              onRuntimeCommand={handleRtlRuntimeCommand}
+              onAutoOptimizeChange={(enabled) =>
+                selectedHardwareSession?.setAutoOptimizeEnabled(enabled)
+              }
+              onStart={() => void handleHardwareToggle()}
+              onStop={() => void handleHardwareToggle()}
+              onReset={() => void handleReset()}
             />
           )}
         </aside>
@@ -448,9 +629,9 @@ function App() {
             <AnalyzerStatus snapshot={snapshot} />
           </header>
 
-          <div className="plot-grid" key={viewRevision}>
+          <div className="plot-grid" key={`${sourceSessionId}-${viewRevision}`}>
             <AnalyzerCanvas
-              frames={controller.frames}
+              frames={selectedFrames}
               title="Spectrum"
               eyebrow="POWER · dBFS"
               ariaLabel="FFT spectrum from negative to positive Nyquist frequency"
@@ -459,7 +640,7 @@ function App() {
               onFrequencySelect={addVfoAtFrequency}
             />
             <AnalyzerCanvas
-              frames={controller.frames}
+              frames={selectedFrames}
               title="Waterfall"
               eyebrow="FREQUENCY · HISTORY"
               ariaLabel="Scrolling frequency waterfall with newest samples at the top"
@@ -467,7 +648,7 @@ function App() {
               renderer={WaterfallRenderer}
             />
             <AnalyzerCanvas
-              frames={controller.frames}
+              frames={selectedFrames}
               title="I / Q waveform"
               eyebrow="AMPLITUDE · SAMPLES"
               ariaLabel="Time-domain in-phase and quadrature waveform"
@@ -478,18 +659,13 @@ function App() {
 
           <VfoMixerPanel
             vfos={vfoState.vfos}
-            sourceCenterFrequencyHz={sourceCenterFrequencyHz}
-            sourceSampleRateHz={sourceSampleRateHz}
+            sourceWindows={sourceWindows}
             audio={audioSnapshot}
             masterGainDb={masterGainDb}
             masterMuted={masterMuted}
             onAdd={addManualVfo}
-            onUpdateDsp={(id, change) =>
-              dispatchVfo({ type: 'update-dsp', id, change })
-            }
-            onUpdateMixer={(id, change) =>
-              dispatchVfo({ type: 'update-mixer', id, change })
-            }
+            onUpdateDsp={(id, change) => dispatchVfo({ type: 'update-dsp', id, change })}
+            onUpdateMixer={(id, change) => dispatchVfo({ type: 'update-mixer', id, change })}
             onRemove={(id) => dispatchVfo({ type: 'remove', id })}
             onTogglePlayback={() => void handleAudioToggle()}
             onMasterGainChange={setMasterGainDb}
@@ -502,13 +678,17 @@ function App() {
             centerFrequencyHz={snapshot.centerFrequencyHz}
             onConfigChange={handleDetectionConfigChange}
             optimizationTargetFrequencyHz={
-              autoOptimizeEnabled ? autoOptimize.targetFrequencyHz : null
+              selectedAutoOptimize?.enabled
+                ? selectedAutoOptimize.targetFrequencyHz
+                : null
             }
             onSignalSelect={(signal) => {
-              setSelectedTargetFrequencyHz(signalDisplayFrequencyHz(signal))
+              selectedHardwareSession?.setAutoOptimizeTarget(signalDisplayFrequencyHz(signal))
             }}
             onAddVfo={addSignalVfo}
-            vfoFrequenciesHz={vfoState.vfos.map((vfo) => vfo.frequencyHz)}
+            vfoFrequenciesHz={vfoState.vfos
+              .filter((vfo) => vfo.sourceSessionId === sourceSessionId)
+              .map((vfo) => vfo.frequencyHz)}
             vfoCapacityAvailable={vfoState.vfos.length < MAX_VFOS}
           />
         </section>

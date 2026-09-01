@@ -140,6 +140,9 @@ Implemented:
 
 - shared input traversal for the RDS bank
 - representative 2.4 MS/s RDS support
+- RTL2832U/E4000 WebUSB acquisition with one in-place U8-to-I8 conversion
+- two simultaneous source sessions with one worker/controller stack per hardware clock
+- source-keyed AudioWorklet fan-in with bounded asynchronous queue rate matching
 - 512-point waveform previews
 - reproducible native and release-browser benchmarks
 - direct filtered VFO DDC/demodulation and native/browser one/four-receiver benchmarks
@@ -157,10 +160,13 @@ Not measured:
 
 - sustained browser CPU utilization, memory growth, and garbage-collection pauses over hours
 - real HackRF dropped USB transfers or display blocks at 10/20 MS/s
-- RTL-SDR WebUSB acquisition, since no RTL source adapter exists
-- end-to-end source-to-speaker latency and long-session AudioWorklet underrun/overrun rates
+- RTL-SDR USB/display/audio queue and heap behavior beyond 30 minutes
+- end-to-end source-to-speaker latency
 - concurrent live HackRF RDS plus four-WBFM soak behavior at 20 MS/s
 - WebGPU crossover, numerical parity, transfer cost, or device-loss behavior
-- multiple simultaneous SDR source sessions
 
-The next high-information experiment is a bounded live HackRF soak at 20 MS/s with concurrent RDS and four WBFM VFOs, recording USB continuity plus worklet queue/underrun telemetry. Reconsider shared RDS/VFO extraction or a polyphase bank only if that measured workload misses real time; do not infer hardware behavior from synthetic input.
+On 2026-09-01, headed Playwright MCP runs used the attached RTL2832U/E4000 at 2.4 MS/s alone and concurrently with a HackRF One at 2 MS/s. The dual product kept both analyzers and source-keyed WBFM VFOs live through RTL retunes and independent optimization. A five-minute steady-state control exposed 29 underruns before clock matching; isolation reproduced the first RTL underrun after about 42 seconds while HackRF alone remained at zero for five minutes. Bounded per-queue rate matching then held the same isolated RTL path at zero underruns and zero overruns for five minutes.
+
+The final untouched dual-source run lasted exactly 30 minutes with one WBFM VFO per radio. All 31 one-minute checkpoints reported both sessions running, both VFOs playing, and zero AudioWorklet underruns and overruns. The selected analyzer advanced from frame 1,000 to 28,466. Used JS heap ranged 41.4-68.0 MB and ended at 42.0 MB, 15.7 MB below the 57.6 MB baseline; a page `PerformanceObserver` recorded zero long tasks. These runs prove live WebUSB transport, source isolation, corrected queue drift, and bounded 30-minute heap/audio stability, not hours-long stability or independent audio fidelity.
+
+The next high-information experiment is an hours-long concurrent HackRF plus RTL soak with heap, queue-depth, and underrun/overrun sampling, followed by higher-rate multi-VFO hardware workloads. Keep one worker stack per independent sample clock and a global four-VFO budget. Reconsider shared memory or a channelizer only if that measured workload misses real time; do not infer hardware behavior from synthetic input.

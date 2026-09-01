@@ -10,6 +10,7 @@ import {
 import type { AudioPlaybackSnapshot } from '../audio/AudioPlaybackController'
 import { isVfoInPassband } from '../vfo/vfoState'
 import { MAX_VFOS, type VfoConfig, type VfoMode } from '../vfo/types'
+import type { SourceSessionId } from '../sources/types'
 
 const BANDWIDTH_OPTIONS: Readonly<Record<VfoMode, readonly number[]>> = {
   wbfm: [150_000, 200_000, 250_000],
@@ -19,8 +20,13 @@ const BANDWIDTH_OPTIONS: Readonly<Record<VfoMode, readonly number[]>> = {
 
 type VfoMixerPanelProps = {
   vfos: readonly VfoConfig[]
-  sourceCenterFrequencyHz: number
-  sourceSampleRateHz: number
+  sourceWindows: Readonly<Record<SourceSessionId, {
+    label: string
+    available: boolean
+    running: boolean
+    centerFrequencyHz: number
+    sampleRateHz: number
+  }>>
   audio: AudioPlaybackSnapshot
   masterGainDb: number
   masterMuted: boolean
@@ -41,8 +47,7 @@ type VfoMixerPanelProps = {
 
 export function VfoMixerPanel({
   vfos,
-  sourceCenterFrequencyHz,
-  sourceSampleRateHz,
+  sourceWindows,
   audio,
   masterGainDb,
   masterMuted,
@@ -119,9 +124,12 @@ export function VfoMixerPanel({
       ) : (
         <div className="vfo-list" role="list" aria-label="Audio VFOs">
           {vfos.map((vfo) => {
-            const inPassband = isVfoInPassband(vfo, {
-              centerFrequencyHz: sourceCenterFrequencyHz,
-              sampleRateHz: sourceSampleRateHz,
+            const source = sourceWindows[vfo.sourceSessionId]
+            const sourceAvailable = source?.available ?? false
+            const sourceRunning = source?.running ?? false
+            const inPassband = sourceAvailable && isVfoInPassband(vfo, {
+              centerFrequencyHz: source.centerFrequencyHz,
+              sampleRateHz: source.sampleRateHz,
             })
             const queuedFrames = audio.diagnostics?.queuedFrames[vfo.id] ?? 0
             const stereoLocked = audio.diagnostics?.stereoLocked[vfo.id]
@@ -138,6 +146,7 @@ export function VfoMixerPanel({
                     aria-hidden="true"
                   />
                   <label htmlFor={`${vfo.id}-label`}>Receiver</label>
+                  <span className="vfo-source-badge">{source?.label ?? 'Removed source'}</span>
                   <input
                     id={`${vfo.id}-label`}
                     value={vfo.label}
@@ -145,8 +154,10 @@ export function VfoMixerPanel({
                     onChange={(event) => onUpdateMixer(vfo.id, { label: event.target.value })}
                   />
                   <span className="vfo-state-copy">
-                    {inPassband
-                      ? playing && queuedFrames > 0 ? 'playing' : 'ready'
+                    {!sourceAvailable
+                      ? 'offline'
+                      : inPassband
+                      ? sourceRunning && playing && queuedFrames > 0 ? 'playing' : 'ready'
                       : 'out of band'}
                   </span>
                 </div>

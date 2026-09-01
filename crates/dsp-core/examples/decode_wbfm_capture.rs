@@ -12,11 +12,26 @@ const INPUT_CHUNK_BYTES: usize = 256 * 1024;
 const OUTPUT_SAMPLE_RATE_HZ: u32 = 48_000;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let arguments = env::args().skip(1).collect::<Vec<_>>();
+    let mut raw_arguments = env::args().skip(1);
+    let mut arguments = Vec::new();
+    let mut sample_format = "i8".to_owned();
+    while let Some(argument) = raw_arguments.next() {
+        if argument == "--sample-format" {
+            sample_format = raw_arguments
+                .next()
+                .ok_or("--sample-format requires i8 or u8")?;
+        } else {
+            arguments.push(argument);
+        }
+    }
+    if sample_format != "i8" && sample_format != "u8" {
+        return Err("sample format must be i8 or u8".into());
+    }
     if !(5..=6).contains(&arguments.len()) {
         return Err(
             "usage: decode_wbfm_capture <capture.i8> <audio.f32> <sample-rate-hz> \
-             <center-frequency-hz> <station-frequency-hz> [report.json]"
+             <center-frequency-hz> <station-frequency-hz> [report.json] \
+             [--sample-format i8|u8]"
                 .into(),
         );
     }
@@ -66,7 +81,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
         let iq = bytes
             .into_iter()
-            .map(|sample| sample as i8)
+            .map(|sample| {
+                if sample_format == "u8" {
+                    (sample ^ 0x80) as i8
+                } else {
+                    sample as i8
+                }
+            })
             .collect::<Vec<_>>();
         let timestamp_us = processed_samples * 1_000_000 / u64::from(sample_rate_hz);
         bank.process_i8(&iq, timestamp_us)?;
@@ -101,6 +122,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "{{\n",
             "  \"capture\": \"{}\",\n",
             "  \"audio\": \"{}\",\n",
+            "  \"sampleFormat\": \"{}\",\n",
             "  \"sampleRateHz\": {},\n",
             "  \"centerFrequencyHz\": {},\n",
             "  \"stationFrequencyHz\": {},\n",
@@ -112,6 +134,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ),
         json_escape(capture_path.to_string_lossy().as_ref()),
         json_escape(audio_path.to_string_lossy().as_ref()),
+        sample_format,
         sample_rate_hz,
         center_frequency_hz,
         station_frequency_hz,

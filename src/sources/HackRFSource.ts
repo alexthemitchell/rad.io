@@ -11,6 +11,7 @@ import type { HackRfWorkerEvent, HackRfWorkerRequest } from './hackrfWorkerProto
 import type { RdsDecodeTarget } from '../workers/protocol'
 import type { VfoDspConfig } from '../vfo/types'
 import { webUsbFromNavigator, type Usb, type UsbDevice } from './webUsb'
+import type { UsbDeviceSelection } from './UsbDeviceRegistry'
 
 type HackRfWorker = {
   postMessage(message: HackRfWorkerRequest, transfer?: Transferable[]): void
@@ -24,10 +25,12 @@ type HackRfWorker = {
 type HackRfSourceDependencies = {
   usb?: Usb
   createWorker?: () => HackRfWorker
+  selection?: UsbDeviceSelection
 }
 
 export class HackRFSource implements AnalyzerSource {
-  readonly id = 'hackrf-one'
+  readonly id: string
+  readonly label: string
   #config: HackRfConfig
   readonly #dependencies: HackRfSourceDependencies
   #sink: SampleSink | undefined
@@ -57,6 +60,11 @@ export class HackRFSource implements AnalyzerSource {
 
   constructor(config: HackRfConfig, dependencies: HackRfSourceDependencies = {}) {
     validateHackRfConfig(config)
+    if (dependencies.selection && dependencies.selection.kind !== 'hackrf') {
+      throw new Error('HackRF source requires a HackRF device selection.')
+    }
+    this.id = dependencies.selection?.id ?? 'hackrf-one'
+    this.label = dependencies.selection?.label ?? 'HackRF One'
     this.#config = { ...config }
     this.#dependencies = dependencies
   }
@@ -64,7 +72,7 @@ export class HackRFSource implements AnalyzerSource {
   start(sink: SampleSink, rdsSink?: RdsSink): Promise<void> {
     if (this.#completion) throw new Error('HackRF source is already active.')
     const usb = this.#dependencies.usb ?? webUsbFromNavigator(navigator)
-    if (!usb) {
+    if (!usb && !this.#dependencies.selection) {
       throw new Error('WebUSB is unavailable. Use a secure-context desktop Chromium browser.')
     }
 
@@ -138,10 +146,11 @@ export class HackRFSource implements AnalyzerSource {
       if (previousRdsTargets && !this.#intentionalStop && !this.#settled) {
         this.setRdsTargets(previousRdsTargets)
       }
+      throw error
+    } finally {
       if (command.type === 'set-center-frequency' && !this.#intentionalStop && !this.#settled) {
         this.setVfos(this.#vfoOutputSampleRateHz, this.#vfos)
       }
-      throw error
     }
   }
 
@@ -158,15 +167,25 @@ export class HackRFSource implements AnalyzerSource {
     await this.#completion
   }
 
-  async #requestAndStart(usb: Usb): Promise<void> {
+  async #requestAndStart(usb: Usb | undefined): Promise<void> {
     try {
-      const authorizedDevices = await usb.getDevices()
-      let selectedDevice = authorizedDevices.find(
-        (device) =>
-          device.vendorId === HACKRF_USB_VENDOR_ID &&
-          device.productId === HACKRF_ONE_USB_PRODUCT_ID,
-      )
+      const selection = this.#dependencies.selection
+      let selectedDevice = selection?.device
       if (!selectedDevice) {
+        if (!usb) {
+          throw new Error('WebUSB is unavailable. Use a secure-context desktop Chromium browser.')
+        }
+        const authorizedDevices = await usb.getDevices()
+        selectedDevice = authorizedDevices.find(
+          (device) =>
+            device.vendorId === HACKRF_USB_VENDOR_ID &&
+            device.productId === HACKRF_ONE_USB_PRODUCT_ID,
+        )
+      }
+      if (!selectedDevice) {
+        if (!usb) {
+          throw new Error('WebUSB is unavailable. Use a secure-context desktop Chromium browser.')
+        }
         if (!usb.requestDevice) {
           throw new Error(
             'WebUSB device selection is unavailable. Use a secure-context desktop Chromium browser.',
@@ -181,6 +200,10 @@ export class HackRFSource implements AnalyzerSource {
         return
       }
       this.#selectedDevice = selectedDevice
+      if (selection?.acquisitionOwner === 'page') {
+        await this.#startPageFallback()
+        return
+      }
       const worker = this.#dependencies.createWorker?.() ?? this.#createWorker()
       this.#worker = worker
       this.#workerConfigured = false
@@ -209,7 +232,7 @@ export class HackRFSource implements AnalyzerSource {
   #createWorker(): HackRfWorker {
     return new Worker(new URL('./hackrf.worker.ts', import.meta.url), {
       type: 'module',
-      name: 'hackrf-acquisition',
+      name: `${this.id}-acquisition`,
     }) as HackRfWorker
   }
 

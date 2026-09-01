@@ -1,4 +1,10 @@
 import type { UsbConfiguration } from './webUsb'
+import { InterleavedIqBlockAssembler } from './iqPipeline'
+
+export {
+  normalizeSignedIq as normalizeHackRfIq,
+  removeComplexDcOffset as removeHackRfDcOffset,
+} from './iqPipeline'
 
 export const HACKRF_USB_VENDOR_ID = 0x1d50
 export const HACKRF_ONE_USB_PRODUCT_ID = 0x6089
@@ -201,64 +207,4 @@ export function resolveHackRfStreamingInterface(
   return selected
 }
 
-export class HackRfIqBlockAssembler {
-  readonly #block: Int8Array
-  #offset = 0
-
-  constructor(fftSize: HackRfFftSize) {
-    this.#block = new Int8Array(fftSize * 2)
-  }
-
-  push(data: DataView | Uint8Array, onBlock: (block: Int8Array) => void): number {
-    const source =
-      data instanceof DataView
-        ? new Int8Array(data.buffer, data.byteOffset, data.byteLength)
-        : new Int8Array(data.buffer, data.byteOffset, data.byteLength)
-    let sourceOffset = 0
-    let completed = 0
-    while (sourceOffset < source.length) {
-      const length = Math.min(this.#block.length - this.#offset, source.length - sourceOffset)
-      this.#block.set(source.subarray(sourceOffset, sourceOffset + length), this.#offset)
-      sourceOffset += length
-      this.#offset += length
-      if (this.#offset === this.#block.length) {
-        onBlock(this.#block)
-        this.#offset = 0
-        completed += 1
-      }
-    }
-    return completed
-  }
-
-  reset(): void {
-    this.#offset = 0
-  }
-}
-
-export function normalizeHackRfIq(source: Int8Array, target: Float32Array): void {
-  if (source.length !== target.length) {
-    throw new Error(`IQ buffer length mismatch: ${source.length} raw bytes, ${target.length} floats.`)
-  }
-  for (let index = 0; index < source.length; index += 1) {
-    target[index] = source[index] / 128
-  }
-}
-
-export function removeHackRfDcOffset(iq: Float32Array): void {
-  if (iq.length === 0 || iq.length % 2 !== 0) {
-    throw new Error('HackRF DC correction requires complete interleaved I/Q samples.')
-  }
-  const sampleCount = iq.length / 2
-  let sumI = 0
-  let sumQ = 0
-  for (let index = 0; index < iq.length; index += 2) {
-    sumI += iq[index]
-    sumQ += iq[index + 1]
-  }
-  const meanI = sumI / sampleCount
-  const meanQ = sumQ / sampleCount
-  for (let index = 0; index < iq.length; index += 2) {
-    iq[index] -= meanI
-    iq[index + 1] -= meanQ
-  }
-}
+export class HackRfIqBlockAssembler extends InterleavedIqBlockAssembler {}

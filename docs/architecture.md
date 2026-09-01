@@ -4,20 +4,20 @@
 
 Implemented today:
 
-- one active generated or HackRF wideband source
-- one paced wideband spectrum/detection lane
-- up to four continuous, independently tuned FM/RDS decoder targets
-- up to four user-managed automatic-stereo WBFM, AM, or NBFM audio VFOs
-- bounded transferable audio queues and an AudioWorklet mixer
+- one exclusive generated source or up to two concurrent distinct HackRF/RTL-SDR E4000 sessions
+- one complete acquisition, analyzer, detection, RDS, and optimization stack per hardware clock
+- one selected rendered view while every running session continues processing in the background
+- up to four continuous, independently tuned FM/RDS decoder targets per analyzer
+- four global user-managed automatic-stereo WBFM, AM, or NBFM audio VFOs
+- source-keyed bounded audio queues feeding one AudioWorklet mixer
 - CPU DSP in browser-independent Rust, compiled to WASM for the browser
 - dedicated acquisition and DSP workers, transferable display buffers, and Canvas2D rendering
 
 Not implemented today:
 
-- an RTL-SDR browser source adapter
 - SSB/CW demodulation, recording, or persistent VFO presets
 - WebGPU/WebGL compute or rendering
-- simultaneous independent source sessions in the UI
+- coherent IQ combination or phase alignment between devices
 
 The architecture decisions below preserve those paths without claiming that roadmap work is already present. Measured costs and limitations are recorded in [Performance](performance.md).
 
@@ -36,7 +36,8 @@ React controls -> AnalyzerController -> dedicated worker -> Rust/WASM generator
                                                      -> Canvas2D renderers
 
 External mode
-Window permission -> acquisition worker -> signed int8 HackRF IQ
+Window permission -> source acquisition worker -> signed HackRF or unsigned RTL IQ
+                           -> one in-place RTL sign-bit conversion
                            -> shared-input Rust/WASM RDS bank -> per-target DDC/demodulation
                                                                   -> metadata events
                            -> shared-input Rust/WASM VFO bank -> filtered DDC/demodulation
@@ -46,12 +47,12 @@ Window permission -> acquisition worker -> signed int8 HackRF IQ
                                   ^       buffer returned <- input-released <---+
 
 Low-rate control
-confirmed tracks -> auto optimizer -> acknowledged center/LNA/VGA command
-                                         -> acquisition owner -> HackRF vendor request
-                                         <- applied configuration
+confirmed tracks -> per-session auto optimizer -> acknowledged center/gain command
+                                             -> matching acquisition owner
+                                             <- applied configuration
 ```
 
-`AnalyzerController` initializes one `DspWorkerClient` for its lifetime. React receives worker state changes immediately and samples numeric status every 250 ms. Spectrum, waterfall, and waveform arrays go directly from `FrameHub` to renderer objects without a React render.
+Each `SourceSession` initializes one `AnalyzerController` and `DspWorkerClient` for its lifetime. `SourceSessionManager` caps hardware ownership at two, samples both optimizers every 250 ms, and exposes one selected session for rendering. React receives worker state changes immediately. Spectrum, waterfall, and waveform arrays from the selected `FrameHub` go directly to renderer objects without a React render.
 
 The display and continuous-decoder lanes intentionally split in the acquisition owner. Display backpressure can discard old FFT blocks without interrupting full-rate RDS or VFO continuity. Each decoder bank traverses its incoming block once, normalizes each sample once within that bank, then fans it out to independent target state. Frequency translation and demodulation remain target-specific. RDS and audio banks are separate in this release, so a live block crosses the WASM input boundary once per active bank.
 
@@ -59,16 +60,16 @@ The display and continuous-decoder lanes intentionally split in the acquisition 
 
 | Stage | Owner and memory | Copy or synchronization |
 | --- | --- | --- |
-| USB bulk-IN | Browser-owned `ArrayBuffer` in the acquisition owner | Sequential `transferIn`; `Int8Array` is a view |
+| USB bulk-IN | Browser-owned `ArrayBuffer` in the acquisition owner | HackRF uses a rate-scaled transfer pipeline; RTL keeps two reads queued |
 | Live RDS input | Acquisition worker JS to acquisition worker WASM | One wasm-bindgen slice copy, then one shared i8-to-complex conversion per 16 KiB transfer |
 | Live VFO input | Acquisition worker JS to acquisition worker WASM | One wasm-bindgen slice copy when playback is enabled, then one shared i8-to-complex conversion per 16 KiB transfer |
-| Display assembly | Persistent signed-byte FFT block in `HackRfIqBlockAssembler` | One bounded `TypedArray.set` copy; old display blocks may be overwritten |
+| Display assembly | Persistent signed-byte block in `InterleavedIqBlockAssembler` | One bounded `TypedArray.set` copy; old display blocks may be overwritten |
 | Display normalization | Sole reusable `Float32Array` output buffer | One i8-to-f32 conversion pass, then block-local complex mean removal |
 | Acquisition to main to DSP worker | Same transferred `ArrayBuffer` | Two ownership transfers and message scheduling; no payload clone |
 | Analyzer input | DSP worker JS to DSP WASM | One wasm-bindgen f32 slice copy per displayed frame |
 | Analyzer output | WASM `Vec` getters to JS typed arrays | Waveform and spectrum are cloned out of WASM once per displayed frame |
 | DSP worker to renderers | Transferable waveform and spectrum buffers | Ownership transfer, then one pending `requestAnimationFrame` delivery |
-| VFO bank to AudioWorklet | WASM audio vector to transferable `Float32Array` blocks over a dedicated `MessagePort` | Completed blocks are copied out of WASM, split by VFO, then transferred; empty USB transfers do not construct a batch |
+| VFO bank to AudioWorklet | WASM audio vector to transferable `Float32Array` blocks over a source-keyed `MessagePort` | Completed blocks are copied out of WASM, split by VFO, then transferred; the worklet validates each block against its source owner |
 | Canvas2D | Main-thread browser canvas resources | CPU path construction and canvas upload; no GPU-resident DSP data |
 
 There is no sample-by-sample JavaScript callback. All hot paths are block oriented and all queues are bounded. SharedArrayBuffer would remove only some of the listed copies while adding cross-origin isolation and atomic ring-buffer lifecycle requirements; current measurements do not justify it.
@@ -97,7 +98,7 @@ A `SampleChunk` carries:
 - monotonic source timestamp in microseconds
 - the transferable IQ array
 
-The acquisition owner stamps each emitted display block with the sample rate and center frequency that produced it. `HackRFSource` forwards those block fields instead of reading mutable UI configuration. This ordering prevents a block queued before or during a retune from being analyzed as though it were captured at the new RF center.
+The acquisition owner stamps each emitted display block with the sample rate and center frequency that produced it. Hardware sources forward those block fields instead of reading mutable UI configuration. This ordering prevents a block queued before or during a retune from being analyzed as though it were captured at the new RF center.
 
 The current analyzer expects exactly one configured FFT block per chunk. A hardware adapter should accumulate USB transfers into complete blocks before calling the sink. `AnalyzerController.ingest` returns the transferred buffer and a dropped flag so the source can maintain a fixed buffer pool.
 
@@ -156,7 +157,7 @@ Rust `u64` timestamps serialized by `serde_wasm_bindgen` are normalized to JavaS
 
 While RX remains open, `HackRFSource` can submit one serialized runtime command for center frequency, LNA gain, or VGA gain. The acquisition worker or page fallback validates the proposed configuration, performs the existing vendor control transfer, and acknowledges the complete applied configuration. React updates displayed controls only after that acknowledgement. Sample rate, baseband filter, FFT size, frame rate, RF amplifier, and antenna bias are not part of the runtime command union.
 
-A center-frequency command first clears frequency-relative RDS targets. After the device acknowledges the new center, acquisition resets partial FFT assembly, marks a decoder discontinuity, discards 50 ms of settling IQ, and resumes with self-describing sample blocks. The analyzer configuration and tracker are reset before those blocks are accepted, then fresh detections repopulate RDS targets with offsets relative to the new center. Gain-only commands preserve track and decoder continuity so the optimizer can compare before/after SNR.
+A center-frequency command first clears frequency-relative RDS and VFO routes. After the device acknowledges the new center, acquisition resets partial FFT assembly, marks a decoder discontinuity, discards 50 ms of settling IQ, restores absolute VFO routes, and resumes with self-describing sample blocks. The analyzer configuration and tracker are reset before those blocks are accepted, then fresh detections repopulate RDS targets with offsets relative to the new center. Gain-only commands preserve track and decoder continuity so the optimizer can compare before/after SNR.
 
 The returned `input-released` buffer is transferred back to the acquisition worker and reused. A stalled bulk endpoint receives bounded `clearHalt` recovery. Stop switches the transceiver off, aborts the pending read by closing when necessary, releases the claimed interface, and closes the device.
 
@@ -164,13 +165,27 @@ WebUSB requires a secure context in production. SharedArrayBuffer and cross-orig
 
 The implementation is OS-neutral and has no dependency on `libhackrf`, Node `usb`, native bridges, browser extensions, custom driver installers, or firmware changes. The host still controls whether Chromium can claim a USB interface. Windows can use its inbox WinUSB service through HackRF's Microsoft compatible-ID descriptor; some Linux installations deny raw USB device-node access through host policy. The page detects and reports those failures but cannot bypass them from the browser sandbox.
 
+## RTL-SDR WebUSB Source
+
+`RtlSdrSource` implements the same `AnalyzerSource` contract and currently exposes the hardware-tested Elonics E4000 profile for generic RTL2832U IDs `0bda:2832` and `0bda:2838`. The source uses the low-level Apache-2.0 `@jtarrio/webrtlsdr` RTL2832U communication layer and supplies its own E4000 tuner probe, startup, PLL, RF filter, gain, and standby implementation. A different tuner fails explicitly before streaming.
+
+RTL2832U bulk samples are unsigned interleaved bytes. `RtlSdrDeviceSession` flips bit 7 of each byte in place, producing the canonical signed interleaved input consumed by `ExternalIqProcessor`. That shared processor owns the RDS and VFO WASM banks for both hardware sources. The display branch assembles exact FFT blocks, normalizes once into one returned Float32 buffer, removes complex DC mean, and remains independently paced.
+
+The session keeps two ordered 65,536-complex-sample reads queued. Each read is tagged with a capture generation. Center-frequency, PPM, or direct-input changes pause the receive loop, advance the generation, drain both old reads, reset the hardware FIFO and continuous DSP, discard 50 ms of settling samples, and resume with actual rate/center metadata. Up to two transient current-generation read failures are treated as discontinuities and refill the pipeline; the third consecutive failure terminates the source. Absolute VFO routes are restored when the command settles; fresh analyzer detections rebuild center-relative RDS targets. Gain and bias changes preserve DSP continuity. Runtime commands are serialized and acknowledged before React adopts the applied configuration.
+
+Stable exposed sample rates are 1.024, 2.048, and 2.4 MS/s. E4000 tuner mode covers 50 MHz through 2.2 GHz. Direct I/Q sampling covers frequencies at or below the 28.8 MHz RTL crystal; the unsupported 28.8-50 MHz gap is rejected. Bias GPIO control requires explicit confirmation and is forced off during startup and every shutdown/error path. The app cannot detect whether a generic dongle physically implements a bias tee.
+
+The window owns the user-gesture device picker and enumerates origin-authorized radios with `navigator.usb.getDevices()`. `UsbDeviceRegistry` pins each session to the selected vendor/product/serial identity, excludes devices already assigned to a session, and offers authorized unassigned devices without reopening the native chooser. A worker reopens a uniquely identified device when worker WebUSB is available. Otherwise the page owns only the USB session and sends signed raw blocks to a processing-only worker; display buffers still follow transfer-and-return ownership.
+
 ## Performance Invariants
 
 - No React state update occurs per IQ packet or rendered frame.
 - HackRF USB reads run independently of React and retain at most one pending display block.
+- RTL-SDR keeps two hardware reads queued and retains at most one pending display block.
 - Full-rate RDS IQ stays in the acquisition owner; only low-rate metadata crosses worker boundaries.
 - RDS state is bounded to four channel-centered decoders and bounded raw-group histories.
-- VFO state is bounded to four receivers; each emits 20 ms blocks and the AudioWorklet caps each queue near 250 ms.
+- VFO state is bounded to four receivers; each emits 20 ms blocks and the AudioWorklet holds each independently clocked queue between an approximately 100 ms startup threshold and 250 ms cap.
+- Hardware state is bounded to two independent sessions; selection changes rendering, not acquisition ownership.
 - Only one generated analysis frame can be in flight.
 - Canvas dimensions are stable and responsive.
 - Worker creation is isolated from live control dependencies.
@@ -178,33 +193,30 @@ The implementation is OS-neutral and has no dependency on `libhackrf`, Node `usb
 - Configuration changes rebuild cached FFT state atomically.
 - External sources receive ownership of their input buffer back.
 - Runtime HackRF controls are serialized, acknowledged, and limited to center/LNA/VGA.
+- Runtime RTL controls are serialized and acknowledged; discontinuity-causing changes reset queued RF-relative state.
 
 ## VFO Evolution
 
 The source-owned VFO bank branches before display throttling:
 
 ```text
-SourceSession
-  -> continuous wideband IQ
-         -> display sampler -> analyzer worker -> renderers
-         -> CPU VFO bank
-                -> direct DDC + decimation per active VFO
-                -> mode-specific demodulator
-                -> bounded audio blocks
-                -> AudioWorklet mixer/output
+SourceSession A -> continuous IQ -> display/analyzer A
+                               -> VFO bank A -> source-keyed port A --+
+SourceSession B -> continuous IQ -> display/analyzer B              |
+                               -> VFO bank B -> source-keyed port B --+-> AudioWorklet
 ```
 
 The implemented bank uses direct CPU/WASM DDC for at most four VFOs. Each target has an NCO, bounded CIC coarse decimator, FIR channel filter/decimator, mode-specific demodulator, audio filter/de-emphasis, and streaming output resampler. WBFM additionally tracks the 19 kHz pilot, coherently recovers L-R, and emits interleaved stereo with lock metadata; AM and NBFM remain mono. The bank contract remains block-oriented so a future channelizer can replace extraction without changing demodulators or playback. It does not perform a wideband FFT, detector, or source conversion independently per VFO.
 
-A channelizer is justified only if representative demodulators reach their deadline. Four automatic-stereo WBFM VFOs measure 1.50x real-time natively and 1.33x through the release-browser WASM boundary at 20 MS/s on the measured machine. This supports the implemented four-VFO limit but leaves live concurrent RDS/VFO soak behavior as a measurement requirement.
+A channelizer is justified only if representative demodulators reach their deadline. Four automatic-stereo WBFM VFOs measure 1.50x real-time natively and 1.33x through the release-browser WASM boundary at 20 MS/s on the measured machine. This supports the implemented four-VFO limit. A 30-minute physical HackRF 2 MS/s plus RTL-SDR 2.4 MS/s run with one WBFM VFO per source held zero audio underruns and overruns; higher-rate four-VFO hardware loads remain a measurement requirement.
 
-Audio is a separate real-time domain. The AudioWorklet consumes bounded narrowband blocks over a transferable `MessagePort` and mixes only enabled audio VFOs. UI rendering and React state do not participate in its callback. SharedArrayBuffer remains deferred because the transferable queue is real-time at the implemented four-VFO limit and the app is not cross-origin isolated.
+Audio is a separate real-time domain. The AudioWorklet consumes bounded narrowband blocks over one transferable producer port per active source and mixes only enabled global VFOs. Every block is validated against the source session recorded in its mixer control, preventing stale or cross-wired producers from entering another radio's queue. Because each SDR oscillator differs slightly from the AudioContext clock, every VFO queue applies a smoothed depth controller around the midpoint of its bounds. Playback correction is limited to $\pm0.5\%$ and consumes an occasional extra or fewer source frame with linear interpolation, preventing slow queues from draining and fast queues from reaching the latency cap. UI rendering and React state do not participate in the callback. SharedArrayBuffer remains deferred because the transferable queues are real-time at the implemented four-VFO limit and the app is not cross-origin isolated.
 
 ## Multiple Sources
 
-`AnalyzerSource` is already an instance interface, but the current `AnalyzerController` and UI own one active source. Multiple devices should be modeled as multiple `SourceSession` instances, each with its own acquisition owner, center frequency, wideband processor, VFO bank, backpressure, and failure lifecycle. IQ from independent clocks must not be merged into one channelizer unless coherent sampling is an explicit future feature.
+`SourceSessionManager` owns up to two `SourceSession` instances. Each session has its own exact USB selection, acquisition owner, center frequency, `AnalyzerController`, `FrameHub`, wideband processor, VFO bank, optimizer, backpressure, and failure lifecycle. Selecting a tab changes the rendered frame/status subscription; it does not suspend the background session.
 
-An RTL-SDR adapter can implement `AnalyzerSource` without changing analyzer or renderer contracts. The Rust RDS front end now accepts the representative 2.4 MS/s rate; browser USB commands and RTL sample-format conversion remain unimplemented device-specific work.
+The VFO model records `sourceSessionId`, and the manager routes only that source's DSP configuration to its controller. One `AudioPlaybackController` creates source-keyed producer ports for every running session that owns an in-band VFO, while the worklet retains and rate-matches independent queues under the global four-VFO cap. Stopping or removing one source flushes and detaches only its producer. Independent IQ clocks are never concatenated or fed into one channelizer.
 
 ## CPU And GPU Boundary
 

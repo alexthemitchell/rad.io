@@ -51,6 +51,7 @@ class FakeWorker {
 
 class FakeSource implements AnalyzerSource {
   readonly id = 'fake-source'
+  readonly label = 'Test receiver'
   readonly targets: RdsDecodeTarget[][] = []
   readonly vfoConfigurations: Array<{
     outputSampleRateHz: number
@@ -181,6 +182,7 @@ const RECEPTION: RdsReception = {
 
 const VFO: VfoConfig = {
   id: 'vfo-1',
+  sourceSessionId: 'generator',
   label: 'Test station',
   frequencyHz: 100_100_000,
   mode: 'wbfm',
@@ -232,6 +234,7 @@ describe('AnalyzerController RDS integration', () => {
     const stop = vi.fn(async () => undefined)
     const source: AnalyzerSource = {
       id: 'failing-source',
+      label: 'Failing receiver',
       start: () => {
         throw new Error('WebUSB is unavailable.')
       },

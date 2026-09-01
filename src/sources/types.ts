@@ -5,6 +5,9 @@ import type {
 } from '../workers/protocol'
 import type { VfoDspConfig } from '../vfo/types'
 
+export type SourceSessionId = string
+export type HardwareSourceKind = 'hackrf' | 'rtl-sdr'
+
 export type SampleChunk = Omit<SampleMetadata, 'sourceSequence'> & {
   iq: Float32Array
   sequence: number
@@ -20,6 +23,7 @@ export type RdsSink = (receptions: readonly RdsReception[]) => void
 
 export interface AnalyzerSource {
   readonly id: string
+  readonly label: string
   start(sink: SampleSink, rdsSink?: RdsSink): Promise<void>
   setRdsTargets?(targets: readonly RdsDecodeTarget[]): void
   setVfos?(outputSampleRateHz: number, vfos: readonly VfoDspConfig[]): void

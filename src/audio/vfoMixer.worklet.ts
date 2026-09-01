@@ -3,6 +3,7 @@ import type {
   VfoMixerCommand,
   VfoMixerEvent,
 } from '../vfo/types'
+import type { SourceSessionId } from '../sources/types'
 import { VfoMixerCore } from './VfoMixerCore'
 
 declare const sampleRate: number
@@ -21,7 +22,7 @@ declare function registerProcessor(
 
 class VfoMixerProcessor extends AudioWorkletProcessor {
   readonly #mixer = new VfoMixerCore({ sampleRateHz: sampleRate })
-  #audioPort: MessagePort | undefined
+  readonly #audioPorts = new Map<SourceSessionId, MessagePort>()
   #framesUntilDiagnostics = Math.round(sampleRate / 4)
 
   constructor() {
@@ -31,13 +32,22 @@ class VfoMixerProcessor extends AudioWorkletProcessor {
       if (message.type === 'configure') {
         this.#mixer.configure(message.vfos, message.masterGainDb, message.masterMuted)
       } else if (message.type === 'attach-audio-port') {
-        this.#audioPort?.close()
-        this.#audioPort = message.port
-        this.#audioPort.onmessage = this.#handleAudio
-        this.#audioPort.start()
-        this.#mixer.flush()
+        this.#audioPorts.get(message.sourceSessionId)?.close()
+        const port = message.port
+        this.#audioPorts.set(message.sourceSessionId, port)
+        port.onmessage = (event: MessageEvent<VfoAudioPortMessage>) => {
+          if (this.#audioPorts.get(message.sourceSessionId) !== port) return
+          this.#handleAudio(message.sourceSessionId, event)
+        }
+        port.start()
+        this.#mixer.flushSource(message.sourceSessionId)
+      } else if (message.type === 'detach-audio-port') {
+        this.#audioPorts.get(message.sourceSessionId)?.close()
+        this.#audioPorts.delete(message.sourceSessionId)
+        this.#mixer.flushSource(message.sourceSessionId)
       } else {
-        this.#mixer.flush()
+        if (message.sourceSessionId) this.#mixer.flushSource(message.sourceSessionId)
+        else this.#mixer.flush()
       }
     }
   }
@@ -62,9 +72,12 @@ class VfoMixerProcessor extends AudioWorkletProcessor {
     return true
   }
 
-  readonly #handleAudio = (event: MessageEvent<VfoAudioPortMessage>): void => {
+  #handleAudio(
+    sourceSessionId: SourceSessionId,
+    event: MessageEvent<VfoAudioPortMessage>,
+  ): void {
     if (event.data.type !== 'vfo-audio') return
-    for (const block of event.data.blocks) this.#mixer.push(block)
+    for (const block of event.data.blocks) this.#mixer.push(sourceSessionId, block)
   }
 }
 

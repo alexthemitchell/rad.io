@@ -15,6 +15,8 @@ describe('SourceControls', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'HackRF' }))
     expect(onChange).toHaveBeenCalledWith('hackrf')
+    fireEvent.click(screen.getByRole('button', { name: 'RTL-SDR' }))
+    expect(onChange).toHaveBeenCalledWith('rtl-sdr')
   })
 
   it('exposes safe HackRF defaults and locks configuration while connecting', () => {

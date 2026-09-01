@@ -5,6 +5,7 @@ import type { HackRfWorkerEvent, HackRfWorkerRequest } from './hackrfWorkerProto
 import type { RdsReception } from '../workers/protocol'
 import type { VfoDspConfig } from '../vfo/types'
 import type { Usb, UsbDevice } from './webUsb'
+import type { UsbDeviceSelection } from './UsbDeviceRegistry'
 
 class FakeWorker {
   readonly messages: HackRfWorkerRequest[] = []
@@ -73,6 +74,41 @@ function createUsb(
 }
 
 describe('HackRFSource', () => {
+  it('uses a pinned registry selection without reopening the chooser', async () => {
+    const worker = new FakeWorker()
+    const { usb, requestDevice } = createUsb(worker, false)
+    const selectedDevice = await usb.requestDevice!({ filters: [] })
+    requestDevice.mockClear()
+    const selection: UsbDeviceSelection = {
+      id: 'hackrf-7',
+      kind: 'hackrf',
+      label: 'Field HackRF',
+      device: selectedDevice,
+      vendorId: selectedDevice.vendorId,
+      productId: selectedDevice.productId,
+      serialNumber: selectedDevice.serialNumber ?? null,
+      acquisitionOwner: 'worker',
+      connected: true,
+    }
+    const source = new HackRFSource(DEFAULT_HACKRF_CONFIG, {
+      usb,
+      createWorker: () => worker,
+      selection,
+    })
+
+    const running = source.start(vi.fn())
+    await vi.waitFor(() => expect(worker.messages[0]?.type).toBe('start'))
+    expect(source.id).toBe('hackrf-7')
+    expect(source.label).toBe('Field HackRF')
+    expect(requestDevice).not.toHaveBeenCalled()
+    expect(worker.messages[0]).toMatchObject({
+      identity: { serialNumber: 'test-radio' },
+    })
+
+    await source.stop()
+    await running
+  })
+
   it('settles cleanly when the audio port cannot be transferred', async () => {
     const worker = new FakeWorker()
     worker.failAudioPortTransfer = true
@@ -260,6 +296,7 @@ describe('HackRFSource', () => {
       command: { type: 'set-center-frequency', centerFrequencyHz: 100_250_000 },
     })
 
+    const messageCountBeforeAck = worker.messages.length
     worker.emit({
       type: 'runtime-command-applied',
       requestId: 1,
@@ -269,6 +306,20 @@ describe('HackRFSource', () => {
       ...DEFAULT_HACKRF_CONFIG,
       centerFrequencyHz: 100_250_000,
     })
+    expect(worker.messages.slice(messageCountBeforeAck)).toEqual([
+      {
+        type: 'set-vfos',
+        outputSampleRateHz: 48_000,
+        vfos: [{
+          id: 'vfo-1',
+          frequencyHz: 100_100_000,
+          mode: 'wbfm',
+          bandwidthHz: 200_000,
+          squelchDbfs: -85,
+          revision: 1,
+        }],
+      },
+    ])
 
     const iq = new Float32Array(DEFAULT_HACKRF_CONFIG.fftSize * 2)
     worker.emit({

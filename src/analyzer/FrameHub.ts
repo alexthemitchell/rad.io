@@ -15,6 +15,12 @@ export class FrameHub {
   }
 
   publish(frame: AnalysisFrameEvent, afterDelivery?: () => void): void {
+    if (this.#listeners.size === 0) {
+      this.#releasePending()
+      this.#latest = frame
+      afterDelivery?.()
+      return
+    }
     this.#pending?.afterDelivery?.()
     this.#pending = { frame, afterDelivery }
     this.#animationFrame ??= requestAnimationFrame(this.#deliver)
@@ -23,18 +29,19 @@ export class FrameHub {
   subscribe(listener: FrameListener): () => void {
     this.#listeners.add(listener)
     if (this.#latest) listener(this.#latest)
-    return () => this.#listeners.delete(listener)
+    return () => {
+      this.#listeners.delete(listener)
+      if (this.#listeners.size === 0 && this.#pending) {
+        const pending = this.#pending
+        this.#releasePending()
+        this.#latest = pending.frame
+      }
+    }
   }
 
   clear(): void {
-    if (this.#animationFrame !== undefined) {
-      cancelAnimationFrame(this.#animationFrame)
-      this.#animationFrame = undefined
-    }
-    const pending = this.#pending
-    this.#pending = undefined
+    this.#releasePending()
     this.#latest = undefined
-    pending?.afterDelivery?.()
   }
 
   readonly #deliver = (): void => {
@@ -49,5 +56,15 @@ export class FrameHub {
     } finally {
       pending.afterDelivery?.()
     }
+  }
+
+  #releasePending(): void {
+    if (this.#animationFrame !== undefined) {
+      cancelAnimationFrame(this.#animationFrame)
+      this.#animationFrame = undefined
+    }
+    const pending = this.#pending
+    this.#pending = undefined
+    pending?.afterDelivery?.()
   }
 }
