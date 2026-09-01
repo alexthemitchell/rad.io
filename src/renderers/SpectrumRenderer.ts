@@ -156,10 +156,16 @@ export class SpectrumRenderer implements CanvasRenderer {
     }
     const offsetHz = xToFrequencyOffset(x, frame.sampleRateHz, MARGIN.left, plotWidth)
     const fraction = Math.max(0, Math.min(1, (x - MARGIN.left) / plotWidth))
-    const index = Math.round(fraction * (frame.spectrumDb.length - 1))
+    const position = fraction * (frame.spectrumDb.length - 1)
+    const lowerIndex = Math.floor(position)
+    const upperIndex = Math.min(lowerIndex + 1, frame.spectrumDb.length - 1)
+    const weight = position - lowerIndex
+    const powerDb =
+      frame.spectrumDb[lowerIndex] +
+      (frame.spectrumDb[upperIndex] - frame.spectrumDb[lowerIndex]) * weight
     return {
       frequencyHz: frame.centerFrequencyHz + offsetHz,
-      powerDb: frame.spectrumDb[index],
+      powerDb,
     }
   }
 }

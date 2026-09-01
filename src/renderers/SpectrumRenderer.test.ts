@@ -72,7 +72,7 @@ describe('SpectrumRenderer hitTest', () => {
     renderer.draw(frame())
     const atCenter = renderer.hitTest(266, 100)
     expect(atCenter?.frequencyHz).toBeCloseTo(100_000_000, -1)
-    expect(atCenter?.powerDb).toBe(-30)
+    expect(atCenter?.powerDb).toBe(-45)
 
     const atLeftEdge = renderer.hitTest(50, 100)
     expect(atLeftEdge?.frequencyHz).toBeCloseTo(99_500_000, -1)

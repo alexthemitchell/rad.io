@@ -60,11 +60,17 @@ export function AnalyzerCanvas({
     const canvas = canvasRef.current
     const renderer = rendererRef.current
     if (!canvas || !renderer?.hitTest) return null
-    const bounds = canvas.getBoundingClientRect()
-    const x = clientX - bounds.left
-    const y = clientY - bounds.top
+    const canvasBounds = canvas.getBoundingClientRect()
+    const x = clientX - canvasBounds.left
+    const y = clientY - canvasBounds.top
     const hit = renderer.hitTest(x, y)
-    return hit ? { ...hit, x, y } : null
+    if (!hit) return null
+    const containerBounds = canvas.parentElement?.getBoundingClientRect() ?? canvasBounds
+    return {
+      ...hit,
+      x: clientX - containerBounds.left,
+      y: clientY - containerBounds.top,
+    }
   }
 
   const interactive = Boolean(onFrequencySelect)
