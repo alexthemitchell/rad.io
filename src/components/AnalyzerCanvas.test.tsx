@@ -43,7 +43,7 @@ describe('AnalyzerCanvas', () => {
     )
     const canvas = screen.getByRole('img', { name: 'spectrum' })
     fireEvent.mouseMove(canvas, { clientX: 150, clientY: 50 })
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(document.querySelector('.plot-panel-tooltip')).not.toBeInTheDocument()
   })
 
   it('shows a frequency/power readout while hovering over hit-testable plot area', () => {
@@ -58,13 +58,13 @@ describe('AnalyzerCanvas', () => {
     )
     const canvas = screen.getByRole('img', { name: 'spectrum' })
     fireEvent.mouseMove(canvas, { clientX: 150, clientY: 50 })
-    expect(screen.getByRole('status')).toHaveTextContent('-40.0 dBFS')
+    expect(document.querySelector('.plot-panel-tooltip')).toHaveTextContent('-40.0 dBFS')
 
     fireEvent.mouseMove(canvas, { clientX: 10, clientY: 50 })
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(document.querySelector('.plot-panel-tooltip')).not.toBeInTheDocument()
 
     fireEvent.mouseLeave(canvas)
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(document.querySelector('.plot-panel-tooltip')).not.toBeInTheDocument()
   })
 
   it('invokes onFrequencySelect with the clicked frequency', () => {

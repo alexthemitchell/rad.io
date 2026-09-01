@@ -98,7 +98,7 @@ export function AnalyzerCanvas({
         <div
           className="plot-panel-tooltip"
           style={{ left: hover.x, top: hover.y }}
-          role="status"
+          aria-hidden="true"
         >
           <strong>{formatRfFrequency(hover.frequencyHz)}</strong>
           <span>{hover.powerDb.toFixed(1)} dBFS</span>
