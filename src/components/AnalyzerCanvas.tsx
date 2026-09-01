@@ -76,7 +76,6 @@ export function AnalyzerCanvas({
       Math.max(canvas.offsetLeft + x, edgePaddingPx),
       Math.max(edgePaddingPx, containerWidth - edgePaddingPx),
     )
-    if (!hit) return null
     return {
       ...hit,
       x: clampedX,
