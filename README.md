@@ -83,12 +83,14 @@ WebUSB is not implemented by Firefox or Safari. Production hosting must use HTTP
 | `npm run type-check` | Run strict TypeScript checking |
 | `npm run lint` | Lint authored TypeScript and React code |
 | `npm test` | Run Vitest unit tests |
-| `npm run test:e2e` | Build and test the production bundle, then run source-module browser integrations |
+| `npm run test:e2e` | Build and test the required browser flows, then run source-module browser integrations |
+| `npm run test:e2e:stability` | Build and run serial production audio underrun stability checks |
 | `npm run rust:fmt-check` | Verify Rust formatting |
 | `npm run rust:lint` | Run Clippy with warnings denied |
 | `npm run rust:test` | Run native Rust workspace tests |
 | `npm run build` | Build release WASM and the production frontend |
-| `npm run validate` | Run the complete local equivalent of CI |
+| `npm run validate` | Run the required Ubuntu validation suite |
+| `npm run validate:windows` | Run the reduced Windows portability suite |
 
 For strict Rust linting:
 
@@ -99,11 +101,11 @@ npm run rust:lint
 
 ## Continuous integration
 
-Pull requests, merge-queue commits, and pushes to `main` run the complete validation suite on Ubuntu and Windows. The functional Playwright scenarios load the release build from a nested `/ci/` path, proving that its relative JavaScript, WASM, worker, and AudioWorklet assets remain deployable at either an HTTPS origin root or a subpath. Two `@source` analyzer integrations run separately through Vite because they intentionally import internal TypeScript modules that are not part of the public bundle.
+Pull requests, merge-queue commits, and pushes to `main` run the full required validation suite on Ubuntu and a smaller portability check on Windows. Ubuntu executes `npm run validate`, including the functional Playwright release scenarios that load the bundle from a nested `/ci/` path and prove that its relative JavaScript, WASM, worker, and AudioWorklet assets remain deployable at either an HTTPS origin root or a subpath. Two `@source` analyzer integrations run separately through Vite because they intentionally import internal TypeScript modules that are not part of the public bundle. Windows retains MSVC Rust lint and test coverage plus the production build without gating on timing-sensitive browser audio underrun assertions.
 
 After a successful Ubuntu validation, CI retains the exact `dist/` output as `rad-io-dist-<commit SHA>` for 14 days. Successful pushes to `main` promote that validated artifact to GitHub Pages without rebuilding it. The production host must use HTTPS, serve `.wasm` as `application/wasm`, cache hashed assets immutably, and keep `index.html` refreshable.
 
-Native and browser benchmarks run weekly and on manual dispatch. They remain outside required checks: harness failures and existing real-time sanity assertions can mark a benchmark run red, but historical metric changes do not gate pull requests. Hosted CI does not access physical radio hardware; the required HackRF Playwright scenarios use a deterministic WebUSB device simulation.
+Native and browser benchmarks run weekly and on manual dispatch. A separate serial Windows audio stability workflow runs the strict `0 underruns` assertions on the same non-gating cadence. These auxiliary workflows can mark a run red, but they do not gate pull requests. Hosted CI does not access physical radio hardware; the required HackRF Playwright scenarios use a deterministic WebUSB device simulation.
 
 ## Architecture
 

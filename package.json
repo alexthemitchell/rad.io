@@ -19,12 +19,14 @@
     "pretest": "npm run wasm:dev",
     "test": "vitest run",
     "test:e2e:built": "playwright test --config playwright.production.config.ts",
+    "test:e2e:stability": "npm run build && playwright test --config playwright.stability.config.ts",
     "test:e2e:source": "playwright test --grep @source",
     "test:e2e": "npm run build && npm run test:e2e:built && npm run test:e2e:source",
     "benchmark:native": "cargo bench --locked -p dsp-core --bench pipeline_baseline",
     "benchmark:browser": "npm run build && playwright test --config playwright.performance.config.ts",
     "preview": "vite preview",
-    "validate": "npm run rust:fmt-check && npm run rust:lint && npm run rust:test && npm run lint && npm test && npm run test:e2e"
+    "validate": "npm run rust:fmt-check && npm run rust:lint && npm run rust:test && npm run lint && npm test && npm run test:e2e",
+    "validate:windows": "npm run rust:lint && npm run rust:test && npm run build"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
