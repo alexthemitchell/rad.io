@@ -83,7 +83,8 @@ export function AnalyzerCanvas({
       </figcaption>
       <canvas
         ref={canvasRef}
-        role="img"
+        role={interactive ? 'button' : 'img'}
+        tabIndex={interactive ? 0 : undefined}
         aria-label={ariaLabel}
         className={interactive ? 'plot-panel-canvas--interactive' : undefined}
         onMouseMove={(event) => setHover(hitTestAt(event.clientX, event.clientY))}
@@ -91,6 +92,16 @@ export function AnalyzerCanvas({
         onClick={(event) => {
           if (!onFrequencySelect) return
           const hit = hitTestAt(event.clientX, event.clientY)
+          if (hit) onFrequencySelect(hit.frequencyHz)
+        }}
+        onKeyDown={(event) => {
+          if (!onFrequencySelect || !rendererRef.current?.hitTest) return
+          if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return
+          event.preventDefault()
+          const canvas = canvasRef.current
+          if (!canvas) return
+          const bounds = canvas.getBoundingClientRect()
+          const hit = hitTestAt(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
           if (hit) onFrequencySelect(hit.frequencyHz)
         }}
       />
