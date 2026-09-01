@@ -95,7 +95,7 @@ export function AnalyzerCanvas({
           if (hit) onFrequencySelect(hit.frequencyHz)
         }}
         onKeyDown={(event) => {
-          if (!onFrequencySelect || !rendererRef.current?.hitTest) return
+          if (!onFrequencySelect || !rendererRef.current?.hitTest || event.repeat) return
           if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return
           event.preventDefault()
           const canvas = canvasRef.current

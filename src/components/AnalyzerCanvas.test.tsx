@@ -79,12 +79,36 @@ describe('AnalyzerCanvas', () => {
         onFrequencySelect={onFrequencySelect}
       />,
     )
-    const canvas = screen.getByRole('img', { name: 'spectrum' })
+    const canvas = screen.getByRole('button', { name: 'spectrum' })
     fireEvent.click(canvas, { clientX: 150, clientY: 50 })
     expect(onFrequencySelect).toHaveBeenCalledWith(100_000_150)
 
     onFrequencySelect.mockClear()
     fireEvent.click(canvas, { clientX: 10, clientY: 50 })
     expect(onFrequencySelect).not.toHaveBeenCalled()
+  })
+
+  it('ignores repeated keyboard activation when selecting a frequency', () => {
+    const onFrequencySelect = vi.fn()
+    render(
+      <AnalyzerCanvas
+        frames={new FrameHub()}
+        title="Spectrum"
+        eyebrow="POWER"
+        ariaLabel="spectrum"
+        renderer={StubRenderer}
+        onFrequencySelect={onFrequencySelect}
+      />,
+    )
+    const canvas = screen.getByRole('button', { name: 'spectrum' })
+    Object.defineProperty(canvas, 'getBoundingClientRect', {
+      value: () => ({ left: 0, top: 0, width: 300, height: 100 }),
+    })
+
+    fireEvent.keyDown(canvas, { key: 'Enter', repeat: true })
+    expect(onFrequencySelect).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(canvas, { key: 'Enter' })
+    expect(onFrequencySelect).toHaveBeenCalledWith(100_000_150)
   })
 })
