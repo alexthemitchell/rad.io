@@ -96,7 +96,11 @@ export function AnalyzerCanvas({
         ref={canvasRef}
         role={interactive ? 'button' : 'img'}
         tabIndex={interactive ? 0 : undefined}
-        aria-label={ariaLabel}
+        aria-label={
+          interactive
+            ? `${ariaLabel}. Click to tune a VFO at the selected frequency.`
+            : ariaLabel
+        }
         className={interactive ? 'plot-panel-canvas--interactive' : undefined}
         onMouseMove={(event) => setHover(hoverAt(event.nativeEvent.offsetX, event.nativeEvent.offsetY))}
         onMouseLeave={() => setHover(null)}
