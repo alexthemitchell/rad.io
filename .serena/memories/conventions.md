@@ -5,6 +5,7 @@
 - Treat worker protocol versions, WASM protocol versions, message unions, and transfer ownership as one contract; update all sides and browser tests together.
 - TypeScript is ESM, strict, and rejects unused locals/parameters and switch fallthrough. React hooks and Vite refresh lint rules apply.
 - Tests are colocated as `*.test.ts` / `*.test.tsx`; end-to-end specs live in `e2e/`. Prefer deterministic generated IQ for regressions, then independent live-hardware proof where RF behavior is in scope.
+- For accessibility-driven behavior tests, prefer role queries with stable partial-name regexes when the exact label text includes instructional copy; assert wording separately only when the wording itself is the contract.
 - Preserve units in names (`Hz`, `dBFS`, source timestamps in microseconds) and preserve the interleaved IQ contract `[I0, Q0, I1, Q1, ...]`.
 - Measured spectral fields, allocation-based service evidence, and decoded metadata are separate evidence layers. Do not present the deterministic evidence score as probability or allocation matches as decoded identity.
 - Levels are relative dBFS, never calibrated dBm. `centerFrequencyHz = 0` means baseband-only classification.

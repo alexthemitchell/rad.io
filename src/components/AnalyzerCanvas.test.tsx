@@ -144,7 +144,7 @@ describe('AnalyzerCanvas', () => {
         onFrequencySelect={onFrequencySelect}
       />,
     )
-    const canvas = screen.getByRole('button', { name: 'spectrum' })
+    const canvas = screen.getByRole('button', { name: /spectrum/i })
     dispatchCanvasMouseEvent(canvas, 'click', 150, 50)
     expect(onFrequencySelect).toHaveBeenCalledWith(100_000_150)
 
@@ -165,7 +165,7 @@ describe('AnalyzerCanvas', () => {
         onFrequencySelect={onFrequencySelect}
       />,
     )
-    const canvas = screen.getByRole('button', { name: 'spectrum' })
+    const canvas = screen.getByRole('button', { name: /spectrum/i })
     Object.defineProperty(canvas, 'getBoundingClientRect', {
       value: () => ({ left: 0, top: 0, width: 300, height: 100 }),
     })
