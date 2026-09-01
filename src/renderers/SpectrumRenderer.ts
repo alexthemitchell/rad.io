@@ -7,7 +7,9 @@ import {
   formatFrequency,
   frequencyOffsetToX,
   prepareCanvas,
+  xToFrequencyOffset,
   type CanvasRenderer,
+  type PlotHitInfo,
 } from './canvas'
 
 const MARGIN = { top: 18, right: 18, bottom: 30, left: 50 }
@@ -137,6 +139,34 @@ export class SpectrumRenderer implements CanvasRenderer {
   reset(): void {
     this.#lastFrame = undefined
     this.draw()
+  }
+
+  hitTest(x: number, y: number): PlotHitInfo | null {
+    const frame = this.#lastFrame
+    if (!frame || frame.spectrumDb.length < 2) return null
+    const plotWidth = Math.max(1, this.#width - MARGIN.left - MARGIN.right)
+    const plotHeight = Math.max(1, this.#height - MARGIN.top - MARGIN.bottom)
+    if (
+      x < MARGIN.left ||
+      x > MARGIN.left + plotWidth ||
+      y < MARGIN.top ||
+      y > MARGIN.top + plotHeight
+    ) {
+      return null
+    }
+    const offsetHz = xToFrequencyOffset(x, frame.sampleRateHz, MARGIN.left, plotWidth)
+    const fraction = Math.max(0, Math.min(1, (x - MARGIN.left) / plotWidth))
+    const position = fraction * (frame.spectrumDb.length - 1)
+    const lowerIndex = Math.floor(position)
+    const upperIndex = Math.min(lowerIndex + 1, frame.spectrumDb.length - 1)
+    const weight = position - lowerIndex
+    const powerDbfs =
+      frame.spectrumDb[lowerIndex] +
+      (frame.spectrumDb[upperIndex] - frame.spectrumDb[lowerIndex]) * weight
+    return {
+      frequencyHz: frame.centerFrequencyHz + offsetHz,
+      powerDbfs,
+    }
   }
 }
 

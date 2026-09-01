@@ -515,6 +515,7 @@
 }
 
 .plot-panel {
+  position: relative;
   min-width: 0;
   margin: 0;
   overflow: hidden;
@@ -522,6 +523,36 @@
   border-radius: 6px;
   background: var(--scope);
   box-shadow: 0 10px 24px rgb(28 37 37 / 8%);
+}
+
+.plot-panel-canvas--interactive {
+  cursor: crosshair;
+}
+
+.plot-panel-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  border: 1px solid #3a4c4e;
+  border-radius: 4px;
+  background: rgb(16 25 26 / 92%);
+  color: #dbe6e3;
+  font: 10px/1.3 var(--mono);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+}
+
+.plot-panel-tooltip strong {
+  color: #49ddcd;
+  font-size: 11px;
+}
+
+.plot-panel-tooltip span {
+  color: #849b9b;
 }
 
 .plot-panel figcaption {
