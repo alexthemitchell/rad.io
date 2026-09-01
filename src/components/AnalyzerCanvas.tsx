@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { FrameHub } from '../analyzer/FrameHub'
 import {
   formatRfFrequency,
@@ -10,6 +10,8 @@ import {
 type RendererConstructor = new (canvas: HTMLCanvasElement) => CanvasRenderer
 
 type HoverInfo = PlotHitInfo & { x: number; y: number }
+
+const TOOLTIP_EDGE_PADDING_PX = 96
 
 type AnalyzerCanvasProps = {
   frames: FrameHub
@@ -40,9 +42,10 @@ export function AnalyzerCanvas({
   const rendererRef = useRef<CanvasRenderer | null>(null)
   const [hover, setHover] = useState<HoverInfo | null>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
+    setHover(null)
     const renderer = new Renderer(canvas)
     rendererRef.current = renderer
     const stopObserving = observeCanvas(canvas, (width, height, pixelRatio) => {
@@ -56,20 +59,28 @@ export function AnalyzerCanvas({
     }
   }, [frames, Renderer])
 
-  const hitTestAt = (clientX: number, clientY: number): HoverInfo | null => {
+  const hitTestAt = (x: number, y: number): PlotHitInfo | null => {
     const canvas = canvasRef.current
     const renderer = rendererRef.current
     if (!canvas || !renderer?.hitTest) return null
-    const canvasBounds = canvas.getBoundingClientRect()
-    const x = clientX - canvasBounds.left
-    const y = clientY - canvasBounds.top
-    const hit = renderer.hitTest(x, y)
+    return renderer.hitTest(x, y)
+  }
+
+  const hoverAt = (x: number, y: number): HoverInfo | null => {
+    const canvas = canvasRef.current
+    const hit = hitTestAt(x, y)
+    if (!canvas || !hit) return null
+    const containerWidth = canvas.parentElement?.clientWidth ?? 0
+    const edgePaddingPx = Math.min(TOOLTIP_EDGE_PADDING_PX, containerWidth / 2)
+    const clampedX = Math.min(
+      Math.max(canvas.offsetLeft + x, edgePaddingPx),
+      Math.max(edgePaddingPx, containerWidth - edgePaddingPx),
+    )
     if (!hit) return null
-    const containerBounds = canvas.parentElement?.getBoundingClientRect() ?? canvasBounds
     return {
       ...hit,
-      x: clientX - containerBounds.left,
-      y: clientY - containerBounds.top,
+      x: clampedX,
+      y: canvas.offsetTop + y,
     }
   }
 
@@ -87,11 +98,11 @@ export function AnalyzerCanvas({
         tabIndex={interactive ? 0 : undefined}
         aria-label={ariaLabel}
         className={interactive ? 'plot-panel-canvas--interactive' : undefined}
-        onMouseMove={(event) => setHover(hitTestAt(event.clientX, event.clientY))}
+        onMouseMove={(event) => setHover(hoverAt(event.nativeEvent.offsetX, event.nativeEvent.offsetY))}
         onMouseLeave={() => setHover(null)}
         onClick={(event) => {
           if (!onFrequencySelect) return
-          const hit = hitTestAt(event.clientX, event.clientY)
+          const hit = hitTestAt(event.nativeEvent.offsetX, event.nativeEvent.offsetY)
           if (hit) onFrequencySelect(hit.frequencyHz)
         }}
         onKeyDown={(event) => {
@@ -100,8 +111,9 @@ export function AnalyzerCanvas({
           event.preventDefault()
           const canvas = canvasRef.current
           if (!canvas) return
-          const bounds = canvas.getBoundingClientRect()
-          const hit = hitTestAt(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2)
+          const width = canvas.clientWidth || canvas.getBoundingClientRect().width
+          const height = canvas.clientHeight || canvas.getBoundingClientRect().height
+          const hit = hitTestAt(width / 2, height / 2)
           if (hit) onFrequencySelect(hit.frequencyHz)
         }}
       />
@@ -112,7 +124,7 @@ export function AnalyzerCanvas({
           aria-hidden="true"
         >
           <strong>{formatRfFrequency(hover.frequencyHz)}</strong>
-          <span>{hover.powerDb.toFixed(1)} dBFS</span>
+          <span>{hover.powerDbfs.toFixed(1)} dBFS</span>
         </div>
       )}
     </figure>

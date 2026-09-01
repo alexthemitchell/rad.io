@@ -2,7 +2,7 @@ import type { AnalysisFrameEvent } from '../workers/protocol'
 
 export type PlotHitInfo = {
   frequencyHz: number
-  powerDb: number
+  powerDbfs: number
 }
 
 export interface CanvasRenderer {

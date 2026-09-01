@@ -160,12 +160,12 @@ export class SpectrumRenderer implements CanvasRenderer {
     const lowerIndex = Math.floor(position)
     const upperIndex = Math.min(lowerIndex + 1, frame.spectrumDb.length - 1)
     const weight = position - lowerIndex
-    const powerDb =
+    const powerDbfs =
       frame.spectrumDb[lowerIndex] +
       (frame.spectrumDb[upperIndex] - frame.spectrumDb[lowerIndex]) * weight
     return {
       frequencyHz: frame.centerFrequencyHz + offsetHz,
-      powerDb,
+      powerDbfs,
     }
   }
 }

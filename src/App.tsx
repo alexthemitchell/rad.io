@@ -336,7 +336,7 @@ function App() {
     })
   }
 
-const tuneVfoAtFrequency = (frequencyHz: number) => {
+  const addVfoAtFrequency = (frequencyHz: number) => {
     if (vfoState.vfos.length >= MAX_VFOS) return
     if (!Number.isFinite(frequencyHz)) return
     const rounded = Math.round(frequencyHz)
@@ -456,7 +456,7 @@ const tuneVfoAtFrequency = (frequencyHz: number) => {
               ariaLabel="FFT spectrum from negative to positive Nyquist frequency"
               className="spectrum-panel"
               renderer={SpectrumRenderer}
-              onFrequencySelect={tuneVfoAtFrequency}
+              onFrequencySelect={addVfoAtFrequency}
             />
             <AnalyzerCanvas
               frames={controller.frames}
