@@ -73,7 +73,7 @@ export function AnalyzerCanvas({
     }
   }
 
-  const interactive = Boolean(onFrequencySelect)
+  const interactive = Boolean(onFrequencySelect && Renderer.prototype.hitTest)
 
   return (
     <figure className={`plot-panel ${className}`}>
