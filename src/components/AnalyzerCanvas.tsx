@@ -1,11 +1,15 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FrameHub } from '../analyzer/FrameHub'
 import {
+  formatRfFrequency,
   observeCanvas,
   type CanvasRenderer,
+  type PlotHitInfo,
 } from '../renderers/canvas'
 
 type RendererConstructor = new (canvas: HTMLCanvasElement) => CanvasRenderer
+
+type HoverInfo = PlotHitInfo & { x: number; y: number }
 
 type AnalyzerCanvasProps = {
   frames: FrameHub
@@ -14,6 +18,13 @@ type AnalyzerCanvasProps = {
   ariaLabel: string
   className?: string
   renderer: RendererConstructor
+  /**
+   * When provided, clicking on a location within the plot that resolves to a
+   * frequency (via the renderer's optional `hitTest`) invokes this callback
+   * with the absolute RF frequency, enabling click-to-tune interactions.
+   * Hovering over such a plot also renders a live frequency/power readout.
+   */
+  onFrequencySelect?: (frequencyHz: number) => void
 }
 
 export function AnalyzerCanvas({
@@ -23,13 +34,17 @@ export function AnalyzerCanvas({
   ariaLabel,
   className = '',
   renderer: Renderer,
+  onFrequencySelect,
 }: AnalyzerCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rendererRef = useRef<CanvasRenderer | null>(null)
+  const [hover, setHover] = useState<HoverInfo | null>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const renderer = new Renderer(canvas)
+    rendererRef.current = renderer
     const stopObserving = observeCanvas(canvas, (width, height, pixelRatio) => {
       renderer.resize(width, height, pixelRatio)
     })
@@ -37,8 +52,22 @@ export function AnalyzerCanvas({
     return () => {
       unsubscribe()
       stopObserving()
+      rendererRef.current = null
     }
   }, [frames, Renderer])
+
+  const hitTestAt = (clientX: number, clientY: number): HoverInfo | null => {
+    const canvas = canvasRef.current
+    const renderer = rendererRef.current
+    if (!canvas || !renderer?.hitTest) return null
+    const bounds = canvas.getBoundingClientRect()
+    const x = clientX - bounds.left
+    const y = clientY - bounds.top
+    const hit = renderer.hitTest(x, y)
+    return hit ? { ...hit, x, y } : null
+  }
+
+  const interactive = Boolean(onFrequencySelect)
 
   return (
     <figure className={`plot-panel ${className}`}>
@@ -46,7 +75,29 @@ export function AnalyzerCanvas({
         <span>{eyebrow}</span>
         <strong>{title}</strong>
       </figcaption>
-      <canvas ref={canvasRef} role="img" aria-label={ariaLabel} />
+      <canvas
+        ref={canvasRef}
+        role="img"
+        aria-label={ariaLabel}
+        className={interactive ? 'plot-panel-canvas--interactive' : undefined}
+        onMouseMove={(event) => setHover(hitTestAt(event.clientX, event.clientY))}
+        onMouseLeave={() => setHover(null)}
+        onClick={(event) => {
+          if (!onFrequencySelect) return
+          const hit = hitTestAt(event.clientX, event.clientY)
+          if (hit) onFrequencySelect(hit.frequencyHz)
+        }}
+      />
+      {hover && (
+        <div
+          className="plot-panel-tooltip"
+          style={{ left: hover.x, top: hover.y }}
+          role="status"
+        >
+          <strong>{formatRfFrequency(hover.frequencyHz)}</strong>
+          <span>{hover.powerDb.toFixed(1)} dBFS</span>
+        </div>
+      )}
     </figure>
   )
 }

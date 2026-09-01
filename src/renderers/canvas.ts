@@ -1,9 +1,21 @@
 import type { AnalysisFrameEvent } from '../workers/protocol'
 
+export type PlotHitInfo = {
+  frequencyHz: number
+  powerDb: number
+}
+
 export interface CanvasRenderer {
   resize(width: number, height: number, pixelRatio: number): void
   draw(frame?: AnalysisFrameEvent): void
   reset(): void
+  /**
+   * Optional hit-test used to translate a CSS-pixel cursor position (relative
+   * to the canvas element) into plot data, enabling hover readouts and
+   * click-to-tune interactions. Renderers that don't support pointer
+   * interaction can omit this method.
+   */
+  hitTest?(x: number, y: number): PlotHitInfo | null
 }
 
 export function observeCanvas(
@@ -66,4 +78,15 @@ export function frequencyOffsetToX(
 ): number {
   const normalized = (frequencyHz + sampleRateHz / 2) / sampleRateHz
   return plotLeft + Math.max(0, Math.min(1, normalized)) * plotWidth
+}
+
+export function xToFrequencyOffset(
+  x: number,
+  sampleRateHz: number,
+  plotLeft: number,
+  plotWidth: number,
+): number {
+  const normalized = plotWidth > 0 ? (x - plotLeft) / plotWidth : 0
+  const clamped = Math.max(0, Math.min(1, normalized))
+  return clamped * sampleRateHz - sampleRateHz / 2
 }

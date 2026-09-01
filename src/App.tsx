@@ -39,7 +39,7 @@ import {
   isVfoInPassband,
   reduceVfoState,
 } from './vfo/vfoState'
-import { MAX_VFOS } from './vfo/types'
+import { MAX_VFOS, type VfoMode } from './vfo/types'
 
 function analyzerConfigForHackRf(
   generatorConfig: GeneratorConfig,
@@ -314,6 +314,13 @@ function App() {
     }
   }
 
+  const defaultVfoMode: VfoMode =
+    sourceMode === 'generator' && config.mode === 'fm-rds'
+      ? 'wbfm'
+      : sourceMode === 'generator' && config.mode === 'am'
+        ? 'am'
+        : 'nbfm'
+
   const addManualVfo = () => {
     if (vfoState.vfos.length >= MAX_VFOS) return
     dispatchVfo({
@@ -324,13 +331,16 @@ function App() {
             ? sourceCenterFrequencyHz + config.toneFrequencyHz
             : sourceCenterFrequencyHz,
         ),
-        mode:
-          sourceMode === 'generator' && config.mode === 'fm-rds'
-            ? 'wbfm'
-            : sourceMode === 'generator' && config.mode === 'am'
-              ? 'am'
-              : 'nbfm',
+        mode: defaultVfoMode,
       },
+    })
+  }
+
+  const tuneVfoAtFrequency = (frequencyHz: number) => {
+    if (vfoState.vfos.length >= MAX_VFOS) return
+    dispatchVfo({
+      type: 'add',
+      input: { frequencyHz: Math.round(frequencyHz), mode: defaultVfoMode },
     })
   }
 
@@ -443,6 +453,7 @@ function App() {
               ariaLabel="FFT spectrum from negative to positive Nyquist frequency"
               className="spectrum-panel"
               renderer={SpectrumRenderer}
+              onFrequencySelect={tuneVfoAtFrequency}
             />
             <AnalyzerCanvas
               frames={controller.frames}

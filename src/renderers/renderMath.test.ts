@@ -4,6 +4,7 @@ import {
   formatRfFrequency,
   frequencyOffsetToX,
   waveformChannelAmplitude,
+  xToFrequencyOffset,
 } from './canvas'
 import { spectrumIndex, WATERFALL_LUT } from './colorMap'
 
@@ -30,6 +31,18 @@ describe('render math', () => {
     expect(frequencyOffsetToX(-500_000, 1_000_000, 50, 400)).toBe(50)
     expect(frequencyOffsetToX(0, 1_000_000, 50, 400)).toBe(250)
     expect(frequencyOffsetToX(600_000, 1_000_000, 50, 400)).toBe(450)
+  })
+
+  it('inverts plot x-coordinates back into clipped baseband offsets', () => {
+    expect(xToFrequencyOffset(50, 1_000_000, 50, 400)).toBe(-500_000)
+    expect(xToFrequencyOffset(250, 1_000_000, 50, 400)).toBe(0)
+    expect(xToFrequencyOffset(450, 1_000_000, 50, 400)).toBe(500_000)
+    expect(xToFrequencyOffset(10, 1_000_000, 50, 400)).toBe(-500_000)
+    expect(xToFrequencyOffset(1000, 1_000_000, 50, 400)).toBe(500_000)
+    expect(xToFrequencyOffset(frequencyOffsetToX(120_000, 1_000_000, 50, 400), 1_000_000, 50, 400)).toBeCloseTo(
+      120_000,
+      0,
+    )
   })
 
   it('keeps both waveform channels inside their quarter-height lanes', () => {
