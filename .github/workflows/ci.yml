@@ -43,7 +43,7 @@ jobs:
           shared-key: ci-ubuntu-latest
 
       - name: Install wasm-pack
-        uses: taiki-e/install-action@37f7c5781271959fb65b6b35224e28652ff2b63d # v2.87.0
+        uses: taiki-e/install-action@84f5ac3124727fb3d284d4d22ee9ab3654fd09a6 # v2.87.7
         with:
           tool: wasm-pack@0.15.0
 
@@ -103,7 +103,7 @@ jobs:
           shared-key: ci-windows-latest
 
       - name: Install wasm-pack
-        uses: taiki-e/install-action@37f7c5781271959fb65b6b35224e28652ff2b63d # v2.87.0
+        uses: taiki-e/install-action@84f5ac3124727fb3d284d4d22ee9ab3654fd09a6 # v2.87.7
         with:
           tool: wasm-pack@0.15.0
 
